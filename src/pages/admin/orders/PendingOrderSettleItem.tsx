@@ -3,7 +3,6 @@ import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/ui'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
-import { getButtonStyle, getCardStyle } from '../../../styles/designSystem'
 import { formatAttributes } from '../products/schema'
 import { settleShopOrder } from './api'
 import {
@@ -58,6 +57,10 @@ function buildLineStates(order: ShopOrderWithItems): SettleLineState[] {
     })
 }
 
+function memberLabel(m: { nickname: string | null; name: string }) {
+  return m.nickname || m.name
+}
+
 export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const user = useAuthUser()
   const toast = useToast()
@@ -65,12 +68,19 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const [loading, setLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<OrderPaymentMethod>('balance')
   const [chargeMemberId, setChargeMemberId] = useState<string | null>(order.member_id)
+  const [chargeMemberName, setChargeMemberName] = useState(order.contact_name)
   const [memberBalance, setMemberBalance] = useState<number | null>(null)
   const [globalDiscountInput, setGlobalDiscountInput] = useState('')
+  const [showMemberSearch, setShowMemberSearch] = useState(false)
   const proxySearch = useMemberSearch()
 
   const pendingLines = useMemo(() => buildLineStates(order), [order])
   const [lines, setLines] = useState<SettleLineState[]>(pendingLines)
+
+  const isProxyCharge =
+    paymentMethod === 'balance' &&
+    chargeMemberId != null &&
+    (order.member_id == null || chargeMemberId !== order.member_id)
 
   useEffect(() => {
     setLines(pendingLines)
@@ -83,6 +93,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
     if (member) {
       proxySearch.selectMember(member)
       setChargeMemberId(member.id)
+      setChargeMemberName(memberLabel(member))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.member_id, proxySearch.members])
@@ -134,6 +145,29 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
     )
   }
 
+  const resetChargeToOrderMember = () => {
+    if (order.member_id) {
+      const member = proxySearch.members.find((m) => m.id === order.member_id)
+      if (member) {
+        proxySearch.selectMember(member)
+        setChargeMemberId(member.id)
+        setChargeMemberName(memberLabel(member))
+        return
+      }
+    }
+    setChargeMemberId(order.member_id)
+    setChargeMemberName(order.contact_name)
+    proxySearch.reset()
+  }
+
+  const selectChargeMember = (m: { id: string; name: string; nickname: string | null; phone: string | null }) => {
+    proxySearch.selectMember(m)
+    setChargeMemberId(m.id)
+    setChargeMemberName(memberLabel(m))
+    setShowMemberSearch(false)
+    proxySearch.reset()
+  }
+
   const settleLabel =
     paymentMethod === 'cash' ? '現金結清' : paymentMethod === 'transfer' ? '匯款結清' : '確認扣款'
 
@@ -149,10 +183,17 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
       }
     }
 
-    const confirmMsg = isCashSettlement
-      ? `確認${settleLabel} ${order.order_no}？\n總額 ${total.toLocaleString()} 元`
-      : `確認扣款 ${order.order_no}？\n共 ${lines.length} 筆、總額 ${total.toLocaleString()} 元`
-    if (!confirm(confirmMsg)) return
+    if (isProxyCharge && chargeMemberName) {
+      const ok = window.confirm(
+        `⚠️ 代扣確認\n\n訂單：${order.order_no}（${order.contact_name}）\n扣款帳戶：${chargeMemberName}\n總額：${total.toLocaleString()} 元\n\n確定要從 ${chargeMemberName} 的帳戶扣款嗎？`,
+      )
+      if (!ok) return
+    } else {
+      const confirmMsg = isCashSettlement
+        ? `確認${settleLabel} ${order.order_no}？\n總額 ${total.toLocaleString()} 元`
+        : `確認扣款 ${order.order_no}？\n共 ${lines.length} 筆、總額 ${total.toLocaleString()} 元`
+      if (!confirm(confirmMsg)) return
+    }
 
     setLoading(true)
     try {
@@ -171,7 +212,11 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
         null,
         user?.email ?? null,
       )
-      toast.success(`${settleLabel}完成`)
+      toast.success(
+        isProxyCharge && chargeMemberName
+          ? `${settleLabel}完成（由 ${chargeMemberName} 代扣）`
+          : `${settleLabel}完成`,
+      )
       onComplete()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '結帳失敗')
@@ -181,46 +226,174 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   }
 
   return (
-    <div style={{ ...getCardStyle(isMobile), marginBottom: 16, padding: 0, overflow: 'hidden' }}>
-      <button
-        type="button"
+    <div
+      style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        border: expanded ? '2px solid #4a90e2' : '1px solid #e0e0e0',
+      }}
+    >
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setExpanded((v) => !v)
+          }
+        }}
         style={{
-          width: '100%',
-          textAlign: 'left',
-          padding: isMobile ? '14px 16px' : '16px 20px',
-          border: 'none',
-          background: '#fafafa',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           cursor: 'pointer',
+          userSelect: 'none',
+          gap: 12,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#222' }}>
-              {expanded ? '▼' : '▶'}{' '}
-              {order.contact_name}
-              <span style={{ fontWeight: 400, color: '#999', fontSize: 12 }}> · {order.order_no}</span>
-            </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px', color: '#222' }}>
+            {expanded ? '▼' : '▶'} {order.contact_name}
+            <span style={{ fontWeight: 400, color: '#999', fontSize: '12px' }}> · {order.order_no}</span>
           </div>
+          <div style={{ fontSize: '13px', color: '#666' }}>
+            {lines.length} 品項 · ${listTotal.toLocaleString()}
+          </div>
+        </div>
+        {!expanded && (
           <div
             style={{
               flexShrink: 0,
               padding: '6px 12px',
-              background: '#f3f4f6',
-              borderRadius: 8,
-              fontSize: isMobile ? 15 : 16,
-              fontWeight: 700,
-              color: '#111',
-              whiteSpace: 'nowrap',
+              background: '#f0f0f0',
+              borderRadius: '6px',
+              fontSize: '14px',
+              color: '#666',
             }}
           >
-            ${listTotal.toLocaleString()}
+            點擊展開
           </div>
-        </div>
-      </button>
+        )}
+      </div>
 
       {expanded && (
-        <div style={{ padding: isMobile ? 16 : 20, borderTop: '1px solid #e0e0e0' }}>
+        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
+          <div style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {PAYMENT_OPTIONS.map((opt) => {
+              const active = paymentMethod === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPaymentMethod(opt.value)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: active ? '2px solid #4a90e2' : '1px solid #ddd',
+                    background: active ? '#e3f2fd' : '#fff',
+                    color: active ? '#1565c0' : '#444',
+                    fontSize: '13px',
+                    fontWeight: active ? 600 : 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt.icon} {opt.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {paymentMethod === 'balance' && (
+            <div
+              style={{
+                marginBottom: '16px',
+                padding: '12px',
+                background: isProxyCharge ? '#fff3e0' : '#f5f5f5',
+                borderRadius: '8px',
+                border: isProxyCharge ? '2px solid #ffcc80' : '1px solid #e0e0e0',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>扣款帳戶：</div>
+                  <div style={{ fontSize: '15px', fontWeight: 600 }}>
+                    {isProxyCharge ? (
+                      <div>
+                        <span style={{ color: '#e65100' }}>
+                          🔄 {chargeMemberName}
+                          <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px', fontWeight: 400 }}>
+                            (代扣 {order.contact_name} 的費用)
+                          </span>
+                        </span>
+                        {memberBalance !== null && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', fontWeight: 400 }}>
+                            💰 儲值 ${memberBalance.toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <span>{chargeMemberName || order.contact_name}</span>
+                        {memberBalance !== null && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', fontWeight: 400 }}>
+                            💰 儲值 ${memberBalance.toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {isProxyCharge ? (
+                    <button
+                      type="button"
+                      onClick={resetChargeToOrderMember}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#757575',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ✕ 取消代扣
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowMemberSearch(true)}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#ff9800',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      🔄 切換扣款會員
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {lines.length > 1 && (
             <div
               style={{
@@ -277,12 +450,14 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
             </div>
           )}
 
+          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>結帳品項：</div>
+
           {lines.map((line, idx) => (
             <SettleLineRow
               key={line.item_id}
               index={idx + 1}
               line={line}
-              showBalanceHint={paymentMethod === 'balance'}
+              showDescription={paymentMethod === 'balance'}
               onUpdate={(patch) => updateLine(idx, patch)}
               onApplyDiscount={() => applyDiscountToLine(idx)}
             />
@@ -290,154 +465,172 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 
           <div
             style={{
-              marginBottom: 16,
-              padding: '12px 14px',
-              background: '#f8f9fa',
-              borderRadius: 10,
-              border: '1px solid #e9ecef',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: 12,
+              paddingTop: '16px',
+              marginTop: '16px',
+              borderTop: '2px solid #e0e0e0',
             }}
           >
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#444' }}>合計</span>
-            <div style={{ textAlign: 'right' }}>
-              {listTotal !== total && (
-                <div style={{ fontSize: 12, color: '#888', textDecoration: 'line-through' }}>
-                  ${listTotal.toLocaleString()}
-                </div>
-              )}
-              <div style={{ fontSize: isMobile ? 20 : 22, fontWeight: 700, color: '#111' }}>
-                ${total.toLocaleString()}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {PAYMENT_OPTIONS.map((opt) => {
-                const active = paymentMethod === opt.value
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setPaymentMethod(opt.value)}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: 8,
-                      border: active ? '2px solid #2196f3' : '1px solid #ddd',
-                      background: active ? '#e3f2fd' : '#fff',
-                      color: active ? '#1565c0' : '#444',
-                      fontSize: 14,
-                      fontWeight: active ? 600 : 500,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {opt.icon} {opt.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {paymentMethod === 'balance' ? (
-            <>
-              <div
-                style={{
-                  marginBottom: 16,
-                  padding: 12,
-                  background: chargeMemberId ? '#fff8e1' : '#f5f5f5',
-                  borderRadius: 8,
-                  border: chargeMemberId ? '1px solid #ffcc80' : '1px solid #e0e0e0',
-                }}
-              >
-                <input
-                  type="text"
-                  inputMode="search"
-                  value={proxySearch.searchTerm}
-                  onChange={(e) => {
-                    proxySearch.handleSearchChange(e.target.value)
-                    setChargeMemberId(null)
-                  }}
-                  placeholder="扣款帳戶"
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: 8,
-                    fontSize: 15,
-                    boxSizing: 'border-box',
-                  }}
-                />
-                {proxySearch.showDropdown && proxySearch.filteredMembers.length > 0 && (
-                  <div
-                    style={{
-                      border: '1px solid #ddd',
-                      borderRadius: 8,
-                      marginTop: 4,
-                      background: '#fff',
-                      maxHeight: 200,
-                      overflowY: 'auto',
-                    }}
-                  >
-                    {proxySearch.filteredMembers.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => {
-                          proxySearch.selectMember(m)
-                          setChargeMemberId(m.id)
-                        }}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '10px 12px',
-                          border: 'none',
-                          background: 'transparent',
-                          cursor: 'pointer',
-                          fontSize: 14,
-                        }}
-                      >
-                        {m.nickname || m.name}
-                        {m.phone ? ` · ${m.phone}` : ''}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {memberBalance !== null && (
-                  <div style={{ fontSize: 13, color: '#666', marginTop: 8 }}>
-                    餘額 ${memberBalance.toLocaleString()}
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => void handleSettle()}
-                style={{
-                  ...getButtonStyle('success', 'medium', isMobile),
-                  width: '100%',
-                }}
-              >
-                {loading ? '處理中…' : `✅ ${settleLabel}`}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => void handleSettle()}
+            <div
               style={{
-                ...getButtonStyle('primary', 'medium', isMobile),
-                width: '100%',
+                marginBottom: 12,
+                padding: '12px 14px',
+                background: '#f8f9fa',
+                borderRadius: 10,
+                border: '1px solid #e9ecef',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 12,
               }}
             >
-              {loading ? '處理中…' : `✅ ${settleLabel}`}
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#444' }}>合計</span>
+              <div style={{ textAlign: 'right' }}>
+                {listTotal !== total && (
+                  <div style={{ fontSize: 12, color: '#888', textDecoration: 'line-through' }}>
+                    ${listTotal.toLocaleString()}
+                  </div>
+                )}
+                <div style={{ fontSize: isMobile ? 20 : 22, fontWeight: 700, color: '#111' }}>
+                  ${total.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={loading || (paymentMethod === 'balance' && !chargeMemberId)}
+              onClick={() => void handleSettle()}
+              style={{
+                width: '100%',
+                padding: '10px',
+                background:
+                  paymentMethod === 'balance'
+                    ? isProxyCharge
+                      ? '#ff9800'
+                      : '#4CAF50'
+                    : '#0284c7',
+                border: 'none',
+                borderRadius: '8px',
+                color: 'white',
+                fontWeight: 600,
+                fontSize: '14px',
+                cursor: loading || (paymentMethod === 'balance' && !chargeMemberId) ? 'not-allowed' : 'pointer',
+                opacity: loading || (paymentMethod === 'balance' && !chargeMemberId) ? 0.6 : 1,
+              }}
+            >
+              {loading
+                ? '處理中…'
+                : isProxyCharge && chargeMemberName
+                  ? `✅ ${settleLabel}（${chargeMemberName}）`
+                  : `✅ ${settleLabel}`}
             </button>
-          )}
+          </div>
+        </div>
+      )}
+
+      {showMemberSearch && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+          }}
+          onClick={() => {
+            setShowMemberSearch(false)
+            proxySearch.reset()
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '16px',
+                borderBottom: '1px solid #e0e0e0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: '16px' }}>🔄 選擇代扣會員</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMemberSearch(false)
+                  proxySearch.reset()
+                }}
+                style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: '#666' }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ padding: '12px 16px', background: '#fff3e0', fontSize: '13px', color: '#e65100' }}>
+              從所選會員扣款，訂單仍記在 {order.contact_name} 名下。
+            </div>
+            <div style={{ padding: '16px' }}>
+              <input
+                type="text"
+                value={proxySearch.searchTerm}
+                onChange={(e) => proxySearch.handleSearchChange(e.target.value)}
+                placeholder="搜尋會員姓名、暱稱或電話…"
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ maxHeight: '300px', overflowY: 'auto', borderTop: '1px solid #eee' }}>
+              {proxySearch.filteredMembers.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#999', fontSize: '14px' }}>
+                  {proxySearch.searchTerm.trim() ? '找不到會員' : '輸入關鍵字搜尋'}
+                </div>
+              ) : (
+                proxySearch.filteredMembers.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => selectChargeMember(m)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '14px 16px',
+                      border: 'none',
+                      borderBottom: '1px solid #f0f0f0',
+                      background: 'white',
+                      cursor: 'pointer',
+                      fontSize: '15px',
+                    }}
+                  >
+                    {memberLabel(m)}
+                    {m.phone ? <span style={{ color: '#999', marginLeft: 8 }}>{m.phone}</span> : null}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -447,48 +640,50 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 function SettleLineRow({
   index,
   line,
-  showBalanceHint,
+  showDescription,
   onUpdate,
   onApplyDiscount,
 }: {
   index: number
   line: SettleLineState
-  showBalanceHint: boolean
+  showDescription: boolean
   onUpdate: (patch: Partial<SettleLineState>) => void
   onApplyDiscount: () => void
 }) {
   const [isAmountFocused, setIsAmountFocused] = useState(false)
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
   const subtotal = listSubtotal(line.qty, line.unit_price)
   const hasDiscount = line.line_total !== subtotal
 
   return (
     <div
       style={{
-        background: index % 2 === 0 ? '#f8fcff' : '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        border: '1px solid #e5e7eb',
+        background: index % 2 === 0 ? 'linear-gradient(to bottom, #f8fcff, #f0f8ff)' : 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '12px',
+        border: index % 2 === 0 ? '2px solid #bae6fd' : '2px solid #e0e0e0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
       }}
     >
       <div
         style={{
           display: 'flex',
           alignItems: 'flex-start',
-          gap: 10,
-          marginBottom: 12,
-          paddingBottom: 10,
-          borderBottom: '1px solid #eee',
+          gap: '10px',
+          marginBottom: '12px',
+          paddingBottom: '10px',
+          borderBottom: '1px solid #e8ecef',
         }}
       >
         <span
           style={{
-            fontSize: 11,
+            fontSize: '11px',
             fontWeight: 500,
             color: '#9ca3af',
             background: '#f3f4f6',
-            width: 20,
-            height: 20,
+            width: '20px',
+            height: '20px',
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
@@ -499,26 +694,19 @@ function SettleLineRow({
           {index}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, color: '#222' }}>{line.label}</div>
-          <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>× {line.qty}</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, lineHeight: 1.4, color: '#222' }}>{line.label}</div>
+          <div style={{ fontSize: '13px', color: '#666', marginTop: 2 }}>× {line.qty}</div>
         </div>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 12,
-          alignItems: 'center',
-          marginBottom: showBalanceHint ? 12 : 0,
-        }}
-      >
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: '1 1 160px', minWidth: 0 }}>
-          <span style={{ fontSize: 16, color: '#666', fontWeight: 500 }}>$</span>
+      <div style={{ marginBottom: '14px' }}>
+        <div style={{ fontSize: '13px', color: '#7f8c8d', marginBottom: '8px', fontWeight: 500 }}>扣款金額：</div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontSize: '16px', color: '#666', fontWeight: 500 }}>$</span>
           <input
             type="text"
             inputMode="numeric"
-            placeholder="0"
+            placeholder="請輸入金額"
             value={
               isAmountFocused
                 ? line.line_total > 0
@@ -534,81 +722,142 @@ function SettleLineRow({
             onBlur={() => setIsAmountFocused(false)}
             style={{
               flex: 1,
-              minWidth: 0,
               padding: '12px 14px',
               border: '2px solid #667eea',
-              borderRadius: 8,
-              fontSize: 18,
+              borderRadius: '8px',
+              fontSize: '18px',
               fontWeight: 600,
               background: '#f8f9ff',
               boxSizing: 'border-box',
             }}
           />
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="9"
-            value={line.discountInput}
-            onChange={(e) => onUpdate({ discountInput: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                onApplyDiscount()
-              }
-            }}
-            style={{
-              width: 52,
-              padding: '8px 10px',
-              border: '1px solid #ddd',
-              borderRadius: 8,
-              fontSize: 15,
-              textAlign: 'center',
-            }}
-          />
-          <span style={{ fontSize: 13, color: '#888' }}>折</span>
-          <button
-            type="button"
-            onClick={onApplyDiscount}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 6,
-              border: '1px solid #ccc',
-              background: '#fff',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            套用
-          </button>
+        <div
+          style={{
+            marginTop: '8px',
+            fontSize: '13px',
+            color: '#666',
+            background: '#f5f5f5',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            lineHeight: 1.5,
+          }}
+        >
+          📝 ${line.unit_price.toLocaleString()} × {line.qty} = <strong>${subtotal.toLocaleString()}</strong>
+          {hasDiscount && (
+            <>
+              {' '}
+              → 折後 <strong>${line.line_total.toLocaleString()}</strong>
+            </>
+          )}
         </div>
       </div>
-      {hasDiscount && (
-        <div style={{ marginBottom: 12, fontSize: 12, color: '#888' }}>
-          牌價 ${subtotal.toLocaleString()} → ${line.line_total.toLocaleString()}
-        </div>
-      )}
 
-      {showBalanceHint && (
-        <textarea
-          value={line.description}
-          onChange={(e) => onUpdate({ description: e.target.value })}
-          placeholder="入帳說明"
+      <div style={{ marginBottom: '14px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        <span style={{ fontSize: '13px', color: '#7f8c8d', fontWeight: 500 }}>折數：</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          placeholder="9"
+          value={line.discountInput}
+          onChange={(e) => onUpdate({ discountInput: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              onApplyDiscount()
+            }
+          }}
           style={{
-            width: '100%',
-            padding: '10px 12px',
-            background: '#fff',
-            border: '1px solid #e9ecef',
+            width: 52,
+            padding: '8px 10px',
+            border: '1px solid #ddd',
             borderRadius: 8,
-            fontSize: 14,
-            minHeight: 56,
-            resize: 'vertical',
-            fontFamily: 'inherit',
-            boxSizing: 'border-box',
+            fontSize: 15,
+            textAlign: 'center',
           }}
         />
+        <span style={{ fontSize: 13, color: '#888' }}>折</span>
+        <button
+          type="button"
+          onClick={onApplyDiscount}
+          style={{
+            padding: '6px 12px',
+            borderRadius: 6,
+            border: '1px solid #ccc',
+            background: '#fff',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          套用
+        </button>
+      </div>
+
+      {showDescription && (
+        <div style={{ marginBottom: 0 }}>
+          <div
+            style={{
+              fontSize: '13px',
+              color: '#7f8c8d',
+              marginBottom: '8px',
+              fontWeight: 500,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span>說明：</span>
+            <button
+              type="button"
+              onClick={() => setIsEditingDescription((v) => !v)}
+              style={{
+                padding: '4px 10px',
+                background: 'none',
+                border: '1px solid #e0e0e0',
+                borderRadius: '6px',
+                fontSize: '12px',
+                color: '#666',
+                cursor: 'pointer',
+              }}
+            >
+              {isEditingDescription ? '收起' : '✏️ 編輯'}
+            </button>
+          </div>
+          {isEditingDescription ? (
+            <textarea
+              value={line.description}
+              onChange={(e) => onUpdate({ description: e.target.value })}
+              placeholder="輸入說明…"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: 'white',
+                border: '2px solid #e9ecef',
+                borderRadius: '8px',
+                fontSize: '14px',
+                minHeight: 72,
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                padding: '10px 12px',
+                background: '#f8f9fa',
+                border: '1px solid #e9ecef',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#495057',
+                lineHeight: 1.45,
+              }}
+            >
+              {line.description}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
