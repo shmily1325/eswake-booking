@@ -410,31 +410,62 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           </>
         )}
 
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 0 }}>
           {lines.map((line, idx) => (
             <div
               key={line.key}
               style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                gap: isMobile ? 8 : 8,
-                alignItems: isMobile ? 'stretch' : 'center',
-                marginBottom: 10,
-                paddingBottom: 10,
-                borderBottom: idx < lines.length - 1 ? '1px solid #f0f0f0' : 'none',
+                padding: isMobile ? 12 : '0 0 10px',
+                marginBottom: isMobile ? 0 : 10,
+                borderRadius: isMobile ? 10 : 0,
+                background: isMobile ? '#fafafa' : 'transparent',
+                border: isMobile ? '1px solid #ececec' : 'none',
+                borderBottom:
+                  !isMobile && idx < lines.length - 1 ? '1px solid #f0f0f0' : 'none',
               }}
             >
-              <span style={{ flex: '1 1 200px', fontSize: 14, lineHeight: 1.4 }}>{line.label}</span>
               <div
                 style={{
                   display: 'flex',
-                  flexDirection: isMobile ? 'column' : 'row',
-                  gap: 10,
-                  flexWrap: 'wrap',
-                  width: isMobile ? '100%' : 'auto',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  marginBottom: isMobile ? 10 : 8,
                 }}
               >
-                <div style={{ flex: isMobile ? '1 1 100%' : '0 1 160px', minWidth: 0 }}>
+                <span style={{ flex: 1, fontSize: 14, lineHeight: 1.4, minWidth: 0 }}>{line.label}</span>
+                {!locked && (
+                  <button
+                    type="button"
+                    data-track="product_order_line_remove"
+                    aria-label="移除此品項"
+                    onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
+                    style={{
+                      flexShrink: 0,
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      color: '#c62828',
+                      fontSize: 22,
+                      lineHeight: 1,
+                      minWidth: 44,
+                      minHeight: 44,
+                      margin: -10,
+                      padding: 10,
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? 'minmax(96px, 1fr) minmax(0, 2fr)' : '140px 1fr auto',
+                  gap: 10,
+                  alignItems: 'end',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>
                     數量
                   </div>
@@ -449,7 +480,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                     suffix={<span style={{ fontSize: 14, color: '#666' }}>件</span>}
                   />
                 </div>
-                <div style={{ flex: isMobile ? '1 1 100%' : '1 1 180px', minWidth: 0 }}>
+                <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>
                     單價
                   </div>
@@ -464,16 +495,17 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                     }}
                   />
                 </div>
-                {!locked && (
+                {!locked && !isMobile && (
                   <button
                     type="button"
                     data-track="product_order_line_remove"
+                    aria-label="移除此品項"
                     onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
                     style={{
                       border: 'none',
                       background: 'transparent',
                       cursor: 'pointer',
-                      color: '#c00',
+                      color: '#c62828',
                       fontSize: 22,
                       minWidth: 44,
                       minHeight: 44,

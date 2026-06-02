@@ -41,6 +41,12 @@ export function PrimaryNumericInput({
   min = 0,
   style,
 }: PrimaryNumericInputProps) {
+  const [focused, setFocused] = useState(false)
+  const [draft, setDraft] = useState('')
+
+  const committed = Math.max(min, value)
+  const display = focused ? draft : String(committed)
+
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
       {prefix}
@@ -51,11 +57,27 @@ export function PrimaryNumericInput({
         autoComplete="off"
         placeholder={placeholder}
         disabled={disabled}
-        value={String(value)}
-        onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, '')
-          const n = digits === '' ? min : parseInt(digits, 10)
+        value={display}
+        onFocus={() => {
+          setFocused(true)
+          setDraft(String(committed))
+        }}
+        onBlur={() => {
+          setFocused(false)
+          const digits = draft.replace(/\D/g, '')
+          if (digits === '') {
+            onChange(min)
+            return
+          }
+          const n = parseInt(digits, 10)
           onChange(Number.isFinite(n) ? Math.max(min, n) : min)
+        }}
+        onChange={(e) => {
+          const raw = e.target.value.replace(/\D/g, '')
+          setDraft(raw)
+          if (raw === '') return
+          const n = parseInt(raw, 10)
+          if (Number.isFinite(n)) onChange(n)
         }}
         style={{ ...amountInputStyle, ...style }}
       />
@@ -83,12 +105,9 @@ export function MoneyInput({
   style,
 }: MoneyInputProps) {
   const [focused, setFocused] = useState(false)
+  const [draft, setDraft] = useState('')
 
-  const display = focused
-    ? value > 0
-      ? String(value)
-      : ''
-    : value.toLocaleString()
+  const display = focused ? draft : value.toLocaleString()
 
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
@@ -104,11 +123,21 @@ export function MoneyInput({
         placeholder={placeholder}
         disabled={disabled}
         value={display}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, '')
+        onFocus={() => {
+          setFocused(true)
+          setDraft(value > 0 ? String(value) : '')
+        }}
+        onBlur={() => {
+          setFocused(false)
+          const digits = draft.replace(/\D/g, '')
           onChange(digits === '' ? 0 : parseInt(digits, 10))
+        }}
+        onChange={(e) => {
+          const raw = e.target.value.replace(/\D/g, '')
+          setDraft(raw)
+          if (raw === '') return
+          const n = parseInt(raw, 10)
+          if (Number.isFinite(n)) onChange(n)
         }}
         style={{ ...amountInputStyle, ...style }}
       />

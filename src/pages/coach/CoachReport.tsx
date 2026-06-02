@@ -8,7 +8,6 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getCardStyle } from '../../styles/designSystem'
 import { Button, useToast, ToastContainer } from '../../components/ui'
-import { isFacility } from '../../utils/facility'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
 import { getDisplayContactName } from '../../utils/bookingFormat'
@@ -24,6 +23,7 @@ import {
   filterUnreportedBookings,
   fetchBookingRelations
 } from '../../utils/bookingDataHelpers'
+import { getCoachReportStatus, getCoachReportType } from '../../utils/coachReportStatus'
 import type {
   Coach,
   Booking,
@@ -279,8 +279,8 @@ export function CoachReport({
         filteredBookings = filterUnreportedBookings(
           filteredBookings,
           selectedCoachId,
-          getReportType,
-          getReportStatus
+          getCoachReportType,
+          getCoachReportStatus
         )
       }
 
@@ -293,56 +293,8 @@ export function CoachReport({
     }
   }
 
-  const getReportType = (booking: Booking, coachId: string): 'coach' | 'driver' | 'both' | null => {
-    const isCoach = (booking.coaches || []).some(c => c.id === coachId)
-    const isExplicitDriver = (booking.drivers || []).some(d => d.id === coachId)
-    const hasNoDriver = (booking.drivers || []).length === 0
-    const hasNoCoach = (booking.coaches || []).length === 0
-    
-    const boatName = booking.boats?.name || ''
-    const isFacilityBooking = isFacility(boatName)
-    
-    // 重要：只有在「當前」沒有駕駛員的情況下，教練才能作為隱性駕駛
-    // 如果已經指定了駕駛員，教練就不能回報駕駛時長
-    const isImplicitDriver = isCoach && hasNoDriver && !isFacilityBooking
-    
-    const needsCoachReport = isCoach
-    const needsDriverReport = isExplicitDriver || isImplicitDriver
-    
-    // 純駕駛的預約（沒有教練，只有駕駛）需要同時回報駕駛時數和參與者
-    if (hasNoCoach && isExplicitDriver) {
-      return 'both'
-    }
-    
-    if (needsCoachReport && needsDriverReport) {
-      return 'both'
-    } else if (needsCoachReport) {
-      return 'coach'
-    } else if (needsDriverReport) {
-      return 'driver'
-    }
-    
-    return null
-  }
-
-  const getReportStatus = (booking: Booking, coachId: string) => {
-    const type = getReportType(booking, coachId)
-    if (!type) return { hasCoachReport: false, hasDriverReport: false }
-    
-    // 業務邏輯：每個教練必須分別提交回報
-    // 檢查這個特定教練是否在 coach_reports 中有記錄（無論是否有參與者）
-    const hasCoachReport = !!(booking.coach_reports && 
-      booking.coach_reports.some(r => r.coach_id === coachId))
-    
-    // 駕駛時數：檢查這個特定教練是否回報過駕駛時數（driver_duration_min 有值）
-    const hasDriverReport = !!(booking.coach_reports && 
-      booking.coach_reports.some(r => r.coach_id === coachId && r.driver_duration_min !== null))
-    
-    return { hasCoachReport, hasDriverReport }
-  }
-
   const startReportWithCoach = (booking: Booking, coachId: string) => {
-    const type = getReportType(booking, coachId)
+    const type = getCoachReportType(booking, coachId)
     if (!type) return
     
     const coach = (booking.coaches || []).find(c => c.id === coachId) || (booking.drivers || []).find(d => d.id === coachId)
@@ -592,7 +544,7 @@ export function CoachReport({
     if (!booking) return
     
     // 檢查當前角色是否應該回報駕駛
-    const reportType = getReportType(booking, reportingCoachId)
+    const reportType = getCoachReportType(booking, reportingCoachId)
     const shouldReportDriver = reportType === 'driver' || reportType === 'both'
     
     if (!shouldReportDriver) {
@@ -1028,7 +980,7 @@ export function CoachReport({
         // 過濾掉不該有的駕駛回報（例如教練在有明確駕駛員後不該回報駕駛）
         const validDriverReports = new Map<string, number>()
         driverReports.forEach((duration, coachId) => {
-          const reportType = getReportType(booking, coachId)
+          const reportType = getCoachReportType(booking, coachId)
           const shouldReportDriver = reportType === 'driver' || reportType === 'both'
           if (shouldReportDriver) {
             validDriverReports.set(coachId, duration)
@@ -1469,8 +1421,8 @@ export function CoachReport({
                     }}>
                       <span style={{ fontSize: '16px', opacity: 0.5 }}>🎓</span>
                       {displayCoaches.map(coach => {
-                        const reportType = getReportType(booking, coach.id)
-                        const reportStatus = getReportStatus(booking, coach.id)
+                        const reportType = getCoachReportType(booking, coach.id)
+                        const reportStatus = getCoachReportStatus(booking, coach.id)
                         const isReported = reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
                         
                         return (
@@ -1523,7 +1475,7 @@ export function CoachReport({
                     }}>
                       <span style={{ fontSize: '16px', opacity: 0.5 }}>🚤</span>
                       {displayDrivers.map(driver => {
-                        const reportStatus = getReportStatus(booking, driver.id)
+                        const reportStatus = getCoachReportStatus(booking, driver.id)
                         const isReported = reportStatus.hasDriverReport
                         
                         return (
