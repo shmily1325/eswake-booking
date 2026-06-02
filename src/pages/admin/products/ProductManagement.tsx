@@ -529,6 +529,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
             items={filteredItems}
             isMobile={isMobile}
             onCardClick={(productId) => setView({ kind: 'edit', productId })}
+            onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
         ) : isMobile ? (
           <MobileListView
@@ -949,8 +950,9 @@ interface ProductGalleryGridProps {
   items: VariantListItem[]
   isMobile: boolean
   onCardClick: (productId: string) => void
+  onStartOrder?: (variantId: string) => void
 }
-function ProductGalleryGrid({ items, isMobile, onCardClick }: ProductGalleryGridProps) {
+function ProductGalleryGrid({ items, isMobile, onCardClick, onStartOrder }: ProductGalleryGridProps) {
   return (
     <div
       style={{
@@ -967,6 +969,7 @@ function ProductGalleryGrid({ items, isMobile, onCardClick }: ProductGalleryGrid
           key={it.variant.id}
           item={it}
           onClick={() => onCardClick(it.product.id)}
+          onStartOrder={onStartOrder}
         />
       ))}
     </div>
@@ -976,8 +979,9 @@ function ProductGalleryGrid({ items, isMobile, onCardClick }: ProductGalleryGrid
 interface GalleryCardProps {
   item: VariantListItem
   onClick: () => void
+  onStartOrder?: (variantId: string) => void
 }
-function GalleryCard({ item, onClick }: GalleryCardProps) {
+function GalleryCard({ item, onClick, onStartOrder }: GalleryCardProps) {
   const { variant, product } = item
   const cat = getCategory(product.category)
   const stock = stockBadgeColor(variant.stock)
@@ -1132,8 +1136,27 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
             {product.description}
           </div>
         )}
-        <div style={{ marginTop: 4, fontSize: 13 }}>
-          <PriceDisplay price={variant.price} />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 4,
+            gap: 6,
+            minWidth: 0,
+          }}
+        >
+          <div style={{ fontSize: 13, minWidth: 0 }}>
+            <PriceDisplay price={variant.price} />
+          </div>
+          {onStartOrder && (
+            <StartOrderButton
+              onClick={(e) => {
+                e.stopPropagation()
+                onStartOrder(variant.id)
+              }}
+            />
+          )}
         </div>
         {formatStockInAt(variant.last_stock_in_at) && (
           <div style={{ marginTop: 2, fontSize: 11, color: '#888' }}>

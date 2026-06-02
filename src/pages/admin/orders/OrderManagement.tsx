@@ -23,7 +23,10 @@ import {
 } from './api'
 import { OrderEditDialog } from './OrderEditDialog'
 import {
+  buildCancelBillingConfirmMessage,
+  buildCancelBillingPayload,
   buildSubmitBillingConfirmMessage,
+  buildSubmitBillingPayload,
   confirmVoidOrder,
   deliveryMethodLabel,
   filterOrdersByInbox,
@@ -31,6 +34,7 @@ import {
   formatOrderItemParts,
   itemQtyChips,
   orderHasPendingBill,
+  orderCanSubmitBilling,
   orderHasReadyToBill,
   orderHasWaitingStock,
   orderIsFullySettled,
@@ -38,8 +42,14 @@ import {
   orderStatusMeta,
   qtyBillable,
   qtyOpen,
+  validateCancelBillingDraft,
+  validateSubmitBillingDraft,
 } from './orderUtils'
 import type { OrderInboxTab, ShopOrderWithItems } from './types'
+
+/** 跟 index.css :root 一致，避免 inline style 在舊 Windows 掉回 Courier */
+const UI_SANS =
+  "'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
 
 const TAB_LABELS: Record<OrderInboxTab, string> = {
   all: '全部',
@@ -75,6 +85,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   const [editOrder, setEditOrder] = useState<ShopOrderWithItems | null>(null)
   const [prefillVariantId, setPrefillVariantId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [billingBusyOrderId, setBillingBusyOrderId] = useState<string | null>(null)
 
   const reloadOrders = useCallback(async () => {
     try {
@@ -181,35 +192,41 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   }, [reloadOrders])
 
   const handleSubmitBilling = async (order: ShopOrderWithItems) => {
-    const items = order.items
-      .map((it) => ({ item_id: it.id, qty: qtyBillable(it) }))
-      .filter((x) => x.qty > 0)
-    if (items.length === 0) {
-      toast.error('沒有可送結帳的現貨')
+    if (billingBusyOrderId) return
+    const payload = buildSubmitBillingPayload(order)
+    const validation = validateSubmitBillingDraft(order, payload)
+    if (!validation.ok) {
+      toast.error(validation.error)
       return
     }
     if (!confirm(buildSubmitBillingConfirmMessage(order))) return
+    setBillingBusyOrderId(order.id)
     try {
-      await submitShopOrderBilling(order.id, items, user?.email ?? null)
+      await submitShopOrderBilling(order.id, validation.items, user?.email ?? null)
       await afterOrderMutation()
       globalToast.success('已通知結帳')
     } catch (e: unknown) {
-      globalToast.error(e instanceof Error ? e.message : '送結帳失敗')
+      toast.error(e instanceof Error ? e.message : '送結帳失敗')
+    } finally {
+      setBillingBusyOrderId(null)
     }
   }
 
   const handleCancelBilling = async (order: ShopOrderWithItems) => {
-    const items = order.items
-      .filter((it) => it.qty_pending_bill > 0)
-      .map((it) => ({ item_id: it.id, qty: it.qty_pending_bill }))
-    if (items.length === 0) return
-    if (!confirm('撤回待結帳並釋放保留？')) return
+    if (billingBusyOrderId) return
+    const payload = buildCancelBillingPayload(order)
+    const validation = validateCancelBillingDraft(order, payload)
+    if (!validation.ok) return
+    if (!confirm(buildCancelBillingConfirmMessage(order))) return
+    setBillingBusyOrderId(order.id)
     try {
-      await cancelShopOrderBilling(order.id, items, user?.email ?? null)
+      await cancelShopOrderBilling(order.id, validation.items, user?.email ?? null)
       toast.success('已撤回送結帳')
       await afterOrderMutation()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '撤回失敗')
+    } finally {
+      setBillingBusyOrderId(null)
     }
   }
 
@@ -439,6 +456,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
               setEditOrder(order)
               setDialogOpen(true)
             }}
+            billingBusy={billingBusyOrderId === order.id}
             onSubmitBilling={() => void handleSubmitBilling(order)}
             onCancelBilling={() => void handleCancelBilling(order)}
             onVoidOrder={() => void handleVoidOrder(order)}
@@ -468,6 +486,7 @@ function OrderCard({
   order,
   isMobile,
   canEdit,
+  billingBusy,
   onEdit,
   onSubmitBilling,
   onCancelBilling,
@@ -476,6 +495,7 @@ function OrderCard({
   order: ShopOrderWithItems
   isMobile: boolean
   canEdit: boolean
+  billingBusy: boolean
   onEdit: () => void
   onSubmitBilling: () => void
   onCancelBilling: () => void
@@ -484,7 +504,7 @@ function OrderCard({
   const cancelled = Boolean(order.cancelled_at)
   const statusKey = orderPrimaryStatus(order)
   const status = orderStatusMeta(statusKey)
-  const showSubmit = !cancelled && orderHasReadyToBill(order)
+  const showSubmit = orderCanSubmitBilling(order)
   const showCancelBill = !cancelled && orderHasPendingBill(order)
 
   return (
@@ -503,38 +523,45 @@ function OrderCard({
         <div
           style={{
             display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
+            flexDirection: 'row',
             justifyContent: 'space-between',
-            alignItems: isMobile ? 'flex-start' : 'flex-start',
-            gap: isMobile ? 8 : 12,
+            alignItems: 'flex-start',
+            gap: 10,
           }}
         >
           <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
             <div
               style={{
-                fontSize: isMobile ? 20 : 20,
-                fontWeight: 700,
-                color: '#111',
-                lineHeight: 1.25,
-                marginBottom: 4,
+                fontSize: 17,
+                fontWeight: 600,
+                color: '#222',
+                lineHeight: 1.35,
+                marginBottom: 3,
+                fontFamily: UI_SANS,
                 wordBreak: 'break-word',
               }}
             >
               {order.contact_name}
+              <span
+                style={{
+                  fontWeight: 400,
+                  color: '#888',
+                  fontVariantNumeric: 'tabular-nums',
+                  letterSpacing: '0.01em',
+                }}
+              >
+                {' · '}
+                {order.order_no}
+              </span>
             </div>
             <div
               style={{
                 fontSize: 12,
-                color: '#888',
-                lineHeight: 1.5,
-                fontFamily: 'ui-monospace, monospace',
-                letterSpacing: '-0.02em',
-                marginBottom: 2,
+                color: '#999',
+                lineHeight: 1.4,
+                fontFamily: UI_SANS,
               }}
             >
-              {order.order_no}
-            </div>
-            <div style={{ fontSize: 12, color: '#888', lineHeight: 1.4 }}>
               {formatOrderCardMeta(order, isMobile)}
               {cancelled && order.cancelled_at && (
                 <>
@@ -574,8 +601,14 @@ function OrderCard({
         >
           <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : undefined }}>
             {showSubmit && (
-              <ActionBtn isMobile={isMobile} primary flex={isMobile} onClick={onSubmitBilling}>
-                送結帳
+              <ActionBtn
+                isMobile={isMobile}
+                primary
+                flex={isMobile}
+                disabled={billingBusy}
+                onClick={onSubmitBilling}
+              >
+                {billingBusy ? '處理中…' : '送結帳'}
               </ActionBtn>
             )}
             <ActionBtn isMobile={isMobile} flex={isMobile && showSubmit} onClick={onEdit}>
@@ -719,9 +752,9 @@ function OrderTag({
   return (
     <span
       style={{
-        fontSize: isMobile ? 12 : 11,
-        fontWeight: 700,
-        padding: isMobile ? '5px 11px' : '4px 10px',
+        fontSize: isMobile ? 11 : 11,
+        fontWeight: 600,
+        padding: isMobile ? '4px 10px' : '4px 10px',
         borderRadius: 999,
         color,
         background: bg,
@@ -815,6 +848,7 @@ function ActionBtn({
   danger,
   isMobile,
   flex,
+  disabled,
 }: {
   children: ReactNode
   onClick: () => void
@@ -822,16 +856,20 @@ function ActionBtn({
   danger?: boolean
   isMobile: boolean
   flex?: boolean
+  disabled?: boolean
 }) {
   const variant = primary ? 'primary' : danger ? 'danger' : 'secondary'
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       style={{
         ...getButtonStyle(variant, isMobile ? 'medium' : 'small', isMobile),
         ...(flex ? { flex: 1 } : {}),
         minHeight: isMobile ? 44 : undefined,
+        opacity: disabled ? 0.6 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
       }}
     >
       {children}

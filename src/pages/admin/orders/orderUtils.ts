@@ -171,21 +171,151 @@ export function itemQtyChips(item: ShopOrderItemWithVariant): ItemQtyChip[] {
   return chips
 }
 
-/** 送結帳 confirm 文案（含品項摘要） */
-export function buildSubmitBillingConfirmMessage(order: ShopOrderWithItems): string {
-  const billable = order.items
-    .map((it) => ({ item: it, qty: qtyBillable(it) }))
+/** 本次實際要送結帳的 payload（僅 qtyBillable > 0；已待結／已結清不在內） */
+export function buildSubmitBillingPayload(order: ShopOrderWithItems): BillingQtyPayload[] {
+  return order.items
+    .map((it) => ({ item_id: it.id, qty: qtyBillable(it) }))
     .filter((x) => x.qty > 0)
-  const itemLines = billable.map(
-    ({ item, qty }) => `· ${formatOrderItemLabel(item)} × ${qty}`,
-  )
-  const totalQty = billable.reduce((sum, x) => sum + x.qty, 0)
-  return [
+}
+
+/** 是否可執行送結帳（與 buildSubmitBillingPayload 同步；已作廢為 false） */
+export function orderCanSubmitBilling(order: ShopOrderWithItems): boolean {
+  if (order.cancelled_at) return false
+  return buildSubmitBillingPayload(order).length > 0
+}
+
+/** 撤回送結帳 payload（整批待結） */
+export function buildCancelBillingPayload(order: ShopOrderWithItems): BillingQtyPayload[] {
+  return order.items
+    .filter((it) => it.qty_pending_bill > 0)
+    .map((it) => ({ item_id: it.id, qty: it.qty_pending_bill }))
+}
+
+/** 送結帳 confirm 文案（含品項摘要；明確標示不含已送） */
+export function buildSubmitBillingConfirmMessage(order: ShopOrderWithItems): string {
+  const payload = buildSubmitBillingPayload(order)
+  return buildSubmitBillingSummaryMessage(order, payload)
+}
+
+/** 撤回送結帳 confirm 文案 */
+export function buildCancelBillingConfirmMessage(order: ShopOrderWithItems): string {
+  const payload = buildCancelBillingPayload(order)
+  return buildCancelBillingSummaryMessage(order, payload)
+}
+
+export type BillingQtyPayload = { item_id: string; qty: number }
+
+export type BillingQtyValidation =
+  | { ok: true; items: BillingQtyPayload[] }
+  | { ok: false; error: string }
+
+function positiveBillingLines(lines: BillingQtyPayload[]): BillingQtyPayload[] {
+  return lines.filter((l) => Number.isInteger(l.qty) && l.qty > 0)
+}
+
+/** 前端驗證送結帳 qty（對齊 submit_shop_order_billing RPC） */
+export function validateSubmitBillingDraft(
+  order: ShopOrderWithItems,
+  lines: BillingQtyPayload[],
+): BillingQtyValidation {
+  const items = positiveBillingLines(lines)
+  if (items.length === 0) {
+    return { ok: false, error: '請至少選一項要送結帳的數量' }
+  }
+  for (const line of items) {
+    const item = order.items.find((it) => it.id === line.item_id)
+    if (!item) {
+      return { ok: false, error: '品項不屬於此訂單' }
+    }
+    const open = qtyOpen(item)
+    if (line.qty > open) {
+      return {
+        ok: false,
+        error: `${formatOrderItemLabel(item)} 超過未送出訂量（最多 ${open}）`,
+      }
+    }
+    const billable = qtyBillable(item)
+    if (line.qty > billable) {
+      return {
+        ok: false,
+        error: `${formatOrderItemLabel(item)} 現貨不足（最多可送 ${billable}）`,
+      }
+    }
+  }
+  return { ok: true, items }
+}
+
+/** 前端驗證撤回 qty（對齊 cancel_shop_order_billing RPC） */
+export function validateCancelBillingDraft(
+  order: ShopOrderWithItems,
+  lines: BillingQtyPayload[],
+): BillingQtyValidation {
+  const items = positiveBillingLines(lines)
+  if (items.length === 0) {
+    return { ok: false, error: '請至少選一項要撤回的數量' }
+  }
+  for (const line of items) {
+    const item = order.items.find((it) => it.id === line.item_id)
+    if (!item) {
+      return { ok: false, error: '品項不屬於此訂單' }
+    }
+    if (line.qty > item.qty_pending_bill) {
+      return {
+        ok: false,
+        error: `${formatOrderItemLabel(item)} 超過待結帳數量（最多 ${item.qty_pending_bill}）`,
+      }
+    }
+  }
+  return { ok: true, items }
+}
+
+export function buildSubmitBillingSummaryMessage(
+  order: ShopOrderWithItems,
+  items: BillingQtyPayload[],
+): string {
+  const active = positiveBillingLines(items)
+  const itemLines = active.map((line) => {
+    const item = order.items.find((it) => it.id === line.item_id)
+    const label = item ? formatOrderItemLabel(item) : '商品'
+    return `· ${label} × ${line.qty}`
+  })
+  const totalQty = active.reduce((sum, x) => sum + x.qty, 0)
+  const pendingSkipped = order.items.reduce((sum, it) => sum + it.qty_pending_bill, 0)
+  const paidSkipped = order.items.reduce((sum, it) => sum + it.qty_paid, 0)
+  const lines = [
     `送結帳 ${order.order_no}（${order.contact_name}）？`,
     '',
     ...itemLines,
     '',
-    `共 ${billable.length} 品項、${totalQty} 件；將保留現貨並通知結帳。`,
+    `共 ${active.length} 品項、${totalQty} 件；將保留現貨並通知結帳。`,
+    '僅送出上方列出的新數量，已通知結帳／已結清的不會重複送。',
+  ]
+  if (pendingSkipped > 0 || paidSkipped > 0) {
+    const parts: string[] = []
+    if (pendingSkipped > 0) parts.push(`已待結 ${pendingSkipped} 件`)
+    if (paidSkipped > 0) parts.push(`已結清 ${paidSkipped} 件`)
+    lines.push(`（${parts.join('、')}不在此次）`)
+  }
+  return lines.join('\n')
+}
+
+export function buildCancelBillingSummaryMessage(
+  order: ShopOrderWithItems,
+  items: BillingQtyPayload[],
+): string {
+  const active = positiveBillingLines(items)
+  const itemLines = active.map((line) => {
+    const item = order.items.find((it) => it.id === line.item_id)
+    const label = item ? formatOrderItemLabel(item) : '商品'
+    return `· ${label} × ${line.qty}`
+  })
+  const totalQty = active.reduce((sum, x) => sum + x.qty, 0)
+  return [
+    `撤回送結帳 ${order.order_no}（${order.contact_name}）？`,
+    '',
+    ...itemLines,
+    '',
+    `共 ${active.length} 品項、${totalQty} 件；將釋放保留庫存。`,
   ].join('\n')
 }
 
