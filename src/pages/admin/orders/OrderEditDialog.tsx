@@ -4,6 +4,7 @@ import { useResponsive } from '../../../hooks/useResponsive'
 import { toast } from '../../../utils/toast'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from '../products/api'
 import { formatAttributes } from '../products/schema'
+import { buildVariantSearchHaystack } from '../products/productSearchHaystack'
 import type { VariantListItem } from '../products/types'
 import { createShopOrder, updateShopOrder, voidShopOrder, countOrderTransactions } from './api'
 import { formatDateTime } from '../../../utils/formatters'
@@ -125,10 +126,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     const q = variantSearch.trim().toLowerCase()
     if (!q) return []
     return variants
-      .filter((v) => {
-        const text = `${v.product.brand} ${v.product.model} ${formatAttributes(v.product.category, v.variant.attributes)} ${v.variant.vendor_code || ''}`.toLowerCase()
-        return text.includes(q)
-      })
+      .filter((v) => buildVariantSearchHaystack(v).includes(q))
       .slice(0, 12)
   }, [variants, variantSearch])
 

@@ -26,8 +26,6 @@ import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../..
 
 import { useToast } from '../../../components/ui'
 
-import { useResponsive } from '../../../hooks/useResponsive'
-
 import { ProductManagement } from './ProductManagement'
 
 import { OrderManagement } from '../orders/OrderManagement'
@@ -43,8 +41,6 @@ export function ProductHub() {
   const location = useLocation()
 
   const toast = useToast()
-
-  const { isMobile } = useResponsive()
 
   const [ready, setReady] = useState(false)
 
@@ -130,7 +126,7 @@ export function ProductHub() {
 
       {canEdit && (
         <>
-          <AdminPillRow style={{ marginBottom: 6 }}>
+          <AdminPillRow style={{ marginBottom: onOrders ? 14 : 6 }}>
             <AdminPillLink to="/products" end active={!onOrders}>
               📦 庫存
             </AdminPillLink>
@@ -138,13 +134,11 @@ export function ProductHub() {
               📋 訂單開單
             </AdminPillLink>
           </AdminPillRow>
-          <p style={{ margin: '0 0 14px', fontSize: 13, color: '#666', lineHeight: 1.5 }}>
-            {onOrders
-              ? isMobile
-                ? '點上方數字篩選；現貨到了按「送結帳」。'
-                : '預設顯示全部；點上方數字篩選。現貨到了按「送結帳」通知結帳。'
-              : '管理 SKU、庫存與上架。客人訂單請切換「訂單開單」。'}
-          </p>
+          {!onOrders && (
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#666', lineHeight: 1.5 }}>
+              管理 SKU、庫存與上架。客人訂單請切換「訂單開單」。
+            </p>
+          )}
         </>
       )}
 

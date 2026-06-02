@@ -152,7 +152,7 @@ export function orderStatusMeta(key: OrderStatusKey) {
 
 export type ItemQtyChip = { label: string; color: string; bg: string }
 
-/** 品項列右側數量狀態 chip */
+/** 品項列右側數量狀態 chip（完整） */
 export function itemQtyChips(item: ShopOrderItemWithVariant): ItemQtyChip[] {
   const chips: ItemQtyChip[] = []
   const open = qtyOpen(item)
@@ -169,6 +169,29 @@ export function itemQtyChips(item: ShopOrderItemWithVariant): ItemQtyChip[] {
     chips.push({ label: `可送 ${billable}`, color: '#1565c0', bg: '#e3f2fd' })
   }
   return chips
+}
+
+/**
+ * 卡片列表用：與右上 badge 重複的 chip 不顯示。
+ * 部分待結／進行中等混雜狀態仍保留品項 chip。
+ */
+export function itemQtyChipsForCard(
+  item: ShopOrderItemWithVariant,
+  order: ShopOrderWithItems,
+): ItemQtyChip[] {
+  const chips = itemQtyChips(item)
+  const statusKey = orderPrimaryStatus(order)
+
+  if (statusKey === 'partial' || statusKey === 'open') return chips
+  if (statusKey === 'cancelled') return []
+
+  return chips.filter((chip) => {
+    if (statusKey === 'ready' && chip.label.startsWith('可送 ')) return false
+    if (statusKey === 'pending' && chip.label.startsWith('待結 ')) return false
+    if (statusKey === 'waiting' && chip.label.startsWith('等貨 ')) return false
+    if (statusKey === 'settled' && chip.label.startsWith('已付 ')) return false
+    return true
+  })
 }
 
 /** 本次實際要送結帳的 payload（僅 qtyBillable > 0；已待結／已結清不在內） */

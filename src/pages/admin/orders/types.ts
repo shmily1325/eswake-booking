@@ -74,6 +74,7 @@ export interface SettlementSnapshotLine {
   qty: number
   unit_price: number
   line_total: number
+  description?: string | null
 }
 
 export interface OrderLineInput {

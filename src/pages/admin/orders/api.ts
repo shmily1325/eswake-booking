@@ -186,6 +186,7 @@ export interface SettleLineInput {
   qty: number
   unit_price: number
   line_total: number
+  description?: string | null
 }
 
 export async function settleShopOrder(

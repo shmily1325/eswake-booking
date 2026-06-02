@@ -115,10 +115,6 @@ export function OrderSettlePage() {
 
       {activeTab === 'pending' && (
         <>
-          <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
-            待結帳訂單；可調整單價／折扣。付款方式：扣儲值、匯款、現金（會員／非會員皆可，邏輯同回報管理）。
-          </p>
-
           {loading ? (
             <div style={adminLoadingStyle()}>載入中…</div>
           ) : loadError ? (
@@ -144,12 +140,7 @@ export function OrderSettlePage() {
       )}
 
       {activeTab === 'statistics' && (
-        <>
-          <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
-            依結帳時間查詢已結帳紀錄；可展開每筆查看品項快照（邏輯同回報管理統計報表）。
-          </p>
-          <ShopSettlementStatisticsTab isMobile={isMobile} />
-        </>
+        <ShopSettlementStatisticsTab isMobile={isMobile} />
       )}
 
       <Footer />

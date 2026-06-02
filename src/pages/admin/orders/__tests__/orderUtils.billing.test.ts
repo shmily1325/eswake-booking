@@ -4,6 +4,7 @@ import {
   buildCancelBillingPayload,
   buildSubmitBillingConfirmMessage,
   buildSubmitBillingPayload,
+  itemQtyChipsForCard,
   orderCanSubmitBilling,
   orderHasPendingBill,
   orderHasReadyToBill,
@@ -393,5 +394,47 @@ describe('cross-order reserve corner case', () => {
     expect(qtyBillable(item)).toBe(1)
     const payload = buildSubmitBillingPayload(mockOrder([item]))
     expect(payload).toEqual([{ item_id: 'a', qty: 1 }])
+  })
+})
+
+describe('itemQtyChipsForCard', () => {
+  it('hides 可送 chip when order status is ready', () => {
+    const item = mockItem({ id: 'a', qty: 2, stock: 2 })
+    const order = mockOrder([item])
+    expect(orderPrimaryStatus(order)).toBe('ready')
+    const labels = itemQtyChipsForCard(item, order).map((c) => c.label)
+    expect(labels).not.toContain('可送 2')
+  })
+
+  it('hides 待結 chip when order status is pending', () => {
+    const item = mockItem({ id: 'a', qty: 2, qty_pending_bill: 2, stock: 2, reserved_qty: 2 })
+    const order = mockOrder([item])
+    expect(orderPrimaryStatus(order)).toBe('pending')
+    const labels = itemQtyChipsForCard(item, order).map((c) => c.label)
+    expect(labels).not.toContain('待結 2')
+  })
+
+  it('hides 等貨 chip when order status is waiting', () => {
+    const item = mockItem({ id: 'a', qty: 2, stock: 0 })
+    const order = mockOrder([item])
+    expect(orderPrimaryStatus(order)).toBe('waiting')
+    const labels = itemQtyChipsForCard(item, order).map((c) => c.label)
+    expect(labels).not.toContain('等貨 2')
+  })
+
+  it('hides 已付 chip when order status is settled', () => {
+    const item = mockItem({ id: 'a', qty: 2, qty_paid: 2, stock: 0 })
+    const order = mockOrder([item])
+    expect(orderPrimaryStatus(order)).toBe('settled')
+    expect(itemQtyChipsForCard(item, order)).toEqual([])
+  })
+
+  it('keeps all chips for partial status', () => {
+    const waiting = mockItem({ id: 'a', qty: 2, stock: 0 })
+    const pending = mockItem({ id: 'b', qty: 1, qty_pending_bill: 1, stock: 1, reserved_qty: 1 })
+    const order = mockOrder([waiting, pending])
+    expect(orderPrimaryStatus(order)).toBe('partial')
+    const labels = itemQtyChipsForCard(pending, order).map((c) => c.label)
+    expect(labels).toContain('待結 1')
   })
 })

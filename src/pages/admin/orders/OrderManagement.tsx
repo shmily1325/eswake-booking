@@ -32,7 +32,7 @@ import {
   filterOrdersByInbox,
   filterOrdersBySearch,
   formatOrderItemParts,
-  itemQtyChips,
+  itemQtyChipsForCard,
   orderHasPendingBill,
   orderCanSubmitBilling,
   orderHasReadyToBill,
@@ -373,21 +373,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       </div>
 
       {tab !== 'all' && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            marginBottom: 14,
-            fontSize: 13,
-            color: '#555',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span>
-            篩選：<strong>{TAB_LABELS[tab]}</strong>
-            {visible.length > 0 && ` · ${visible.length} 筆`}
-          </span>
+        <div style={{ marginBottom: 12, textAlign: 'right' }}>
           <button
             type="button"
             onClick={showAllOrders}
@@ -514,8 +500,7 @@ function OrderCard({
         borderRadius: 12,
         marginBottom: 12,
         border: '1px solid #ececec',
-        borderLeft: `4px solid ${status.border}`,
-        opacity: cancelled ? 0.72 : 1,
+        opacity: cancelled ? 0.72 : statusKey === 'settled' ? 0.88 : 1,
         overflow: 'hidden',
       }}
     >
@@ -544,8 +529,9 @@ function OrderCard({
               {order.contact_name}
               <span
                 style={{
+                  fontSize: 12,
                   fontWeight: 400,
-                  color: '#888',
+                  color: '#999',
                   fontVariantNumeric: 'tabular-nums',
                   letterSpacing: '0.01em',
                 }}
@@ -583,7 +569,13 @@ function OrderCard({
         }}
       >
         {order.items.map((it, idx) => (
-          <OrderItemRow key={it.id} item={it} isMobile={isMobile} showDivider={idx > 0} />
+          <OrderItemRow
+            key={it.id}
+            item={it}
+            order={order}
+            isMobile={isMobile}
+            showDivider={idx > 0}
+          />
         ))}
       </div>
 
@@ -642,23 +634,33 @@ function OrderCard({
 
 function OrderItemRow({
   item,
+  order,
   isMobile,
   showDivider,
 }: {
   item: ShopOrderWithItems['items'][number]
+  order: ShopOrderWithItems
   isMobile: boolean
   showDivider: boolean
 }) {
   const { title, subtitle } = formatOrderItemParts(item)
-  const chips = itemQtyChips(item)
+  const chips = itemQtyChipsForCard(item, order)
   const waiting = qtyOpen(item) > 0 && qtyBillable(item) === 0
   const stock = item.variant?.stock ?? 0
+  const showWaitingHint = waiting && stock <= 0 && chips.some((c) => c.label.startsWith('等貨 '))
 
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 48px minmax(120px, auto)',
+        gridTemplateColumns:
+          chips.length > 0
+            ? isMobile
+              ? '1fr'
+              : 'minmax(0, 1fr) 48px minmax(100px, auto)'
+            : isMobile
+              ? '1fr'
+              : 'minmax(0, 1fr) 48px',
         gap: isMobile ? 6 : '4px 12px',
         alignItems: 'start',
         paddingTop: showDivider ? 8 : 0,
@@ -671,7 +673,7 @@ function OrderItemRow({
         {subtitle && (
           <div style={{ fontSize: 12, color: '#888', marginTop: 2, lineHeight: 1.35 }}>{subtitle}</div>
         )}
-        {waiting && stock <= 0 && (
+        {showWaitingHint && (
           <div style={{ fontSize: 11, color: '#ef6c00', marginTop: 2 }}>未到貨</div>
         )}
       </div>
@@ -688,26 +690,29 @@ function OrderItemRow({
           ×{item.qty}
         </div>
       )}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 6,
-          justifyContent: isMobile ? 'space-between' : 'flex-end',
-          alignItems: 'center',
-        }}
-      >
-        {isMobile && (
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>×{item.qty}</span>
-        )}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
-          {chips.length > 0 ? (
-            chips.map((c) => <QtyChip key={c.label} label={c.label} color={c.color} bg={c.bg} />)
-          ) : (
-            <QtyChip label={`共 ${item.qty}`} color="#666" bg="#eee" />
+      {(isMobile || chips.length > 0) && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 6,
+            justifyContent: isMobile ? 'space-between' : 'flex-end',
+            alignItems: 'center',
+            gridColumn: isMobile ? '1 / -1' : undefined,
+          }}
+        >
+          {isMobile && (
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>×{item.qty}</span>
+          )}
+          {chips.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+              {chips.map((c) => (
+                <QtyChip key={c.label} label={c.label} color={c.color} bg={c.bg} />
+              ))}
+            </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   )
 }

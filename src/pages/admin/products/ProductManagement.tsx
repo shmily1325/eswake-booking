@@ -21,6 +21,7 @@ import {
 import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
 import type { ProductWithVariants, VariantListItem } from './types'
 import { ProductEditView } from './ProductEditView'
+import { variantMatchesSearchTokens } from './productSearchHaystack'
 
 type ViewMode =
   | { kind: 'list' }
@@ -178,20 +179,9 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     }
 
     // 搜尋：多關鍵字（空白分隔）AND
-    const q = search.trim().toLowerCase()
+    const q = search.trim()
     if (q) {
-      const tokens = q.split(/\s+/).filter(Boolean)
-      items = items.filter((it) => {
-        const haystack = [
-          it.product.brand,
-          it.product.model,
-          it.variant.vendor_code ?? '',
-          ...Object.values(it.variant.attributes ?? {}).map((v) => String(v ?? '')),
-        ]
-          .join(' ')
-          .toLowerCase()
-        return tokens.every((t) => haystack.includes(t))
-      })
+      items = items.filter((it) => variantMatchesSearchTokens(it, q))
     }
 
     // 排序
@@ -201,20 +191,9 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
   /** 在「目前 tab + 搜尋」前提下，未進一步狀態篩選的清單，用來算缺價/沒圖數量 */
   const baseForCounts: VariantListItem[] = useMemo(() => {
     let items = tabItems
-    const q = search.trim().toLowerCase()
+    const q = search.trim()
     if (q) {
-      const tokens = q.split(/\s+/).filter(Boolean)
-      items = items.filter((it) => {
-        const haystack = [
-          it.product.brand,
-          it.product.model,
-          it.variant.vendor_code ?? '',
-          ...Object.values(it.variant.attributes ?? {}).map((v) => String(v ?? '')),
-        ]
-          .join(' ')
-          .toLowerCase()
-        return tokens.every((t) => haystack.includes(t))
-      })
+      items = items.filter((it) => variantMatchesSearchTokens(it, q))
     }
     return items
   }, [tabItems, search])

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/ui'
 import { useAuthUser } from '../../../contexts/AuthContext'
@@ -6,7 +6,12 @@ import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle } from '../../../styles/designSystem'
 import { formatAttributes } from '../products/schema'
 import { settleShopOrder } from './api'
-import { formatDiscountLabel, parseDiscountFactor } from './orderUtils'
+import {
+  applyDiscountToSubtotal,
+  buildDefaultSettleDescription,
+  listSubtotal,
+  tryParseDiscountFactor,
+} from './settleUtils'
 import type { OrderPaymentMethod, ShopOrderWithItems } from './types'
 
 interface SettleLineState {
@@ -15,6 +20,8 @@ interface SettleLineState {
   unit_price: number
   line_total: number
   label: string
+  description: string
+  discountInput: string
 }
 
 interface Props {
@@ -29,68 +36,26 @@ const PAYMENT_OPTIONS: { value: OrderPaymentMethod; label: string; icon: string 
   { value: 'cash', label: '現金', icon: '💵' },
 ]
 
-const MONEY_INPUT_MAX_WIDTH = 280
-
-const moneyInputStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  maxWidth: MONEY_INPUT_MAX_WIDTH,
-  width: '100%',
-  padding: '10px 12px',
-  border: '2px solid #667eea',
-  borderRadius: 8,
-  fontSize: 16,
-  fontWeight: 600,
-  background: '#f8f9ff',
-  boxSizing: 'border-box',
-  outline: 'none',
-}
-
-function MoneyInput({
-  value,
-  fieldKey,
-  focusedField,
-  onFocus,
-  onBlur,
-  onChange,
-  placeholder = '0',
-}: {
-  value: number
-  fieldKey: string
-  focusedField: string | null
-  onFocus: () => void
-  onBlur: () => void
-  onChange: (next: number) => void
-  placeholder?: string
-}) {
-  const focused = focusedField === fieldKey
-  return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 8,
-        alignItems: 'center',
-        maxWidth: MONEY_INPUT_MAX_WIDTH,
-        width: '100%',
-      }}
-    >
-      <span style={{ fontSize: 16, color: '#666', fontWeight: 500, flexShrink: 0 }}>$</span>
-      <input
-        type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        placeholder={placeholder}
-        value={focused ? (value > 0 ? String(value) : '') : value.toLocaleString()}
-        onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, '')
-          onChange(digits === '' ? 0 : parseInt(digits, 10))
-        }}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        style={moneyInputStyle}
-      />
-    </div>
-  )
+function buildLineStates(order: ShopOrderWithItems): SettleLineState[] {
+  return order.items
+    .filter((it) => it.qty_pending_bill > 0)
+    .map((it): SettleLineState => {
+      const p = it.variant?.product
+      const label = p
+        ? `${p.brand} ${p.model} · ${formatAttributes(p.category, it.variant!.attributes)}`
+        : '商品'
+      const qty = it.qty_pending_bill
+      const unit_price = it.unit_price
+      return {
+        item_id: it.id,
+        qty,
+        unit_price,
+        line_total: listSubtotal(qty, unit_price),
+        label,
+        description: buildDefaultSettleDescription(label, order.order_no),
+        discountInput: '',
+      }
+    })
 }
 
 export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
@@ -101,39 +66,15 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const [paymentMethod, setPaymentMethod] = useState<OrderPaymentMethod>('balance')
   const [chargeMemberId, setChargeMemberId] = useState<string | null>(order.member_id)
   const [memberBalance, setMemberBalance] = useState<number | null>(null)
-  const [focusedField, setFocusedField] = useState<string | null>(null)
-  const [discountInput, setDiscountInput] = useState('')
-  const [appliedFactor, setAppliedFactor] = useState<number | null>(null)
+  const [globalDiscountInput, setGlobalDiscountInput] = useState('')
   const proxySearch = useMemberSearch()
 
-  const isCashSettlement = paymentMethod === 'cash' || paymentMethod === 'transfer'
-
-  const pendingLines = useMemo(() => {
-    return order.items
-      .filter((it) => it.qty_pending_bill > 0)
-      .map((it): SettleLineState => {
-        const p = it.variant?.product
-        const label = p
-          ? `${p.brand} ${p.model} · ${formatAttributes(p.category, it.variant.attributes)}`
-          : '商品'
-        const qty = it.qty_pending_bill
-        const unit_price = it.unit_price
-        return {
-          item_id: it.id,
-          qty,
-          unit_price,
-          line_total: qty * unit_price,
-          label,
-        }
-      })
-  }, [order.items])
-
+  const pendingLines = useMemo(() => buildLineStates(order), [order])
   const [lines, setLines] = useState<SettleLineState[]>(pendingLines)
 
   useEffect(() => {
     setLines(pendingLines)
-    setDiscountInput('')
-    setAppliedFactor(null)
+    setGlobalDiscountInput('')
   }, [pendingLines])
 
   useEffect(() => {
@@ -160,41 +101,36 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   }, [chargeMemberId, paymentMethod])
 
   const total = lines.reduce((s, l) => s + l.line_total, 0)
-  const pendingTotal = pendingLines.reduce((s, l) => s + l.line_total, 0)
-  const subtotalAtListPrice = lines.reduce((s, l) => s + l.qty * l.unit_price, 0)
-  const hasLineDiscount = lines.some((l) => l.line_total !== l.qty * l.unit_price)
+  const listTotal = lines.reduce((s, l) => s + listSubtotal(l.qty, l.unit_price), 0)
+  const isCashSettlement = paymentMethod === 'cash' || paymentMethod === 'transfer'
 
-  const applyDiscountToAll = () => {
-    const factor = parseDiscountFactor(discountInput)
+  const updateLine = (idx: number, patch: Partial<SettleLineState>) => {
+    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)))
+  }
+
+  const applyDiscountToLine = (idx: number) => {
+    const line = lines[idx]
+    const factor = tryParseDiscountFactor(line.discountInput)
     if (factor === null) {
       toast.error('請輸入有效折數，例如 9、85 或 0.9')
       return
     }
-    setAppliedFactor(factor)
+    updateLine(idx, {
+      line_total: applyDiscountToSubtotal(listSubtotal(line.qty, line.unit_price), factor),
+    })
+  }
+
+  const applyGlobalDiscount = () => {
+    const factor = tryParseDiscountFactor(globalDiscountInput)
+    if (factor === null) {
+      toast.error('請輸入有效折數，例如 9、85 或 0.9')
+      return
+    }
     setLines((prev) =>
       prev.map((l) => ({
         ...l,
-        line_total: Math.round(l.qty * l.unit_price * factor),
+        line_total: applyDiscountToSubtotal(listSubtotal(l.qty, l.unit_price), factor),
       })),
-    )
-  }
-
-  const updateLine = (idx: number, patch: Partial<SettleLineState>, opts?: { fromLineTotal?: boolean }) => {
-    if ('unit_price' in patch || 'qty' in patch || 'line_total' in patch) {
-      setAppliedFactor(null)
-    }
-    setLines((prev) =>
-      prev.map((l, i) => {
-        if (i !== idx) return l
-        const next = { ...l, ...patch }
-        if (opts?.fromLineTotal) {
-          return next
-        }
-        if ('unit_price' in patch || 'qty' in patch) {
-          next.line_total = next.qty * next.unit_price
-        }
-        return next
-      }),
     )
   }
 
@@ -206,10 +142,16 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
       toast.error('扣儲值需選擇會員')
       return
     }
+    for (const line of lines) {
+      if (!line.description.trim()) {
+        toast.error('每個品項請填寫入帳說明')
+        return
+      }
+    }
 
     const confirmMsg = isCashSettlement
       ? `確認${settleLabel} ${order.order_no}？\n總額 ${total.toLocaleString()} 元`
-      : `確認扣款 ${order.order_no}？\n總額 ${total.toLocaleString()} 元`
+      : `確認扣款 ${order.order_no}？\n共 ${lines.length} 筆、總額 ${total.toLocaleString()} 元`
     if (!confirm(confirmMsg)) return
 
     setLoading(true)
@@ -221,6 +163,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
           qty: l.qty,
           unit_price: l.unit_price,
           line_total: l.line_total,
+          description: l.description.trim(),
         })),
         paymentMethod,
         paymentMethod === 'balance' ? chargeMemberId : null,
@@ -253,199 +196,126 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, marginBottom: 4 }}>
-              {expanded ? '▼' : '▶'} {order.order_no} · {order.contact_name}
-            </div>
-            <div style={{ fontSize: 13, color: '#666' }}>
-              {lines.length} 品項待結帳
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#222' }}>
+              {expanded ? '▼' : '▶'}{' '}
+              {order.contact_name}
+              <span style={{ fontWeight: 400, color: '#999', fontSize: 12 }}> · {order.order_no}</span>
             </div>
           </div>
           <div
             style={{
               flexShrink: 0,
               padding: '6px 12px',
-              background: '#eef2ff',
+              background: '#f3f4f6',
               borderRadius: 8,
               fontSize: isMobile ? 15 : 16,
               fontWeight: 700,
-              color: '#4338ca',
+              color: '#111',
               whiteSpace: 'nowrap',
             }}
           >
-            ${pendingTotal.toLocaleString()}
+            ${listTotal.toLocaleString()}
           </div>
         </div>
       </button>
 
       {expanded && (
         <div style={{ padding: isMobile ? 16 : 20, borderTop: '1px solid #e0e0e0', maxWidth: 720 }}>
-          {lines.map((line, idx) => (
+          {lines.length > 1 && (
             <div
-              key={line.item_id}
               style={{
-                marginBottom: 16,
-                padding: 14,
-                background: '#f9fafb',
-                borderRadius: 10,
-                border: '1px solid #e5e7eb',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 8,
+                alignItems: 'center',
+                marginBottom: 14,
+                padding: '10px 12px',
+                background: '#f8f9fa',
+                borderRadius: 8,
+                border: '1px solid #e9ecef',
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, lineHeight: 1.4 }}>
-                {line.label}
-                <span style={{ marginLeft: 8, color: '#666', fontWeight: 500 }}>× {line.qty}</span>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-                  gap: 12,
-                  alignItems: 'start',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>單價</div>
-                  <MoneyInput
-                    value={line.unit_price}
-                    fieldKey={`${line.item_id}-unit`}
-                    focusedField={focusedField}
-                    onFocus={() => setFocusedField(`${line.item_id}-unit`)}
-                    onBlur={() => setFocusedField(null)}
-                    onChange={(unit_price) => updateLine(idx, { unit_price })}
-                  />
-                </div>
-
-                <div>
-                  <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>
-                    小計（可改折扣）
-                  </div>
-                  <MoneyInput
-                    value={line.line_total}
-                    fieldKey={`${line.item_id}-total`}
-                    focusedField={focusedField}
-                    onFocus={() => setFocusedField(`${line.item_id}-total`)}
-                    onBlur={() => setFocusedField(null)}
-                    onChange={(line_total) => updateLine(idx, { line_total }, { fromLineTotal: true })}
-                  />
-                  {line.qty * line.unit_price !== line.line_total && (
-                    <div
-                      style={{
-                        marginTop: 6,
-                        fontSize: 12,
-                        color: '#666',
-                        background: '#f5f5f5',
-                        padding: '6px 10px',
-                        borderRadius: 6,
-                      }}
-                    >
-                      原價 ${(line.qty * line.unit_price).toLocaleString()} → 折後 $
-                      {line.line_total.toLocaleString()}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <div
-            style={{
-              marginBottom: 16,
-              padding: 14,
-              background: 'linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%)',
-              borderRadius: 10,
-              border: '2px solid #c7d2fe',
-            }}
-          >
-            <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 8, fontWeight: 500 }}>整單折數</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, color: '#666' }}>全部套用</span>
               <input
                 type="text"
                 inputMode="decimal"
-                placeholder="例：9、85"
-                value={discountInput}
-                onChange={(e) => setDiscountInput(e.target.value)}
+                placeholder="9"
+                value={globalDiscountInput}
+                onChange={(e) => setGlobalDiscountInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
-                    applyDiscountToAll()
+                    applyGlobalDiscount()
                   }
                 }}
                 style={{
-                  width: isMobile ? '100%' : 120,
-                  maxWidth: '100%',
-                  padding: '10px 12px',
-                  border: '2px solid #667eea',
+                  width: 56,
+                  padding: '8px 10px',
+                  border: '1px solid #ddd',
                   borderRadius: 8,
-                  fontSize: 16,
-                  fontWeight: 600,
-                  background: '#fff',
+                  fontSize: 15,
+                  textAlign: 'center',
                   boxSizing: 'border-box',
-                  outline: 'none',
                 }}
               />
-              <span style={{ fontSize: 15, color: '#666', fontWeight: 500, flexShrink: 0 }}>折</span>
+              <span style={{ fontSize: 13, color: '#888' }}>折</span>
               <button
                 type="button"
-                onClick={applyDiscountToAll}
+                onClick={applyGlobalDiscount}
                 style={{
-                  padding: '10px 16px',
+                  padding: '8px 12px',
                   borderRadius: 8,
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #667eea 0%, #5a67d8 100%)',
-                  color: '#fff',
+                  border: '1px solid #ccc',
+                  background: '#fff',
+                  fontSize: 13,
                   fontWeight: 600,
-                  fontSize: 14,
                   cursor: 'pointer',
-                  flexShrink: 0,
                 }}
               >
                 套用
               </button>
             </div>
-            <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
-              9＝九折、85＝八五折；各品項小計依牌價×數量×折數（四捨五入）
-            </div>
-            {(appliedFactor !== null || hasLineDiscount) && subtotalAtListPrice !== total && (
-              <div
-                style={{
-                  marginTop: 10,
-                  fontSize: 13,
-                  color: '#4338ca',
-                  background: '#fff',
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #c7d2fe',
-                }}
-              >
-                {appliedFactor !== null && (
-                  <span style={{ fontWeight: 600, marginRight: 8 }}>{formatDiscountLabel(appliedFactor)}</span>
-                )}
-                原價 ${subtotalAtListPrice.toLocaleString()} → 折後 ${total.toLocaleString()}
-              </div>
-            )}
-          </div>
+          )}
+
+          {lines.map((line, idx) => (
+            <SettleLineRow
+              key={line.item_id}
+              index={idx + 1}
+              line={line}
+              isMobile={isMobile}
+              showBalanceHint={paymentMethod === 'balance'}
+              onUpdate={(patch) => updateLine(idx, patch)}
+              onApplyDiscount={() => applyDiscountToLine(idx)}
+            />
+          ))}
 
           <div
             style={{
               marginBottom: 16,
-              padding: '14px 16px',
-              background: 'linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%)',
+              padding: '12px 14px',
+              background: '#f8f9fa',
               borderRadius: 10,
-              border: '2px solid #c7d2fe',
+              border: '1px solid #e9ecef',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               gap: 12,
             }}
           >
-            <span style={{ fontSize: 15, fontWeight: 600, color: '#4338ca' }}>合計</span>
-            <span style={{ fontSize: isMobile ? 20 : 22, fontWeight: 700, color: '#312e81' }}>
-              ${total.toLocaleString()}
-            </span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#444' }}>合計</span>
+            <div style={{ textAlign: 'right' }}>
+              {listTotal !== total && (
+                <div style={{ fontSize: 12, color: '#888', textDecoration: 'line-through' }}>
+                  ${listTotal.toLocaleString()}
+                </div>
+              )}
+              <div style={{ fontSize: isMobile ? 20 : 22, fontWeight: 700, color: '#111' }}>
+                ${total.toLocaleString()}
+              </div>
+            </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 8, fontWeight: 500 }}>付款方式</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {PAYMENT_OPTIONS.map((opt) => {
                 const active = paymentMethod === opt.value
@@ -457,9 +327,9 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                     style={{
                       padding: '8px 14px',
                       borderRadius: 8,
-                      border: active ? '2px solid #667eea' : '1px solid #ddd',
-                      background: active ? '#eef2ff' : '#fff',
-                      color: active ? '#4338ca' : '#444',
+                      border: active ? '2px solid #2196f3' : '1px solid #ddd',
+                      background: active ? '#e3f2fd' : '#fff',
+                      color: active ? '#1565c0' : '#444',
                       fontSize: 14,
                       fontWeight: active ? 600 : 500,
                       cursor: 'pointer',
@@ -472,61 +342,17 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
             </div>
           </div>
 
-          {isCashSettlement ? (
-            <div
-              style={{
-                padding: 16,
-                background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                borderRadius: 12,
-                border: '2px solid #bae6fd',
-                marginBottom: 16,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 12,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#0369a1', marginBottom: 4 }}>
-                  {paymentMethod === 'cash' ? '💵 現金結清' : '🏦 匯款結清'}
-                </div>
-                <div style={{ fontSize: 13, color: '#075985' }}>
-                  不扣儲值，僅寫入結帳紀錄
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => void handleSettle()}
-                style={{
-                  padding: '10px 20px',
-                  background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-                  border: 'none',
-                  borderRadius: 8,
-                  color: 'white',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.6 : 1,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {loading ? '處理中…' : `✅ ${settleLabel}`}
-              </button>
-            </div>
-          ) : (
+          {paymentMethod === 'balance' ? (
             <>
               <div
                 style={{
                   marginBottom: 16,
                   padding: 12,
-                  background: chargeMemberId ? '#fff3e0' : '#f5f5f5',
+                  background: chargeMemberId ? '#fff8e1' : '#f5f5f5',
                   borderRadius: 8,
-                  border: chargeMemberId ? '2px solid #ffcc80' : '1px solid #e0e0e0',
+                  border: chargeMemberId ? '1px solid #ffcc80' : '1px solid #e0e0e0',
                 }}
               >
-                <div style={{ fontSize: 13, color: '#666', marginBottom: 6 }}>扣款帳戶</div>
                 <input
                   type="text"
                   inputMode="search"
@@ -535,12 +361,12 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                     proxySearch.handleSearchChange(e.target.value)
                     setChargeMemberId(null)
                   }}
-                  placeholder="搜尋會員或代扣對象"
+                  placeholder="扣款帳戶"
                   style={{
                     width: '100%',
                     maxWidth: 360,
                     padding: '10px 12px',
-                    border: '2px solid #e0e0e0',
+                    border: '1px solid #ddd',
                     borderRadius: 8,
                     fontSize: 15,
                     boxSizing: 'border-box',
@@ -584,7 +410,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                 )}
                 {memberBalance !== null && (
                   <div style={{ fontSize: 13, color: '#666', marginTop: 8 }}>
-                    💰 儲值餘額 ${memberBalance.toLocaleString()}（不足仍會扣，與回報管理相同）
+                    餘額 ${memberBalance.toLocaleString()}
                   </div>
                 )}
               </div>
@@ -596,15 +422,189 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                 style={{
                   ...getButtonStyle('success', 'medium', isMobile),
                   width: isMobile ? '100%' : undefined,
-                  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                  border: 'none',
                 }}
               >
                 {loading ? '處理中…' : `✅ ${settleLabel}`}
               </button>
             </>
+          ) : (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void handleSettle()}
+              style={{
+                ...getButtonStyle('primary', 'medium', isMobile),
+                width: isMobile ? '100%' : undefined,
+              }}
+            >
+              {loading ? '處理中…' : `✅ ${settleLabel}`}
+            </button>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+function SettleLineRow({
+  index,
+  line,
+  isMobile,
+  showBalanceHint,
+  onUpdate,
+  onApplyDiscount,
+}: {
+  index: number
+  line: SettleLineState
+  isMobile: boolean
+  showBalanceHint: boolean
+  onUpdate: (patch: Partial<SettleLineState>) => void
+  onApplyDiscount: () => void
+}) {
+  const [isAmountFocused, setIsAmountFocused] = useState(false)
+  const subtotal = listSubtotal(line.qty, line.unit_price)
+  const hasDiscount = line.line_total !== subtotal
+
+  return (
+    <div
+      style={{
+        background: index % 2 === 0 ? '#f8fcff' : '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        border: '1px solid #e5e7eb',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          marginBottom: 12,
+          paddingBottom: 10,
+          borderBottom: '1px solid #eee',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: '#9ca3af',
+            background: '#f3f4f6',
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {index}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, color: '#222' }}>{line.label}</div>
+          <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>× {line.qty}</div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: isMobile ? '100%' : 280 }}>
+          <span style={{ fontSize: 16, color: '#666', fontWeight: 500 }}>$</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="0"
+            value={
+              isAmountFocused
+                ? line.line_total > 0
+                  ? String(line.line_total)
+                  : ''
+                : line.line_total.toLocaleString()
+            }
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, '')
+              onUpdate({ line_total: digits === '' ? 0 : parseInt(digits, 10) })
+            }}
+            onFocus={() => setIsAmountFocused(true)}
+            onBlur={() => setIsAmountFocused(false)}
+            style={{
+              flex: 1,
+              padding: '12px 14px',
+              border: '2px solid #667eea',
+              borderRadius: 8,
+              fontSize: 18,
+              fontWeight: 600,
+              background: '#f8f9ff',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+        {hasDiscount && (
+          <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
+            牌價 ${subtotal.toLocaleString()} → ${line.line_total.toLocaleString()}
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        <input
+          type="text"
+          inputMode="decimal"
+          placeholder="9"
+          value={line.discountInput}
+          onChange={(e) => onUpdate({ discountInput: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              onApplyDiscount()
+            }
+          }}
+          style={{
+            width: 52,
+            padding: '8px 10px',
+            border: '1px solid #ddd',
+            borderRadius: 8,
+            fontSize: 15,
+            textAlign: 'center',
+          }}
+        />
+        <span style={{ fontSize: 13, color: '#888' }}>折</span>
+        <button
+          type="button"
+          onClick={onApplyDiscount}
+          style={{
+            padding: '6px 12px',
+            borderRadius: 6,
+            border: '1px solid #ccc',
+            background: '#fff',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          套用
+        </button>
+      </div>
+
+      {showBalanceHint && (
+        <textarea
+          value={line.description}
+          onChange={(e) => onUpdate({ description: e.target.value })}
+          placeholder="入帳說明"
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            background: '#fff',
+            border: '1px solid #e9ecef',
+            borderRadius: 8,
+            fontSize: 14,
+            minHeight: 56,
+            resize: 'vertical',
+            fontFamily: 'inherit',
+            boxSizing: 'border-box',
+          }}
+        />
       )}
     </div>
   )
