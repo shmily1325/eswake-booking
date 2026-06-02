@@ -108,9 +108,6 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
     return { count: filtered.length, grandTotal, byMethod }
   }, [filtered])
 
-  const periodHint =
-    selectedDate.length === 10 ? `查詢日：${selectedDate}` : `查詢月：${selectedDate}`
-
   return (
     <div>
       <div
@@ -165,7 +162,6 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
             ))}
           </select>
         </div>
-        <p style={{ margin: '12px 0 0', fontSize: 13, color: '#888' }}>{periodHint}</p>
       </div>
 
       {loading ? (

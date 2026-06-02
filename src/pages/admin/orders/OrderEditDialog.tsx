@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { MoneyInput, PrimaryNumericInput } from '../../../components/ui/numericInputs'
-import { toast } from '../../../utils/toast'
+import { toast as globalToast } from '../../../utils/toast'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from '../products/api'
 import { formatAttributes } from '../products/schema'
 import { buildVariantSearchHaystack } from '../products/productSearchHaystack'
@@ -64,7 +64,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     if (!open) return
     fetchAllProductsWithVariants()
       .then((list) => setVariants(flattenToVariantItems(list)))
-      .catch(() => toast.error('載入商品失敗'))
+      .catch(() => setSaveError('載入商品失敗'))
   }, [open])
 
   useEffect(() => {
@@ -110,10 +110,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   useEffect(() => {
     if (!open || order || !prefillVariantId || variants.length === 0) return
     const item = variants.find((v) => v.variant.id === prefillVariantId)
-    if (!item) {
-      toast.error('找不到此 SKU')
-      return
-    }
+    if (!item) return
     setLines((prev) => {
       if (prev.some((l) => l.variant_id === prefillVariantId)) return prev
       return [
@@ -138,6 +135,8 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   }, [variants, variantSearch])
 
   if (!open) return null
+
+  const padX = isMobile ? 16 : 20
 
   const addVariant = (item: VariantListItem) => {
     if (locked) return
@@ -170,12 +169,12 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       memberSearch.members,
     )
     if (!contactName) {
-      toast.error('請填寫訂購人')
+      setSaveError('請填寫訂購人')
       return
     }
     const payloadLines = lines.filter((l) => l.qty > 0 && l.variant_id)
     if (payloadLines.length === 0) {
-      toast.error('請至少加入一項商品')
+      setSaveError('請至少加入一項商品')
       return
     }
 
@@ -206,7 +205,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             updated_by: userEmail ?? null,
           })
         }
-        toast.success('已儲存')
+        globalToast.success('已儲存')
       } else {
         await createShopOrder({
           member_id: memberSearch.selectedMemberId,
@@ -222,14 +221,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           })),
           created_by: userEmail ?? null,
         })
-        toast.success('已建立訂單')
+        globalToast.success('已建立訂單')
       }
       onSaved()
       onClose()
     } catch (e: unknown) {
       const msg = formatSaveError(e)
       setSaveError(msg)
-      toast.error(msg)
     } finally {
       setSaving(false)
     }
@@ -241,20 +239,19 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     const confirmResult = confirmVoidOrder(order, txCount)
     if (confirmResult === 'cancelled') return
     if (confirmResult === 'mismatch') {
-      toast.error('訂單號不符，已取消作廢')
+      setSaveError('訂單號不符，已取消作廢')
       return
     }
     setSaveError(null)
     setSaving(true)
     try {
       await voidShopOrder(order.id, userEmail ?? null)
-      toast.success('已作廢訂單')
+      globalToast.success('已作廢訂單')
       onSaved()
       onClose()
     } catch (e: unknown) {
       const msg = formatSaveError(e)
       setSaveError(msg)
-      toast.error(msg)
     } finally {
       setSaving(false)
     }
@@ -280,32 +277,66 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           width: '100%',
           maxWidth: 640,
           maxHeight: isMobile ? '92vh' : '90vh',
-          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
           borderRadius: isMobile ? '16px 16px 0 0' : 16,
-          padding: isMobile ? '16px 16px 0' : 20,
           boxSizing: 'border-box',
-          WebkitOverflowScrolling: 'touch',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ margin: '0 0 16px', fontSize: isMobile ? 18 : 20 }}>
-          {order
-            ? isVoided
-              ? `查看訂單 ${order.order_no}`
-              : `編輯訂單 ${order.order_no}`
-            : '新增訂單'}
-        </h2>
-        {isVoided && order && (
-          <div style={{ background: '#f5f5f5', border: '1px solid #ccc', borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 13, color: '#666' }}>
-            此訂單已作廢（{order.cancelled_at ? formatDateTime(order.cancelled_at) : ''}），僅供查閱。
-          </div>
-        )}
-        {!isVoided && locked && (
-          <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 13 }}>
-            已送結帳或已結清，品項鎖定；僅可改備註。
-          </div>
-        )}
+        <div
+          style={{
+            flexShrink: 0,
+            padding: `${isMobile ? 'calc(12px + env(safe-area-inset-top, 0px))' : '20px'} ${padX}px 12px`,
+            borderBottom: '1px solid #eee',
+            background: '#fff',
+          }}
+        >
+          <h2 style={{ margin: '0 0 12px', fontSize: isMobile ? 18 : 20 }}>
+            {order
+              ? isVoided
+                ? `查看訂單 ${order.order_no}`
+                : `編輯訂單 ${order.order_no}`
+              : '新增訂單'}
+          </h2>
+          {isVoided && order && (
+            <div
+              style={{
+                background: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 13,
+                color: '#666',
+              }}
+            >
+              此訂單已作廢（{order.cancelled_at ? formatDateTime(order.cancelled_at) : ''}），僅供查閱。
+            </div>
+          )}
+          {!isVoided && locked && (
+            <div
+              style={{
+                background: '#fff7ed',
+                border: '1px solid #fdba74',
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 13,
+              }}
+            >
+              已送結帳或已結清，品項鎖定；僅可改備註。
+            </div>
+          )}
+        </div>
 
+        <div
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: `12px ${padX}px 16px`,
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
         <OrderMemberPicker
           selectedMemberId={memberSearch.selectedMemberId}
           selectedMemberLabel={selectedMemberLabel}
@@ -531,17 +562,18 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           onChange={(e) => setInternalNotes(e.target.value)}
           placeholder="店內備註"
           rows={2}
-          style={{ width: '100%', marginBottom: 16, padding: 8, borderRadius: 8, border: '1px solid #ccc', boxSizing: 'border-box' }}
+          style={{ width: '100%', marginBottom: 0, padding: 8, borderRadius: 8, border: '1px solid #ccc', boxSizing: 'border-box' }}
         />
+        </div>
 
         <div
           style={{
-            position: 'sticky',
-            bottom: 0,
+            flexShrink: 0,
             background: '#fff',
             borderTop: '1px solid #eee',
-            margin: isMobile ? '0 -16px' : '0 -20px',
-            padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))' : '16px 20px 0',
+            padding: isMobile
+              ? `12px ${padX}px calc(12px + env(safe-area-inset-bottom, 0px))`
+              : `16px ${padX}px 20px`,
             display: 'flex',
             gap: 10,
             justifyContent: 'flex-end',

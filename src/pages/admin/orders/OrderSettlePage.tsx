@@ -24,8 +24,7 @@ export function OrderSettlePage() {
   const [orders, setOrders] = useState<ShopOrderWithItems[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const { count: pendingSettleCount, refresh: refreshPendingCount } =
-    usePendingBillOrderCount(true)
+  const { refresh: refreshPendingCount } = usePendingBillOrderCount(true)
 
   const reloadOrders = useCallback(async () => {
     try {
@@ -80,12 +79,7 @@ export function OrderSettlePage() {
         title="🧾 訂單結帳"
         user={user}
         showBaoLink={isAdmin(user)}
-        showAdminShopLinks
-        pendingSettleCount={pendingSettleCount}
-        breadcrumbs={[
-          { label: '商品庫存', link: '/products' },
-          { label: '訂單開單', link: '/products/orders' },
-        ]}
+        productHubSection="settle"
         extraLinks={
           isAdmin(user)
             ? [{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]

@@ -8,17 +8,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { PageHeader } from '../../../components/PageHeader'
 
-import {
-
-  ProductHubShell,
-
-  AdminPillRow,
-
-  AdminPillLink,
-
-  adminLoadingStyle,
-
-} from '../../../components/AdminPageLayout'
+import { ProductHubShell, adminLoadingStyle } from '../../../components/AdminPageLayout'
 
 import { Footer } from '../../../components/Footer'
 
@@ -125,28 +115,6 @@ export function ProductHub() {
         pendingSettleCount={pendingSettleCount}
         showProductOrdersLink={canEdit}
       />
-
-
-
-      {canEdit && (
-        <>
-          <AdminPillRow style={{ marginBottom: onOrders ? 14 : 6 }}>
-            <AdminPillLink to="/products" end active={!onOrders}>
-              📦 庫存
-            </AdminPillLink>
-            <AdminPillLink to="/products/orders" active={onOrders}>
-              📋 訂單開單
-            </AdminPillLink>
-          </AdminPillRow>
-          {!onOrders && (
-            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#666', lineHeight: 1.5 }}>
-              管理 SKU、庫存與上架。客人訂單請切換「訂單開單」。
-            </p>
-          )}
-        </>
-      )}
-
-
 
       <Routes>
 

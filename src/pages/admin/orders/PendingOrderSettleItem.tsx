@@ -74,7 +74,6 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const [globalDiscountInput, setGlobalDiscountInput] = useState('')
   const [showMemberSearch, setShowMemberSearch] = useState(false)
   const [hasCheckedBillingRelation, setHasCheckedBillingRelation] = useState(false)
-  const [isAutoProxy, setIsAutoProxy] = useState(false)
   const proxySearch = useMemberSearch()
 
   const pendingLines = useMemo(() => buildLineStates(order), [order])
@@ -145,7 +144,6 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 
         setChargeMemberId(data.billing_member_id)
         setChargeMemberName(memberLabel(member))
-        setIsAutoProxy(true)
         proxySearch.selectMember({ id: member.id, name: member.name, nickname: member.nickname, phone: null })
       } catch {
         /* 無代扣設定時略過 */
@@ -204,7 +202,6 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
     }
     setChargeMemberId(order.member_id)
     setChargeMemberName(order.contact_name)
-    setIsAutoProxy(false)
     setHasCheckedBillingRelation(true)
     proxySearch.reset()
   }
@@ -213,7 +210,6 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
     proxySearch.selectMember(m)
     setChargeMemberId(m.id)
     setChargeMemberName(memberLabel(m))
-    setIsAutoProxy(false)
     setShowMemberSearch(false)
     proxySearch.reset()
   }
@@ -315,20 +311,6 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
             {lines.length} 品項 · ${listTotal.toLocaleString()}
           </div>
         </div>
-        {!expanded && (
-          <div
-            style={{
-              flexShrink: 0,
-              padding: '6px 12px',
-              background: '#f0f0f0',
-              borderRadius: '6px',
-              fontSize: '14px',
-              color: '#666',
-            }}
-          >
-            點擊展開
-          </div>
-        )}
       </div>
 
       {expanded && (
@@ -388,21 +370,6 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                           <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px', fontWeight: 400 }}>
                             (代扣 {order.contact_name} 的費用)
                           </span>
-                          {isAutoProxy && (
-                            <span
-                              style={{
-                                fontSize: '11px',
-                                color: '#fff',
-                                background: '#4CAF50',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                marginLeft: '8px',
-                                fontWeight: 600,
-                              }}
-                            >
-                              ✓ 自動帶入
-                            </span>
-                          )}
                         </span>
                         {memberBalance !== null && (
                           <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', fontWeight: 400 }}>
@@ -798,7 +765,6 @@ function SettleLineRow({
               gap: 8,
             }}
           >
-            <span style={{ fontSize: 12, color: '#888' }}>依牌價打折</span>
             <DecimalTextInput
               compact
               placeholder="例：9"
@@ -829,7 +795,6 @@ function SettleLineRow({
             >
               套用折數
             </button>
-            <span style={{ fontSize: 11, color: '#aaa' }}>或直接改上方金額</span>
           </div>
         </div>
       </div>

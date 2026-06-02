@@ -224,10 +224,6 @@ export function OrderMemberPicker({
           </div>
         </>
       )}
-
-      <p style={{ margin: '8px 0 0', fontSize: 12, color: '#666', lineHeight: 1.5 }}>
-        無「暫存」：按儲存即建立訂單；未送結帳前可隨時編輯品項與訂購人。
-      </p>
     </div>
   )
 }

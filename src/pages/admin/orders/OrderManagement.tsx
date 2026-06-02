@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { Footer } from '../../../components/Footer'
 import {
@@ -13,10 +13,8 @@ import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { getButtonStyle } from '../../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../../utils/auth'
-import { usePendingBillOrderCount } from '../../../hooks/usePendingBillOrderCount'
 import {
   fetchShopOrders,
-  SHOP_ORDERS_LIST_MONTHS,
   shopOrdersListCreatedAfterIso,
 } from './api'
 import { formatDate, formatDateTime, formatTime } from '../../../utils/formatters'
@@ -40,17 +38,13 @@ import {
   sortOrdersForInbox,
   formatOrderItemParts,
   itemQtyChipsForCard,
-  itemStockInBillableHint,
   orderHasPendingBill,
   orderCanSubmitBilling,
   orderHasReadyToBill,
   orderHasWaitingStock,
   orderIsFullySettled,
-  orderPartialStatusSummary,
   orderPrimaryStatus,
   orderStatusMeta,
-  qtyBillable,
-  qtyOpen,
   validateCancelBillingDraft,
   validateSubmitBillingDraft,
 } from './orderUtils'
@@ -97,10 +91,6 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   const [billingBusyOrderId, setBillingBusyOrderId] = useState<string | null>(null)
   const [highlightOrderId, setHighlightOrderId] = useState<string | null>(null)
   const [includeOlderOrders, setIncludeOlderOrders] = useState(false)
-  const userIsAdmin = isAdmin(user)
-  const { count: pendingSettleCount, refresh: refreshPendingCount } =
-    usePendingBillOrderCount(userIsAdmin)
-
   const reloadOrders = useCallback(
     async (opts?: { includeOlder?: boolean }) => {
       const loadAll = opts?.includeOlder ?? includeOlderOrders
@@ -112,14 +102,13 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
           ),
         )
         if (opts?.includeOlder) setIncludeOlderOrders(true)
-        void refreshPendingCount()
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : '載入失敗'
         setLoadError(msg)
         toast.error(msg)
       }
     },
-    [includeOlderOrders, toast, refreshPendingCount],
+    [includeOlderOrders, toast],
   )
 
   const loadOlderOrders = useCallback(async () => {
@@ -128,7 +117,6 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       setLoadError(null)
       setOrders(await fetchShopOrders())
       setIncludeOlderOrders(true)
-      void refreshPendingCount()
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '載入失敗'
       setLoadError(msg)
@@ -136,7 +124,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     } finally {
       setLoading(false)
     }
-  }, [toast, refreshPendingCount])
+  }, [toast])
 
   useEffect(() => {
     let cancelled = false
@@ -351,51 +339,8 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         ))}
       </div>
 
-      {pendingSettleCount > 0 && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: '10px 14px',
-            borderRadius: 10,
-            background: '#f3e5f5',
-            border: '1px solid #e1bee7',
-            fontSize: 13,
-            color: '#4a148c',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-          }}
-        >
-          <span>
-            目前有 <strong>{pendingSettleCount}</strong> 筆待管理員結帳
-          </span>
-          {userIsAdmin && (
-            <Link
-              to="/order-settle"
-              data-track="product_order_goto_settle"
-              style={{ color: '#6a1b9a', fontWeight: 600, textDecoration: 'none' }}
-            >
-              前往結帳 →
-            </Link>
-          )}
-        </div>
-      )}
-
       {!includeOlderOrders && (
-        <div
-          style={{
-            marginBottom: 12,
-            fontSize: 13,
-            color: '#666',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 10,
-          }}
-        >
-          <span>預設顯示近 {SHOP_ORDERS_LIST_MONTHS} 個月訂單</span>
+        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"
             data-track="product_order_load_older"
@@ -544,11 +489,6 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
               顯示全部訂單
             </button>
           )}
-          {canEdit && tab === 'all' && !search.trim() && (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa' }}>
-              {isMobile ? '點下方「+ 新增訂單」開始開單' : '點右上角「+ 新增訂單」開始開單'}
-            </p>
-          )}
         </div>
       ) : (
         visible.map((order) => (
@@ -615,8 +555,6 @@ function OrderCard({
   const showSubmit = orderCanSubmitBilling(order)
   const showCancelBill = !cancelled && orderHasPendingBill(order)
   const readyAccent = !cancelled && statusKey === 'ready'
-  const partialSummary = orderPartialStatusSummary(order)
-
   return (
     <div
       style={{
@@ -682,19 +620,6 @@ function OrderCard({
                 </>
               )}
             </div>
-            {partialSummary && (
-              <div
-                style={{
-                  fontSize: 12,
-                  color: '#6a1b9a',
-                  fontWeight: 600,
-                  marginTop: 6,
-                  lineHeight: 1.4,
-                }}
-              >
-                {partialSummary}
-              </div>
-            )}
           </div>
           <OrderTag label={status.label} color={status.color} bg={status.bg} isMobile={isMobile} />
         </div>
@@ -794,11 +719,6 @@ function OrderItemRow({
 }) {
   const { title, subtitle } = formatOrderItemParts(item)
   const chips = itemQtyChipsForCard(item, order)
-  const waiting = qtyOpen(item) > 0 && qtyBillable(item) === 0
-  const stock = item.variant?.stock ?? 0
-  const showWaitingHint = waiting && stock <= 0 && chips.some((c) => c.label.startsWith('等貨 '))
-  const stockInHint = itemStockInBillableHint(item)
-
   return (
     <div
       style={{
@@ -822,12 +742,6 @@ function OrderItemRow({
         <div style={{ fontSize: 14, fontWeight: 600, color: '#222', lineHeight: 1.35 }}>{title}</div>
         {subtitle && (
           <div style={{ fontSize: 12, color: '#888', marginTop: 2, lineHeight: 1.35 }}>{subtitle}</div>
-        )}
-        {showWaitingHint && (
-          <div style={{ fontSize: 11, color: '#ef6c00', marginTop: 2 }}>未到貨</div>
-        )}
-        {stockInHint && (
-          <div style={{ fontSize: 11, color: '#1565c0', marginTop: 2, fontWeight: 500 }}>{stockInHint}</div>
         )}
       </div>
       {!isMobile && (
