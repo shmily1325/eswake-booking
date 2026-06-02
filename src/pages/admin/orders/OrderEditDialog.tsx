@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { useResponsive } from '../../../hooks/useResponsive'
+import { MoneyInput, PrimaryNumericInput } from '../../../components/ui/numericInputs'
 import { toast } from '../../../utils/toast'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from '../products/api'
 import { formatAttributes } from '../products/schema'
@@ -424,47 +425,45 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               }}
             >
               <span style={{ flex: '1 1 200px', fontSize: 14, lineHeight: 1.4 }}>{line.label}</span>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#666' }}>
-                  數
-                  <input
-                    type="number"
-                    min={1}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                  width: isMobile ? '100%' : 'auto',
+                }}
+              >
+                <div style={{ flex: isMobile ? '1 1 100%' : '0 1 160px', minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>
+                    數量
+                  </div>
+                  <PrimaryNumericInput
                     value={line.qty}
+                    min={1}
                     disabled={locked}
-                    onChange={(e) => {
-                      const qty = Math.max(1, parseInt(e.target.value, 10) || 1)
+                    placeholder="1"
+                    onChange={(qty) => {
                       setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, qty } : l)))
                     }}
-                    style={{
-                      width: 56,
-                      padding: 8,
-                      borderRadius: 6,
-                      border: '1px solid #ccc',
-                      fontSize: 16,
-                    }}
+                    suffix={<span style={{ fontSize: 14, color: '#666' }}>件</span>}
                   />
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#666' }}>
-                  $
-                  <input
-                    type="number"
-                    min={0}
+                </div>
+                <div style={{ flex: isMobile ? '1 1 100%' : '1 1 180px', minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>
+                    單價
+                  </div>
+                  <MoneyInput
                     value={line.unit_price}
                     disabled={locked}
-                    onChange={(e) => {
-                      const unit_price = Math.max(0, parseInt(e.target.value, 10) || 0)
-                      setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, unit_price } : l)))
-                    }}
-                    style={{
-                      width: 80,
-                      padding: 8,
-                      borderRadius: 6,
-                      border: '1px solid #ccc',
-                      fontSize: 16,
+                    placeholder="請輸入金額"
+                    onChange={(unit_price) => {
+                      setLines((prev) =>
+                        prev.map((l, i) => (i === idx ? { ...l, unit_price } : l)),
+                      )
                     }}
                   />
-                </label>
+                </div>
                 {!locked && (
                   <button
                     type="button"

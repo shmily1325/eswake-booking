@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/ui'
+import { DecimalTextInput, MoneyInput } from '../../../components/ui/numericInputs'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { formatAttributes } from '../products/schema'
@@ -477,26 +478,16 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
               }}
             >
               <span style={{ fontSize: 12, color: '#666' }}>全部品項</span>
-              <input
-                type="text"
-                inputMode="decimal"
+              <DecimalTextInput
+                compact
                 placeholder="例：9"
                 value={globalDiscountInput}
-                onChange={(e) => setGlobalDiscountInput(e.target.value)}
+                onChange={setGlobalDiscountInput}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
                     applyGlobalDiscount()
                   }
-                }}
-                style={{
-                  width: 64,
-                  padding: '6px 8px',
-                  border: '1px solid #ddd',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  textAlign: 'center',
-                  boxSizing: 'border-box',
                 }}
               />
               <span style={{ fontSize: 12, color: '#888' }}>折</span>
@@ -722,7 +713,6 @@ function SettleLineRow({
   onUpdate: (patch: Partial<SettleLineState>) => void
   onApplyDiscount: () => void
 }) {
-  const [isAmountFocused, setIsAmountFocused] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const subtotal = listSubtotal(line.qty, line.unit_price)
   const hasDiscount = line.line_total !== subtotal
@@ -773,38 +763,10 @@ function SettleLineRow({
 
       <div style={{ marginBottom: showDescription ? '12px' : 0 }}>
         <div style={{ fontSize: '13px', color: '#7f8c8d', marginBottom: '8px', fontWeight: 500 }}>扣款金額：</div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '16px', color: '#666', fontWeight: 500 }}>$</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="請輸入金額"
-            value={
-              isAmountFocused
-                ? line.line_total > 0
-                  ? String(line.line_total)
-                  : ''
-                : line.line_total.toLocaleString()
-            }
-            onChange={(e) => {
-              const digits = e.target.value.replace(/\D/g, '')
-              onUpdate({ line_total: digits === '' ? 0 : parseInt(digits, 10) })
-            }}
-            onFocus={() => setIsAmountFocused(true)}
-            onBlur={() => setIsAmountFocused(false)}
-            style={{
-              flex: 1,
-              maxWidth: 280,
-              padding: '12px 14px',
-              border: '2px solid #667eea',
-              borderRadius: '8px',
-              fontSize: '18px',
-              fontWeight: 600,
-              background: '#f8f9ff',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
+        <MoneyInput
+          value={line.line_total}
+          onChange={(line_total) => onUpdate({ line_total })}
+        />
         <div
           style={{
             marginTop: '8px',
@@ -837,26 +799,16 @@ function SettleLineRow({
             }}
           >
             <span style={{ fontSize: 12, color: '#888' }}>依牌價打折</span>
-            <input
-              type="text"
-              inputMode="decimal"
+            <DecimalTextInput
+              compact
               placeholder="例：9"
               value={line.discountInput}
-              onChange={(e) => onUpdate({ discountInput: e.target.value })}
+              onChange={(v) => onUpdate({ discountInput: v })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
                   onApplyDiscount()
                 }
-              }}
-              style={{
-                width: 64,
-                padding: '6px 8px',
-                border: '1px solid #ccc',
-                borderRadius: 6,
-                fontSize: 14,
-                textAlign: 'center',
-                background: '#fff',
               }}
             />
             <span style={{ fontSize: 12, color: '#888' }}>折</span>

@@ -8,6 +8,17 @@ export { StatusBadge, type BookingStatus } from './StatusBadge'
 
 // 表單組件
 export { Input } from './Input'
+export {
+  PrimaryNumericInput,
+  MoneyInput,
+  NumericTextInput,
+  DecimalTextInput,
+  amountInputStyle,
+  type PrimaryNumericInputProps,
+  type MoneyInputProps,
+  type NumericTextInputProps,
+  type DecimalTextInputProps,
+} from './numericInputs'
 export { Textarea } from './Textarea'
 
 // 反饋組件

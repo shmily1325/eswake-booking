@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Badge, useToast, ConfirmModal } from '../../../components/ui'
+import { PrimaryNumericInput, NumericTextInput } from '../../../components/ui/numericInputs'
+import { getInputStyle } from '../../../styles/designSystem'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { CoverImageEditor } from './CoverImageEditor'
 import { ImageUploader } from './ImageUploader'
@@ -21,6 +23,8 @@ import { formatDateTime } from '../../../utils/formatters'
 interface ProductEditViewProps {
   /** 編輯模式：傳入 productId；新增模式：傳 null */
   productId: string | null
+  /** 從庫存列表點進來時，自動展開並捲到這個 SKU */
+  focusVariantId?: string
   /** 預設類別（新增時用，從目前 Tab 帶入） */
   defaultCategory?: string
   /** 已存在的商品（給品牌 / 型號 autocomplete 用） */
@@ -93,7 +97,15 @@ function emptyDraft(): DraftVariant {
   }
 }
 
-export function ProductEditView({ productId, defaultCategory, existingProducts = [], readOnly = false, onClose, currentUserEmail }: ProductEditViewProps) {
+export function ProductEditView({
+  productId,
+  focusVariantId,
+  defaultCategory,
+  existingProducts = [],
+  readOnly = false,
+  onClose,
+  currentUserEmail,
+}: ProductEditViewProps) {
   const toast = useToast()
   const { isMobile } = useResponsive()
   const isNew = productId == null
@@ -415,11 +427,8 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
     marginBottom: 6,
   }
   const inputStyle: React.CSSProperties = {
+    ...getInputStyle(isMobile),
     width: '100%',
-    padding: '10px 12px',
-    fontSize: 15,
-    border: '1px solid #d8d8d8',
-    borderRadius: 8,
     boxSizing: 'border-box',
     background: '#fff',
   }
@@ -647,6 +656,7 @@ export function ProductEditView({ productId, defaultCategory, existingProducts =
             model={model}
             schemaFields={cat?.fields ?? []}
             isMobile={isMobile}
+            focused={focusVariantId != null && d.id === focusVariantId}
             disabled={saving || readOnly}
             readOnly={readOnly}
             onChange={(patch) => updateDraft(idx, patch)}
@@ -747,6 +757,8 @@ interface VariantBlockProps {
   model: string
   schemaFields: FieldDef[]
   isMobile: boolean
+  /** 從列表點進來的目標 SKU：展開、封面可編、捲動對準 */
+  focused?: boolean
   disabled: boolean
   /** 唯讀模式：隱藏「🗑 移除」「復原」按鈕，inputs 仍透過 disabled prop 鎖住 */
   readOnly?: boolean
@@ -764,6 +776,7 @@ function VariantBlock({
   model,
   schemaFields,
   isMobile,
+  focused = false,
   disabled,
   readOnly = false,
   onChange,
@@ -772,8 +785,12 @@ function VariantBlock({
   onRestore,
   onImageUpload,
 }: VariantBlockProps) {
-  // 折疊：預設新建（id=null）或標記刪除的展開、已有 SKU 在手機上預設折疊
-  const [collapsed, setCollapsed] = useState<boolean>(isMobile && draft.id != null && !draft.pendingDelete)
+  const blockRef = useRef<HTMLDivElement>(null)
+  // 折疊：手機上已有 SKU 預設收合；從列表點進來的目標 SKU 強制展開
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (focused) return false
+    return isMobile && draft.id != null && !draft.pendingDelete
+  })
   // 桌機強制展開（避免從手機切到桌機時內容被卡住看不到；桌機本來也沒折疊互動）
   const effectiveCollapsed = collapsed && isMobile
 
@@ -788,20 +805,18 @@ function VariantBlock({
     .join(' / ')
 
   const blockStyle: React.CSSProperties = {
-    border: '1px solid #ececec',
+    border: focused ? '2px solid #2563eb' : '1px solid #ececec',
     borderRadius: 12,
     padding: isMobile ? 12 : 16,
     marginBottom: 12,
-    background: draft.pendingDelete ? '#fafafa' : '#fff',
+    background: draft.pendingDelete ? '#fafafa' : focused ? '#f8fbff' : '#fff',
     opacity: draft.pendingDelete ? 0.55 : 1,
     position: 'relative',
+    scrollMarginTop: isMobile ? 12 : 24,
   }
   const inputStyle: React.CSSProperties = {
+    ...getInputStyle(isMobile),
     width: '100%',
-    padding: '8px 10px',
-    fontSize: 14,
-    border: '1px solid #d8d8d8',
-    borderRadius: 6,
     boxSizing: 'border-box',
     background: '#fff',
   }
@@ -813,19 +828,27 @@ function VariantBlock({
     if (headerClickable) setCollapsed((c) => !c)
   }
   const stop = (e: React.MouseEvent) => e.stopPropagation()
-  /** 封面進階工具預設收合（入庫優先） */
-  const [coverExpanded, setCoverExpanded] = useState(false)
+  /** 封面：列表點進來的 SKU 直接展開，省一次點擊 */
+  const [coverExpanded, setCoverExpanded] = useState(focused)
+
+  useEffect(() => {
+    if (!focused) return
+    const timer = window.setTimeout(() => {
+      blockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 150)
+    return () => window.clearTimeout(timer)
+  }, [focused])
 
   const stockField = (
     <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
       <label style={labelStyle}>庫存 *</label>
-      <input
-        style={inputStyle}
-        inputMode="numeric"
-        value={draft.stock}
-        onChange={(e) => onChange({ stock: e.target.value.replace(/\D/g, '') })}
-        placeholder="0"
+      <PrimaryNumericInput
+        value={Number(draft.stock) || 0}
+        min={0}
         disabled={disabled || draft.pendingDelete}
+        placeholder="0"
+        onChange={(n) => onChange({ stock: String(n) })}
+        suffix={<span style={{ fontSize: 14, color: '#666', flexShrink: 0 }}>件</span>}
       />
       {draft.last_stock_in_at && (
         <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>
@@ -877,7 +900,6 @@ function VariantBlock({
           ) : (
             <input
               style={inputStyle}
-              inputMode={f.type === 'number' ? 'numeric' : 'text'}
               value={draft.attributes[f.key] ?? ''}
               onChange={(e) => onAttributeChange(f.key, e.target.value)}
               placeholder={f.placeholder}
@@ -891,11 +913,10 @@ function VariantBlock({
           售價
           <span style={{ color: '#999', fontWeight: 400, marginLeft: 4 }}>(留空＝待補)</span>
         </label>
-        <input
-          style={inputStyle}
-          inputMode="numeric"
+        <NumericTextInput
+          variant="course"
           value={draft.price}
-          onChange={(e) => onChange({ price: e.target.value.replace(/\D/g, '') })}
+          onChange={(price) => onChange({ price })}
           placeholder="待補"
           disabled={disabled || draft.pendingDelete}
         />
@@ -1016,7 +1037,7 @@ function VariantBlock({
   )
 
   return (
-    <div style={blockStyle}>
+    <div ref={blockRef} style={blockStyle}>
       <div
         onClick={onHeaderClick}
         style={{

@@ -25,8 +25,12 @@ import { variantMatchesSearchTokens } from './productSearchHaystack'
 
 type ViewMode =
   | { kind: 'list' }
-  | { kind: 'edit'; productId: string }
+  | { kind: 'edit'; productId: string; focusVariantId?: string }
   | { kind: 'create'; defaultCategory: string }
+
+function openProductEdit(productId: string, variantId: string): ViewMode {
+  return { kind: 'edit', productId, focusVariantId: variantId }
+}
 
 export function ProductManagement({ embedded = false }: { embedded?: boolean } = {}) {
   const user = useAuthUser()
@@ -274,8 +278,13 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           <ProductEditView
             // 以 productId 當 key，從一個商品切到另一個商品時強制 remount，
             // 避免表單欄位（drafts/category/brand/model 等）殘留上一個商品的內容
-            key={view.kind === 'edit' ? `edit-${view.productId}` : 'create'}
+            key={
+              view.kind === 'edit'
+                ? `edit-${view.productId}-${view.focusVariantId ?? 'all'}`
+                : 'create'
+            }
             productId={view.kind === 'edit' ? view.productId : null}
+            focusVariantId={view.kind === 'edit' ? view.focusVariantId : undefined}
             defaultCategory={view.kind === 'create' ? view.defaultCategory : undefined}
             existingProducts={products.map((p) => ({ category: p.category, brand: p.brand, model: p.model }))}
             currentUserEmail={user?.email ?? null}
@@ -507,20 +516,20 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           <ProductGalleryGrid
             items={filteredItems}
             isMobile={isMobile}
-            onCardClick={(productId) => setView({ kind: 'edit', productId })}
+            onCardClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
             onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
         ) : isMobile ? (
           <MobileListView
             items={filteredItems}
-            onRowClick={(productId) => setView({ kind: 'edit', productId })}
+            onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
             onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
         ) : (
           <DesktopTable
             items={filteredItems}
             showCategoryColumn={showCategoryColumn}
-            onRowClick={(productId) => setView({ kind: 'edit', productId })}
+            onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
             onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
         )}
@@ -928,7 +937,7 @@ function LayoutToggle({ layout, onChange }: LayoutToggleProps) {
 interface ProductGalleryGridProps {
   items: VariantListItem[]
   isMobile: boolean
-  onCardClick: (productId: string) => void
+  onCardClick: (productId: string, variantId: string) => void
   onStartOrder?: (variantId: string) => void
 }
 function ProductGalleryGrid({ items, isMobile, onCardClick, onStartOrder }: ProductGalleryGridProps) {
@@ -947,7 +956,7 @@ function ProductGalleryGrid({ items, isMobile, onCardClick, onStartOrder }: Prod
         <GalleryCard
           key={it.variant.id}
           item={it}
-          onClick={() => onCardClick(it.product.id)}
+          onClick={() => onCardClick(it.product.id, it.variant.id)}
           onStartOrder={onStartOrder}
         />
       ))}
@@ -1208,7 +1217,7 @@ function ImagePlaceholder({ icon }: { icon: string }) {
 // ============================================================
 interface MobileListViewProps {
   items: VariantListItem[]
-  onRowClick: (productId: string) => void
+  onRowClick: (productId: string, variantId: string) => void
   onStartOrder?: (variantId: string) => void
 }
 function MobileListView({ items, onRowClick, onStartOrder }: MobileListViewProps) {
@@ -1218,7 +1227,7 @@ function MobileListView({ items, onRowClick, onStartOrder }: MobileListViewProps
         <MobileListRow
           key={it.variant.id}
           item={it}
-          onClick={() => onRowClick(it.product.id)}
+          onClick={() => onRowClick(it.product.id, it.variant.id)}
           onStartOrder={onStartOrder}
         />
       ))}
@@ -1427,7 +1436,7 @@ function MobileListRow({
 interface DesktopTableProps {
   items: VariantListItem[]
   showCategoryColumn: boolean
-  onRowClick: (productId: string) => void
+  onRowClick: (productId: string, variantId: string) => void
   onStartOrder?: (variantId: string) => void
 }
 function DesktopTable({ items, showCategoryColumn, onRowClick, onStartOrder }: DesktopTableProps) {
@@ -1457,7 +1466,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick, onStartOrder }: D
                 <tr
                   key={it.variant.id}
                   data-track="product_edit_open"
-                  onClick={() => onRowClick(it.product.id)}
+                  onClick={() => onRowClick(it.product.id, it.variant.id)}
                   title={it.product.description ?? undefined}
                   style={{ cursor: 'pointer', borderTop: '1px solid #f0f0f0' }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = '#fafbfc')}

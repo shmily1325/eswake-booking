@@ -6,6 +6,7 @@ import type { Booking } from '../types'
 
 interface BookingCardProps {
   booking: Booking
+  /** 目前 LIFF 綁定會員姓名；供「SH綺綺／ED→Eb」與明日提醒相同規則 */
   viewerMemberName: string
   isFirstOfDay: boolean
   formatDate: (dateString: string) => string
@@ -27,24 +28,26 @@ export function BookingCard({
     .map((c) => displayCoachNameForTomorrowReminder(viewerMemberName, c.name))
     .join('、')
   const isFacilityBooking = isFacility(booking.boats?.name)
-  const startLabel = isFacilityBooking ? '開始' : '下水'
 
   return (
     <div
       style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '14px',
+        padding: '16px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         borderLeft: `4px solid ${booking.boats?.color || '#1976d2'}`,
       }}
     >
       <div
         style={{
-          fontSize: '15px',
+          fontSize: '16px',
           fontWeight: '600',
           color: '#333',
-          marginBottom: '10px',
+          marginBottom: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
         }}
       >
         📅 {formatDate(booking.start_at)}
@@ -53,70 +56,94 @@ export function BookingCard({
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-          marginBottom: '10px',
-          padding: '10px 12px',
+          gap: '16px',
+          marginBottom: '12px',
+          padding: '12px',
           background: '#f0f5ff',
           borderRadius: '8px',
-          fontSize: '18px',
-          fontWeight: '700',
         }}
       >
         {isFirstOfDay && (
-          <span style={{ color: '#1976d2' }}>
-            🚗 {getArrivalTime(booking.start_at)}
-          </span>
+          <div>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>抵達時間</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: '#1976d2' }}>
+              {getArrivalTime(booking.start_at)}
+            </div>
+          </div>
         )}
-        <span style={{ color: '#333' }}>
-          🏄 {startLabel} {getStartTime(booking.start_at)}
+        <div style={isFirstOfDay ? { borderLeft: '1px solid #d0d0d0', paddingLeft: '16px' } : {}}>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
+            {isFacilityBooking ? '開始時間' : '下水時間'}
+          </div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: '#333' }}>
+            {getStartTime(booking.start_at)}
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '8px',
+        }}
+      >
+        <div
+          style={{
+            width: '20px',
+            height: '20px',
+            borderRadius: '4px',
+            background: booking.boats?.color || '#1976d2',
+          }}
+        />
+        <span style={{ fontSize: '15px', fontWeight: '600', color: '#555' }}>
+          {booking.boats?.name || '未指定'}
         </span>
       </div>
 
       <div
         style={{
           fontSize: '14px',
-          color: '#555',
-          marginBottom: coachNames || booking.activity_types?.length ? 8 : 0,
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '6px 12px',
-          alignItems: 'center',
+          color: '#666',
+          marginBottom: '8px',
         }}
       >
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              background: booking.boats?.color || '#1976d2',
-              flexShrink: 0,
-            }}
-          />
-          {booking.boats?.name || '未指定'}
-        </span>
-        <span style={{ color: '#999' }}>
-          {booking.duration_min} 分 · 至 {getEndTime(booking.start_at, booking.duration_min)}
+        {booking.duration_min} 分鐘
+        <span style={{ color: '#999', marginLeft: '8px' }}>
+          (結束: {getEndTime(booking.start_at, booking.duration_min)})
         </span>
       </div>
 
       {coachNames && (
-        <div style={{ fontSize: '13px', color: '#666', marginBottom: 8 }}>👤 {coachNames}</div>
+        <div
+          style={{
+            fontSize: '14px',
+            color: '#666',
+          }}
+        >
+          指定教練: {coachNames}
+        </div>
       )}
 
       {booking.activity_types && booking.activity_types.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '6px',
+            flexWrap: 'wrap',
+            marginTop: '12px',
+          }}
+        >
           {booking.activity_types.map((type, idx) => (
             <span
               key={idx}
               style={{
-                padding: '3px 8px',
+                padding: '4px 10px',
                 background: '#e8f4fd',
                 color: '#1976d2',
-                borderRadius: '10px',
-                fontSize: '11px',
+                borderRadius: '12px',
+                fontSize: '12px',
               }}
             >
               {type}
@@ -128,15 +155,16 @@ export function BookingCard({
       {booking.notes && (
         <div
           style={{
-            marginTop: '10px',
-            padding: '8px 10px',
+            marginTop: '12px',
+            padding: '12px',
             background: '#f8f9fa',
-            borderRadius: '6px',
-            fontSize: '12px',
-            color: '#666',
-            lineHeight: 1.45,
+            borderRadius: '8px',
+            fontSize: '13px',
+            color: '#555',
+            lineHeight: '1.5',
           }}
         >
+          <div style={{ fontWeight: '600', marginBottom: '4px', color: '#666' }}>備註</div>
           {booking.notes}
         </div>
       )}

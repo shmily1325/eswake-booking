@@ -3,6 +3,9 @@
 import type { CSSProperties } from 'react'
 import type { Booking } from '../types'
 import { BookingCard } from './BookingCard'
+import { LiffPageHint } from './LiffPageHint'
+
+const BOOKINGS_PAGE_HINT = '以下為即將到來的預約，若要更改請私訊官方。'
 
 /** 與 BalanceView / MemberProfileView 外層一致 */
 const liffContentPanel: CSSProperties = {
@@ -14,7 +17,6 @@ const liffContentPanel: CSSProperties = {
 
 interface BookingsListProps {
   bookings: Booking[]
-  /** 與明日提醒相同：僅 SH綺綺 + 教練 ED 時顯示為 Eb */
   viewerMemberName: string
   formatDate: (dateString: string) => string
   getArrivalTime: (startAt: string) => string
@@ -35,14 +37,16 @@ export function BookingsList({
       <div
         style={{
           ...liffContentPanel,
-          padding: '48px 20px',
+          padding: '20px 20px 60px',
           textAlign: 'center',
         }}
       >
-        <div style={{ fontSize: '40px', marginBottom: '12px' }} aria-hidden>
-          📅
+        <LiffPageHint>{BOOKINGS_PAGE_HINT}</LiffPageHint>
+        <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
+        <div style={{ fontSize: '18px', fontWeight: 600, color: '#333', marginBottom: '8px' }}>
+          目前沒有預約
         </div>
-        <div style={{ fontSize: '16px', fontWeight: 600, color: '#666' }}>目前沒有預約</div>
+        <div style={{ fontSize: '14px', color: '#999' }}>您目前沒有即將到來的預約</div>
       </div>
     )
   }
@@ -51,6 +55,7 @@ export function BookingsList({
 
   return (
     <div style={liffContentPanel}>
+      <LiffPageHint>{BOOKINGS_PAGE_HINT}</LiffPageHint>
       <div
         style={{
           display: 'flex',
@@ -61,7 +66,9 @@ export function BookingsList({
         {bookings.map((booking) => {
           const bookingDate = booking.start_at.split('T')[0]
           const isFirstOfDay = !seenDates.has(bookingDate)
-          if (isFirstOfDay) seenDates.add(bookingDate)
+          if (isFirstOfDay) {
+            seenDates.add(bookingDate)
+          }
 
           return (
             <BookingCard
