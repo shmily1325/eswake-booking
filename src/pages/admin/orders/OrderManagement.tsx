@@ -722,6 +722,7 @@ function OrderItemRow({
 }) {
   const { title, subtitle } = formatOrderItemParts(item)
   const chips = itemQtyChipsForCard(item, order)
+  const thumbSize = isMobile ? 46 : 56
   return (
     <div
       style={{
@@ -729,11 +730,11 @@ function OrderItemRow({
         gridTemplateColumns:
           chips.length > 0
             ? isMobile
-              ? '1fr'
-              : 'minmax(0, 1fr) 48px minmax(100px, auto)'
+              ? `${thumbSize}px minmax(0, 1fr)`
+              : `${thumbSize}px minmax(0, 1fr) 48px minmax(100px, auto)`
             : isMobile
-              ? '1fr'
-              : 'minmax(0, 1fr) 48px',
+              ? `${thumbSize}px minmax(0, 1fr)`
+              : `${thumbSize}px minmax(0, 1fr) 48px`,
         gap: isMobile ? 6 : '4px 12px',
         alignItems: 'start',
         paddingTop: showDivider ? 8 : 0,
@@ -741,6 +742,7 @@ function OrderItemRow({
         borderTop: showDivider ? '1px solid #eee' : 'none',
       }}
     >
+      <OrderItemThumb item={item} size={thumbSize} />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#222', lineHeight: 1.35 }}>{title}</div>
         {subtitle && (
@@ -784,6 +786,57 @@ function OrderItemRow({
         </div>
       )}
     </div>
+  )
+}
+
+function OrderItemThumb({
+  item,
+  size,
+}: {
+  item: ShopOrderWithItems['items'][number]
+  size: number
+}) {
+  // 內部作業優先看實拍，再退回封面圖
+  const src = item.variant.image_url || item.variant.cover_image_url
+  if (!src) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          width: size,
+          height: size,
+          borderRadius: 8,
+          border: '1px solid #ececec',
+          background: '#f5f5f5',
+          color: '#bbb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: size >= 50 ? 16 : 14,
+          flexShrink: 0,
+        }}
+      >
+        🖼️
+      </div>
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 10,
+        objectFit: 'cover',
+        border: '1px solid #ececec',
+        background: '#f5f5f5',
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.06)',
+        display: 'block',
+        flexShrink: 0,
+      }}
+    />
   )
 }
 
