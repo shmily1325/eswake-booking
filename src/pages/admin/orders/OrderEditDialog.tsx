@@ -27,6 +27,64 @@ interface DraftLine {
   label: string
 }
 
+interface CreateOrderDraftSnapshot {
+  deliveryMethod: DeliveryMethod
+  shippingInfo: string
+  customerNote: string
+  internalNotes: string
+  lines: DraftLine[]
+  variantSearch: string
+  guestNameInput: string
+  confirmedGuestName: string | null
+  selectedMemberId: string | null
+}
+
+interface StoredCreateOrderDraft {
+  version: 1
+  savedAt: number
+  snapshot: CreateOrderDraftSnapshot
+}
+
+const CREATE_ORDER_DRAFT_KEY = 'order_edit_dialog_create_draft_v1'
+const CREATE_ORDER_DRAFT_TTL_MS = 2 * 60 * 60 * 1000
+
+function saveCreateOrderDraft(snapshot: CreateOrderDraftSnapshot): void {
+  try {
+    const payload: StoredCreateOrderDraft = {
+      version: 1,
+      savedAt: Date.now(),
+      snapshot,
+    }
+    window.sessionStorage.setItem(CREATE_ORDER_DRAFT_KEY, JSON.stringify(payload))
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function loadCreateOrderDraft(): CreateOrderDraftSnapshot | null {
+  try {
+    const raw = window.sessionStorage.getItem(CREATE_ORDER_DRAFT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as StoredCreateOrderDraft
+    if (!parsed || parsed.version !== 1 || !parsed.snapshot) return null
+    if (Date.now() - parsed.savedAt > CREATE_ORDER_DRAFT_TTL_MS) {
+      window.sessionStorage.removeItem(CREATE_ORDER_DRAFT_KEY)
+      return null
+    }
+    return parsed.snapshot
+  } catch {
+    return null
+  }
+}
+
+function clearCreateOrderDraft(): void {
+  try {
+    window.sessionStorage.removeItem(CREATE_ORDER_DRAFT_KEY)
+  } catch {
+    // ignore storage errors
+  }
+}
+
 interface Props {
   open: boolean
   order: ShopOrderWithItems | null
@@ -71,6 +129,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     if (!open) return
     setSaveError(null)
     if (order) {
+      clearCreateOrderDraft()
       setDeliveryMethod(order.delivery_method)
       setShippingInfo(order.shipping_info || '')
       setCustomerNote(order.customer_note || '')
@@ -95,17 +154,67 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         setConfirmedGuestName(order.contact_name)
       }
     } else {
-      setDeliveryMethod('pickup_es')
-      setShippingInfo('')
-      setCustomerNote('')
-      setInternalNotes('')
-      setLines([])
-      memberSearch.reset()
-      setConfirmedGuestName(null)
-      setGuestNameInput('')
+      const restored = loadCreateOrderDraft()
+      if (restored) {
+        setDeliveryMethod(restored.deliveryMethod)
+        setShippingInfo(restored.shippingInfo)
+        setCustomerNote(restored.customerNote)
+        setInternalNotes(restored.internalNotes)
+        setLines(restored.lines)
+        setVariantSearch(restored.variantSearch)
+        setConfirmedGuestName(restored.confirmedGuestName)
+        setGuestNameInput(restored.guestNameInput)
+        if (restored.selectedMemberId) {
+          const m = memberSearch.members.find((x) => x.id === restored.selectedMemberId)
+          if (m) {
+            memberSearch.selectMember(m)
+          } else {
+            memberSearch.reset()
+          }
+        } else {
+          memberSearch.reset()
+        }
+      } else {
+        setDeliveryMethod('pickup_es')
+        setShippingInfo('')
+        setCustomerNote('')
+        setInternalNotes('')
+        setLines([])
+        setVariantSearch('')
+        memberSearch.reset()
+        setConfirmedGuestName(null)
+        setGuestNameInput('')
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, order?.id])
+  }, [open, order?.id, memberSearch.members])
+
+  useEffect(() => {
+    if (!open || order) return
+    saveCreateOrderDraft({
+      deliveryMethod,
+      shippingInfo,
+      customerNote,
+      internalNotes,
+      lines,
+      variantSearch,
+      guestNameInput,
+      confirmedGuestName,
+      selectedMemberId: memberSearch.selectedMemberId,
+    })
+  }, [
+    open,
+    order,
+    deliveryMethod,
+    shippingInfo,
+    customerNote,
+    internalNotes,
+    lines,
+    variantSearch,
+    guestNameInput,
+    confirmedGuestName,
+    memberSearch.selectedMemberId,
+  ])
 
   useEffect(() => {
     if (!open || order || !prefillVariantId || variants.length === 0) return
@@ -222,6 +331,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           created_by: userEmail ?? null,
         })
         globalToast.success('已建立訂單')
+        clearCreateOrderDraft()
       }
       onSaved()
       onClose()
