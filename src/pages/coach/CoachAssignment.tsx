@@ -14,6 +14,16 @@ import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { useToast, ToastContainer } from '../../components/ui'
 import { getWeekdayText } from '../../utils/date'
+import {
+  assignmentSnapshotKey,
+  computeAssignmentChanges,
+  describeSnapshotSummary,
+  getDbSnapshot,
+  normalizeRequiresDriver,
+  resolveConcurrentAssignmentChanges,
+  type AssignmentSnapshot,
+  type DbAssignmentMaps,
+} from '../../utils/coachAssignmentSaveUtils'
 
 interface Booking {
   id: number
@@ -42,6 +52,29 @@ function getTomorrowDate() {
   const month = String(tomorrow.getMonth() + 1).padStart(2, '0')
   const day = String(tomorrow.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function snapshotFromBooking(booking: Booking): AssignmentSnapshot {
+  return {
+    coachIds: booking.currentCoaches,
+    driverIds: booking.currentDrivers,
+    notes: booking.schedule_notes || '',
+    requiresDriver: normalizeRequiresDriver(booking.requires_driver),
+  }
+}
+
+function snapshotFromAssignment(assignment: {
+  coachIds: string[]
+  driverIds: string[]
+  notes: string
+  requiresDriver: boolean
+}): AssignmentSnapshot {
+  return {
+    coachIds: assignment.coachIds,
+    driverIds: assignment.driverIds,
+    notes: assignment.notes || '',
+    requiresDriver: assignment.requiresDriver,
+  }
 }
 
 export function CoachAssignment() {
@@ -693,110 +726,209 @@ export function CoachAssignment() {
       }
       
       // 沒有衝突，開始批量更新（只更新有變動的）
-      const changedBookingIds: number[] = []
-      const allCoachesToInsert = []
-      const allDriversToInsert = []
-      
-      // 找出有變動的預約，並記錄變更內容
-      const changedBookingsInfo: Array<{
+      type PendingAssignmentChange = {
         booking: Booking
+        assignment: {
+          coachIds: string[]
+          driverIds: string[]
+          notes: string
+          requiresDriver: boolean
+        }
+        baseline: AssignmentSnapshot
+        userIntent: AssignmentSnapshot
         changes: string[]
-      }> = []
-      
+      }
+
+      const pendingChanges: PendingAssignmentChange[] = []
+
       for (const booking of bookings) {
         const assignment = assignments[booking.id]
         if (!assignment) continue
-        
-        // 檢查是否有變動
-        const currentCoachIds = booking.currentCoaches.sort().join(',')
-        const newCoachIds = assignment.coachIds.sort().join(',')
-        const currentDriverIds = booking.currentDrivers.sort().join(',')
-        const newDriverIds = assignment.driverIds.sort().join(',')
-        const currentNotes = booking.schedule_notes || ''
-        const newNotes = assignment.notes || ''
-        const currentRequiresDriver = booking.requires_driver
-        const newRequiresDriver = assignment.requiresDriver
-        
-        const hasChanges = 
-          currentCoachIds !== newCoachIds ||
-          currentDriverIds !== newDriverIds ||
-          currentNotes !== newNotes ||
-          currentRequiresDriver !== newRequiresDriver
-        
-        if (hasChanges) {
-          changedBookingIds.push(booking.id)
-          
-          // 記錄變更內容
-          const changes: string[] = []
-          
-          if (currentCoachIds !== newCoachIds) {
-            const oldCoachNames = booking.currentCoaches
-              .map(id => coaches.find(c => c.id === id)?.name)
-              .filter(Boolean)
-              .join('、')
-            const newCoachNames = assignment.coachIds
-              .map(id => coaches.find(c => c.id === id)?.name)
-              .filter(Boolean)
-              .join('、')
-            changes.push(`教練：${oldCoachNames || '無'} → ${newCoachNames || '無'}`)
-          }
-          
-          if (currentDriverIds !== newDriverIds) {
-            const oldDriverNames = booking.currentDrivers
-              .map(id => coaches.find(c => c.id === id)?.name)
-              .filter(Boolean)
-              .join('、')
-            const newDriverNames = assignment.driverIds
-              .map(id => coaches.find(c => c.id === id)?.name)
-              .filter(Boolean)
-              .join('、')
-            changes.push(`駕駛：${oldDriverNames || '無'} → ${newDriverNames || '無'}`)
-          }
-          
-          if (currentNotes !== newNotes) {
-            changes.push(`排班註解：${currentNotes || '無'} → ${newNotes || '無'}`)
-          }
-          
-          if (currentRequiresDriver !== newRequiresDriver) {
-            changes.push(`需要駕駛：${currentRequiresDriver ? '是' : '否'} → ${newRequiresDriver ? '是' : '否'}`)
-          }
-          
-          changedBookingsInfo.push({ booking, changes })
-          
-          // 準備新的教練分配
-          for (const coachId of assignment.coachIds) {
-            allCoachesToInsert.push({
-              booking_id: booking.id,
-              coach_id: coachId
-            })
-          }
-          
-          // 準備新的駕駛分配
-          for (const driverId of assignment.driverIds) {
-            allDriversToInsert.push({
-              booking_id: booking.id,
-              driver_id: driverId
-            })
-          }
-          
-          // 更新排班備註和是否需要駕駛
-          if (currentNotes !== newNotes || currentRequiresDriver !== newRequiresDriver) {
-            await supabase
-              .from('bookings')
-              .update({ 
-                schedule_notes: newNotes || null,
-                requires_driver: newRequiresDriver
-              })
-              .eq('id', booking.id)
-          }
+
+        const baseline = snapshotFromBooking(booking)
+        const userIntent = snapshotFromAssignment(assignment)
+
+        if (assignmentSnapshotKey(baseline) === assignmentSnapshotKey(userIntent)) {
+          continue
         }
+
+        pendingChanges.push({
+          booking,
+          assignment,
+          baseline,
+          userIntent,
+          changes: computeAssignmentChanges(baseline, userIntent, coaches),
+        })
       }
-      
-      // 如果沒有任何變動，直接返回
-      if (changedBookingIds.length === 0) {
+
+      if (pendingChanges.length === 0) {
         setSuccess('✅ 沒有變動，無需儲存')
         setSaving(false)
         return
+      }
+
+      const pendingBookingIds = pendingChanges.map(item => item.booking.id)
+      const [dbCoachesResult, dbDriversResult, dbBookingsResult] = await Promise.all([
+        supabase
+          .from('booking_coaches')
+          .select('booking_id, coach_id')
+          .in('booking_id', pendingBookingIds),
+        supabase
+          .from('booking_drivers')
+          .select('booking_id, driver_id')
+          .in('booking_id', pendingBookingIds),
+        supabase
+          .from('bookings')
+          .select('id, schedule_notes, requires_driver')
+          .in('id', pendingBookingIds),
+      ])
+
+      if (dbCoachesResult.error) throw new Error(`讀取最新教練排班失敗: ${dbCoachesResult.error.message}`)
+      if (dbDriversResult.error) throw new Error(`讀取最新駕駛排班失敗: ${dbDriversResult.error.message}`)
+      if (dbBookingsResult.error) throw new Error(`讀取最新排班資料失敗: ${dbBookingsResult.error.message}`)
+
+      const dbCoachesMap = new Map<number, string[]>()
+      dbCoachesResult.data?.forEach((row: { booking_id: number; coach_id: string }) => {
+        if (!dbCoachesMap.has(row.booking_id)) dbCoachesMap.set(row.booking_id, [])
+        dbCoachesMap.get(row.booking_id)!.push(row.coach_id)
+      })
+
+      const dbDriversMap = new Map<number, string[]>()
+      dbDriversResult.data?.forEach((row: { booking_id: number; driver_id: string }) => {
+        if (!dbDriversMap.has(row.booking_id)) dbDriversMap.set(row.booking_id, [])
+        dbDriversMap.get(row.booking_id)!.push(row.driver_id)
+      })
+
+      const dbBookingsMap = new Map<number, { schedule_notes: string | null; requires_driver: boolean | null }>()
+      dbBookingsResult.data?.forEach((row: { id: number; schedule_notes: string | null; requires_driver: boolean | null }) => {
+        dbBookingsMap.set(row.id, {
+          schedule_notes: row.schedule_notes,
+          requires_driver: row.requires_driver,
+        })
+      })
+
+      const dbAssignmentMaps: DbAssignmentMaps = {
+        coaches: dbCoachesMap,
+        drivers: dbDriversMap,
+        bookings: dbBookingsMap,
+      }
+
+      const pendingForResolution = pendingChanges.map(item => ({
+        bookingId: item.booking.id,
+        baseline: item.baseline,
+        userIntent: item.userIntent,
+        changes: item.changes,
+      }))
+
+      const { toSave: resolvedToSave, silentSkips, overwriteConflicts } = resolveConcurrentAssignmentChanges(
+        pendingForResolution,
+        dbAssignmentMaps,
+        coaches
+      )
+
+      const pendingByBookingId = new Map(pendingChanges.map(item => [item.booking.id, item]))
+
+      const applySilentSkips = (skips: Array<{ bookingId: number; dbState: AssignmentSnapshot }>) => {
+        if (skips.length === 0) return
+        const silentSkipMap = new Map(skips.map(item => [item.bookingId, item.dbState]))
+        setBookings(prev => prev.map(b => {
+          const dbState = silentSkipMap.get(b.id)
+          if (!dbState) return b
+          return {
+            ...b,
+            currentCoaches: [...dbState.coachIds],
+            currentDrivers: [...dbState.driverIds],
+            schedule_notes: dbState.notes || null,
+            requires_driver: dbState.requiresDriver,
+          }
+        }))
+        setAssignments(prev => {
+          const next = { ...prev }
+          for (const [bookingId, dbState] of silentSkipMap) {
+            const current = next[bookingId]
+            if (!current) continue
+            next[bookingId] = {
+              ...current,
+              coachIds: [...dbState.coachIds],
+              driverIds: [...dbState.driverIds],
+              notes: dbState.notes,
+              requiresDriver: dbState.requiresDriver,
+            }
+          }
+          return next
+        })
+      }
+
+      applySilentSkips(silentSkips)
+
+      let toSave = resolvedToSave
+        .map(item => pendingByBookingId.get(item.bookingId))
+        .filter((item): item is PendingAssignmentChange => !!item)
+        .map(item => ({
+          ...item,
+          changes: resolvedToSave.find(resolved => resolved.bookingId === item.booking.id)?.changes ?? item.changes,
+        }))
+
+      if (overwriteConflicts.length > 0) {
+        const conflictLines = overwriteConflicts.map(item => {
+          const pending = pendingByBookingId.get(item.bookingId)
+          if (!pending) return ''
+          const dbState = getDbSnapshot(item.bookingId, dbAssignmentMaps)
+          const timeStr = formatTimeRange(pending.booking.start_at, pending.booking.duration_min, pending.booking.boats?.name)
+          const contactName = getDisplayContactName(pending.booking)
+          return `• ${timeStr} ${contactName}\n  目前已排：${describeSnapshotSummary(dbState, coaches)}\n  您要改為：${describeSnapshotSummary(pending.userIntent, coaches)}`
+        }).filter(Boolean)
+
+        const confirmMessage = `⚠️ 以下 ${overwriteConflicts.length} 筆預約在您編輯期間已被他人修改：\n\n${conflictLines.join('\n\n')}\n\n確定要覆蓋嗎？\n（按「取消」將略過這些預約，其餘變更仍會儲存）`
+        if (confirm(confirmMessage)) {
+          const conflictItems = overwriteConflicts
+            .map(item => {
+              const pending = pendingByBookingId.get(item.bookingId)
+              if (!pending) return null
+              return {
+                ...pending,
+                changes: item.changes,
+              }
+            })
+            .filter((item): item is PendingAssignmentChange => !!item)
+          toSave = [...toSave, ...conflictItems]
+        } else {
+          toast.info(`已略過 ${overwriteConflicts.length} 筆已被他人修改的預約`)
+        }
+      }
+
+      if (toSave.length === 0) {
+        setSuccess(silentSkips.length > 0 ? '✅ 排班已由他人更新，無需儲存' : '✅ 沒有變動，無需儲存')
+        if (silentSkips.length > 0) {
+          toast.success('排班已由他人更新，無需儲存')
+        }
+        setSaving(false)
+        return
+      }
+
+      const changedBookingIds = toSave.map(item => item.booking.id)
+      const changedBookingsInfo = toSave
+        .map(item => ({
+          booking: item.booking,
+          changes: item.changes,
+        }))
+        .filter(item => item.changes.length > 0)
+      const allCoachesToInsert: Array<{ booking_id: number; coach_id: string }> = []
+      const allDriversToInsert: Array<{ booking_id: number; driver_id: string }> = []
+
+      for (const item of toSave) {
+        for (const coachId of item.assignment.coachIds) {
+          allCoachesToInsert.push({
+            booking_id: item.booking.id,
+            coach_id: coachId,
+          })
+        }
+        for (const driverId of item.assignment.driverIds) {
+          allDriversToInsert.push({
+            booking_id: item.booking.id,
+            driver_id: driverId,
+          })
+        }
       }
 
       // 🔍 檢查變動的預約是否有回報記錄
@@ -897,6 +1029,26 @@ export function CoachAssignment() {
           return
         }
 
+      }
+
+      // 更新排班備註和是否需要駕駛（放在所有 confirm 之後，避免取消時寫入部分資料）
+      for (const item of toSave) {
+        const dbState = getDbSnapshot(item.booking.id, dbAssignmentMaps)
+        if (
+          item.userIntent.notes !== dbState.notes ||
+          item.userIntent.requiresDriver !== dbState.requiresDriver
+        ) {
+          const { error: bookingUpdateError } = await supabase
+            .from('bookings')
+            .update({
+              schedule_notes: item.userIntent.notes || null,
+              requires_driver: item.userIntent.requiresDriver,
+            })
+            .eq('id', item.booking.id)
+          if (bookingUpdateError) {
+            throw new Error(`更新排班備註失敗: ${bookingUpdateError.message}`)
+          }
+        }
       }
 
       // 如果有需要清除的回報記錄，先清除

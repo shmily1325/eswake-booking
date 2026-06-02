@@ -20,6 +20,84 @@ interface PageHeaderProps {
   extraLinks?: Array<{ label: string; link: string }>
 }
 
+const NAV_LINK_ICONS: Record<string, string> = {
+  '/': '🏠',
+  '/bao': '🔧',
+  '/order-settle': '🧾',
+  '/products': '📦',
+  '/products/orders': '📋',
+  '/member-transaction': '💰',
+  '/members': '👥',
+  '/coach-admin': '💼',
+  '/coach-report': '📋',
+}
+
+const NAV_LINK_TEXT: Record<string, string> = {
+  '/': 'HOME',
+  '/bao': 'BAO',
+  '/order-settle': '訂單結帳',
+  '/products': '商品訂單',
+  '/products/orders': '訂單開單',
+  '/member-transaction': '會員儲值',
+  '/members': '會員管理',
+  '/coach-admin': '回報管理',
+  '/coach-report': '預約回報',
+}
+
+const LEADING_EMOJI_RE = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u
+
+function stripLeadingEmoji(text: string): string {
+  return text.replace(LEADING_EMOJI_RE, '').trim()
+}
+
+function extractLeadingEmoji(text: string): string | null {
+  const match = text.match(/^([\p{Emoji_Presentation}\p{Extended_Pictographic}]+)/u)
+  return match ? match[1] : null
+}
+
+/** 手機導覽按鈕只顯示 icon */
+function toMobileNavIcon(label: string, link: string): string {
+  const emoji = extractLeadingEmoji(label)
+  if (emoji) return emoji
+  if (NAV_LINK_ICONS[link]) return NAV_LINK_ICONS[link]
+  if (/BAO/i.test(label)) return '🔧'
+  if (/HOME/i.test(label)) return '🏠'
+  return '•'
+}
+
+/** 電腦導覽按鈕純文字，不帶 emoji */
+function toDesktopNavLabel(label: string, link: string): string {
+  const stripped = stripLeadingEmoji(label)
+  if (stripped) return stripped
+  return NAV_LINK_TEXT[link] ?? toNavAriaLabel(label)
+}
+
+function toNavAriaLabel(label: string): string {
+  const stripped = stripLeadingEmoji(label)
+  if (stripped) return stripped.replace(/\s*→\s*$/, '').trim()
+  return label.replace(/\s*→\s*$/, '').trim()
+}
+
+function countNavButtons(props: {
+  extraLinks?: PageHeaderProps['extraLinks']
+  productHubSection?: ProductHubHeaderSection
+  showOrderSettleLink: boolean
+  showBaoLink: boolean
+  showHomeLink: boolean
+}): number {
+  let count = props.extraLinks?.length ?? 0
+  if (
+    (props.productHubSection === 'inventory' || props.productHubSection === 'orders') &&
+    props.showOrderSettleLink
+  ) {
+    count += 1
+  }
+  if (props.productHubSection === 'settle') count += 1
+  if (props.showBaoLink) count += 1
+  if (props.showHomeLink) count += 1
+  return count
+}
+
 export function PageHeader({
   title,
   user,
@@ -32,12 +110,21 @@ export function PageHeader({
 }: PageHeaderProps) {
   const { isMobile } = useResponsive()
 
-  const displayTitle = isMobile
-    ? title.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, '').trim()
-    : title
+  const navButtonCount = countNavButtons({
+    extraLinks,
+    productHubSection,
+    showOrderSettleLink,
+    showBaoLink,
+    showHomeLink,
+  })
+
+  const useTwoRowMobile = isMobile && navButtonCount >= 5
+  const useIconOnlyNav = isMobile
+
+  const displayTitle = stripLeadingEmoji(title)
 
   const navButtonStyle: React.CSSProperties = {
-    padding: isMobile ? '6px 10px' : '6px 12px',
+    padding: useIconOnlyNav ? '6px 8px' : '6px 12px',
     background: 'rgba(255, 255, 255, 0.15)',
     color: 'white',
     textDecoration: 'none',
@@ -47,14 +134,83 @@ export function PageHeader({
     whiteSpace: 'nowrap',
     display: 'inline-flex',
     alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: useIconOnlyNav ? 36 : undefined,
+    minHeight: useIconOnlyNav ? 36 : undefined,
   }
+
+  const renderNavLabel = (label: string, link: string) =>
+    useIconOnlyNav ? toMobileNavIcon(label, link) : toDesktopNavLabel(label, link)
+
+  const navLinks = (
+    <>
+      {extraLinks?.map((link, index) => (
+        <Link
+          key={index}
+          to={link.link}
+          style={navButtonStyle}
+          aria-label={toNavAriaLabel(link.label)}
+          title={toNavAriaLabel(link.label)}
+          data-track={`header_nav_${(link.link || '').replace(/^\//, '').replace(/\//g, '_') || 'link'}`}
+        >
+          {renderNavLabel(link.label, link.link)}
+        </Link>
+      ))}
+      {(productHubSection === 'inventory' || productHubSection === 'orders') &&
+        showOrderSettleLink && (
+          <Link
+            to="/order-settle"
+            style={navButtonStyle}
+            aria-label="訂單結帳"
+            title="訂單結帳"
+            data-track="header_order_settle"
+          >
+            {renderNavLabel('🧾 訂單結帳', '/order-settle')}
+            <CountBadge count={pendingSettleCount} />
+          </Link>
+        )}
+      {productHubSection === 'settle' && (
+        <Link
+          to="/products/orders"
+          style={navButtonStyle}
+          aria-label="訂單開單"
+          title="訂單開單"
+          data-track="header_product_orders"
+        >
+          {renderNavLabel('📋 訂單開單', '/products/orders')}
+        </Link>
+      )}
+      {showBaoLink && (
+        <Link
+          to="/bao"
+          style={navButtonStyle}
+          aria-label="BAO 管理後台"
+          title="BAO"
+          data-track="header_bao"
+        >
+          {renderNavLabel('← BAO', '/bao')}
+        </Link>
+      )}
+      {showHomeLink && (
+        <Link
+          to="/"
+          style={navButtonStyle}
+          aria-label="回首頁"
+          title="HOME"
+          data-track="header_home"
+        >
+          {renderNavLabel('← HOME', '/')}
+        </Link>
+      )}
+    </>
+  )
 
   return (
     <div
       style={{
         marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.xl,
         background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-        padding: designSystem.spacing.lg,
+        padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
         borderRadius: designSystem.borderRadius.lg,
         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
       }}
@@ -62,10 +218,10 @@ export function PageHeader({
       <div
         style={{
           display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
+          flexDirection: useTwoRowMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: isMobile ? 'stretch' : 'center',
-          gap: isMobile ? 10 : 0,
+          alignItems: useTwoRowMobile ? 'stretch' : 'center',
+          gap: 8,
         }}
       >
         <div
@@ -75,6 +231,7 @@ export function PageHeader({
             alignItems: 'center',
             gap: 8,
             minWidth: 0,
+            flex: useTwoRowMobile ? undefined : 1,
           }}
         >
           <h1
@@ -84,11 +241,14 @@ export function PageHeader({
               color: 'white',
               margin: 0,
               minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
             {displayTitle}
           </h1>
-          {isMobile && user && <UserMenu user={user} />}
+          {useTwoRowMobile && user && <UserMenu user={user} />}
         </div>
         <div
           style={{
@@ -96,47 +256,12 @@ export function PageHeader({
             flexWrap: 'wrap',
             gap: 6,
             alignItems: 'center',
-            justifyContent: isMobile ? 'flex-start' : 'flex-end',
+            justifyContent: 'flex-end',
+            flexShrink: 0,
           }}
         >
-          {extraLinks?.map((link, index) => (
-            <Link
-              key={index}
-              to={link.link}
-              style={navButtonStyle}
-              data-track={`header_nav_${(link.link || '').replace(/^\//, '').replace(/\//g, '_') || 'link'}`}
-            >
-              {link.label}
-            </Link>
-          ))}
-          {(productHubSection === 'inventory' || productHubSection === 'orders') &&
-            showOrderSettleLink && (
-              <Link to="/order-settle" style={navButtonStyle} data-track="header_order_settle">
-                {isMobile ? '🧾' : '🧾 訂單結帳'}
-                <CountBadge count={pendingSettleCount} />
-              </Link>
-            )}
-          {productHubSection === 'settle' && (
-            <>
-              <Link to="/products" style={navButtonStyle} data-track="header_product_inventory">
-                {isMobile ? '📦' : '📦 商品訂單'}
-              </Link>
-              <Link to="/products/orders" style={navButtonStyle} data-track="header_product_orders">
-                {isMobile ? '📋' : '📋 訂單開單'}
-              </Link>
-            </>
-          )}
-          {showBaoLink && (
-            <Link to="/bao" style={navButtonStyle} data-track="header_bao">
-              {isMobile ? 'BAO' : '← BAO'}
-            </Link>
-          )}
-          {showHomeLink && (
-            <Link to="/" style={navButtonStyle} data-track="header_home">
-              {isMobile ? 'HOME' : '← HOME'}
-            </Link>
-          )}
-          {!isMobile && user && <UserMenu user={user} />}
+          {navLinks}
+          {(!useTwoRowMobile || !isMobile) && user && <UserMenu user={user} />}
         </div>
       </div>
     </div>

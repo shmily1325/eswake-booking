@@ -80,11 +80,9 @@ export function OrderSettlePage() {
         user={user}
         showBaoLink={isAdmin(user)}
         productHubSection="settle"
-        extraLinks={
-          isAdmin(user)
-            ? [{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }]
-            : undefined
-        }
+        extraLinks={[
+          { label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' },
+        ]}
       />
 
       <div
