@@ -174,6 +174,9 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 
   const total = lines.reduce((s, l) => s + l.line_total, 0)
   const listTotal = lines.reduce((s, l) => s + listSubtotal(l.qty, l.unit_price), 0)
+  const projectedBalance =
+    paymentMethod === 'balance' && memberBalance !== null ? memberBalance - total : null
+  const projectedBalanceInsufficient = projectedBalance !== null && projectedBalance < 0
   const updateLine = (idx: number, patch: Partial<SettleLineState>) => {
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)))
   }
@@ -378,6 +381,18 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                         {memberBalance !== null && (
                           <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', fontWeight: 400 }}>
                             💰 儲值 ${memberBalance.toLocaleString()}
+                            {projectedBalance !== null && (
+                              <span
+                                style={{
+                                  marginLeft: 8,
+                                  color: projectedBalanceInsufficient ? '#c62828' : '#2e7d32',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                → 扣後 {projectedBalanceInsufficient ? '-' : ''}$
+                                {Math.abs(projectedBalance).toLocaleString()}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -387,6 +402,18 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                         {memberBalance !== null && (
                           <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', fontWeight: 400 }}>
                             💰 儲值 ${memberBalance.toLocaleString()}
+                            {projectedBalance !== null && (
+                              <span
+                                style={{
+                                  marginLeft: 8,
+                                  color: projectedBalanceInsufficient ? '#c62828' : '#2e7d32',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                → 扣後 {projectedBalanceInsufficient ? '-' : ''}$
+                                {Math.abs(projectedBalance).toLocaleString()}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
