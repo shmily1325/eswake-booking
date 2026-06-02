@@ -97,7 +97,7 @@ export function liffOrderStatus(order: LiffShopOrder): LiffOrderStatusKey {
 
 export function liffDeliveryLabel(method: string): string {
   if (method === 'shipping') return '📦 寄送'
-  return '📍 面交 ES'
+  return '📍 面交'
 }
 
 export type LiffItemProgressChip = { label: string; color: string; bg: string }
@@ -106,13 +106,13 @@ export function liffOrderItemProgressChips(item: LiffShopOrder['items'][number])
   const open = qtyOpen(item)
   const chips: LiffItemProgressChip[] = []
   if (item.qty_paid > 0) {
-    chips.push({ label: `已到 ${item.qty_paid}`, color: '#2e7d32', bg: '#e8f5e9' })
+    chips.push({ label: `已到${item.qty_paid}`, color: '#2e7d32', bg: '#e8f5e9' })
   }
   if (item.qty_pending_bill > 0) {
-    chips.push({ label: `待收款 ${item.qty_pending_bill}`, color: '#6a1b9a', bg: '#f3e5f5' })
+    chips.push({ label: `待收${item.qty_pending_bill}`, color: '#6a1b9a', bg: '#f3e5f5' })
   }
   if (open > 0) {
-    chips.push({ label: `等貨 ${open}`, color: '#ef6c00', bg: '#fff4e0' })
+    chips.push({ label: `等貨${open}`, color: '#ef6c00', bg: '#fff4e0' })
   }
   return chips
 }

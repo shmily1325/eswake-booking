@@ -2,7 +2,6 @@
 
 import type { Member } from '../types'
 import { BalanceCard } from './BalanceCard'
-import { LiffPageHint } from './LiffPageHint'
 
 interface BalanceViewProps {
   member: Member
@@ -11,20 +10,21 @@ interface BalanceViewProps {
 
 export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '12px',
-      padding: '20px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-    }}>
-      <LiffPageHint>點擊任一項目查看兩個月內的交易明細。</LiffPageHint>
-
-      {/* 儲值數據 */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '12px'
-      }}>
+    <div
+      style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      }}
+    >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '12px',
+        }}
+      >
         <BalanceCard
           label="儲值餘額"
           emoji="💰"
@@ -83,4 +83,3 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
     </div>
   )
 }
-

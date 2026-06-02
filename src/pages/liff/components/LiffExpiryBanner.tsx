@@ -68,7 +68,7 @@ export function LiffExpiryBanner({ lines, isOnProfileTab, onOpenProfile }: LiffE
             textAlign: 'center'
           }}
         >
-          點此開啟「會員」查看明細
+          點開「會員」查看
         </div>
       )}
     </div>

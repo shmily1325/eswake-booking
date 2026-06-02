@@ -13,6 +13,6 @@ export { MemberProfileView } from './MemberProfileView'
 export { TransactionModal } from './TransactionModal'
 export { ShopOrdersList } from './ShopOrdersList'
 export { LiffStyles } from './LiffStyles'
-export { LiffPageHint } from './LiffPageHint'
+export { LiffContactBar, LIFF_CONTACT_LINE } from './LiffPageHint'
 export { LiffExpiryBanner } from './LiffExpiryBanner'
 

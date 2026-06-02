@@ -5,14 +5,8 @@ import {
   LIFF_ORDER_STATUS,
   formatLiffOrderItemLine,
   liffDeliveryLabel,
-  liffHiddenItemsProgressHint,
-  liffOrderProgressSummary,
   liffOrderStatus,
 } from '../liffShopOrders'
-import { LiffPageHint } from './LiffPageHint'
-
-const ORDERS_PAGE_HINT =
-  '以下為您的商品訂單進度，有問題請私訊官方。'
 
 const liffContentPanel: CSSProperties = {
   background: 'white',
@@ -30,12 +24,11 @@ function formatOrderDate(createdAt: string): string {
 function ShopOrderCard({ order }: { order: LiffShopOrder }) {
   const statusKey = liffOrderStatus(order)
   const status = LIFF_ORDER_STATUS[statusKey]
-  const progressSummary = liffOrderProgressSummary(order)
   const collapsible = order.items.length > 1
   const [expanded, setExpanded] = useState(false)
   const visibleItems = collapsible && !expanded ? order.items.slice(0, 1) : order.items
-  const hiddenItems = collapsible && !expanded ? order.items.slice(1) : []
-  const hiddenHint = hiddenItems.length > 0 ? liffHiddenItemsProgressHint(hiddenItems) : null
+  const hiddenCount = collapsible && !expanded ? order.items.length - 1 : 0
+  const showDetails = !collapsible || expanded
 
   return (
     <div
@@ -65,14 +58,13 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             gap: 10,
-            marginBottom: 10,
+            marginBottom: 8,
           }}
         >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: '13px', color: '#888', marginBottom: 4 }}>{order.order_no}</div>
-            <div style={{ fontSize: '12px', color: '#666' }}>{formatOrderDate(order.created_at)}</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: '#333' }}>
+            {formatOrderDate(order.created_at)}
           </div>
           <span
             style={{
@@ -89,52 +81,45 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
           </span>
         </div>
 
-        <div style={{ fontSize: '13px', color: '#555', marginBottom: progressSummary ? 6 : collapsible ? 6 : 10 }}>
-          {liffDeliveryLabel(order.delivery_method)}
-          {order.shipping_info ? (
-            <span style={{ color: '#888' }}> · {order.shipping_info}</span>
-          ) : null}
-        </div>
-
-        {progressSummary && (
-          <div
-            style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: '#6a1b9a',
-              marginBottom: collapsible ? 6 : 10,
-              lineHeight: 1.45,
-            }}
-          >
-            {progressSummary}
+        {showDetails && (
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: hiddenCount > 0 ? 6 : 8 }}>
+            {liffDeliveryLabel(order.delivery_method)}
+            {order.shipping_info ? (
+              <span style={{ color: '#aaa' }}> · {order.shipping_info}</span>
+            ) : null}
+            {expanded && (
+              <span style={{ display: 'block', marginTop: 4, color: '#bbb' }}>{order.order_no}</span>
+            )}
           </div>
         )}
 
-        {collapsible && (
-          <div style={{ fontSize: '12px', color: '#1565c0', marginBottom: 10, fontWeight: 500 }}>
-            {expanded ? '收合明細' : hiddenHint ?? `還有 ${hiddenItems.length} 項 · 點擊展開`}
+        {hiddenCount > 0 && (
+          <div style={{ fontSize: '12px', color: '#1565c0', marginBottom: 8, fontWeight: 500 }}>
+            +{hiddenCount} 項 · 點開
           </div>
+        )}
+        {collapsible && expanded && (
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: 8 }}>收合</div>
         )}
       </button>
 
-      {order.customer_note?.trim() && (
+      {showDetails && order.customer_note?.trim() && (
         <div
           style={{
-            fontSize: '13px',
+            fontSize: '12px',
             color: '#0369a1',
             background: '#f0f9ff',
-            border: '1px solid #bae6fd',
-            borderRadius: '8px',
-            padding: '10px 12px',
-            marginBottom: 10,
-            lineHeight: 1.45,
+            borderRadius: '6px',
+            padding: '8px 10px',
+            marginBottom: 8,
+            lineHeight: 1.4,
           }}
         >
           {order.customer_note.trim()}
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {visibleItems.map((item) => {
           const { title, subtitle, chips } = formatLiffOrderItemLine(item)
           return (
@@ -152,7 +137,7 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
                 <div style={{ fontSize: '12px', color: '#888', marginTop: 2 }}>{subtitle}</div>
               )}
               {chips.length > 0 ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                   {chips.map((chip) => (
                     <span
                       key={chip.label}
@@ -168,12 +153,9 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
                       {chip.label}
                     </span>
                   ))}
-                  <span style={{ fontSize: 11, color: '#aaa', alignSelf: 'center' }}>
-                    共訂 {item.qty} 件
-                  </span>
                 </div>
               ) : (
-                <div style={{ fontSize: '12px', color: '#666', marginTop: 6 }}>共訂 {item.qty} 件</div>
+                <div style={{ fontSize: '12px', color: '#888', marginTop: 6 }}>×{item.qty}</div>
               )}
             </div>
           )
@@ -207,7 +189,7 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
         transition: refreshing ? undefined : 'height 0.15s ease',
       }}
     >
-      {refreshing ? '更新中…' : pullReady ? '放開即可更新' : '下拉更新'}
+      {refreshing ? '更新中…' : pullReady ? '放開更新' : '下拉更新'}
     </div>
   )
 
@@ -226,17 +208,11 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
         <div
           style={{
             ...liffContentPanel,
-            padding: '20px 20px 60px',
+            padding: '48px 20px',
             textAlign: 'center',
           }}
         >
-          <LiffPageHint>{ORDERS_PAGE_HINT}</LiffPageHint>
-          <div style={{ fontSize: '18px', fontWeight: 600, color: '#333', marginBottom: '8px' }}>
-            目前沒有商品訂單
-          </div>
-          <div style={{ fontSize: '14px', color: '#999' }}>
-            店內開單並綁定您的會員後，訂單會顯示在這裡
-          </div>
+          <div style={{ fontSize: '16px', fontWeight: 600, color: '#666' }}>目前沒有商品訂單</div>
         </div>
       </div>
     )
@@ -246,7 +222,6 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
     <div {...(onRefresh ? pullHandlers : {})}>
       {pullIndicator}
       <div style={liffContentPanel}>
-        <LiffPageHint>{ORDERS_PAGE_HINT}</LiffPageHint>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {orders.map((order) => (
             <ShopOrderCard key={order.id} order={order} />

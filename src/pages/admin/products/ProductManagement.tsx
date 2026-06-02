@@ -302,7 +302,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         {!embedded && <PageHeader user={user} title="📦 商品管理" showBaoLink={isAdmin(user)} />}
 
-        {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面（隨搜尋變動，點擊即篩） */}
+        {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面（皆為 SKU 種數，隨搜尋變動） */}
         <InventoryDashboard
           base={baseForCounts}
           filtered={filteredItems}
@@ -647,7 +647,7 @@ function SortMenu({ value, onChange, isMobile }: SortMenuProps) {
 //  庫存儀表板：種數／件數／缺價／沒實拍／沒封面
 //  - 沒篩選：顯示 tab 全庫總數
 //  - 有篩選：顯示「目前 X 種 / 全 Y 種」
-//  - 缺價／沒圖：點擊 toggle 篩選
+//  - 缺價／沒實拍／沒封面：皆算 SKU（種）
 // ============================================================
 interface InventoryDashboardProps {
   base: VariantListItem[] // 套搜尋（不含狀態篩選）的清單，用來算缺價/沒圖數

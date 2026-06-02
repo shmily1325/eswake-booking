@@ -1,31 +1,18 @@
-// LIFF 分頁頂部說明（與儲值頁同一視覺）
+/** 全站共用一句（放 LiffMyBookings 內容區頂部，各分頁不再重複） */
+export const LIFF_CONTACT_LINE = '需協助請私訊官方'
 
-import type { ReactNode } from 'react'
-
-interface LiffPageHintProps {
-  children: ReactNode
-}
-
-export function LiffPageHint({ children }: LiffPageHintProps) {
+export function LiffContactBar() {
   return (
     <div
       style={{
-        padding: '10px 12px',
-        background: '#f0f7ff',
-        borderRadius: '6px',
+        fontSize: '12px',
+        color: '#999',
+        textAlign: 'center',
         marginBottom: '12px',
-        fontSize: '13px',
-        color: '#666',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '6px',
-        lineHeight: 1.5
+        lineHeight: 1.4,
       }}
     >
-      <span aria-hidden style={{ flexShrink: 0, lineHeight: 1.45 }}>
-        💡
-      </span>
-      <span>{children}</span>
+      {LIFF_CONTACT_LINE}
     </div>
   )
 }

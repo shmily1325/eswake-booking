@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react'
 import { getMembershipTypeLabel, type Member } from '../types'
-import { LiffPageHint } from './LiffPageHint'
 import {
   getBoardExpiryRowStatus,
   getMembershipExpiryRowStatus,
@@ -88,19 +87,36 @@ function Row({ label, value, badge }: { label: string; value: string; badge?: Re
     <div
       style={{
         display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-        padding: '14px 0',
-        borderBottom: '1px solid #f0f0f0'
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '10px',
+        padding: '11px 0',
+        borderBottom: '1px solid #f0f0f0',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-        <span style={{ fontSize: '13px', color: '#888' }}>{label}</span>
+      <span style={{ fontSize: '13px', color: '#888', flexShrink: 0 }}>{label}</span>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: '6px',
+          minWidth: 0,
+        }}
+      >
+        <span
+          style={{
+            fontSize: '15px',
+            color: '#333',
+            fontWeight: 500,
+            textAlign: 'right',
+            wordBreak: 'break-all',
+          }}
+        >
+          {value || '—'}
+        </span>
         {badge}
       </div>
-      <span style={{ fontSize: '16px', color: '#333', fontWeight: 500, wordBreak: 'break-all' }}>
-        {value || '—'}
-      </span>
     </div>
   )
 }
@@ -119,40 +135,20 @@ function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number;
     <div
       style={{
         display: 'flex',
-        alignItems: 'stretch',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '12px',
-        padding: '12px 14px',
+        gap: '10px',
+        padding: '10px 12px',
         background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
         borderRadius: '10px',
         border: '1px solid #e2e8f0',
-        borderLeft: accent
+        borderLeft: accent,
       }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-        <span style={{ fontSize: '12px', color: '#64748b', letterSpacing: '0.02em' }}>位子</span>
-        <span style={{ fontSize: '17px', fontWeight: 700, color: '#334155', fontVariantNumeric: 'tabular-nums' }}>
-          #{slotNumber}
-        </span>
-      </div>
-      <div
-        style={{
-          flex: 1,
-          textAlign: 'right',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px',
-          justifyContent: 'center',
-          minWidth: 0
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>到期</span>
-          <ExpiryBadge status={boardStatus} />
-        </div>
-        <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', lineHeight: 1.35 }}>
-          {expiryLabel}
-        </span>
+      <span style={{ fontSize: '15px', fontWeight: 700, color: '#334155' }}>#{slotNumber}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+        <ExpiryBadge status={boardStatus} />
+        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>{expiryLabel}</span>
       </div>
     </div>
   )
@@ -168,10 +164,6 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}
     >
-      <LiffPageHint>
-        以下為綁定此 LINE 帳號的會員資料，若資料有誤，請私訊官方協助更新。
-      </LiffPageHint>
-
       <Row label="會員類型" value={membershipTypeLine(member)} />
       <Row label="手機號碼" value={member.phone?.trim() || '—'} />
       <Row label="生日" value={formatMonthDaySlash(member.birthday)} />
@@ -190,8 +182,10 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
           paddingBottom: '14px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-          <span style={{ fontSize: '18px' }} aria-hidden>🏄</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+          <span style={{ fontSize: '16px' }} aria-hidden>
+            🏄
+          </span>
           <span style={{ fontSize: '13px', color: '#888', fontWeight: 600 }}>置板</span>
           {member.board_slots && member.board_slots.length > 1 && (
             <span

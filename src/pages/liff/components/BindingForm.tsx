@@ -267,38 +267,32 @@ export function BindingForm({
           {binding ? '綁定中...' : '開始綁定'}
         </button>
 
-        <div style={{
-          background: '#f8f9fa',
-          padding: '16px',
-          borderRadius: '8px',
-          fontSize: '13px',
-          color: '#666',
-          lineHeight: '1.6'
-        }}>
-          <div style={{ fontWeight: '600', marginBottom: '8px', color: '#555' }}>
-            💡 綁定說明
-          </div>
-          • 請輸入您的手機與生日<br/>
-          • 綁定後即可查看預約與儲值紀錄
+        <div
+          style={{
+            background: '#f8f9fa',
+            padding: '12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            color: '#888',
+            lineHeight: 1.5,
+          }}
+        >
+          輸入手機與生日即可綁定
         </div>
 
-        {/* 非會員提示與官方聯絡 */}
         <div style={{ marginTop: '12px' }}>
-          <div style={{
-            background: '#fff7e6',
-            border: '1px solid #ffd591',
-            borderRadius: '8px',
-            padding: '14px 16px',
-            color: '#8c6d1f',
-            fontSize: '13px',
-            lineHeight: 1.6
-          }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              不是會員嗎？
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              若您尚未加入 ES Wake 會員，請私訊官方洽詢加入流程，我們會盡快回覆您。
-            </div>
+          <div
+            style={{
+              background: '#fff7e6',
+              border: '1px solid #ffd591',
+              borderRadius: '8px',
+              padding: '12px',
+              color: '#8c6d1f',
+              fontSize: '12px',
+              lineHeight: 1.5,
+            }}
+          >
+            <div style={{ marginBottom: oaUrl ? 8 : 0 }}>尚未加入？私訊官方詢問</div>
             {oaUrl && (
               <button
                 type="button"

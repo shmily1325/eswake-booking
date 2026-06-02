@@ -17,7 +17,8 @@ import {
   MemberProfileView,
   TransactionModal,
   LiffStyles,
-  LiffExpiryBanner
+  LiffExpiryBanner,
+  LiffContactBar,
 } from './components'
 import { buildLiffExpiryBannerLines } from './liffExpiryAlerts'
 import { liffTrack, liffTrackFlushQueueNow } from './track'
@@ -640,6 +641,7 @@ export function LiffMyBookings() {
 
       {/* Content（順序：預約 → 儲值 → 商品 → 會員） */}
       <div style={{ padding: '16px' }}>
+        <LiffContactBar />
         {member && expiryBannerLines.length > 0 && (
           <LiffExpiryBanner
             lines={expiryBannerLines}
