@@ -48,7 +48,7 @@ import {
   validateCancelBillingDraft,
   validateSubmitBillingDraft,
 } from './orderUtils'
-import type { OrderInboxTab, ShopOrderWithItems } from './types'
+import type { OrderInboxTab, ShopOrderItemWithVariant, ShopOrderWithItems } from './types'
 
 /** 跟 index.css :root 一致，避免 inline style 在舊 Windows 掉回 Courier */
 const UI_SANS =
@@ -91,6 +91,21 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   const [billingBusyOrderId, setBillingBusyOrderId] = useState<string | null>(null)
   const [highlightOrderId, setHighlightOrderId] = useState<string | null>(null)
   const [includeOlderOrders, setIncludeOlderOrders] = useState(false)
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!previewSrc) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewSrc(null)
+    }
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [previewSrc])
+
   const reloadOrders = useCallback(
     async (opts?: { includeOlder?: boolean }) => {
       const loadAll = opts?.includeOlder ?? includeOlderOrders
@@ -509,12 +524,41 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             onSubmitBilling={() => void handleSubmitBilling(order)}
             onCancelBilling={() => void handleCancelBilling(order)}
             onVoidOrder={() => void handleVoidOrder(order)}
+            onOpenImagePreview={(item) => {
+              const src = item.variant.image_url || item.variant.cover_image_url
+              if (src) setPreviewSrc(src)
+            }}
           />
         ))
       )}
 
       {!embedded && <Footer />}
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
+
+      {previewSrc && (
+        <div
+          role="presentation"
+          onClick={() => setPreviewSrc(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10000,
+            background: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            boxSizing: 'border-box',
+            cursor: 'pointer',
+          }}
+        >
+          <img
+            src={previewSrc}
+            alt=""
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+          />
+        </div>
+      )}
 
       <OrderEditDialog
         open={dialogOpen}
@@ -541,6 +585,7 @@ function OrderCard({
   onSubmitBilling,
   onCancelBilling,
   onVoidOrder,
+  onOpenImagePreview,
 }: {
   order: ShopOrderWithItems
   isMobile: boolean
@@ -551,6 +596,7 @@ function OrderCard({
   onSubmitBilling: () => void
   onCancelBilling: () => void
   onVoidOrder: () => void
+  onOpenImagePreview: (item: ShopOrderItemWithVariant) => void
 }) {
   const cancelled = Boolean(order.cancelled_at)
   const statusKey = orderPrimaryStatus(order)
@@ -642,6 +688,7 @@ function OrderCard({
             order={order}
             isMobile={isMobile}
             showDivider={idx > 0}
+            onOpenImagePreview={onOpenImagePreview}
           />
         ))}
       </div>
@@ -714,11 +761,13 @@ function OrderItemRow({
   order,
   isMobile,
   showDivider,
+  onOpenImagePreview,
 }: {
   item: ShopOrderWithItems['items'][number]
   order: ShopOrderWithItems
   isMobile: boolean
   showDivider: boolean
+  onOpenImagePreview: (item: ShopOrderItemWithVariant) => void
 }) {
   const { title, subtitle } = formatOrderItemParts(item)
   const chips = itemQtyChipsForCard(item, order)
@@ -742,7 +791,11 @@ function OrderItemRow({
         borderTop: showDivider ? '1px solid #eee' : 'none',
       }}
     >
-      <OrderItemThumb item={item} size={thumbSize} />
+      <OrderItemThumb
+        item={item}
+        size={thumbSize}
+        onOpen={() => onOpenImagePreview(item)}
+      />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#222', lineHeight: 1.35 }}>{title}</div>
         {subtitle && (
@@ -792,9 +845,11 @@ function OrderItemRow({
 function OrderItemThumb({
   item,
   size,
+  onOpen,
 }: {
   item: ShopOrderWithItems['items'][number]
   size: number
+  onOpen: () => void
 }) {
   // 內部作業優先看實拍，再退回封面圖
   const src = item.variant.image_url || item.variant.cover_image_url
@@ -821,22 +876,39 @@ function OrderItemThumb({
     )
   }
   return (
-    <img
-      src={src}
-      alt=""
-      loading="lazy"
+    <button
+      type="button"
+      data-track="product_order_item_image_preview"
+      aria-label="放大商品圖"
+      onClick={(e) => {
+        e.stopPropagation()
+        onOpen()
+      }}
       style={{
         width: size,
         height: size,
-        borderRadius: 10,
-        objectFit: 'cover',
+        padding: 0,
         border: '1px solid #ececec',
+        borderRadius: 10,
         background: '#f5f5f5',
         boxShadow: '0 1px 2px rgba(0, 0, 0, 0.06)',
-        display: 'block',
+        cursor: 'pointer',
         flexShrink: 0,
+        overflow: 'hidden',
       }}
-    />
+    >
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+        }}
+      />
+    </button>
   )
 }
 
