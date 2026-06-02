@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
+import { useResponsive } from '../../../hooks/useResponsive'
 import { toast } from '../../../utils/toast'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from '../products/api'
 import { formatAttributes } from '../products/schema'
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Props) {
+  const { isMobile } = useResponsive()
   const memberSearch = useMemberSearch()
   const [confirmedGuestName, setConfirmedGuestName] = useState<string | null>(null)
   const [guestNameInput, setGuestNameInput] = useState('')
@@ -237,8 +239,9 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
         zIndex: 1000,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
-        alignItems: 'flex-end',
+        alignItems: isMobile ? 'flex-end' : 'center',
         justifyContent: 'center',
+        padding: isMobile ? 0 : 20,
       }}
       onClick={onClose}
     >
@@ -247,14 +250,16 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
           background: '#fff',
           width: '100%',
           maxWidth: 640,
-          maxHeight: '92vh',
+          maxHeight: isMobile ? '92vh' : '90vh',
           overflow: 'auto',
-          borderRadius: '16px 16px 0 0',
-          padding: 20,
+          borderRadius: isMobile ? '16px 16px 0 0' : 16,
+          padding: isMobile ? '16px 16px 0' : 20,
+          boxSizing: 'border-box',
+          WebkitOverflowScrolling: 'touch',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ margin: '0 0 16px', fontSize: 20 }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: isMobile ? 18 : 20 }}>
           {order
             ? isVoided
               ? `查看訂單 ${order.order_no}`
@@ -377,33 +382,78 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
 
         <div style={{ marginBottom: 12 }}>
           {lines.map((line, idx) => (
-            <div key={line.key} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-              <span style={{ flex: '1 1 200px', fontSize: 14 }}>{line.label}</span>
-              <input
-                type="number"
-                min={1}
-                value={line.qty}
-                disabled={locked}
-                onChange={(e) => {
-                  const qty = Math.max(1, parseInt(e.target.value, 10) || 1)
-                  setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, qty } : l)))
-                }}
-                style={{ width: 56, padding: 6, borderRadius: 6, border: '1px solid #ccc' }}
-              />
-              <input
-                type="number"
-                min={0}
-                value={line.unit_price}
-                disabled={locked}
-                onChange={(e) => {
-                  const unit_price = Math.max(0, parseInt(e.target.value, 10) || 0)
-                  setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, unit_price } : l)))
-                }}
-                style={{ width: 80, padding: 6, borderRadius: 6, border: '1px solid #ccc' }}
-              />
-              {!locked && (
-                <button type="button" onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#c00' }}>×</button>
-              )}
+            <div
+              key={line.key}
+              style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: isMobile ? 8 : 8,
+                alignItems: isMobile ? 'stretch' : 'center',
+                marginBottom: 10,
+                paddingBottom: 10,
+                borderBottom: idx < lines.length - 1 ? '1px solid #f0f0f0' : 'none',
+              }}
+            >
+              <span style={{ flex: '1 1 200px', fontSize: 14, lineHeight: 1.4 }}>{line.label}</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#666' }}>
+                  數
+                  <input
+                    type="number"
+                    min={1}
+                    value={line.qty}
+                    disabled={locked}
+                    onChange={(e) => {
+                      const qty = Math.max(1, parseInt(e.target.value, 10) || 1)
+                      setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, qty } : l)))
+                    }}
+                    style={{
+                      width: 56,
+                      padding: 8,
+                      borderRadius: 6,
+                      border: '1px solid #ccc',
+                      fontSize: 16,
+                    }}
+                  />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#666' }}>
+                  $
+                  <input
+                    type="number"
+                    min={0}
+                    value={line.unit_price}
+                    disabled={locked}
+                    onChange={(e) => {
+                      const unit_price = Math.max(0, parseInt(e.target.value, 10) || 0)
+                      setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, unit_price } : l)))
+                    }}
+                    style={{
+                      width: 80,
+                      padding: 8,
+                      borderRadius: 6,
+                      border: '1px solid #ccc',
+                      fontSize: 16,
+                    }}
+                  />
+                </label>
+                {!locked && (
+                  <button
+                    type="button"
+                    onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      color: '#c00',
+                      fontSize: 22,
+                      minWidth: 44,
+                      minHeight: 44,
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -423,7 +473,20 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
           style={{ width: '100%', marginBottom: 16, padding: 8, borderRadius: 8, border: '1px solid #ccc', boxSizing: 'border-box' }}
         />
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            background: '#fff',
+            borderTop: '1px solid #eee',
+            margin: isMobile ? '0 -16px' : '0 -20px',
+            padding: isMobile ? '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))' : '16px 20px 0',
+            display: 'flex',
+            gap: 10,
+            justifyContent: 'flex-end',
+            flexWrap: 'wrap',
+          }}
+        >
           {saveError && (
             <p
               style={{
@@ -436,7 +499,17 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
               {saveError}
             </p>
           )}
-          <button type="button" onClick={onClose} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #ccc', background: '#fff' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: isMobile ? '12px 16px' : '10px 16px',
+              borderRadius: 8,
+              border: '1px solid #ccc',
+              background: '#fff',
+              minHeight: isMobile ? 44 : undefined,
+            }}
+          >
             {isVoided ? '關閉' : '取消'}
           </button>
           {order && !isVoided && (
@@ -444,7 +517,14 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
               type="button"
               disabled={saving}
               onClick={() => void handleVoid()}
-              style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #c62828', background: '#fff', color: '#c62828' }}
+              style={{
+                padding: isMobile ? '12px 16px' : '10px 16px',
+                borderRadius: 8,
+                border: '1px solid #c62828',
+                background: '#fff',
+                color: '#c62828',
+                minHeight: isMobile ? 44 : undefined,
+              }}
             >
               作廢
             </button>
@@ -454,7 +534,15 @@ export function OrderEditDialog({ open, order, userEmail, onClose, onSaved }: Pr
               type="button"
               disabled={saving}
               onClick={() => void handleSave()}
-              style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#333', color: '#fff' }}
+              style={{
+                padding: isMobile ? '12px 20px' : '10px 20px',
+                borderRadius: 8,
+                border: 'none',
+                background: '#333',
+                color: '#fff',
+                minHeight: isMobile ? 44 : undefined,
+                fontWeight: 600,
+              }}
             >
               {saving ? '儲存中…' : '儲存'}
             </button>

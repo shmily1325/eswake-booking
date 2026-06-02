@@ -26,6 +26,8 @@ import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../..
 
 import { useToast } from '../../../components/ui'
 
+import { useResponsive } from '../../../hooks/useResponsive'
+
 import { ProductManagement } from './ProductManagement'
 
 import { OrderManagement } from '../orders/OrderManagement'
@@ -41,6 +43,8 @@ export function ProductHub() {
   const location = useLocation()
 
   const toast = useToast()
+
+  const { isMobile } = useResponsive()
 
   const [ready, setReady] = useState(false)
 
@@ -136,7 +140,9 @@ export function ProductHub() {
           </AdminPillRow>
           <p style={{ margin: '0 0 14px', fontSize: 13, color: '#666', lineHeight: 1.5 }}>
             {onOrders
-              ? '預設顯示全部訂單；可用下方篩選看等貨、待結帳等。送結帳後等管理員在「訂單結帳」扣款。'
+              ? isMobile
+                ? '點上方數字篩選；現貨到了按「送結帳」。'
+                : '預設顯示全部；點上方數字篩選。現貨到了按「送結帳」通知結帳。'
               : '管理 SKU、庫存與上架。客人訂單請切換「訂單開單」。'}
           </p>
         </>

@@ -4,8 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { Footer } from '../../../components/Footer'
 import {
-  AdminPillButton,
-  AdminPillRow,
   adminContentCardStyle,
   adminLoadingStyle,
   adminStatsBarStyle,
@@ -15,7 +13,7 @@ import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { getButtonStyle } from '../../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../../utils/auth'
-import { formatDateTime } from '../../../utils/formatters'
+import { formatDate, formatDateTime, formatTime } from '../../../utils/formatters'
 import {
   cancelShopOrderBilling,
   countOrderTransactions,
@@ -29,12 +27,14 @@ import {
   deliveryMethodLabel,
   filterOrdersByInbox,
   filterOrdersBySearch,
-  formatOrderItemLabel,
+  formatOrderItemParts,
+  itemQtyChips,
   orderHasPendingBill,
   orderHasReadyToBill,
   orderHasWaitingStock,
   orderIsFullySettled,
-  orderNextStepHint,
+  orderPrimaryStatus,
+  orderStatusMeta,
   qtyBillable,
   qtyOpen,
 } from './orderUtils'
@@ -49,21 +49,12 @@ const TAB_LABELS: Record<OrderInboxTab, string> = {
   cancelled: '已作廢',
 }
 
-const TABS: { id: OrderInboxTab; label: string }[] = [
-  { id: 'all', label: TAB_LABELS.all },
-  { id: 'waiting', label: TAB_LABELS.waiting },
-  { id: 'ready', label: TAB_LABELS.ready },
-  { id: 'pending', label: TAB_LABELS.pending },
-  { id: 'settled', label: TAB_LABELS.settled },
-  { id: 'cancelled', label: TAB_LABELS.cancelled },
-]
-
-const STAT_FILTERS: { id: OrderInboxTab; label: string; color: string }[] = [
-  { id: 'waiting', label: '等貨', color: '#ef6c00' },
-  { id: 'ready', label: '可送結帳', color: '#1565c0' },
-  { id: 'pending', label: '待結帳', color: '#6a1b9a' },
-  { id: 'settled', label: '已結清', color: '#2e7d32' },
-  { id: 'cancelled', label: '已作廢', color: '#888' },
+const STAT_FILTERS: { id: OrderInboxTab; label: string; mobileLabel: string; color: string }[] = [
+  { id: 'waiting', label: '等貨', mobileLabel: '等貨', color: '#ef6c00' },
+  { id: 'ready', label: '可送結帳', mobileLabel: '可送', color: '#1565c0' },
+  { id: 'pending', label: '待結帳', mobileLabel: '待結', color: '#6a1b9a' },
+  { id: 'settled', label: '已結清', mobileLabel: '已結', color: '#2e7d32' },
+  { id: 'cancelled', label: '已作廢', mobileLabel: '作廢', color: '#888' },
 ]
 
 export function OrderManagement({ embedded = false }: { embedded?: boolean } = {}) {
@@ -182,7 +173,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     try {
       await submitShopOrderBilling(order.id, items, user?.email ?? null)
       await afterOrderMutation()
-      globalToast.success('已送結帳')
+      globalToast.success('已通知結帳')
     } catch (e: unknown) {
       globalToast.error(e instanceof Error ? e.message : '送結帳失敗')
     }
@@ -233,7 +224,15 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
 
   return (
     <>
-      <div style={adminStatsBarStyle(isMobile)}>
+      <div
+        style={{
+          ...adminStatsBarStyle(isMobile),
+          flexWrap: isMobile ? 'nowrap' : 'wrap',
+          overflowX: isMobile ? 'auto' : 'visible',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+        }}
+      >
         <button
           type="button"
           onClick={() => setStatusFilter('all')}
@@ -245,106 +244,101 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             border: 'none',
             background: tab === 'all' ? '#e3f2fd' : 'transparent',
             borderRadius: 8,
-            padding: tab === 'all' ? '4px 8px' : '4px 0',
+            padding: tab === 'all' ? '6px 10px' : '6px 4px',
             cursor: 'pointer',
+            flexShrink: 0,
+            minHeight: 36,
           }}
         >
-          <span style={{ fontSize: 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>
+          <span style={{ fontSize: isMobile ? 18 : 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>
             {tabCounts.all}
           </span>
-          <span style={{ fontSize: 12, color: tab === 'all' ? '#1565c0' : '#888' }}>筆進行中</span>
+          <span style={{ fontSize: 12, color: tab === 'all' ? '#1565c0' : '#888', whiteSpace: 'nowrap' }}>
+            進行中
+          </span>
         </button>
         <span style={{ color: '#ddd', display: isMobile ? 'none' : 'inline' }}>·</span>
         {STAT_FILTERS.map((f) => (
           <OrderStatChip
             key={f.id}
-            label={f.label}
+            label={isMobile ? f.mobileLabel : f.label}
             count={tabCounts[f.id]}
             color={f.color}
             active={tab === f.id}
+            isMobile={isMobile}
             onClick={() => setStatusFilter(f.id)}
           />
         ))}
       </div>
 
-      <div style={{ marginBottom: 12, position: 'relative' }}>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜尋訂單號、訂購人、品牌、品名、貨號、規格…"
-          style={{
-            width: '100%',
-            padding: '10px 14px 10px 36px',
-            fontSize: 14,
-            border: '1px solid #ddd',
-            borderRadius: 10,
-            boxSizing: 'border-box',
-            background: '#fff',
-          }}
-        />
-        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#999' }}>🔍</span>
-        {search && (
-          <button
-            type="button"
-            aria-label="清除搜尋"
-            onClick={() => setSearch('')}
-            style={{
-              position: 'absolute',
-              right: 8,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              border: 'none',
-              background: 'transparent',
-              color: '#999',
-              cursor: 'pointer',
-              fontSize: 16,
-            }}
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
       <div
         style={{
           display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
           gap: 10,
-          marginBottom: tab === 'all' ? 14 : 8,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
+          marginBottom: tab !== 'all' ? 8 : 14,
+          alignItems: 'stretch',
         }}
       >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
-            狀態篩選（上方數字亦可點選 · 預設顯示全部）
-          </div>
-          <AdminPillRow style={{ marginBottom: 0 }}>
-            {TABS.map((t) => (
-              <AdminPillButton
-                key={t.id}
-                active={tab === t.id}
-                badge={t.id === 'all' ? undefined : tabCounts[t.id]}
-                data-track={`product_orders_tab_${t.id}`}
-                onClick={() => setStatusFilter(t.id)}
-              >
-                {t.label}
-              </AdminPillButton>
-            ))}
-          </AdminPillRow>
+        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isMobile ? '搜尋姓名、品名、訂單號…' : '搜尋訂單號、訂購人、品牌、品名、貨號、規格…'}
+            style={{
+              width: '100%',
+              padding: isMobile ? '12px 14px 12px 36px' : '10px 14px 10px 36px',
+              fontSize: 16,
+              border: '1px solid #ddd',
+              borderRadius: 10,
+              boxSizing: 'border-box',
+              background: '#fff',
+            }}
+          />
+          <span
+            style={{
+              position: 'absolute',
+              left: 12,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#999',
+            }}
+          >
+            🔍
+          </span>
+          {search && (
+            <button
+              type="button"
+              aria-label="清除搜尋"
+              onClick={() => setSearch('')}
+              style={{
+                position: 'absolute',
+                right: 8,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                border: 'none',
+                background: 'transparent',
+                color: '#999',
+                cursor: 'pointer',
+                fontSize: 16,
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
-
         {canEdit && (
           <Button
             variant="primary"
+            fullWidth={isMobile}
             data-track="product_order_add"
             onClick={() => {
               setEditOrder(null)
               setDialogOpen(true)
             }}
           >
-            + 新增{isMobile ? '' : '訂單'}
+            + 新增訂單
           </Button>
         )}
       </div>
@@ -356,9 +350,6 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             alignItems: 'center',
             gap: 10,
             marginBottom: 14,
-            padding: '8px 12px',
-            background: '#f5f5f5',
-            borderRadius: 8,
             fontSize: 13,
             color: '#555',
             flexWrap: 'wrap',
@@ -421,7 +412,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
           )}
           {canEdit && tab === 'all' && !search.trim() && (
             <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa' }}>
-              點右上角「+ 新增訂單」開始開單
+              {isMobile ? '點下方「+ 新增訂單」開始開單' : '點右上角「+ 新增訂單」開始開單'}
             </p>
           )}
         </div>
@@ -475,114 +466,124 @@ function OrderCard({
   onVoidOrder: () => void
 }) {
   const cancelled = Boolean(order.cancelled_at)
-  const nextHint = orderNextStepHint(order)
-  const tags: string[] = []
-  if (cancelled) tags.push('已作廢')
-  else {
-    if (orderHasWaitingStock(order)) tags.push('等貨')
-    if (orderHasReadyToBill(order)) tags.push('可送結帳')
-    if (orderHasPendingBill(order)) tags.push('待結帳')
-    if (orderIsFullySettled(order)) tags.push('已結清')
-  }
+  const statusKey = orderPrimaryStatus(order)
+  const status = orderStatusMeta(statusKey)
+  const showSubmit = !cancelled && orderHasReadyToBill(order)
+  const showCancelBill = !cancelled && orderHasPendingBill(order)
 
   return (
     <div
       style={{
         background: '#fff',
         borderRadius: 12,
-        padding: isMobile ? '14px 12px' : '16px 18px',
         marginBottom: 12,
         border: '1px solid #ececec',
-        opacity: cancelled ? 0.65 : 1,
+        borderLeft: `4px solid ${status.border}`,
+        opacity: cancelled ? 0.72 : 1,
+        overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-        <div>
-          <strong style={{ fontSize: 15 }}>{order.order_no}</strong>
-          <span style={{ marginLeft: 10, color: '#555', fontSize: 14 }}>{order.contact_name}</span>
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {tags.map((t) => (
-            <OrderTag key={t} label={t} />
-          ))}
-        </div>
-      </div>
-      <p style={{ margin: '0 0 8px', fontSize: 13, color: '#666' }}>
-        {deliveryMethodLabel(order.delivery_method)}
-        {' · '}
-        {formatDateTime(order.created_at)}
-        {cancelled && order.cancelled_at && (
-          <>
-            {' · '}
-            <span style={{ color: '#888' }}>作廢 {formatDateTime(order.cancelled_at)}</span>
-          </>
-        )}
-      </p>
-      <ul style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 14 }}>
-        {order.items.map((it) => {
-          const label = formatOrderItemLabel(it)
-          const waiting = qtyOpen(it) > 0 && qtyBillable(it) === 0
-          const stockInAt = it.variant?.last_stock_in_at
-          const stockNote = waiting
-            ? (it.variant?.stock ?? 0) <= 0
-              ? '未到貨'
-              : stockInAt
-                ? `現貨 ${it.variant!.stock} · 入庫 ${formatDateTime(stockInAt)}`
-                : `現貨 ${it.variant!.stock}`
-            : stockInAt
-              ? `入庫 ${formatDateTime(stockInAt)}`
-              : null
-          return (
-            <li key={it.id}>
-              {label} × {it.qty}
-              {it.qty_pending_bill > 0 && ` （待結帳 ${it.qty_pending_bill}）`}
-              {it.qty_paid > 0 && ` （已付 ${it.qty_paid}）`}
-              {waiting && ` （等貨 ${qtyOpen(it)}）`}
-              {stockNote && ` · ${stockNote}`}
-            </li>
-          )
-        })}
-      </ul>
-      {nextHint && (
-        <p
+      <div style={{ padding: isMobile ? '14px 12px 10px' : '16px 18px 12px' }}>
+        <div
           style={{
-            margin: '0 0 10px',
-            fontSize: 12,
-            color: cancelled ? '#888' : '#555',
-            padding: '8px 10px',
-            background: cancelled ? '#f5f5f5' : '#fafafa',
-            borderRadius: 8,
-            borderLeft: `3px solid ${
-              cancelled
-                ? '#bbb'
-                : orderIsFullySettled(order)
-                  ? '#2e7d32'
-                  : orderHasReadyToBill(order)
-                    ? '#1565c0'
-                    : orderHasPendingBill(order)
-                      ? '#6a1b9a'
-                      : '#ef6c00'
-            }`,
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isMobile ? 'flex-start' : 'flex-start',
+            gap: isMobile ? 8 : 12,
           }}
         >
-          下一步：{nextHint}
-        </p>
-      )}
+          <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
+            <div
+              style={{
+                fontSize: isMobile ? 20 : 20,
+                fontWeight: 700,
+                color: '#111',
+                lineHeight: 1.25,
+                marginBottom: 4,
+                wordBreak: 'break-word',
+              }}
+            >
+              {order.contact_name}
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: '#888',
+                lineHeight: 1.5,
+                fontFamily: 'ui-monospace, monospace',
+                letterSpacing: '-0.02em',
+                marginBottom: 2,
+              }}
+            >
+              {order.order_no}
+            </div>
+            <div style={{ fontSize: 12, color: '#888', lineHeight: 1.4 }}>
+              {formatOrderCardMeta(order, isMobile)}
+              {cancelled && order.cancelled_at && (
+                <>
+                  {' · '}
+                  作廢 {isMobile ? formatDate(order.cancelled_at) : formatDateTime(order.cancelled_at)}
+                </>
+              )}
+            </div>
+          </div>
+          <OrderTag label={status.label} color={status.color} bg={status.bg} isMobile={isMobile} />
+        </div>
+      </div>
+
+      <div
+        style={{
+          borderTop: '1px solid #f0f0f0',
+          background: '#fafafa',
+          padding: isMobile ? '8px 12px' : '10px 18px',
+        }}
+      >
+        {order.items.map((it, idx) => (
+          <OrderItemRow key={it.id} item={it} isMobile={isMobile} showDivider={idx > 0} />
+        ))}
+      </div>
+
       {canEdit && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <ActionBtn isMobile={isMobile} onClick={onEdit}>
-            {cancelled ? '查看' : '編輯'}
-          </ActionBtn>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'stretch' : 'center',
+            justifyContent: 'space-between',
+            gap: isMobile ? 10 : 8,
+            padding: isMobile ? '12px' : '12px 18px 14px',
+            borderTop: '1px solid #f0f0f0',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : undefined }}>
+            {showSubmit && (
+              <ActionBtn isMobile={isMobile} primary flex={isMobile} onClick={onSubmitBilling}>
+                送結帳
+              </ActionBtn>
+            )}
+            <ActionBtn isMobile={isMobile} flex={isMobile && showSubmit} onClick={onEdit}>
+              {cancelled ? '查看' : '編輯'}
+            </ActionBtn>
+          </div>
           {!cancelled && (
-            <>
-              {orderHasReadyToBill(order) && (
-                <ActionBtn isMobile={isMobile} primary onClick={onSubmitBilling}>送結帳</ActionBtn>
+            <div
+              style={{
+                display: 'flex',
+                gap: isMobile ? 20 : 12,
+                justifyContent: isMobile ? 'center' : 'flex-end',
+                width: isMobile ? '100%' : undefined,
+              }}
+            >
+              {showCancelBill && (
+                <TextAction isMobile={isMobile} onClick={onCancelBilling}>
+                  撤回送結帳
+                </TextAction>
               )}
-              {orderHasPendingBill(order) && (
-                <ActionBtn isMobile={isMobile} onClick={onCancelBilling}>撤回送結帳</ActionBtn>
-              )}
-              <ActionBtn isMobile={isMobile} danger onClick={onVoidOrder}>作廢</ActionBtn>
-            </>
+              <TextAction isMobile={isMobile} danger onClick={onVoidOrder}>
+                作廢
+              </TextAction>
+            </div>
           )}
         </div>
       )}
@@ -590,29 +591,164 @@ function OrderCard({
   )
 }
 
-const TAG_STYLES: Record<string, { color: string; bg: string }> = {
-  等貨: { color: '#ef6c00', bg: '#fff4e0' },
-  可送結帳: { color: '#1565c0', bg: '#e3f2fd' },
-  待結帳: { color: '#6a1b9a', bg: '#f3e5f5' },
-  已結清: { color: '#2e7d32', bg: '#e8f5e9' },
-  已作廢: { color: '#888', bg: '#f5f5f5' },
+function OrderItemRow({
+  item,
+  isMobile,
+  showDivider,
+}: {
+  item: ShopOrderWithItems['items'][number]
+  isMobile: boolean
+  showDivider: boolean
+}) {
+  const { title, subtitle } = formatOrderItemParts(item)
+  const chips = itemQtyChips(item)
+  const waiting = qtyOpen(item) > 0 && qtyBillable(item) === 0
+  const stock = item.variant?.stock ?? 0
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 48px minmax(120px, auto)',
+        gap: isMobile ? 6 : '4px 12px',
+        alignItems: 'start',
+        paddingTop: showDivider ? 8 : 0,
+        marginTop: showDivider ? 8 : 0,
+        borderTop: showDivider ? '1px solid #eee' : 'none',
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#222', lineHeight: 1.35 }}>{title}</div>
+        {subtitle && (
+          <div style={{ fontSize: 12, color: '#888', marginTop: 2, lineHeight: 1.35 }}>{subtitle}</div>
+        )}
+        {waiting && stock <= 0 && (
+          <div style={{ fontSize: 11, color: '#ef6c00', marginTop: 2 }}>未到貨</div>
+        )}
+      </div>
+      {!isMobile && (
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: '#333',
+            textAlign: 'center',
+            paddingTop: 2,
+          }}
+        >
+          ×{item.qty}
+        </div>
+      )}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 6,
+          justifyContent: isMobile ? 'space-between' : 'flex-end',
+          alignItems: 'center',
+        }}
+      >
+        {isMobile && (
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>×{item.qty}</span>
+        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+          {chips.length > 0 ? (
+            chips.map((c) => <QtyChip key={c.label} label={c.label} color={c.color} bg={c.bg} />)
+          ) : (
+            <QtyChip label={`共 ${item.qty}`} color="#666" bg="#eee" />
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function OrderTag({ label }: { label: string }) {
-  const s = TAG_STYLES[label] ?? { color: '#666', bg: '#f0f0f0' }
+function QtyChip({ label, color, bg }: { label: string; color: string; bg: string }) {
   return (
     <span
       style={{
         fontSize: 11,
         fontWeight: 600,
-        padding: '3px 8px',
-        borderRadius: 999,
-        color: s.color,
-        background: s.bg,
+        padding: '2px 7px',
+        borderRadius: 6,
+        color,
+        background: bg,
+        whiteSpace: 'nowrap',
       }}
     >
       {label}
     </span>
+  )
+}
+
+function formatOrderCardMeta(order: ShopOrderWithItems, isMobile: boolean): string {
+  const delivery = deliveryMethodLabel(order.delivery_method)
+  if (isMobile) {
+    return `${delivery} · ${formatDate(order.created_at)} ${formatTime(order.created_at)}`
+  }
+  return `${delivery} · ${formatDateTime(order.created_at)}`
+}
+
+function OrderTag({
+  label,
+  color,
+  bg,
+  isMobile,
+}: {
+  label: string
+  color: string
+  bg: string
+  isMobile?: boolean
+}) {
+  return (
+    <span
+      style={{
+        fontSize: isMobile ? 12 : 11,
+        fontWeight: 700,
+        padding: isMobile ? '5px 11px' : '4px 10px',
+        borderRadius: 999,
+        color,
+        background: bg,
+        flexShrink: 0,
+        letterSpacing: '0.02em',
+        alignSelf: isMobile ? 'flex-start' : undefined,
+      }}
+    >
+      {label}
+    </span>
+  )
+}
+
+function TextAction({
+  children,
+  onClick,
+  danger,
+  isMobile,
+}: {
+  children: ReactNode
+  onClick: () => void
+  danger?: boolean
+  isMobile?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        border: 'none',
+        background: 'transparent',
+        padding: isMobile ? '10px 4px' : '6px 0',
+        minHeight: isMobile ? 44 : undefined,
+        fontSize: 13,
+        fontWeight: 500,
+        color: danger ? '#c62828' : '#666',
+        cursor: 'pointer',
+        textDecoration: 'underline',
+        textUnderlineOffset: 3,
+      }}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -622,12 +758,14 @@ function OrderStatChip({
   color,
   active,
   onClick,
+  isMobile,
 }: {
   label: string
   count: number
   color: string
   active?: boolean
   onClick?: () => void
+  isMobile?: boolean
 }) {
   const muted = count <= 0
   return (
@@ -642,8 +780,11 @@ function OrderStatChip({
         border: active ? `1px solid ${color}` : 'none',
         background: active ? `${color}14` : 'transparent',
         borderRadius: 999,
-        padding: active ? '3px 8px' : '3px 0',
+        padding: active ? '6px 10px' : isMobile ? '6px 8px' : '3px 0',
+        minHeight: isMobile ? 36 : undefined,
         cursor: onClick ? 'pointer' : 'default',
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
       }}
     >
       {label} {count}
@@ -657,19 +798,25 @@ function ActionBtn({
   primary,
   danger,
   isMobile,
+  flex,
 }: {
   children: ReactNode
   onClick: () => void
   primary?: boolean
   danger?: boolean
   isMobile: boolean
+  flex?: boolean
 }) {
   const variant = primary ? 'primary' : danger ? 'danger' : 'secondary'
   return (
     <button
       type="button"
       onClick={onClick}
-      style={getButtonStyle(variant, 'small', isMobile)}
+      style={{
+        ...getButtonStyle(variant, isMobile ? 'medium' : 'small', isMobile),
+        ...(flex ? { flex: 1 } : {}),
+        minHeight: isMobile ? 44 : undefined,
+      }}
     >
       {children}
     </button>

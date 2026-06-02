@@ -101,6 +101,76 @@ export function formatOrderItemLabel(item: ShopOrderItemWithVariant): string {
   return `${p.brand} ${p.model} · ${formatAttributes(p.category, item.variant.attributes)}`
 }
 
+export function formatOrderItemParts(item: ShopOrderItemWithVariant): {
+  title: string
+  subtitle: string
+} {
+  const p = item.variant?.product
+  if (!p || !item.variant) return { title: '商品', subtitle: '' }
+  return {
+    title: `${p.brand} ${p.model}`,
+    subtitle: formatAttributes(p.category, item.variant.attributes),
+  }
+}
+
+export type OrderStatusKey =
+  | 'cancelled'
+  | 'ready'
+  | 'partial'
+  | 'waiting'
+  | 'pending'
+  | 'settled'
+  | 'open'
+
+const ORDER_STATUS_META: Record<
+  OrderStatusKey,
+  { label: string; color: string; bg: string; border: string }
+> = {
+  cancelled: { label: '已作廢', color: '#888', bg: '#f5f5f5', border: '#bbb' },
+  ready: { label: '可送結帳', color: '#1565c0', bg: '#e3f2fd', border: '#1565c0' },
+  partial: { label: '部分待結', color: '#6a1b9a', bg: '#f3e5f5', border: '#7b1fa2' },
+  waiting: { label: '等貨', color: '#ef6c00', bg: '#fff4e0', border: '#ef6c00' },
+  pending: { label: '待結帳', color: '#6a1b9a', bg: '#f3e5f5', border: '#6a1b9a' },
+  settled: { label: '已結清', color: '#2e7d32', bg: '#e8f5e9', border: '#2e7d32' },
+  open: { label: '進行中', color: '#666', bg: '#f0f0f0', border: '#ccc' },
+}
+
+/** 卡片主狀態（單一 badge，依可執行動作優先） */
+export function orderPrimaryStatus(order: ShopOrderWithItems): OrderStatusKey {
+  if (order.cancelled_at) return 'cancelled'
+  if (orderIsFullySettled(order)) return 'settled'
+  if (orderHasReadyToBill(order)) return 'ready'
+  if (orderHasPendingBill(order) && orderHasWaitingStock(order)) return 'partial'
+  if (orderHasPendingBill(order)) return 'pending'
+  if (orderHasWaitingStock(order)) return 'waiting'
+  return 'open'
+}
+
+export function orderStatusMeta(key: OrderStatusKey) {
+  return ORDER_STATUS_META[key]
+}
+
+export type ItemQtyChip = { label: string; color: string; bg: string }
+
+/** 品項列右側數量狀態 chip */
+export function itemQtyChips(item: ShopOrderItemWithVariant): ItemQtyChip[] {
+  const chips: ItemQtyChip[] = []
+  const open = qtyOpen(item)
+  const billable = qtyBillable(item)
+  if (item.qty_paid > 0) {
+    chips.push({ label: `已付 ${item.qty_paid}`, color: '#2e7d32', bg: '#e8f5e9' })
+  }
+  if (item.qty_pending_bill > 0) {
+    chips.push({ label: `待結 ${item.qty_pending_bill}`, color: '#6a1b9a', bg: '#f3e5f5' })
+  }
+  if (open > 0 && billable === 0) {
+    chips.push({ label: `等貨 ${open}`, color: '#ef6c00', bg: '#fff4e0' })
+  } else if (billable > 0) {
+    chips.push({ label: `可送 ${billable}`, color: '#1565c0', bg: '#e3f2fd' })
+  }
+  return chips
+}
+
 /** 送結帳 confirm 文案（含品項摘要） */
 export function buildSubmitBillingConfirmMessage(order: ShopOrderWithItems): string {
   const billable = order.items
@@ -115,23 +185,8 @@ export function buildSubmitBillingConfirmMessage(order: ShopOrderWithItems): str
     '',
     ...itemLines,
     '',
-    `共 ${billable.length} 品項、${totalQty} 件；將保留現貨並進入待結帳。`,
+    `共 ${billable.length} 品項、${totalQty} 件；將保留現貨並通知結帳。`,
   ].join('\n')
-}
-
-/** 訂單卡下一步提示（商品同事視角） */
-export function orderNextStepHint(order: ShopOrderWithItems): string | null {
-  if (order.cancelled_at) return '已作廢，僅供查閱'
-  if (orderIsFullySettled(order)) return '已全部結清'
-  if (orderHasPendingBill(order) && orderHasReadyToBill(order)) {
-    return '部分已送結帳；仍有現貨可再按「送結帳」'
-  }
-  if (orderHasPendingBill(order)) {
-    return '已送結帳，等管理員在 header「訂單結帳」扣款'
-  }
-  if (orderHasReadyToBill(order)) return '現貨已到，可按「送結帳」'
-  if (orderHasWaitingStock(order)) return '等貨中；入庫後會變為可送結帳'
-  return null
 }
 
 /** 台灣「折」：9 → 0.9、85 → 0.85；也接受 0.9 */
