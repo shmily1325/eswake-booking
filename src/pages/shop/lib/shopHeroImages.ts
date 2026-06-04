@@ -26,11 +26,9 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     objectPosition: 'center 32%',
     objectPositionClass:
       'object-[center_30%] sm:object-[58%_28%] md:object-[68%_26%] lg:object-[78%_24%]',
-    collectionObjectPosition: 'center 30%',
+    collectionObjectPosition: '55% 32%',
     collectionObjectPositionClass:
-      'object-[center_32%] max-sm:object-[center_35%] sm:object-[62%_28%] md:object-[72%_26%] lg:object-[80%_24%]',
-    collectionAspectClass:
-      'sm:min-h-[220px] md:min-h-[260px] lg:aspect-[2.5/1] lg:max-h-[320px] lg:min-h-0',
+      'object-[center_34%] max-sm:object-[center_36%] sm:object-[58%_32%] md:object-[62%_30%] lg:object-[68%_28%]',
   },
   Wakesurfing: {
     src: '/shop/heroes/wakesurfing.jpg',

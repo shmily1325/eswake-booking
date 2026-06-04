@@ -74,15 +74,20 @@ const CATALOG_DESKTOP_ASPECT = 'aspect-[2.15/1] max-h-[min(48vh,480px)]'
 /** 手機 Catalog：大圖區，字改黑底不疊圖 */
 const CATALOG_MOBILE_H = 'h-[min(38vh,220px)] min-h-[180px]'
 
+/** 分類頁：較高畫框，避免直向動作照被上下截掉 */
 const COLLECTION_MOBILE_H = {
-  default: 'h-[140px]',
-  tall: 'h-[152px]',
+  default: 'h-[min(36vh,210px)] min-h-[176px]',
+  tall: 'h-[min(38vh,224px)] min-h-[188px]',
 } as const
 
 const COLLECTION_DESKTOP_ASPECT = {
-  default: 'aspect-[2.75/1] max-h-[260px]',
-  tall: 'aspect-[2.55/1] max-h-[280px]',
+  default: 'aspect-[2.05/1] max-h-[min(42vh,400px)]',
+  tall: 'aspect-[1.95/1] max-h-[min(44vh,420px)]',
 } as const
+
+const HERO_TITLE =
+  'font-black italic uppercase tracking-tight leading-none text-white ' +
+  '[text-shadow:0_1px_0_rgba(0,0,0,0.9),0_4px_24px_rgba(0,0,0,0.75)]'
 
 export function ShopListHero({
   mode,
@@ -108,65 +113,72 @@ export function ShopListHero({
       ? COLLECTION_DESKTOP_ASPECT.tall
       : COLLECTION_DESKTOP_ASPECT.default
 
-    return (
-      <div className="flex flex-col w-full bg-black">
-        {hero ? (
-          <>
-            <div
-              className={`relative w-full overflow-hidden border-b border-white/10 sm:hidden ${mobileH}`}
-            >
-              <img
-                src={hero.src}
-                alt=""
-                className={HERO_IMG + positionClass}
-                decoding="async"
-              />
-              <HeroAtmosphere mode="photo-only" />
-            </div>
-            <div
-              className={`hidden sm:block ${HERO_FRAME} ${desktopAspect} border-b border-white/10`}
-            >
-              <img
-                src={hero.src}
-                alt=""
-                className={HERO_IMG + positionClass}
-                decoding="async"
-              />
-              <HeroAtmosphere mode="photo-only" />
-            </div>
-          </>
-        ) : (
-          <div className="h-px max-w-7xl mx-auto w-full bg-white/10" aria-hidden />
+    const caption = (
+      <div className="absolute inset-0 z-10 flex flex-col justify-end px-4 sm:px-6 pb-3 sm:pb-5 max-w-7xl mx-auto w-full pointer-events-none">
+        {parentGroup && (
+          <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-white/75 mb-0.5 sm:mb-1">
+            {parentGroup}
+          </p>
         )}
-
-        <div className="bg-black px-4 sm:px-6 py-2.5 sm:py-3 max-w-7xl w-full mx-auto">
-          {parentGroup && (
-            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-0.5 sm:mb-1">
-              {parentGroup}
-            </p>
-          )}
-
-          <div className="flex items-end justify-between gap-3">
-            <h1 className="font-black italic uppercase tracking-tight leading-none text-xl sm:text-2xl md:text-3xl min-w-0">
-              {title}
-            </h1>
-            {!loading && itemCount != null && (
-              <p className="shrink-0 text-[11px] sm:text-xs text-zinc-500 tracking-wide pb-0.5">
-                {SHOP_COPY.itemCount(itemCount)}
-              </p>
-            )}
-          </div>
-
-          {preOrderOnly && (
-            <p className="mt-1.5 text-xs text-gray-400 sm:text-sm">{SHOP_COPY.preOrderHint}</p>
-          )}
-
-          {searchQuery.trim() && (
-            <p className="mt-1.5 text-xs text-gray-400 sm:text-sm">
-              {SHOP_COPY.searchContext(searchQuery.trim())}
+        <div className="flex items-end justify-between gap-3">
+          <h1
+            className={
+              HERO_TITLE + ' min-w-0 text-2xl sm:text-3xl md:text-4xl lg:text-5xl'
+            }
+          >
+            {title}
+          </h1>
+          {!loading && itemCount != null && (
+            <p className="shrink-0 text-[11px] sm:text-xs text-white/85 tracking-wide pb-1 [text-shadow:0_1px_8px_rgba(0,0,0,0.8)]">
+              {SHOP_COPY.itemCount(itemCount)}
             </p>
           )}
         </div>
+        {preOrderOnly && (
+          <p className="mt-1.5 text-xs text-white/90 sm:text-sm [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
+            {SHOP_COPY.preOrderHint}
+          </p>
+        )}
+        {searchQuery.trim() && (
+          <p className="mt-1.5 text-xs text-white/90 sm:text-sm [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
+            {SHOP_COPY.searchContext(searchQuery.trim())}
+          </p>
+        )}
+      </div>
+    )
+
+    return (
+      <div className="w-full bg-black border-b border-white/10">
+        {hero ? (
+          <>
+            <div
+              className={`relative w-full overflow-hidden sm:hidden ${mobileH}`}
+            >
+              <img
+                src={hero.src}
+                alt=""
+                className={HERO_IMG + positionClass}
+                decoding="async"
+              />
+              <HeroAtmosphere mode="caption-bottom" />
+              {caption}
+            </div>
+            <div className={`hidden sm:block relative ${HERO_FRAME} ${desktopAspect}`}>
+              <img
+                src={hero.src}
+                alt=""
+                className={HERO_IMG + positionClass}
+                decoding="async"
+              />
+              <HeroAtmosphere mode="caption-bottom" />
+              {caption}
+            </div>
+          </>
+        ) : (
+          <div className="px-4 py-3 max-w-7xl mx-auto">
+            <h1 className={HERO_TITLE + ' text-2xl'}>{title}</h1>
+          </div>
+        )}
       </div>
     )
   }
