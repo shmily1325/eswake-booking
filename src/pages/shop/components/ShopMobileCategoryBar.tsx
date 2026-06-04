@@ -101,6 +101,7 @@ export function ShopCategoryBar({
                 key={cat.id}
                 active={filters.subCat === cat.id}
                 onClick={() => onSelectCategory(activeGroup!, cat.id)}
+                subdued
                 onDark={onDark}
               >
                 {getCategoryShopName(cat)}
@@ -122,6 +123,7 @@ export function ShopCategoryBar({
               key={cat.id}
               active={filters.subCat === cat.id}
               onClick={() => onSelectCategory(activeGroup!, cat.id)}
+              subdued
               onDark={onDark}
             >
               {getCategoryShopName(cat)}
@@ -136,13 +138,13 @@ export function ShopCategoryBar({
 function CategoryChip({
   active,
   partial = false,
+  subdued = false,
   onDark = false,
   onClick,
   children,
 }: {
   active: boolean
   partial?: boolean
-  /** @deprecated dark 模式下與一般 inactive 相同 */
   subdued?: boolean
   onDark?: boolean
   onClick: () => void
@@ -156,11 +158,17 @@ function CategoryChip({
       className += 'bg-white text-zinc-900'
     } else if (partial) {
       className += 'bg-white/15 text-white border border-white'
+    } else if (subdued) {
+      className +=
+        'bg-transparent text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200'
     } else {
-      className += 'bg-transparent text-white border border-white/45 hover:bg-white/10 hover:border-white/80'
+      className +=
+        'bg-transparent text-white border border-white/45 hover:bg-white/10 hover:border-white/80'
     }
   } else if (active) {
     className += 'bg-zinc-900 text-white'
+  } else if (subdued) {
+    className += 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
   } else {
     className += 'bg-white text-gray-800 border border-gray-200 hover:border-gray-300'
   }
