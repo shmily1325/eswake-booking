@@ -8,8 +8,14 @@ import { ActiveFilterPills } from './components/ActiveFilterPills'
 import { ShopFilterDrawer } from './components/ShopFilterDrawer'
 import { ShopFilterSidebar } from './components/ShopFilterSidebar'
 import { ShopCategoryBar } from './components/ShopMobileCategoryBar'
+import { ShopListHero } from './components/ShopListHero'
 import { useShopFilters } from './hooks/useShopFilters'
-import { getHeroTitle, isShopCatalogHome, type SortBy } from './lib/shopFilters'
+import {
+  getCollectionParentGroup,
+  getHeroTitle,
+  isShopCatalogHome,
+  type SortBy,
+} from './lib/shopFilters'
 import { SHOP_COPY, SHOP_LABEL } from './lib/shopCopy'
 
 /**
@@ -62,6 +68,7 @@ export function ShopList() {
 
   const heroTitle = getHeroTitle(filters)
   const showFullHero = isShopCatalogHome(filters)
+  const collectionParent = getCollectionParentGroup(filters)
   const showRefinePanel =
     facets.preOrderCount > 0 || facets.brandCounts.size > 0
   const mobileRefineCount =
@@ -73,26 +80,25 @@ export function ShopList() {
     <div className="min-h-screen bg-gray-50">
       <ShopHeader />
 
-      {showFullHero && (
-        <section className="bg-black text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-            <h1 className="font-black italic uppercase tracking-tight text-3xl sm:text-6xl md:text-7xl leading-none">
-              {heroTitle}
-            </h1>
-            <p className="mt-4 text-xs sm:text-sm italic tracking-[0.35em] text-gray-400 uppercase">
-              {SHOP_COPY.tagline}
-            </p>
-          </div>
-        </section>
-      )}
-
-      <ShopCategoryBar
-        filters={filters}
-        groupCounts={facets.groupCounts}
-        categoryCounts={facets.categoryCounts}
-        onSelectAll={selectAll}
-        onSelectCategory={selectCategory}
-      />
+      <section className="bg-black text-white">
+        <ShopListHero
+          mode={showFullHero ? 'catalog' : 'collection'}
+          title={heroTitle}
+          parentGroup={collectionParent}
+          preOrderOnly={filters.preOrderOnly}
+          searchQuery={filters.search}
+          itemCount={filteredProducts.length}
+          loading={loading}
+        />
+        <ShopCategoryBar
+          filters={filters}
+          groupCounts={facets.groupCounts}
+          categoryCounts={facets.categoryCounts}
+          onSelectAll={selectAll}
+          onSelectCategory={selectCategory}
+          variant="dark"
+        />
+      </section>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="flex gap-8 items-start">
@@ -128,8 +134,8 @@ export function ShopList() {
                     )}
                   </button>
                 )}
-                {!loading && (
-                  <span className="text-xs text-gray-500 truncate">
+                {!loading && showFullHero && (
+                  <span className="text-xs text-gray-500 truncate lg:hidden">
                     {SHOP_COPY.itemCount(filteredProducts.length)}
                   </span>
                 )}

@@ -32,4 +32,5 @@ export const SHOP_COPY = {
   emptyCatalog: '目前還沒有上架商品',
   loadError: '暫時無法載入商品',
   reload: '重新載入',
+  searchContext: (q: string) => `搜尋「${q}」`,
 } as const

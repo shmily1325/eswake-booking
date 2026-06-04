@@ -299,6 +299,15 @@ export function isShopCatalogHome(filters: ShopFilterState): boolean {
   )
 }
 
+/** 子分類頁顯示上層 group（例：Apparel → Essentials） */
+export function getCollectionParentGroup(
+  filters: ShopFilterState,
+): string | null {
+  if (filters.subCat === ALL_SUBCATS) return null
+  if (filters.topLevel === ALL_GROUPS) return null
+  return filters.topLevel
+}
+
 export function getSubCategoriesForGroup(
   topLevel: TopLevel,
   categoryCounts: Map<string, number>,

@@ -11,6 +11,7 @@ import {
   normalizeFilterState,
   parseFiltersFromSearchParams,
   pruneUnavailableBrands,
+  getCollectionParentGroup,
   isShopCatalogHome,
 } from '../shopFilters'
 
@@ -167,5 +168,15 @@ describe('isShopCatalogHome', () => {
     expect(
       isShopCatalogHome({ ...defaultFilterState(), search: 'ronix' }),
     ).toBe(false)
+  })
+})
+
+describe('getCollectionParentGroup', () => {
+  it('returns shop group when a subcategory is selected', () => {
+    const filters = normalizeFilterState({
+      ...defaultFilterState(),
+      subCat: 'lifejacket',
+    })
+    expect(getCollectionParentGroup(filters)).toBe('Essentials')
   })
 })
