@@ -6,6 +6,11 @@ export type ShopHeroKey = 'catalog' | ShopGroup
 /** action = 直向動作照加高；square = 近方形圖，置中、較少放大 */
 export type ShopHeroFrame = 'action' | 'square'
 
+export type CatalogCollageAccent = {
+  src: string
+  objectPositionClass: string
+}
+
 export type ShopHeroImageConfig = {
   src: string
   objectPosition: string
@@ -15,6 +20,8 @@ export type ShopHeroImageConfig = {
   collectionAspectClass?: string
   tallCollectionBand?: boolean
   heroFrame?: ShopHeroFrame
+  /** 桌機 Catalog 右上斜切副圖 */
+  catalogCollageAccent?: CatalogCollageAccent
 }
 
 export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
@@ -24,6 +31,10 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     // 船在中左：焦點偏左，桌機勿往右移到僅剩人物
     objectPositionClass:
       'object-[38%_52%] sm:object-[34%_48%] md:object-[32%_46%] lg:object-[30%_44%]',
+    catalogCollageAccent: {
+      src: '/shop/heroes/catalog-accent.jpg',
+      objectPositionClass: 'object-[52%_48%] md:object-[50%_45%]',
+    },
   },
   Wakeboarding: {
     src: '/shop/heroes/wakeboarding.jpg',

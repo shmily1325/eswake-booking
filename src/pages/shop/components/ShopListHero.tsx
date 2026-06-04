@@ -1,3 +1,4 @@
+import { CatalogHeroCollage } from './CatalogHeroCollage'
 import { SHOP_COPY } from '../lib/shopCopy'
 import {
   getShopHeroPositionClass,
@@ -249,18 +250,27 @@ export function ShopListHero({
         )}
       </div>
 
-      {/* 桌機 Catalog：固定 2.35:1 畫框 + 左右黑邊 */}
+      {/* 桌機 Catalog：主圖 + 斜切副圖；手機維持單張 */}
       <div className="hidden sm:block w-full bg-black border-b border-white/10">
         <div className={`${HERO_FRAME} ${CATALOG_DESKTOP_ASPECT}`}>
           {hero ? (
             <>
-              <img
-                src={hero.src}
-                alt=""
-                className={catalogImgClass}
-                decoding="async"
-                fetchPriority="high"
-              />
+              {hero.catalogCollageAccent ? (
+                <CatalogHeroCollage
+                  mainSrc={hero.src}
+                  accentSrc={hero.catalogCollageAccent.src}
+                  mainImgClass={positionClass}
+                  accentObjectClass={hero.catalogCollageAccent.objectPositionClass}
+                />
+              ) : (
+                <img
+                  src={hero.src}
+                  alt=""
+                  className={catalogImgClass}
+                  decoding="async"
+                  fetchPriority="high"
+                />
+              )}
               <HeroAtmosphere mode="caption-bottom" />
             </>
           ) : (
