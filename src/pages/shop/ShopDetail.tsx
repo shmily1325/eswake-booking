@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { fetchProductWithVariants } from '../admin/products/api'
 import type { ProductWithVariants, ProductVariantRow } from '../admin/products/types'
 import { ShopHeader } from './components/ShopHeader'
@@ -21,6 +21,7 @@ import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
 import { ImageOrFallback } from './components/ImageOrFallback'
+import { getShopReturnTo } from './lib/shopReturnTo'
 
 /** Supabase 的 `id` 是 uuid，亂打字串會炸出 22P02 錯誤，先在 client 擋掉 */
 const UUID_REGEX =
@@ -425,13 +426,14 @@ function LoadingState() {
 }
 
 function ErrorState({ message }: { message: string }) {
+  const backTo = getShopReturnTo(useLocation().state)
   return (
     <div className="text-center py-16">
       <AlertIcon className="mx-auto mb-3 w-12 h-12 text-gray-300" />
       <h2 className="text-lg font-semibold text-zinc-900">暫時無法載入商品</h2>
       <p className="mt-1 text-sm text-gray-500">{message}</p>
       <Link
-        to="/shop"
+        to={backTo}
         className="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800"
       >
         ← Back to products
@@ -441,13 +443,14 @@ function ErrorState({ message }: { message: string }) {
 }
 
 function NotFoundState() {
+  const backTo = getShopReturnTo(useLocation().state)
   return (
     <div className="text-center py-16 text-gray-500">
       <SearchIcon className="mx-auto mb-3 w-12 h-12 text-gray-300" />
       <h2 className="text-lg font-semibold text-zinc-900">找不到這個商品</h2>
       <p className="mt-1 text-sm">商品可能已下架或網址有誤。</p>
       <Link
-        to="/shop"
+        to={backTo}
         className="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800"
       >
         ← Back to products

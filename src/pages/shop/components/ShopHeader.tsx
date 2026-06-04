@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useShopCart } from '../hooks/useShopCart'
+import { getShopReturnTo } from '../lib/shopReturnTo'
 
 interface ShopHeaderProps {
   showBack?: boolean
@@ -21,6 +22,7 @@ export function ShopHeader({ showBack = false, blendBelow = false }: ShopHeaderP
   }, [urlQuery])
 
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const backTo = getShopReturnTo(location.state)
 
   const isListPage =
     location.pathname === '/shop' ||
@@ -57,7 +59,7 @@ export function ShopHeader({ showBack = false, blendBelow = false }: ShopHeaderP
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
           {showBack && (
             <Link
-              to="/shop"
+              to={backTo}
               className="text-gray-300 hover:text-white text-sm flex items-center gap-1 shrink-0"
               aria-label="Back to products"
             >

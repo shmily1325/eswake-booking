@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import type { ProductVariantRow, ProductRow } from '../../admin/products/types'
 import {
   formatProductPriceRange,
@@ -11,6 +11,10 @@ import {
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_LABEL } from '../lib/shopCopy'
+import {
+  SHOP_RETURN_TO_KEY,
+  shopListPathFromLocation,
+} from '../lib/shopReturnTo'
 
 interface ProductCardProps {
   product: ProductRow
@@ -18,6 +22,12 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, variants }: ProductCardProps) {
+  const location = useLocation()
+  const returnTo = shopListPathFromLocation(
+    location.pathname,
+    location.search,
+  )
+
   const visibleVariants = getShopVisibleVariants(variants)
   const summary = summarizeProductAvailability(variants)
   const imageUrl = getProductImageUrl(product, visibleVariants.length ? visibleVariants : variants)
@@ -29,6 +39,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
   return (
     <Link
       to={`/shop/${product.id}`}
+      state={{ [SHOP_RETURN_TO_KEY]: returnTo }}
       className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >
       <div className="relative aspect-4/5 bg-gray-100 overflow-hidden">
