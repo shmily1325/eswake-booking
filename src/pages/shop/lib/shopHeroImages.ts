@@ -73,14 +73,14 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
 export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> = {
   wb_board: {
     src: '/shop/heroes/wb-board.jpg',
-    objectPosition: 'center 56%',
+    objectPosition: 'center 38%',
     objectPositionClass:
-      'object-[center_54%] sm:object-[center_56%] md:object-[center_58%]',
-    collectionObjectPosition: 'center 56%',
+      'object-[center_36%] sm:object-[center_38%] md:object-[center_40%]',
+    collectionObjectPosition: 'center 38%',
     collectionObjectPositionClass:
-      'object-[center_54%] max-sm:object-[center_56%] sm:object-[center_56%] md:object-[center_58%] lg:object-[center_60%]',
+      'object-[center_34%] max-sm:object-[center_32%] sm:object-[center_36%] md:object-[center_38%] lg:object-[center_40%]',
     heroFrame: 'square',
-    heroScaleClass: 'max-sm:scale-[1.03] sm:scale-[1.01]',
+    heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.05]',
   },
   wb_boots: {
     src: '/shop/heroes/wb-boots.jpg',
