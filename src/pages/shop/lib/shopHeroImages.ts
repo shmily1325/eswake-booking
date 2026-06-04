@@ -46,9 +46,9 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     // 意象照 #1：滑手置中、船與水花在下；略低 Y 保留跳躍＋船尾情境
     objectPositionClass:
       'object-[center_42%] sm:object-[center_40%] md:object-[center_38%]',
-    collectionObjectPosition: 'center 42%',
+    collectionObjectPosition: 'center 36%',
     collectionObjectPositionClass:
-      'object-[center_44%] max-sm:object-[center_46%] sm:object-[center_42%] md:object-[center_48%] lg:object-[center_46%]',
+      'object-[center_44%] max-sm:object-[center_46%] sm:object-[center_42%] md:object-[center_38%] lg:object-[center_34%]',
     heroFrame: 'action',
     heroScaleClass: 'scale-[1.03]',
   },
@@ -58,9 +58,9 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     // 意象照 #5：直幅動作照，焦點在上段滑手與板
     objectPositionClass:
       'object-[center_30%] sm:object-[center_28%] md:object-[center_26%] lg:object-[center_24%]',
-    collectionObjectPosition: 'center 30%',
+    collectionObjectPosition: 'center 26%',
     collectionObjectPositionClass:
-      'object-[center_32%] max-sm:object-[center_34%] sm:object-[center_30%] md:object-[center_32%] lg:object-[center_30%]',
+      'object-[center_32%] max-sm:object-[center_34%] sm:object-[center_30%] md:object-[center_28%] lg:object-[center_24%]',
     heroFrame: 'action',
     heroScaleClass: 'scale-[1.04]',
     collectionAspectClass:
@@ -71,9 +71,9 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     objectPosition: 'center 40%',
     objectPositionClass:
       'object-[center_35%] sm:object-[45%_32%] md:object-[50%_30%]',
-    collectionObjectPosition: 'center 22%',
+    collectionObjectPosition: 'center 34%',
     collectionObjectPositionClass:
-      'object-[center_20%] max-sm:object-[48%_24%] sm:object-[42%_22%] md:object-[center_18%] lg:object-[center_14%]',
+      'object-[center_20%] max-sm:object-[48%_24%] sm:object-[42%_22%] md:object-[center_32%] lg:object-[center_36%]',
     collectionAspectClass:
       'sm:min-h-[220px] md:min-h-[260px] lg:aspect-[2.5/1] lg:max-h-[300px] lg:min-h-0',
     tallCollectionBand: true,
