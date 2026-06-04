@@ -19,14 +19,34 @@ export function formatPrice(amount: number): string {
   return `NT$ ${amount.toLocaleString('en-US')}`
 }
 
+/** DB 售價正規化（含字串數字）；無效或 0 視為未訂價 */
+export function normalizeShopPrice(value: unknown): number | null {
+  if (value == null) return null
+  const n =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim() !== ''
+        ? Number(value)
+        : NaN
+  if (!Number.isFinite(n) || n <= 0) return null
+  return Math.round(n)
+}
+
+function collectEffectivePrices(variants: ProductVariantRow[]): number[] {
+  const prices: number[] = []
+  for (const v of variants) {
+    const p = normalizeShopPrice(v.price)
+    if (p != null) prices.push(p)
+  }
+  return prices
+}
+
 /**
  * 取得商品的最低有效價（給排序用）。
  * 全部變體都沒價格時回 null，呼叫端決定排序時放在最前或最後。
  */
 export function getMinPrice(variants: ProductVariantRow[]): number | null {
-  const prices = variants
-    .map((v) => v.price)
-    .filter((p): p is number => typeof p === 'number')
+  const prices = collectEffectivePrices(variants)
   if (prices.length === 0) return null
   return Math.min(...prices)
 }
@@ -34,13 +54,11 @@ export function getMinPrice(variants: ProductVariantRow[]): number | null {
 /**
  * 從一組變體中算出商品價格顯示字串。
  * - 只有一個有效價：顯示「NT$ 5,000」
- * - 多個不同價：顯示「NT$ 5,000 起」
- * - 全部 null：顯示「價格洽詢」
+ * - 多個不同價：顯示「NT$ 5,000 起」（最低價 + 起）
+ * - 全部未訂價：顯示「價格洽詢」
  */
 export function formatProductPriceRange(variants: ProductVariantRow[]): string {
-  const prices = variants
-    .map((v) => v.price)
-    .filter((p): p is number => typeof p === 'number')
+  const prices = collectEffectivePrices(variants)
   if (prices.length === 0) return '價格洽詢'
   const min = Math.min(...prices)
   const max = Math.max(...prices)
