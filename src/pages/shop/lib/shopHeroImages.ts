@@ -5,12 +5,12 @@ export type ShopHeroKey = 'catalog' | ShopGroup
 
 export type ShopHeroImageConfig = {
   src: string
-  /** 手機預設 object-position（inline fallback） */
   objectPosition: string
-  /** Tailwind responsive object-position；寬螢幕與直向素材必備 */
   objectPositionClass: string
   collectionObjectPosition?: string
   collectionObjectPositionClass?: string
+  /** 分類頁桌機橫幅比例（方形／直向素材需較高，避免裁成模糊水花） */
+  collectionAspectClass?: string
   tallCollectionBand?: boolean
 }
 
@@ -27,9 +27,11 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     objectPosition: 'center 42%',
     objectPositionClass:
       'object-[center_42%] sm:object-[52%_44%] md:object-[55%_48%] lg:object-[58%_50%]',
-    collectionObjectPosition: 'center 50%',
+    collectionObjectPosition: '50% 58%',
     collectionObjectPositionClass:
-      'object-[center_48%] sm:object-[52%_50%] md:object-[55%_52%]',
+      'object-[50%_58%] max-sm:object-[52%_60%] sm:object-[50%_58%] md:object-[48%_56%] lg:object-[46%_54%]',
+    collectionAspectClass:
+      'sm:min-h-[220px] md:min-h-[248px] lg:aspect-[2.35/1] lg:max-h-[320px] lg:min-h-0',
   },
   Wakesurfing: {
     src: '/shop/heroes/wakesurfing.jpg',
@@ -47,7 +49,9 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
       'object-[center_35%] sm:object-[45%_32%] md:object-[50%_30%]',
     collectionObjectPosition: 'center 22%',
     collectionObjectPositionClass:
-      'object-[center_20%] sm:object-[42%_22%] md:object-[48%_24%]',
+      'object-[center_20%] max-sm:object-[48%_24%] sm:object-[42%_22%] md:object-[48%_24%]',
+    collectionAspectClass:
+      'sm:min-h-[220px] md:min-h-[260px] lg:aspect-[2.5/1] lg:max-h-[300px] lg:min-h-0',
     tallCollectionBand: true,
   },
 }
