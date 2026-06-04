@@ -68,6 +68,17 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
       'sm:min-h-[220px] md:min-h-[260px] lg:aspect-[2.45/1] lg:max-h-[300px] lg:min-h-0',
     tallCollectionBand: true,
   },
+  lifejacket: {
+    src: '/shop/heroes/lifejacket.jpg',
+    objectPosition: 'center 45%',
+    objectPositionClass:
+      'object-[center_48%] sm:object-[42%_45%] md:object-[38%_42%] lg:object-[35%_40%]',
+    collectionObjectPosition: 'center 46%',
+    collectionObjectPositionClass:
+      'object-[center_50%] max-sm:object-[center_48%] sm:object-[40%_46%] md:object-[38%_44%]',
+    collectionAspectClass:
+      'sm:min-h-[220px] md:min-h-[248px] lg:aspect-[2.55/1] lg:max-h-[300px] lg:min-h-0',
+  },
 }
 
 export function getShopHeroPositionClass(
