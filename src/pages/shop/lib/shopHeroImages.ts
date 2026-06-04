@@ -27,14 +27,15 @@ export type ShopHeroImageConfig = {
 export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
   catalog: {
     src: '/shop/heroes/catalog.jpg',
-    objectPosition: 'center 48%',
-    // 意象照 #3：Centurion 側面全船，置中
+    objectPosition: '38% 48%',
+    // 意象照 #8（左主）：Nautique + 人物，焦點略左保留船名與人
     objectPositionClass:
-      'object-[center_50%] sm:object-[center_48%] md:object-[center_46%]',
+      'object-[38%_52%] sm:object-[36%_50%] md:object-[34%_48%] lg:object-[32%_46%]',
     catalogCollageAccent: {
       src: '/shop/heroes/catalog-accent.jpg',
-      // 意象照 #8：Nautique 船 + 人物，副圖偏右保留船上的人
-      objectPositionClass: 'object-[54%_48%] md:object-[52%_45%]',
+      // 意象照 #3（右副）：Centurion 側面，窄條置中
+      objectPositionClass:
+        'object-[center_45%] md:object-[center_42%] lg:object-[52%_40%]',
     },
   },
   Wakeboarding: {
