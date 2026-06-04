@@ -3,6 +3,9 @@ import { ALL_GROUPS, ALL_SUBCATS, type ShopFilterState, type TopLevel } from './
 
 export type ShopHeroKey = 'catalog' | ShopGroup
 
+/** action = 直向動作照加高；square = 近方形圖，置中、較少放大 */
+export type ShopHeroFrame = 'action' | 'square'
+
 export type ShopHeroImageConfig = {
   src: string
   objectPosition: string
@@ -11,6 +14,7 @@ export type ShopHeroImageConfig = {
   collectionObjectPositionClass?: string
   collectionAspectClass?: string
   tallCollectionBand?: boolean
+  heroFrame?: ShopHeroFrame
 }
 
 export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
@@ -29,6 +33,7 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     collectionObjectPosition: '55% 32%',
     collectionObjectPositionClass:
       'object-[center_34%] max-sm:object-[center_36%] sm:object-[58%_32%] md:object-[62%_30%] lg:object-[68%_28%]',
+    heroFrame: 'action',
   },
   Wakesurfing: {
     src: '/shop/heroes/wakesurfing.jpg',
@@ -61,12 +66,10 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     src: '/shop/heroes/wb-board.jpg',
     objectPosition: 'center 50%',
     objectPositionClass:
-      'object-[center_52%] sm:object-[50%_50%] md:object-[48%_52%] lg:object-[46%_54%]',
-    collectionObjectPosition: '50% 56%',
-    collectionObjectPositionClass:
-      'object-[50%_58%] max-sm:object-[52%_60%] sm:object-[50%_56%] md:object-[48%_54%] lg:object-[46%_52%]',
-    collectionAspectClass:
-      'sm:min-h-[220px] md:min-h-[248px] lg:aspect-[2.35/1] lg:max-h-[320px] lg:min-h-0',
+      'object-[center_50%] sm:object-[center_50%] md:object-[center_50%]',
+    collectionObjectPosition: '50% 50%',
+    collectionObjectPositionClass: 'object-[50%_50%]',
+    heroFrame: 'square',
   },
   wb_boots: {
     src: '/shop/heroes/wb-boots.jpg',

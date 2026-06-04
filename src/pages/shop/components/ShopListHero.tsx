@@ -15,9 +15,18 @@ interface ShopListHeroProps {
   loading?: boolean
 }
 
-/** Ronix 感：略放大裁切 */
-const HERO_IMG =
-  'absolute inset-0 h-full w-full object-cover scale-[1.14] contrast-[1.06] saturate-[1.04] '
+const HERO_IMG_BASE =
+  'absolute inset-0 h-full w-full object-cover contrast-[1.06] saturate-[1.04] '
+
+function heroImgClass(heroConfig: ShopHeroImageConfig | null): string {
+  const scale =
+    heroConfig?.heroFrame === 'square'
+      ? 'scale-[1.05]'
+      : heroConfig?.heroFrame === 'action'
+        ? 'scale-[1.12]'
+        : 'scale-[1.14]'
+  return HERO_IMG_BASE + scale + ' '
+}
 
 type AtmosphereMode = 'default' | 'photo-only' | 'caption-bottom'
 
@@ -71,19 +80,50 @@ const HERO_FRAME =
 /** Catalog 桌機：略高、更搶眼 */
 const CATALOG_DESKTOP_ASPECT = 'aspect-[2.15/1] max-h-[min(48vh,480px)]'
 
-/** 手機 Catalog：大圖區，字改黑底不疊圖 */
-const CATALOG_MOBILE_H = 'h-[min(38vh,220px)] min-h-[180px]'
+/** 手機 Catalog：字壓圖左下 */
+const CATALOG_MOBILE_H = 'h-[min(40vh,240px)] min-h-[190px]'
 
-/** 分類頁：較高畫框，避免直向動作照被上下截掉 */
+/** 分類頁畫框 */
 const COLLECTION_MOBILE_H = {
-  default: 'h-[min(36vh,210px)] min-h-[176px]',
-  tall: 'h-[min(38vh,224px)] min-h-[188px]',
+  default: 'h-[min(38vh,224px)] min-h-[188px]',
+  tall: 'h-[min(40vh,236px)] min-h-[196px]',
+  action: 'h-[min(44vh,272px)] min-h-[212px]',
+  square: 'h-[min(40vh,252px)] min-h-[200px]',
 } as const
 
 const COLLECTION_DESKTOP_ASPECT = {
   default: 'aspect-[2.05/1] max-h-[min(42vh,400px)]',
   tall: 'aspect-[1.95/1] max-h-[min(44vh,420px)]',
+  action: 'aspect-[1.88/1] max-h-[min(48vh,460px)]',
+  square: 'aspect-[1.72/1] max-h-[min(46vh,440px)]',
 } as const
+
+function collectionFrameClasses(
+  heroConfig: ShopHeroImageConfig | null,
+): { mobileH: string; desktopAspect: string } {
+  if (heroConfig?.heroFrame === 'action') {
+    return {
+      mobileH: COLLECTION_MOBILE_H.action,
+      desktopAspect: COLLECTION_DESKTOP_ASPECT.action,
+    }
+  }
+  if (heroConfig?.heroFrame === 'square') {
+    return {
+      mobileH: COLLECTION_MOBILE_H.square,
+      desktopAspect: COLLECTION_DESKTOP_ASPECT.square,
+    }
+  }
+  if (heroConfig?.tallCollectionBand) {
+    return {
+      mobileH: COLLECTION_MOBILE_H.tall,
+      desktopAspect: COLLECTION_DESKTOP_ASPECT.tall,
+    }
+  }
+  return {
+    mobileH: COLLECTION_MOBILE_H.default,
+    desktopAspect: COLLECTION_DESKTOP_ASPECT.default,
+  }
+}
 
 const HERO_TITLE =
   'font-black italic uppercase tracking-tight leading-none text-white ' +
@@ -106,12 +146,8 @@ export function ShopListHero({
     heroConfig != null ? getShopHeroPositionClass(heroConfig, isCatalog) : ''
 
   if (!isCatalog) {
-    const mobileH = heroConfig?.tallCollectionBand
-      ? COLLECTION_MOBILE_H.tall
-      : COLLECTION_MOBILE_H.default
-    const desktopAspect = heroConfig?.tallCollectionBand
-      ? COLLECTION_DESKTOP_ASPECT.tall
-      : COLLECTION_DESKTOP_ASPECT.default
+    const { mobileH, desktopAspect } = collectionFrameClasses(heroConfig)
+    const imgClass = heroImgClass(heroConfig) + positionClass
 
     const caption = (
       <div className="absolute inset-0 z-10 flex flex-col justify-end px-4 sm:px-6 pb-3 sm:pb-5 max-w-7xl mx-auto w-full pointer-events-none">
@@ -157,7 +193,7 @@ export function ShopListHero({
               <img
                 src={hero.src}
                 alt=""
-                className={HERO_IMG + positionClass}
+                className={imgClass}
                 decoding="async"
               />
               <HeroAtmosphere mode="caption-bottom" />
@@ -167,7 +203,7 @@ export function ShopListHero({
               <img
                 src={hero.src}
                 alt=""
-                className={HERO_IMG + positionClass}
+                className={imgClass}
                 decoding="async"
               />
               <HeroAtmosphere mode="caption-bottom" />
@@ -183,32 +219,34 @@ export function ShopListHero({
     )
   }
 
+  const catalogImgClass = heroImgClass(heroConfig) + positionClass
+
   return (
     <>
-      {/* 手機 Catalog：大圖為主，標題在黑底列（不擋船） */}
-      <div className="flex flex-col w-full sm:hidden bg-black border-b border-white/10">
+      {/* 手機 Catalog：字壓圖左下（與分類頁一致） */}
+      <div className="w-full sm:hidden bg-black border-b border-white/10">
         {hero ? (
           <div className={`relative w-full overflow-hidden ${CATALOG_MOBILE_H}`}>
             <img
               src={hero.src}
               alt=""
-              className={HERO_IMG + positionClass}
+              className={catalogImgClass}
               decoding="async"
               fetchPriority="high"
             />
-            <HeroAtmosphere mode="photo-only" />
+            <HeroAtmosphere mode="caption-bottom" />
+            <div className="absolute inset-0 z-10 flex flex-col justify-end px-4 pb-3 pointer-events-none">
+              <h1 className={HERO_TITLE + ' text-3xl'}>{title}</h1>
+              <p className="mt-1.5 text-[10px] italic tracking-[0.28em] text-white/90 uppercase [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
+                {SHOP_COPY.tagline}
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="h-12 bg-black" aria-hidden />
+          <div className="px-4 py-3">
+            <h1 className={HERO_TITLE + ' text-2xl'}>{title}</h1>
+          </div>
         )}
-        <div className="px-4 py-2.5 max-w-7xl w-full mx-auto">
-          <h1 className="font-black italic uppercase tracking-tight leading-none text-2xl">
-            {title}
-          </h1>
-          <p className="mt-1 text-[10px] italic tracking-[0.28em] text-zinc-400 uppercase">
-            {SHOP_COPY.tagline}
-          </p>
-        </div>
       </div>
 
       {/* 桌機 Catalog：固定 2.35:1 畫框 + 左右黑邊 */}
@@ -219,7 +257,7 @@ export function ShopListHero({
               <img
                 src={hero.src}
                 alt=""
-                className={HERO_IMG + positionClass}
+                className={catalogImgClass}
                 decoding="async"
                 fetchPriority="high"
               />
@@ -230,7 +268,7 @@ export function ShopListHero({
           )}
 
           <div className="absolute inset-0 z-10 flex flex-col justify-end px-4 sm:px-6 pb-6 sm:pb-8 pointer-events-none">
-            <h1 className="font-black italic uppercase tracking-tight leading-none text-6xl md:text-7xl">
+            <h1 className={HERO_TITLE + ' text-6xl md:text-7xl'}>
               {title}
             </h1>
             <p className="mt-2 sm:mt-3 text-sm italic tracking-[0.35em] text-white/90 uppercase">
