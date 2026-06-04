@@ -31,8 +31,7 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
     filteredProducts,
     activeFilterCount,
     hasFilter,
-    setTopLevel,
-    setSubCat,
+    selectCategory,
     toggleBrand,
     setSortBy,
     clearAllFilters,
@@ -93,8 +92,7 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
             groupCounts={facets.groupCounts}
             categoryCounts={facets.categoryCounts}
             brandCounts={facets.brandCounts}
-            onTopLevelChange={setTopLevel}
-            onSubCatChange={setSubCat}
+            onSelectCategory={selectCategory}
             onToggleBrand={toggleBrand}
           />
 
@@ -165,8 +163,7 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
         categoryCounts={facets.categoryCounts}
         brandCounts={facets.brandCounts}
         onClose={() => setDrawerOpen(false)}
-        onTopLevelChange={setTopLevel}
-        onSubCatChange={setSubCat}
+        onSelectCategory={selectCategory}
         onToggleBrand={toggleBrand}
         onClearAll={clearAllFilters}
       />

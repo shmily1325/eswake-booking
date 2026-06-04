@@ -7,8 +7,7 @@ interface ShopFilterSidebarProps {
   groupCounts: Map<ShopGroup, number>
   categoryCounts: Map<string, number>
   brandCounts: Map<string, number>
-  onTopLevelChange: (v: TopLevel) => void
-  onSubCatChange: (v: string) => void
+  onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
   onToggleBrand: (brand: string) => void
 }
 

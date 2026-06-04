@@ -11,6 +11,7 @@ import {
   filterAndSortProducts,
   getModeBaseProducts,
   hasNonDefaultFilters,
+  normalizeFilterState,
   parseFiltersFromSearchParams,
   type ShopCatalogMode,
   type ShopFilterState,
@@ -45,67 +46,93 @@ export function useShopFilters(
   const hasFilter = hasNonDefaultFilters(filters)
 
   const writeFilters = useCallback(
-    (next: ShopFilterState, replace = true) => {
-      const built = buildShopSearchParams(next, mode)
-      setSearchParams(built, { replace })
+    (
+      patch:
+        | Partial<ShopFilterState>
+        | ((prev: ShopFilterState) => ShopFilterState),
+      replace = true,
+    ) => {
+      setSearchParams(
+        (prevParams) => {
+          const current = parseFiltersFromSearchParams(prevParams)
+          const next = normalizeFilterState(
+            typeof patch === 'function'
+              ? patch(current)
+              : { ...current, ...patch },
+          )
+          return buildShopSearchParams(next, mode)
+        },
+        { replace },
+      )
     },
     [mode, setSearchParams],
   )
 
+  const selectCategory = useCallback(
+    (topLevel: TopLevel, subCat: string = ALL_SUBCATS) => {
+      writeFilters({ topLevel, subCat })
+    },
+    [writeFilters],
+  )
+
   const setTopLevel = useCallback(
     (topLevel: TopLevel) => {
-      writeFilters({ ...filters, topLevel, subCat: ALL_SUBCATS })
+      selectCategory(topLevel, ALL_SUBCATS)
     },
-    [filters, writeFilters],
+    [selectCategory],
   )
 
   const setSubCat = useCallback(
     (subCat: string) => {
-      writeFilters({ ...filters, subCat })
+      writeFilters({ subCat })
     },
-    [filters, writeFilters],
+    [writeFilters],
   )
 
   const toggleBrand = useCallback(
     (brand: string) => {
-      const set = new Set(filters.brands)
-      if (set.has(brand)) set.delete(brand)
-      else set.add(brand)
-      writeFilters({ ...filters, brands: [...set].sort() })
+      writeFilters((prev) => {
+        const set = new Set(prev.brands)
+        if (set.has(brand)) set.delete(brand)
+        else set.add(brand)
+        return { ...prev, brands: [...set].sort() }
+      })
     },
-    [filters, writeFilters],
+    [writeFilters],
   )
 
   const setSortBy = useCallback(
     (sortBy: SortBy) => {
-      writeFilters({ ...filters, sortBy })
+      writeFilters({ sortBy })
     },
-    [filters, writeFilters],
+    [writeFilters],
   )
 
   const clearAllFilters = useCallback(() => {
-    const next = defaultFilterState()
-    next.search = filters.search
-    next.sortBy = filters.sortBy
-    writeFilters(next)
-  }, [filters.search, filters.sortBy, writeFilters])
+    writeFilters((prev) => {
+      const next = defaultFilterState()
+      next.search = prev.search
+      next.sortBy = prev.sortBy
+      return next
+    })
+  }, [writeFilters])
 
   const clearFilter = useCallback(
     (key: 'group' | 'cat' | 'brand' | 'search', brand?: string) => {
       if (key === 'group') {
-        writeFilters({ ...filters, topLevel: ALL_GROUPS, subCat: ALL_SUBCATS })
+        writeFilters({ topLevel: ALL_GROUPS, subCat: ALL_SUBCATS })
       } else if (key === 'cat') {
-        writeFilters({ ...filters, subCat: ALL_SUBCATS })
+        writeFilters({ subCat: ALL_SUBCATS })
       } else if (key === 'brand' && brand) {
-        writeFilters({
-          ...filters,
-          brands: filters.brands.filter((b) => b !== brand),
-        })
+        writeFilters((prev) => ({
+          ...prev,
+          brands: prev.brands.filter((b) => b !== brand),
+        }))
       } else if (key === 'search') {
-        writeFilters({ ...filters, search: '' })
+        writeFilters({ search: '' })
       }
     },
-    [filters, writeFilters],
+    [writeFilters],
   )
 
   return {
@@ -115,6 +142,7 @@ export function useShopFilters(
     filteredProducts,
     activeFilterCount,
     hasFilter,
+    selectCategory,
     setTopLevel,
     setSubCat,
     toggleBrand,

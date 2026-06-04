@@ -11,8 +11,7 @@ interface ShopFilterDrawerProps {
   categoryCounts: Map<string, number>
   brandCounts: Map<string, number>
   onClose: () => void
-  onTopLevelChange: (v: TopLevel) => void
-  onSubCatChange: (v: string) => void
+  onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
   onToggleBrand: (brand: string) => void
   onClearAll: () => void
 }
@@ -29,8 +28,7 @@ export function ShopFilterDrawer({
   categoryCounts,
   brandCounts,
   onClose,
-  onTopLevelChange,
-  onSubCatChange,
+  onSelectCategory,
   onToggleBrand,
   onClearAll,
 }: ShopFilterDrawerProps) {
@@ -81,8 +79,7 @@ export function ShopFilterDrawer({
             groupCounts={groupCounts}
             categoryCounts={categoryCounts}
             brandCounts={brandCounts}
-            onTopLevelChange={onTopLevelChange}
-            onSubCatChange={onSubCatChange}
+            onSelectCategory={onSelectCategory}
             onToggleBrand={onToggleBrand}
           />
         </div>

@@ -61,6 +61,23 @@ function parseSort(raw: string | null): SortBy {
   return 'newest'
 }
 
+/** 讓 group / cat URL 一致（cat 隱含所屬 shopGroup；跨組合時清掉 cat） */
+export function normalizeFilterState(state: ShopFilterState): ShopFilterState {
+  let { topLevel, subCat } = state
+  if (subCat === ALL_SUBCATS) return state
+
+  const catDef = getAllCategories().find((c) => c.id === subCat)
+  if (!catDef?.shopGroup) {
+    return { ...state, subCat: ALL_SUBCATS }
+  }
+  if (topLevel === ALL_GROUPS) {
+    topLevel = catDef.shopGroup
+  } else if (catDef.shopGroup !== topLevel) {
+    subCat = ALL_SUBCATS
+  }
+  return { ...state, topLevel, subCat }
+}
+
 export function parseFiltersFromSearchParams(
   params: URLSearchParams,
 ): ShopFilterState {
@@ -72,13 +89,13 @@ export function parseFiltersFromSearchParams(
         .filter(Boolean)
     : []
 
-  return {
+  return normalizeFilterState({
     topLevel: parseShopGroup(params.get('group')),
     subCat: params.get('cat')?.trim() || ALL_SUBCATS,
     brands,
     sortBy: parseSort(params.get('sort')),
     search: params.get('q')?.trim() ?? '',
-  }
+  })
 }
 
 export function buildShopSearchParams(
