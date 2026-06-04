@@ -249,8 +249,8 @@ function CartSummary({
         <span className="text-sm font-normal text-zinc-300">Inquire via LINE</span>
       </button>
 
-      <p className="mt-3 text-xs text-gray-500 text-center leading-relaxed">
-        Opens LINE with your full item list pre-filled — just hit send.
+      <p className="mt-3 text-xs text-gray-500 text-center">
+        開啟 LINE，訊息已預填，送出即可。
       </p>
 
       <div className="mt-3 text-center">

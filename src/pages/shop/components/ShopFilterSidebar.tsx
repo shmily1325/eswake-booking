@@ -4,9 +4,12 @@ import type { ShopFilterState, TopLevel } from '../lib/shopFilters'
 
 interface ShopFilterSidebarProps {
   filters: ShopFilterState
+  preOrderCount: number
   groupCounts: Map<ShopGroup, number>
   categoryCounts: Map<string, number>
   brandCounts: Map<string, number>
+  onSelectAll: () => void
+  onSelectPreOrder: () => void
   onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
   onToggleBrand: (brand: string) => void
 }

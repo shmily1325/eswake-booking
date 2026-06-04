@@ -20,6 +20,7 @@ import {
   acceptPreOrderFromVariant,
   deriveVariantAvailability,
 } from './availabilityHelpers'
+import { ShopStatusPill, ShopVisibilityPill } from './ShopStatusPill'
 import { removeProductImage } from '../../../utils/imageUpload'
 import { trackClick } from '../../../utils/trackClick'
 import { formatDateTime } from '../../../utils/formatters'
@@ -628,15 +629,20 @@ export function ProductEditView({
                 disabled={saving || readOnly}
                 style={{ width: 18, height: 18, cursor: 'inherit', accentColor: '#f97316' }}
               />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
-                  {isPublic ? '上架到 Shop' : '不上架（後台可見、Shop 隱藏）'}
-                </div>
-                <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                  {isPublic
-                    ? '客人可在 /shop 看到這個商品並透過 LINE 詢問'
-                    : '只有員工後台看得到，編輯中、停售但保留歷史的商品請維持關閉'}
-                </div>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
+                  上架 Shop
+                </span>
+                <ShopVisibilityPill isPublic={isPublic} />
               </div>
             </label>
           </div>
@@ -706,10 +712,14 @@ export function ProductEditView({
             border: '1px solid #f3d6d6',
           }}
         >
-          <h3 style={{ margin: '0 0 8px 0', fontSize: 15, fontWeight: 700, color: '#c62828' }}>危險區</h3>
-          <p style={{ margin: '0 0 12px 0', fontSize: 13, color: '#666' }}>
-            刪除商品會把它和所有規格從清單中隱藏（軟刪除，可由資料庫恢復）。
-          </p>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: 15, fontWeight: 700, color: '#c62828' }}>
+            危險區
+            {!isMobile && (
+              <span style={{ fontSize: 12, fontWeight: 400, color: '#888', marginLeft: 8 }}>
+                軟刪除，可恢復
+              </span>
+            )}
+          </h3>
           <Button variant="danger" size="small" data-track="product_edit_delete_open" onClick={() => setConfirmDelete(true)} disabled={saving}>
             刪除整個商品
           </Button>
@@ -878,44 +888,35 @@ function VariantBlock({
   const stockNum = Number(draft.stock) || 0
   const shopStatus = deriveVariantAvailability(stockNum, draft.acceptPreOrder)
 
-  const shopStatusHint =
-    shopStatus === 'in_stock'
-      ? '商城：現貨'
-      : shopStatus === 'pre_order'
-        ? '商城：預購區'
-        : '商城：不顯示（無庫存）'
-
   const preOrderField =
     stockNum > 0 ? (
       <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
-        <p style={{ fontSize: 12, color: '#2e7d32', margin: 0 }}>{shopStatusHint}</p>
+        <ShopStatusPill status={shopStatus} />
       </div>
     ) : (
       <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
         <label
           style={{
             display: 'flex',
-            alignItems: 'flex-start',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             gap: 8,
             fontSize: 14,
             cursor: disabled || draft.pendingDelete ? 'default' : 'pointer',
           }}
         >
-          <input
-            type="checkbox"
-            checked={draft.acceptPreOrder}
-            onChange={(e) => onChange({ acceptPreOrder: e.target.checked })}
-            disabled={disabled || draft.pendingDelete}
-            style={{ marginTop: 3, width: 16, height: 16 }}
-          />
-          <span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <input
+              type="checkbox"
+              checked={draft.acceptPreOrder}
+              onChange={(e) => onChange({ acceptPreOrder: e.target.checked })}
+              disabled={disabled || draft.pendingDelete}
+              style={{ width: 16, height: 16, flexShrink: 0 }}
+            />
             <span style={{ fontWeight: 600 }}>開放預購</span>
-            <span style={{ display: 'block', fontSize: 12, color: '#666', marginTop: 2 }}>
-              無庫存時顯示在商城預購區；未勾選則商城不顯示
-            </span>
           </span>
+          <ShopStatusPill status={shopStatus} />
         </label>
-        <p style={{ fontSize: 11, color: '#888', margin: '6px 0 0 24px' }}>{shopStatusHint}</p>
       </div>
     )
 
@@ -989,11 +990,6 @@ function VariantBlock({
   const productPhotoSection = (
     <div style={{ marginTop: 12 }}>
       <label style={{ ...labelStyle, marginBottom: 6 }}>實品照</label>
-      {!isMobile && (
-        <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 8px 0' }}>
-          庫存核對用，不會取代 Shop 封面。
-        </p>
-      )}
       <ImageUploader
         value={draft.image_url}
         path={draft.image_path}
@@ -1092,7 +1088,9 @@ function VariantBlock({
         <div style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>
           {draft.cover_image_url ? '封面 ✓' : '封面 未設'}
         </div>
-        <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>Shop 封面 · 點展開（相簿／URL）</div>
+        {!isMobile && (
+          <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>相簿／URL</div>
+        )}
       </div>
       <span style={{ fontSize: 12, color: '#2563eb', flexShrink: 0 }}>展開 ▾</span>
     </button>
@@ -1190,3 +1188,4 @@ function VariantBlock({
     </div>
   )
 }
+

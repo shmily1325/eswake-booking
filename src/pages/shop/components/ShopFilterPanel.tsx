@@ -14,20 +14,29 @@ import {
 
 interface ShopFilterPanelProps {
   filters: ShopFilterState
+  preOrderCount: number
   groupCounts: Map<ShopGroup, number>
   categoryCounts: Map<string, number>
   brandCounts: Map<string, number>
+  onSelectAll: () => void
+  onSelectPreOrder: () => void
   onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
   onToggleBrand: (brand: string) => void
+  /** 手機 drawer 用：分類已在上方 chips，這裡只顯示 brand */
+  hideCategory?: boolean
 }
 
 export function ShopFilterPanel({
   filters,
+  preOrderCount,
   groupCounts,
   categoryCounts,
   brandCounts,
+  onSelectAll,
+  onSelectPreOrder,
   onSelectCategory,
   onToggleBrand,
+  hideCategory = false,
 }: ShopFilterPanelProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() =>
     filters.topLevel !== ALL_GROUPS ? new Set([filters.topLevel]) : new Set(),
@@ -53,85 +62,106 @@ export function ShopFilterPanel({
   }
 
   const allActive =
-    filters.topLevel === ALL_GROUPS && filters.subCat === ALL_SUBCATS
+    !filters.preOrderOnly &&
+    filters.topLevel === ALL_GROUPS &&
+    filters.subCat === ALL_SUBCATS
+
+  const preOrderActive =
+    filters.preOrderOnly &&
+    filters.topLevel === ALL_GROUPS &&
+    filters.subCat === ALL_SUBCATS
 
   return (
     <div className="space-y-6">
-      <FilterSection title="Category">
-        <button
-          type="button"
-          onClick={() => onSelectCategory(ALL_GROUPS, ALL_SUBCATS)}
-          className={navLinkClass(allActive)}
-        >
-          All Products
-        </button>
+      {!hideCategory && (
+        <FilterSection title="Category">
+          <button
+            type="button"
+            onClick={onSelectAll}
+            className={navLinkClass(allActive)}
+          >
+            All Products
+          </button>
 
-        <div className="mt-1 space-y-0.5">
-          {SHOP_GROUPS.map((g) => {
-            if ((groupCounts.get(g) ?? 0) === 0) return null
+          {preOrderCount > 0 && (
+            <button
+              type="button"
+              onClick={onSelectPreOrder}
+              className={navLinkClass(preOrderActive)}
+            >
+              Pre-Order
+            </button>
+          )}
 
-            const expanded = expandedGroups.has(g)
-            const subs = getSubCategoriesForGroup(g, categoryCounts)
-            const groupActive = filters.topLevel === g
-            const groupAllActive = groupActive && filters.subCat === ALL_SUBCATS
+          <div className="mt-1 space-y-0.5">
+            {SHOP_GROUPS.map((g) => {
+              if ((groupCounts.get(g) ?? 0) === 0) return null
 
-            return (
-              <div key={g}>
-                <button
-                  type="button"
-                  onClick={() => selectGroup(g)}
-                  className={
-                    navLinkClass(groupAllActive) +
-                    (groupActive && !groupAllActive
-                      ? ' font-medium text-zinc-800'
-                      : '')
-                  }
-                >
-                  <Chevron className={expanded ? 'rotate-90' : ''} />
-                  {g}
-                </button>
+              const expanded = expandedGroups.has(g)
+              const subs = getSubCategoriesForGroup(g, categoryCounts)
+              const groupActive = filters.topLevel === g
+              const groupAllActive = groupActive && filters.subCat === ALL_SUBCATS
 
-                {expanded && subs.length > 0 && (
-                  <div className="mt-0.5 space-y-0.5">
-                    {subs.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => onSelectCategory(g, cat.id)}
-                        className={
-                          subNavLinkClass(
-                            groupActive && filters.subCat === cat.id,
-                          ) + ' ml-4'
-                        }
-                      >
-                        {getCategoryShopName(cat)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </FilterSection>
+              return (
+                <div key={g}>
+                  <button
+                    type="button"
+                    onClick={() => selectGroup(g)}
+                    className={
+                      navLinkClass(groupAllActive) +
+                      (groupActive && !groupAllActive
+                        ? ' font-medium text-zinc-800'
+                        : '')
+                    }
+                  >
+                    <Chevron className={expanded ? 'rotate-90' : ''} />
+                    {g}
+                  </button>
+
+                  {expanded && subs.length > 0 && (
+                    <div className="mt-0.5 space-y-0.5">
+                      {subs.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => onSelectCategory(g, cat.id)}
+                          className={
+                            subNavLinkClass(
+                              groupActive && filters.subCat === cat.id,
+                            ) + ' ml-4'
+                          }
+                        >
+                          {getCategoryShopName(cat)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </FilterSection>
+      )}
 
       {brands.length > 0 && (
         <FilterSection title="Brand">
-          <div className="space-y-0.5 max-h-52 overflow-y-auto pr-1">
+          <div className="space-y-0.5 max-h-52 overflow-y-auto overflow-x-hidden pr-1">
             {brands.map((name) => {
               const checked = filters.brands.includes(name)
               return (
                 <label
                   key={name}
-                  className="flex items-center gap-2.5 min-h-[44px] px-1 cursor-pointer rounded-md hover:bg-gray-50"
+                  className="flex items-center gap-2.5 min-h-[44px] px-1 cursor-pointer rounded-md hover:bg-gray-50 min-w-0"
                 >
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => onToggleBrand(name)}
-                    className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black"
+                    className="w-4 h-4 shrink-0 rounded border-gray-300 text-black focus:ring-black"
                   />
-                  <span className="flex-1 text-sm text-gray-800">{name}</span>
+                  <span className="flex-1 min-w-0 text-sm text-gray-800 truncate">
+                    {name}
+                  </span>
                 </label>
               )
             })}

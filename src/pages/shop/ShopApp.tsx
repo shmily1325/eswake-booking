@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { ShopLayout } from './ShopLayout'
-import { ShopList, ShopPreOrderList } from './ShopList'
+import { ShopList, ShopPreOrderRedirect } from './ShopList'
 import { ShopDetail } from './ShopDetail'
 import { ShopCart } from './ShopCart'
 
@@ -12,7 +12,7 @@ export default function ShopApp() {
     <ShopLayout>
       <Routes>
         <Route index element={<ShopList />} />
-        <Route path="pre-order" element={<ShopPreOrderList />} />
+        <Route path="pre-order" element={<ShopPreOrderRedirect />} />
         <Route path="cart" element={<ShopCart />} />
         <Route path=":productId" element={<ShopDetail />} />
       </Routes>

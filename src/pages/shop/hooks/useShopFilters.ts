@@ -5,24 +5,24 @@ import {
   ALL_GROUPS,
   ALL_SUBCATS,
   buildShopSearchParams,
+  computeBrandCounts,
   computeFacets,
   countActiveFilters,
   defaultFilterState,
   filterAndSortProducts,
-  getModeBaseProducts,
+  filterProductsForBrandFacets,
+  getFacetProductPool,
+  getShopBaseProducts,
   hasNonDefaultFilters,
   normalizeFilterState,
   parseFiltersFromSearchParams,
-  type ShopCatalogMode,
+  pruneUnavailableBrands,
   type ShopFilterState,
   type SortBy,
   type TopLevel,
 } from '../lib/shopFilters'
 
-export function useShopFilters(
-  products: ProductWithVariants[],
-  mode: ShopCatalogMode,
-) {
+export function useShopFilters(products: ProductWithVariants[]) {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const filters = useMemo(
@@ -31,11 +31,27 @@ export function useShopFilters(
   )
 
   const baseProducts = useMemo(
-    () => getModeBaseProducts(products, mode),
-    [products, mode],
+    () => getShopBaseProducts(products),
+    [products],
   )
 
-  const facets = useMemo(() => computeFacets(baseProducts), [baseProducts])
+  const catalogFacets = useMemo(
+    () => computeFacets(baseProducts),
+    [baseProducts],
+  )
+
+  const facetPool = useMemo(
+    () => getFacetProductPool(baseProducts, filters.preOrderOnly),
+    [baseProducts, filters.preOrderOnly],
+  )
+
+  const facets = useMemo(() => {
+    const base = computeFacets(facetPool)
+    const brandCounts = computeBrandCounts(
+      filterProductsForBrandFacets(baseProducts, filters),
+    )
+    return { ...base, brandCounts, preOrderCount: catalogFacets.preOrderCount }
+  }, [baseProducts, facetPool, filters, catalogFacets.preOrderCount])
 
   const filteredProducts = useMemo(
     () => filterAndSortProducts(baseProducts, filters),
@@ -60,13 +76,35 @@ export function useShopFilters(
               ? patch(current)
               : { ...current, ...patch },
           )
-          return buildShopSearchParams(next, mode)
+          const pruned = pruneUnavailableBrands(
+            next,
+            computeBrandCounts(
+              filterProductsForBrandFacets(baseProducts, next),
+            ),
+          )
+          return buildShopSearchParams(pruned)
         },
         { replace },
       )
     },
-    [mode, setSearchParams],
+    [baseProducts, setSearchParams],
   )
+
+  const selectAll = useCallback(() => {
+    writeFilters({
+      preOrderOnly: false,
+      topLevel: ALL_GROUPS,
+      subCat: ALL_SUBCATS,
+    })
+  }, [writeFilters])
+
+  const selectPreOrder = useCallback(() => {
+    writeFilters({
+      preOrderOnly: true,
+      topLevel: ALL_GROUPS,
+      subCat: ALL_SUBCATS,
+    })
+  }, [writeFilters])
 
   const selectCategory = useCallback(
     (topLevel: TopLevel, subCat: string = ALL_SUBCATS) => {
@@ -117,9 +155,18 @@ export function useShopFilters(
     })
   }, [writeFilters])
 
+  const clearRefinement = useCallback(() => {
+    writeFilters({ brands: [], sortBy: 'newest' })
+  }, [writeFilters])
+
   const clearFilter = useCallback(
-    (key: 'group' | 'cat' | 'brand' | 'search', brand?: string) => {
-      if (key === 'group') {
+    (
+      key: 'preorder' | 'group' | 'cat' | 'brand' | 'search',
+      brand?: string,
+    ) => {
+      if (key === 'preorder') {
+        writeFilters({ preOrderOnly: false })
+      } else if (key === 'group') {
         writeFilters({ topLevel: ALL_GROUPS, subCat: ALL_SUBCATS })
       } else if (key === 'cat') {
         writeFilters({ subCat: ALL_SUBCATS })
@@ -142,12 +189,15 @@ export function useShopFilters(
     filteredProducts,
     activeFilterCount,
     hasFilter,
+    selectAll,
+    selectPreOrder,
     selectCategory,
     setTopLevel,
     setSubCat,
     toggleBrand,
     setSortBy,
     clearAllFilters,
+    clearRefinement,
     clearFilter,
   }
 }

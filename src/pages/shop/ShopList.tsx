@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
 import { fetchAllProductsWithVariants } from '../admin/products/api'
 import type { ProductWithVariants } from '../admin/products/types'
 import { ShopHeader } from './components/ShopHeader'
@@ -6,20 +7,14 @@ import { ProductCard } from './components/ProductCard'
 import { ActiveFilterPills } from './components/ActiveFilterPills'
 import { ShopFilterDrawer } from './components/ShopFilterDrawer'
 import { ShopFilterSidebar } from './components/ShopFilterSidebar'
+import { ShopMobileCategoryBar } from './components/ShopMobileCategoryBar'
 import { useShopFilters } from './hooks/useShopFilters'
-import { getHeroTitle, type ShopCatalogMode, type SortBy } from './lib/shopFilters'
-
-interface ShopCatalogProps {
-  mode?: ShopCatalogMode
-}
+import { getHeroTitle, type SortBy } from './lib/shopFilters'
 
 /**
- * 商城列表（/shop 與 /shop/pre-order 共用）。
- * - 缺貨（sold_out）商品一律不顯示
- * - 手機：Filter drawer；桌機：左側 sidebar
- * - 篩選狀態同步 URL（可分享連結）
+ * 商城列表（單一 /shop 頁；預購用 ?preorder=1 篩選）。
  */
-export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
+export function ShopList() {
   const [products, setProducts] = useState<ProductWithVariants[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -29,19 +24,20 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
     filters,
     facets,
     filteredProducts,
-    activeFilterCount,
     hasFilter,
+    selectAll,
+    selectPreOrder,
     selectCategory,
     toggleBrand,
     setSortBy,
     clearAllFilters,
+    clearRefinement,
     clearFilter,
-  } = useShopFilters(products, mode)
+  } = useShopFilters(products)
 
   useEffect(() => {
-    document.title =
-      mode === 'pre-order' ? 'Pre-Order | ES Wake Shop' : 'ES Wake Shop'
-  }, [mode])
+    document.title = 'ES Wake Shop'
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -63,20 +59,22 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
     }
   }, [])
 
-  const heroTitle = getHeroTitle(filters, mode)
+  const heroTitle = getHeroTitle(filters)
+  const mobileRefineCount =
+    filters.brands.length + (filters.sortBy !== 'newest' ? 1 : 0)
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ShopHeader mode={mode} preOrderCount={facets.preOrderCount} />
+      <ShopHeader />
 
       <section className="bg-black text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-          <h1 className="font-black italic uppercase tracking-tight text-4xl sm:text-6xl md:text-7xl leading-none">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+          <h1 className="font-black italic uppercase tracking-tight text-3xl sm:text-6xl md:text-7xl leading-none">
             {heroTitle}
           </h1>
-          {mode === 'pre-order' && (
+          {filters.preOrderOnly && (
             <p className="mt-3 text-sm text-gray-400 max-w-lg">
-              預購商品 · 預計到貨時間僅供參考，請透過 LINE 與我們確認
+              預購 · 詳情請 LINE 確認
             </p>
           )}
           <p className="mt-4 text-xs sm:text-sm italic tracking-[0.35em] text-gray-400 uppercase">
@@ -85,13 +83,26 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
         </div>
       </section>
 
+      <ShopMobileCategoryBar
+        filters={filters}
+        preOrderCount={facets.preOrderCount}
+        groupCounts={facets.groupCounts}
+        categoryCounts={facets.categoryCounts}
+        onSelectAll={selectAll}
+        onSelectPreOrder={selectPreOrder}
+        onSelectCategory={selectCategory}
+      />
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="flex gap-8 items-start">
           <ShopFilterSidebar
             filters={filters}
+            preOrderCount={facets.preOrderCount}
             groupCounts={facets.groupCounts}
             categoryCounts={facets.categoryCounts}
             brandCounts={facets.brandCounts}
+            onSelectAll={selectAll}
+            onSelectPreOrder={selectPreOrder}
             onSelectCategory={selectCategory}
             onToggleBrand={toggleBrand}
           />
@@ -105,10 +116,10 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
                   className="lg:hidden inline-flex items-center gap-2 h-11 px-3.5 rounded-lg border border-gray-200 bg-white text-sm font-medium shrink-0"
                 >
                   <FilterIcon />
-                  Filter
-                  {activeFilterCount > 0 && (
+                  Brand & Sort
+                  {mobileRefineCount > 0 && (
                     <span className="min-w-[20px] h-5 px-1 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center">
-                      {activeFilterCount}
+                      {mobileRefineCount}
                     </span>
                   )}
                 </button>
@@ -119,7 +130,11 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
                   </span>
                 )}
               </div>
-              <ToolbarSort sortBy={filters.sortBy} onSortChange={setSortBy} />
+              <ToolbarSort
+                sortBy={filters.sortBy}
+                onSortChange={setSortBy}
+                className="hidden lg:block"
+              />
             </div>
 
             <ActiveFilterPills
@@ -139,7 +154,7 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
                     ? `找不到符合「${filters.search.trim()}」的商品`
                     : hasFilter
                       ? '沒有符合篩選條件的商品'
-                      : mode === 'pre-order'
+                      : filters.preOrderOnly
                         ? '目前沒有開放預購的商品'
                         : '目前還沒有上架商品'
                 }
@@ -165,7 +180,8 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
         onClose={() => setDrawerOpen(false)}
         onSelectCategory={selectCategory}
         onToggleBrand={toggleBrand}
-        onClearAll={clearAllFilters}
+        onSortChange={setSortBy}
+        onClearAll={clearRefinement}
       />
 
       <ShopFooter />
@@ -173,23 +189,31 @@ export function ShopList({ mode = 'catalog' }: ShopCatalogProps) {
   )
 }
 
-/** /shop/pre-order 預購專區 */
-export function ShopPreOrderList() {
-  return <ShopList mode="pre-order" />
+/** 舊連結 /shop/pre-order → /shop?preorder=1 */
+export function ShopPreOrderRedirect() {
+  const location = useLocation()
+  const params = new URLSearchParams(location.search)
+  params.set('preorder', '1')
+  const search = params.toString()
+  return <Navigate to={`/shop${search ? `?${search}` : ''}`} replace />
 }
 
 interface ToolbarSortProps {
   sortBy: SortBy
   onSortChange: (v: SortBy) => void
+  className?: string
 }
 
-function ToolbarSort({ sortBy, onSortChange }: ToolbarSortProps) {
+function ToolbarSort({ sortBy, onSortChange, className = '' }: ToolbarSortProps) {
   return (
     <select
       value={sortBy}
       onChange={(e) => onSortChange(e.target.value as SortBy)}
       aria-label="Sort by"
-      className="h-11 px-3 pr-8 text-xs sm:text-sm bg-white border border-gray-200 rounded-lg cursor-pointer focus:outline-none focus:border-black focus:ring-1 focus:ring-black/20 shrink-0"
+      className={
+        'h-11 px-3 pr-8 text-xs sm:text-sm bg-white border border-gray-200 rounded-lg cursor-pointer focus:outline-none focus:border-black focus:ring-1 focus:ring-black/20 shrink-0 ' +
+        className
+      }
     >
       <option value="newest">Newest</option>
       <option value="price-asc">Price: Low → High</option>

@@ -17,6 +17,7 @@ import {
 } from './productAvailability'
 
 export type ShopCatalogMode = 'catalog' | 'pre-order'
+
 export type SortBy = 'newest' | 'price-asc' | 'price-desc'
 
 export const ALL_GROUPS = 'all-groups' as const
@@ -29,6 +30,7 @@ export interface ShopFilterState {
   brands: string[]
   sortBy: SortBy
   search: string
+  preOrderOnly: boolean
 }
 
 export interface ShopFacets {
@@ -46,6 +48,7 @@ export function defaultFilterState(): ShopFilterState {
     brands: [],
     sortBy: 'newest',
     search: '',
+    preOrderOnly: false,
   }
 }
 
@@ -95,49 +98,59 @@ export function parseFiltersFromSearchParams(
     brands,
     sortBy: parseSort(params.get('sort')),
     search: params.get('q')?.trim() ?? '',
+    preOrderOnly: params.get('preorder') === '1',
   })
 }
 
-export function buildShopSearchParams(
-  filters: ShopFilterState,
-  mode: ShopCatalogMode,
-): URLSearchParams {
+export function buildShopSearchParams(filters: ShopFilterState): URLSearchParams {
   const p = new URLSearchParams()
   if (filters.search) p.set('q', filters.search)
+  if (filters.preOrderOnly) p.set('preorder', '1')
   if (filters.topLevel !== ALL_GROUPS) p.set('group', filters.topLevel)
   if (filters.subCat !== ALL_SUBCATS) p.set('cat', filters.subCat)
   if (filters.brands.length > 0) {
     p.set('brand', filters.brands.map(encodeURIComponent).join(','))
   }
   if (filters.sortBy !== 'newest') p.set('sort', filters.sortBy)
-  void mode
   return p
 }
 
-/** 先過商城可見性，再依 mode 決定 catalog / 預購專區 */
+/** 商城可見商品（現貨 + 開放預購；缺貨不顯示） */
+export function getShopBaseProducts(
+  products: ProductWithVariants[],
+): ProductWithVariants[] {
+  return products.filter((p) => isProductVisibleInShop(p.variants))
+}
+
+/** @deprecated 改用 getShopBaseProducts + filters.preOrderOnly */
 export function getModeBaseProducts(
   products: ProductWithVariants[],
   mode: ShopCatalogMode,
 ): ProductWithVariants[] {
-  return products.filter((p) => {
-    if (!isProductVisibleInShop(p.variants)) return false
-    if (mode === 'pre-order') return isProductInPreOrderSection(p.variants)
-    return true
-  })
+  const base = getShopBaseProducts(products)
+  if (mode === 'pre-order') {
+    return base.filter((p) => isProductInPreOrderSection(p.variants))
+  }
+  return base
+}
+
+export function getFacetProductPool(
+  baseProducts: ProductWithVariants[],
+  preOrderOnly: boolean,
+): ProductWithVariants[] {
+  if (!preOrderOnly) return baseProducts
+  return baseProducts.filter((p) => isProductInPreOrderSection(p.variants))
 }
 
 export function computeFacets(baseProducts: ProductWithVariants[]): ShopFacets {
   const groupCounts = new Map<ShopGroup, number>()
   const categoryCounts = new Map<string, number>()
-  const brandCounts = new Map<string, number>()
   let preOrderCount = 0
 
   for (const p of baseProducts) {
     if (isProductInPreOrderSection(p.variants)) preOrderCount++
     const cat = p.category ?? 'other'
     categoryCounts.set(cat, (categoryCounts.get(cat) ?? 0) + 1)
-    const brand = (p.brand ?? '').trim()
-    if (brand) brandCounts.set(brand, (brandCounts.get(brand) ?? 0) + 1)
     const catDef = getAllCategories().find((c) => c.id === p.category)
     if (catDef?.shopGroup) {
       groupCounts.set(
@@ -150,10 +163,43 @@ export function computeFacets(baseProducts: ProductWithVariants[]): ShopFacets {
   return {
     groupCounts,
     categoryCounts,
-    brandCounts,
+    brandCounts: computeBrandCounts(baseProducts),
     totalVisible: baseProducts.length,
     preOrderCount,
   }
+}
+
+/** 品牌 facet：依目前分類 + 搜尋結果，不含已勾選品牌 */
+export function filterProductsForBrandFacets(
+  baseProducts: ProductWithVariants[],
+  filters: ShopFilterState,
+): ProductWithVariants[] {
+  const pool = getFacetProductPool(baseProducts, filters.preOrderOnly)
+  return pool.filter(
+    (p) =>
+      productMatchesCategory(p, filters) &&
+      productMatchesSearch(p, filters.search),
+  )
+}
+
+export function computeBrandCounts(
+  products: ProductWithVariants[],
+): Map<string, number> {
+  const brandCounts = new Map<string, number>()
+  for (const p of products) {
+    const brand = (p.brand ?? '').trim()
+    if (brand) brandCounts.set(brand, (brandCounts.get(brand) ?? 0) + 1)
+  }
+  return brandCounts
+}
+
+export function pruneUnavailableBrands(
+  state: ShopFilterState,
+  availableBrands: Map<string, number>,
+): ShopFilterState {
+  if (state.brands.length === 0) return state
+  const brands = state.brands.filter((b) => availableBrands.has(b))
+  return brands.length === state.brands.length ? state : { ...state, brands }
 }
 
 function productMatchesCategory(p: ProductWithVariants, filters: ShopFilterState): boolean {
@@ -177,12 +223,21 @@ function productMatchesSearch(p: ProductWithVariants, search: string): boolean {
   return `${p.brand ?? ''} ${p.model ?? ''}`.toLowerCase().includes(q)
 }
 
+function productMatchesPreOrder(
+  p: ProductWithVariants,
+  preOrderOnly: boolean,
+): boolean {
+  if (!preOrderOnly) return true
+  return isProductInPreOrderSection(p.variants)
+}
+
 export function filterAndSortProducts(
   baseProducts: ProductWithVariants[],
   filters: ShopFilterState,
 ): ProductWithVariants[] {
   let list = baseProducts.filter(
     (p) =>
+      productMatchesPreOrder(p, filters.preOrderOnly) &&
       productMatchesCategory(p, filters) &&
       productMatchesBrand(p, filters) &&
       productMatchesSearch(p, filters.search),
@@ -211,6 +266,7 @@ export function filterAndSortProducts(
 
 export function countActiveFilters(filters: ShopFilterState): number {
   let n = 0
+  if (filters.preOrderOnly) n++
   if (filters.topLevel !== ALL_GROUPS) n++
   if (filters.subCat !== ALL_SUBCATS) n++
   if (filters.brands.length > 0) n++
@@ -222,20 +278,13 @@ export function hasNonDefaultFilters(filters: ShopFilterState): boolean {
   return countActiveFilters(filters) > 0
 }
 
-export function getHeroTitle(filters: ShopFilterState, mode: ShopCatalogMode): string {
-  if (mode === 'pre-order') {
-    if (filters.subCat !== ALL_SUBCATS) {
-      const cat = getAllCategories().find((c) => c.id === filters.subCat)
-      if (cat) return getCategoryShopName(cat)
-    }
-    if (filters.topLevel !== ALL_GROUPS) return filters.topLevel
-    return 'Pre-Order'
-  }
+export function getHeroTitle(filters: ShopFilterState): string {
   if (filters.subCat !== ALL_SUBCATS) {
     const cat = getAllCategories().find((c) => c.id === filters.subCat)
     if (cat) return getCategoryShopName(cat)
   }
   if (filters.topLevel !== ALL_GROUPS) return filters.topLevel
+  if (filters.preOrderOnly) return 'Pre-Order'
   return 'Catalog'
 }
 

@@ -1,19 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useShopCart } from '../hooks/useShopCart'
-import type { ShopCatalogMode } from '../lib/shopFilters'
 
 interface ShopHeaderProps {
   showBack?: boolean
-  mode?: ShopCatalogMode
-  preOrderCount?: number
 }
 
-export function ShopHeader({
-  showBack = false,
-  mode = 'catalog',
-  preOrderCount = 0,
-}: ShopHeaderProps) {
+export function ShopHeader({ showBack = false }: ShopHeaderProps) {
   const { totalCount: cartCount } = useShopCart()
   const navigate = useNavigate()
   const location = useLocation()
@@ -32,19 +25,17 @@ export function ShopHeader({
     location.pathname === '/shop/' ||
     location.pathname === '/shop/pre-order'
 
-  const listBase = mode === 'pre-order' ? '/shop/pre-order' : '/shop'
-
   const submitQuery = (q: string) => {
     const trimmed = q.trim()
     if (trimmed) {
-      const target = `${listBase}?q=${encodeURIComponent(trimmed)}`
+      const target = `/shop?q=${encodeURIComponent(trimmed)}`
       if (isListPage) {
         navigate(target, { replace: true })
       } else {
         navigate(target)
       }
     } else if (isListPage) {
-      navigate(listBase, { replace: true })
+      navigate('/shop', { replace: true })
     }
   }
 
@@ -52,10 +43,6 @@ export function ShopHeader({
     setQuery(v)
     submitQuery(v)
   }
-
-  const navLinkClass = (active: boolean) =>
-    'text-xs sm:text-sm font-semibold uppercase tracking-wide whitespace-nowrap ' +
-    (active ? 'text-white' : 'text-gray-400 hover:text-white')
 
   return (
     <header className="sticky top-0 z-30 bg-black text-white shadow-md">
@@ -88,28 +75,6 @@ export function ShopHeader({
           </Link>
         </div>
 
-        {!showBack && (
-          <nav
-            className="hidden sm:flex items-center gap-4 shrink-0"
-            aria-label="Shop sections"
-          >
-            <Link to="/shop" className={navLinkClass(mode === 'catalog' && isListPage)}>
-              Shop
-            </Link>
-            {(preOrderCount > 0 || mode === 'pre-order') && (
-              <Link
-                to="/shop/pre-order"
-                className={navLinkClass(mode === 'pre-order')}
-              >
-                Pre-Order
-                {preOrderCount > 0 && (
-                  <span className="ml-1 text-gray-500 font-normal">({preOrderCount})</span>
-                )}
-              </Link>
-            )}
-          </nav>
-        )}
-
         <div className="flex-1 min-w-0 flex justify-end sm:justify-center">
           <div className="hidden md:block w-full max-w-sm">
             <HeaderSearchInput value={query} onChange={handleChange} />
@@ -126,15 +91,6 @@ export function ShopHeader({
           >
             <SearchIcon />
           </button>
-
-          {!showBack && preOrderCount > 0 && (
-            <Link
-              to="/shop/pre-order"
-              className="sm:hidden inline-flex items-center justify-center h-11 px-2 text-[11px] font-bold uppercase tracking-wide text-gray-300 hover:text-white"
-            >
-              Pre
-            </Link>
-          )}
 
           <Link
             to="/shop/cart"
@@ -165,29 +121,6 @@ export function ShopHeader({
       {mobileSearchOpen && (
         <div className="md:hidden px-4 pb-3 border-b border-zinc-800">
           <HeaderSearchInput value={query} onChange={handleChange} autoFocus />
-        </div>
-      )}
-
-      {!showBack && (preOrderCount > 0 || mode === 'pre-order') && (
-        <div className="sm:hidden flex border-t border-zinc-800">
-          <Link
-            to="/shop"
-            className={
-              'flex-1 h-10 flex items-center justify-center text-xs font-semibold uppercase ' +
-              (mode === 'catalog' && isListPage ? 'text-white bg-zinc-900' : 'text-gray-400')
-            }
-          >
-            Shop
-          </Link>
-          <Link
-            to="/shop/pre-order"
-            className={
-              'flex-1 h-10 flex items-center justify-center text-xs font-semibold uppercase ' +
-              (mode === 'pre-order' ? 'text-white bg-zinc-900' : 'text-gray-400')
-            }
-          >
-            Pre-Order{preOrderCount > 0 ? ` (${preOrderCount})` : ''}
-          </Link>
         </div>
       )}
     </header>

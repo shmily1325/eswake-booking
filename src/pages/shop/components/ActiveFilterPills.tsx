@@ -6,7 +6,10 @@ import { ALL_GROUPS, ALL_SUBCATS, type ShopFilterState } from '../lib/shopFilter
 
 interface ActiveFilterPillsProps {
   filters: ShopFilterState
-  onClear: (key: 'group' | 'cat' | 'brand' | 'search', brand?: string) => void
+  onClear: (
+    key: 'preorder' | 'group' | 'cat' | 'brand' | 'search',
+    brand?: string,
+  ) => void
   onClearAll: () => void
 }
 
@@ -15,9 +18,15 @@ export function ActiveFilterPills({
   onClear,
   onClearAll,
 }: ActiveFilterPillsProps) {
-  const pills: { key: 'group' | 'cat' | 'brand' | 'search'; label: string; brand?: string }[] =
-    []
+  const pills: {
+    key: 'preorder' | 'group' | 'cat' | 'brand' | 'search'
+    label: string
+    brand?: string
+  }[] = []
 
+  if (filters.preOrderOnly) {
+    pills.push({ key: 'preorder', label: 'Pre-Order' })
+  }
   if (filters.topLevel !== ALL_GROUPS) {
     pills.push({ key: 'group', label: filters.topLevel })
   }
