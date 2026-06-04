@@ -77,11 +77,11 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     // 意象照 #28：滑手跳躍，焦點再往上保留整人
     objectPositionClass:
       'object-[center_26%] sm:object-[center_24%] md:object-[center_22%]',
-    collectionObjectPosition: 'center 22%',
+    collectionObjectPosition: 'center 28%',
     collectionObjectPositionClass:
-      'object-[center_24%] max-sm:object-[center_22%] sm:object-[center_20%] md:object-[center_18%] lg:object-[center_16%]',
+      'object-[center_24%] max-sm:object-[center_22%] sm:object-[center_24%] md:object-[center_30%] lg:object-[center_34%]',
     heroFrame: 'action',
-    heroScaleClass: 'max-sm:scale-[1.10] sm:scale-[1.02]',
+    heroScaleClass: 'max-sm:scale-[1.10] sm:scale-[1.04] md:scale-[1.12] lg:scale-[1.14]',
   },
   wb_board: {
     src: '/shop/heroes/wb-board.jpg',
