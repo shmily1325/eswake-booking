@@ -33,35 +33,3 @@ export function ShopHeroStack({ activeSrc, activeClassName }: ShopHeroStackProps
     </>
   )
 }
-
-type ShopHeroPanelStackProps = {
-  visibleSrc: string
-  visibleClassName: string
-}
-
-/** 拼貼單欄：只顯示指定 src */
-export function ShopHeroPanelStack({
-  visibleSrc,
-  visibleClassName,
-}: ShopHeroPanelStackProps) {
-  return (
-    <>
-      {ALL_HERO_URLS.map((url) => (
-        <img
-          key={url}
-          src={url}
-          alt=""
-          aria-hidden={url !== visibleSrc}
-          className={
-            url === visibleSrc
-              ? visibleClassName + ' opacity-100 will-change-[opacity]'
-              : HIDDEN_LAYER
-          }
-          decoding="async"
-          loading="eager"
-          fetchPriority={url === visibleSrc ? 'high' : 'low'}
-        />
-      ))}
-    </>
-  )
-}

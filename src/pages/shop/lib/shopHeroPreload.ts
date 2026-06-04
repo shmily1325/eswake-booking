@@ -11,9 +11,7 @@ const inflight = new Map<string, Promise<void>>()
 let linkPreloadInstalled = false
 
 export function urlsFromShopHeroConfig(cfg: ShopHeroImageConfig): string[] {
-  const urls = [cfg.src]
-  if (cfg.catalogCollageAccent) urls.push(cfg.catalogCollageAccent.src)
-  return urls
+  return [cfg.src]
 }
 
 export function getAllShopHeroImageUrls(): string[] {

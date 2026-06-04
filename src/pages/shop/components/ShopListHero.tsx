@@ -1,4 +1,3 @@
-import { CatalogHeroCollage } from './CatalogHeroCollage'
 import { HeroAtmosphere } from './HeroAtmosphere'
 import { ShopHeroStack } from './ShopHeroStack'
 import { SHOP_COPY } from '../lib/shopCopy'
@@ -194,21 +193,12 @@ export function ShopListHero({
         )}
       </div>
 
-      {/* 桌機 Catalog：主圖 + 斜切副圖；手機維持單張 */}
+      {/* 桌機 Catalog：意象照 #8 全幅 */}
       <div className="hidden sm:block w-full bg-black border-b border-white/10">
-        <div className={`${HERO_FRAME} ${CATALOG_DESKTOP_ASPECT}`}>
+        <div className={`relative ${HERO_FRAME} ${CATALOG_DESKTOP_ASPECT}`}>
           {hero ? (
             <>
-              {hero.catalogCollageAccent ? (
-                <CatalogHeroCollage
-                  mainSrc={hero.src}
-                  accentSrc={hero.catalogCollageAccent.src}
-                  mainImgClass={positionClass}
-                  accentObjectClass={hero.catalogCollageAccent.objectPositionClass}
-                />
-              ) : (
-                <ShopHeroStack activeSrc={hero.src} activeClassName={catalogImgClass} />
-              )}
+              <ShopHeroStack activeSrc={hero.src} activeClassName={catalogImgClass} />
               <HeroAtmosphere mode="caption-bottom" />
             </>
           ) : (

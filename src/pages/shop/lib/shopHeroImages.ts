@@ -6,11 +6,6 @@ export type ShopHeroKey = 'catalog' | ShopGroup
 /** action = 直向動作照加高；square = 近方形圖，置中、較少放大 */
 export type ShopHeroFrame = 'action' | 'square'
 
-export type CatalogCollageAccent = {
-  src: string
-  objectPositionClass: string
-}
-
 export type ShopHeroImageConfig = {
   src: string
   objectPosition: string
@@ -22,23 +17,15 @@ export type ShopHeroImageConfig = {
   heroFrame?: ShopHeroFrame
   /** 覆寫縮放；較小 scale = 露出更多畫面（動作照常用） */
   heroScaleClass?: string
-  /** 桌機 Catalog 右上斜切副圖 */
-  catalogCollageAccent?: CatalogCollageAccent
 }
 
 export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
   catalog: {
     src: '/shop/heroes/catalog.jpg',
     objectPosition: '38% 48%',
-    // 意象照 #8（左主）：Nautique + 人物，焦點略左保留船名與人
+    // 意象照 #8：Nautique + 人物，焦點略左保留船名與人
     objectPositionClass:
       'object-[38%_52%] sm:object-[36%_50%] md:object-[34%_48%] lg:object-[32%_46%]',
-    catalogCollageAccent: {
-      src: '/shop/heroes/catalog-accent.jpg',
-      // 意象照 #3（右欄 42%）：全船側面置中
-      objectPositionClass:
-        'object-[center_50%] md:object-[center_48%]',
-    },
   },
   Wakeboarding: {
     src: '/shop/heroes/wakeboarding.jpg',
