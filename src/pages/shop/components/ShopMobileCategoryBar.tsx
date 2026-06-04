@@ -22,7 +22,7 @@ interface ShopCategoryBarProps {
   variant?: 'dark' | 'light'
 }
 
-/** 單排 chips：大類 +（選中時）子分類接在同一列，不再第二排 All */
+/** 桌機單排含子分類；手機選大類後第二排只列子分類（無 All） */
 export function ShopCategoryBar({
   filters,
   groupCounts,
@@ -44,6 +44,8 @@ export function ShopCategoryBar({
       ? getSubCategoriesForGroup(activeGroup, categoryCounts)
       : []
 
+  const showSubRow = activeGroup != null && subs.length > 0
+
   return (
     <div
       className={
@@ -54,7 +56,10 @@ export function ShopCategoryBar({
       }
     >
       <div
-        className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto px-4 sm:px-6 py-2.5 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={
+          'max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto px-4 sm:px-6 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
+          (showSubRow ? 'pb-2 lg:pb-3' : 'pb-3')
+        }
         role="tablist"
         aria-label="Categories"
       >
@@ -81,8 +86,9 @@ export function ShopCategoryBar({
           )
         })}
 
-        {activeGroup != null && subs.length > 0 && (
-          <>
+        {/* 桌機：子分類接在同一列 */}
+        {showSubRow && (
+          <div className="hidden lg:contents">
             <span
               className={
                 'shrink-0 w-px h-5 self-center ' +
@@ -94,16 +100,35 @@ export function ShopCategoryBar({
               <CategoryChip
                 key={cat.id}
                 active={filters.subCat === cat.id}
-                onClick={() => onSelectCategory(activeGroup, cat.id)}
-                subdued
+                onClick={() => onSelectCategory(activeGroup!, cat.id)}
                 onDark={onDark}
               >
                 {getCategoryShopName(cat)}
               </CategoryChip>
             ))}
-          </>
+          </div>
         )}
       </div>
+
+      {/* 手機：第二排只列子分類（不要 All） */}
+      {showSubRow && (
+        <div
+          className="lg:hidden max-w-7xl mx-auto flex gap-2 overflow-x-auto px-4 sm:px-6 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+          aria-label={`${activeGroup} subcategories`}
+        >
+          {subs.map((cat) => (
+            <CategoryChip
+              key={cat.id}
+              active={filters.subCat === cat.id}
+              onClick={() => onSelectCategory(activeGroup!, cat.id)}
+              onDark={onDark}
+            >
+              {getCategoryShopName(cat)}
+            </CategoryChip>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -111,13 +136,13 @@ export function ShopCategoryBar({
 function CategoryChip({
   active,
   partial = false,
-  subdued = false,
   onDark = false,
   onClick,
   children,
 }: {
   active: boolean
   partial?: boolean
+  /** @deprecated dark 模式下與一般 inactive 相同 */
   subdued?: boolean
   onDark?: boolean
   onClick: () => void
@@ -126,22 +151,18 @@ function CategoryChip({
   let className =
     'shrink-0 h-9 px-3.5 rounded-full text-sm font-medium transition-colors '
 
-  if (active) {
-    className += onDark
-      ? 'bg-white text-zinc-900'
-      : 'bg-zinc-900 text-white'
-  } else if (partial) {
-    className += onDark
-      ? 'bg-white/10 text-white border border-white/70'
-      : 'bg-zinc-100 text-zinc-900 border border-zinc-900'
-  } else if (onDark) {
-    className += subdued
-      ? 'bg-transparent text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200'
-      : 'bg-transparent text-zinc-200 border border-zinc-600 hover:border-zinc-400 hover:text-white'
+  if (onDark) {
+    if (active) {
+      className += 'bg-white text-zinc-900'
+    } else if (partial) {
+      className += 'bg-white/15 text-white border border-white'
+    } else {
+      className += 'bg-transparent text-white border border-white/45 hover:bg-white/10 hover:border-white/80'
+    }
+  } else if (active) {
+    className += 'bg-zinc-900 text-white'
   } else {
-    className += subdued
-      ? 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-      : 'bg-white text-gray-800 border border-gray-200 hover:border-gray-300'
+    className += 'bg-white text-gray-800 border border-gray-200 hover:border-gray-300'
   }
 
   return (
