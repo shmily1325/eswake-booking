@@ -11,6 +11,7 @@ import {
   type TopLevel,
 } from '../lib/shopFilters'
 import { SHOP_LABEL } from '../lib/shopCopy'
+import { preloadShopHeroForCategory } from '../lib/shopHeroPreload'
 
 interface ShopCategoryBarProps {
   filters: ShopFilterState
@@ -68,7 +69,12 @@ export function ShopCategoryBar({
         role="tablist"
         aria-label="Categories"
       >
-        <CategoryChip active={allActive} onClick={onSelectAll} onDark={onDark}>
+        <CategoryChip
+          active={allActive}
+          onClick={onSelectAll}
+          onDark={onDark}
+          onWarmHover={() => void preloadShopHeroForCategory(ALL_GROUPS, ALL_SUBCATS)}
+        >
           {SHOP_LABEL.all}
         </CategoryChip>
 
@@ -84,6 +90,7 @@ export function ShopCategoryBar({
               active={groupAllActive}
               partial={groupPartial}
               onClick={() => onSelectCategory(g, ALL_SUBCATS)}
+              onWarmHover={() => void preloadShopHeroForCategory(g, ALL_SUBCATS)}
               onDark={onDark}
             >
               {g}
@@ -106,6 +113,9 @@ export function ShopCategoryBar({
                 key={cat.id}
                 active={filters.subCat === cat.id}
                 onClick={() => onSelectCategory(activeGroup!, cat.id)}
+                onWarmHover={() =>
+                  void preloadShopHeroForCategory(activeGroup!, cat.id)
+                }
                 subdued
                 onDark={onDark}
               >
@@ -128,6 +138,9 @@ export function ShopCategoryBar({
               key={cat.id}
               active={filters.subCat === cat.id}
               onClick={() => onSelectCategory(activeGroup!, cat.id)}
+              onWarmHover={() =>
+                void preloadShopHeroForCategory(activeGroup!, cat.id)
+              }
               subdued
               onDark={onDark}
             >
@@ -146,6 +159,7 @@ function CategoryChip({
   subdued = false,
   onDark = false,
   onClick,
+  onWarmHover,
   children,
 }: {
   active: boolean
@@ -153,6 +167,7 @@ function CategoryChip({
   subdued?: boolean
   onDark?: boolean
   onClick: () => void
+  onWarmHover?: () => void
   children: React.ReactNode
 }) {
   let className =
@@ -184,6 +199,8 @@ function CategoryChip({
       role="tab"
       aria-selected={active || partial}
       onClick={onClick}
+      onMouseEnter={onWarmHover}
+      onFocus={onWarmHover}
       className={className}
     >
       {children}

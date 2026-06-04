@@ -1,4 +1,5 @@
 import { CatalogHeroCollage } from './CatalogHeroCollage'
+import { ShopHeroPicture } from './ShopHeroPicture'
 import { SHOP_COPY } from '../lib/shopCopy'
 import {
   getShopHeroPositionClass,
@@ -20,11 +21,14 @@ const HERO_IMG_BASE =
   'absolute inset-0 h-full w-full object-cover contrast-[1.06] saturate-[1.04] '
 
 function heroImgClass(heroConfig: ShopHeroImageConfig | null): string {
+  if (heroConfig?.heroScaleClass) {
+    return HERO_IMG_BASE + heroConfig.heroScaleClass + ' '
+  }
   const scale =
     heroConfig?.heroFrame === 'square'
       ? 'scale-[1.05]'
       : heroConfig?.heroFrame === 'action'
-        ? 'scale-[1.12]'
+        ? 'scale-[1.08]'
         : 'scale-[1.14]'
   return HERO_IMG_BASE + scale + ' '
 }
@@ -191,22 +195,12 @@ export function ShopListHero({
             <div
               className={`relative w-full overflow-hidden sm:hidden ${mobileH}`}
             >
-              <img
-                src={hero.src}
-                alt=""
-                className={imgClass}
-                decoding="async"
-              />
+              <ShopHeroPicture src={hero.src} alt="" className={imgClass} />
               <HeroAtmosphere mode="caption-bottom" />
               {caption}
             </div>
             <div className={`hidden sm:block relative ${HERO_FRAME} ${desktopAspect}`}>
-              <img
-                src={hero.src}
-                alt=""
-                className={imgClass}
-                decoding="async"
-              />
+              <ShopHeroPicture src={hero.src} alt="" className={imgClass} />
               <HeroAtmosphere mode="caption-bottom" />
               {caption}
             </div>
@@ -228,13 +222,7 @@ export function ShopListHero({
       <div className="w-full sm:hidden bg-black border-b border-white/10">
         {hero ? (
           <div className={`relative w-full overflow-hidden ${CATALOG_MOBILE_H}`}>
-            <img
-              src={hero.src}
-              alt=""
-              className={catalogImgClass}
-              decoding="async"
-              fetchPriority="high"
-            />
+            <ShopHeroPicture src={hero.src} alt="" className={catalogImgClass} />
             <HeroAtmosphere mode="caption-bottom" />
             <div className="absolute inset-0 z-10 flex flex-col justify-end px-4 pb-3 pointer-events-none">
               <h1 className={HERO_TITLE + ' text-3xl'}>{title}</h1>
@@ -263,13 +251,7 @@ export function ShopListHero({
                   accentObjectClass={hero.catalogCollageAccent.objectPositionClass}
                 />
               ) : (
-                <img
-                  src={hero.src}
-                  alt=""
-                  className={catalogImgClass}
-                  decoding="async"
-                  fetchPriority="high"
-                />
+                <ShopHeroPicture src={hero.src} alt="" className={catalogImgClass} />
               )}
               <HeroAtmosphere mode="caption-bottom" />
             </>

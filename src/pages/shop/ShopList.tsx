@@ -17,6 +17,7 @@ import {
   type SortBy,
 } from './lib/shopFilters'
 import { getShopHeroForFilters } from './lib/shopHeroImages'
+import { useShopHeroPreload } from './hooks/useShopHeroPreload'
 import { SHOP_COPY, SHOP_LABEL } from './lib/shopCopy'
 
 /**
@@ -70,6 +71,7 @@ export function ShopList() {
   const heroTitle = getHeroTitle(filters)
   const showFullHero = isShopCatalogHome(filters)
   const heroConfig = getShopHeroForFilters(filters, showFullHero)
+  useShopHeroPreload(heroConfig)
   const collectionParent = getCollectionParentGroup(filters)
   const showRefinePanel =
     facets.preOrderCount > 0 || facets.brandCounts.size > 0

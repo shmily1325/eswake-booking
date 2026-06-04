@@ -20,6 +20,8 @@ export type ShopHeroImageConfig = {
   collectionAspectClass?: string
   tallCollectionBand?: boolean
   heroFrame?: ShopHeroFrame
+  /** 覆寫縮放；較小 scale = 露出更多畫面（動作照常用） */
+  heroScaleClass?: string
   /** 桌機 Catalog 右上斜切副圖 */
   catalogCollageAccent?: CatalogCollageAccent
 }
@@ -33,20 +35,22 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
       'object-[38%_52%] sm:object-[36%_50%] md:object-[34%_48%] lg:object-[32%_46%]',
     catalogCollageAccent: {
       src: '/shop/heroes/catalog-accent.jpg',
-      // 意象照 #3（右副）：Centurion 側面，窄條置中
+      // 意象照 #3（右欄 42%）：全船側面置中
       objectPositionClass:
-        'object-[center_45%] md:object-[center_42%] lg:object-[52%_40%]',
+        'object-[center_50%] md:object-[center_48%]',
     },
   },
   Wakeboarding: {
     src: '/shop/heroes/wakeboarding.jpg',
-    objectPosition: 'center 32%',
+    objectPosition: 'center 40%',
+    // 意象照 #1：滑手置中、船與水花在下；略低 Y 保留跳躍＋船尾情境
     objectPositionClass:
-      'object-[center_30%] sm:object-[58%_28%] md:object-[68%_26%] lg:object-[78%_24%]',
-    collectionObjectPosition: '55% 32%',
+      'object-[center_42%] sm:object-[center_40%] md:object-[center_38%]',
+    collectionObjectPosition: 'center 42%',
     collectionObjectPositionClass:
-      'object-[center_34%] max-sm:object-[center_36%] sm:object-[58%_32%] md:object-[62%_30%] lg:object-[68%_28%]',
+      'object-[center_44%] max-sm:object-[center_46%] sm:object-[center_42%] md:object-[center_40%] lg:object-[center_38%]',
     heroFrame: 'action',
+    heroScaleClass: 'scale-[1.03]',
   },
   Wakesurfing: {
     src: '/shop/heroes/wakesurfing.jpg',
@@ -119,23 +123,33 @@ export function getShopHeroPositionClass(
   return cfg.objectPositionClass
 }
 
+/** 依大類／子分類回傳 hero（供預載、hover 用） */
+export function getShopHeroConfigForCategory(
+  topLevel: TopLevel,
+  subCat: string = ALL_SUBCATS,
+): ShopHeroImageConfig | null {
+  const isCatalog = topLevel === ALL_GROUPS && subCat === ALL_SUBCATS
+  if (isCatalog) return SHOP_HERO_IMAGES.catalog
+
+  if (subCat !== ALL_SUBCATS) {
+    const sub = SHOP_SUBCATEGORY_HERO_IMAGES[subCat]
+    if (sub) return sub
+  }
+
+  if (topLevel !== ALL_GROUPS) {
+    return SHOP_HERO_IMAGES[topLevel]
+  }
+
+  return null
+}
+
 /** 依目前篩選回傳 hero 設定；無圖時 null */
 export function getShopHeroForFilters(
   filters: ShopFilterState,
   isCatalogHome: boolean,
 ): ShopHeroImageConfig | null {
   if (isCatalogHome) return SHOP_HERO_IMAGES.catalog
-
-  if (filters.subCat !== ALL_SUBCATS) {
-    const sub = SHOP_SUBCATEGORY_HERO_IMAGES[filters.subCat]
-    if (sub) return sub
-  }
-
-  if (filters.topLevel !== ALL_GROUPS) {
-    return SHOP_HERO_IMAGES[filters.topLevel]
-  }
-
-  return null
+  return getShopHeroConfigForCategory(filters.topLevel, filters.subCat)
 }
 
 /** @deprecated 使用 getShopHeroForFilters */
