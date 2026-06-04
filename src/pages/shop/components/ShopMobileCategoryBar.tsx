@@ -62,8 +62,8 @@ export function ShopCategoryBar({
     >
       <div
         className={
-          'max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto px-4 sm:px-6 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
-          (showSubRow ? 'pb-2 lg:pb-3' : 'pb-3')
+          'max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto px-4 sm:px-6 py-1.5 sm:py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
+          (showSubRow ? 'pb-1.5 sm:pb-2 lg:pb-3' : 'pb-2 sm:pb-3')
         }
         role="tablist"
         aria-label="Categories"

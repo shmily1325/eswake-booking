@@ -100,45 +100,77 @@ export function ShopListHero({
     )
   }
 
-  return (
-    <div className="relative overflow-hidden w-full min-h-[220px] sm:min-h-[280px] sm:max-h-[min(42vh,420px)] md:max-h-[min(38vh,400px)] lg:aspect-[2.75/1] lg:max-h-[420px] lg:min-h-0">
-      {hero ? (
-        <>
-          <img
-            src={hero.src}
-            alt=""
-            className={
-              'absolute inset-0 h-full w-full object-cover brightness-[1.03] contrast-[1.02] ' +
-              positionClass
-            }
-            decoding="async"
-            fetchPriority="high"
-          />
-          <div
-            className="absolute inset-x-0 top-0 z-[1] h-14 sm:h-20 bg-gradient-to-b from-black via-black/75 to-transparent pointer-events-none"
-            aria-hidden
-          />
-          <div
-            className="absolute inset-0 z-[1] bg-gradient-to-r from-black/50 from-0% via-black/15 via-45% to-transparent to-75% sm:from-black/55 sm:via-35% pointer-events-none"
-            aria-hidden
-          />
-          <div
-            className="absolute inset-x-0 bottom-0 z-[1] h-20 sm:h-28 bg-gradient-to-b from-transparent via-black/45 to-black pointer-events-none"
-            aria-hidden
-          />
-        </>
-      ) : (
-        <div className="absolute inset-0 bg-black" aria-hidden />
-      )}
+  const catalogImage = (
+    <>
+      <img
+        src={hero!.src}
+        alt=""
+        className={
+          'absolute inset-0 h-full w-full object-cover brightness-[1.03] contrast-[1.02] ' +
+          positionClass
+        }
+        decoding="async"
+        fetchPriority="high"
+      />
+      <div
+        className="absolute inset-x-0 top-0 h-8 sm:h-14 bg-gradient-to-b from-black/70 to-transparent pointer-events-none"
+        aria-hidden
+      />
+    </>
+  )
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-1 sm:pt-12 sm:pb-2">
-        <h1 className="font-black italic uppercase tracking-tight leading-none drop-shadow-md text-3xl sm:text-6xl md:text-7xl">
-          {title}
-        </h1>
-        <p className="mt-4 text-xs sm:text-sm italic tracking-[0.35em] text-gray-300 uppercase">
-          {SHOP_COPY.tagline}
-        </p>
+  return (
+    <>
+      {/* 手機 Catalog：上圖下字，避免大塊黑漸層＋疊字把商品挤太下面 */}
+      <div className="flex flex-col w-full sm:hidden">
+        {hero ? (
+          <div className="relative h-[120px] w-full shrink-0 overflow-hidden">
+            {catalogImage}
+            <div
+              className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-b from-transparent to-black pointer-events-none"
+              aria-hidden
+            />
+          </div>
+        ) : (
+          <div className="h-1 bg-black" aria-hidden />
+        )}
+        <div className="bg-black px-4 py-2 max-w-7xl w-full mx-auto">
+          <h1 className="font-black italic uppercase tracking-tight leading-none text-2xl">
+            {title}
+          </h1>
+          <p className="mt-1 text-[10px] italic tracking-[0.28em] text-zinc-400 uppercase">
+            {SHOP_COPY.tagline}
+          </p>
+        </div>
       </div>
-    </div>
+
+      {/* 桌機 Catalog：保留大 hero 疊字 */}
+      <div className="relative hidden sm:block overflow-hidden w-full min-h-[280px] sm:max-h-[min(42vh,420px)] md:max-h-[min(38vh,400px)] lg:aspect-[2.75/1] lg:max-h-[420px] lg:min-h-0">
+        {hero ? (
+          <>
+            {catalogImage}
+            <div
+              className="absolute inset-0 z-[1] bg-gradient-to-r from-black/50 from-0% via-black/15 via-45% to-transparent to-75% sm:from-black/55 sm:via-35% pointer-events-none"
+              aria-hidden
+            />
+            <div
+              className="absolute inset-x-0 bottom-0 z-[1] h-16 sm:h-24 bg-gradient-to-b from-transparent via-black/40 to-black pointer-events-none"
+              aria-hidden
+            />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-black" aria-hidden />
+        )}
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-1 sm:pt-12 sm:pb-2">
+          <h1 className="font-black italic uppercase tracking-tight leading-none drop-shadow-md text-6xl md:text-7xl">
+            {title}
+          </h1>
+          <p className="mt-4 text-sm italic tracking-[0.35em] text-gray-300 uppercase">
+            {SHOP_COPY.tagline}
+          </p>
+        </div>
+      </div>
+    </>
   )
 }

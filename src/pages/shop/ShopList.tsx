@@ -103,7 +103,7 @@ export function ShopList() {
           fadeFromHero
         />
         <div
-          className="h-4 sm:h-6 bg-gradient-to-b from-black to-gray-50"
+          className="h-2 sm:h-6 bg-gradient-to-b from-black to-gray-50 max-sm:hidden sm:block"
           aria-hidden
         />
       </section>
