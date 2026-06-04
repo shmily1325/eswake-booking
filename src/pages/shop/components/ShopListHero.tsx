@@ -121,24 +121,28 @@ export function ShopListHero({
 
   return (
     <>
-      {/* 手機 Catalog：上圖下字，避免大塊黑漸層＋疊字把商品挤太下面 */}
-      <div className="flex flex-col w-full sm:hidden">
+      {/* 手機 Catalog：字疊在圖上方，底部薄漸層接分類列 */}
+      <div className="relative w-full sm:hidden overflow-hidden">
         {hero ? (
-          <div className="relative h-[132px] w-full shrink-0 overflow-hidden">
+          <div className="relative h-[148px] w-full">
             {catalogImage}
             <div
-              className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-b from-transparent to-black pointer-events-none"
+              className="absolute inset-x-0 top-0 z-[1] h-20 bg-gradient-to-b from-black/75 via-black/35 to-transparent pointer-events-none"
+              aria-hidden
+            />
+            <div
+              className="absolute inset-x-0 bottom-0 z-[1] h-10 bg-gradient-to-b from-transparent to-black pointer-events-none"
               aria-hidden
             />
           </div>
         ) : (
-          <div className="h-1 bg-black" aria-hidden />
+          <div className="h-14 bg-black" aria-hidden />
         )}
-        <div className="bg-black px-4 py-2 max-w-7xl w-full mx-auto">
-          <h1 className="font-black italic uppercase tracking-tight leading-none text-2xl">
+        <div className="absolute inset-x-0 top-0 z-10 px-4 pt-3 pb-2 max-w-7xl mx-auto pointer-events-none">
+          <h1 className="font-black italic uppercase tracking-tight leading-none text-2xl drop-shadow-md">
             {title}
           </h1>
-          <p className="mt-1 text-[10px] italic tracking-[0.28em] text-zinc-400 uppercase">
+          <p className="mt-1 text-[10px] italic tracking-[0.28em] text-gray-300 uppercase drop-shadow-sm">
             {SHOP_COPY.tagline}
           </p>
         </div>
