@@ -60,7 +60,7 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
       'object-[center_30%] sm:object-[center_28%] md:object-[center_26%] lg:object-[center_24%]',
     collectionObjectPosition: 'center 30%',
     collectionObjectPositionClass:
-      'object-[center_32%] max-sm:object-[center_34%] sm:object-[center_30%] md:object-[center_28%] lg:object-[center_26%]',
+      'object-[center_32%] max-sm:object-[center_34%] sm:object-[center_30%] md:object-[center_32%] lg:object-[center_30%]',
     heroFrame: 'action',
     heroScaleClass: 'scale-[1.04]',
     collectionAspectClass:
