@@ -73,15 +73,15 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
 export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> = {
   ws_board: {
     src: '/shop/heroes/ws-board.jpg',
-    objectPosition: 'center 30%',
-    // 意象照 #28：滑手跳躍，焦點在上段人物
+    objectPosition: 'center 24%',
+    // 意象照 #28：滑手跳躍，焦點再往上保留整人
     objectPositionClass:
-      'object-[center_32%] sm:object-[center_30%] md:object-[center_28%]',
-    collectionObjectPosition: 'center 28%',
+      'object-[center_26%] sm:object-[center_24%] md:object-[center_22%]',
+    collectionObjectPosition: 'center 22%',
     collectionObjectPositionClass:
-      'object-[center_30%] max-sm:object-[center_28%] sm:object-[center_26%] md:object-[center_24%] lg:object-[center_22%]',
+      'object-[center_24%] max-sm:object-[center_22%] sm:object-[center_20%] md:object-[center_18%] lg:object-[center_16%]',
     heroFrame: 'action',
-    heroScaleClass: 'max-sm:scale-[1.10] sm:scale-[1.04]',
+    heroScaleClass: 'max-sm:scale-[1.10] sm:scale-[1.02]',
   },
   wb_board: {
     src: '/shop/heroes/wb-board.jpg',
