@@ -102,10 +102,6 @@ export function ShopList() {
           variant="dark"
           fadeFromHero
         />
-        <div
-          className="h-2 sm:h-6 bg-gradient-to-b from-black to-gray-50 max-sm:hidden sm:block"
-          aria-hidden
-        />
       </section>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">

@@ -50,7 +50,7 @@ export function ShopHeader({ showBack = false, blendBelow = false }: ShopHeaderP
     <header
       className={
         'sticky top-0 z-30 bg-black text-white ' +
-        (blendBelow ? 'shadow-none' : 'shadow-md')
+        (blendBelow ? 'shadow-none border-b border-white/10' : 'shadow-md')
       }
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-3 md:justify-start">
