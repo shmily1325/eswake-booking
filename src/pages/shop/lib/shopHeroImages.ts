@@ -33,9 +33,9 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     // 意象照 #1：滑手置中、船與水花在下；略低 Y 保留跳躍＋船尾情境
     objectPositionClass:
       'object-[center_42%] sm:object-[center_40%] md:object-[center_38%]',
-    collectionObjectPosition: 'center 36%',
+    collectionObjectPosition: 'center 32%',
     collectionObjectPositionClass:
-      'object-[center_38%] max-sm:object-[center_36%] sm:object-[center_42%] md:object-[center_38%] lg:object-[center_34%]',
+      'object-[center_38%] max-sm:object-[center_36%] sm:object-[center_42%] md:object-[center_30%] lg:object-[center_26%]',
     heroFrame: 'action',
     // 手機略放大裁切；桌機維持較廣
     heroScaleClass: 'max-sm:scale-[1.12] sm:scale-[1.03]',
