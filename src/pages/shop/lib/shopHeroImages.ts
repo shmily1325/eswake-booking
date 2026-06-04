@@ -58,6 +58,17 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
 
 /** 子分類專用 hero（選 Boards / Boots 等時覆蓋上層 group 圖） */
 export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> = {
+  wb_board: {
+    src: '/shop/heroes/wb-board.jpg',
+    objectPosition: 'center 50%',
+    objectPositionClass:
+      'object-[center_52%] sm:object-[50%_50%] md:object-[48%_52%] lg:object-[46%_54%]',
+    collectionObjectPosition: '50% 56%',
+    collectionObjectPositionClass:
+      'object-[50%_58%] max-sm:object-[52%_60%] sm:object-[50%_56%] md:object-[48%_54%] lg:object-[46%_52%]',
+    collectionAspectClass:
+      'sm:min-h-[220px] md:min-h-[248px] lg:aspect-[2.35/1] lg:max-h-[320px] lg:min-h-0',
+  },
   wb_boots: {
     src: '/shop/heroes/wb-boots.jpg',
     objectPosition: 'center 58%',
