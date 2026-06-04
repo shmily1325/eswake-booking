@@ -56,12 +56,13 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
   },
   Essentials: {
     src: '/shop/heroes/essentials.jpg',
-    objectPosition: 'center 40%',
+    objectPosition: 'center 42%',
+    // 意象照 #17：背心特寫，人物置中
     objectPositionClass:
-      'object-[center_35%] sm:object-[45%_32%] md:object-[50%_30%]',
-    collectionObjectPosition: 'center 34%',
+      'object-[center_44%] sm:object-[center_42%] md:object-[center_40%]',
+    collectionObjectPosition: 'center 42%',
     collectionObjectPositionClass:
-      'object-[center_34%] max-sm:object-[center_36%] sm:object-[center_36%] md:object-[center_32%] lg:object-[center_36%]',
+      'object-[center_44%] max-sm:object-[center_44%] sm:object-[center_42%] md:object-[center_40%] lg:object-[center_38%]',
     collectionAspectClass:
       'sm:min-h-[220px] md:min-h-[260px] lg:aspect-[2.5/1] lg:max-h-[300px] lg:min-h-0',
     tallCollectionBand: true,
