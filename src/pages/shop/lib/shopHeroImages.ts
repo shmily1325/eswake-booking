@@ -112,11 +112,11 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     // 意象照 #11：帽後 ES WAKE 標，焦點偏右上方
     objectPositionClass:
       'object-[68%_34%] sm:object-[70%_32%] md:object-[72%_30%]',
-    collectionObjectPosition: '70% 32%',
+    collectionObjectPosition: '68% 38%',
     collectionObjectPositionClass:
-      'object-[66%_34%] max-sm:object-[68%_32%] sm:object-[70%_30%] md:object-[72%_28%] lg:object-[74%_26%]',
+      'object-[66%_34%] max-sm:object-[68%_32%] sm:object-[70%_36%] md:object-[68%_42%] lg:object-[66%_46%]',
     tallCollectionBand: true,
-    heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.04]',
+    heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.02] md:scale-[1.0]',
   },
   lifejacket: {
     src: '/shop/heroes/lifejacket.jpg',
