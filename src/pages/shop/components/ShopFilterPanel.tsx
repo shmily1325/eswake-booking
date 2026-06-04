@@ -145,7 +145,7 @@ export function ShopFilterPanel({
 
       {brands.length > 0 && (
         <FilterSection title={SHOP_LABEL.brand}>
-          <div className="space-y-0.5 max-h-52 overflow-y-auto overflow-x-hidden pr-1">
+          <div className="space-y-0.5">
             {brands.map((name) => {
               const checked = filters.brands.includes(name)
               return (
