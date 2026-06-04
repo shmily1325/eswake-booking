@@ -1,14 +1,13 @@
 import { SHOP_COPY } from '../lib/shopCopy'
 import {
-  getShopHeroObjectPositionClass,
-  SHOP_HERO_IMAGES,
-  type ShopHeroKey,
+  getShopHeroPositionClass,
+  type ShopHeroImageConfig,
 } from '../lib/shopHeroImages'
 
 interface ShopListHeroProps {
   mode: 'catalog' | 'collection'
   title: string
-  heroKey: ShopHeroKey | null
+  heroConfig: ShopHeroImageConfig | null
   parentGroup?: string | null
   preOrderOnly?: boolean
   searchQuery?: string
@@ -20,7 +19,7 @@ interface ShopListHeroProps {
 export function ShopListHero({
   mode,
   title,
-  heroKey,
+  heroConfig,
   parentGroup,
   preOrderOnly = false,
   searchQuery = '',
@@ -28,16 +27,15 @@ export function ShopListHero({
   loading = false,
 }: ShopListHeroProps) {
   const isCatalog = mode === 'catalog'
-  const hero = heroKey ? SHOP_HERO_IMAGES[heroKey] : null
-  const heroCfg = heroKey ? SHOP_HERO_IMAGES[heroKey] : null
+  const hero = heroConfig
   const collectionAspect =
-    heroCfg?.collectionAspectClass ??
+    heroConfig?.collectionAspectClass ??
     'sm:min-h-[200px] md:min-h-[232px] lg:aspect-[2.85/1] lg:max-h-[300px] lg:min-h-0'
 
   const positionClass =
-    heroKey != null
-      ? getShopHeroObjectPositionClass(heroKey, isCatalog)
-      : ''
+    heroConfig != null ? getShopHeroPositionClass(heroConfig, isCatalog) : ''
+
+  const tallMobileImage = !isCatalog && heroConfig?.tallCollectionBand
 
   const shellClass = isCatalog
     ? 'relative overflow-hidden w-full min-h-[220px] sm:min-h-[280px] sm:max-h-[min(42vh,420px)] md:max-h-[min(38vh,400px)] lg:aspect-[2.75/1] lg:max-h-[420px] lg:min-h-0'
@@ -50,7 +48,9 @@ export function ShopListHero({
           className={
             isCatalog
               ? 'absolute inset-0'
-              : 'relative h-[104px] shrink-0 overflow-hidden max-sm:rounded-none sm:absolute sm:inset-0 sm:h-auto'
+              : (tallMobileImage
+                  ? 'relative h-[118px] shrink-0 overflow-hidden max-sm:rounded-none sm:absolute sm:inset-0 sm:h-auto'
+                  : 'relative h-[104px] shrink-0 overflow-hidden max-sm:rounded-none sm:absolute sm:inset-0 sm:h-auto')
           }
         >
           <img

@@ -1,5 +1,5 @@
 import type { ShopGroup } from '../../admin/products/schema'
-import { ALL_GROUPS, type TopLevel } from './shopFilters'
+import { ALL_GROUPS, ALL_SUBCATS, type ShopFilterState, type TopLevel } from './shopFilters'
 
 export type ShopHeroKey = 'catalog' | ShopGroup
 
@@ -9,7 +9,6 @@ export type ShopHeroImageConfig = {
   objectPositionClass: string
   collectionObjectPosition?: string
   collectionObjectPositionClass?: string
-  /** 分類頁桌機橫幅比例（方形／直向素材需較高，避免裁成模糊水花） */
   collectionAspectClass?: string
   tallCollectionBand?: boolean
 }
@@ -18,7 +17,6 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
   catalog: {
     src: '/shop/heroes/catalog.jpg',
     objectPosition: 'center 42%',
-    // 橫向船照：置中偏下，左側留給 CATALOG 字
     objectPositionClass:
       'object-[center_45%] sm:object-[52%_42%] md:object-[55%_40%] lg:object-[58%_38%]',
   },
@@ -56,29 +54,52 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
   },
 }
 
-export function getShopHeroObjectPosition(
-  heroKey: ShopHeroKey,
-  isCatalog: boolean,
-): string {
-  const cfg = SHOP_HERO_IMAGES[heroKey]
-  if (!isCatalog && cfg.collectionObjectPosition) {
-    return cfg.collectionObjectPosition
-  }
-  return cfg.objectPosition
+/** 子分類專用 hero（選 Boards / Boots 等時覆蓋上層 group 圖） */
+export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> = {
+  wb_boots: {
+    src: '/shop/heroes/wb-boots.jpg',
+    objectPosition: 'center 58%',
+    objectPositionClass:
+      'object-[center_60%] sm:object-[50%_58%] md:object-[48%_55%]',
+    collectionObjectPosition: 'center 62%',
+    collectionObjectPositionClass:
+      'object-[center_65%] max-sm:object-[center_68%] sm:object-[50%_60%] md:object-[48%_58%]',
+    collectionAspectClass:
+      'sm:min-h-[220px] md:min-h-[260px] lg:aspect-[2.45/1] lg:max-h-[300px] lg:min-h-0',
+    tallCollectionBand: true,
+  },
 }
 
-export function getShopHeroObjectPositionClass(
-  heroKey: ShopHeroKey,
+export function getShopHeroPositionClass(
+  cfg: ShopHeroImageConfig,
   isCatalog: boolean,
 ): string {
-  const cfg = SHOP_HERO_IMAGES[heroKey]
   if (!isCatalog && cfg.collectionObjectPositionClass) {
     return cfg.collectionObjectPositionClass
   }
   return cfg.objectPositionClass
 }
 
-/** Catalog 首頁或已選 shop group 時回傳 hero 圖 key；預購/搜尋/全部分類則無背景圖 */
+/** 依目前篩選回傳 hero 設定；無圖時 null */
+export function getShopHeroForFilters(
+  filters: ShopFilterState,
+  isCatalogHome: boolean,
+): ShopHeroImageConfig | null {
+  if (isCatalogHome) return SHOP_HERO_IMAGES.catalog
+
+  if (filters.subCat !== ALL_SUBCATS) {
+    const sub = SHOP_SUBCATEGORY_HERO_IMAGES[filters.subCat]
+    if (sub) return sub
+  }
+
+  if (filters.topLevel !== ALL_GROUPS) {
+    return SHOP_HERO_IMAGES[filters.topLevel]
+  }
+
+  return null
+}
+
+/** @deprecated 使用 getShopHeroForFilters */
 export function resolveShopHeroKey(
   isCatalogHome: boolean,
   topLevel: TopLevel,
