@@ -71,6 +71,18 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
 
 /** 子分類專用 hero（選 Boards / Boots 等時覆蓋上層 group 圖） */
 export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> = {
+  ws_board: {
+    src: '/shop/heroes/ws-board.jpg',
+    objectPosition: 'center 30%',
+    // 意象照 #28：滑手跳躍，焦點在上段人物
+    objectPositionClass:
+      'object-[center_32%] sm:object-[center_30%] md:object-[center_28%]',
+    collectionObjectPosition: 'center 28%',
+    collectionObjectPositionClass:
+      'object-[center_30%] max-sm:object-[center_28%] sm:object-[center_26%] md:object-[center_24%] lg:object-[center_22%]',
+    heroFrame: 'action',
+    heroScaleClass: 'max-sm:scale-[1.10] sm:scale-[1.04]',
+  },
   wb_board: {
     src: '/shop/heroes/wb-board.jpg',
     objectPosition: 'center 38%',
