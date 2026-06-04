@@ -1,6 +1,6 @@
 import { SHOP_COPY } from '../lib/shopCopy'
 import {
-  getShopHeroObjectPosition,
+  getShopHeroObjectPositionClass,
   SHOP_HERO_IMAGES,
   type ShopHeroKey,
 } from '../lib/shopHeroImages'
@@ -32,15 +32,20 @@ export function ShopListHero({
   const tallCollection =
     !isCatalog && heroKey && SHOP_HERO_IMAGES[heroKey].tallCollectionBand
 
+  const positionClass =
+    heroKey != null
+      ? getShopHeroObjectPositionClass(heroKey, isCatalog)
+      : ''
+
   return (
     <div
       className={
-        'relative overflow-hidden ' +
+        'relative overflow-hidden w-full ' +
         (isCatalog
-          ? 'min-h-[220px] sm:min-h-[300px] md:min-h-[340px]'
+          ? 'min-h-[220px] sm:min-h-[280px] sm:max-h-[min(42vh,420px)] md:max-h-[min(38vh,400px)] lg:aspect-[2.75/1] lg:max-h-[420px] lg:min-h-0'
           : tallCollection
-            ? 'min-h-[190px] sm:min-h-[260px] md:min-h-[280px]'
-            : 'min-h-[168px] sm:min-h-[220px] md:min-h-[248px]')
+            ? 'min-h-[190px] sm:min-h-[260px] md:min-h-[280px] lg:aspect-[3.2/1] lg:max-h-[300px] lg:min-h-0'
+            : 'min-h-[168px] sm:min-h-[220px] md:min-h-[248px] lg:aspect-[3.5/1] lg:max-h-[280px] lg:min-h-0')
       }
     >
       {hero ? (
@@ -48,16 +53,18 @@ export function ShopListHero({
           <img
             src={hero.src}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover brightness-[1.03] contrast-[1.02]"
-            style={{
-              objectPosition: heroKey
-                ? getShopHeroObjectPosition(heroKey, isCatalog)
-                : hero.objectPosition,
-            }}
+            className={
+              'absolute inset-0 h-full w-full object-cover brightness-[1.03] contrast-[1.02] ' +
+              positionClass
+            }
             decoding="async"
             fetchPriority={isCatalog ? 'high' : 'auto'}
           />
-          {/* 底部略深保文字與 category bar 銜接；上方留白讓照片透出 */}
+          {/* 左側遮罩：桌機標題區可讀，也平衡直向照在寬螢幕的構圖 */}
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-black/50 from-0% via-black/15 via-45% to-transparent to-75% sm:from-black/55 sm:via-35%"
+            aria-hidden
+          />
           <div
             className="absolute inset-0 bg-gradient-to-t from-black/75 from-20% via-black/30 via-55% to-transparent"
             aria-hidden
