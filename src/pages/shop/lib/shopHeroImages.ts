@@ -35,9 +35,10 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
       'object-[center_42%] sm:object-[center_40%] md:object-[center_38%]',
     collectionObjectPosition: 'center 36%',
     collectionObjectPositionClass:
-      'object-[center_44%] max-sm:object-[center_46%] sm:object-[center_42%] md:object-[center_38%] lg:object-[center_34%]',
+      'object-[center_38%] max-sm:object-[center_36%] sm:object-[center_42%] md:object-[center_38%] lg:object-[center_34%]',
     heroFrame: 'action',
-    heroScaleClass: 'scale-[1.03]',
+    // 手機略放大裁切；桌機維持較廣
+    heroScaleClass: 'max-sm:scale-[1.12] sm:scale-[1.03]',
   },
   Wakesurfing: {
     src: '/shop/heroes/wakesurfing.jpg',
