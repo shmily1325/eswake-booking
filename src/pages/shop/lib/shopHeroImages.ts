@@ -60,7 +60,7 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
       'object-[center_30%] sm:object-[center_28%] md:object-[center_26%] lg:object-[center_24%]',
     collectionObjectPosition: 'center 26%',
     collectionObjectPositionClass:
-      'object-[center_32%] max-sm:object-[center_34%] sm:object-[center_30%] md:object-[center_28%] lg:object-[center_24%]',
+      'object-[center_28%] max-sm:object-[center_28%] sm:object-[center_26%] md:object-[center_28%] lg:object-[center_24%]',
     heroFrame: 'action',
     heroScaleClass: 'scale-[1.04]',
     collectionAspectClass:
@@ -73,7 +73,7 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
       'object-[center_35%] sm:object-[45%_32%] md:object-[50%_30%]',
     collectionObjectPosition: 'center 34%',
     collectionObjectPositionClass:
-      'object-[center_20%] max-sm:object-[48%_24%] sm:object-[42%_22%] md:object-[center_32%] lg:object-[center_36%]',
+      'object-[center_34%] max-sm:object-[center_36%] sm:object-[center_36%] md:object-[center_32%] lg:object-[center_36%]',
     collectionAspectClass:
       'sm:min-h-[220px] md:min-h-[260px] lg:aspect-[2.5/1] lg:max-h-[300px] lg:min-h-0',
     tallCollectionBand: true,
