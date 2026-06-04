@@ -1,5 +1,6 @@
 import { SHOP_COPY } from '../lib/shopCopy'
 import {
+  getShopHeroObjectPosition,
   SHOP_HERO_IMAGES,
   type ShopHeroKey,
 } from '../lib/shopHeroImages'
@@ -28,6 +29,8 @@ export function ShopListHero({
 }: ShopListHeroProps) {
   const isCatalog = mode === 'catalog'
   const hero = heroKey ? SHOP_HERO_IMAGES[heroKey] : null
+  const tallCollection =
+    !isCatalog && heroKey && SHOP_HERO_IMAGES[heroKey].tallCollectionBand
 
   return (
     <div
@@ -35,7 +38,9 @@ export function ShopListHero({
         'relative overflow-hidden ' +
         (isCatalog
           ? 'min-h-[220px] sm:min-h-[300px] md:min-h-[340px]'
-          : 'min-h-[150px] sm:min-h-[200px] md:min-h-[220px]')
+          : tallCollection
+            ? 'min-h-[190px] sm:min-h-[260px] md:min-h-[280px]'
+            : 'min-h-[168px] sm:min-h-[220px] md:min-h-[248px]')
       }
     >
       {hero ? (
@@ -43,16 +48,20 @@ export function ShopListHero({
           <img
             src={hero.src}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectPosition: hero.objectPosition }}
+            className="absolute inset-0 h-full w-full object-cover brightness-[1.03] contrast-[1.02]"
+            style={{
+              objectPosition: heroKey
+                ? getShopHeroObjectPosition(heroKey, isCatalog)
+                : hero.objectPosition,
+            }}
             decoding="async"
             fetchPriority={isCatalog ? 'high' : 'auto'}
           />
+          {/* 底部略深保文字與 category bar 銜接；上方留白讓照片透出 */}
           <div
-            className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/35"
+            className="absolute inset-0 bg-gradient-to-t from-black/75 from-20% via-black/30 via-55% to-transparent"
             aria-hidden
           />
-          <div className="absolute inset-0 bg-black/25" aria-hidden />
         </>
       ) : (
         <div className="absolute inset-0 bg-black" aria-hidden />
@@ -72,7 +81,7 @@ export function ShopListHero({
 
         <h1
           className={
-            'font-black italic uppercase tracking-tight leading-none drop-shadow-sm ' +
+            'font-black italic uppercase tracking-tight leading-none drop-shadow-md ' +
             (isCatalog
               ? 'text-3xl sm:text-6xl md:text-7xl'
               : 'text-2xl sm:text-4xl md:text-5xl')
