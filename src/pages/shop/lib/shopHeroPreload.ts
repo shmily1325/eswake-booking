@@ -8,6 +8,7 @@ import {
 
 const loaded = new Set<string>()
 const inflight = new Map<string, Promise<void>>()
+let linkPreloadInstalled = false
 
 export function urlsFromShopHeroConfig(cfg: ShopHeroImageConfig): string[] {
   const urls = [cfg.src]
@@ -30,7 +31,21 @@ export function isShopHeroImageReady(url: string): boolean {
   return loaded.has(url)
 }
 
-/** 用 Image() 預載並解碼，切換分類時可即時顯示 */
+function installLinkPreloads(urls: string[]): void {
+  if (typeof document === 'undefined') return
+  for (const url of urls) {
+    const id = `shop-hero-preload-${url.replace(/\W/g, '-')}`
+    if (document.getElementById(id)) continue
+    const link = document.createElement('link')
+    link.id = id
+    link.rel = 'preload'
+    link.as = 'image'
+    link.href = url
+    document.head.appendChild(link)
+  }
+}
+
+/** 預載 + decode，切換分類時可即時顯示 */
 export function preloadShopHeroImage(url: string): Promise<void> {
   if (loaded.has(url)) return Promise.resolve()
   const pending = inflight.get(url)
@@ -38,11 +53,17 @@ export function preloadShopHeroImage(url: string): Promise<void> {
 
   const promise = new Promise<void>((resolve, reject) => {
     const img = new Image()
-    img.decoding = 'async'
     img.onload = () => {
-      loaded.add(url)
-      inflight.delete(url)
-      resolve()
+      void (async () => {
+        try {
+          if ('decode' in img) await img.decode()
+        } catch {
+          /* decode 失敗仍視為已載入 */
+        }
+        loaded.add(url)
+        inflight.delete(url)
+        resolve()
+      })()
     }
     img.onerror = () => {
       inflight.delete(url)
@@ -61,10 +82,14 @@ export function preloadShopHeroConfig(cfg: ShopHeroImageConfig | null): Promise<
 }
 
 export function preloadAllShopHeroImages(): Promise<void[]> {
-  return Promise.all(getAllShopHeroImageUrls().map(preloadShopHeroImage))
+  const urls = getAllShopHeroImageUrls()
+  if (!linkPreloadInstalled) {
+    installLinkPreloads(urls)
+    linkPreloadInstalled = true
+  }
+  return Promise.all(urls.map(preloadShopHeroImage))
 }
 
-/** 滑過分類 tab 時先載入對應 hero */
 export function preloadShopHeroForCategory(
   topLevel: TopLevel,
   subCat: string = ALL_SUBCATS,

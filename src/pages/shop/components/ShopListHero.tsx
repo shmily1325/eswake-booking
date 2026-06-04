@@ -1,6 +1,6 @@
 import { CatalogHeroCollage } from './CatalogHeroCollage'
 import { HeroAtmosphere } from './HeroAtmosphere'
-import { ShopHeroPicture } from './ShopHeroPicture'
+import { ShopHeroStack } from './ShopHeroStack'
 import { SHOP_COPY } from '../lib/shopCopy'
 import {
   getShopHeroPositionClass,
@@ -151,12 +151,12 @@ export function ShopListHero({
             <div
               className={`relative w-full overflow-hidden sm:hidden ${mobileH}`}
             >
-              <ShopHeroPicture src={hero.src} alt="" className={imgClass} />
+              <ShopHeroStack activeSrc={hero.src} activeClassName={imgClass} />
               <HeroAtmosphere mode="caption-bottom" />
               {caption}
             </div>
             <div className={`hidden sm:block relative ${HERO_FRAME} ${desktopAspect}`}>
-              <ShopHeroPicture src={hero.src} alt="" className={imgClass} />
+              <ShopHeroStack activeSrc={hero.src} activeClassName={imgClass} />
               <HeroAtmosphere mode="caption-bottom" />
               {caption}
             </div>
@@ -178,7 +178,7 @@ export function ShopListHero({
       <div className="w-full sm:hidden bg-black border-b border-white/10">
         {hero ? (
           <div className={`relative w-full overflow-hidden ${CATALOG_MOBILE_H}`}>
-            <ShopHeroPicture src={hero.src} alt="" className={catalogImgClass} />
+            <ShopHeroStack activeSrc={hero.src} activeClassName={catalogImgClass} />
             <HeroAtmosphere mode="caption-bottom" />
             <div className="absolute inset-0 z-10 flex flex-col justify-end px-4 pb-3 pointer-events-none">
               <h1 className={HERO_TITLE + ' text-3xl'}>{title}</h1>
@@ -207,7 +207,7 @@ export function ShopListHero({
                   accentObjectClass={hero.catalogCollageAccent.objectPositionClass}
                 />
               ) : (
-                <ShopHeroPicture src={hero.src} alt="" className={catalogImgClass} />
+                <ShopHeroStack activeSrc={hero.src} activeClassName={catalogImgClass} />
               )}
               <HeroAtmosphere mode="caption-bottom" />
             </>
