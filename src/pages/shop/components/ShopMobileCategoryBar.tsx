@@ -20,6 +20,8 @@ interface ShopCategoryBarProps {
   onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
   /** dark = 貼在黑色 hero 底下；light = 灰底列表頁（legacy） */
   variant?: 'dark' | 'light'
+  /** 與 hero 底部漸層重疊，無硬邊界 */
+  fadeFromHero?: boolean
 }
 
 /** 桌機單排含子分類；手機選大類後第二排只列子分類（無 All） */
@@ -30,6 +32,7 @@ export function ShopCategoryBar({
   onSelectAll,
   onSelectCategory,
   variant = 'dark',
+  fadeFromHero = false,
 }: ShopCategoryBarProps) {
   const onDark = variant === 'dark'
 
@@ -49,10 +52,12 @@ export function ShopCategoryBar({
   return (
     <div
       className={
-        'sticky top-14 z-20 border-b ' +
+        'sticky top-14 z-20 ' +
         (onDark
-          ? 'bg-black border-zinc-800'
-          : 'bg-gray-50/95 backdrop-blur-sm border-gray-200')
+          ? fadeFromHero
+            ? '-mt-10 sm:-mt-14 pt-2 sm:pt-3 bg-transparent border-b-0'
+            : 'bg-black border-b border-zinc-800'
+          : 'bg-gray-50/95 backdrop-blur-sm border-b border-gray-200')
       }
     >
       <div

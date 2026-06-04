@@ -80,9 +80,9 @@ export function ShopList() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ShopHeader />
+      <ShopHeader blendBelow />
 
-      <section className="bg-black text-white">
+      <section className="relative bg-black text-white overflow-hidden">
         <ShopListHero
           mode={showFullHero ? 'catalog' : 'collection'}
           title={heroTitle}
@@ -100,6 +100,11 @@ export function ShopList() {
           onSelectAll={selectAll}
           onSelectCategory={selectCategory}
           variant="dark"
+          fadeFromHero
+        />
+        <div
+          className="h-4 sm:h-6 bg-gradient-to-b from-black to-gray-50"
+          aria-hidden
         />
       </section>
 

@@ -63,17 +63,23 @@ export function ShopListHero({
             decoding="async"
             fetchPriority={isCatalog ? 'high' : 'auto'}
           />
+          {/* 與 header 銜接 */}
+          <div
+            className="absolute inset-x-0 top-0 z-[1] h-14 sm:h-20 bg-gradient-to-b from-black via-black/75 to-transparent pointer-events-none"
+            aria-hidden
+          />
           <div
             className={
-              'absolute inset-0 ' +
+              'absolute inset-0 z-[1] ' +
               (isCatalog
                 ? 'bg-gradient-to-r from-black/50 from-0% via-black/15 via-45% to-transparent to-75% sm:from-black/55 sm:via-35%'
                 : 'max-sm:hidden sm:block sm:bg-gradient-to-r sm:from-black/50 sm:from-0% sm:via-black/15 sm:via-40% sm:to-transparent sm:to-70%')
             }
             aria-hidden
           />
+          {/* 與 category 列漸層相接 */}
           <div
-            className="absolute inset-0 bg-gradient-to-t from-black/75 from-20% via-black/30 via-55% to-transparent max-sm:via-40% max-sm:to-transparent"
+            className="absolute inset-x-0 bottom-0 z-[1] h-24 sm:h-32 md:h-36 bg-gradient-to-b from-transparent via-black/55 to-black pointer-events-none"
             aria-hidden
           />
         </div>
@@ -91,8 +97,8 @@ export function ShopListHero({
         className={
           'relative z-10 w-full ' +
           (isCatalog
-            ? 'max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2 sm:pt-12 sm:pb-4'
-            : 'max-sm:bg-black max-sm:px-4 max-sm:py-2.5 sm:max-w-7xl sm:mx-auto sm:px-6 sm:pt-7 sm:pb-3 md:pt-8')
+            ? 'max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-1 sm:pt-12 sm:pb-2'
+            : 'max-sm:bg-gradient-to-b max-sm:from-black/80 max-sm:to-black max-sm:px-4 max-sm:py-2.5 max-sm:-mt-1 sm:max-w-7xl sm:mx-auto sm:px-6 sm:pt-7 sm:pb-1 md:pt-8 md:pb-2')
         }
       >
         {parentGroup && !isCatalog && (

@@ -4,9 +4,11 @@ import { useShopCart } from '../hooks/useShopCart'
 
 interface ShopHeaderProps {
   showBack?: boolean
+  /** 列表 hero：去掉陰影，與下方黑底／照片漸層銜接 */
+  blendBelow?: boolean
 }
 
-export function ShopHeader({ showBack = false }: ShopHeaderProps) {
+export function ShopHeader({ showBack = false, blendBelow = false }: ShopHeaderProps) {
   const { totalCount: cartCount } = useShopCart()
   const navigate = useNavigate()
   const location = useLocation()
@@ -45,7 +47,12 @@ export function ShopHeader({ showBack = false }: ShopHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-black text-white shadow-md">
+    <header
+      className={
+        'sticky top-0 z-30 bg-black text-white ' +
+        (blendBelow ? 'shadow-none' : 'shadow-md')
+      }
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-3 md:justify-start">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
           {showBack && (
