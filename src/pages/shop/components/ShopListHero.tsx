@@ -15,13 +15,28 @@ interface ShopListHeroProps {
   loading?: boolean
 }
 
-/** Ronix 感：略放大裁切、少漸層、硬邊接黑底 */
+/** Ronix 感：略放大裁切、少漸層 */
 const HERO_IMG =
   'absolute inset-0 h-full w-full object-cover scale-[1.14] contrast-[1.06] saturate-[1.04] '
 
-const COLLECTION_IMAGE_HEIGHT = {
-  default: 'h-[120px] sm:h-[156px] md:h-[180px] lg:h-[200px]',
-  tall: 'h-[128px] sm:h-[168px] md:h-[196px] lg:h-[220px]',
+/**
+ * 與列表同寬（max-w-7xl）；超寬螢幕左右黑邊，固定比例 → 各種桌機寬度裁切一致。
+ */
+const HERO_FRAME =
+  'relative mx-auto w-full max-w-7xl overflow-hidden shrink-0'
+
+/** Catalog 桌機固定比例（依此比例準備／裁切素材） */
+const CATALOG_DESKTOP_ASPECT = 'aspect-[2.35/1] max-h-[400px]'
+
+const COLLECTION_MOBILE_H = {
+  default: 'h-[120px]',
+  tall: 'h-[128px]',
+} as const
+
+/** 分類頁桌機固定比例 */
+const COLLECTION_DESKTOP_ASPECT = {
+  default: 'aspect-[2.85/1] max-h-[220px]',
+  tall: 'aspect-[2.65/1] max-h-[240px]',
 } as const
 
 export function ShopListHero({
@@ -41,25 +56,40 @@ export function ShopListHero({
     heroConfig != null ? getShopHeroPositionClass(heroConfig, isCatalog) : ''
 
   if (!isCatalog) {
-    const imageHeight = heroConfig?.tallCollectionBand
-      ? COLLECTION_IMAGE_HEIGHT.tall
-      : COLLECTION_IMAGE_HEIGHT.default
+    const mobileH = heroConfig?.tallCollectionBand
+      ? COLLECTION_MOBILE_H.tall
+      : COLLECTION_MOBILE_H.default
+    const desktopAspect = heroConfig?.tallCollectionBand
+      ? COLLECTION_DESKTOP_ASPECT.tall
+      : COLLECTION_DESKTOP_ASPECT.default
 
     return (
-      <div className="flex flex-col w-full">
+      <div className="flex flex-col w-full bg-black">
         {hero ? (
-          <div
-            className={`relative w-full shrink-0 overflow-hidden border-b border-white/10 ${imageHeight}`}
-          >
-            <img
-              src={hero.src}
-              alt=""
-              className={HERO_IMG + positionClass}
-              decoding="async"
-            />
-          </div>
+          <>
+            <div
+              className={`relative w-full overflow-hidden border-b border-white/10 sm:hidden ${mobileH}`}
+            >
+              <img
+                src={hero.src}
+                alt=""
+                className={HERO_IMG + positionClass}
+                decoding="async"
+              />
+            </div>
+            <div
+              className={`hidden sm:block ${HERO_FRAME} ${desktopAspect} border-b border-white/10`}
+            >
+              <img
+                src={hero.src}
+                alt=""
+                className={HERO_IMG + positionClass}
+                decoding="async"
+              />
+            </div>
+          </>
         ) : (
-          <div className="h-px bg-white/10 shrink-0" aria-hidden />
+          <div className="h-px max-w-7xl mx-auto w-full bg-white/10" aria-hidden />
         )}
 
         <div className="bg-black px-4 sm:px-6 py-2.5 sm:py-3 max-w-7xl w-full mx-auto">
@@ -96,8 +126,8 @@ export function ShopListHero({
 
   return (
     <>
-      {/* 手機 Catalog：字在圖上，無漸層，硬切分類列 */}
-      <div className="relative w-full sm:hidden overflow-hidden border-b border-white/10">
+      {/* 手機 Catalog：全寬固定高度 */}
+      <div className="relative w-full sm:hidden overflow-hidden border-b border-white/10 bg-black">
         {hero ? (
           <div className="relative h-[140px] w-full overflow-hidden">
             <img
@@ -121,27 +151,29 @@ export function ShopListHero({
         </div>
       </div>
 
-      {/* 桌機 Catalog：大圖裁切、字靠左，無側／底漸層 */}
-      <div className="relative hidden sm:block overflow-hidden w-full border-b border-white/10 lg:aspect-[2.35/1] lg:max-h-[400px] min-h-[260px] sm:min-h-[300px]">
-        {hero ? (
-          <img
-            src={hero.src}
-            alt=""
-            className={HERO_IMG + positionClass}
-            decoding="async"
-            fetchPriority="high"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-black" aria-hidden />
-        )}
+      {/* 桌機 Catalog：固定 2.35:1 畫框 + 左右黑邊 */}
+      <div className="hidden sm:block w-full bg-black border-b border-white/10">
+        <div className={`${HERO_FRAME} ${CATALOG_DESKTOP_ASPECT}`}>
+          {hero ? (
+            <img
+              src={hero.src}
+              alt=""
+              className={HERO_IMG + positionClass}
+              decoding="async"
+              fetchPriority="high"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-black" aria-hidden />
+          )}
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-3 sm:pt-10 sm:pb-4">
-          <h1 className="font-black italic uppercase tracking-tight leading-none text-6xl md:text-7xl [text-shadow:0_2px_24px_rgba(0,0,0,0.75)]">
-            {title}
-          </h1>
-          <p className="mt-3 text-sm italic tracking-[0.35em] text-white/90 uppercase [text-shadow:0_1px_12px_rgba(0,0,0,0.7)]">
-            {SHOP_COPY.tagline}
-          </p>
+          <div className="absolute inset-0 z-10 flex flex-col justify-start px-4 sm:px-6 pt-8 sm:pt-10 pointer-events-none">
+            <h1 className="font-black italic uppercase tracking-tight leading-none text-6xl md:text-7xl [text-shadow:0_2px_24px_rgba(0,0,0,0.75)]">
+              {title}
+            </h1>
+            <p className="mt-3 text-sm italic tracking-[0.35em] text-white/90 uppercase [text-shadow:0_1px_12px_rgba(0,0,0,0.7)]">
+              {SHOP_COPY.tagline}
+            </p>
+          </div>
         </div>
       </div>
     </>
