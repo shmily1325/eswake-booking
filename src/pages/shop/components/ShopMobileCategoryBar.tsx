@@ -55,7 +55,7 @@ export function ShopCategoryBar({
         'sticky top-14 z-20 ' +
         (onDark
           ? fadeFromHero
-            ? '-mt-10 sm:-mt-14 pt-2 sm:pt-3 bg-transparent border-b-0'
+            ? 'bg-black border-b-0 pt-0 pb-1'
             : 'bg-black border-b border-zinc-800'
           : 'bg-gray-50/95 backdrop-blur-sm border-b border-gray-200')
       }
