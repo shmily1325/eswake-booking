@@ -37,6 +37,10 @@ export interface CartItem {
 
   /** 加入購物車的時間，用來排序與除錯 */
   addedAt: number
+
+  /** 下單時供貨狀態 snapshot（預購 vs 現貨，影響 LINE 訊息用詞） */
+  availability?: 'in_stock' | 'pre_order'
+  preOrderEta?: string | null
 }
 
 /** product + variants 的簡化型別轉出（給 ShopList / ShopDetail 用） */

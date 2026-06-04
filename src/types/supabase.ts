@@ -1116,6 +1116,10 @@ export type Database = {
           cost: number | null
           stock: number
           reserved_qty: number
+          availability: string
+          pre_order_eta: string | null
+          pre_order_note: string | null
+          pre_order_until: string | null
           last_stock_in_at: string | null
           cover_image_url: string | null
           cover_image_path: string | null
@@ -1134,6 +1138,10 @@ export type Database = {
           cost?: number | null
           stock?: number
           reserved_qty?: number
+          availability?: string
+          pre_order_eta?: string | null
+          pre_order_note?: string | null
+          pre_order_until?: string | null
           last_stock_in_at?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null
@@ -1152,6 +1160,10 @@ export type Database = {
           cost?: number | null
           stock?: number
           reserved_qty?: number
+          availability?: string
+          pre_order_eta?: string | null
+          pre_order_note?: string | null
+          pre_order_until?: string | null
           last_stock_in_at?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null

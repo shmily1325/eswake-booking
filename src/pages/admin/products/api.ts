@@ -8,6 +8,7 @@
 import { supabase } from '../../../lib/supabase'
 import type { Database } from '../../../types/supabase'
 import type { AttributeValue, ProductRow, ProductVariantRow, ProductWithVariants, VariantListItem } from './types'
+import { deriveVariantAvailability } from './availabilityHelpers'
 
 type VariantInsert = Database['public']['Tables']['product_variants']['Insert']
 type VariantUpdate = Database['public']['Tables']['product_variants']['Update']
@@ -172,6 +173,11 @@ export interface CreateVariantInput {
   price: number | null
   cost?: number | null
   stock?: number
+  availability?: string
+  /** 與 availability 二擇一；後台 UI 只傳這個，由系統推導 availability */
+  acceptPreOrder?: boolean
+  pre_order_eta?: string | null
+  pre_order_note?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
   image_url?: string | null
@@ -185,14 +191,68 @@ function normalizePrice(v: number | null | undefined): number | null {
   return Math.max(0, Math.round(v))
 }
 
+function resolveAvailabilityFields(input: {
+  availability?: string
+  /** 與 availability 二擇一；後台 UI 只傳這個，由系統推導 availability */
+  acceptPreOrder?: boolean
+  pre_order_eta?: string | null
+  pre_order_note?: string | null
+  stock: number
+}): {
+  availability: string
+  pre_order_eta: string | null
+  pre_order_note: string | null
+} {
+  const stock = Math.max(0, Math.round(input.stock))
+
+  if (input.acceptPreOrder !== undefined) {
+    return {
+      availability: deriveVariantAvailability(stock, input.acceptPreOrder),
+      pre_order_eta: null,
+      pre_order_note: null,
+    }
+  }
+
+  if (
+    input.availability === 'pre_order' ||
+    input.availability === 'sold_out' ||
+    input.availability === 'in_stock'
+  ) {
+    const availability =
+      stock > 0 ? 'in_stock' : input.availability === 'pre_order' ? 'pre_order' : 'sold_out'
+    return {
+      availability,
+      pre_order_eta: availability === 'pre_order' ? input.pre_order_eta?.trim() || null : null,
+      pre_order_note: availability === 'pre_order' ? input.pre_order_note?.trim() || null : null,
+    }
+  }
+
+  return {
+    availability: deriveVariantAvailability(stock, false),
+    pre_order_eta: null,
+    pre_order_note: null,
+  }
+}
+
 export async function createVariant(input: CreateVariantInput): Promise<ProductVariantRow> {
+  const stock = Math.max(0, Math.round(input.stock ?? 0))
+  const availFields = resolveAvailabilityFields({
+    availability: input.availability,
+    acceptPreOrder: input.acceptPreOrder,
+    pre_order_eta: input.pre_order_eta,
+    pre_order_note: input.pre_order_note,
+    stock,
+  })
   const payload: VariantInsert = {
     product_id: input.product_id,
     vendor_code: input.vendor_code?.trim() || null,
     attributes: input.attributes,
     price: normalizePrice(input.price),
     cost: input.cost ?? null,
-    stock: Math.max(0, Math.round(input.stock ?? 0)),
+    stock,
+    availability: availFields.availability,
+    pre_order_eta: availFields.pre_order_eta,
+    pre_order_note: availFields.pre_order_note,
     cover_image_url: input.cover_image_url ?? null,
     cover_image_path: input.cover_image_path ?? null,
     image_url: input.image_url ?? null,
@@ -209,6 +269,11 @@ export interface UpdateVariantInput {
   price?: number | null
   cost?: number | null
   stock?: number
+  availability?: string
+  /** 與 availability 二擇一；後台 UI 只傳這個，由系統推導 availability */
+  acceptPreOrder?: boolean
+  pre_order_eta?: string | null
+  pre_order_note?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
   image_url?: string | null
@@ -226,6 +291,27 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
   if (input.cover_image_path !== undefined) patch.cover_image_path = input.cover_image_path
   if (input.image_url !== undefined) patch.image_url = input.image_url
   if (input.image_path !== undefined) patch.image_path = input.image_path
+
+  if (
+    input.availability !== undefined ||
+    input.acceptPreOrder !== undefined ||
+    input.pre_order_eta !== undefined ||
+    input.pre_order_note !== undefined
+  ) {
+    const stockVal =
+      input.stock !== undefined ? Math.max(0, Math.round(input.stock)) : (patch.stock as number) ?? 0
+    const availFields = resolveAvailabilityFields({
+      availability: input.availability,
+      acceptPreOrder: input.acceptPreOrder,
+      pre_order_eta: input.pre_order_eta,
+      pre_order_note: input.pre_order_note,
+      stock: stockVal,
+    })
+    patch.availability = availFields.availability
+    patch.pre_order_eta = availFields.pre_order_eta
+    patch.pre_order_note = availFields.pre_order_note
+  }
+
   if (Object.keys(patch).length === 0) return
 
   const { error } = await supabase.from('product_variants').update(patch).eq('id', variantId)

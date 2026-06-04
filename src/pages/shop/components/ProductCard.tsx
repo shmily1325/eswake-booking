@@ -3,8 +3,11 @@ import type { ProductVariantRow, ProductRow } from '../../admin/products/types'
 import {
   formatProductPriceRange,
   getProductImageUrl,
-  isProductOutOfStock,
 } from '../lib/shopFormat'
+import {
+  getShopVisibleVariants,
+  summarizeProductAvailability,
+} from '../lib/productAvailability'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 
@@ -13,28 +16,13 @@ interface ProductCardProps {
   variants: ProductVariantRow[]
 }
 
-/**
- * 商品卡片（列表頁用）。
- *
- * 設計：圖大、文字精簡。參考 eswakeschool.com 卡片風格（大圖在上、文字在下）。
- * 點整張卡片進詳情頁。
- *
- * 顯示策略：
- * - 圖：第一個 SKU 的封面（或實品照 fallback）；沒有就用分類 emoji
- * - 標題：brand + model
- * - 價格：最低價（多規格時加「起」），全 null 顯示「價格洽詢」
- * - 缺貨：所有變體 stock <= 0 時掛「缺貨」標籤
- */
 export function ProductCard({ product, variants }: ProductCardProps) {
-  const imageUrl = getProductImageUrl(product, variants)
-  const outOfStock = isProductOutOfStock(variants)
-  const priceText = formatProductPriceRange(variants)
-
-  /**
-   * 區分「真有價格」與「價格洽詢」：
-   * - 有價格：粗體主標
-   * - 價格洽詢：降階為淺灰小標籤，避免在 grid 裡每張卡都用粗體大字喊「洽詢」
-   */
+  const visibleVariants = getShopVisibleVariants(variants)
+  const summary = summarizeProductAvailability(variants)
+  const imageUrl = getProductImageUrl(product, visibleVariants.length ? visibleVariants : variants)
+  const priceText = formatProductPriceRange(
+    visibleVariants.length ? visibleVariants : variants,
+  )
   const isInquiryOnly = priceText === '價格洽詢'
 
   return (
@@ -42,7 +30,6 @@ export function ProductCard({ product, variants }: ProductCardProps) {
       to={`/shop/${product.id}`}
       className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >
-      {/* 圖片區（4:5 比例，比 9:16 矮一截，瀏覽時一屏能看到更多） */}
       <div className="relative aspect-4/5 bg-gray-100 overflow-hidden">
         <ImageOrFallback
           src={imageUrl}
@@ -51,14 +38,21 @@ export function ProductCard({ product, variants }: ProductCardProps) {
           fallback={<NoImagePlaceholder />}
         />
 
-        {outOfStock && (
-          <div className="absolute top-2 left-2 bg-zinc-900/85 text-white text-xs font-medium px-2 py-1 rounded">
-            Out of Stock
+        {summary.primaryBadge === 'pre_order' && !summary.hasInStock && (
+          <div className="absolute top-2 left-2 bg-amber-600 text-white text-[11px] font-semibold px-2 py-1 rounded">
+            預購
+            {summary.preOrderEta ? (
+              <span className="font-normal opacity-90"> · {summary.preOrderEta}</span>
+            ) : null}
+          </div>
+        )}
+        {summary.hasInStock && summary.hasPreOrder && (
+          <div className="absolute top-2 left-2 bg-zinc-900/85 text-white text-[11px] font-medium px-2 py-1 rounded">
+            部分預購
           </div>
         )}
       </div>
 
-      {/* 文字區（padding 收緊；價格依「有/沒有數字」用不同樣式） */}
       <div className="p-3">
         {product.brand && (
           <div className="text-[11px] text-gray-400 uppercase tracking-wide">

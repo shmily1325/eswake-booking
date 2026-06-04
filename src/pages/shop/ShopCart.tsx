@@ -158,6 +158,11 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
             {attrsText}
           </div>
         )}
+        {item.availability === 'pre_order' && (
+          <span className="mt-1 inline-block text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+            預購
+          </span>
+        )}
 
         <div className="mt-auto pt-2 flex items-center justify-between gap-2">
           <QuantityStepper

@@ -1,4 +1,4 @@
-export { ShopList } from './ShopList'
+export { ShopList, ShopPreOrderList } from './ShopList'
 export { ShopDetail } from './ShopDetail'
 export { ShopCart } from './ShopCart'
 export { ShopLayout } from './ShopLayout'

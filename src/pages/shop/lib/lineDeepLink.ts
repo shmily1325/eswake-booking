@@ -108,6 +108,8 @@ interface SingleInquiryInput {
   attributes: Record<string, unknown>
   quantity: number
   unitPrice: number | null
+  isPreOrder?: boolean
+  preOrderEta?: string | null
 }
 
 /** 內部：渲染單筆品項詢問的純文字訊息（不負責 URL） */
@@ -118,11 +120,15 @@ function renderSingleMessage(
   const attrsText = formatVariantAttributes(input.categoryId, input.attributes)
   const productUrl = includeUrl ? buildProductUrl(input.productId) : ''
   const lines: string[] = [
-    '我想詢問以下商品：',
+    input.isPreOrder ? '我想預購以下商品：' : '我想詢問以下商品：',
     '',
     `品項：${input.productName}`,
   ]
   if (attrsText) lines.push(`規格：${attrsText}`)
+  if (input.isPreOrder) {
+    lines.push('類型：預購')
+    if (input.preOrderEta?.trim()) lines.push(`預計到貨：${input.preOrderEta.trim()}`)
+  }
   lines.push(`數量：${input.quantity}`)
   lines.push(
     `單價：${input.unitPrice != null ? formatPrice(input.unitPrice) : '洽詢'}`
@@ -144,14 +150,20 @@ function renderCartMessage(items: CartItem[], includeUrls: boolean): string {
   const hasUnknownPrice = items.some((it) => it.unitPrice == null)
 
   const lines: string[] = [
-    `我想詢問以下商品（共 ${totalCount} 件）：`,
+    items.some((it) => it.availability === 'pre_order')
+      ? `我想預購以下商品（共 ${totalCount} 件）：`
+      : `我想詢問以下商品（共 ${totalCount} 件）：`,
     '',
   ]
   items.forEach((it, idx) => {
     const attrsText = formatVariantAttributes(it.categoryId, it.attributes)
     const productUrl = includeUrls ? buildProductUrl(it.productId) : ''
-    lines.push(`【${idx + 1}】${it.productName}`)
+    const isPre = it.availability === 'pre_order'
+    lines.push(`【${idx + 1}】${it.productName}${isPre ? '（預購）' : ''}`)
     if (attrsText) lines.push(`　規格：${attrsText}`)
+    if (isPre && it.preOrderEta?.trim()) {
+      lines.push(`　預計到貨：${it.preOrderEta.trim()}`)
+    }
     lines.push(`　數量：${it.quantity}`)
     lines.push(
       `　單價：${it.unitPrice != null ? formatPrice(it.unitPrice) : '洽詢'}`

@@ -11,6 +11,11 @@ import {
   getCategoryShopName,
   getProductDetailHeroImageUrl,
 } from './lib/shopFormat'
+import {
+  getVariantAvailability,
+  isProductVisibleInShop,
+  isVariantPurchasable,
+} from './lib/productAvailability'
 import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
@@ -68,13 +73,18 @@ export function ShopDetail() {
       try {
         const p = await fetchProductWithVariants(productId)
         if (cancelled) return
+        if (!p || !p.is_public || !isProductVisibleInShop(p.variants)) {
+          setProduct(null)
+          setError(null)
+          return
+        }
         setProduct(p)
         setError(null)
-        // 預選第一個有貨的變體；都沒貨就選第一個
-        if (p && p.variants.length > 0) {
-          const firstInStock = p.variants.find((v) => (v.stock ?? 0) > 0)
-          setSelectedVariantId((firstInStock ?? p.variants[0]).id)
-        }
+        const firstPurchasable = p.variants.find((v) => isVariantPurchasable(v))
+        const firstVisible = p.variants.find(
+          (v) => getVariantAvailability(v) !== 'sold_out',
+        )
+        setSelectedVariantId((firstPurchasable ?? firstVisible ?? p.variants[0])?.id ?? null)
       } catch (e) {
         if (cancelled) return
         setError(e instanceof Error ? e.message : String(e))
@@ -97,8 +107,9 @@ export function ShopDetail() {
     : null
 
   const handleAddToCart = () => {
-    if (!product || !selectedVariant) return
+    if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
     const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
+    const avail = getVariantAvailability(selectedVariant)
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
@@ -108,14 +119,16 @@ export function ShopDetail() {
       imageUrl: selectedVariant.cover_image_url ?? selectedVariant.image_url ?? imageUrl ?? null,
       unitPrice: selectedVariant.price,
       quantity,
+      availability: avail === 'pre_order' ? 'pre_order' : 'in_stock',
+      preOrderEta: selectedVariant.pre_order_eta,
     })
-    // 加完還原 quantity 到 1，方便繼續加同商品其他規格
     setQuantity(1)
   }
 
   const handleDirectInquiry = () => {
-    if (!product || !selectedVariant) return
+    if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
     const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
+    const avail = getVariantAvailability(selectedVariant)
     const payload = buildSingleInquiry({
       productId: product.id,
       productName: productName || '(Unnamed product)',
@@ -123,6 +136,8 @@ export function ShopDetail() {
       attributes: selectedVariant.attributes,
       quantity,
       unitPrice: selectedVariant.price,
+      isPreOrder: avail === 'pre_order',
+      preOrderEta: selectedVariant.pre_order_eta,
     })
     if (payload.stillTooLong) {
       alert('詢問內容過長，建議減少數量或備註資訊')
@@ -138,7 +153,7 @@ export function ShopDetail() {
     <div className="min-h-screen bg-gray-50">
       <ShopHeader showBack />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -192,7 +207,9 @@ function ProductDetailBody({
   onDirectInquiry,
 }: ProductDetailBodyProps) {
   const categoryName = getCategoryShopName(product.category)
-  const isOutOfStock = selectedVariant ? (selectedVariant.stock ?? 0) <= 0 : true
+  const variantAvail = selectedVariant ? getVariantAvailability(selectedVariant) : null
+  const canPurchase = selectedVariant ? isVariantPurchasable(selectedVariant) : false
+  const isPreOrder = variantAvail === 'pre_order'
   const hasPrice = selectedVariant?.price != null
   const priceText = hasPrice ? formatPrice(selectedVariant!.price!) : '價格洽詢'
 
@@ -279,7 +296,7 @@ function ProductDetailBody({
       {/* 資訊區 */}
       <div className="flex flex-col">
         <Link
-          to={`/shop?category=${product.category ?? ''}`}
+          to={product.category ? `/shop?cat=${encodeURIComponent(product.category)}` : '/shop'}
           className="self-start text-xs text-gray-400 uppercase tracking-widest hover:text-black"
         >
           {categoryName}
@@ -311,9 +328,15 @@ function ProductDetailBody({
               {priceText}
             </span>
           )}
-          {isOutOfStock && (
-            <span className="text-sm text-red-600 font-medium">
-              Out of Stock <span className="text-xs text-gray-400">缺貨</span>
+          {isPreOrder && (
+            <span className="text-sm text-amber-700 font-medium">
+              預購
+              {selectedVariant?.pre_order_eta ? (
+                <span className="text-gray-500 font-normal">
+                  {' '}
+                  · 預計 {selectedVariant.pre_order_eta}
+                </span>
+              ) : null}
             </span>
           )}
         </div>
@@ -354,7 +377,7 @@ function ProductDetailBody({
           <button
             type="button"
             onClick={onAddToCart}
-            disabled={!selectedVariant}
+            disabled={!selectedVariant || !canPurchase}
             className="flex-1 h-14 px-4 rounded-md bg-black text-white font-semibold hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2.5"
           >
             <CartIcon className="w-5 h-5 shrink-0" />
@@ -366,7 +389,7 @@ function ProductDetailBody({
           <button
             type="button"
             onClick={onDirectInquiry}
-            disabled={!selectedVariant}
+            disabled={!selectedVariant || !canPurchase}
             className="flex-1 h-14 px-4 rounded-md bg-gray-50 text-black font-semibold border-2 border-black hover:bg-gray-100 active:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2.5"
           >
             <LineIcon className="w-5 h-5 shrink-0" />

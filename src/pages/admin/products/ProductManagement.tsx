@@ -19,7 +19,8 @@ import {
   type ShopGroup,
 } from './schema'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
-import type { ProductWithVariants, VariantListItem } from './types'
+import type { ProductWithVariants, ProductVariantRow, VariantListItem } from './types'
+import { getVariantAvailability } from '../../shop/lib/productAvailability'
 import { ProductEditView } from './ProductEditView'
 import { variantMatchesSearchTokens } from './productSearchHaystack'
 
@@ -854,11 +855,32 @@ function DashboardStatChip({ label, count, active, onClick, color, bgActive, tra
   )
 }
 
-function stockBadgeColor(stock: number): { bg: string; color: string; label: string } {
-  if (stock <= 0) return { bg: '#fdecea', color: '#c62828', label: '缺貨' }
-  if (stock <= 2) return { bg: '#fff4e0', color: '#ef6c00', label: `庫存 ${stock}` }
-  return { bg: '#e8f5e9', color: '#2e7d32', label: `庫存 ${stock}` }
+function shopStatusBadge(
+  variant: ProductVariantRow,
+  isPublic: boolean,
+): { bg: string; color: string; label: string } {
+  if (!isPublic) {
+    return { bg: '#eeeeee', color: '#616161', label: '未公開' }
+  }
+  const avail = getVariantAvailability(variant)
+  const stock = variant.stock ?? 0
+  if (avail === 'in_stock') {
+    if (stock <= 2) return { bg: '#fff4e0', color: '#ef6c00', label: `現貨 ${stock}` }
+    return { bg: '#e8f5e9', color: '#2e7d32', label: `現貨 ${stock}` }
+  }
+  if (avail === 'pre_order') return { bg: '#fff8e1', color: '#f57f17', label: '預購' }
+  return { bg: '#f5f5f5', color: '#9e9e9e', label: '不顯示' }
 }
+
+function variantCardBorder(variant: ProductVariantRow, isPublic: boolean): string {
+  if (!isPublic) return '#ececec'
+  const avail = getVariantAvailability(variant)
+  if (avail === 'pre_order') return '#ffe082'
+  if (avail === 'in_stock' && variant.stock <= 2) return '#f5dbb6'
+  if (avail === 'sold_out') return '#eeeeee'
+  return '#ececec'
+}
+
 
 function formatStockInAt(at: string | null | undefined): string | null {
   if (!at) return null
@@ -989,10 +1011,9 @@ interface GalleryCardProps {
 function GalleryCard({ item, onClick, onStartOrder }: GalleryCardProps) {
   const { variant, product } = item
   const cat = getCategory(product.category)
-  const stock = stockBadgeColor(variant.stock)
+  const status = shopStatusBadge(variant, product.is_public)
   const attrText = formatAttributes(product.category, variant.attributes)
-  const lowStock = variant.stock > 0 && variant.stock <= 2
-  const outOfStock = variant.stock <= 0
+  const cardBorder = variantCardBorder(variant, product.is_public)
 
   return (
     <div
@@ -1010,7 +1031,7 @@ function GalleryCard({ item, onClick, onStartOrder }: GalleryCardProps) {
         display: 'flex',
         flexDirection: 'column',
         background: '#fff',
-        border: '1px solid ' + (outOfStock ? '#f4cdcd' : lowStock ? '#f5dbb6' : '#ececec'),
+        border: '1px solid ' + cardBorder,
         borderRadius: 14,
         padding: 8,
         textAlign: 'left',
@@ -1062,12 +1083,12 @@ function GalleryCard({ item, onClick, onStartOrder }: GalleryCardProps) {
             fontWeight: 600,
             padding: '2px 7px',
             borderRadius: 999,
-            background: stock.bg,
-            color: stock.color,
+            background: status.bg,
+            color: status.color,
             boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
           }}
         >
-          {stock.label}
+          {status.label}
         </span>
       </div>
 
@@ -1263,10 +1284,9 @@ function MobileListRow({
 }) {
   const { variant, product } = item
   const cat = getCategory(product.category)
-  const stock = stockBadgeColor(variant.stock)
+  const status = shopStatusBadge(variant, product.is_public)
   const attrText = formatAttributes(product.category, variant.attributes)
-  const lowStock = variant.stock > 0 && variant.stock <= 2
-  const outOfStock = variant.stock <= 0
+  const cardBorder = variantCardBorder(variant, product.is_public)
 
   return (
     <div
@@ -1284,7 +1304,7 @@ function MobileListRow({
         display: 'flex',
         gap: 12,
         background: '#fff',
-        border: '1px solid ' + (outOfStock ? '#f4cdcd' : lowStock ? '#f5dbb6' : '#ececec'),
+        border: '1px solid ' + cardBorder,
         borderRadius: 12,
         padding: 10,
         textAlign: 'left',
@@ -1431,12 +1451,12 @@ function MobileListRow({
                 fontWeight: 600,
                 padding: '2px 8px',
                 borderRadius: 999,
-                background: stock.bg,
-                color: stock.color,
+                background: status.bg,
+                color: status.color,
                 whiteSpace: 'nowrap',
               }}
             >
-              {stock.label}
+              {status.label}
             </span>
           </div>
         </div>
@@ -1470,7 +1490,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick, onStartOrder }: D
               <th style={thStyle('auto')}>規格</th>
               <th style={thStyle('120px')}>貨號</th>
               <th style={thStyle('90px', 'right')}>售價</th>
-              <th style={thStyle('80px', 'center')}>庫存</th>
+              <th style={thStyle('80px', 'center')}>狀態</th>
               <th style={thStyle('130px')}>入庫</th>
               {onStartOrder && <th style={thStyle('72px', 'center')}>開單</th>}
             </tr>
@@ -1478,7 +1498,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick, onStartOrder }: D
           <tbody>
             {items.map((it) => {
               const cat = getCategory(it.product.category)
-              const stock = stockBadgeColor(it.variant.stock)
+              const status = shopStatusBadge(it.variant, it.product.is_public)
               return (
                 <tr
                   key={it.variant.id}
@@ -1531,12 +1551,12 @@ function DesktopTable({ items, showCategoryColumn, onRowClick, onStartOrder }: D
                         fontWeight: 600,
                         padding: '3px 10px',
                         borderRadius: 999,
-                        background: stock.bg,
-                        color: stock.color,
+                        background: status.bg,
+                        color: status.color,
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {stock.label}
+                      {status.label}
                     </span>
                   </td>
                   <td style={{ ...tdStyle(), fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
