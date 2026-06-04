@@ -106,6 +106,18 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
       'sm:min-h-[220px] md:min-h-[260px] lg:aspect-[2.45/1] lg:max-h-[300px] lg:min-h-0',
     tallCollectionBand: true,
   },
+  apparel: {
+    src: '/shop/heroes/apparel.jpg',
+    objectPosition: '72% 32%',
+    // 意象照 #11：帽後 ES WAKE 標，焦點偏右上方
+    objectPositionClass:
+      'object-[68%_34%] sm:object-[70%_32%] md:object-[72%_30%]',
+    collectionObjectPosition: '70% 32%',
+    collectionObjectPositionClass:
+      'object-[66%_34%] max-sm:object-[68%_32%] sm:object-[70%_30%] md:object-[72%_28%] lg:object-[74%_26%]',
+    tallCollectionBand: true,
+    heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.04]',
+  },
   lifejacket: {
     src: '/shop/heroes/lifejacket.jpg',
     objectPosition: 'center 45%',
