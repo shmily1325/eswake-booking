@@ -1,10 +1,12 @@
 import { CatalogHeroCollage } from './CatalogHeroCollage'
+import { HeroAtmosphere } from './HeroAtmosphere'
 import { ShopHeroPicture } from './ShopHeroPicture'
 import { SHOP_COPY } from '../lib/shopCopy'
 import {
   getShopHeroPositionClass,
   type ShopHeroImageConfig,
 } from '../lib/shopHeroImages'
+import { SHOP_HERO_IMG_BASE } from '../lib/shopHeroStyle'
 
 interface ShopListHeroProps {
   mode: 'catalog' | 'collection'
@@ -17,12 +19,9 @@ interface ShopListHeroProps {
   loading?: boolean
 }
 
-const HERO_IMG_BASE =
-  'absolute inset-0 h-full w-full object-cover contrast-[1.06] saturate-[1.04] '
-
 function heroImgClass(heroConfig: ShopHeroImageConfig | null): string {
   if (heroConfig?.heroScaleClass) {
-    return HERO_IMG_BASE + heroConfig.heroScaleClass + ' '
+    return SHOP_HERO_IMG_BASE + ' ' + heroConfig.heroScaleClass + ' '
   }
   const scale =
     heroConfig?.heroFrame === 'square'
@@ -30,50 +29,7 @@ function heroImgClass(heroConfig: ShopHeroImageConfig | null): string {
       : heroConfig?.heroFrame === 'action'
         ? 'scale-[1.08]'
         : 'scale-[1.14]'
-  return HERO_IMG_BASE + scale + ' '
-}
-
-type AtmosphereMode = 'default' | 'photo-only' | 'caption-bottom'
-
-/** 輕暗幕；photo-only = 不壓左上角，留給純照片 */
-function HeroAtmosphere({ mode = 'default' }: { mode?: AtmosphereMode }) {
-  if (mode === 'photo-only') {
-    return (
-      <>
-        <div className="absolute inset-0 z-[1] bg-black/20 pointer-events-none" aria-hidden />
-        <div
-          className="absolute inset-x-0 bottom-0 z-[1] h-[15%] bg-gradient-to-t from-black/30 to-transparent pointer-events-none"
-          aria-hidden
-        />
-      </>
-    )
-  }
-
-  if (mode === 'caption-bottom') {
-    return (
-      <>
-        <div className="absolute inset-0 z-[1] bg-black/22 pointer-events-none" aria-hidden />
-        <div
-          className="absolute inset-x-0 bottom-0 z-[1] h-[42%] bg-gradient-to-t from-black/75 via-black/35 to-transparent pointer-events-none"
-          aria-hidden
-        />
-      </>
-    )
-  }
-
-  return (
-    <>
-      <div className="absolute inset-0 z-[1] bg-black/25 pointer-events-none" aria-hidden />
-      <div
-        className="absolute inset-0 z-[1] bg-gradient-to-br from-black/45 from-0% via-black/15 via-38% to-transparent to-68% pointer-events-none"
-        aria-hidden
-      />
-      <div
-        className="absolute inset-x-0 bottom-0 z-[1] h-[22%] bg-gradient-to-t from-black/40 to-transparent pointer-events-none"
-        aria-hidden
-      />
-    </>
-  )
+  return SHOP_HERO_IMG_BASE + ' ' + scale + ' '
 }
 
 /**

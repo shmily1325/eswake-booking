@@ -1,4 +1,5 @@
 import { ShopHeroPicture } from './ShopHeroPicture'
+import { SHOP_HERO_IMG_BASE } from '../lib/shopHeroStyle'
 
 /** 桌機 Catalog：斜切雙欄（各欄獨立裁切，不重疊蓋滿全幅） */
 interface CatalogHeroCollageProps {
@@ -8,11 +9,8 @@ interface CatalogHeroCollageProps {
   accentObjectClass: string
 }
 
-const IMG_BASE =
-  'absolute inset-0 h-full w-full object-cover contrast-[1.05] saturate-[1.03]'
-
-const MAIN_IMG = IMG_BASE + ' scale-[1.06]'
-const ACCENT_IMG = IMG_BASE + ' scale-[1.08]'
+const MAIN_IMG = SHOP_HERO_IMG_BASE + ' scale-[1.06]'
+const ACCENT_IMG = SHOP_HERO_IMG_BASE + ' scale-[1.08]'
 
 /**
  * 左欄 ~62%、右欄 ~48%，斜邊在兩欄各自的 clip 內完成。
@@ -47,14 +45,6 @@ export function CatalogHeroCollage({
           src={mainSrc}
           alt=""
           className={MAIN_IMG + ' ' + mainImgClass}
-        />
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(108deg, transparent 55%, rgba(0,0,0,0.28) 72%, transparent 92%)',
-          }}
-          aria-hidden
         />
       </div>
 
