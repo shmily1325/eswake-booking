@@ -16,9 +16,10 @@ export type ShopHeroImageConfig = {
 export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
   catalog: {
     src: '/shop/heroes/catalog.jpg',
-    objectPosition: 'center 42%',
+    objectPosition: '38% 48%',
+    // 船在中左：焦點偏左，桌機勿往右移到僅剩人物
     objectPositionClass:
-      'object-[center_45%] sm:object-[52%_42%] md:object-[55%_40%] lg:object-[58%_38%]',
+      'object-[38%_52%] sm:object-[34%_48%] md:object-[32%_46%] lg:object-[30%_44%]',
   },
   Wakeboarding: {
     src: '/shop/heroes/wakeboarding.jpg',

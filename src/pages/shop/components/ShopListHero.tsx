@@ -124,7 +124,7 @@ export function ShopListHero({
       {/* 手機 Catalog：上圖下字，避免大塊黑漸層＋疊字把商品挤太下面 */}
       <div className="flex flex-col w-full sm:hidden">
         {hero ? (
-          <div className="relative h-[120px] w-full shrink-0 overflow-hidden">
+          <div className="relative h-[132px] w-full shrink-0 overflow-hidden">
             {catalogImage}
             <div
               className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-b from-transparent to-black pointer-events-none"
@@ -150,11 +150,11 @@ export function ShopListHero({
           <>
             {catalogImage}
             <div
-              className="absolute inset-0 z-[1] bg-gradient-to-r from-black/50 from-0% via-black/15 via-45% to-transparent to-75% sm:from-black/55 sm:via-35% pointer-events-none"
+              className="absolute inset-0 z-[1] bg-gradient-to-r from-black/60 from-0% via-black/25 via-32% to-transparent to-58% pointer-events-none"
               aria-hidden
             />
             <div
-              className="absolute inset-x-0 bottom-0 z-[1] h-16 sm:h-24 bg-gradient-to-b from-transparent via-black/40 to-black pointer-events-none"
+              className="absolute inset-x-0 bottom-0 z-[1] h-12 sm:h-14 bg-gradient-to-b from-transparent via-black/25 to-black pointer-events-none"
               aria-hidden
             />
           </>
