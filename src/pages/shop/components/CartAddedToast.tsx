@@ -32,7 +32,7 @@ export function CartAddedToast() {
       aria-live="polite"
     >
       <div className="flex items-start gap-3 p-3">
-        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-black text-white flex items-center justify-center text-lg">
+        <div className="shrink-0 w-9 h-9 rounded-full bg-black text-white flex items-center justify-center text-lg">
           ✓
         </div>
         <div className="flex-1 min-w-0">
@@ -53,7 +53,7 @@ export function CartAddedToast() {
         <button
           type="button"
           onClick={dismissLastAdded}
-          className="flex-shrink-0 text-gray-400 hover:text-gray-600 p-1"
+          className="shrink-0 text-gray-400 hover:text-gray-600 p-1"
           aria-label="Dismiss"
         >
           ×

@@ -15,7 +15,7 @@ interface ShopFilterSidebarProps {
 export function ShopFilterSidebar(props: ShopFilterSidebarProps) {
   return (
     <aside className="hidden lg:block w-[260px] shrink-0">
-      <div className="sticky top-[7.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto pr-2 pb-8">
+      <div className="sticky top-30 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2 pb-8">
         <ShopFilterPanel {...props} />
       </div>
     </aside>

@@ -233,7 +233,7 @@ function LoadingState() {
           key={i}
           className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse"
         >
-          <div className="aspect-[4/5] bg-gray-100" />
+          <div className="aspect-4/5 bg-gray-100" />
           <div className="p-3 space-y-2">
             <div className="h-3 w-1/3 bg-gray-100 rounded" />
             <div className="h-4 w-3/4 bg-gray-100 rounded" />

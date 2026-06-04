@@ -134,7 +134,7 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
       {/* 縮圖：優先用 snapshot 圖片，沒有就 ES Wake logo 水印佔位 */}
       <Link
         to={`/shop/${item.productId}`}
-        className="flex-shrink-0 w-16 h-20 sm:w-20 sm:h-24 rounded-md overflow-hidden hover:opacity-90 transition-opacity"
+        className="shrink-0 w-16 h-20 sm:w-20 sm:h-24 rounded-md overflow-hidden hover:opacity-90 transition-opacity"
         aria-label="Back to product"
       >
         <ImageOrFallback
@@ -185,7 +185,7 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
       <button
         type="button"
         onClick={onRemove}
-        className="flex-shrink-0 self-start text-gray-400 hover:text-red-600 p-1 -m-1 transition-colors"
+        className="shrink-0 self-start text-gray-400 hover:text-red-600 p-1 -m-1 transition-colors"
         aria-label="Remove item"
         title="Remove"
       >
