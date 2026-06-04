@@ -16,6 +16,7 @@ import {
   isShopCatalogHome,
   type SortBy,
 } from './lib/shopFilters'
+import { resolveShopHeroKey } from './lib/shopHeroImages'
 import { SHOP_COPY, SHOP_LABEL } from './lib/shopCopy'
 
 /**
@@ -68,6 +69,7 @@ export function ShopList() {
 
   const heroTitle = getHeroTitle(filters)
   const showFullHero = isShopCatalogHome(filters)
+  const heroKey = resolveShopHeroKey(showFullHero, filters.topLevel)
   const collectionParent = getCollectionParentGroup(filters)
   const showRefinePanel =
     facets.preOrderCount > 0 || facets.brandCounts.size > 0
@@ -84,6 +86,7 @@ export function ShopList() {
         <ShopListHero
           mode={showFullHero ? 'catalog' : 'collection'}
           title={heroTitle}
+          heroKey={heroKey}
           parentGroup={collectionParent}
           preOrderOnly={filters.preOrderOnly}
           searchQuery={filters.search}
