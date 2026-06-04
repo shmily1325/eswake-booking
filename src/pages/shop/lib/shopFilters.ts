@@ -288,6 +288,17 @@ export function getHeroTitle(filters: ShopFilterState): string {
   return 'Catalog'
 }
 
+/** 未選分類 / 搜尋 / refine 時才顯示全幅 hero */
+export function isShopCatalogHome(filters: ShopFilterState): boolean {
+  return (
+    filters.topLevel === ALL_GROUPS &&
+    filters.subCat === ALL_SUBCATS &&
+    !filters.preOrderOnly &&
+    !filters.search.trim() &&
+    filters.brands.length === 0
+  )
+}
+
 export function getSubCategoriesForGroup(
   topLevel: TopLevel,
   categoryCounts: Map<string, number>,

@@ -11,6 +11,7 @@ import {
   normalizeFilterState,
   parseFiltersFromSearchParams,
   pruneUnavailableBrands,
+  isShopCatalogHome,
 } from '../shopFilters'
 
 function product(
@@ -151,5 +152,20 @@ describe('brand facets', () => {
       computeBrandCounts(filterProductsForBrandFacets(base, wakeboarding)),
     )
     expect(pruned.brands).toEqual([])
+  })
+})
+
+describe('isShopCatalogHome', () => {
+  it('is true only on unfiltered catalog view', () => {
+    expect(isShopCatalogHome(defaultFilterState())).toBe(true)
+    expect(
+      isShopCatalogHome({ ...defaultFilterState(), topLevel: 'Wakeboarding' }),
+    ).toBe(false)
+    expect(
+      isShopCatalogHome({ ...defaultFilterState(), preOrderOnly: true }),
+    ).toBe(false)
+    expect(
+      isShopCatalogHome({ ...defaultFilterState(), search: 'ronix' }),
+    ).toBe(false)
   })
 })

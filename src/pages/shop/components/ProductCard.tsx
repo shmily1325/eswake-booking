@@ -10,6 +10,7 @@ import {
 } from '../lib/productAvailability'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
+import { SHOP_LABEL } from '../lib/shopCopy'
 
 interface ProductCardProps {
   product: ProductRow
@@ -40,15 +41,10 @@ export function ProductCard({ product, variants }: ProductCardProps) {
 
         {summary.primaryBadge === 'pre_order' && !summary.hasInStock && (
           <div className="absolute top-2 left-2 bg-amber-600 text-white text-[11px] font-semibold px-2 py-1 rounded">
-            預購
+            {SHOP_LABEL.preOrder}
             {summary.preOrderEta ? (
               <span className="font-normal opacity-90"> · {summary.preOrderEta}</span>
             ) : null}
-          </div>
-        )}
-        {summary.hasInStock && summary.hasPreOrder && (
-          <div className="absolute top-2 left-2 bg-zinc-900/85 text-white text-[11px] font-medium px-2 py-1 rounded">
-            部分預購
           </div>
         )}
       </div>

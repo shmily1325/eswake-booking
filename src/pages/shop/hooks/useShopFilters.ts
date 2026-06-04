@@ -11,7 +11,6 @@ import {
   defaultFilterState,
   filterAndSortProducts,
   filterProductsForBrandFacets,
-  getFacetProductPool,
   getShopBaseProducts,
   hasNonDefaultFilters,
   normalizeFilterState,
@@ -40,18 +39,14 @@ export function useShopFilters(products: ProductWithVariants[]) {
     [baseProducts],
   )
 
-  const facetPool = useMemo(
-    () => getFacetProductPool(baseProducts, filters.preOrderOnly),
-    [baseProducts, filters.preOrderOnly],
-  )
-
   const facets = useMemo(() => {
-    const base = computeFacets(facetPool)
+    // 分類計數永遠用全站可見商品，避免勾預購後 chips 憑空消失
+    const navFacets = computeFacets(baseProducts)
     const brandCounts = computeBrandCounts(
       filterProductsForBrandFacets(baseProducts, filters),
     )
-    return { ...base, brandCounts, preOrderCount: catalogFacets.preOrderCount }
-  }, [baseProducts, facetPool, filters, catalogFacets.preOrderCount])
+    return { ...navFacets, brandCounts, preOrderCount: catalogFacets.preOrderCount }
+  }, [baseProducts, filters, catalogFacets.preOrderCount])
 
   const filteredProducts = useMemo(
     () => filterAndSortProducts(baseProducts, filters),
@@ -92,19 +87,17 @@ export function useShopFilters(products: ProductWithVariants[]) {
 
   const selectAll = useCallback(() => {
     writeFilters({
-      preOrderOnly: false,
       topLevel: ALL_GROUPS,
       subCat: ALL_SUBCATS,
     })
   }, [writeFilters])
 
-  const selectPreOrder = useCallback(() => {
-    writeFilters({
-      preOrderOnly: true,
-      topLevel: ALL_GROUPS,
-      subCat: ALL_SUBCATS,
-    })
-  }, [writeFilters])
+  const setPreOrderOnly = useCallback(
+    (preOrderOnly: boolean) => {
+      writeFilters({ preOrderOnly })
+    },
+    [writeFilters],
+  )
 
   const selectCategory = useCallback(
     (topLevel: TopLevel, subCat: string = ALL_SUBCATS) => {
@@ -156,7 +149,12 @@ export function useShopFilters(products: ProductWithVariants[]) {
   }, [writeFilters])
 
   const clearRefinement = useCallback(() => {
-    writeFilters({ brands: [], sortBy: 'newest' })
+    writeFilters({ brands: [], sortBy: 'newest', preOrderOnly: false })
+  }, [writeFilters])
+
+  /** 清除 pills 顯示的 refine（不動分類 chips） */
+  const clearPillFilters = useCallback(() => {
+    writeFilters({ preOrderOnly: false, brands: [], search: '' })
   }, [writeFilters])
 
   const clearFilter = useCallback(
@@ -190,7 +188,7 @@ export function useShopFilters(products: ProductWithVariants[]) {
     activeFilterCount,
     hasFilter,
     selectAll,
-    selectPreOrder,
+    setPreOrderOnly,
     selectCategory,
     setTopLevel,
     setSubCat,
@@ -198,6 +196,7 @@ export function useShopFilters(products: ProductWithVariants[]) {
     setSortBy,
     clearAllFilters,
     clearRefinement,
+    clearPillFilters,
     clearFilter,
   }
 }

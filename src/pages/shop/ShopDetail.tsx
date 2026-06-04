@@ -16,6 +16,7 @@ import {
   isProductVisibleInShop,
   isVariantPurchasable,
 } from './lib/productAvailability'
+import { SHOP_LABEL } from './lib/shopCopy'
 import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
@@ -330,7 +331,7 @@ function ProductDetailBody({
           )}
           {isPreOrder && (
             <span className="text-sm text-amber-700 font-medium">
-              預購
+              {SHOP_LABEL.preOrder}
               {selectedVariant?.pre_order_eta ? (
                 <span className="text-gray-500 font-normal">
                   {' '}

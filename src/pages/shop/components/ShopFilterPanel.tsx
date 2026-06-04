@@ -11,6 +11,7 @@ import {
   type ShopFilterState,
   type TopLevel,
 } from '../lib/shopFilters'
+import { SHOP_LABEL, SHOP_COPY } from '../lib/shopCopy'
 
 interface ShopFilterPanelProps {
   filters: ShopFilterState
@@ -19,10 +20,9 @@ interface ShopFilterPanelProps {
   categoryCounts: Map<string, number>
   brandCounts: Map<string, number>
   onSelectAll: () => void
-  onSelectPreOrder: () => void
   onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
+  onPreOrderOnlyChange: (v: boolean) => void
   onToggleBrand: (brand: string) => void
-  /** 手機 drawer 用：分類已在上方 chips，這裡只顯示 brand */
   hideCategory?: boolean
 }
 
@@ -33,8 +33,8 @@ export function ShopFilterPanel({
   categoryCounts,
   brandCounts,
   onSelectAll,
-  onSelectPreOrder,
   onSelectCategory,
+  onPreOrderOnlyChange,
   onToggleBrand,
   hideCategory = false,
 }: ShopFilterPanelProps) {
@@ -62,36 +62,19 @@ export function ShopFilterPanel({
   }
 
   const allActive =
-    !filters.preOrderOnly &&
-    filters.topLevel === ALL_GROUPS &&
-    filters.subCat === ALL_SUBCATS
-
-  const preOrderActive =
-    filters.preOrderOnly &&
-    filters.topLevel === ALL_GROUPS &&
-    filters.subCat === ALL_SUBCATS
+    filters.topLevel === ALL_GROUPS && filters.subCat === ALL_SUBCATS
 
   return (
     <div className="space-y-6">
       {!hideCategory && (
-        <FilterSection title="Category">
+        <FilterSection title={SHOP_LABEL.category}>
           <button
             type="button"
             onClick={onSelectAll}
             className={navLinkClass(allActive)}
           >
-            All Products
+            {SHOP_LABEL.allProducts}
           </button>
-
-          {preOrderCount > 0 && (
-            <button
-              type="button"
-              onClick={onSelectPreOrder}
-              className={navLinkClass(preOrderActive)}
-            >
-              Pre-Order
-            </button>
-          )}
 
           <div className="mt-1 space-y-0.5">
             {SHOP_GROUPS.map((g) => {
@@ -143,8 +126,25 @@ export function ShopFilterPanel({
         </FilterSection>
       )}
 
+      {preOrderCount > 0 && (
+        <FilterSection title={SHOP_LABEL.availability}>
+          <label className="flex items-center gap-2.5 min-h-[44px] px-1 cursor-pointer rounded-md hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={filters.preOrderOnly}
+              onChange={(e) => onPreOrderOnlyChange(e.target.checked)}
+              className="w-4 h-4 shrink-0 rounded border-gray-300 text-black focus:ring-black"
+            />
+            <span className="text-sm text-gray-800">{SHOP_LABEL.preOrderOnly}</span>
+          </label>
+          <p className="mt-1 px-1 text-xs text-gray-500 leading-relaxed">
+            {SHOP_COPY.preOrderHint}
+          </p>
+        </FilterSection>
+      )}
+
       {brands.length > 0 && (
-        <FilterSection title="Brand">
+        <FilterSection title={SHOP_LABEL.brand}>
           <div className="space-y-0.5 max-h-52 overflow-y-auto overflow-x-hidden pr-1">
             {brands.map((name) => {
               const checked = filters.brands.includes(name)
@@ -189,7 +189,6 @@ function FilterSection({
   )
 }
 
-/** Shopify-style: bold + left border for every active level */
 function navLinkClass(active: boolean) {
   return (
     'w-full flex items-center gap-1.5 min-h-[44px] pl-3 border-l-2 text-sm text-left transition-colors ' +

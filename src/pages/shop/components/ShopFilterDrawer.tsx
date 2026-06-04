@@ -1,34 +1,37 @@
 import { useEffect } from 'react'
 import type { ShopGroup } from '../../admin/products/schema'
 import { ShopFilterPanel } from './ShopFilterPanel'
-import type { ShopFilterState, SortBy, TopLevel } from '../lib/shopFilters'
+import type { ShopFilterState, SortBy } from '../lib/shopFilters'
+import { SHOP_COPY, SHOP_LABEL } from '../lib/shopCopy'
 
 interface ShopFilterDrawerProps {
   open: boolean
   resultCount: number
   filters: ShopFilterState
+  preOrderCount: number
   groupCounts: Map<ShopGroup, number>
   categoryCounts: Map<string, number>
   brandCounts: Map<string, number>
   onClose: () => void
-  onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
+  onPreOrderOnlyChange: (v: boolean) => void
   onToggleBrand: (brand: string) => void
   onSortChange: (v: SortBy) => void
   onClearAll: () => void
 }
 
 /**
- * 手機版 refine sheet：品牌 + 排序（分類在上方 chips）。
+ * 手機版 filter sheet：預購、品牌、排序（分類在上方 chips）。
  */
 export function ShopFilterDrawer({
   open,
   resultCount,
   filters,
+  preOrderCount,
   groupCounts,
   categoryCounts,
   brandCounts,
   onClose,
-  onSelectCategory,
+  onPreOrderOnlyChange,
   onToggleBrand,
   onSortChange,
   onClearAll,
@@ -45,7 +48,9 @@ export function ShopFilterDrawer({
   if (!open) return null
 
   const hasRefinement =
-    filters.brands.length > 0 || filters.sortBy !== 'newest'
+    filters.preOrderOnly ||
+    filters.brands.length > 0 ||
+    filters.sortBy !== 'newest'
 
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
@@ -57,7 +62,7 @@ export function ShopFilterDrawer({
       />
       <div className="absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col rounded-t-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-          <h2 className="text-base font-bold text-zinc-900">Brand & Sort</h2>
+          <h2 className="text-base font-bold text-zinc-900">{SHOP_LABEL.filter}</h2>
           <div className="flex items-center gap-3">
             {hasRefinement && (
               <button
@@ -65,7 +70,7 @@ export function ShopFilterDrawer({
                 onClick={onClearAll}
                 className="text-sm text-gray-500 underline underline-offset-2"
               >
-                Clear
+                {SHOP_LABEL.clear}
               </button>
             )}
             <button
@@ -83,7 +88,7 @@ export function ShopFilterDrawer({
           <div className="space-y-6">
             <div>
               <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400 mb-2">
-                Sort
+                {SHOP_LABEL.sort}
               </h3>
               <div className="grid grid-cols-1 gap-1">
                 {SORT_OPTIONS.map(({ value, label }) => (
@@ -104,18 +109,18 @@ export function ShopFilterDrawer({
               </div>
             </div>
 
-          <ShopFilterPanel
-            filters={filters}
-            preOrderCount={0}
-            groupCounts={groupCounts}
-            categoryCounts={categoryCounts}
-            brandCounts={brandCounts}
-            onSelectAll={() => {}}
-            onSelectPreOrder={() => {}}
-            onSelectCategory={onSelectCategory}
-            onToggleBrand={onToggleBrand}
-            hideCategory
-          />
+            <ShopFilterPanel
+              filters={filters}
+              preOrderCount={preOrderCount}
+              groupCounts={groupCounts}
+              categoryCounts={categoryCounts}
+              brandCounts={brandCounts}
+              onSelectAll={() => {}}
+              onSelectCategory={() => {}}
+              onPreOrderOnlyChange={onPreOrderOnlyChange}
+              onToggleBrand={onToggleBrand}
+              hideCategory
+            />
           </div>
         </div>
 
@@ -125,7 +130,7 @@ export function ShopFilterDrawer({
             onClick={onClose}
             className="w-full h-12 rounded-lg bg-black text-white text-sm font-semibold"
           >
-            顯示 {resultCount} 件
+            {SHOP_COPY.showResults(resultCount)}
           </button>
         </div>
       </div>
@@ -134,9 +139,9 @@ export function ShopFilterDrawer({
 }
 
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'price-asc', label: 'Price: Low → High' },
-  { value: 'price-desc', label: 'Price: High → Low' },
+  { value: 'newest', label: SHOP_LABEL.newest },
+  { value: 'price-asc', label: SHOP_LABEL.priceAsc },
+  { value: 'price-desc', label: SHOP_LABEL.priceDesc },
 ]
 
 function CloseIcon() {

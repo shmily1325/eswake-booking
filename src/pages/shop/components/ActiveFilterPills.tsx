@@ -1,8 +1,5 @@
-import {
-  getAllCategories,
-  getCategoryShopName,
-} from '../../admin/products/schema'
-import { ALL_GROUPS, ALL_SUBCATS, type ShopFilterState } from '../lib/shopFilters'
+import { type ShopFilterState } from '../lib/shopFilters'
+import { SHOP_LABEL } from '../lib/shopCopy'
 
 interface ActiveFilterPillsProps {
   filters: ShopFilterState
@@ -13,29 +10,20 @@ interface ActiveFilterPillsProps {
   onClearAll: () => void
 }
 
+/** 只顯示 refine pills（分類已由 chips 表示） */
 export function ActiveFilterPills({
   filters,
   onClear,
   onClearAll,
 }: ActiveFilterPillsProps) {
   const pills: {
-    key: 'preorder' | 'group' | 'cat' | 'brand' | 'search'
+    key: 'preorder' | 'brand' | 'search'
     label: string
     brand?: string
   }[] = []
 
   if (filters.preOrderOnly) {
-    pills.push({ key: 'preorder', label: 'Pre-Order' })
-  }
-  if (filters.topLevel !== ALL_GROUPS) {
-    pills.push({ key: 'group', label: filters.topLevel })
-  }
-  if (filters.subCat !== ALL_SUBCATS) {
-    const cat = getAllCategories().find((c) => c.id === filters.subCat)
-    pills.push({
-      key: 'cat',
-      label: cat ? getCategoryShopName(cat) : filters.subCat,
-    })
+    pills.push({ key: 'preorder', label: SHOP_LABEL.preOrder })
   }
   for (const brand of filters.brands) {
     pills.push({ key: 'brand', label: brand, brand })
@@ -66,7 +54,7 @@ export function ActiveFilterPills({
         onClick={onClearAll}
         className="h-8 px-2 text-xs text-gray-500 underline underline-offset-2"
       >
-        Clear all
+        {SHOP_LABEL.clearAll}
       </button>
     </div>
   )

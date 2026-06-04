@@ -4,6 +4,7 @@ import {
   getVariantAvailability,
   isVariantPurchasable,
 } from '../lib/productAvailability'
+import { SHOP_LABEL } from '../lib/shopCopy'
 
 interface VariantPickerProps {
   variants: ProductVariantRow[]
@@ -55,7 +56,8 @@ export function VariantPicker({
               <div className="font-medium">{label}</div>
               {avail === 'pre_order' && (
                 <div className="text-xs text-amber-700 mt-0.5">
-                  預購{v.pre_order_eta ? ` · ${v.pre_order_eta}` : ''}
+                  {SHOP_LABEL.preOrder}
+                  {v.pre_order_eta ? ` · ${v.pre_order_eta}` : ''}
                 </div>
               )}
             </button>
