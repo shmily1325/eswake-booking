@@ -15,9 +15,31 @@ interface ShopListHeroProps {
   loading?: boolean
 }
 
-/** Ronix 感：略放大裁切、少漸層 */
+/** Ronix 感：略放大裁切 */
 const HERO_IMG =
   'absolute inset-0 h-full w-full object-cover scale-[1.14] contrast-[1.06] saturate-[1.04] '
+
+/** 輕暗幕＋淡角：有意境，但不蓋掉整張圖（非厚重漸層帶） */
+function HeroAtmosphere({ catalog = false }: { catalog?: boolean }) {
+  return (
+    <>
+      <div className="absolute inset-0 z-[1] bg-black/25 pointer-events-none" aria-hidden />
+      <div
+        className={
+          'absolute inset-0 z-[1] bg-gradient-to-br pointer-events-none ' +
+          (catalog
+            ? 'from-black/55 from-0% via-black/20 via-40% to-transparent to-70%'
+            : 'from-black/45 from-0% via-black/15 via-38% to-transparent to-68%')
+        }
+        aria-hidden
+      />
+      <div
+        className="absolute inset-x-0 bottom-0 z-[1] h-[22%] bg-gradient-to-t from-black/40 to-transparent pointer-events-none"
+        aria-hidden
+      />
+    </>
+  )
+}
 
 /**
  * 與列表同寬（max-w-7xl）；超寬螢幕左右黑邊，固定比例 → 各種桌機寬度裁切一致。
@@ -76,6 +98,7 @@ export function ShopListHero({
                 className={HERO_IMG + positionClass}
                 decoding="async"
               />
+              <HeroAtmosphere />
             </div>
             <div
               className={`hidden sm:block ${HERO_FRAME} ${desktopAspect} border-b border-white/10`}
@@ -86,6 +109,7 @@ export function ShopListHero({
                 className={HERO_IMG + positionClass}
                 decoding="async"
               />
+              <HeroAtmosphere />
             </div>
           </>
         ) : (
@@ -137,6 +161,7 @@ export function ShopListHero({
               decoding="async"
               fetchPriority="high"
             />
+            <HeroAtmosphere catalog />
           </div>
         ) : (
           <div className="h-12 bg-black" aria-hidden />
@@ -155,13 +180,16 @@ export function ShopListHero({
       <div className="hidden sm:block w-full bg-black border-b border-white/10">
         <div className={`${HERO_FRAME} ${CATALOG_DESKTOP_ASPECT}`}>
           {hero ? (
-            <img
-              src={hero.src}
-              alt=""
-              className={HERO_IMG + positionClass}
-              decoding="async"
-              fetchPriority="high"
-            />
+            <>
+              <img
+                src={hero.src}
+                alt=""
+                className={HERO_IMG + positionClass}
+                decoding="async"
+                fetchPriority="high"
+              />
+              <HeroAtmosphere catalog />
+            </>
           ) : (
             <div className="absolute inset-0 bg-black" aria-hidden />
           )}
