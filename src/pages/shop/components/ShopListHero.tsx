@@ -19,18 +19,39 @@ interface ShopListHeroProps {
 const HERO_IMG =
   'absolute inset-0 h-full w-full object-cover scale-[1.14] contrast-[1.06] saturate-[1.04] '
 
-/** 輕暗幕＋淡角：有意境，但不蓋掉整張圖（非厚重漸層帶） */
-function HeroAtmosphere({ catalog = false }: { catalog?: boolean }) {
+type AtmosphereMode = 'default' | 'photo-only' | 'caption-bottom'
+
+/** 輕暗幕；photo-only = 不壓左上角，留給純照片 */
+function HeroAtmosphere({ mode = 'default' }: { mode?: AtmosphereMode }) {
+  if (mode === 'photo-only') {
+    return (
+      <>
+        <div className="absolute inset-0 z-[1] bg-black/20 pointer-events-none" aria-hidden />
+        <div
+          className="absolute inset-x-0 bottom-0 z-[1] h-[15%] bg-gradient-to-t from-black/30 to-transparent pointer-events-none"
+          aria-hidden
+        />
+      </>
+    )
+  }
+
+  if (mode === 'caption-bottom') {
+    return (
+      <>
+        <div className="absolute inset-0 z-[1] bg-black/22 pointer-events-none" aria-hidden />
+        <div
+          className="absolute inset-x-0 bottom-0 z-[1] h-[42%] bg-gradient-to-t from-black/75 via-black/35 to-transparent pointer-events-none"
+          aria-hidden
+        />
+      </>
+    )
+  }
+
   return (
     <>
       <div className="absolute inset-0 z-[1] bg-black/25 pointer-events-none" aria-hidden />
       <div
-        className={
-          'absolute inset-0 z-[1] bg-gradient-to-br pointer-events-none ' +
-          (catalog
-            ? 'from-black/55 from-0% via-black/20 via-40% to-transparent to-70%'
-            : 'from-black/45 from-0% via-black/15 via-38% to-transparent to-68%')
-        }
+        className="absolute inset-0 z-[1] bg-gradient-to-br from-black/45 from-0% via-black/15 via-38% to-transparent to-68% pointer-events-none"
         aria-hidden
       />
       <div
@@ -47,18 +68,20 @@ function HeroAtmosphere({ catalog = false }: { catalog?: boolean }) {
 const HERO_FRAME =
   'relative mx-auto w-full max-w-7xl overflow-hidden shrink-0'
 
-/** Catalog 桌機固定比例（依此比例準備／裁切素材） */
-const CATALOG_DESKTOP_ASPECT = 'aspect-[2.35/1] max-h-[400px]'
+/** Catalog 桌機：略高、更搶眼 */
+const CATALOG_DESKTOP_ASPECT = 'aspect-[2.15/1] max-h-[min(48vh,480px)]'
+
+/** 手機 Catalog：大圖區，字改黑底不疊圖 */
+const CATALOG_MOBILE_H = 'h-[min(38vh,220px)] min-h-[180px]'
 
 const COLLECTION_MOBILE_H = {
-  default: 'h-[120px]',
-  tall: 'h-[128px]',
+  default: 'h-[140px]',
+  tall: 'h-[152px]',
 } as const
 
-/** 分類頁桌機固定比例 */
 const COLLECTION_DESKTOP_ASPECT = {
-  default: 'aspect-[2.85/1] max-h-[220px]',
-  tall: 'aspect-[2.65/1] max-h-[240px]',
+  default: 'aspect-[2.75/1] max-h-[260px]',
+  tall: 'aspect-[2.55/1] max-h-[280px]',
 } as const
 
 export function ShopListHero({
@@ -98,7 +121,7 @@ export function ShopListHero({
                 className={HERO_IMG + positionClass}
                 decoding="async"
               />
-              <HeroAtmosphere />
+              <HeroAtmosphere mode="photo-only" />
             </div>
             <div
               className={`hidden sm:block ${HERO_FRAME} ${desktopAspect} border-b border-white/10`}
@@ -109,7 +132,7 @@ export function ShopListHero({
                 className={HERO_IMG + positionClass}
                 decoding="async"
               />
-              <HeroAtmosphere />
+              <HeroAtmosphere mode="photo-only" />
             </div>
           </>
         ) : (
@@ -150,10 +173,10 @@ export function ShopListHero({
 
   return (
     <>
-      {/* 手機 Catalog：全寬固定高度 */}
-      <div className="relative w-full sm:hidden overflow-hidden border-b border-white/10 bg-black">
+      {/* 手機 Catalog：大圖為主，標題在黑底列（不擋船） */}
+      <div className="flex flex-col w-full sm:hidden bg-black border-b border-white/10">
         {hero ? (
-          <div className="relative h-[140px] w-full overflow-hidden">
+          <div className={`relative w-full overflow-hidden ${CATALOG_MOBILE_H}`}>
             <img
               src={hero.src}
               alt=""
@@ -161,16 +184,16 @@ export function ShopListHero({
               decoding="async"
               fetchPriority="high"
             />
-            <HeroAtmosphere catalog />
+            <HeroAtmosphere mode="photo-only" />
           </div>
         ) : (
           <div className="h-12 bg-black" aria-hidden />
         )}
-        <div className="absolute inset-x-0 top-0 z-10 px-4 pt-3 max-w-7xl mx-auto pointer-events-none">
-          <h1 className="font-black italic uppercase tracking-tight leading-none text-2xl [text-shadow:0_1px_12px_rgba(0,0,0,0.85)]">
+        <div className="px-4 py-2.5 max-w-7xl w-full mx-auto">
+          <h1 className="font-black italic uppercase tracking-tight leading-none text-2xl">
             {title}
           </h1>
-          <p className="mt-1 text-[10px] italic tracking-[0.28em] text-white/90 uppercase [text-shadow:0_1px_8px_rgba(0,0,0,0.8)]">
+          <p className="mt-1 text-[10px] italic tracking-[0.28em] text-zinc-400 uppercase">
             {SHOP_COPY.tagline}
           </p>
         </div>
@@ -188,17 +211,17 @@ export function ShopListHero({
                 decoding="async"
                 fetchPriority="high"
               />
-              <HeroAtmosphere catalog />
+              <HeroAtmosphere mode="caption-bottom" />
             </>
           ) : (
             <div className="absolute inset-0 bg-black" aria-hidden />
           )}
 
-          <div className="absolute inset-0 z-10 flex flex-col justify-start px-4 sm:px-6 pt-8 sm:pt-10 pointer-events-none">
-            <h1 className="font-black italic uppercase tracking-tight leading-none text-6xl md:text-7xl [text-shadow:0_2px_24px_rgba(0,0,0,0.75)]">
+          <div className="absolute inset-0 z-10 flex flex-col justify-end px-4 sm:px-6 pb-6 sm:pb-8 pointer-events-none">
+            <h1 className="font-black italic uppercase tracking-tight leading-none text-6xl md:text-7xl">
               {title}
             </h1>
-            <p className="mt-3 text-sm italic tracking-[0.35em] text-white/90 uppercase [text-shadow:0_1px_12px_rgba(0,0,0,0.7)]">
+            <p className="mt-2 sm:mt-3 text-sm italic tracking-[0.35em] text-white/90 uppercase">
               {SHOP_COPY.tagline}
             </p>
           </div>
