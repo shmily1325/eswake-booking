@@ -4,7 +4,7 @@ import {
   getVariantAvailability,
   isVariantPurchasable,
 } from '../lib/productAvailability'
-import { SHOP_LABEL } from '../lib/shopCopy'
+import { SHOP_DETAIL } from '../lib/shopCopy'
 
 interface VariantPickerProps {
   variants: ProductVariantRow[]
@@ -22,14 +22,42 @@ export function VariantPicker({
   const visible = variants.filter((v) => getVariantAvailability(v) !== 'sold_out')
 
   if (visible.length === 0) {
-    return <p className="text-sm text-gray-500">此商品目前沒有可選規格</p>
+    return <p className="text-sm text-gray-500">{SHOP_DETAIL.noVariants}</p>
+  }
+
+  if (visible.length === 1) {
+    const v = visible[0]!
+    const attrsText = formatVariantAttributes(categoryId, v.attributes)
+    const avail = getVariantAvailability(v)
+    if (!attrsText && avail !== 'pre_order') return null
+
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {attrsText ? (
+          <span className="text-gray-700">
+            <span className="font-medium text-gray-500">{SHOP_DETAIL.variant}</span>
+            {' '}
+            {attrsText}
+          </span>
+        ) : null}
+        {avail === 'pre_order' && (
+          <span className="text-amber-700 font-medium">
+            {SHOP_DETAIL.preOrder}
+            {v.pre_order_eta ? (
+              <span className="text-gray-500 font-normal">
+                {' '}
+                · 預計 {v.pre_order_eta}
+              </span>
+            ) : null}
+          </span>
+        )}
+      </div>
+    )
   }
 
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium text-gray-700">
-        選擇規格 <span className="text-gray-400 font-normal">Select variant</span>
-      </div>
+      <div className="text-sm font-medium text-gray-700">{SHOP_DETAIL.variant}</div>
       <div className="flex flex-wrap gap-2">
         {visible.map((v) => {
           const isSelected = v.id === selectedVariantId
@@ -56,7 +84,7 @@ export function VariantPicker({
               <div className="font-medium">{label}</div>
               {avail === 'pre_order' && (
                 <div className="text-xs text-amber-700 mt-0.5">
-                  {SHOP_LABEL.preOrder}
+                  {SHOP_DETAIL.preOrder}
                   {v.pre_order_eta ? ` · ${v.pre_order_eta}` : ''}
                 </div>
               )}

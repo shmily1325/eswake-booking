@@ -37,3 +37,16 @@ export const SHOP_COPY = {
   searchPlaceholder: '搜尋品牌或型號',
   clearFilters: '清除篩選',
 } as const
+
+/** 詳情／購物車動線：中文短句，不與列表英文控制項混雙語 */
+export const SHOP_DETAIL = {
+  variant: '規格',
+  quantity: '數量',
+  addToCart: '加入購物車',
+  lineInquiry: 'LINE 詢問',
+  lineNote: '請透過 LINE 詢問購買，我們會盡快回覆。',
+  imageCover: 'Cover',
+  imagePhoto: 'Photo',
+  noVariants: '此商品目前沒有可選規格',
+  preOrder: '預購',
+} as const

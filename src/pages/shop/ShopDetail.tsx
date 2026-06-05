@@ -4,8 +4,9 @@ import { getShopProductPreview } from './lib/shopReturnTo'
 import { fetchProductWithVariants } from '../admin/products/api'
 import type { ProductWithVariants, ProductVariantRow } from '../admin/products/types'
 import { ShopHeader } from './components/ShopHeader'
+import { DetailPurchaseActions } from './components/DetailPurchaseActions'
+import { ShopDetailQuantity } from './components/ShopDetailQuantity'
 import { VariantPicker } from './components/VariantPicker'
-import { QuantityStepper } from './components/QuantityStepper'
 import { useShopCart } from './hooks/useShopCart'
 import {
   formatPrice,
@@ -17,7 +18,7 @@ import {
   isProductVisibleInShop,
   isVariantPurchasable,
 } from './lib/productAvailability'
-import { SHOP_LABEL } from './lib/shopCopy'
+import { SHOP_DETAIL } from './lib/shopCopy'
 import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
@@ -184,7 +185,7 @@ export function ShopDetail() {
     <div className="min-h-screen bg-gray-50">
       <ShopHeader showBack />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-28 lg:pb-10">
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -256,8 +257,8 @@ function ProductDetailBody({
       seen.add(url)
       options.push({ url, label })
     }
-    add(selectedVariant.cover_image_url, '封面')
-    add(selectedVariant.image_url, '實品')
+    add(selectedVariant.cover_image_url, SHOP_DETAIL.imageCover)
+    add(selectedVariant.image_url, SHOP_DETAIL.imagePhoto)
     return options
   }, [selectedVariant])
 
@@ -268,7 +269,16 @@ function ProductDetailBody({
     setPreviewImageUrl(null)
   }, [product.id, selectedVariantId, imageUrl])
 
+  const priceBlock = hasPrice ? (
+    <div className="text-2xl sm:text-3xl font-bold text-zinc-900">{priceText}</div>
+  ) : (
+    <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">
+      {priceText}
+    </span>
+  )
+
   return (
+    <>
     <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
       {/* 圖片 + 縮圖列 */}
       <div>
@@ -297,27 +307,31 @@ function ProductDetailBody({
             {imageOptions.map((opt) => {
               const active = heroImageUrl === opt.url
               return (
-                <button
-                  key={opt.url}
-                  type="button"
-                  onClick={() => setPreviewImageUrl(opt.url)}
-                  role="tab"
-                  aria-selected={active}
-                  title={opt.label}
-                  className={
-                    'shrink-0 w-14 h-18 sm:w-16 sm:h-20 rounded-md overflow-hidden border-2 transition-colors ' +
-                    (active
-                      ? 'border-black'
-                      : 'border-transparent hover:border-gray-300')
-                  }
-                >
-                  <img
-                    src={opt.url}
-                    alt=""
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                </button>
+                <div key={opt.url} className="flex flex-col items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewImageUrl(opt.url)}
+                    role="tab"
+                    aria-selected={active}
+                    aria-label={opt.label}
+                    className={
+                      'w-14 h-18 sm:w-16 sm:h-20 rounded-md overflow-hidden border-2 transition-colors ' +
+                      (active
+                        ? 'border-black'
+                        : 'border-transparent hover:border-gray-300')
+                    }
+                  >
+                    <img
+                      src={opt.url}
+                      alt=""
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                    {opt.label}
+                  </span>
+                </div>
               )
             })}
           </div>
@@ -349,19 +363,10 @@ function ProductDetailBody({
         </h1>
 
         <div className="mt-3 sm:mt-4 flex items-baseline gap-3 flex-wrap">
-          {hasPrice ? (
-            <div className="text-2xl sm:text-3xl font-bold text-zinc-900">
-              {priceText}
-            </div>
-          ) : (
-            /* 沒有實價時降階成淺灰標籤，跟 list 卡片同一套視覺語言 */
-            <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">
-              {priceText}
-            </span>
-          )}
+          {priceBlock}
           {isPreOrder && (
             <span className="text-sm text-amber-700 font-medium">
-              {SHOP_LABEL.preOrder}
+              {SHOP_DETAIL.preOrder}
               {selectedVariant?.pre_order_eta ? (
                 <span className="text-gray-500 font-normal">
                   {' '}
@@ -372,13 +377,7 @@ function ProductDetailBody({
           )}
         </div>
 
-        {product.description && (
-          <p className="mt-3 text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
-            {product.description}
-          </p>
-        )}
-
-        <div className="mt-6">
+        <div className="mt-4">
           <VariantPicker
             variants={product.variants}
             selectedVariantId={selectedVariantId}
@@ -387,55 +386,52 @@ function ProductDetailBody({
           />
         </div>
 
-        <div className="mt-6">
-          <div className="text-sm font-medium text-gray-700 mb-2">
-            Quantity <span className="text-gray-400 font-normal">數量</span>
-          </div>
-          <QuantityStepper value={quantity} onChange={onChangeQuantity} />
+        <div className="mt-4 flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-700">{SHOP_DETAIL.quantity}</span>
+          <ShopDetailQuantity value={quantity} onChange={onChangeQuantity} />
         </div>
 
-        {/*
-          按鈕：英文主標 + 中文副標雙行（垂直 stack），避免上一版「Add to Cart 加入購物車」
-          硬塞同一行被切成「加入購物 / 車」的爆版。
-          高度 h-14（行高更舒服），手機/桌機都用同樣 layout。
-        */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-3">
-          {/*
-            兩顆按鈕：
-            - 主 CTA「Add to Cart」用黑底白字（全站主互動色）
-            - 次 CTA「Inquire via LINE」用白底黑邊（avoid 兩顆全黑撞在一起）
-          */}
-          <button
-            type="button"
-            onClick={onAddToCart}
-            disabled={!selectedVariant || !canPurchase}
-            className="flex-1 h-14 px-4 rounded-md bg-black text-white font-semibold hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm inline-flex items-center justify-center gap-2.5"
-          >
-            <CartIcon className="w-5 h-5 shrink-0" />
-            <span className="flex flex-col items-start leading-tight">
-              <span className="text-base">Add to Cart</span>
-              <span className="text-xs font-normal text-zinc-300">加入購物車</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={onDirectInquiry}
-            disabled={!selectedVariant || !canPurchase}
-            className="flex-1 h-14 px-4 rounded-md bg-gray-50 text-black font-semibold border-2 border-black hover:bg-gray-100 active:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2.5"
-          >
-            <LineIcon className="w-5 h-5 shrink-0" />
-            <span className="flex flex-col items-start leading-tight">
-              <span className="text-base">用 LINE 詢問</span>
-              <span className="text-xs font-normal text-gray-500">Inquire via LINE</span>
-            </span>
-          </button>
+        <div className="mt-6 hidden lg:block">
+          <DetailPurchaseActions
+            layout="stacked"
+            canPurchase={!!selectedVariant && canPurchase}
+            onAddToCart={onAddToCart}
+            onDirectInquiry={onDirectInquiry}
+          />
         </div>
 
-        <p className="mt-4 text-xs text-gray-500 leading-relaxed">
-          * 請透過 LINE 詢問購買，我們會盡快回覆。
+        {product.description && (
+          <p className="mt-4 text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+            {product.description}
+          </p>
+        )}
+
+        <p className="mt-4 text-xs text-gray-500 leading-relaxed hidden lg:block">
+          * {SHOP_DETAIL.lineNote}
         </p>
       </div>
     </div>
+
+    <div
+      className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-sm shadow-[0_-4px_24px_rgba(0,0,0,0.08)] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      role="region"
+      aria-label="Purchase actions"
+    >
+      <div className="max-w-7xl mx-auto px-4 pt-3 flex items-center gap-3">
+        <div className="shrink-0 min-w-0 max-w-[38%]">
+          <div className="text-base font-bold text-zinc-900 truncate leading-tight">
+            {priceText}
+          </div>
+        </div>
+        <DetailPurchaseActions
+          layout="sticky"
+          canPurchase={!!selectedVariant && canPurchase}
+          onAddToCart={onAddToCart}
+          onDirectInquiry={onDirectInquiry}
+        />
+      </div>
+    </div>
+    </>
   )
 }
 
@@ -485,42 +481,6 @@ function NotFoundState() {
         ← Back to products
       </Link>
     </div>
-  )
-}
-
-// ============================================================
-// Inline icons：避免引入 icon library，跟產品色系手調 SVG 即可
-// ============================================================
-
-function CartIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="9" cy="20" r="1.5" />
-      <circle cx="18" cy="20" r="1.5" />
-      <path d="M3 4h2l2.5 12.5a2 2 0 0 0 2 1.5h8a2 2 0 0 0 2-1.5L21 8H6" />
-    </svg>
-  )
-}
-
-function LineIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden
-    >
-      <path d="M12 3C6.48 3 2 6.74 2 11.31c0 4.05 3.54 7.46 8.32 8.16.32.07.76.21.87.49.1.25.07.64.03.9l-.14.85c-.04.25-.2.99.86.54 1.06-.45 5.73-3.38 7.82-5.78C20.95 14.96 22 13.27 22 11.31 22 6.74 17.52 3 12 3zM8.34 13.74h-2c-.29 0-.52-.24-.52-.52V9.74c0-.29.23-.52.52-.52.29 0 .52.23.52.52v2.95h1.48c.29 0 .52.23.52.52 0 .29-.23.53-.52.53zm1.79-.52c0 .29-.23.52-.52.52-.29 0-.52-.23-.52-.52V9.74c0-.29.23-.52.52-.52.29 0 .52.23.52.52v3.48zm4.07 0c0 .22-.14.42-.36.49-.06.02-.11.03-.17.03-.16 0-.32-.07-.42-.21l-1.83-2.49v2.19c0 .29-.23.52-.52.52-.29 0-.52-.23-.52-.52V9.74c0-.22.14-.42.36-.49.06-.02.11-.03.17-.03.16 0 .32.08.41.21l1.84 2.49V9.74c0-.29.23-.52.52-.52.29 0 .52.23.52.52v3.48zm3.32-2.27c.29 0 .52.23.52.52 0 .29-.23.52-.52.52h-1.48v.71h1.48c.29 0 .52.23.52.52 0 .29-.23.53-.52.53h-2c-.29 0-.52-.24-.52-.52V9.74c0-.29.23-.52.52-.52h2c.29 0 .52.23.52.52 0 .29-.23.52-.52.52h-1.48v.71h1.48z" />
-    </svg>
   )
 }
 
