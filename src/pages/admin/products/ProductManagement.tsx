@@ -100,6 +100,17 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     if (typeof window !== 'undefined') window.localStorage.setItem('products_layout', next)
   }
 
+  // 列表縮圖：封面優先 or 實拍優先（記憶於 localStorage）
+  const [listImageMode, setListImageMode] = useState<ListImageMode>(() => {
+    if (typeof window === 'undefined') return 'cover'
+    const saved = window.localStorage.getItem('products_list_image')
+    return saved === 'photo' ? 'photo' : 'cover'
+  })
+  const setListImageModePersist = (next: ListImageMode) => {
+    setListImageMode(next)
+    if (typeof window !== 'undefined') window.localStorage.setItem('products_list_image', next)
+  }
+
   // 權限檢查（沿用 BoatManagement 的模式）
   useEffect(() => {
     let cancelled = false
@@ -408,6 +419,13 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
                   }}
                   isMobile={isMobile}
                 />
+                <ImageModeToggle
+                  mode={listImageMode}
+                  onChange={(next) => {
+                    setListImageModePersist(next)
+                    trackClick(`product_list_image_${next}`, user?.email ?? undefined)
+                  }}
+                />
                 <LayoutToggle layout={layout} onChange={setLayoutPersist} />
                 {canEdit && (
                   <LockToggle
@@ -502,6 +520,13 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
                 }}
                 isMobile={isMobile}
               />
+              <ImageModeToggle
+                mode={listImageMode}
+                onChange={(next) => {
+                  setListImageModePersist(next)
+                  trackClick(`product_list_image_${next}`, user?.email ?? undefined)
+                }}
+              />
               <LayoutToggle layout={layout} onChange={setLayoutPersist} />
               {canEdit && (
                 <LockToggle
@@ -534,12 +559,14 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           <ProductGalleryGrid
             items={filteredItems}
             isMobile={isMobile}
+            imageMode={listImageMode}
             onCardClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
             onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
         ) : isMobile ? (
           <MobileListView
             items={filteredItems}
+            imageMode={listImageMode}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
             onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
@@ -547,6 +574,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           <DesktopTable
             items={filteredItems}
             showCategoryColumn={showCategoryColumn}
+            imageMode={listImageMode}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
             onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
@@ -920,6 +948,73 @@ function PriceDisplay({ price, align = 'left' }: { price: number | null; align?:
   )
 }
 
+// ============================================================
+//  列表縮圖：封面 / 實拍
+// ============================================================
+type ListImageMode = 'cover' | 'photo'
+
+function getVariantListImageUrl(
+  variant: Pick<ProductVariantRow, 'cover_image_url' | 'image_url'>,
+  mode: ListImageMode,
+): string | null {
+  if (mode === 'photo') return variant.image_url ?? variant.cover_image_url ?? null
+  return variant.cover_image_url ?? variant.image_url ?? null
+}
+
+interface ImageModeToggleProps {
+  mode: ListImageMode
+  onChange: (next: ListImageMode) => void
+}
+function ImageModeToggle({ mode, onChange }: ImageModeToggleProps) {
+  const cellStyle = (active: boolean): React.CSSProperties => ({
+    height: 34,
+    padding: '0 10px',
+    border: 'none',
+    background: active ? '#222' : '#fff',
+    color: active ? '#fff' : '#666',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 12,
+    fontWeight: active ? 600 : 500,
+    whiteSpace: 'nowrap',
+  })
+  return (
+    <div
+      style={{
+        display: 'flex',
+        border: '1px solid #ddd',
+        borderRadius: 8,
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+      title="列表縮圖優先顯示封面或實拍"
+    >
+      <button
+        type="button"
+        data-track="product_list_image_cover"
+        aria-label="優先顯示封面"
+        aria-pressed={mode === 'cover'}
+        style={cellStyle(mode === 'cover')}
+        onClick={() => onChange('cover')}
+      >
+        封面
+      </button>
+      <button
+        type="button"
+        data-track="product_list_image_photo"
+        aria-label="優先顯示實拍"
+        aria-pressed={mode === 'photo'}
+        style={{ ...cellStyle(mode === 'photo'), borderLeft: '1px solid #ddd' }}
+        onClick={() => onChange('photo')}
+      >
+        實拍
+      </button>
+    </div>
+  )
+}
+
 /** 畫廊／表格切換按鈕（兩個 icon） */
 interface LayoutToggleProps {
   layout: 'gallery' | 'table'
@@ -976,10 +1071,11 @@ function LayoutToggle({ layout, onChange }: LayoutToggleProps) {
 interface ProductGalleryGridProps {
   items: VariantListItem[]
   isMobile: boolean
+  imageMode: ListImageMode
   onCardClick: (productId: string, variantId: string) => void
   onStartOrder?: (variantId: string) => void
 }
-function ProductGalleryGrid({ items, isMobile, onCardClick, onStartOrder }: ProductGalleryGridProps) {
+function ProductGalleryGrid({ items, isMobile, imageMode, onCardClick, onStartOrder }: ProductGalleryGridProps) {
   return (
     <div
       style={{
@@ -995,6 +1091,7 @@ function ProductGalleryGrid({ items, isMobile, onCardClick, onStartOrder }: Prod
         <GalleryCard
           key={it.variant.id}
           item={it}
+          imageMode={imageMode}
           onClick={() => onCardClick(it.product.id, it.variant.id)}
           onStartOrder={onStartOrder}
         />
@@ -1005,15 +1102,17 @@ function ProductGalleryGrid({ items, isMobile, onCardClick, onStartOrder }: Prod
 
 interface GalleryCardProps {
   item: VariantListItem
+  imageMode: ListImageMode
   onClick: () => void
   onStartOrder?: (variantId: string) => void
 }
-function GalleryCard({ item, onClick, onStartOrder }: GalleryCardProps) {
+function GalleryCard({ item, imageMode, onClick, onStartOrder }: GalleryCardProps) {
   const { variant, product } = item
   const cat = getCategory(product.category)
   const status = shopStatusBadge(variant, product.is_public)
   const attrText = formatAttributes(product.category, variant.attributes)
   const cardBorder = variantCardBorder(variant, product.is_public)
+  const imageUrl = getVariantListImageUrl(variant, imageMode)
 
   return (
     <div
@@ -1063,9 +1162,9 @@ function GalleryCard({ item, onClick, onStartOrder }: GalleryCardProps) {
           position: 'relative',
         }}
       >
-        {variant.image_url ? (
+        {imageUrl ? (
           <img
-            src={variant.image_url}
+            src={imageUrl}
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             loading="lazy"
@@ -1255,16 +1354,18 @@ function ImagePlaceholder({ icon }: { icon: string }) {
 // ============================================================
 interface MobileListViewProps {
   items: VariantListItem[]
+  imageMode: ListImageMode
   onRowClick: (productId: string, variantId: string) => void
   onStartOrder?: (variantId: string) => void
 }
-function MobileListView({ items, onRowClick, onStartOrder }: MobileListViewProps) {
+function MobileListView({ items, imageMode, onRowClick, onStartOrder }: MobileListViewProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {items.map((it) => (
         <MobileListRow
           key={it.variant.id}
           item={it}
+          imageMode={imageMode}
           onClick={() => onRowClick(it.product.id, it.variant.id)}
           onStartOrder={onStartOrder}
         />
@@ -1275,10 +1376,12 @@ function MobileListView({ items, onRowClick, onStartOrder }: MobileListViewProps
 
 function MobileListRow({
   item,
+  imageMode,
   onClick,
   onStartOrder,
 }: {
   item: VariantListItem
+  imageMode: ListImageMode
   onClick: () => void
   onStartOrder?: (variantId: string) => void
 }) {
@@ -1287,6 +1390,7 @@ function MobileListRow({
   const status = shopStatusBadge(variant, product.is_public)
   const attrText = formatAttributes(product.category, variant.attributes)
   const cardBorder = variantCardBorder(variant, product.is_public)
+  const imageUrl = getVariantListImageUrl(variant, imageMode)
 
   return (
     <div
@@ -1328,9 +1432,9 @@ function MobileListRow({
           justifyContent: 'center',
         }}
       >
-        {variant.image_url ? (
+        {imageUrl ? (
           <img
-            src={variant.image_url}
+            src={imageUrl}
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             loading="lazy"
@@ -1473,10 +1577,11 @@ function MobileListRow({
 interface DesktopTableProps {
   items: VariantListItem[]
   showCategoryColumn: boolean
+  imageMode: ListImageMode
   onRowClick: (productId: string, variantId: string) => void
   onStartOrder?: (variantId: string) => void
 }
-function DesktopTable({ items, showCategoryColumn, onRowClick, onStartOrder }: DesktopTableProps) {
+function DesktopTable({ items, showCategoryColumn, imageMode, onRowClick, onStartOrder }: DesktopTableProps) {
   return (
     <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', border: '1px solid #ececec' }}>
       <div style={{ overflowX: 'auto' }}>
@@ -1499,6 +1604,7 @@ function DesktopTable({ items, showCategoryColumn, onRowClick, onStartOrder }: D
             {items.map((it) => {
               const cat = getCategory(it.product.category)
               const status = shopStatusBadge(it.variant, it.product.is_public)
+              const imageUrl = getVariantListImageUrl(it.variant, imageMode)
               return (
                 <tr
                   key={it.variant.id}
@@ -1525,8 +1631,8 @@ function DesktopTable({ items, showCategoryColumn, onRowClick, onStartOrder }: D
                         color: '#bbb',
                       }}
                     >
-                      {it.variant.image_url ? (
-                        <img src={it.variant.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {imageUrl ? (
+                        <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         cat?.icon ?? '📦'
                       )}
