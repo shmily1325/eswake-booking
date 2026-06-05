@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { ShopBrandFilter } from './ShopBrandFilter'
 import {
   getCategoryShopName,
   SHOP_GROUPS,
@@ -11,7 +12,7 @@ import {
   type ShopFilterState,
   type TopLevel,
 } from '../lib/shopFilters'
-import { SHOP_LABEL, SHOP_COPY } from '../lib/shopCopy'
+import { SHOP_LABEL } from '../lib/shopCopy'
 
 interface ShopFilterPanelProps {
   filters: ShopFilterState
@@ -24,6 +25,7 @@ interface ShopFilterPanelProps {
   onPreOrderOnlyChange: (v: boolean) => void
   onToggleBrand: (brand: string) => void
   hideCategory?: boolean
+  hideBrand?: boolean
 }
 
 export function ShopFilterPanel({
@@ -37,6 +39,7 @@ export function ShopFilterPanel({
   onPreOrderOnlyChange,
   onToggleBrand,
   hideCategory = false,
+  hideBrand = false,
 }: ShopFilterPanelProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() =>
     filters.topLevel !== ALL_GROUPS ? new Set([filters.topLevel]) : new Set(),
@@ -49,12 +52,6 @@ export function ShopFilterPanel({
       setExpandedGroups(new Set())
     }
   }, [filters.topLevel])
-
-  const brands = useMemo(
-    () =>
-      [...brandCounts.keys()].sort((a, b) => a.localeCompare(b)),
-    [brandCounts],
-  )
 
   const selectGroup = (g: ShopGroup) => {
     onSelectCategory(g, ALL_SUBCATS)
@@ -126,6 +123,15 @@ export function ShopFilterPanel({
         </FilterSection>
       )}
 
+      {!hideBrand && (
+        <ShopBrandFilter
+          filters={filters}
+          brandCounts={brandCounts}
+          onToggleBrand={onToggleBrand}
+          layout="list"
+        />
+      )}
+
       {preOrderCount > 0 && (
         <FilterSection title={SHOP_LABEL.availability}>
           <label className="flex items-center gap-2.5 min-h-[44px] px-1 cursor-pointer rounded-md hover:bg-gray-50">
@@ -137,35 +143,6 @@ export function ShopFilterPanel({
             />
             <span className="text-sm text-gray-800">{SHOP_LABEL.preOrderOnly}</span>
           </label>
-          <p className="mt-1 px-1 text-xs text-gray-500 leading-relaxed">
-            {SHOP_COPY.preOrderHint}
-          </p>
-        </FilterSection>
-      )}
-
-      {brands.length > 0 && (
-        <FilterSection title={SHOP_LABEL.brand}>
-          <div className="space-y-0.5">
-            {brands.map((name) => {
-              const checked = filters.brands.includes(name)
-              return (
-                <label
-                  key={name}
-                  className="flex items-center gap-2.5 min-h-[44px] px-1 cursor-pointer rounded-md hover:bg-gray-50 min-w-0"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => onToggleBrand(name)}
-                    className="w-4 h-4 shrink-0 rounded border-gray-300 text-black focus:ring-black"
-                  />
-                  <span className="flex-1 min-w-0 text-sm text-gray-800 truncate">
-                    {name}
-                  </span>
-                </label>
-              )
-            })}
-          </div>
         </FilterSection>
       )}
     </div>

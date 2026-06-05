@@ -1,5 +1,6 @@
 /**
- * Shop 文案規則：標籤 / 按鈕 / badge 用英文；說明、空狀態、提示用中文。
+ * Shop 文案 — 見 shopUiStyle.ts
+ * 英文：控制項、badge、分類。中文：空狀態、錯誤、少數動作。不寫副標／教學句。
  */
 
 export const SHOP_LABEL = {
@@ -26,6 +27,7 @@ export const SHOP_COPY = {
   preOrderHint: '預購商品 · 詳情請 LINE 確認',
   showResults: (n: number) => `顯示 ${n} 件`,
   itemCount: (n: number) => `${n} 件商品`,
+  viewingAll: '全部商品',
   emptySearch: (q: string) => `找不到符合「${q}」的商品`,
   emptyFilter: '沒有符合篩選條件的商品',
   emptyPreOrder: '目前沒有開放預購的商品',
@@ -33,4 +35,6 @@ export const SHOP_COPY = {
   loadError: '暫時無法載入商品',
   reload: '重新載入',
   searchContext: (q: string) => `搜尋「${q}」`,
+  searchPlaceholder: '搜尋品牌或型號',
+  clearFilters: '清除篩選',
 } as const

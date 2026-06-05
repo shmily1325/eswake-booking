@@ -8,6 +8,7 @@ import {
   SHOP_GROUPS,
   type ShopGroup,
 } from '../../admin/products/schema'
+import { SHOP_COPY } from './shopCopy'
 import type { ProductWithVariants } from '../../admin/products/types'
 import { getMinPrice } from './shopFormat'
 import {
@@ -276,6 +277,42 @@ export function countActiveFilters(filters: ShopFilterState): number {
 
 export function hasNonDefaultFilters(filters: ShopFilterState): boolean {
   return countActiveFilters(filters) > 0
+}
+
+/** 列表上方狀態列：目前瀏覽範圍（手機） */
+export function getShopFilterContextLabel(filters: ShopFilterState): string {
+  if (filters.search.trim()) {
+    return SHOP_COPY.searchContext(filters.search.trim())
+  }
+  if (
+    filters.preOrderOnly &&
+    filters.topLevel === ALL_GROUPS &&
+    filters.subCat === ALL_SUBCATS
+  ) {
+    return 'Pre-Order'
+  }
+  if (filters.subCat !== ALL_SUBCATS) {
+    const cat = getAllCategories().find((c) => c.id === filters.subCat)
+    if (cat) {
+      const group =
+        filters.topLevel !== ALL_GROUPS ? filters.topLevel : cat.shopGroup
+      if (group) return `${group} · ${getCategoryShopName(cat)}`
+      return getCategoryShopName(cat)
+    }
+  }
+  if (filters.topLevel !== ALL_GROUPS) return filters.topLevel
+  return SHOP_COPY.viewingAll
+}
+
+function appendBrandSuffix(label: string, brands: string[]): string {
+  if (brands.length === 0) return label
+  if (brands.length === 1) return `${label} · ${brands[0]}`
+  return `${label} · ${brands.length} brands`
+}
+
+/** 含已選品牌（手機狀態列） */
+export function getShopFilterContextLabelWithBrands(filters: ShopFilterState): string {
+  return appendBrandSuffix(getShopFilterContextLabel(filters), filters.brands)
 }
 
 export function getHeroTitle(filters: ShopFilterState): string {

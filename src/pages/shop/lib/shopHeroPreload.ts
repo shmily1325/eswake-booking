@@ -5,13 +5,21 @@ import {
   SHOP_SUBCATEGORY_HERO_IMAGES,
   type ShopHeroImageConfig,
 } from './shopHeroImages'
+import { SHOP_HERO_WEBP_SRCS } from './shopHeroWebpManifest'
+import { shopHeroWebpSrc } from './shopHeroUrls'
 
 const loaded = new Set<string>()
 const inflight = new Map<string, Promise<void>>()
 let linkPreloadInstalled = false
 
+/** 預載用：有 webp 則先載 webp，否則 jpg */
+export function preferredShopHeroPreloadUrl(jpgSrc: string): string {
+  const webp = shopHeroWebpSrc(jpgSrc)
+  return SHOP_HERO_WEBP_SRCS.has(webp) ? webp : jpgSrc
+}
+
 export function urlsFromShopHeroConfig(cfg: ShopHeroImageConfig): string[] {
-  return [cfg.src]
+  return [preferredShopHeroPreloadUrl(cfg.src)]
 }
 
 export function getAllShopHeroImageUrls(): string[] {

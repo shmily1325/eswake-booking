@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "optimize:shop-heroes": "node tools/optimize-shop-heroes.mjs"
   },
   "dependencies": {
     "@line/liff": "^2.24.0",

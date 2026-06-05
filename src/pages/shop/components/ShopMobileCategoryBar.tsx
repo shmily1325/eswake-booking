@@ -61,9 +61,10 @@ export function ShopCategoryBar({
           : 'bg-gray-50/95 backdrop-blur-sm border-b border-gray-200')
       }
     >
+      <div className="relative max-lg:before:pointer-events-none max-lg:before:absolute max-lg:before:right-0 max-lg:before:top-0 max-lg:before:z-10 max-lg:before:h-full max-lg:before:w-10 max-lg:before:bg-linear-to-l max-lg:before:from-black max-lg:before:to-transparent">
       <div
         className={
-          'max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto px-4 sm:px-6 py-1.5 sm:py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
+          'relative z-21 max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 py-1.5 sm:py-2.5 max-lg:py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
           (showSubRow ? 'pb-1.5 sm:pb-2 lg:pb-3' : 'pb-2 sm:pb-3')
         }
         role="tablist"
@@ -118,6 +119,7 @@ export function ShopCategoryBar({
                 }
                 subdued
                 onDark={onDark}
+                count={cat.count}
               >
                 {getCategoryShopName(cat)}
               </CategoryChip>
@@ -125,28 +127,43 @@ export function ShopCategoryBar({
           </div>
         )}
       </div>
+      </div>
 
-      {/* 手機：第二排只列子分類（不要 All） */}
-      {showSubRow && (
-        <div
-          className="lg:hidden max-w-7xl mx-auto flex gap-2 overflow-x-auto px-4 sm:px-6 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          role="tablist"
-          aria-label={`${activeGroup} subcategories`}
-        >
-          {subs.map((cat) => (
+      {/* 手機：第二排子分類 +「全部」 */}
+      {showSubRow && activeGroup && (
+        <div className="relative lg:hidden">
+          <div
+            className="relative z-21 max-w-7xl mx-auto flex gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="tablist"
+            aria-label={`${activeGroup} subcategories`}
+          >
             <CategoryChip
-              key={cat.id}
-              active={filters.subCat === cat.id}
-              onClick={() => onSelectCategory(activeGroup!, cat.id)}
+              active={filters.subCat === ALL_SUBCATS}
+              onClick={() => onSelectCategory(activeGroup, ALL_SUBCATS)}
               onWarmHover={() =>
-                void preloadShopHeroForCategory(activeGroup!, cat.id)
+                void preloadShopHeroForCategory(activeGroup, ALL_SUBCATS)
               }
               subdued
               onDark={onDark}
             >
-              {getCategoryShopName(cat)}
+              {SHOP_LABEL.all}
             </CategoryChip>
-          ))}
+            {subs.map((cat) => (
+              <CategoryChip
+                key={cat.id}
+                active={filters.subCat === cat.id}
+                onClick={() => onSelectCategory(activeGroup, cat.id)}
+                onWarmHover={() =>
+                  void preloadShopHeroForCategory(activeGroup, cat.id)
+                }
+                subdued
+                onDark={onDark}
+                count={cat.count}
+              >
+                {getCategoryShopName(cat)}
+              </CategoryChip>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -158,6 +175,7 @@ function CategoryChip({
   partial = false,
   subdued = false,
   onDark = false,
+  count,
   onClick,
   onWarmHover,
   children,
@@ -166,24 +184,25 @@ function CategoryChip({
   partial?: boolean
   subdued?: boolean
   onDark?: boolean
+  count?: number
   onClick: () => void
   onWarmHover?: () => void
   children: React.ReactNode
 }) {
   let className =
-    'shrink-0 h-9 px-3.5 rounded-full text-sm font-medium transition-colors '
+    'snap-start shrink-0 max-lg:h-10 max-lg:px-4 max-lg:text-[15px] h-9 px-3.5 rounded-full text-sm font-medium leading-none whitespace-nowrap transition-colors '
 
   if (onDark) {
     if (active) {
-      className += 'bg-white text-zinc-900'
+      className += 'bg-white text-zinc-900 shadow-sm max-lg:font-semibold'
     } else if (partial) {
-      className += 'bg-white/15 text-white border border-white'
+      className += 'bg-white/20 text-white border-2 border-white max-lg:font-semibold'
     } else if (subdued) {
       className +=
-        'bg-transparent text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200'
+        'bg-zinc-900/40 text-zinc-100 border border-zinc-500 hover:border-zinc-300 hover:text-white'
     } else {
       className +=
-        'bg-transparent text-white border border-white/45 hover:bg-white/10 hover:border-white/80'
+        'bg-transparent text-white border border-white/55 hover:bg-white/10 hover:border-white'
     }
   } else if (active) {
     className += 'bg-zinc-900 text-white'
@@ -204,6 +223,16 @@ function CategoryChip({
       className={className}
     >
       {children}
+      {count != null && count > 0 ? (
+        <span
+          className={
+            'ml-1 tabular-nums ' +
+            (active && onDark ? 'text-zinc-500' : onDark ? 'text-white/55' : 'text-gray-400')
+          }
+        >
+          {count}
+        </span>
+      ) : null}
     </button>
   )
 }

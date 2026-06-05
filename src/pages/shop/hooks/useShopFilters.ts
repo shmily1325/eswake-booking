@@ -139,6 +139,17 @@ export function useShopFilters(products: ProductWithVariants[]) {
     [writeFilters],
   )
 
+  const setSearch = useCallback(
+    (search: string) => {
+      writeFilters({ search })
+    },
+    [writeFilters],
+  )
+
+  const clearListFilters = useCallback(() => {
+    writeFilters(defaultFilterState())
+  }, [writeFilters])
+
   const clearAllFilters = useCallback(() => {
     writeFilters((prev) => {
       const next = defaultFilterState()
@@ -154,12 +165,17 @@ export function useShopFilters(products: ProductWithVariants[]) {
 
   /** 清除 pills 顯示的 refine（不動分類 chips） */
   const clearPillFilters = useCallback(() => {
-    writeFilters({ preOrderOnly: false, brands: [], search: '' })
+    writeFilters({
+      preOrderOnly: false,
+      brands: [],
+      search: '',
+      sortBy: 'newest',
+    })
   }, [writeFilters])
 
   const clearFilter = useCallback(
     (
-      key: 'preorder' | 'group' | 'cat' | 'brand' | 'search',
+      key: 'preorder' | 'group' | 'cat' | 'brand' | 'search' | 'sort',
       brand?: string,
     ) => {
       if (key === 'preorder') {
@@ -175,6 +191,8 @@ export function useShopFilters(products: ProductWithVariants[]) {
         }))
       } else if (key === 'search') {
         writeFilters({ search: '' })
+      } else if (key === 'sort') {
+        writeFilters({ sortBy: 'newest' })
       }
     },
     [writeFilters],
@@ -194,6 +212,8 @@ export function useShopFilters(products: ProductWithVariants[]) {
     setSubCat,
     toggleBrand,
     setSortBy,
+    setSearch,
+    clearListFilters,
     clearAllFilters,
     clearRefinement,
     clearPillFilters,

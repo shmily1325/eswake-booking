@@ -1,5 +1,6 @@
 import { HeroAtmosphere } from './HeroAtmosphere'
 import { ShopHeroStack } from './ShopHeroStack'
+import { useHeroTransition } from '../hooks/useHeroTransition'
 import { SHOP_COPY } from '../lib/shopCopy'
 import {
   getShopHeroPositionClass,
@@ -12,8 +13,6 @@ interface ShopListHeroProps {
   title: string
   heroConfig: ShopHeroImageConfig | null
   parentGroup?: string | null
-  preOrderOnly?: boolean
-  searchQuery?: string
   itemCount?: number
   loading?: boolean
 }
@@ -94,13 +93,12 @@ export function ShopListHero({
   title,
   heroConfig,
   parentGroup,
-  preOrderOnly = false,
-  searchQuery = '',
   itemCount,
   loading = false,
 }: ShopListHeroProps) {
   const isCatalog = mode === 'catalog'
   const hero = heroConfig
+  const heroBusy = useHeroTransition(hero?.src)
 
   const positionClass =
     heroConfig != null ? getShopHeroPositionClass(heroConfig, isCatalog) : ''
@@ -130,18 +128,15 @@ export function ShopListHero({
             </p>
           )}
         </div>
-        {preOrderOnly && (
-          <p className="mt-1.5 text-xs text-white/90 sm:text-sm [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
-            {SHOP_COPY.preOrderHint}
-          </p>
-        )}
-        {searchQuery.trim() && (
-          <p className="mt-1.5 text-xs text-white/90 sm:text-sm [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
-            {SHOP_COPY.searchContext(searchQuery.trim())}
-          </p>
-        )}
       </div>
     )
+
+    const heroShimmer = heroBusy ? (
+      <div
+        className="absolute inset-0 z-[5] bg-zinc-900/50 animate-pulse pointer-events-none"
+        aria-hidden
+      />
+    ) : null
 
     return (
       <div className="w-full bg-black border-b border-white/10">
@@ -151,11 +146,13 @@ export function ShopListHero({
               className={`relative w-full overflow-hidden sm:hidden ${mobileH}`}
             >
               <ShopHeroStack activeSrc={hero.src} activeClassName={imgClass} />
+              {heroShimmer}
               <HeroAtmosphere mode="caption-bottom" />
               {caption}
             </div>
             <div className={`hidden sm:block relative ${HERO_FRAME} ${desktopAspect}`}>
               <ShopHeroStack activeSrc={hero.src} activeClassName={imgClass} />
+              {heroShimmer}
               <HeroAtmosphere mode="caption-bottom" />
               {caption}
             </div>
@@ -178,6 +175,12 @@ export function ShopListHero({
         {hero ? (
           <div className={`relative w-full overflow-hidden ${CATALOG_MOBILE_H}`}>
             <ShopHeroStack activeSrc={hero.src} activeClassName={catalogImgClass} />
+            {heroBusy ? (
+              <div
+                className="absolute inset-0 z-[5] bg-zinc-900/50 animate-pulse pointer-events-none"
+                aria-hidden
+              />
+            ) : null}
             <HeroAtmosphere mode="caption-bottom" />
             <div className="absolute inset-0 z-10 flex flex-col justify-end px-4 pb-3 pointer-events-none">
               <h1 className={HERO_TITLE + ' text-3xl'}>{title}</h1>
@@ -199,6 +202,12 @@ export function ShopListHero({
           {hero ? (
             <>
               <ShopHeroStack activeSrc={hero.src} activeClassName={catalogImgClass} />
+              {heroBusy ? (
+                <div
+                  className="absolute inset-0 z-[5] bg-zinc-900/50 animate-pulse pointer-events-none"
+                  aria-hidden
+                />
+              ) : null}
               <HeroAtmosphere mode="caption-bottom" />
             </>
           ) : (

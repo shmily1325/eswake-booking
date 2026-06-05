@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useShopCart } from '../hooks/useShopCart'
 import { getShopReturnTo } from '../lib/shopReturnTo'
+import { SHOP_COPY } from '../lib/shopCopy'
 
 interface ShopHeaderProps {
   showBack?: boolean
@@ -174,7 +175,7 @@ function HeaderSearchInput({
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Search brand or model"
+        placeholder={SHOP_COPY.searchPlaceholder}
         autoFocus={autoFocus}
         className={
           'w-full h-9 pl-10 pr-3 text-sm bg-zinc-800 text-white placeholder-gray-500 border border-zinc-700 rounded-md focus:outline-none focus:border-white focus:bg-zinc-700 ' +

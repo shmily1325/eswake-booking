@@ -1,10 +1,10 @@
-import { type ShopFilterState } from '../lib/shopFilters'
+import { type ShopFilterState, type SortBy } from '../lib/shopFilters'
 import { SHOP_LABEL } from '../lib/shopCopy'
 
 interface ActiveFilterPillsProps {
   filters: ShopFilterState
   onClear: (
-    key: 'preorder' | 'group' | 'cat' | 'brand' | 'search',
+    key: 'preorder' | 'group' | 'cat' | 'brand' | 'search' | 'sort',
     brand?: string,
   ) => void
   onClearAll: () => void
@@ -17,11 +17,14 @@ export function ActiveFilterPills({
   onClearAll,
 }: ActiveFilterPillsProps) {
   const pills: {
-    key: 'preorder' | 'brand' | 'search'
+    key: 'preorder' | 'brand' | 'search' | 'sort'
     label: string
     brand?: string
   }[] = []
 
+  if (filters.sortBy !== 'newest') {
+    pills.push({ key: 'sort', label: sortLabel(filters.sortBy) })
+  }
   if (filters.preOrderOnly) {
     pills.push({ key: 'preorder', label: SHOP_LABEL.preOrder })
   }
@@ -58,4 +61,10 @@ export function ActiveFilterPills({
       </button>
     </div>
   )
+}
+
+function sortLabel(sortBy: SortBy): string {
+  if (sortBy === 'price-asc') return SHOP_LABEL.priceAsc
+  if (sortBy === 'price-desc') return SHOP_LABEL.priceDesc
+  return SHOP_LABEL.newest
 }

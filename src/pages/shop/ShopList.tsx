@@ -8,7 +8,10 @@ import { ActiveFilterPills } from './components/ActiveFilterPills'
 import { ShopFilterDrawer } from './components/ShopFilterDrawer'
 import { ShopFilterSidebar } from './components/ShopFilterSidebar'
 import { ShopCategoryBar } from './components/ShopMobileCategoryBar'
+import { ShopBrandFilter } from './components/ShopBrandFilter'
+import { ShopMobileListToolbar } from './components/ShopMobileListToolbar'
 import { ShopListHero } from './components/ShopListHero'
+import { ShopListSearchBar } from './components/ShopListSearchBar'
 import { useShopFilters } from './hooks/useShopFilters'
 import {
   getCollectionParentGroup,
@@ -42,6 +45,8 @@ export function ShopList() {
     clearRefinement,
     clearPillFilters,
     clearFilter,
+    setSearch,
+    clearListFilters,
   } = useShopFilters(products)
 
   useEffect(() => {
@@ -90,21 +95,34 @@ export function ShopList() {
           title={heroTitle}
           heroConfig={heroConfig}
           parentGroup={collectionParent}
-          preOrderOnly={filters.preOrderOnly}
-          searchQuery={filters.search}
           itemCount={filteredProducts.length}
           loading={loading}
         />
-        <ShopCategoryBar
-          filters={filters}
-          groupCounts={facets.groupCounts}
-          categoryCounts={facets.categoryCounts}
-          onSelectAll={selectAll}
-          onSelectCategory={selectCategory}
-          variant="dark"
-          fadeFromHero
-        />
+        <div className="sticky top-14 z-20 bg-black">
+          <ShopCategoryBar
+            filters={filters}
+            groupCounts={facets.groupCounts}
+            categoryCounts={facets.categoryCounts}
+            onSelectAll={selectAll}
+            onSelectCategory={selectCategory}
+            variant="dark"
+            fadeFromHero
+          />
+          <div className="md:hidden max-w-7xl mx-auto px-4 sm:px-6 pb-2.5 border-t border-zinc-800/80">
+            <ShopListSearchBar
+              value={filters.search}
+              onChange={setSearch}
+              variant="dark"
+            />
+          </div>
+        </div>
       </section>
+
+      <div className="hidden md:block sticky top-14 z-19 bg-gray-50/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5">
+          <ShopListSearchBar value={filters.search} onChange={setSearch} />
+        </div>
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="flex gap-8 items-start">
@@ -123,33 +141,30 @@ export function ShopList() {
           )}
 
           <div className="flex-1 min-w-0">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                {showRefinePanel && (
-                  <button
-                    type="button"
-                    onClick={() => setDrawerOpen(true)}
-                    className="lg:hidden inline-flex items-center gap-2 h-11 px-3.5 rounded-lg border border-gray-200 bg-white text-sm font-medium shrink-0"
-                  >
-                    <FilterIcon />
-                    {SHOP_LABEL.filter}
-                    {mobileRefineCount > 0 && (
-                      <span className="min-w-[20px] h-5 px-1 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center">
-                        {mobileRefineCount}
-                      </span>
-                    )}
-                  </button>
-                )}
-                {!loading && showFullHero && (
-                  <span className="text-xs text-gray-500 truncate lg:hidden">
-                    {SHOP_COPY.itemCount(filteredProducts.length)}
-                  </span>
-                )}
-              </div>
+            <ShopMobileListToolbar
+              filters={filters}
+              itemCount={filteredProducts.length}
+              loading={loading}
+              refineCount={mobileRefineCount}
+              showRefine={showRefinePanel}
+              onOpenFilters={() => setDrawerOpen(true)}
+              onSortChange={setSortBy}
+            />
+
+            {facets.brandCounts.size > 0 && (
+              <ShopBrandFilter
+                filters={filters}
+                brandCounts={facets.brandCounts}
+                onToggleBrand={toggleBrand}
+                layout="chips"
+                className="lg:hidden mb-3"
+              />
+            )}
+
+            <div className="mb-3 hidden lg:flex items-center justify-end">
               <ToolbarSort
                 sortBy={filters.sortBy}
                 onSortChange={setSortBy}
-                className="hidden lg:block"
               />
             </div>
 
@@ -174,6 +189,12 @@ export function ShopList() {
                         ? SHOP_COPY.emptyPreOrder
                         : SHOP_COPY.emptyCatalog
                 }
+                showClear={
+                  hasFilter ||
+                  filters.search.trim().length > 0 ||
+                  filters.preOrderOnly
+                }
+                onClear={clearListFilters}
               />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
@@ -299,20 +320,28 @@ function ErrorState({ message }: { message: string }) {
   )
 }
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({
+  message,
+  showClear,
+  onClear,
+}: {
+  message: string
+  showClear?: boolean
+  onClear?: () => void
+}) {
   return (
-    <div className="text-center py-16 text-gray-500">
-      <p className="text-sm">{message}</p>
+    <div className="text-center py-16 px-4">
+      <p className="text-sm text-gray-500">{message}</p>
+      {showClear && onClear && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-5 inline-flex items-center justify-center min-h-11 px-5 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800"
+        >
+          {SHOP_COPY.clearFilters}
+        </button>
+      )}
     </div>
   )
 }
 
-function FilterIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="4" y1="6" x2="20" y2="6" />
-      <line x1="8" y1="12" x2="16" y2="12" />
-      <line x1="10" y1="18" x2="14" y2="18" />
-    </svg>
-  )
-}
