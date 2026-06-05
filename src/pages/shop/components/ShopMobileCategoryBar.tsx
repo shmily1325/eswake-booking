@@ -129,7 +129,7 @@ export function ShopCategoryBar({
       </div>
       </div>
 
-      {/* 手機：第二排子分類 +「全部」 */}
+      {/* 手機：子分類（回到大類全選 → 再點上方 Wakeboarding） */}
       {showSubRow && activeGroup && (
         <div className="relative lg:hidden">
           <div
@@ -137,17 +137,6 @@ export function ShopCategoryBar({
             role="tablist"
             aria-label={`${activeGroup} subcategories`}
           >
-            <CategoryChip
-              active={filters.subCat === ALL_SUBCATS}
-              onClick={() => onSelectCategory(activeGroup, ALL_SUBCATS)}
-              onWarmHover={() =>
-                void preloadShopHeroForCategory(activeGroup, ALL_SUBCATS)
-              }
-              subdued
-              onDark={onDark}
-            >
-              {SHOP_LABEL.all}
-            </CategoryChip>
             {subs.map((cat) => (
               <CategoryChip
                 key={cat.id}

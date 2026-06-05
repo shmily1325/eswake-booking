@@ -1,51 +1,34 @@
-import type { ShopFilterState } from '../lib/shopFilters'
-import { getShopFilterContextLabelWithBrands } from '../lib/shopFilters'
-import { SHOP_COPY, SHOP_LABEL } from '../lib/shopCopy'
+import { SHOP_LABEL } from '../lib/shopCopy'
 
 interface ShopMobileListToolbarProps {
-  filters: ShopFilterState
-  itemCount: number
-  loading: boolean
   refineCount: number
   showRefine: boolean
   onOpenFilters: () => void
 }
 
-/** 手機：一行狀態 + Filter（品牌／預購／排序皆在 drawer） */
+/** 手機：僅 Filter（標題／件數在 hero；子分類數字在 chips） */
 export function ShopMobileListToolbar({
-  filters,
-  itemCount,
-  loading,
   refineCount,
   showRefine,
   onOpenFilters,
 }: ShopMobileListToolbarProps) {
-  const context = getShopFilterContextLabelWithBrands(filters)
+  if (!showRefine) return null
 
   return (
-    <div className="lg:hidden mb-3 flex items-center justify-between gap-3 min-w-0">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-zinc-900 truncate">{context}</p>
-        {!loading && (
-          <p className="text-xs text-gray-500 tabular-nums">{SHOP_COPY.itemCount(itemCount)}</p>
+    <div className="lg:hidden mb-3 flex justify-end">
+      <button
+        type="button"
+        onClick={onOpenFilters}
+        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-gray-200 bg-white text-sm font-medium text-zinc-900 active:bg-gray-50"
+      >
+        <FilterIcon />
+        {SHOP_LABEL.filter}
+        {refineCount > 0 && (
+          <span className="min-w-[18px] h-5 px-1 rounded-full bg-zinc-900 text-white text-[11px] font-bold inline-flex items-center justify-center">
+            {refineCount}
+          </span>
         )}
-      </div>
-
-      {showRefine && (
-        <button
-          type="button"
-          onClick={onOpenFilters}
-          className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-gray-200 bg-white text-sm font-medium text-zinc-900 active:bg-gray-50"
-        >
-          <FilterIcon />
-          {SHOP_LABEL.filter}
-          {refineCount > 0 && (
-            <span className="min-w-[18px] h-5 px-1 rounded-full bg-zinc-900 text-white text-[11px] font-bold inline-flex items-center justify-center">
-              {refineCount}
-            </span>
-          )}
-        </button>
-      )}
+      </button>
     </div>
   )
 }

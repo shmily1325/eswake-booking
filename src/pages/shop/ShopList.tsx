@@ -126,9 +126,6 @@ export function ShopList() {
 
           <div className="flex-1 min-w-0">
             <ShopMobileListToolbar
-              filters={filters}
-              itemCount={filteredProducts.length}
-              loading={loading}
               refineCount={mobileRefineCount}
               showRefine={showRefinePanel}
               onOpenFilters={() => setDrawerOpen(true)}
