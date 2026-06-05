@@ -8,9 +8,15 @@ interface ShopHeaderProps {
   showBack?: boolean
   /** 列表 hero：去掉陰影，與下方黑底／照片漸層銜接 */
   blendBelow?: boolean
+  /** 列表頁手機：header 內固定一條搜尋（不另加列表搜尋列） */
+  listSearch?: boolean
 }
 
-export function ShopHeader({ showBack = false, blendBelow = false }: ShopHeaderProps) {
+export function ShopHeader({
+  showBack = false,
+  blendBelow = false,
+  listSearch = false,
+}: ShopHeaderProps) {
   const { totalCount: cartCount } = useShopCart()
   const navigate = useNavigate()
   const location = useLocation()
@@ -29,6 +35,8 @@ export function ShopHeader({ showBack = false, blendBelow = false }: ShopHeaderP
     location.pathname === '/shop' ||
     location.pathname === '/shop/' ||
     location.pathname === '/shop/pre-order'
+
+  const showMobileSearchRow = listSearch || mobileSearchOpen
 
   const submitQuery = (q: string) => {
     const trimmed = q.trim()
@@ -99,15 +107,17 @@ export function ShopHeader({ showBack = false, blendBelow = false }: ShopHeaderP
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => setMobileSearchOpen((v) => !v)}
-            className="md:hidden inline-flex items-center justify-center w-11 h-11 rounded-full hover:bg-zinc-800 text-white"
-            aria-label="Search"
-            aria-expanded={mobileSearchOpen}
-          >
-            <SearchIcon size={26} strokeWidth={2.5} />
-          </button>
+          {!listSearch && (
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen((v) => !v)}
+              className="md:hidden inline-flex items-center justify-center w-11 h-11 rounded-full hover:bg-zinc-800 text-white"
+              aria-label="Search"
+              aria-expanded={mobileSearchOpen}
+            >
+              <SearchIcon size={26} strokeWidth={2.5} />
+            </button>
+          )}
 
           <Link
             to="/shop/cart"
@@ -135,12 +145,12 @@ export function ShopHeader({ showBack = false, blendBelow = false }: ShopHeaderP
         </div>
       </div>
 
-      {mobileSearchOpen && (
+      {showMobileSearchRow && (
         <div className="md:hidden px-4 pb-3 border-b border-zinc-800">
           <HeaderSearchInput
             value={query}
             onChange={handleChange}
-            autoFocus
+            autoFocus={!listSearch && mobileSearchOpen}
             iconSize={20}
             inputClassName="h-11 pl-11"
           />

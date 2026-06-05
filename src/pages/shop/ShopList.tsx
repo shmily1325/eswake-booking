@@ -11,7 +11,6 @@ import { ShopCategoryBar } from './components/ShopMobileCategoryBar'
 import { ShopBrandFilter } from './components/ShopBrandFilter'
 import { ShopMobileListToolbar } from './components/ShopMobileListToolbar'
 import { ShopListHero } from './components/ShopListHero'
-import { ShopListSearchBar } from './components/ShopListSearchBar'
 import { useShopFilters } from './hooks/useShopFilters'
 import {
   getCollectionParentGroup,
@@ -45,7 +44,6 @@ export function ShopList() {
     clearRefinement,
     clearPillFilters,
     clearFilter,
-    setSearch,
     clearListFilters,
   } = useShopFilters(products)
 
@@ -87,7 +85,7 @@ export function ShopList() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ShopHeader blendBelow />
+      <ShopHeader blendBelow listSearch />
 
       <section className="relative bg-black text-white overflow-hidden">
         <ShopListHero
@@ -108,21 +106,8 @@ export function ShopList() {
             variant="dark"
             fadeFromHero
           />
-          <div className="md:hidden max-w-7xl mx-auto px-4 sm:px-6 pb-2.5 border-t border-zinc-800/80">
-            <ShopListSearchBar
-              value={filters.search}
-              onChange={setSearch}
-              variant="dark"
-            />
-          </div>
         </div>
       </section>
-
-      <div className="hidden md:block sticky top-14 z-19 bg-gray-50/95 backdrop-blur-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5">
-          <ShopListSearchBar value={filters.search} onChange={setSearch} />
-        </div>
-      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="flex gap-8 items-start">
