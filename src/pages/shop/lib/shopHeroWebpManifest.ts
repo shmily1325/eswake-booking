@@ -9,6 +9,7 @@ export const SHOP_HERO_WEBP_SRCS = new Set<string>([
   '/shop/heroes/wakesurfing.webp',
   '/shop/heroes/wb-board.webp',
   '/shop/heroes/wb-boots.webp',
+  '/shop/heroes/wb-fin.webp',
   '/shop/heroes/wetsuit.webp',
   '/shop/heroes/ws-board.webp',
 ])
