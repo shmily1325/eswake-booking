@@ -118,6 +118,18 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     tallCollectionBand: true,
     heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.02] md:scale-[1.0]',
   },
+  wetsuit: {
+    src: '/shop/heroes/wetsuit.jpg',
+    objectPosition: '42% 50%',
+    // 意象照 #23：背心與人物，焦點偏下
+    objectPositionClass:
+      'object-[42%_48%] sm:object-[40%_50%] md:object-[38%_52%]',
+    collectionObjectPosition: '40% 52%',
+    collectionObjectPositionClass:
+      'object-[42%_50%] max-sm:object-[44%_52%] sm:object-[40%_50%] md:object-[38%_54%] lg:object-[36%_56%]',
+    tallCollectionBand: true,
+    heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.04] md:scale-[1.02]',
+  },
   lifejacket: {
     src: '/shop/heroes/lifejacket.jpg',
     objectPosition: 'center 45%',
