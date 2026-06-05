@@ -16,6 +16,7 @@ import {
   isProductInPreOrderSection,
   isProductVisibleInShop,
 } from './productAvailability'
+import { productMatchesShopSearch } from './shopProductSearch'
 
 export type ShopCatalogMode = 'catalog' | 'pre-order'
 
@@ -219,9 +220,7 @@ function productMatchesBrand(p: ProductWithVariants, filters: ShopFilterState): 
 }
 
 function productMatchesSearch(p: ProductWithVariants, search: string): boolean {
-  const q = search.trim().toLowerCase()
-  if (!q) return true
-  return `${p.brand ?? ''} ${p.model ?? ''}`.toLowerCase().includes(q)
+  return productMatchesShopSearch(p, search)
 }
 
 function productMatchesPreOrder(

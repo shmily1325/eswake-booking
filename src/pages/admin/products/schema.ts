@@ -71,6 +71,52 @@ export interface CategoryDef {
 /** 列表頁通用欄位（所有類別都有） */
 export const COMMON_VARIANT_FIELDS = ['vendor_code', 'price', 'stock', 'image_url'] as const
 
+/** SKU gender（DB 存 Male / Female；舊資料 M/F 讀取時會正規化） */
+export const GENDER_VALUES = ['Male', 'Female'] as const
+export type GenderValue = (typeof GENDER_VALUES)[number]
+
+export const GENDER_FIELD: FieldDef = {
+  key: 'gender',
+  label: 'Gender',
+  type: 'select',
+  options: [...GENDER_VALUES],
+  required: false,
+}
+
+/** 舊值 M/F → Male/Female；無法辨識則回 null */
+export function normalizeGenderValue(raw: unknown): GenderValue | null {
+  if (raw == null) return null
+  const s = String(raw).trim()
+  if (!s) return null
+  const lower = s.toLowerCase()
+  if (lower === 'm' || lower === 'male' || s === 'Male') return 'Male'
+  if (lower === 'f' || lower === 'female' || s === 'Female') return 'Female'
+  return null
+}
+
+/** 顯示用（formatAttributes、前台規格列） */
+export function formatGenderDisplay(raw: unknown): string | null {
+  return normalizeGenderValue(raw)
+}
+
+/** 搜尋別名：male / m、female / f 等都能對到 */
+export function genderSearchTokens(raw: unknown): string[] {
+  const g = normalizeGenderValue(raw)
+  if (g === 'Male') return ['male', 'm']
+  if (g === 'Female') return ['female', 'f']
+  return []
+}
+
+/** 儲存前正規化 attributes（目前僅 gender） */
+export function normalizeVariantAttributes(
+  attributes: Record<string, string>,
+): Record<string, string> {
+  const out = { ...attributes }
+  const g = normalizeGenderValue(out.gender)
+  if (g) out.gender = g
+  return out
+}
+
 export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   lifejacket: {
     id: 'lifejacket',
@@ -84,13 +130,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopGroup: 'Essentials',
     fields: [
       // 全部允許留空（required: false），匯入舊資料時很多欄位是缺漏的
-      {
-        key: 'gender',
-        label: 'M/F',
-        type: 'select',
-        options: ['M', 'F'],
-        required: false,
-      },
+      { ...GENDER_FIELD },
       {
         key: 'age_group',
         label: '年齡層',
@@ -114,14 +154,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     icon: '🧥',
     shopGroup: 'Essentials',
     fields: [
-      // 跟救生衣相同的 gender 設計，全部允許留空
-      {
-        key: 'gender',
-        label: 'M/F',
-        type: 'select',
-        options: ['M', 'F'],
-        required: false,
-      },
+      { ...GENDER_FIELD },
       // 厚度只存純數字（3 / 3/2 / 5/4），顯示時自動附加 "mm"
       // 好處：使用者不會打錯單位、搜尋時打數字就能找到
       {
@@ -153,13 +186,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     icon: '👕',
     shopGroup: 'Essentials',
     fields: [
-      {
-        key: 'gender',
-        label: 'M/F',
-        type: 'select',
-        options: ['M', 'F'],
-        required: false,
-      },
+      { ...GENDER_FIELD },
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
   },
@@ -360,6 +387,10 @@ export function formatAttributes(
     .map((f) => {
       const v = attributes[f.key]
       if (v === null || v === undefined || v === '') return null
+      if (f.key === 'gender') {
+        const g = formatGenderDisplay(v)
+        return g
+      }
       const text = String(v)
       return f.displaySuffix ? text + f.displaySuffix : text
     })

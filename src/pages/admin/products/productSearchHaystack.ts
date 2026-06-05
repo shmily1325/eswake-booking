@@ -1,4 +1,4 @@
-import { formatAttributes } from './schema'
+import { formatAttributes, genderSearchTokens } from './schema'
 import type { VariantListItem } from './types'
 
 /** 庫存／開單品項搜尋用字串（小寫）；貨號含 `#` 時也加入去掉 `#` 的版本 */
@@ -16,8 +16,10 @@ export function buildVariantSearchHaystack(item: VariantListItem): string {
   if (product.category) {
     parts.push(formatAttributes(product.category, variant.attributes))
   }
-  for (const val of Object.values(variant.attributes ?? {})) {
-    if (val != null && String(val).trim()) parts.push(String(val))
+  for (const [key, val] of Object.entries(variant.attributes ?? {})) {
+    if (val == null || String(val).trim() === '') continue
+    if (key === 'gender') parts.push(...genderSearchTokens(val))
+    parts.push(String(val))
   }
 
   return parts.join(' ').toLowerCase()

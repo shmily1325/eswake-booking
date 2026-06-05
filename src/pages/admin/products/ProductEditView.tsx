@@ -5,7 +5,14 @@ import { getInputStyle } from '../../../styles/designSystem'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { CoverImageEditor } from './CoverImageEditor'
 import { ImageUploader } from './ImageUploader'
-import { CATEGORY_SCHEMAS, getCategory, validateAttributes, type FieldDef } from './schema'
+import {
+  CATEGORY_SCHEMAS,
+  getCategory,
+  normalizeGenderValue,
+  normalizeVariantAttributes,
+  validateAttributes,
+  type FieldDef,
+} from './schema'
 import {
   createProduct,
   createVariant,
@@ -68,7 +75,12 @@ interface DraftVariant {
 function variantRowToDraft(v: ProductVariantRow): DraftVariant {
   const attrs: Record<string, string> = {}
   for (const [k, val] of Object.entries(v.attributes ?? {})) {
-    attrs[k] = val == null ? '' : String(val)
+    if (k === 'gender') {
+      const g = normalizeGenderValue(val)
+      attrs[k] = g ?? (val == null ? '' : String(val))
+    } else {
+      attrs[k] = val == null ? '' : String(val)
+    }
   }
   return {
     id: v.id,
@@ -329,7 +341,7 @@ export function ProductEditView({
         const availability = deriveVariantAvailability(stockNum, d.acceptPreOrder)
         const payload = {
           vendor_code: d.vendor_code,
-          attributes: d.attributes,
+          attributes: normalizeVariantAttributes(d.attributes),
           price: d.price.trim() === '' ? null : Number(d.price),
           stock: stockNum,
           availability,
@@ -949,7 +961,13 @@ function VariantBlock({
           {f.type === 'select' ? (
             <select
               style={inputStyle}
-              value={draft.attributes[f.key] ?? ''}
+              value={
+                f.key === 'gender'
+                  ? (normalizeGenderValue(draft.attributes[f.key]) ??
+                    draft.attributes[f.key] ??
+                    '')
+                  : (draft.attributes[f.key] ?? '')
+              }
               onChange={(e) => onAttributeChange(f.key, e.target.value)}
               disabled={disabled || draft.pendingDelete}
             >
