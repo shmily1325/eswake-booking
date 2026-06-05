@@ -1,24 +1,21 @@
 import { useEffect, useState } from 'react'
 import { getAllShopHeroImageUrls } from '../lib/shopHeroPreload'
-import { SHOP_HERO_IMG_BASE } from '../lib/shopHeroStyle'
+import { SHOP_HERO_IMG_VISUAL } from '../lib/shopHeroStyle'
 import { ShopHeroPicture } from './ShopHeroPicture'
 
 const ALL_HERO_URLS = getAllShopHeroImageUrls()
 
-const HIDDEN_LAYER = SHOP_HERO_IMG_BASE + ' opacity-0 pointer-events-none'
+const HIDDEN_LAYER = 'opacity-0 pointer-events-none'
+const VISIBLE_LAYER = 'opacity-100'
 
 type ShopHeroStackProps = {
   activeSrc: string
   activeClassName: string
 }
 
-/**
- * 首屏只載入 active 圖，避免 10+ 張 hero 同時解碼卡住分類列文字繪製。
- * idle 後再掛齊圖層，切換分類仍可即時 opacity 切換。
- */
+/** 首屏只載入 active 圖；idle 後掛齊圖層以便切換分類。 */
 export function ShopHeroStack({ activeSrc, activeClassName }: ShopHeroStackProps) {
   const [stackReady, setStackReady] = useState(false)
-  const [fadeIn, setFadeIn] = useState(true)
 
   useEffect(() => {
     const enable = () => setStackReady(true)
@@ -30,32 +27,24 @@ export function ShopHeroStack({ activeSrc, activeClassName }: ShopHeroStackProps
     return () => window.clearTimeout(t)
   }, [])
 
-  useEffect(() => {
-    setFadeIn(false)
-    const t = window.setTimeout(() => setFadeIn(true), 40)
-    return () => window.clearTimeout(t)
-  }, [activeSrc])
-
   const urls = stackReady ? ALL_HERO_URLS : [activeSrc]
-  const activeOpacity =
-    ' transition-opacity duration-200 ease-out ' + (fadeIn ? 'opacity-100' : 'opacity-0')
 
   return (
     <>
-      {urls.map((url) => (
-        <ShopHeroPicture
-          key={url}
-          jpgSrc={url}
-          className={
-            url === activeSrc
-              ? activeClassName + activeOpacity
-              : HIDDEN_LAYER
-          }
-          loading={url === activeSrc && !stackReady ? 'eager' : 'lazy'}
-          fetchPriority={url === activeSrc ? 'high' : 'low'}
-          hidden={url !== activeSrc}
-        />
-      ))}
+      {urls.map((url) => {
+        const isActive = url === activeSrc
+        return (
+          <ShopHeroPicture
+            key={url}
+            jpgSrc={url}
+            layerClassName={isActive ? VISIBLE_LAYER : HIDDEN_LAYER}
+            imgClassName={isActive ? activeClassName : SHOP_HERO_IMG_VISUAL}
+            loading={isActive && !stackReady ? 'eager' : 'lazy'}
+            fetchPriority={isActive ? 'high' : 'low'}
+            hidden={!isActive}
+          />
+        )
+      })}
     </>
   )
 }
@@ -65,7 +54,6 @@ type ShopHeroPanelStackProps = {
   visibleClassName: string
 }
 
-/** 拼貼單欄：首屏只顯示一張，idle 後再掛齊圖層 */
 export function ShopHeroPanelStack({
   visibleSrc,
   visibleClassName,
@@ -86,19 +74,19 @@ export function ShopHeroPanelStack({
 
   return (
     <>
-      {urls.map((url) => (
-        <ShopHeroPicture
-          key={url}
-          jpgSrc={url}
-          className={
-            url === visibleSrc
-              ? visibleClassName + ' opacity-100'
-              : HIDDEN_LAYER
-          }
-          loading={url === visibleSrc && !stackReady ? 'eager' : 'lazy'}
-          hidden={url !== visibleSrc}
-        />
-      ))}
+      {urls.map((url) => {
+        const isVisible = url === visibleSrc
+        return (
+          <ShopHeroPicture
+            key={url}
+            jpgSrc={url}
+            layerClassName={isVisible ? VISIBLE_LAYER : HIDDEN_LAYER}
+            imgClassName={isVisible ? visibleClassName : SHOP_HERO_IMG_VISUAL}
+            loading={isVisible && !stackReady ? 'eager' : 'lazy'}
+            hidden={!isVisible}
+          />
+        )
+      })}
     </>
   )
 }

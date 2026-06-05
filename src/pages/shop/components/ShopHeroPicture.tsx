@@ -1,9 +1,11 @@
 import { SHOP_HERO_WEBP_SRCS } from '../lib/shopHeroWebpManifest'
 import { shopHeroWebpSrc } from '../lib/shopHeroUrls'
+import { SHOP_HERO_IMG_VISUAL, SHOP_HERO_PICTURE_WRAP } from '../lib/shopHeroStyle'
 
 type ShopHeroPictureProps = {
   jpgSrc: string
-  className: string
+  layerClassName: string
+  imgClassName: string
   loading?: 'eager' | 'lazy'
   fetchPriority?: 'high' | 'low' | 'auto'
   hidden?: boolean
@@ -11,7 +13,8 @@ type ShopHeroPictureProps = {
 
 export function ShopHeroPicture({
   jpgSrc,
-  className,
+  layerClassName,
+  imgClassName,
   loading = 'lazy',
   fetchPriority,
   hidden,
@@ -20,15 +23,13 @@ export function ShopHeroPicture({
   const useWebp = SHOP_HERO_WEBP_SRCS.has(webpSrc)
 
   return (
-    <picture className="absolute inset-0 block h-full w-full">
-      {useWebp ? (
-        <source srcSet={webpSrc} type="image/webp" />
-      ) : null}
+    <picture className={SHOP_HERO_PICTURE_WRAP + ' ' + layerClassName}>
+      {useWebp ? <source srcSet={webpSrc} type="image/webp" /> : null}
       <img
         src={jpgSrc}
         alt=""
         aria-hidden={hidden}
-        className={className}
+        className={SHOP_HERO_IMG_VISUAL + ' ' + imgClassName}
         decoding="async"
         loading={loading}
         fetchPriority={fetchPriority}
