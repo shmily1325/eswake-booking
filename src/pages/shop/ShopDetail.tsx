@@ -417,12 +417,7 @@ function ProductDetailBody({
       role="region"
       aria-label="Purchase actions"
     >
-      <div className="max-w-7xl mx-auto px-4 pt-3 flex items-center gap-3">
-        <div className="shrink-0 min-w-0 max-w-[38%]">
-          <div className="text-base font-bold text-zinc-900 truncate leading-tight">
-            {priceText}
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 pt-3">
         <DetailPurchaseActions
           layout="sticky"
           canPurchase={!!selectedVariant && canPurchase}

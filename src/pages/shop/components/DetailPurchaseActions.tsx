@@ -15,24 +15,24 @@ export function DetailPurchaseActions({
 }: DetailPurchaseActionsProps) {
   if (layout === 'sticky') {
     return (
-      <div className="flex flex-1 min-w-0 gap-2">
-        <button
-          type="button"
-          onClick={onDirectInquiry}
-          disabled={!canPurchase}
-          className="flex-1 min-w-0 h-11 px-3 rounded-md bg-black text-white text-sm font-semibold hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
-        >
-          <LineIcon className="w-4 h-4 shrink-0" />
-          {SHOP_DETAIL.lineInquiry}
-        </button>
+      <div className="flex w-full gap-2">
         <button
           type="button"
           onClick={onAddToCart}
           disabled={!canPurchase}
-          aria-label={SHOP_DETAIL.addToCart}
-          className="shrink-0 h-11 w-11 rounded-md border-2 border-black bg-white text-black hover:bg-gray-50 active:bg-gray-100 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed inline-flex items-center justify-center"
+          className="flex-1 min-w-0 h-11 px-2 rounded-md border-2 border-black bg-white text-black text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
         >
-          <CartIcon className="w-5 h-5" />
+          <CartIcon className="w-4 h-4 shrink-0" />
+          <span className="truncate">{SHOP_DETAIL.addToCart}</span>
+        </button>
+        <button
+          type="button"
+          onClick={onDirectInquiry}
+          disabled={!canPurchase}
+          className="flex-1 min-w-0 h-11 px-2 rounded-md bg-black text-white text-sm font-semibold hover:bg-zinc-800 active:bg-zinc-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
+        >
+          <LineIcon className="w-4 h-4 shrink-0" />
+          <span className="truncate">{SHOP_DETAIL.lineInquiry}</span>
         </button>
       </div>
     )
