@@ -8,14 +8,11 @@ interface ShopHeaderProps {
   showBack?: boolean
   /** 列表 hero：去掉陰影，與下方黑底／照片漸層銜接 */
   blendBelow?: boolean
-  /** 列表頁手機：header 內固定一條搜尋（不另加列表搜尋列） */
-  listSearch?: boolean
 }
 
 export function ShopHeader({
   showBack = false,
   blendBelow = false,
-  listSearch = false,
 }: ShopHeaderProps) {
   const { totalCount: cartCount } = useShopCart()
   const navigate = useNavigate()
@@ -28,15 +25,12 @@ export function ShopHeader({
     setQuery(urlQuery)
   }, [urlQuery])
 
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const backTo = getShopReturnTo(location.state)
 
   const isListPage =
     location.pathname === '/shop' ||
     location.pathname === '/shop/' ||
     location.pathname === '/shop/pre-order'
-
-  const showMobileSearchRow = listSearch || mobileSearchOpen
 
   const submitQuery = (q: string) => {
     const trimmed = q.trim()
@@ -100,6 +94,7 @@ export function ShopHeader({
           </Link>
         </div>
 
+        {/* 桌機：header 內搜尋；手機用分類 chips，不佔首屏 */}
         <div className="hidden md:flex flex-1 min-w-0 justify-center px-4">
           <div className="w-full max-w-sm">
             <HeaderSearchInput value={query} onChange={handleChange} />
@@ -107,18 +102,6 @@ export function ShopHeader({
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
-          {!listSearch && (
-            <button
-              type="button"
-              onClick={() => setMobileSearchOpen((v) => !v)}
-              className="md:hidden inline-flex items-center justify-center w-11 h-11 rounded-full hover:bg-zinc-800 text-white"
-              aria-label="Search"
-              aria-expanded={mobileSearchOpen}
-            >
-              <SearchIcon size={26} strokeWidth={2.5} />
-            </button>
-          )}
-
           <Link
             to="/shop/cart"
             className="sm:hidden relative inline-flex items-center justify-center w-11 h-11 rounded-full hover:bg-zinc-800 text-white"
@@ -144,18 +127,6 @@ export function ShopHeader({
           </Link>
         </div>
       </div>
-
-      {showMobileSearchRow && (
-        <div className="md:hidden px-4 pb-3 border-b border-zinc-800">
-          <HeaderSearchInput
-            value={query}
-            onChange={handleChange}
-            autoFocus={!listSearch && mobileSearchOpen}
-            iconSize={20}
-            inputClassName="h-11 pl-11"
-          />
-        </div>
-      )}
     </header>
   )
 }
@@ -163,34 +134,21 @@ export function ShopHeader({
 interface HeaderSearchInputProps {
   value: string
   onChange: (v: string) => void
-  autoFocus?: boolean
-  iconSize?: number
-  inputClassName?: string
 }
 
-function HeaderSearchInput({
-  value,
-  onChange,
-  autoFocus = false,
-  iconSize = 16,
-  inputClassName = '',
-}: HeaderSearchInputProps) {
+function HeaderSearchInput({ value, onChange }: HeaderSearchInputProps) {
   return (
     <div className="relative">
       <SearchIcon
         className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none shrink-0"
-        size={iconSize}
+        size={16}
       />
       <input
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={SHOP_COPY.searchPlaceholder}
-        autoFocus={autoFocus}
-        className={
-          'w-full h-9 pl-10 pr-3 text-sm bg-zinc-800 text-white placeholder-gray-500 border border-zinc-700 rounded-md focus:outline-none focus:border-white focus:bg-zinc-700 ' +
-          inputClassName
-        }
+        className="w-full h-9 pl-10 pr-3 text-sm bg-zinc-800 text-white placeholder-gray-500 border border-zinc-700 rounded-md focus:outline-none focus:border-white focus:bg-zinc-700"
         aria-label="Search products"
       />
     </div>

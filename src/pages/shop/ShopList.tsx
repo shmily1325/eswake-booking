@@ -84,7 +84,7 @@ export function ShopList() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ShopHeader blendBelow listSearch />
+      <ShopHeader blendBelow />
 
       <section className="relative bg-black text-white overflow-hidden">
         <ShopListHero

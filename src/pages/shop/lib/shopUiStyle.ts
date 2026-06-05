@@ -6,7 +6,7 @@
  *
  * ── 簡單 Simple ──
  * - 一頁只做一件事：列表＝逛商品；篩選收在少數入口（分類 chips + Filter）。
- * - 手機不並排兩套同功能（搜尋只在 header、品牌只在 Filter drawer）。
+ * - 手機不並排兩套同功能（搜尋僅桌機 header；品牌只在 Filter drawer）。
  * - 元件少層級：hero → 分類 → 列表，中間不插教學區塊。
  *
  * ── 乾淨 Clean ──
@@ -42,7 +42,7 @@
  * | 分類     | hero 下黑底 chips；子分類無 All（點大類回到全組） | 同左 + 側欄 |
  * | 件數     | 子 chip 數字；Filter drawer「Show N」       |              |
  * | 品牌等   | Filter drawer     | 側欄        |
- * | 搜尋     | header 一處       | header      |
+ * | 搜尋     | —                 | header      |
  *
  * ── 新增功能前自問 ──
  * 1. 拿掉它，使用者還完成得了任務嗎？能 → 不加。

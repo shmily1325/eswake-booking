@@ -34,7 +34,7 @@ export const SHOP_COPY = {
   loadError: '暫時無法載入商品',
   reload: '重新載入',
   searchContext: (q: string) => `搜尋「${q}」`,
-  searchPlaceholder: '搜尋品牌、型號或 Male',
+  searchPlaceholder: '搜尋關鍵字',
   clearFilters: '清除篩選',
 } as const
 
