@@ -8,7 +8,6 @@ import { ActiveFilterPills } from './components/ActiveFilterPills'
 import { ShopFilterDrawer } from './components/ShopFilterDrawer'
 import { ShopFilterSidebar } from './components/ShopFilterSidebar'
 import { ShopCategoryBar } from './components/ShopMobileCategoryBar'
-import { ShopBrandFilter } from './components/ShopBrandFilter'
 import { ShopMobileListToolbar } from './components/ShopMobileListToolbar'
 import { ShopListHero } from './components/ShopListHero'
 import { useShopFilters } from './hooks/useShopFilters'
@@ -133,18 +132,7 @@ export function ShopList() {
               refineCount={mobileRefineCount}
               showRefine={showRefinePanel}
               onOpenFilters={() => setDrawerOpen(true)}
-              onSortChange={setSortBy}
             />
-
-            {facets.brandCounts.size > 0 && (
-              <ShopBrandFilter
-                filters={filters}
-                brandCounts={facets.brandCounts}
-                onToggleBrand={toggleBrand}
-                layout="chips"
-                className="lg:hidden mb-3"
-              />
-            )}
 
             <div className="mb-3 hidden lg:flex items-center justify-end">
               <ToolbarSort

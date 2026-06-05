@@ -11,7 +11,7 @@
  * 版面
  * - Hero：全幅意象、標題 font-black italic uppercase。
  * - 列表：灰底、圓角卡、固定品牌行＋價格區高度。
- * - 篩選：分類＝黑底 chips；品牌＝白底 chips；其餘進 Filter drawer。
+ * - 篩選：分類＝黑底 chips；手機品牌／預購／排序＝Filter drawer；桌機品牌在側欄。
  *
  * 色彩
  * - 主色 zinc-900／黑；預購 amber-600；次要 zinc-400 標籤字。
