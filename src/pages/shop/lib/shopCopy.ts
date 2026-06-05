@@ -1,6 +1,6 @@
 /**
  * Shop 文案 — 見 shopUiStyle.ts
- * 英文：控制項、badge、分類。中文：空狀態、錯誤、少數動作。不寫副標／教學句。
+ * 英文：控制項、badge、分類、Filter drawer CTA。中文：空狀態、錯誤、搜尋 placeholder。不寫副標／教學句。
  */
 
 export const SHOP_LABEL = {
@@ -25,8 +25,7 @@ export const SHOP_LABEL = {
 export const SHOP_COPY = {
   tagline: 'Eat · Sleep · Wake',
   preOrderHint: '預購商品 · 詳情請 LINE 確認',
-  showResults: (n: number) => `顯示 ${n} 件`,
-  itemCount: (n: number) => `${n} 件商品`,
+  showResults: (n: number) => `Show ${n}`,
   viewingAll: '全部商品',
   emptySearch: (q: string) => `找不到符合「${q}」的商品`,
   emptyFilter: '沒有符合篩選條件的商品',

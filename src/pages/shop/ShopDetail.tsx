@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
+import { getShopProductPreview } from './lib/shopReturnTo'
 import { fetchProductWithVariants } from '../admin/products/api'
 import type { ProductWithVariants, ProductVariantRow } from '../admin/products/types'
 import { ShopHeader } from './components/ShopHeader'
@@ -38,15 +39,31 @@ const UUID_REGEX =
  * - 兩顆按鈕：加入購物車（主）、直接 LINE 詢問（次）
  *   ⚠️ M3 兩顆都先 stub（console + alert），M4 接購物車、M5 接 LINE deep link
  */
+function pickDefaultVariantId(variants: ProductVariantRow[]): string | null {
+  const firstPurchasable = variants.find((v) => isVariantPurchasable(v))
+  const firstVisible = variants.find(
+    (v) => getVariantAvailability(v) !== 'sold_out',
+  )
+  return (firstPurchasable ?? firstVisible ?? variants[0])?.id ?? null
+}
+
 export function ShopDetail() {
   const { productId } = useParams<{ productId: string }>()
+  const location = useLocation()
   const { addItem } = useShopCart()
 
-  const [product, setProduct] = useState<ProductWithVariants | null>(null)
-  const [loading, setLoading] = useState(true)
+  const preview =
+    productId && UUID_REGEX.test(productId)
+      ? getShopProductPreview(location.state, productId)
+      : null
+
+  const [product, setProduct] = useState<ProductWithVariants | null>(preview)
+  const [loading, setLoading] = useState(!preview)
   const [error, setError] = useState<string | null>(null)
 
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(() =>
+    preview ? pickDefaultVariantId(preview.variants) : null,
+  )
   const [quantity, setQuantity] = useState(1)
   /** 桌機 fallback modal 要顯示的訊息；null = 不顯示 */
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
@@ -70,7 +87,7 @@ export function ShopDetail() {
       setLoading(false)
       return
     }
-    setLoading(true)
+    if (!preview) setLoading(true)
     void (async () => {
       try {
         const p = await fetchProductWithVariants(productId)
@@ -78,15 +95,15 @@ export function ShopDetail() {
         if (!p || !p.is_public || !isProductVisibleInShop(p.variants)) {
           setProduct(null)
           setError(null)
+          setSelectedVariantId(null)
           return
         }
         setProduct(p)
         setError(null)
-        const firstPurchasable = p.variants.find((v) => isVariantPurchasable(v))
-        const firstVisible = p.variants.find(
-          (v) => getVariantAvailability(v) !== 'sold_out',
-        )
-        setSelectedVariantId((firstPurchasable ?? firstVisible ?? p.variants[0])?.id ?? null)
+        setSelectedVariantId((prev) => {
+          if (prev && p.variants.some((v) => v.id === prev)) return prev
+          return pickDefaultVariantId(p.variants)
+        })
       } catch (e) {
         if (cancelled) return
         setError(e instanceof Error ? e.message : String(e))
@@ -97,7 +114,19 @@ export function ShopDetail() {
     return () => {
       cancelled = true
     }
-  }, [productId])
+  }, [productId, preview])
+
+  useEffect(() => {
+    if (!productId || !UUID_REGEX.test(productId)) return
+    const next = getShopProductPreview(location.state, productId)
+    if (!next) return
+    setProduct(next)
+    setSelectedVariantId((prev) => {
+      if (prev && next.variants.some((v) => v.id === prev)) return prev
+      return pickDefaultVariantId(next.variants)
+    })
+    setLoading(false)
+  }, [productId, location.state])
 
   const selectedVariant: ProductVariantRow | null = useMemo(() => {
     if (!product || !selectedVariantId) return null

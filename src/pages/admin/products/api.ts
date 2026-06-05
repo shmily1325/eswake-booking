@@ -74,28 +74,28 @@ export function flattenToVariantItems(list: ProductWithVariants[]): VariantListI
   return out
 }
 
-/** 載入單一商品（含 SKU），用於編輯頁 */
+/** 載入單一商品（含 SKU），用於編輯頁／商城詳情 */
 export async function fetchProductWithVariants(productId: string): Promise<ProductWithVariants | null> {
-  const { data: product, error: pe } = await supabase
+  const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select('*, product_variants(*)')
     .eq('id', productId)
     .maybeSingle()
-  if (pe) throw pe
-  if (!product) return null
+  if (error) throw error
+  if (!data) return null
 
-  const { data: variants, error: ve } = await supabase
-    .from('product_variants')
-    .select('*')
-    .eq('product_id', productId)
-    .eq('is_active', true)
-    .order('created_at', { ascending: true })
-  if (ve) throw ve
-
-  return {
-    ...(product as unknown as ProductRow),
-    variants: (variants ?? []) as unknown as ProductVariantRow[],
+  const row = data as ProductRow & {
+    product_variants?: ProductVariantRow[] | null
   }
+  const variants = (row.product_variants ?? [])
+    .filter((v) => v.is_active)
+    .sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+      const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+      return ta - tb
+    })
+  const { product_variants: _omit, ...product } = row
+  return { ...(product as ProductRow), variants }
 }
 
 export interface CreateProductInput {

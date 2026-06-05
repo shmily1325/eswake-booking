@@ -92,8 +92,6 @@ export function ShopList() {
           title={heroTitle}
           heroConfig={heroConfig}
           parentGroup={collectionParent}
-          itemCount={filteredProducts.length}
-          loading={loading}
         />
         <div className="sticky top-14 z-20 bg-black">
           <ShopCategoryBar

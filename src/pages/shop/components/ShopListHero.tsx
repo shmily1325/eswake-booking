@@ -13,8 +13,6 @@ interface ShopListHeroProps {
   title: string
   heroConfig: ShopHeroImageConfig | null
   parentGroup?: string | null
-  itemCount?: number
-  loading?: boolean
 }
 
 function heroImgClass(heroConfig: ShopHeroImageConfig | null): string {
@@ -93,8 +91,6 @@ export function ShopListHero({
   title,
   heroConfig,
   parentGroup,
-  itemCount,
-  loading = false,
 }: ShopListHeroProps) {
   const isCatalog = mode === 'catalog'
   const hero = heroConfig
@@ -114,20 +110,13 @@ export function ShopListHero({
             {parentGroup}
           </p>
         )}
-        <div className="flex items-end justify-between gap-3">
-          <h1
-            className={
-              HERO_TITLE + ' min-w-0 text-2xl sm:text-3xl md:text-4xl lg:text-5xl'
-            }
-          >
-            {title}
-          </h1>
-          {!loading && itemCount != null && (
-            <p className="shrink-0 text-[11px] sm:text-xs text-white/85 tracking-wide pb-1 [text-shadow:0_1px_8px_rgba(0,0,0,0.8)]">
-              {SHOP_COPY.itemCount(itemCount)}
-            </p>
-          )}
-        </div>
+        <h1
+          className={
+            HERO_TITLE + ' min-w-0 text-2xl sm:text-3xl md:text-4xl lg:text-5xl'
+          }
+        >
+          {title}
+        </h1>
       </div>
     )
 

@@ -31,14 +31,15 @@
  *
  * ── 文案 ──
  * - 按鈕、badge、分類 tab：英文、短。
- * - 中文：搜尋 placeholder、空狀態、錯誤、清除篩選、drawer 底部「顯示 N 件」。
+ * - 中文：搜尋 placeholder、空狀態、錯誤、清除篩選。
+ * - Filter drawer 內（含底部 CTA）維持英文，不混中文按鈕。
  * - 禁止：副標、toast 教學、drawer 內長段落、hero 重複搜尋／預購說明。
  *
  * ── 資訊架構（固定，勿再加第四條導覽）──
  * | 層級     | 手機              | 桌機        |
  * |----------|-------------------|-------------|
  * | 分類     | hero 下黑底 chips；子分類無 All（點大類回到全組） | 同左 + 側欄 |
- * | 件數     | hero 角標 + 子 chip 數字；列表區不重複小標   |              |
+ * | 件數     | 子 chip 數字；Filter drawer「Show N」       |              |
  * | 品牌等   | Filter drawer     | 側欄        |
  * | 搜尋     | header 一處       | header      |
  *

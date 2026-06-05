@@ -12,6 +12,7 @@ import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_LABEL } from '../lib/shopCopy'
 import {
+  SHOP_PRODUCT_PREVIEW_KEY,
   SHOP_RETURN_TO_KEY,
   shopListPathFromLocation,
 } from '../lib/shopReturnTo'
@@ -19,6 +20,17 @@ import {
 interface ProductCardProps {
   product: ProductRow
   variants: ProductVariantRow[]
+}
+
+function cardNavigationState(
+  returnTo: string,
+  product: ProductRow,
+  variants: ProductVariantRow[],
+) {
+  return {
+    [SHOP_RETURN_TO_KEY]: returnTo,
+    [SHOP_PRODUCT_PREVIEW_KEY]: { ...product, variants },
+  }
 }
 
 export function ProductCard({ product, variants }: ProductCardProps) {
@@ -39,7 +51,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
   return (
     <Link
       to={`/shop/${product.id}`}
-      state={{ [SHOP_RETURN_TO_KEY]: returnTo }}
+      state={cardNavigationState(returnTo, product, variants)}
       className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >
       <div className="relative aspect-4/5 bg-gray-100 overflow-hidden">
