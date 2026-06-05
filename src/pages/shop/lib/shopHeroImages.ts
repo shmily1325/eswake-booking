@@ -100,9 +100,9 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     // 意象照 #20：滑手空中，焦點在人（板／繩在畫面內）
     objectPositionClass:
       'object-[center_32%] sm:object-[center_30%] md:object-[center_28%]',
-    collectionObjectPosition: 'center 28%',
+    collectionObjectPosition: 'center 32%',
     collectionObjectPositionClass:
-      'object-[center_30%] max-sm:object-[center_28%] sm:object-[center_30%] md:object-[center_26%] lg:object-[center_24%]',
+      'object-[center_30%] max-sm:object-[center_28%] sm:object-[center_30%] md:object-[center_34%] lg:object-[center_32%]',
     heroFrame: 'action',
     heroScaleClass: 'max-sm:scale-[1.10] sm:scale-[1.05] md:scale-[1.08]',
   },
