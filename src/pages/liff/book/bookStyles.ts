@@ -131,13 +131,15 @@ export const progressFill = (pct: number): CSSProperties => ({
 
 export const bigActivityBtn = (selected: boolean): CSSProperties => ({
   flex: 1,
-  minHeight: 120,
-  padding: '20px 12px',
+  minWidth: 0,
+  padding: '12px 10px',
   border: selected ? '3px solid #4a4a4a' : '2px solid #e0e0e0',
   borderRadius: 16,
   background: selected ? '#f5f5f5' : 'white',
-  cursor: 'pointer',
   textAlign: 'center' as const,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'stretch',
 })
 
 export const fieldLabel: CSSProperties = {

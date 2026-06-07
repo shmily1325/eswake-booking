@@ -10,6 +10,7 @@ import { BookEstimateCard } from './BookEstimateCard'
 import { BookInfoHub } from './BookInfoHub'
 import { BookStepHeader } from './BookStepHeader'
 import { BookContextTips } from './BookContextTips'
+import { BookVideoPlayer } from './BookVideoPlayer'
 import type {
   CoachOption,
   LiffBookingFormState,
@@ -48,9 +49,9 @@ import { liffTrack } from '../track'
 
 const INITIAL_STATE: LiffBookingFormState = {
   activity: null,
-  skillLevel: null,
+  skillLevel: 'first_time',
   headcount: 1,
-  beginnerCount: null,
+  beginnerCount: 1,
   coachChoice: 'none',
   coachId: null,
   preferredDates: [],
@@ -259,24 +260,40 @@ export function LiffBook() {
         {/* Step 1: 玩什麼 */}
         {step === 1 && (
           <>
-            <BookEssentialsPanel memberRate={memberRate} />
+            <BookEssentialsPanel memberRate={memberRate} selectedActivity={form.activity} />
 
-            <div style={{ ...fieldLabel, marginBottom: 10 }}>選擇項目</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-              {ACTIVITY_OPTIONS.map(opt => (
-                <button
-                  key={opt.code}
-                  type="button"
-                  style={bigActivityBtn(form.activity === opt.code)}
-                  onClick={() => {
-                    triggerHaptic('light')
-                    setForm(prev => ({ ...prev, activity: opt.code }))
-                  }}
-                >
-                  <div style={{ fontSize: 36, marginBottom: 6 }}>{opt.emoji}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>{opt.labelZh}</div>
-                </button>
-              ))}
+              {ACTIVITY_OPTIONS.map(opt => {
+                const selected = form.activity === opt.code
+                return (
+                  <div key={opt.code} style={bigActivityBtn(selected)}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light')
+                        setForm(prev => ({ ...prev, activity: opt.code }))
+                      }}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        padding: '4px 0 0',
+                        textAlign: 'center',
+                        width: '100%',
+                      }}
+                    >
+                      <div style={{ fontSize: 32, marginBottom: 4 }}>{opt.emoji}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>{opt.labelZh}</div>
+                      <div style={{ fontSize: 11, color: '#888', marginTop: 4, lineHeight: 1.35 }}>{opt.tagline}</div>
+                    </button>
+                    <BookVideoPlayer
+                      variant="compact"
+                      videoId={opt.youtubeVideoId}
+                      title={opt.labelZh}
+                    />
+                  </div>
+                )
+              })}
             </div>
           </>
         )}
@@ -438,6 +455,10 @@ export function LiffBook() {
                 </>
               )}
             </div>
+
+            <p style={{ fontSize: 12, color: '#888', margin: '0 0 10px', lineHeight: 1.5, textAlign: 'center' }}>
+              送出後小編會在 LINE 回覆確認，尚未保留時段
+            </p>
 
             <div style={bookCard}>
               <div style={fieldLabel}>姓名與電話</div>

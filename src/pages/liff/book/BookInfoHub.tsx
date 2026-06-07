@@ -9,7 +9,7 @@ import {
 import { TRANSPORT_INFO, FAQ_ITEMS } from './liffBookingContent'
 import { BookAccordion } from './BookAccordion'
 import { BookPriceTable } from './BookPriceTable'
-import { openYoutubeVideo } from './bookMedia'
+import { BookVideoPlayer } from './BookVideoPlayer'
 
 const sectionHead: CSSProperties = {
   fontSize: 15,
@@ -33,27 +33,6 @@ const boatCard: CSSProperties = {
   padding: 14,
   marginBottom: 10,
   background: '#fafafa',
-}
-
-function VideoLink({ videoId, label }: { videoId: string; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={() => openYoutubeVideo(videoId)}
-      style={{
-        marginTop: 8,
-        padding: 0,
-        border: 'none',
-        background: 'none',
-        color: '#666',
-        fontSize: 13,
-        cursor: 'pointer',
-        textDecoration: 'underline',
-      }}
-    >
-      ▶ {label}
-    </button>
-  )
 }
 
 /**
@@ -86,7 +65,7 @@ export function BookInfoHub() {
         <p style={{ fontSize: 13, color: '#888', lineHeight: 1.55, margin: '8px 0' }}>
           {BOAT_COMFORT_NOTE}<br />{BOAT_BOTH_ACTIVITIES_NOTE}
         </p>
-        <VideoLink videoId={BOAT_INTRO_VIDEO_ID} label="船型介紹影片" />
+        <BookVideoPlayer videoId={BOAT_INTRO_VIDEO_ID} title="船型介紹" label="船型介紹影片" />
       </section>
 
       <section style={{ marginBottom: 24 }}>

@@ -4,7 +4,21 @@ export function youtubeWatchUrl(videoId: string): string {
   return `https://www.youtube.com/watch?v=${videoId}`
 }
 
-/** LINE WebView 内嵌 iframe 常无法播放，改以外部浏览器／YouTube App 开启 */
+export function youtubeEmbedUrl(videoId: string, autoplay = false): string {
+  const params = new URLSearchParams({
+    rel: '0',
+    playsinline: '1',
+    modestbranding: '1',
+  })
+  if (autoplay) params.set('autoplay', '1')
+  return `https://www.youtube-nocookie.com/embed/${videoId}?${params}`
+}
+
+export function youtubeThumbnailUrl(videoId: string): string {
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+}
+
+/** 內嵌無法播放時，改以外部瀏覽器／YouTube App 開啟 */
 export function openYoutubeVideo(videoId: string): void {
   const url = youtubeWatchUrl(videoId)
   try {
