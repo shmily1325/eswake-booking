@@ -78,6 +78,7 @@ import { CoachDailyView } from './pages/coach/CoachDailyView'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { LoginAccessDeniedPage } from './pages/LoginAccessDeniedPage'
 import { LiffMyBookings } from './pages/LiffMyBookings'
+import { LiffBook } from './pages/liff/book/LiffBook'
 // 商城（公開、給匿名訪客）獨立成一個 chunk，避免後台 JS 拖累首次載入
 const ShopApp = lazy(() => import('./pages/shop/ShopApp'))
 import { ClickTrackProvider } from './components/ClickTrackProvider'
@@ -226,6 +227,7 @@ function App() {
         <Routes>
           {/* LIFF 頁面不需要系統登入驗證 */}
           <Route path="/liff" element={<LiffMyBookings />} />
+          <Route path="/liff/book" element={<LiffBook />} />
           {/* 商城完全公開、無需登入；整包 lazy load，匿名訪客不必下載後台 JS */}
           <Route
             path="/shop/*"

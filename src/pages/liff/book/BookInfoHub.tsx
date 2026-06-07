@@ -1,0 +1,134 @@
+import type { CSSProperties } from 'react'
+import { BOAT_RULES, PRICING_RULES } from './liffBookingBoats'
+import {
+  BOAT_BOTH_ACTIVITIES_NOTE,
+  BOAT_COMFORT_NOTE,
+  BOAT_INTRO_VIDEO_ID,
+  BOOKING_REMINDERS,
+} from './liffBookingReminders'
+import { TRANSPORT_INFO, FAQ_ITEMS } from './liffBookingContent'
+import { BookAccordion } from './BookAccordion'
+import { BookPriceTable } from './BookPriceTable'
+
+const sectionHead: CSSProperties = {
+  fontSize: 15,
+  fontWeight: 700,
+  color: '#222',
+  margin: '0 0 10px',
+}
+
+const ruleRow: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  fontSize: 14,
+  color: '#444',
+  lineHeight: 1.5,
+  marginBottom: 8,
+}
+
+const boatCard: CSSProperties = {
+  border: '1px solid #e8e8e8',
+  borderRadius: 12,
+  padding: 14,
+  marginBottom: 10,
+  background: '#fafafa',
+}
+
+function YoutubeEmbed({ videoId, title }: { videoId: string; title: string }) {
+  return (
+    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 10, overflow: 'hidden', marginTop: 10 }}>
+      <iframe
+        title={title}
+        src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0`}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  )
+}
+
+/**
+ * 所有「須知」集中於此，依固定順序排列：
+ * 費用規則 → 船型 → 價目表 → 預約留意 → FAQ → 交通
+ */
+export function BookInfoHub() {
+  return (
+    <div>
+      <section style={{ marginBottom: 24 }}>
+        <h3 style={sectionHead}>① 費用怎麼算</h3>
+        {PRICING_RULES.map(r => (
+          <div key={r.text} style={ruleRow}>
+            <span>{r.icon}</span>
+            <span>{r.text}</span>
+          </div>
+        ))}
+      </section>
+
+      <section style={{ marginBottom: 24 }}>
+        <h3 style={sectionHead}>② 船型怎麼選</h3>
+        {BOAT_RULES.map(b => (
+          <div key={b.tier} style={boatCard}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+              {b.emoji} {b.label} · 最多 {b.maxPeople} 人
+            </div>
+            <div style={{ fontSize: 13, color: '#666' }}>{b.activities}</div>
+          </div>
+        ))}
+        <p style={{ fontSize: 13, color: '#888', lineHeight: 1.55, margin: '8px 0' }}>
+          {BOAT_COMFORT_NOTE}<br />{BOAT_BOTH_ACTIVITIES_NOTE}
+        </p>
+        <p style={{ fontSize: 13, color: '#666', margin: '0 0 4px' }}>▶ 船型介紹影片</p>
+        <YoutubeEmbed videoId={BOAT_INTRO_VIDEO_ID} title="ES WAKE 船型介紹" />
+      </section>
+
+      <section style={{ marginBottom: 24 }}>
+        <h3 style={sectionHead}>③ 完整價目表</h3>
+        <BookPriceTable />
+      </section>
+
+      <section style={{ marginBottom: 24 }}>
+        <h3 style={sectionHead}>④ 預約前留意</h3>
+        {BOOKING_REMINDERS.map(r => (
+          <div
+            key={r.id}
+            style={{
+              ...ruleRow,
+              background: '#fffbe6',
+              border: '1px solid #ffe58f',
+              borderRadius: 10,
+              padding: '10px 12px',
+              marginBottom: 8,
+            }}
+          >
+            <span>{r.icon}</span>
+            <span>{r.text}</span>
+          </div>
+        ))}
+        <div style={{ ...ruleRow, marginTop: 8 }}>
+          <span>👥</span>
+          <span>跟船：第一位免費，第二位起每位 $300（請預約時告知）</span>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: 24 }}>
+        <h3 style={sectionHead}>⑤ 常見問題</h3>
+        <BookAccordion items={FAQ_ITEMS} />
+      </section>
+
+      <section>
+        <h3 style={sectionHead}>⑥ 交通方式</h3>
+        <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 8px' }}>{TRANSPORT_INFO.address}</p>
+        <p style={{ fontSize: 13, color: '#c87800', margin: '0 0 12px', lineHeight: 1.5 }}>{TRANSPORT_INFO.entranceNote}</p>
+        {TRANSPORT_INFO.sections.map(sec => (
+          <div key={sec.heading} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{sec.heading}</div>
+            {sec.lines.map(line => (
+              <div key={line} style={{ fontSize: 13, color: '#555', lineHeight: 1.5 }}>{line}</div>
+            ))}
+          </div>
+        ))}
+      </section>
+    </div>
+  )
+}
