@@ -259,7 +259,7 @@ export function LiffBook() {
         {/* Step 1: 玩什麼 */}
         {step === 1 && (
           <>
-            <BookEssentialsPanel />
+            <BookEssentialsPanel memberRate={memberRate} />
 
             <div style={{ ...fieldLabel, marginBottom: 10 }}>選擇項目</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>

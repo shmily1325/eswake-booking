@@ -9,6 +9,7 @@ import {
 import { TRANSPORT_INFO, FAQ_ITEMS } from './liffBookingContent'
 import { BookAccordion } from './BookAccordion'
 import { BookPriceTable } from './BookPriceTable'
+import { openYoutubeVideo } from './bookMedia'
 
 const sectionHead: CSSProperties = {
   fontSize: 15,
@@ -34,17 +35,24 @@ const boatCard: CSSProperties = {
   background: '#fafafa',
 }
 
-function YoutubeEmbed({ videoId, title }: { videoId: string; title: string }) {
+function VideoLink({ videoId, label }: { videoId: string; label: string }) {
   return (
-    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 10, overflow: 'hidden', marginTop: 10 }}>
-      <iframe
-        title={title}
-        src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0`}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
-    </div>
+    <button
+      type="button"
+      onClick={() => openYoutubeVideo(videoId)}
+      style={{
+        marginTop: 8,
+        padding: 0,
+        border: 'none',
+        background: 'none',
+        color: '#666',
+        fontSize: 13,
+        cursor: 'pointer',
+        textDecoration: 'underline',
+      }}
+    >
+      ▶ {label}
+    </button>
   )
 }
 
@@ -78,8 +86,7 @@ export function BookInfoHub() {
         <p style={{ fontSize: 13, color: '#888', lineHeight: 1.55, margin: '8px 0' }}>
           {BOAT_COMFORT_NOTE}<br />{BOAT_BOTH_ACTIVITIES_NOTE}
         </p>
-        <p style={{ fontSize: 13, color: '#666', margin: '0 0 4px' }}>▶ 船型介紹影片</p>
-        <YoutubeEmbed videoId={BOAT_INTRO_VIDEO_ID} title="ES WAKE 船型介紹" />
+        <VideoLink videoId={BOAT_INTRO_VIDEO_ID} label="船型介紹影片" />
       </section>
 
       <section style={{ marginBottom: 24 }}>
