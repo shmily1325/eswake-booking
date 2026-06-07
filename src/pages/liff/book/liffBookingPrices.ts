@@ -81,17 +81,7 @@ export function estimateSessionBlocks(totalMinutes: number, blockMin: number): n
   return Math.max(1, Math.ceil(totalMinutes / blockMin))
 }
 
-/** Step 1 活動卡片上的起價（一行看懂） */
-export function activityPriceTeaser(activity: ActivityCode, memberRate: boolean): {
-  firstTimeLine: string
-  sessionLine: string
-} {
-  const ft = firstTimeUnitPrice(activity)
-  const tier: BoatTier = activity === 'WS' ? 'big' : 'small'
-  const { blockMin, price } = sessionBlockRate(tier, memberRate)
-  const boatHint = activity === 'WS' ? '大船' : '小船起'
-  return {
-    firstTimeLine: `初次體驗 $${ft.toLocaleString()}`,
-    sessionLine: `${memberRate ? '會員' : '非會員'} $${price.toLocaleString()} / ${blockMin} 分（${boatHint}）`,
-  }
+/** Step 1 活動卡片：只顯示初次體驗起價 */
+export function activityPriceFromLine(activity: ActivityCode): string {
+  return `初次 $${firstTimeUnitPrice(activity).toLocaleString()} 起`
 }

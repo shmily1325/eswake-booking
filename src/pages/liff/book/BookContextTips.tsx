@@ -1,5 +1,5 @@
 import { infoBox, warnBox } from './bookStyles'
-import type { ActivityCode, LiffBookingFormState, TimePreference } from './types'
+import type { LiffBookingFormState, TimePreference } from './types'
 import { describeBoatForBooking } from './liffBookingBoats'
 import { BOAT_COMFORT_NOTE, BOOKING_REMINDERS } from './liffBookingReminders'
 
@@ -7,11 +7,10 @@ interface BookContextTipsProps {
   step: 2 | 3 | 4
   form: LiffBookingFormState
   pickTimePref: TimePreference
-  showCoachSection: boolean
 }
 
 /** 依目前步驟與選項，只顯示「此刻相關」的短提醒 */
-export function BookContextTips({ step, form, pickTimePref, showCoachSection }: BookContextTipsProps) {
+export function BookContextTips({ step, form, pickTimePref }: BookContextTipsProps) {
   const items: { text: string; tone: 'info' | 'warn' }[] = []
 
   if (step === 2 && form.activity && form.headcount >= 1) {
@@ -22,11 +21,7 @@ export function BookContextTips({ step, form, pickTimePref, showCoachSection }: 
   }
 
   if (step === 3 || step === 4) {
-    items.push({
-      text: BOOKING_REMINDERS.find(r => r.id === 'weather')!.text,
-      tone: 'warn',
-    })
-    if (pickTimePref === 'morning' || showCoachSection || form.coachChoice === 'designated') {
+    if (pickTimePref === 'morning' || form.coachChoice === 'designated') {
       items.push({
         text: BOOKING_REMINDERS.find(r => r.id === 'early-coach')!.text,
         tone: 'warn',
@@ -54,10 +49,4 @@ export function BookContextTips({ step, form, pickTimePref, showCoachSection }: 
       ))}
     </div>
   )
-}
-
-/** Step 1 活動卡片上的船型一行說明 */
-export function activityBoatLine(code: ActivityCode): string {
-  if (code === 'WS') return '🛥 僅大船 · 最多 10 人'
-  return '🚤 小船 ≤6 人 · 🛥 大船 ≤10 人'
 }

@@ -1,4 +1,4 @@
-import type { ActivityCode, TimePreference } from './types'
+import type { ActivityCode, LiffBookingFormState, SkillLevel, TimePreference } from './types'
 import { ACTIVITY_COMPARISON_INTRO } from './liffBookingContent'
 
 export interface ActivityInfo {
@@ -68,6 +68,26 @@ export function beginnerCountOptions(headcount: number): number[] {
 
 export function formatBeginnerCount(n: number): string {
   return `${n} 初`
+}
+
+/** 依「幾初」自動對應 LINE 表單的「是否第一次滑」 */
+export function skillLevelFromBeginners(headcount: number, beginnerCount: number): SkillLevel {
+  return beginnerCount >= headcount ? 'first_time' : 'experienced'
+}
+
+/** 更新人數／初學時同步 skillLevel（預設全部初學） */
+export function syncBookingPeople(
+  prev: LiffBookingFormState,
+  patch: { headcount?: number; beginnerCount?: number },
+): Pick<LiffBookingFormState, 'headcount' | 'beginnerCount' | 'skillLevel'> {
+  const headcount = patch.headcount ?? prev.headcount
+  let beginnerCount = patch.beginnerCount ?? prev.beginnerCount ?? headcount
+  if (beginnerCount > headcount) beginnerCount = headcount
+  return {
+    headcount,
+    beginnerCount,
+    skillLevel: skillLevelFromBeginners(headcount, beginnerCount),
+  }
 }
 
 export const TIME_PREFERENCE_OPTIONS: { value: TimePreference; label: string }[] = [

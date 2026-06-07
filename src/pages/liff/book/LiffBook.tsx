@@ -5,12 +5,14 @@ import { triggerHaptic } from '../../../utils/haptic'
 import { useLiffMember } from '../useLiffMember'
 import { ErrorView, LoadingSkeleton, LiffStyles } from '../components'
 import { BookBindingGate } from './BookBindingGate'
+import { BookEssentialsPanel } from './BookEssentialsPanel'
+import { BookEstimateCard } from './BookEstimateCard'
 import { BookInfoHub } from './BookInfoHub'
-import { activityBoatLine, BookContextTips } from './BookContextTips'
+import { BookStepHeader } from './BookStepHeader'
+import { BookContextTips } from './BookContextTips'
 import type {
   CoachOption,
   LiffBookingFormState,
-  SkillLevel,
   TimePreference,
 } from './types'
 import {
@@ -19,32 +21,29 @@ import {
   formatBeginnerCount,
   HEADCOUNT_OPTIONS,
   MAX_PREFERRED_DATES,
-  SKILL_OPTIONS,
+  syncBookingPeople,
   TIME_PREFERENCE_OPTIONS,
-  activityDisplayName,
   getActivityInfo,
   isLiffBookEnabled,
 } from './liffBookingConfig'
 import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
 import { computePriceEstimate } from './liffBookingPricing'
-import { activityPriceTeaser, firstTimeUnitPrice, isMemberForPricing } from './liffBookingPrices'
+import { isMemberForPricing } from './liffBookingPrices'
 import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
 import {
   bigActivityBtn,
   bookCard,
-  bookHeader,
   bookPage,
   chipBtn,
   dateChip,
   dateScrollRow,
   fieldLabel,
-  infoBox,
   primaryBtn,
-  progressBar,
-  progressFill,
   secondaryBtn,
   stickyFooter,
 } from './bookStyles'
+import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
+import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
 
 const INITIAL_STATE: LiffBookingFormState = {
@@ -61,20 +60,6 @@ const INITIAL_STATE: LiffBookingFormState = {
 }
 
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'] as const
-
-function YoutubeEmbed({ videoId }: { videoId: string }) {
-  return (
-    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 10, overflow: 'hidden', marginTop: 10 }}>
-      <iframe
-        title="起滑影片"
-        src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0`}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
-    </div>
-  )
-}
 
 function NotEnabledView() {
   return (
@@ -94,6 +79,8 @@ function formatDateChip(ymd: string) {
 }
 
 export function LiffBook() {
+  useRouteDocumentMeta(ROUTE_OG_BY_PATH['/liff/book'])
+
   const {
     loading: liffLoading,
     error: liffError,
@@ -110,11 +97,16 @@ export function LiffBook() {
   const [coaches, setCoaches] = useState<CoachOption[]>([])
   const [blockedDates, setBlockedDates] = useState<Set<string>>(new Set())
   const [desktopMessage, setDesktopMessage] = useState<string | null>(null)
-  const [showActivityHelp, setShowActivityHelp] = useState(false)
   const [showInfoHub, setShowInfoHub] = useState(false)
   const [showCoachSection, setShowCoachSection] = useState(false)
   const [pickDate, setPickDate] = useState('')
   const [pickTimePref, setPickTimePref] = useState<TimePreference>('any')
+
+  useEffect(() => {
+    if (step === 2 && form.beginnerCount == null) {
+      setForm(prev => ({ ...prev, ...syncBookingPeople(prev, {}) }))
+    }
+  }, [step, form.beginnerCount])
 
   useEffect(() => {
     if (member) {
@@ -156,8 +148,6 @@ export function LiffBook() {
   const estimate = useMemo(() => computePriceEstimate(form, coaches, member), [form, coaches, member])
 
   const totalSteps = BOOKING_WIZARD_STEPS.length
-  const stepMeta = BOOKING_WIZARD_STEPS[step - 1]
-  const progressPct = (step / totalSteps) * 100
 
   const upcomingDates = useMemo(() => {
     const out: string[] = []
@@ -185,10 +175,10 @@ export function LiffBook() {
   const canNext = (): boolean => {
     switch (step) {
       case 1: return form.activity != null
-      case 2: return form.skillLevel != null && form.beginnerCount != null
+      case 2: return form.beginnerCount != null
       case 3: {
         if (!pickDate && form.preferredDates.length === 0) return false
-        if (showCoachSection && form.coachChoice === 'designated' && !form.coachId) return false
+        if (form.coachChoice === 'designated' && !form.coachId) return false
         return true
       }
       case 4:
@@ -252,42 +242,28 @@ export function LiffBook() {
     cursor: 'pointer',
   } as const
 
-  const headerPriceText = estimate
-    ? `約 ${estimate.totalLabel}（${estimate.tierLabel}）`
-    : selectedActivity
-      ? `${selectedActivity.labelZh} 初次 $${firstTimeUnitPrice(selectedActivity.code).toLocaleString()} 起`
-      : null
+  const headerPriceText = estimate && step >= 2
+    ? `約 ${estimate.totalLabel}`
+    : null
 
   return (
     <div style={bookPage}>
       <LiffStyles />
-      <header style={bookHeader}>
-        <div style={{ fontSize: 12, opacity: 0.85 }}>{step} / {totalSteps}</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 2px' }}>{stepMeta.title}</h1>
-        <p style={{ fontSize: 13, margin: 0, opacity: 0.85 }}>{stepMeta.subtitle}</p>
-        <div style={progressBar}><div style={progressFill(progressPct)} /></div>
-        {headerPriceText && (
-          <div style={{
-            marginTop: 10,
-            padding: '8px 12px',
-            background: 'rgba(255,255,255,0.15)',
-            borderRadius: 8,
-            fontSize: 14,
-            fontWeight: 600,
-          }}>
-            💰 {headerPriceText}
-          </div>
-        )}
-      </header>
+      <BookStepHeader
+        step={step}
+        priceHint={headerPriceText}
+        memberHint={memberRate && step >= 2}
+      />
 
       <main style={{ padding: 16 }}>
         {/* Step 1: 玩什麼 */}
         {step === 1 && (
           <>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-              {ACTIVITY_OPTIONS.map(opt => {
-                const teaser = activityPriceTeaser(opt.code, memberRate)
-                return (
+            <BookEssentialsPanel />
+
+            <div style={{ ...fieldLabel, marginBottom: 10 }}>選擇項目</div>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+              {ACTIVITY_OPTIONS.map(opt => (
                 <button
                   key={opt.code}
                   type="button"
@@ -297,64 +273,17 @@ export function LiffBook() {
                     setForm(prev => ({ ...prev, activity: opt.code }))
                   }}
                 >
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>{opt.emoji}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>{opt.labelZh}</div>
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{opt.tagline}</div>
-                  <div style={{ fontSize: 12, color: '#555', marginTop: 8, lineHeight: 1.5 }}>
-                    {teaser.firstTimeLine}<br />{teaser.sessionLine}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#999', marginTop: 6 }}>{activityBoatLine(opt.code)}</div>
+                  <div style={{ fontSize: 36, marginBottom: 6 }}>{opt.emoji}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>{opt.labelZh}</div>
                 </button>
-                )
-              })}
+              ))}
             </div>
-
-            <button
-              type="button"
-              onClick={() => { triggerHaptic('light'); setShowActivityHelp(v => !v) }}
-              style={{
-                width: '100%', padding: 12, border: '1px dashed #ccc', borderRadius: 10,
-                background: 'white', color: '#666', fontSize: 14, cursor: 'pointer',
-              }}
-            >
-              {showActivityHelp ? '▲ 收合說明' : '？ 不確定？看差異與影片'}
-            </button>
-
-            {showActivityHelp && (
-              <div style={{ ...bookCard, marginTop: 12 }}>
-                {ACTIVITY_OPTIONS.map(opt => (
-                  <div key={opt.code} style={{ marginBottom: 16 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
-                      {opt.emoji} {opt.labelZh}
-                    </div>
-                    <p style={{ fontSize: 13, color: '#555', lineHeight: 1.6, margin: '0 0 8px' }}>{opt.summary}</p>
-                    <YoutubeEmbed videoId={opt.youtubeVideoId} />
-                  </div>
-                ))}
-              </div>
-            )}
           </>
         )}
 
         {/* Step 2: 誰要滑 */}
         {step === 2 && (
           <div style={bookCard}>
-            <div style={{ marginBottom: 20 }}>
-              <div style={fieldLabel}>程度</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {SKILL_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    style={{ ...chipBtn(form.skillLevel === opt.value), flex: 1, padding: '14px 8px' }}
-                    onClick={() => setForm(prev => ({ ...prev, skillLevel: opt.value as SkillLevel }))}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div style={{ marginBottom: 20 }}>
               <div style={fieldLabel}>幾人</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -363,112 +292,88 @@ export function LiffBook() {
                     key={n}
                     type="button"
                     style={{ ...chipBtn(form.headcount === n), flex: '1 1 calc(20% - 8px)', minWidth: 52, padding: '12px 0' }}
-                    onClick={() => setForm(prev => {
-                      const headcount = n
-                      const beginnerCount =
-                        prev.beginnerCount != null && prev.beginnerCount > headcount
-                          ? headcount
-                          : prev.beginnerCount
-                      return { ...prev, headcount, beginnerCount }
-                    })}
+                    onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
                   >
-                    {n} 人
+                    {n}
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <div style={fieldLabel}>幾初（幾位初學）</div>
-              <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 10px' }}>團體中有幾位是第一次滑</p>
+              <div style={fieldLabel}>其中幾位初學</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {beginnerCountOptions(form.headcount).map(n => (
                   <button
                     key={n}
                     type="button"
                     style={chipBtn(form.beginnerCount === n)}
-                    onClick={() => setForm(prev => ({ ...prev, beginnerCount: n }))}
+                    onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: n }) }))}
                   >
-                    {formatBeginnerCount(n)}
+                    {n === form.headcount ? '全部' : n === 0 ? '無' : formatBeginnerCount(n)}
                   </button>
                 ))}
               </div>
             </div>
 
-            {estimate && (
-              <div style={{ ...infoBox, marginTop: 12, marginBottom: 0 }}>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>目前估算 · {estimate.tierLabel}</div>
-                <div style={{ fontSize: 20, fontWeight: 700 }}>約 {estimate.totalLabel}</div>
-                {estimate.detailLines.map(line => (
-                  <div key={line} style={{ fontSize: 12, marginTop: 4, opacity: 0.9 }}>{line}</div>
-                ))}
-              </div>
-            )}
+            {estimate && <BookEstimateCard estimate={estimate} />}
 
-            <BookContextTips step={2} form={form} pickTimePref={pickTimePref} showCoachSection={showCoachSection} />
+            <BookContextTips step={2} form={form} pickTimePref={pickTimePref} />
           </div>
         )}
 
         {/* Step 3: 什麼時候 + 教練選填 */}
         {step === 3 && (
-          <>
-            <div style={bookCard}>
-              <div style={fieldLabel}>希望日期（可左右滑）</div>
-              <div style={dateScrollRow}>
-                {upcomingDates.map(ymd => {
-                  const blocked = blockedDates.has(ymd)
-                  const { wd, md } = formatDateChip(ymd)
-                  const selected = pickDate === ymd
-                  return (
-                    <button
-                      key={ymd}
-                      type="button"
-                      disabled={blocked}
-                      style={dateChip(selected, blocked)}
-                      onClick={() => { triggerHaptic('light'); setPickDate(ymd) }}
-                    >
-                      <div style={{ fontSize: 11, opacity: 0.9 }}>{wd}</div>
-                      <div style={{ fontSize: 15, fontWeight: 700 }}>{md}</div>
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div style={{ ...fieldLabel, marginTop: 16 }}>時段</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {TIME_PREFERENCE_OPTIONS.map(opt => (
+          <div style={bookCard}>
+            <div style={fieldLabel}>日期</div>
+            <div style={dateScrollRow}>
+              {upcomingDates.map(ymd => {
+                const blocked = blockedDates.has(ymd)
+                const { wd, md } = formatDateChip(ymd)
+                const selected = pickDate === ymd
+                return (
                   <button
-                    key={opt.value}
+                    key={ymd}
                     type="button"
-                    style={{ ...chipBtn(pickTimePref === opt.value), flex: 1, padding: '12px 0' }}
-                    onClick={() => setPickTimePref(opt.value)}
+                    disabled={blocked}
+                    style={dateChip(selected, blocked)}
+                    onClick={() => { triggerHaptic('light'); setPickDate(ymd) }}
                   >
-                    {opt.label}
+                    <div style={{ fontSize: 11, opacity: 0.9 }}>{wd}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{md}</div>
                   </button>
-                ))}
-              </div>
-
-              {form.preferredDates.length > 1 && (
-                <p style={{ fontSize: 12, color: '#888', margin: '12px 0 0' }}>
-                  已選 {form.preferredDates.length} 天（最多 {MAX_PREFERRED_DATES} 天）
-                </p>
-              )}
+                )
+              })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => { triggerHaptic('light'); setShowCoachSection(v => !v) }}
-              style={{
-                width: '100%', padding: 14, marginBottom: 12, border: '1px solid #e8e8e8',
-                borderRadius: 12, background: 'white', textAlign: 'left', cursor: 'pointer',
-              }}
-            >
-              <span style={{ fontWeight: 600 }}>指定教練</span>
-              <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>選填 · {showCoachSection ? '▲' : '▼'}</span>
-            </button>
+            <div style={{ ...fieldLabel, marginTop: 16 }}>時段</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {TIME_PREFERENCE_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  style={{ ...chipBtn(pickTimePref === opt.value), flex: 1, padding: '12px 0' }}
+                  onClick={() => setPickTimePref(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
 
-            {showCoachSection && (
-              <div style={bookCard}>
+            {!showCoachSection ? (
+              <button
+                type="button"
+                onClick={() => { triggerHaptic('light'); setShowCoachSection(true) }}
+                style={{
+                  marginTop: 16, padding: 0, border: 'none', background: 'none',
+                  color: '#888', fontSize: 13, cursor: 'pointer', textDecoration: 'underline',
+                }}
+              >
+                ＋ 指定教練（選填）
+              </button>
+            ) : (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+                <div style={{ ...fieldLabel, marginBottom: 8 }}>指定教練</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   <button
                     type="button"
@@ -482,7 +387,7 @@ export function LiffBook() {
                     style={{ ...chipBtn(form.coachChoice === 'designated'), flex: 1 }}
                     onClick={() => setForm(prev => ({ ...prev, coachChoice: 'designated' }))}
                   >
-                    指定教練
+                    指定
                   </button>
                 </div>
                 {form.coachChoice === 'designated' && (
@@ -502,25 +407,21 @@ export function LiffBook() {
               </div>
             )}
 
-            <BookContextTips step={3} form={form} pickTimePref={pickTimePref} showCoachSection={showCoachSection} />
-          </>
+            <BookContextTips step={3} form={form} pickTimePref={pickTimePref} />
+          </div>
         )}
 
         {/* Step 4: 確認 */}
         {step === 4 && (
           <>
             <div style={{ ...bookCard, border: '2px solid #4a4a4a' }}>
-              <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>預約摘要</div>
               {selectedActivity && (
-                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
-                  {selectedActivity.emoji} {activityDisplayName(selectedActivity.code)}
+                <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>
+                  {selectedActivity.emoji} {selectedActivity.labelZh}
                 </div>
               )}
-              <div style={{ fontSize: 14, lineHeight: 2, color: '#333' }}>
-                <div>
-                  {form.skillLevel === 'first_time' ? '第一次體驗' : '已經滑過'} · {form.headcount} 人
-                  {form.beginnerCount != null ? ` · ${formatBeginnerCount(form.beginnerCount)}` : ''}
-                </div>
+              <div style={{ fontSize: 14, lineHeight: 1.9, color: '#444' }}>
+                <div>{form.headcount} 人 · {form.beginnerCount != null ? (form.beginnerCount === form.headcount ? '全部初學' : form.beginnerCount === 0 ? '無初學' : formatBeginnerCount(form.beginnerCount)) : '—'}</div>
                 <div>
                   📅 {(form.preferredDates.length ? form.preferredDates : commitSchedule()).map(p =>
                     `${p.date.slice(5).replace('-', '/')} ${TIME_PREFERENCE_OPTIONS.find(o => o.value === p.timePreference)?.label}`,
@@ -531,24 +432,15 @@ export function LiffBook() {
                 </div>
               </div>
               {estimate && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee' }}>
-                  <div style={{ fontSize: 13, color: '#888' }}>費用估算 · {estimate.tierLabel}</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#222' }}>約 {estimate.totalLabel}</div>
-                  {estimate.detailLines.map(line => (
-                    <div key={line} style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{line}</div>
-                  ))}
-                  <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>{estimate.disclaimer}</div>
-                  {member && (
-                    <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                      已綁定會員{member.membership_type === 'guest' ? '（非會員價）' : ''}
-                    </div>
-                  )}
-                </div>
+                <>
+                  <BookEstimateCard estimate={estimate} defaultExpanded />
+                  <p style={{ fontSize: 11, color: '#999', margin: '8px 0 0' }}>{estimate.disclaimer}</p>
+                </>
               )}
             </div>
 
             <div style={bookCard}>
-              <div style={fieldLabel}>聯絡資料</div>
+              <div style={fieldLabel}>姓名與電話</div>
               <input
                 value={form.contactName}
                 onChange={e => setForm(prev => ({ ...prev, contactName: e.target.value }))}
@@ -570,8 +462,6 @@ export function LiffBook() {
               />
             </div>
 
-            <BookContextTips step={4} form={form} pickTimePref={pickTimePref} showCoachSection={showCoachSection} />
-
             {desktopMessage && (
               <div style={bookCard}>
                 <p style={{ fontSize: 13, margin: '0 0 8px' }}>請複製訊息到 LINE 官方帳號：</p>
@@ -581,13 +471,27 @@ export function LiffBook() {
           </>
         )}
 
-        <button
-          type="button"
-          onClick={() => { triggerHaptic('light'); setShowInfoHub(v => !v) }}
-          style={infoHubBtnStyle}
-        >
-          {showInfoHub ? '▲ 收合預約須知' : '📖 預約須知 · 價目 · 船型'}
-        </button>
+        {step <= 2 ? (
+          <button
+            type="button"
+            onClick={() => { triggerHaptic('light'); setShowInfoHub(v => !v) }}
+            style={infoHubBtnStyle}
+          >
+            {showInfoHub ? '▲ 收合' : '📖 更多：G23 · FAQ · 交通'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { triggerHaptic('light'); setShowInfoHub(v => !v) }}
+            style={{
+              display: 'block', width: '100%', marginTop: 4, padding: 8,
+              border: 'none', background: 'none', color: '#999', fontSize: 12,
+              cursor: 'pointer', textDecoration: 'underline',
+            }}
+          >
+            {showInfoHub ? '收合須知' : '查價目與須知'}
+          </button>
+        )}
 
         {showInfoHub && (
           <div style={{ ...bookCard, marginTop: 12 }}>
