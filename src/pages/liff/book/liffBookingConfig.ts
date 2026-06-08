@@ -96,7 +96,7 @@ export const TIME_PREFERENCE_OPTIONS: { value: TimePreference; label: string }[]
 ]
 
 /** 初學體驗時數說明（小編指定文案） */
-export const BEGINNER_LESSON_NOTE = '岸上10分+水上20分'
+export const BEGINNER_LESSON_NOTE = '岸上 10 分＋水上 20 分'
 
 export const PRICING_EDUCATION = {
   title: '費用怎麼算？',

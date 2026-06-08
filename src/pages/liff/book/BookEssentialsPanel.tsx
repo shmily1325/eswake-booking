@@ -1,64 +1,112 @@
 import type { CSSProperties } from 'react'
-import { BEGINNER_LESSON_NOTE } from './liffBookingConfig'
+import { BEGINNER_LESSON_NOTE, getActivityInfo } from './liffBookingConfig'
 import { firstTimeUnitPrice, sessionBlockRate } from './liffBookingPrices'
+import { BOAT_BIG_MAX, BOAT_SMALL_MAX } from './liffBookingBoats'
 import { bookCard } from './bookStyles'
+
 import type { ActivityChoice, ActivityCode } from './types'
 
-const row: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '72px 1fr 1fr',
-  gap: '4px 6px',
-  fontSize: 12,
-  lineHeight: 1.35,
-}
-
-const labelCol: CSSProperties = {
-  color: '#999',
-  fontSize: 11,
-  lineHeight: 1.35,
-}
+const ACTIVITY_CODES: ActivityCode[] = ['WS', 'WB']
 
 interface BookEssentialsPanelProps {
-  /** 已綁定正式會員時顯示會員非初學價 */
   memberRate?: boolean
-  /** 已選項目時淡化另一欄價格 */
   selectedActivity?: ActivityChoice | null
 }
 
-function colStyle(code: ActivityCode, selected: ActivityChoice | null | undefined): CSSProperties {
-  if (!selected || selected === 'BOTH' || selected === code) return {}
-  return { opacity: 0.4 }
+function priceCardStyle(code: ActivityCode, selected: ActivityChoice | null | undefined): CSSProperties {
+  const active = !selected || selected === 'BOTH' || selected === code
+  const highlighted = selected === code
+  return {
+    padding: '10px 10px 9px',
+    borderRadius: 10,
+    border: highlighted ? '2px solid #4a4a4a' : '1px solid #ececec',
+    background: highlighted ? '#fafafa' : '#fff',
+    boxShadow: highlighted ? '0 0 0 2px rgba(74,74,74,0.08)' : 'none',
+    opacity: active ? 1 : 0.38,
+    transition: 'opacity 0.15s, border-color 0.15s',
+  }
+}
+
+function boatCardStyle(): CSSProperties {
+  return {
+    padding: '9px 10px',
+    borderRadius: 10,
+    background: '#fafafa',
+    border: '1px solid #ececec',
+    fontSize: 12,
+    lineHeight: 1.45,
+    color: '#444',
+  }
 }
 
 export function BookEssentialsPanel({ memberRate = false, selectedActivity = null }: BookEssentialsPanelProps) {
-  const wsNonBeginner = sessionBlockRate('big', memberRate)
-  const wbNonBeginner = sessionBlockRate('small', memberRate)
+  const big = sessionBlockRate('big', memberRate)
+  const small = sessionBlockRate('small', memberRate)
 
   return (
-    <div style={{ ...bookCard, marginBottom: 12, padding: '12px 12px 10px' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: '#333' }}>① 價格</div>
-      <div style={{ ...row, marginBottom: 4 }}>
-        <div />
-        <div style={{ fontWeight: 600, ...colStyle('WS', selectedActivity) }}>快艇衝浪</div>
-        <div style={{ fontWeight: 600, ...colStyle('WB', selectedActivity) }}>寬板滑水</div>
+    <div style={{ ...bookCard, marginBottom: 12, padding: '14px 14px 12px' }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#222', marginBottom: 10 }}>
+        預約前先知道
+      </div>
 
-        <div style={labelCol}>
-          <div>初學</div>
-          <div style={{ fontSize: 10, color: '#bbb' }}>{BEGINNER_LESSON_NOTE}</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#999', marginBottom: 6, letterSpacing: '0.02em' }}>
+        初學體驗
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+        {ACTIVITY_CODES.map(code => {
+          const info = getActivityInfo(code)
+          return (
+            <div key={code} style={priceCardStyle(code, selectedActivity)}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#333', marginBottom: 4 }}>{info.labelZh}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1 }}>
+                ${firstTimeUnitPrice(code).toLocaleString()}
+              </div>
+              <div style={{ fontSize: 10, color: '#aaa', marginTop: 5, lineHeight: 1.4 }}>
+                {BEGINNER_LESSON_NOTE}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div
+        style={{
+          fontSize: 11,
+          color: '#888',
+          lineHeight: 1.55,
+          padding: '8px 10px',
+          borderRadius: 8,
+          background: '#f7f7f7',
+          marginBottom: 12,
+        }}
+      >
+        <div>
+          <span style={{ color: '#666', fontWeight: 600 }}>非初學 </span>
+          大船 ${big.price.toLocaleString()}／{big.blockMin} 分
+          <span style={{ margin: '0 5px', color: '#ddd' }}>|</span>
+          小船 ${small.price.toLocaleString()}／{small.blockMin} 分
         </div>
-        <div style={colStyle('WS', selectedActivity)}>${firstTimeUnitPrice('WS').toLocaleString()}</div>
-        <div style={colStyle('WB', selectedActivity)}>${firstTimeUnitPrice('WB').toLocaleString()}</div>
-      </div>
-      <div style={{ fontSize: 10, color: '#bbb', marginBottom: 12, lineHeight: 1.45 }}>
-        非初學 大船 ${wsNonBeginner.price.toLocaleString()}/{wsNonBeginner.blockMin}分 · 小船 ${wbNonBeginner.price.toLocaleString()}/{wbNonBeginner.blockMin}分
-        {memberRate ? ' · 已套用會員價' : ' · 會員另有優惠'}
-        <span style={{ display: 'block', marginTop: 2 }}>兩個一起固定大船，費率同大船</span>
+        <div style={{ fontSize: 10, color: '#aaa', marginTop: 3 }}>
+          {memberRate ? '已套用會員價' : '會員另有優惠'}
+          <span style={{ margin: '0 4px' }}>·</span>
+          兩項一起固定大船
+        </div>
       </div>
 
-      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, color: '#333' }}>② 船</div>
-      <div style={{ fontSize: 12, color: '#555', lineHeight: 1.45 }}>
-        小船 ≤6 · 僅寬板滑水<br />
-        大船 ≤10 · 兩項皆可
+      <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#999', marginBottom: 6, letterSpacing: '0.02em' }}>
+          船型
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div style={boatCardStyle()}>
+            <div style={{ fontWeight: 600, color: '#333', marginBottom: 2 }}>小船</div>
+            <div style={{ fontSize: 11, color: '#888' }}>最多 {BOAT_SMALL_MAX} 人 · 僅寬板滑水</div>
+          </div>
+          <div style={boatCardStyle()}>
+            <div style={{ fontWeight: 600, color: '#333', marginBottom: 2 }}>大船</div>
+            <div style={{ fontSize: 11, color: '#888' }}>最多 {BOAT_BIG_MAX} 人 · 兩項皆可</div>
+          </div>
+        </div>
       </div>
     </div>
   )
