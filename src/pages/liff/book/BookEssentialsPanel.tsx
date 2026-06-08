@@ -34,6 +34,9 @@ function activityCardStyle(code: ActivityCode | 'BOTH', selected: ActivityChoice
     boxShadow: isSelected ? '0 0 0 2px rgba(74,74,74,0.08)' : 'none',
     opacity: dimmed ? 0.45 : 1,
     overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    height: isBoth ? undefined : '100%',
     transition: 'opacity 0.15s, border-color 0.15s',
     ...(isBoth ? { width: '100%', marginTop: 8, marginBottom: 10 } : {}),
   }
@@ -47,6 +50,7 @@ const selectArea: CSSProperties = {
   background: 'transparent',
   cursor: 'pointer',
   textAlign: 'left',
+  flex: 1,
 }
 
 const boatChip: CSSProperties = {
@@ -61,6 +65,35 @@ const boatChip: CSSProperties = {
   lineHeight: 1.4,
 }
 
+const priceSlot: CSSProperties = {
+  minHeight: 46,
+  marginTop: 6,
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  gap: 2,
+}
+
+const noteSlot: CSSProperties = {
+  minHeight: 28,
+  fontSize: 10,
+  color: '#aaa',
+  marginTop: 4,
+  lineHeight: 1.4,
+  display: 'flex',
+  alignItems: 'flex-start',
+}
+
+const dualPriceRow = (active: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'baseline',
+  justifyContent: 'space-between',
+  gap: 4,
+  fontSize: 11,
+  color: active ? '#111' : '#888',
+  fontWeight: active ? 700 : 500,
+})
+
 const boatOptionBtn = (selected: boolean): CSSProperties => ({
   ...chipBtn(selected),
   flex: 1,
@@ -68,6 +101,44 @@ const boatOptionBtn = (selected: boolean): CSSProperties => ({
   textAlign: 'center',
   lineHeight: 1.35,
 })
+
+function ActivityTitle({ code, label }: { code: ActivityCode; label: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+      <BookActivityIcon code={code} size={28} style={{ margin: 0, flexShrink: 0 }} />
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#222', lineHeight: 1.25 }}>{label}</div>
+    </div>
+  )
+}
+
+function WsPrice() {
+  return (
+    <div style={priceSlot}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1 }}>
+        ${FIRST_TIME_BIG_BOAT.toLocaleString()}
+      </div>
+    </div>
+  )
+}
+
+function WbPrice({ selected, boatPreference }: { selected: boolean; boatPreference: BoatPreference | null }) {
+  return (
+    <div style={priceSlot}>
+      <div style={dualPriceRow(selected && boatPreference === 'small')}>
+        <span>小船</span>
+        <span style={{ fontSize: selected && boatPreference === 'small' ? 16 : 13 }}>
+          ${FIRST_TIME_WB_SMALL.toLocaleString()}
+        </span>
+      </div>
+      <div style={dualPriceRow(selected && boatPreference === 'big')}>
+        <span>大船</span>
+        <span style={{ fontSize: selected && boatPreference === 'big' ? 16 : 13 }}>
+          ${FIRST_TIME_BIG_BOAT.toLocaleString()}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 export function BookEssentialsPanel({
   memberRate = false,
@@ -106,34 +177,17 @@ export function BookEssentialsPanel({
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'stretch' }}>
         {ACTIVITY_CODES.map(code => {
           const info = getActivityInfo(code)
           const selected = value === code
           return (
             <div key={code} style={activityCardStyle(code, value)}>
               <button type="button" style={selectArea} onClick={() => pick(code)} aria-pressed={selected}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                  <BookActivityIcon code={code} size={28} style={{ margin: 0 }} />
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>{info.labelZh}</div>
-                </div>
+                <ActivityTitle code={code} label={info.labelZh} />
                 <span style={boatChip}>{step1BoatChip(code)}</span>
-                {code === 'WS' && (
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1, marginTop: 6 }}>
-                    ${FIRST_TIME_BIG_BOAT.toLocaleString()}
-                  </div>
-                )}
-                {code === 'WB' && selected && boatPreference && (
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1, marginTop: 6 }}>
-                    ${(boatPreference === 'small' ? FIRST_TIME_WB_SMALL : FIRST_TIME_BIG_BOAT).toLocaleString()}
-                  </div>
-                )}
-                {code === 'WB' && selected && !boatPreference && (
-                  <div style={{ fontSize: 11, color: '#999', marginTop: 6 }}>請選擇船型</div>
-                )}
-                <div style={{ fontSize: 10, color: '#aaa', marginTop: 4, lineHeight: 1.4 }}>
-                  {BEGINNER_LESSON_NOTE}
-                </div>
+                {code === 'WS' ? <WsPrice /> : <WbPrice selected={selected} boatPreference={boatPreference} />}
+                <div style={noteSlot}>{BEGINNER_LESSON_NOTE}</div>
               </button>
               <BookVideoPlayer variant="compact" videoId={info.youtubeVideoId} title={info.labelZh} />
             </div>
@@ -182,20 +236,23 @@ export function BookEssentialsPanel({
 
       <button
         type="button"
-        style={{ ...activityCardStyle('BOTH', value), padding: 0, cursor: 'pointer' }}
+        style={{ ...activityCardStyle('BOTH', value), padding: 0, cursor: 'pointer', textAlign: 'left' }}
         onClick={() => pick('BOTH')}
         aria-pressed={value === 'BOTH'}
       >
-        <div style={{ ...selectArea, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px' }}>
-          <BookBothIcons size={28} style={{ margin: 0, flexShrink: 0 }} />
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#222' }}>{BOTH_ACTIVITY_SHORT}</div>
-            <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>快艇衝浪 + 寬板滑水</div>
-            <span style={{ ...boatChip, marginTop: 5 }}>{step1BoatChip('BOTH')}</span>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#111', marginTop: 6 }}>
+        <div style={{ ...selectArea, flex: undefined, padding: '12px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <BookBothIcons size={28} style={{ margin: 0, flexShrink: 0 }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>{BOTH_ACTIVITY_SHORT}</div>
+          </div>
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>快艇衝浪 + 寬板滑水</div>
+          <span style={boatChip}>{step1BoatChip('BOTH')}</span>
+          <div style={priceSlot}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1 }}>
               ${FIRST_TIME_BIG_BOAT.toLocaleString()}
             </div>
           </div>
+          <div style={noteSlot}>{BEGINNER_LESSON_NOTE}</div>
         </div>
       </button>
 
