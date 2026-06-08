@@ -1,4 +1,7 @@
 import { Link } from 'react-router-dom'
+import { isExternalNavLink } from '../lib/shopPublicUrl'
+import { EsNavLogo } from './EsNavLogo'
+import { ExternalNavLink } from './ExternalNavLink'
 import { UserMenu } from './UserMenu'
 import type { User } from '@supabase/supabase-js'
 import { useResponsive } from '../hooks/useResponsive'
@@ -17,7 +20,7 @@ interface PageHeaderProps {
   /** 待結帳筆數角標（管理員） */
   pendingSettleCount?: number
   showHomeLink?: boolean
-  extraLinks?: Array<{ label: string; link: string }>
+  extraLinks?: Array<{ label: string; link: string; iconSrc?: string }>
 }
 
 const NAV_LINK_ICONS: Record<string, string> = {
@@ -30,6 +33,7 @@ const NAV_LINK_ICONS: Record<string, string> = {
   '/members': '👥',
   '/coach-admin': '💼',
   '/coach-report': '📋',
+  shop: '🛒',
 }
 
 const NAV_LINK_TEXT: Record<string, string> = {
@@ -139,23 +143,51 @@ export function PageHeader({
     minHeight: useIconOnlyNav ? 36 : undefined,
   }
 
-  const renderNavLabel = (label: string, link: string) =>
-    useIconOnlyNav ? toMobileNavIcon(label, link) : toDesktopNavLabel(label, link)
+  const renderNavLabel = (label: string, link: string, iconSrc?: string) => {
+    if (iconSrc) {
+      const text = useIconOnlyNav ? null : toDesktopNavLabel(label, link)
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: text ? 6 : 0 }}>
+          <EsNavLogo size={useIconOnlyNav ? 28 : 20} />
+          {text}
+        </span>
+      )
+    }
+    return useIconOnlyNav ? toMobileNavIcon(label, link) : toDesktopNavLabel(label, link)
+  }
 
   const navLinks = (
     <>
-      {extraLinks?.map((link, index) => (
-        <Link
-          key={index}
-          to={link.link}
-          style={navButtonStyle}
-          aria-label={toNavAriaLabel(link.label)}
-          title={toNavAriaLabel(link.label)}
-          data-track={`header_nav_${(link.link || '').replace(/^\//, '').replace(/\//g, '_') || 'link'}`}
-        >
-          {renderNavLabel(link.label, link.link)}
-        </Link>
-      ))}
+      {extraLinks?.map((link, index) => {
+        const aria = toNavAriaLabel(link.label)
+        const track = `header_nav_${(link.link || '').replace(/^https?:\/\//, '').replace(/^\//, '').replace(/\//g, '_') || 'link'}`
+        if (isExternalNavLink(link.link)) {
+          return (
+            <ExternalNavLink
+              key={index}
+              href={link.link}
+              style={navButtonStyle}
+              aria-label={aria}
+              title={aria}
+              data-track={track}
+            >
+              {renderNavLabel(link.label, link.link, link.iconSrc)}
+            </ExternalNavLink>
+          )
+        }
+        return (
+          <Link
+            key={index}
+            to={link.link}
+            style={navButtonStyle}
+            aria-label={aria}
+            title={aria}
+            data-track={track}
+          >
+            {renderNavLabel(link.label, link.link, link.iconSrc)}
+          </Link>
+        )
+      })}
       {(productHubSection === 'inventory' || productHubSection === 'orders') &&
         showOrderSettleLink && (
           <Link

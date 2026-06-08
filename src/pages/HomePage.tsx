@@ -12,6 +12,9 @@ import {
   type EditorFeatureKey
 } from '../utils/auth'
 import { supabase } from '../lib/supabase'
+import { EsNavLogo } from '../components/EsNavLogo'
+import { ExternalNavLink } from '../components/ExternalNavLink'
+import { getPublicShopHomeUrl, isExternalNavLink, SHOP_NAV_LOGO_SRC } from '../lib/shopPublicUrl'
 import { useState, useEffect, type CSSProperties } from 'react'
 
 // 菜單按鈕 Skeleton 組件
@@ -112,6 +115,8 @@ export function HomePage() {
   type HomeMenuItem = {
     title: string
     icon: string
+    /** 有值時用 ES logo 取代 emoji icon */
+    iconSrc?: string
     link: string
     subtitle?: string
     isAdmin?: boolean
@@ -187,6 +192,15 @@ export function HomePage() {
       icon: '📦',
       link: '/products',
       // 可改（can_products）或只看（can_products_view）任一即顯示入口；唯讀模式由商品頁自行渲染
+      editorFeature: ['can_products', 'can_products_view'],
+      hideFromHomeForSuperAdmin: true
+    },
+    {
+      title: '對外商城',
+      icon: '',
+      iconSrc: SHOP_NAV_LOGO_SRC,
+      link: getPublicShopHomeUrl(),
+      subtitle: 'shop.eswakeschool.com',
       editorFeature: ['can_products', 'can_products_view'],
       hideFromHomeForSuperAdmin: true
     },
@@ -323,79 +337,105 @@ export function HomePage() {
             </>
           ) : (
             <>
-              {visibleMainMenu.map((item) => (
-                <Link
-                  key={`main-${item.link}-${item.title}`}
-                  to={item.link}
-                  data-track={`nav_${item.link.replace(/^\//, '') || 'home'}`}
-                  style={{
-                    textDecoration: 'none',
-                    background: 'rgba(255, 255, 255, 0.7)',
-                    backdropFilter: 'blur(10px)',
-                    borderRadius: '16px',
-                    padding: '35px 20px',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                    transition: 'all 0.3s ease',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    gap: '12px',
-                    cursor: 'pointer',
-                    border: '1px solid rgba(224, 224, 224, 0.5)'
-                  }}
-                  onMouseEnter={(e) => {
+              {visibleMainMenu.map((item) => {
+                const cardStyle: CSSProperties = {
+                  textDecoration: 'none',
+                  background: 'rgba(255, 255, 255, 0.7)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: '16px',
+                  padding: '35px 20px',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  gap: '12px',
+                  cursor: 'pointer',
+                  border: '1px solid rgba(224, 224, 224, 0.5)'
+                }
+                const cardHandlers = {
+                  onMouseEnter: (e: React.MouseEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.transform = 'translateY(-5px)'
                     e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
                     e.currentTarget.style.borderColor = '#000'
-                  }}
-                  onMouseLeave={(e) => {
+                  },
+                  onMouseLeave: (e: React.MouseEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.transform = 'translateY(0)'
                     e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
                     e.currentTarget.style.borderColor = '#e0e0e0'
-                  }}
-                  onTouchStart={(e) => {
+                  },
+                  onTouchStart: (e: React.TouchEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.transform = 'scale(0.97)'
                     e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.1)'
-                  }}
-                  onTouchEnd={(e) => {
+                  },
+                  onTouchEnd: (e: React.TouchEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.transform = 'translateY(0)'
                     e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                  }}
-                  onTouchCancel={(e) => {
+                  },
+                  onTouchCancel: (e: React.TouchEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                  }}
-                >
-                  <div style={{
-                    fontSize: '42px',
-                    marginBottom: '5px',
-                  }}>
-                    {item.icon}
-                  </div>
-
-                  <h2 style={{
-                    margin: 0,
-                    fontSize: isMobile ? '16px' : '18px',
-                    fontWeight: '600',
-                    color: '#000',
-                    letterSpacing: '0.5px',
-                  }}>
-                    {item.title}
-                  </h2>
-
-                  {item.subtitle && (
-                    <p style={{
+                    e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0.08)'
+                  },
+                }
+                const inner = (
+                  <>
+                    <div style={{ marginBottom: '5px' }}>
+                      {item.iconSrc ? (
+                        <EsNavLogo size={isMobile ? 38 : 42} />
+                      ) : (
+                        <span style={{ fontSize: '42px' }}>{item.icon}</span>
+                      )}
+                    </div>
+                    <h2 style={{
                       margin: 0,
-                      fontSize: isMobile ? '12px' : '13px',
-                      color: '#999',
-                      fontStyle: 'italic'
+                      fontSize: isMobile ? '16px' : '18px',
+                      fontWeight: '600',
+                      color: '#000',
+                      letterSpacing: '0.5px',
                     }}>
-                      {item.subtitle}
-                    </p>
-                  )}
-                </Link>
-              ))}
+                      {item.title}
+                    </h2>
+                    {item.subtitle && (
+                      <p style={{
+                        margin: 0,
+                        fontSize: isMobile ? '12px' : '13px',
+                        color: '#999',
+                        fontStyle: 'italic'
+                      }}>
+                        {item.subtitle}
+                      </p>
+                    )}
+                  </>
+                )
+                const track = `nav_${item.link.replace(/^https?:\/\//, '').replace(/^\//, '') || 'home'}`
+
+                if (isExternalNavLink(item.link)) {
+                  return (
+                    <ExternalNavLink
+                      key={`main-${item.link}-${item.title}`}
+                      href={item.link}
+                      data-track={track}
+                      style={cardStyle}
+                      {...cardHandlers}
+                    >
+                      {inner}
+                    </ExternalNavLink>
+                  )
+                }
+
+                return (
+                  <Link
+                    key={`main-${item.link}-${item.title}`}
+                    to={item.link}
+                    data-track={track}
+                    style={cardStyle}
+                    {...cardHandlers}
+                  >
+                    {inner}
+                  </Link>
+                )
+              })}
 
               {visibleBelowDivider.length > 0 && (
                 <>

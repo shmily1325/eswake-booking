@@ -7,6 +7,9 @@ import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { isAdmin } from '../utils/auth'
+import { EsNavLogo } from '../components/EsNavLogo'
+import { ExternalNavLink } from '../components/ExternalNavLink'
+import { getPublicShopHomeUrl, isExternalNavLink, SHOP_NAV_LOGO_SRC } from '../lib/shopPublicUrl'
 
 export function BaoHub() {
   const user = useAuthUser()
@@ -14,6 +17,9 @@ export function BaoHub() {
   const { isMobile } = useResponsive()
   const userIsAdmin = isAdmin(user)
   const { count: pendingSettleCount } = usePendingBillOrderCount(userIsAdmin)
+
+  const renderMenuIcon = (feature: { icon: string; iconSrc?: string }) =>
+    feature.iconSrc ? <EsNavLogo size={isMobile ? 36 : 42} /> : feature.icon
   
   // 權限檢查：只有管理員可以進入
   useEffect(() => {
@@ -27,6 +33,7 @@ export function BaoHub() {
     items: Array<{
       title: string
       icon: string
+      iconSrc?: string
       link: string
       comingSoon?: boolean
       disabled?: boolean
@@ -104,6 +111,12 @@ export function BaoHub() {
             title: '商品管理',
             icon: '📦',
             link: '/products'
+          },
+          {
+            title: '對外商城',
+            icon: '',
+            iconSrc: SHOP_NAV_LOGO_SRC,
+            link: getPublicShopHomeUrl()
           }
         ]
       },
@@ -268,7 +281,7 @@ export function BaoHub() {
                       fontSize: isMobile ? '36px' : '42px',
                       marginBottom: isMobile ? '8px' : '12px'
                     }}>
-                      {feature.icon}
+                      {renderMenuIcon(feature)}
                     </div>
                     <h2 style={{
                       margin: 0,
@@ -303,7 +316,7 @@ export function BaoHub() {
                       fontSize: isMobile ? '36px' : '42px',
                       marginBottom: '5px'
                     }}>
-                      {feature.icon}
+                      {renderMenuIcon(feature)}
                     </div>
                     <h2 style={{
                       margin: 0,
@@ -315,6 +328,51 @@ export function BaoHub() {
                       {feature.title}
                     </h2>
                   </div>
+                ) : isExternalNavLink(feature.link) ? (
+                  <ExternalNavLink
+                    key={feature.title}
+                    href={feature.link}
+                    data-track="bao_shop"
+                    style={{
+                      textDecoration: 'none',
+                      background: 'rgba(255, 255, 255, 0.7)',
+                      backdropFilter: 'blur(10px)',
+                      borderRadius: '16px',
+                      padding: isMobile ? '30px 15px' : '35px 20px',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                      transition: 'all 0.3s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      gap: isMobile ? '8px' : '12px',
+                      cursor: 'pointer',
+                      border: '1px solid rgba(224, 224, 224, 0.5)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-5px)'
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
+                      e.currentTarget.style.borderColor = '#000'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                      e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
+                    }}
+                  >
+                    <div style={{ fontSize: isMobile ? '36px' : '42px', marginBottom: '5px' }}>
+                      {renderMenuIcon(feature)}
+                    </div>
+                    <h2 style={{
+                      margin: 0,
+                      fontSize: isMobile ? '15px' : '17px',
+                      fontWeight: '600',
+                      color: '#000',
+                      letterSpacing: '0.5px',
+                    }}>
+                      {feature.title}
+                    </h2>
+                  </ExternalNavLink>
                 ) : (
                   <Link
                     key={feature.title}
@@ -363,7 +421,7 @@ export function BaoHub() {
                       fontSize: isMobile ? '36px' : '42px',
                       marginBottom: '5px'
                     }}>
-                      {feature.icon}
+                      {renderMenuIcon(feature)}
                     </div>
                     <h2
                       style={{

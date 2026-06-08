@@ -22,6 +22,7 @@ import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../..
 import { usePendingBillOrderCount } from '../../../hooks/usePendingBillOrderCount'
 
 import { useToast } from '../../../components/ui'
+import { getPublicShopHomeUrl, SHOP_NAV_LOGO_SRC } from '../../../lib/shopPublicUrl'
 
 import { ProductManagement } from './ProductManagement'
 
@@ -120,6 +121,7 @@ export function ProductHub() {
         productHubSection={onOrders ? 'orders' : 'inventory'}
         showOrderSettleLink={userIsAdmin}
         pendingSettleCount={pendingSettleCount}
+        extraLinks={[{ label: '商城', link: getPublicShopHomeUrl(), iconSrc: SHOP_NAV_LOGO_SRC }]}
       />
 
       {canEdit && (
