@@ -196,7 +196,7 @@ export function HomePage() {
       hideFromHomeForSuperAdmin: true
     },
     {
-      title: '對外商城',
+      title: 'ES SHOP',
       icon: '',
       iconSrc: SHOP_NAV_LOGO_SRC,
       link: getPublicShopHomeUrl(),

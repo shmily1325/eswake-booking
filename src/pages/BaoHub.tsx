@@ -113,7 +113,7 @@ export function BaoHub() {
             link: '/products'
           },
           {
-            title: '對外商城',
+            title: 'ES SHOP',
             icon: '',
             iconSrc: SHOP_NAV_LOGO_SRC,
             link: getPublicShopHomeUrl()

@@ -121,7 +121,7 @@ export function ProductHub() {
         productHubSection={onOrders ? 'orders' : 'inventory'}
         showOrderSettleLink={userIsAdmin}
         pendingSettleCount={pendingSettleCount}
-        extraLinks={[{ label: '商城', link: getPublicShopHomeUrl(), iconSrc: SHOP_NAV_LOGO_SRC }]}
+        extraLinks={[{ label: 'ES SHOP', link: getPublicShopHomeUrl(), iconSrc: SHOP_NAV_LOGO_SRC }]}
       />
 
       {canEdit && (
