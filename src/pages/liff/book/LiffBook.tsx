@@ -10,7 +10,7 @@ import { BookEstimateCard } from './BookEstimateCard'
 import { BookInfoHub } from './BookInfoHub'
 import { BookStepHeader } from './BookStepHeader'
 import { BookContextTips } from './BookContextTips'
-import { BookVideoPlayer } from './BookVideoPlayer'
+import { BookActivityPicker } from './BookActivityPicker'
 import { BookStaffHint } from './BookStaffHint'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import type {
@@ -19,7 +19,6 @@ import type {
   TimePreference,
 } from './types'
 import {
-  ACTIVITY_OPTIONS,
   beginnerCountOptions,
   formatBeginnerCount,
   HEADCOUNT_OPTIONS,
@@ -37,7 +36,6 @@ import { computePriceEstimate } from './liffBookingPricing'
 import { isMemberForPricing } from './liffBookingPrices'
 import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
 import {
-  bigActivityBtn,
   bookCard,
   bookPage,
   chipBtn,
@@ -268,60 +266,10 @@ export function LiffBook() {
           <>
             <BookEssentialsPanel memberRate={memberRate} selectedActivity={form.activity} />
 
-            <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-              {ACTIVITY_OPTIONS.map(opt => {
-                const selected = form.activity === opt.code
-                return (
-                  <div key={opt.code} style={bigActivityBtn(selected)}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic('light')
-                        setForm(prev => ({ ...prev, activity: opt.code }))
-                      }}
-                      style={{
-                        border: 'none',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        padding: '4px 0 0',
-                        textAlign: 'center',
-                        width: '100%',
-                      }}
-                    >
-                      <BookActivityIcon code={opt.code} size={64} style={{ margin: '0 auto 8px' }} />
-                      <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>{opt.labelZh}</div>
-                      <div style={{ fontSize: 11, color: '#888', marginTop: 4, lineHeight: 1.35 }}>{opt.tagline}</div>
-                    </button>
-                    <BookVideoPlayer
-                      variant="compact"
-                      videoId={opt.youtubeVideoId}
-                      title={opt.labelZh}
-                    />
-                  </div>
-                )
-              })}
-            </div>
-
-            <button
-              type="button"
-              style={{
-                ...chipBtn(form.activity === 'BOTH'),
-                width: '100%',
-                padding: '14px 16px',
-                marginBottom: 8,
-                textAlign: 'center',
-              }}
-              onClick={() => {
-                triggerHaptic('light')
-                setForm(prev => ({ ...prev, activity: 'BOTH' }))
-              }}
-            >
-              <BookBothIcons size={36} style={{ marginBottom: 6 }} />
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{BOTH_ACTIVITY_SHORT}</div>
-              <div style={{ fontSize: 11, color: form.activity === 'BOTH' ? 'rgba(255,255,255,0.85)' : '#888', marginTop: 4 }}>
-                快艇衝浪 + 寬板滑水 · 需大船
-              </div>
-            </button>
+            <BookActivityPicker
+              value={form.activity}
+              onChange={code => setForm(prev => ({ ...prev, activity: code }))}
+            />
           </>
         )}
 

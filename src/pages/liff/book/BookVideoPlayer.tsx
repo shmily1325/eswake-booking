@@ -68,13 +68,13 @@ const compactThumb: CSSProperties = {
   position: 'relative',
   display: 'block',
   width: '100%',
-  marginTop: 6,
+  marginTop: 0,
   padding: 0,
   border: 'none',
   borderRadius: 8,
   overflow: 'hidden',
   cursor: 'pointer',
-  background: '#eee',
+  background: '#f0f0f0',
 }
 
 const playBadge: CSSProperties = {
