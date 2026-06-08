@@ -46,6 +46,9 @@ export function isAllowedShopHostPath(pathname: string): boolean {
 /** 舊版 /shop/* 連結 → 子網域根路徑（301） */
 export function shopLegacyRedirectResponse(url: URL): Response | null {
   const { pathname } = url
+  // hero 圖檔仍在 public/shop/heroes/，不可把 /shop/heroes/* 301 成 /heroes/*
+  if (pathname.startsWith('/shop/heroes/')) return null
+
   if (pathname === '/shop' || pathname === '/shop/') {
     return Response.redirect(`${url.origin}/${url.search}`, 301)
   }

@@ -30,4 +30,9 @@ describe('shopHost', () => {
     expect(res?.status).toBe(301)
     expect(res?.headers.get('location')).toBe('https://shop.eswakeschool.com/cart?x=1')
   })
+
+  it('does not redirect hero images under /shop/heroes/', () => {
+    const url = new URL('https://shop.eswakeschool.com/shop/heroes/wakesurfing.webp')
+    expect(shopLegacyRedirectResponse(url)).toBeNull()
+  })
 })
