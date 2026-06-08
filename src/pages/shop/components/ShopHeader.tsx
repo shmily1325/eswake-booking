@@ -3,6 +3,11 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { useShopCart } from '../hooks/useShopCart'
 import { getShopReturnTo } from '../lib/shopReturnTo'
 import { SHOP_COPY } from '../lib/shopCopy'
+import {
+  isShopListPathname,
+  shopCartPath,
+  shopListPath,
+} from '../lib/shopPaths'
 
 interface ShopHeaderProps {
   showBack?: boolean
@@ -27,22 +32,19 @@ export function ShopHeader({
 
   const backTo = getShopReturnTo(location.state)
 
-  const isListPage =
-    location.pathname === '/shop' ||
-    location.pathname === '/shop/' ||
-    location.pathname === '/shop/pre-order'
+  const isListPage = isShopListPathname(location.pathname)
 
   const submitQuery = (q: string) => {
     const trimmed = q.trim()
     if (trimmed) {
-      const target = `/shop?q=${encodeURIComponent(trimmed)}`
+      const target = shopListPath(`q=${encodeURIComponent(trimmed)}`)
       if (isListPage) {
         navigate(target, { replace: true })
       } else {
         navigate(target)
       }
     } else if (isListPage) {
-      navigate('/shop', { replace: true })
+      navigate(shopListPath(), { replace: true })
     }
   }
 
@@ -71,7 +73,7 @@ export function ShopHeader({
             </Link>
           )}
           <Link
-            to="/shop"
+            to={shopListPath()}
             className="flex items-center gap-2 sm:gap-2.5 min-w-0"
             aria-label="ES Wake Shop"
           >
@@ -103,7 +105,7 @@ export function ShopHeader({
 
         <div className="flex items-center gap-0.5 shrink-0">
           <Link
-            to="/shop/cart"
+            to={shopCartPath()}
             className="sm:hidden relative inline-flex items-center justify-center w-11 h-11 rounded-full hover:bg-zinc-800 text-white"
             aria-label={`Cart${cartCount > 0 ? ` (${cartCount})` : ''}`}
           >
@@ -116,7 +118,7 @@ export function ShopHeader({
           </Link>
 
           <Link
-            to="/shop/cart"
+            to={shopCartPath()}
             className="hidden sm:inline-flex items-center gap-2 h-10 px-2 text-white hover:text-gray-300"
             aria-label={`Cart${cartCount > 0 ? ` (${cartCount})` : ''}`}
           >

@@ -11,6 +11,7 @@ import {
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_LABEL } from '../lib/shopCopy'
+import { shopProductPath } from '../lib/shopPaths'
 import {
   SHOP_PRODUCT_PREVIEW_KEY,
   SHOP_RETURN_TO_KEY,
@@ -50,7 +51,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
 
   return (
     <Link
-      to={`/shop/${product.id}`}
+      to={shopProductPath(product.id)}
       state={cardNavigationState(returnTo, product, variants)}
       className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >

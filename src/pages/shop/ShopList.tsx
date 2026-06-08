@@ -20,6 +20,7 @@ import {
 import { getShopHeroForFilters } from './lib/shopHeroImages'
 import { useShopHeroPreload } from './hooks/useShopHeroPreload'
 import { SHOP_COPY, SHOP_LABEL } from './lib/shopCopy'
+import { shopListPath } from './lib/shopPaths'
 
 /**
  * 商城列表（單一 /shop 頁；預購用 ?preorder=1 篩選）。
@@ -201,7 +202,7 @@ export function ShopPreOrderRedirect() {
   const params = new URLSearchParams(location.search)
   params.set('preorder', '1')
   const search = params.toString()
-  return <Navigate to={`/shop${search ? `?${search}` : ''}`} replace />
+  return <Navigate to={shopListPath(search ? `?${search}` : '')} replace />
 }
 
 interface ToolbarSortProps {

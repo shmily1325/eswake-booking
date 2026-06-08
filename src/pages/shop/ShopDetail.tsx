@@ -24,6 +24,7 @@ import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
 import { ImageOrFallback } from './components/ImageOrFallback'
 import { getShopReturnTo } from './lib/shopReturnTo'
+import { shopListPath } from './lib/shopPaths'
 
 /** Supabase 的 `id` 是 uuid，亂打字串會炸出 22P02 錯誤，先在 client 擋掉 */
 const UUID_REGEX =
@@ -341,7 +342,11 @@ function ProductDetailBody({
       {/* 資訊區 */}
       <div className="flex flex-col">
         <Link
-          to={product.category ? `/shop?cat=${encodeURIComponent(product.category)}` : '/shop'}
+          to={
+            product.category
+              ? shopListPath(`cat=${encodeURIComponent(product.category)}`)
+              : shopListPath()
+          }
           className="self-start text-xs text-gray-400 uppercase tracking-widest hover:text-black"
         >
           {categoryName}

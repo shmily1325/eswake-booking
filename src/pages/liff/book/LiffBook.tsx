@@ -25,6 +25,8 @@ import {
   syncBookingPeople,
   TIME_PREFERENCE_OPTIONS,
   getActivityInfo,
+  isBothActivities,
+  BOTH_ACTIVITY_SHORT,
   isLiffBookEnabled,
 } from './liffBookingConfig'
 import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
@@ -226,7 +228,8 @@ export function LiffBook() {
     return <BookBindingGate {...bindingFormProps} onSkip={skipBinding} />
   }
 
-  const selectedActivity = form.activity ? getActivityInfo(form.activity) : null
+  const selectedActivity =
+    form.activity && !isBothActivities(form.activity) ? getActivityInfo(form.activity) : null
   const memberRate = isMemberForPricing(member?.membership_type)
   const nextLabel = step === totalSteps ? '用 LINE 送出' : step === 3 ? '確認' : '下一步'
 
@@ -295,6 +298,26 @@ export function LiffBook() {
                 )
               })}
             </div>
+
+            <button
+              type="button"
+              style={{
+                ...chipBtn(form.activity === 'BOTH'),
+                width: '100%',
+                padding: '14px 16px',
+                marginBottom: 8,
+                textAlign: 'center',
+              }}
+              onClick={() => {
+                triggerHaptic('light')
+                setForm(prev => ({ ...prev, activity: 'BOTH' }))
+              }}
+            >
+              <div style={{ fontSize: 15, fontWeight: 700 }}>🌊🏄 {BOTH_ACTIVITY_SHORT}</div>
+              <div style={{ fontSize: 11, color: form.activity === 'BOTH' ? 'rgba(255,255,255,0.85)' : '#888', marginTop: 4 }}>
+                快艇衝浪 + 寬板滑水 · 需大船
+              </div>
+            </button>
           </>
         )}
 
@@ -432,11 +455,15 @@ export function LiffBook() {
         {step === 4 && (
           <>
             <div style={{ ...bookCard, border: '2px solid #4a4a4a' }}>
-              {selectedActivity && (
+              {isBothActivities(form.activity) ? (
+                <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>
+                  🌊🏄 {BOTH_ACTIVITY_SHORT}
+                </div>
+              ) : selectedActivity ? (
                 <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>
                   {selectedActivity.emoji} {selectedActivity.labelZh}
                 </div>
-              )}
+              ) : null}
               <div style={{ fontSize: 14, lineHeight: 1.9, color: '#444' }}>
                 <div>{form.headcount} 人 · {form.beginnerCount != null ? (form.beginnerCount === form.headcount ? '全部初學' : form.beginnerCount === 0 ? '無初學' : formatBeginnerCount(form.beginnerCount)) : '—'}</div>
                 <div>

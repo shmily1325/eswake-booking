@@ -12,6 +12,7 @@ import {
 } from './lib/shopFormat'
 import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildCartInquiry, launchInquiry } from './lib/lineDeepLink'
+import { shopListPath, shopProductPath } from './lib/shopPaths'
 
 /**
  * 購物車頁（/shop/cart）。
@@ -133,7 +134,7 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
     <li className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-sm">
       {/* 縮圖：優先用 snapshot 圖片，沒有就 ES Wake logo 水印佔位 */}
       <Link
-        to={`/shop/${item.productId}`}
+        to={shopProductPath(item.productId)}
         className="shrink-0 w-16 h-20 sm:w-20 sm:h-24 rounded-md overflow-hidden hover:opacity-90 transition-opacity"
         aria-label="Back to product"
       >
@@ -148,7 +149,7 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
       {/* 主資訊 */}
       <div className="flex-1 min-w-0 flex flex-col">
         <Link
-          to={`/shop/${item.productId}`}
+          to={shopProductPath(item.productId)}
           className="text-sm sm:text-base font-semibold text-zinc-900 hover:text-black underline-offset-2 hover:underline line-clamp-2"
         >
           {item.productName}
@@ -255,7 +256,7 @@ function CartSummary({
 
       <div className="mt-3 text-center">
         <Link
-          to="/shop"
+          to={shopListPath()}
           className="text-sm text-gray-500 hover:text-black"
         >
           ← Continue shopping
@@ -274,7 +275,7 @@ function EmptyCart() {
         先去挑幾件感興趣的裝備吧
       </p>
       <Link
-        to="/shop"
+        to={shopListPath()}
         className="mt-5 inline-flex items-center px-5 py-2.5 rounded-md bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800 transition-colors"
       >
         ← Browse products

@@ -4,7 +4,6 @@ import type { Member } from '../types'
 import {
   formatTimePreference,
   activityDisplayName,
-  getActivityInfo,
   formatBeginnerCount,
 } from './liffBookingConfig'
 import {
@@ -37,7 +36,6 @@ export function renderBookingInquiryMessage(
   coaches: CoachOption[],
   estimate: PriceEstimate | null,
 ): string {
-  const activity = state.activity ? getActivityInfo(state.activity) : null
   const coach =
     state.coachChoice === 'designated' && state.coachId
       ? coaches.find(c => c.id === state.coachId)
@@ -49,7 +47,7 @@ export function renderBookingInquiryMessage(
   if (state.beginnerCount != null) {
     lines.push(`幾位初學：${formatBeginnerCount(state.beginnerCount)}`)
   }
-  lines.push(`預約項目：${activity ? activityDisplayName(activity.code) : '—'}`)
+  lines.push(`預約項目：${state.activity ? activityDisplayName(state.activity) : '—'}`)
   lines.push(`是否是第一次滑：${skillLabel(state.skillLevel)}`)
 
   lines.push('希望預約的日期及時間：')

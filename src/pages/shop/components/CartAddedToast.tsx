@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useShopCart } from '../hooks/useShopCart'
+import { shopCartPath } from '../lib/shopPaths'
 
 /**
  * 「已加入購物車」浮動提示。
@@ -43,7 +44,7 @@ export function CartAddedToast() {
             {lastAdded.name} × {lastAdded.quantity}
           </div>
           <Link
-            to="/shop/cart"
+            to={shopCartPath()}
             className="mt-2 inline-block text-xs font-medium text-black underline underline-offset-2 hover:text-zinc-700"
             onClick={dismissLastAdded}
           >

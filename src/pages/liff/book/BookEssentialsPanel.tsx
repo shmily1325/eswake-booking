@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { firstTimeUnitPrice, sessionBlockRate } from './liffBookingPrices'
 import { bookCard } from './bookStyles'
 import { BookStaffHint } from './BookStaffHint'
-import type { ActivityCode } from './types'
+import type { ActivityChoice, ActivityCode } from './types'
 
 const row: CSSProperties = {
   display: 'grid',
@@ -22,11 +22,11 @@ interface BookEssentialsPanelProps {
   /** 已綁定正式會員時顯示會員非初學價 */
   memberRate?: boolean
   /** 已選項目時淡化另一欄價格 */
-  selectedActivity?: ActivityCode | null
+  selectedActivity?: ActivityChoice | null
 }
 
-function colStyle(code: ActivityCode, selected: ActivityCode | null | undefined): CSSProperties {
-  if (!selected || selected === code) return {}
+function colStyle(code: ActivityCode, selected: ActivityChoice | null | undefined): CSSProperties {
+  if (!selected || selected === 'BOTH' || selected === code) return {}
   return { opacity: 0.4 }
 }
 

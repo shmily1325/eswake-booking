@@ -5,7 +5,9 @@ import { ShopDetail } from './ShopDetail'
 import { ShopCart } from './ShopCart'
 
 /**
- * 商城所有 `/shop/*` 路由的單一進入點。
+ * 商城路由進入點。
+ * - 一般網域：掛在 `/shop/*`
+ * - shop 子網域：掛在 `/*`（根路徑即首頁）
  */
 export default function ShopApp() {
   return (

@@ -1,4 +1,4 @@
-import type { ActivityCode, LiffBookingFormState, SkillLevel, TimePreference } from './types'
+import type { ActivityChoice, ActivityCode, LiffBookingFormState, SkillLevel, TimePreference } from './types'
 import { ACTIVITY_COMPARISON_INTRO } from './liffBookingContent'
 
 export interface ActivityInfo {
@@ -106,6 +106,13 @@ export const PRICING_EDUCATION = {
 
 export const MAX_PREFERRED_DATES = 3
 
+export const BOTH_ACTIVITY_SHORT = '兩個一起'
+export const BOTH_ACTIVITY_LABEL = `${BOTH_ACTIVITY_SHORT}（快艇衝浪 + 寬板滑水）`
+
+export function isBothActivities(code: ActivityChoice | null | undefined): code is 'BOTH' {
+  return code === 'BOTH'
+}
+
 export function getActivityInfo(code: ActivityCode): ActivityInfo {
   return ACTIVITY_OPTIONS.find(a => a.code === code)!
 }
@@ -120,7 +127,8 @@ export function isLiffBookEnabled(): boolean {
   return true
 }
 
-export function activityDisplayName(code: ActivityCode): string {
+export function activityDisplayName(code: ActivityChoice): string {
+  if (code === 'BOTH') return BOTH_ACTIVITY_LABEL
   const a = getActivityInfo(code)
   return `${a.labelZh}（${a.label}）`
 }

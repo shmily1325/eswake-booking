@@ -52,7 +52,7 @@ export function getShopBaseUrl(): string {
 export function buildProductUrl(productId: string): string {
   const base = getShopBaseUrl()
   if (!base) return ''
-  return `${base}/shop/${productId}`
+  return `${base}/${productId}`
 }
 
 /**

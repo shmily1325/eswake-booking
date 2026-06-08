@@ -83,6 +83,7 @@ import { LiffBook } from './pages/liff/book/LiffBook'
 const ShopApp = lazy(() => import('./pages/shop/ShopApp'))
 import { ClickTrackProvider } from './components/ClickTrackProvider'
 import { isAllowedUser } from './utils/auth'
+import { isShopSubdomain } from './pages/shop/lib/shopPaths'
 
 function AppContent() {
   const { user, loading } = useAuth()
@@ -221,29 +222,45 @@ function App() {
     return null
   }
 
+  const shopOnly = isShopSubdomain()
+
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <Routes>
-          {/* LIFF 頁面不需要系統登入驗證 */}
-          <Route path="/liff" element={<LiffMyBookings />} />
-          <Route path="/liff/book" element={<LiffBook />} />
-          {/* 商城完全公開、無需登入；整包 lazy load，匿名訪客不必下載後台 JS */}
-          <Route
-            path="/shop/*"
-            element={
-              <Suspense fallback={<ShopChunkFallback />}>
-                <ShopApp />
-              </Suspense>
-            }
-          />
-          {/* 其他頁面需要登入驗證 */}
-          <Route path="*" element={
-            <AuthProvider>
-              <AppContent />
-            </AuthProvider>
-          } />
-        </Routes>
+        {shopOnly ? (
+          /* shop.eswakeschool.com：只載入商城，根路徑即首頁 */
+          <Routes>
+            <Route
+              path="/*"
+              element={
+                <Suspense fallback={<ShopChunkFallback />}>
+                  <ShopApp />
+                </Suspense>
+              }
+            />
+          </Routes>
+        ) : (
+          <Routes>
+            {/* LIFF 頁面不需要系統登入驗證 */}
+            <Route path="/liff" element={<LiffMyBookings />} />
+            <Route path="/liff/book" element={<LiffBook />} />
+            {/* 商城完全公開、無需登入；整包 lazy load，匿名訪客不必下載後台 JS */}
+            <Route
+              path="/shop/*"
+              element={
+                <Suspense fallback={<ShopChunkFallback />}>
+                  <ShopApp />
+                </Suspense>
+              }
+            />
+            {/* 其他頁面需要登入驗證 */}
+            <Route path="*" element={
+              <AuthProvider>
+                <AppContent />
+              </AuthProvider>
+            } />
+          </Routes>
+        )}
       </BrowserRouter>
     </ErrorBoundary>
   )
