@@ -50,8 +50,9 @@ export function BookEssentialsPanel({ memberRate = false, selectedActivity = nul
         <div style={colStyle('WB', selectedActivity)}>${firstTimeUnitPrice('WB').toLocaleString()}</div>
       </div>
       <div style={{ fontSize: 10, color: '#bbb', marginBottom: 12, lineHeight: 1.45 }}>
-        非初學 快艇 ${wsNonBeginner.price.toLocaleString()}/{wsNonBeginner.blockMin}分 · 寬板 ${wbNonBeginner.price.toLocaleString()}/{wbNonBeginner.blockMin}分
+        非初學 大船 ${wsNonBeginner.price.toLocaleString()}/{wsNonBeginner.blockMin}分 · 小船 ${wbNonBeginner.price.toLocaleString()}/{wbNonBeginner.blockMin}分
         {memberRate ? ' · 已套用會員價' : ' · 會員另有優惠'}
+        <span style={{ display: 'block', marginTop: 2 }}>兩個一起固定大船，費率同大船</span>
       </div>
 
       <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, color: '#333' }}>② 船</div>

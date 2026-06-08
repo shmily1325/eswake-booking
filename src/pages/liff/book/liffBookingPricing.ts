@@ -49,69 +49,27 @@ export function computePriceEstimate(
   const beginners = state.beginnerCount
   const experienced = Math.max(0, state.headcount - beginners)
   const memberRate = isMemberForPricing(member?.membership_type)
-
-  if (activity === 'BOTH') {
-    const detailLines = ['船型：大船（兩項皆需大船）']
-    let boatTotal = 0
-    const tierLabel = BOTH_ACTIVITY_SHORT
-
-    if (beginners > 0) {
-      detailLines.push(
-        `初學 ${beginners} 位 · 兩項分配時數依現場安排（衝浪 $${firstTimeUnitPrice('WS').toLocaleString()}／寬板 $${firstTimeUnitPrice('WB').toLocaleString()} 起）`,
-      )
-    }
-
-    if (experienced > 0) {
-      const expMinutes = experienced * 30
-      const { blockMin, price } = sessionBlockRate('big', memberRate)
-      const blocks = estimateSessionBlocks(expMinutes, blockMin)
-      boatTotal += blocks * price
-      detailLines.push(
-        `非初學 ${experienced} 位 · 約 ${blocks} × ${blockMin} 分 × $${price.toLocaleString()}（大船${memberRate ? '會員' : '非會員'}，時數依分配）`,
-      )
-    }
-
-    let coachLine: PriceEstimate['coachLine'] = null
-    let coachExtra = 0
-    if (state.coachChoice === 'designated' && state.coachId) {
-      const coach = coaches.find(c => c.id === state.coachId)
-      if (coach?.designated_lesson_price_30min) {
-        coachExtra = priceDesignatedLesson(coach.designated_lesson_price_30min, minutes)
-        coachLine = { coachName: coach.name, amount: coachExtra }
-        detailLines.push(`指定 ${coach.name} +$${coachExtra.toLocaleString()}`)
-      }
-    }
-
-    const total = boatTotal + coachExtra
-    const allBeginners = beginners > 0 && experienced === 0
-
-    return {
-      durationMin: minutes,
-      durationLabel,
-      tierLabel,
-      detailLines,
-      coachLine,
-      totalMin: total,
-      totalMax: total,
-      totalLabel: allBeginners ? '待小編估價' : total > 0 ? `$${total.toLocaleString()} 起` : '待小編估價',
-      disclaimer: '兩個一起時，實際費用依現場分配時數為準',
-    }
-  }
-
   const boatTier = inferBoatTier(activity, state.headcount)
-  const detailLines: string[] = [`船型：${boatTierLabel(boatTier)}`]
+  /** 兩個一起固定大船，初學以 G21／黑豹 初次體驗價計 */
+  const firstTimeActivity: 'WB' | 'WS' = activity === 'BOTH' ? 'WS' : activity
+
+  const detailLines: string[] = [
+    activity === 'BOTH'
+      ? `船型：大船（${BOTH_ACTIVITY_SHORT}）`
+      : `船型：${boatTierLabel(boatTier)}`,
+  ]
   let boatTotal = 0
   let tierLabel = memberRate ? '會員價' : '非會員價'
 
   if (beginners > 0) {
-    const unit = firstTimeUnitPrice(activity)
+    const unit = firstTimeUnitPrice(firstTimeActivity)
     const ftSub = unit * beginners
     boatTotal += ftSub
     detailLines.push(
       `初學 ${beginners} 位 × $${unit.toLocaleString()}（初次體驗）`,
     )
     if (beginners === state.headcount) {
-      tierLabel = '初次體驗'
+      tierLabel = activity === 'BOTH' ? BOTH_ACTIVITY_SHORT : '初次體驗'
     }
   }
 
@@ -157,7 +115,9 @@ export function computePriceEstimate(
     totalLabel: `$${total.toLocaleString()}`,
     disclaimer: beginners > 0 && experienced > 0
       ? '混合初學／非初學之實際費用依現場排班為準'
-      : '實際費用依現場排班為準',
+      : activity === 'BOTH'
+        ? '兩個一起需大船，時數分配依現場排班為準'
+        : '實際費用依現場排班為準',
   }
 }
 
