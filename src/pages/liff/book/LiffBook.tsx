@@ -12,6 +12,7 @@ import { BookStepHeader } from './BookStepHeader'
 import { BookContextTips } from './BookContextTips'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import { BookStaffHint } from './BookStaffHint'
+import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import type {
   CoachOption,
   LiffBookingFormState,
@@ -287,6 +288,7 @@ export function LiffBook() {
                         width: '100%',
                       }}
                     >
+                      <BookActivityIcon code={opt.code} size={64} style={{ margin: '0 auto 8px' }} />
                       <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>{opt.labelZh}</div>
                       <div style={{ fontSize: 11, color: '#888', marginTop: 4, lineHeight: 1.35 }}>{opt.tagline}</div>
                     </button>
@@ -314,6 +316,7 @@ export function LiffBook() {
                 setForm(prev => ({ ...prev, activity: 'BOTH' }))
               }}
             >
+              <BookBothIcons size={36} style={{ marginBottom: 6 }} />
               <div style={{ fontSize: 15, fontWeight: 700 }}>{BOTH_ACTIVITY_SHORT}</div>
               <div style={{ fontSize: 11, color: form.activity === 'BOTH' ? 'rgba(255,255,255,0.85)' : '#888', marginTop: 4 }}>
                 快艇衝浪 + 寬板滑水 · 需大船
@@ -458,12 +461,14 @@ export function LiffBook() {
           <>
             <div style={{ ...bookCard, border: '2px solid #4a4a4a' }}>
               {isBothActivities(form.activity) ? (
-                <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>
-                  {BOTH_ACTIVITY_SHORT}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <BookBothIcons size={32} style={{ margin: 0 }} />
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>{BOTH_ACTIVITY_SHORT}</div>
                 </div>
               ) : selectedActivity ? (
-                <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>
-                  {selectedActivity.labelZh}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <BookActivityIcon code={selectedActivity.code} size={40} style={{ margin: 0 }} />
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>{selectedActivity.labelZh}</div>
                 </div>
               ) : null}
               <div style={{ fontSize: 14, lineHeight: 1.9, color: '#444' }}>
