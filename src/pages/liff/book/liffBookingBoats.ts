@@ -1,4 +1,4 @@
-import type { ActivityChoice } from './types'
+import type { ActivityChoice, ActivityCode } from './types'
 
 export type BoatTier = 'small' | 'big'
 
@@ -44,9 +44,20 @@ export function boatTierLabel(tier: BoatTier): string {
 }
 
 export function activityBoatNote(activity: ActivityChoice): string {
-  if (activity === 'WS' || activity === 'BOTH') return `僅大船 · 最多 ${BOAT_BIG_MAX} 人`
-  return `小船 ≤${BOAT_SMALL_MAX} 人 · 大船 ≤${BOAT_BIG_MAX} 人`
+  if (activity === 'WS') return `僅大船 · 最多 ${BOAT_BIG_MAX} 人`
+  if (activity === 'BOTH') return `固定大船 · 最多 ${BOAT_BIG_MAX} 人`
+  return `小船或大船 · ≤${BOAT_SMALL_MAX} / ${BOAT_BIG_MAX} 人`
 }
+
+/** Step 1 項目卡片上的船型標籤 */
+export function step1BoatChip(activity: ActivityCode | 'BOTH'): string {
+  if (activity === 'WS') return '僅大船'
+  if (activity === 'WB') return '小船或大船'
+  return '固定大船'
+}
+
+/** Step 1 底部一行對照 */
+export const STEP1_BOAT_SUMMARY = `寬板 ≤${BOAT_SMALL_MAX} 人可小船 · 7 人以上用大船 · 衝浪僅大船`
 
 /** Step 2：依目前選項顯示會用哪種船 */
 export function describeBoatForBooking(activity: ActivityChoice, headcount: number): string {

@@ -7,7 +7,7 @@ import {
   LIFF_BOOK_GUEST_PRICING_ONLY,
 } from './liffBookingConfig'
 import { firstTimeUnitPrice } from './liffBookingPrices'
-import { BOAT_BIG_MAX, BOAT_SMALL_MAX } from './liffBookingBoats'
+import { step1BoatChip, STEP1_BOAT_SUMMARY } from './liffBookingBoats'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import { bookCard } from './bookStyles'
@@ -33,7 +33,7 @@ function activityCardStyle(code: ActivityCode | 'BOTH', selected: ActivityChoice
     opacity: dimmed ? 0.45 : 1,
     overflow: 'hidden',
     transition: 'opacity 0.15s, border-color 0.15s',
-    ...(isBoth ? { width: '100%', marginTop: 8, marginBottom: 12 } : {}),
+    ...(isBoth ? { width: '100%', marginTop: 8, marginBottom: 10 } : {}),
   }
 }
 
@@ -47,16 +47,16 @@ const selectArea: CSSProperties = {
   textAlign: 'left',
 }
 
-function boatCardStyle(): CSSProperties {
-  return {
-    padding: '9px 10px',
-    borderRadius: 10,
-    background: '#fafafa',
-    border: '1px solid #ececec',
-    fontSize: 12,
-    lineHeight: 1.45,
-    color: '#444',
-  }
+const boatChip: CSSProperties = {
+  display: 'inline-block',
+  marginTop: 5,
+  padding: '2px 7px',
+  borderRadius: 999,
+  background: '#f0f0f0',
+  fontSize: 10,
+  fontWeight: 600,
+  color: '#666',
+  lineHeight: 1.4,
 }
 
 export function BookEssentialsPanel({ memberRate = false, value, onChange }: BookEssentialsPanelProps) {
@@ -92,11 +92,12 @@ export function BookEssentialsPanel({ memberRate = false, value, onChange }: Boo
           return (
             <div key={code} style={activityCardStyle(code, value)}>
               <button type="button" style={selectArea} onClick={() => pick(code)} aria-pressed={selected}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                   <BookActivityIcon code={code} size={28} style={{ margin: 0 }} />
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>{info.labelZh}</div>
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1 }}>
+                <span style={boatChip}>{step1BoatChip(code)}</span>
+                <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1, marginTop: 6 }}>
                   ${firstTimeUnitPrice(code).toLocaleString()}
                 </div>
                 <div style={{ fontSize: 10, color: '#aaa', marginTop: 4, lineHeight: 1.4 }}>
@@ -119,30 +120,31 @@ export function BookEssentialsPanel({ memberRate = false, value, onChange }: Boo
           <BookBothIcons size={28} style={{ margin: 0, flexShrink: 0 }} />
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#222' }}>{BOTH_ACTIVITY_SHORT}</div>
-            <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>快艇衝浪 + 寬板滑水 · 大船</div>
+            <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>快艇衝浪 + 寬板滑水</div>
+            <span style={{ ...boatChip, marginTop: 5 }}>{step1BoatChip('BOTH')}</span>
           </div>
         </div>
       </button>
 
-      <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#999', marginBottom: 6, letterSpacing: '0.02em' }}>
-          船型
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <div style={boatCardStyle()}>
-            <div style={{ fontWeight: 600, color: '#333', marginBottom: 2 }}>小船</div>
-            <div style={{ fontSize: 11, color: '#888' }}>最多 {BOAT_SMALL_MAX} 人 · 僅寬板滑水</div>
-          </div>
-          <div style={boatCardStyle()}>
-            <div style={{ fontWeight: 600, color: '#333', marginBottom: 2 }}>大船</div>
-            <div style={{ fontSize: 11, color: '#888' }}>最多 {BOAT_BIG_MAX} 人 · 兩項皆可</div>
-          </div>
-        </div>
-        <div style={{ fontSize: 10, color: '#bbb', marginTop: 8, lineHeight: 1.45 }}>
-          {LIFF_BOOK_GUEST_PRICING_ONLY ? '非初學價格詳見「更多：G23 · FAQ」' : null}
-          {LIFF_BOOK_GUEST_PRICING_ONLY ? <span style={{ margin: '0 4px' }}>·</span> : null}
-          {memberRate ? '已套用會員價' : '會員另有優惠'}
-        </div>
+      <div
+        style={{
+          fontSize: 10,
+          color: '#888',
+          lineHeight: 1.55,
+          padding: '8px 10px',
+          borderRadius: 8,
+          background: '#f7f7f7',
+          marginTop: 2,
+        }}
+      >
+        {STEP1_BOAT_SUMMARY}
+        <div style={{ color: '#bbb', marginTop: 4 }}>填人數後會顯示實際船型</div>
+      </div>
+
+      <div style={{ fontSize: 10, color: '#bbb', marginTop: 8, lineHeight: 1.45 }}>
+        {LIFF_BOOK_GUEST_PRICING_ONLY ? '非初學價格詳見「更多：G23 · FAQ」' : null}
+        {LIFF_BOOK_GUEST_PRICING_ONLY ? <span style={{ margin: '0 4px' }}>·</span> : null}
+        {memberRate ? '已套用會員價' : '會員另有優惠'}
       </div>
     </div>
   )
