@@ -1,4 +1,4 @@
-import type { ActivityChoice, ActivityCode } from './types'
+import type { ActivityChoice, ActivityCode, BoatPreference } from './types'
 
 export type BoatTier = 'small' | 'big'
 
@@ -33,10 +33,25 @@ export function maxHeadcount(_activity: ActivityChoice): number {
   return BOAT_BIG_MAX
 }
 
-/** WS／兩個一起 只能大船；WB 7 人以上需大船，否則小船 */
-export function inferBoatTier(activity: ActivityChoice, headcount: number): BoatTier {
+/** WS／兩個一起固定大船；WB 7 人以上需大船，否則依 boatPreference */
+export function resolveBoatTier(
+  activity: ActivityChoice,
+  headcount: number,
+  boatPreference: BoatPreference | null,
+): BoatTier {
   if (activity === 'WS' || activity === 'BOTH') return 'big'
-  return headcount > BOAT_SMALL_MAX ? 'big' : 'small'
+  if (headcount > BOAT_SMALL_MAX) return 'big'
+  if (boatPreference === 'big') return 'big'
+  return 'small'
+}
+
+/** @deprecated 請改用 resolveBoatTier */
+export function inferBoatTier(activity: ActivityChoice, headcount: number): BoatTier {
+  return resolveBoatTier(activity, headcount, headcount > BOAT_SMALL_MAX ? 'big' : 'small')
+}
+
+export function wbBoatForcedBig(headcount: number, boatPreference: BoatPreference | null): boolean {
+  return headcount > BOAT_SMALL_MAX && boatPreference === 'small'
 }
 
 export function boatTierLabel(tier: BoatTier): string {
@@ -57,16 +72,23 @@ export function step1BoatChip(activity: ActivityCode | 'BOTH'): string {
 }
 
 /** Step 1 底部一行對照 */
-export const STEP1_BOAT_SUMMARY = `寬板 ≤${BOAT_SMALL_MAX} 人可小船 · 7 人以上用大船 · 衝浪僅大船`
+export const STEP1_BOAT_SUMMARY = `寬板可選小船（較便宜）或大船（與衝浪同價）· 7 人以上用大船`
 
 /** Step 2：依目前選項顯示會用哪種船 */
-export function describeBoatForBooking(activity: ActivityChoice, headcount: number): string {
-  const tier = inferBoatTier(activity, headcount)
+export function describeBoatForBooking(
+  activity: ActivityChoice,
+  headcount: number,
+  boatPreference: BoatPreference | null = null,
+): string {
+  const tier = resolveBoatTier(activity, headcount, boatPreference)
   if (activity === 'BOTH') {
     return `大船（兩個一起 · 最多 ${BOAT_BIG_MAX} 人）`
   }
   if (activity === 'WS') {
     return `大船（最多 ${BOAT_BIG_MAX} 人）`
+  }
+  if (wbBoatForcedBig(headcount, boatPreference)) {
+    return `大船（${headcount} 人 · 7 人以上需大船）`
   }
   if (tier === 'big') {
     return `大船（${headcount} 人，最多 ${BOAT_BIG_MAX} 人）`

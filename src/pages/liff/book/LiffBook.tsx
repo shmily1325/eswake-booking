@@ -29,6 +29,7 @@ import {
   BOTH_ACTIVITY_SHORT,
   BEGINNER_LESSON_NOTE,
   isLiffBookEnabled,
+  syncActivityChoice,
 } from './liffBookingConfig'
 import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
 import { bookMemberRate } from './liffBookingPrices'
@@ -51,6 +52,7 @@ import { liffTrack } from '../track'
 
 const INITIAL_STATE: LiffBookingFormState = {
   activity: null,
+  boatPreference: null,
   skillLevel: 'first_time',
   headcount: 1,
   beginnerCount: 1,
@@ -177,7 +179,8 @@ export function LiffBook() {
 
   const canNext = (): boolean => {
     switch (step) {
-      case 1: return form.activity != null
+      case 1:
+        return form.activity != null && (form.activity !== 'WB' || form.boatPreference != null)
       case 2: return form.beginnerCount != null
       case 3: {
         if (!pickDate && form.preferredDates.length === 0) return false
@@ -265,7 +268,9 @@ export function LiffBook() {
           <BookEssentialsPanel
             memberRate={memberRate}
             value={form.activity}
-            onChange={code => setForm(prev => ({ ...prev, activity: code }))}
+            boatPreference={form.boatPreference}
+            onChange={code => setForm(prev => ({ ...prev, ...syncActivityChoice(code) }))}
+            onBoatPreferenceChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
           />
         )}
 

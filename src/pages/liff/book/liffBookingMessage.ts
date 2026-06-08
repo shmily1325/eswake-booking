@@ -6,6 +6,7 @@ import {
   activityDisplayName,
   formatBeginnerCount,
 } from './liffBookingConfig'
+import { boatTierLabel, resolveBoatTier } from './liffBookingBoats'
 import {
   computePriceEstimate,
   skillLabel,
@@ -48,6 +49,12 @@ export function renderBookingInquiryMessage(
     lines.push(`幾位初學：${formatBeginnerCount(state.beginnerCount)}`)
   }
   lines.push(`預約項目：${state.activity ? activityDisplayName(state.activity) : '—'}`)
+  if (state.activity && state.activity !== 'BOTH') {
+    const tier = resolveBoatTier(state.activity, state.headcount, state.boatPreference)
+    lines.push(`船型：${boatTierLabel(tier)}`)
+  } else if (state.activity === 'BOTH') {
+    lines.push('船型：大船')
+  }
   lines.push(`是否是第一次滑：${skillLabel(state.skillLevel)}`)
 
   lines.push('希望預約的日期及時間：')

@@ -1,6 +1,6 @@
 import { infoBox, warnBox } from './bookStyles'
 import type { LiffBookingFormState, TimePreference } from './types'
-import { describeBoatForBooking } from './liffBookingBoats'
+import { describeBoatForBooking, wbBoatForcedBig } from './liffBookingBoats'
 import { BOAT_COMFORT_NOTE, BOOKING_REMINDERS } from './liffBookingReminders'
 
 interface BookContextTipsProps {
@@ -14,7 +14,13 @@ export function BookContextTips({ step, form, pickTimePref }: BookContextTipsPro
   const items: { text: string; tone: 'info' | 'warn' }[] = []
 
   if (step === 2 && form.activity && form.headcount >= 1) {
-    items.push({ text: describeBoatForBooking(form.activity, form.headcount), tone: 'info' })
+    items.push({
+      text: describeBoatForBooking(form.activity, form.headcount, form.boatPreference),
+      tone: 'info',
+    })
+    if (wbBoatForcedBig(form.headcount, form.boatPreference)) {
+      items.push({ text: '7 人以上需大船，已改依大船計價', tone: 'warn' })
+    }
     if (form.headcount > 8) {
       items.push({ text: BOAT_COMFORT_NOTE, tone: 'info' })
     }

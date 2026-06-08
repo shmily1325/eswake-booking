@@ -6,19 +6,21 @@ import {
   getActivityInfo,
   LIFF_BOOK_GUEST_PRICING_ONLY,
 } from './liffBookingConfig'
-import { firstTimeUnitPrice } from './liffBookingPrices'
+import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { step1BoatChip, STEP1_BOAT_SUMMARY } from './liffBookingBoats'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import { BookVideoPlayer } from './BookVideoPlayer'
-import { bookCard } from './bookStyles'
-import type { ActivityChoice, ActivityCode } from './types'
+import { bookCard, chipBtn } from './bookStyles'
+import type { ActivityChoice, ActivityCode, BoatPreference } from './types'
 
 const ACTIVITY_CODES: ActivityCode[] = ['WS', 'WB']
 
 interface BookEssentialsPanelProps {
   memberRate?: boolean
   value: ActivityChoice | null
+  boatPreference: BoatPreference | null
   onChange: (code: ActivityChoice) => void
+  onBoatPreferenceChange: (pref: BoatPreference) => void
 }
 
 function activityCardStyle(code: ActivityCode | 'BOTH', selected: ActivityChoice | null): CSSProperties {
@@ -59,10 +61,29 @@ const boatChip: CSSProperties = {
   lineHeight: 1.4,
 }
 
-export function BookEssentialsPanel({ memberRate = false, value, onChange }: BookEssentialsPanelProps) {
+const boatOptionBtn = (selected: boolean): CSSProperties => ({
+  ...chipBtn(selected),
+  flex: 1,
+  padding: '10px 8px',
+  textAlign: 'center',
+  lineHeight: 1.35,
+})
+
+export function BookEssentialsPanel({
+  memberRate = false,
+  value,
+  boatPreference,
+  onChange,
+  onBoatPreferenceChange,
+}: BookEssentialsPanelProps) {
   const pick = (code: ActivityChoice) => {
     triggerHaptic('light')
     onChange(code)
+  }
+
+  const pickBoat = (pref: BoatPreference) => {
+    triggerHaptic('light')
+    onBoatPreferenceChange(pref)
   }
 
   return (
@@ -97,9 +118,19 @@ export function BookEssentialsPanel({ memberRate = false, value, onChange }: Boo
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>{info.labelZh}</div>
                 </div>
                 <span style={boatChip}>{step1BoatChip(code)}</span>
-                <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1, marginTop: 6 }}>
-                  ${firstTimeUnitPrice(code).toLocaleString()}
-                </div>
+                {code === 'WS' && (
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1, marginTop: 6 }}>
+                    ${FIRST_TIME_BIG_BOAT.toLocaleString()}
+                  </div>
+                )}
+                {code === 'WB' && selected && boatPreference && (
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1, marginTop: 6 }}>
+                    ${(boatPreference === 'small' ? FIRST_TIME_WB_SMALL : FIRST_TIME_BIG_BOAT).toLocaleString()}
+                  </div>
+                )}
+                {code === 'WB' && selected && !boatPreference && (
+                  <div style={{ fontSize: 11, color: '#999', marginTop: 6 }}>請選擇船型</div>
+                )}
                 <div style={{ fontSize: 10, color: '#aaa', marginTop: 4, lineHeight: 1.4 }}>
                   {BEGINNER_LESSON_NOTE}
                 </div>
@@ -109,6 +140,45 @@ export function BookEssentialsPanel({ memberRate = false, value, onChange }: Boo
           )
         })}
       </div>
+
+      {value === 'WB' && (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: '12px',
+            borderRadius: 10,
+            background: '#f7f7f7',
+            border: '1px solid #ececec',
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#444', marginBottom: 8 }}>坐什麼船？</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              style={boatOptionBtn(boatPreference === 'small')}
+              onClick={() => pickBoat('small')}
+              aria-pressed={boatPreference === 'small'}
+            >
+              <div style={{ fontSize: 12, fontWeight: 600 }}>小船</div>
+              <div style={{ fontSize: 17, fontWeight: 700, marginTop: 2 }}>${FIRST_TIME_WB_SMALL.toLocaleString()}</div>
+              <div style={{ fontSize: 10, color: '#999', marginTop: 2 }}>較便宜</div>
+            </button>
+            <button
+              type="button"
+              style={boatOptionBtn(boatPreference === 'big')}
+              onClick={() => pickBoat('big')}
+              aria-pressed={boatPreference === 'big'}
+            >
+              <div style={{ fontSize: 12, fontWeight: 600 }}>大船</div>
+              <div style={{ fontSize: 17, fontWeight: 700, marginTop: 2 }}>${FIRST_TIME_BIG_BOAT.toLocaleString()}</div>
+              <div style={{ fontSize: 10, color: '#999', marginTop: 2 }}>與衝浪同價</div>
+            </button>
+          </div>
+          <div style={{ fontSize: 10, color: '#aaa', marginTop: 8, lineHeight: 1.45 }}>
+            7 人以上需大船
+          </div>
+        </div>
+      )}
 
       <button
         type="button"
@@ -122,6 +192,9 @@ export function BookEssentialsPanel({ memberRate = false, value, onChange }: Boo
             <div style={{ fontSize: 14, fontWeight: 700, color: '#222' }}>{BOTH_ACTIVITY_SHORT}</div>
             <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>快艇衝浪 + 寬板滑水</div>
             <span style={{ ...boatChip, marginTop: 5 }}>{step1BoatChip('BOTH')}</span>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#111', marginTop: 6 }}>
+              ${FIRST_TIME_BIG_BOAT.toLocaleString()}
+            </div>
           </div>
         </div>
       </button>
@@ -138,7 +211,6 @@ export function BookEssentialsPanel({ memberRate = false, value, onChange }: Boo
         }}
       >
         {STEP1_BOAT_SUMMARY}
-        <div style={{ color: '#bbb', marginTop: 4 }}>填人數後會顯示實際船型</div>
       </div>
 
       <div style={{ fontSize: 10, color: '#bbb', marginTop: 8, lineHeight: 1.45 }}>

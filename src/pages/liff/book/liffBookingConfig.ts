@@ -90,6 +90,12 @@ export function syncBookingPeople(
   }
 }
 
+/** 選項目時同步船型（寬板需再選小船／大船） */
+export function syncActivityChoice(code: ActivityChoice): Pick<LiffBookingFormState, 'activity' | 'boatPreference'> {
+  if (code === 'WB') return { activity: code, boatPreference: null }
+  return { activity: code, boatPreference: 'big' }
+}
+
 export const TIME_PREFERENCE_OPTIONS: { value: TimePreference; label: string }[] = [
   { value: 'morning', label: '上午' },
   { value: 'afternoon', label: '下午' },

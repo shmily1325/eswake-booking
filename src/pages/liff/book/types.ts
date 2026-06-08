@@ -10,8 +10,12 @@ export interface PreferredDate {
   timePreference: TimePreference
 }
 
+export type BoatPreference = 'small' | 'big'
+
 export interface LiffBookingFormState {
   activity: ActivityChoice | null
+  /** 寬板 ≤6 人時選小船或大船；其餘項目固定大船 */
+  boatPreference: BoatPreference | null
   skillLevel: SkillLevel | null
   headcount: number
   /** 幾位初學（0～headcount） */
