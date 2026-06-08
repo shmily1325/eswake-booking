@@ -10,7 +10,6 @@ import { BookEstimateCard } from './BookEstimateCard'
 import { BookInfoHub } from './BookInfoHub'
 import { BookStepHeader } from './BookStepHeader'
 import { BookContextTips } from './BookContextTips'
-import { BookActivityPicker } from './BookActivityPicker'
 import { BookStaffHint } from './BookStaffHint'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import type {
@@ -32,8 +31,8 @@ import {
   isLiffBookEnabled,
 } from './liffBookingConfig'
 import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
+import { bookMemberRate } from './liffBookingPrices'
 import { computePriceEstimate } from './liffBookingPricing'
-import { isMemberForPricing } from './liffBookingPrices'
 import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
 import {
   bookCard,
@@ -231,7 +230,7 @@ export function LiffBook() {
 
   const selectedActivity =
     form.activity && !isBothActivities(form.activity) ? getActivityInfo(form.activity) : null
-  const memberRate = isMemberForPricing(member?.membership_type)
+  const memberRate = bookMemberRate(member?.membership_type)
   const nextLabel = step === totalSteps ? '用 LINE 送出' : step === 3 ? '確認' : '下一步'
 
   const infoHubBtnStyle = {
@@ -263,14 +262,11 @@ export function LiffBook() {
       <main style={{ padding: 16 }}>
         {/* Step 1: 玩什麼 */}
         {step === 1 && (
-          <>
-            <BookEssentialsPanel memberRate={memberRate} selectedActivity={form.activity} />
-
-            <BookActivityPicker
-              value={form.activity}
-              onChange={code => setForm(prev => ({ ...prev, activity: code }))}
-            />
-          </>
+          <BookEssentialsPanel
+            memberRate={memberRate}
+            value={form.activity}
+            onChange={code => setForm(prev => ({ ...prev, activity: code }))}
+          />
         )}
 
         {/* Step 2: 誰要滑 */}
@@ -293,20 +289,47 @@ export function LiffBook() {
             </div>
 
             <div>
-              <div style={fieldLabel}>其中幾位初學</div>
-              <div style={{ fontSize: 11, color: '#999', marginBottom: 10 }}>{BEGINNER_LESSON_NOTE}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {beginnerCountOptions(form.headcount).map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    style={chipBtn(form.beginnerCount === n)}
-                    onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: n }) }))}
-                  >
-                    {n === form.headcount ? '全部' : n === 0 ? '無' : formatBeginnerCount(n)}
-                  </button>
-                ))}
-              </div>
+              {form.headcount === 1 ? (
+                <>
+                  <div style={fieldLabel}>是否初學</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '12px 0' }}
+                      onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
+                    >
+                      初學
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '12px 0' }}
+                      onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
+                    >
+                      非初學
+                    </button>
+                  </div>
+                  {form.beginnerCount === 1 && (
+                    <div style={{ fontSize: 11, color: '#999', marginTop: 10 }}>{BEGINNER_LESSON_NOTE}</div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={fieldLabel}>其中幾位初學</div>
+                  <div style={{ fontSize: 11, color: '#999', marginBottom: 10 }}>{BEGINNER_LESSON_NOTE}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {beginnerCountOptions(form.headcount).map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        style={chipBtn(form.beginnerCount === n)}
+                        onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: n }) }))}
+                      >
+                        {n === form.headcount ? '全部' : n === 0 ? '無' : formatBeginnerCount(n)}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             {estimate && <BookEstimateCard estimate={estimate} />}

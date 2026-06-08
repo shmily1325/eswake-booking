@@ -5,7 +5,7 @@ import { boatTierLabel, inferBoatTier } from './liffBookingBoats'
 import {
   estimateSessionBlocks,
   firstTimeUnitPrice,
-  isMemberForPricing,
+  bookMemberRate,
   sessionBlockRate,
 } from './liffBookingPrices'
 
@@ -48,7 +48,7 @@ export function computePriceEstimate(
   const { minutes, label: durationLabel } = computeDuration(state)
   const beginners = state.beginnerCount
   const experienced = Math.max(0, state.headcount - beginners)
-  const memberRate = isMemberForPricing(member?.membership_type)
+  const memberRate = bookMemberRate(member?.membership_type)
   const boatTier = inferBoatTier(activity, state.headcount)
   /** 兩個一起固定大船，初學以 G21／黑豹 初次體驗價計 */
   const firstTimeActivity: 'WB' | 'WS' = activity === 'BOTH' ? 'WS' : activity

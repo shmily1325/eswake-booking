@@ -77,6 +77,11 @@ export function isMemberForPricing(membershipType: string | null | undefined): b
   return membershipType !== 'guest'
 }
 
+/** 預約表單估算用的會員價判斷 */
+export function bookMemberRate(membershipType: string | null | undefined): boolean {
+  return isMemberForPricing(membershipType)
+}
+
 export function estimateSessionBlocks(totalMinutes: number, blockMin: number): number {
   return Math.max(1, Math.ceil(totalMinutes / blockMin))
 }
