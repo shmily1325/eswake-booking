@@ -11,6 +11,7 @@ import { BookInfoHub } from './BookInfoHub'
 import { BookStepHeader } from './BookStepHeader'
 import { BookContextTips } from './BookContextTips'
 import { BookVideoPlayer } from './BookVideoPlayer'
+import { BookStaffHint } from './BookStaffHint'
 import type {
   CoachOption,
   LiffBookingFormState,
@@ -27,6 +28,7 @@ import {
   getActivityInfo,
   isBothActivities,
   BOTH_ACTIVITY_SHORT,
+  BEGINNER_LESSON_NOTE,
   isLiffBookEnabled,
 } from './liffBookingConfig'
 import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
@@ -68,7 +70,7 @@ function NotEnabledView() {
   return (
     <div style={{ ...bookPage, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ ...bookCard, maxWidth: 360, textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🏄</div>
+        <div style={{ fontSize: 40, marginBottom: 12, fontWeight: 700, color: '#444' }}>ES</div>
         <h1 style={{ fontSize: 18, margin: '0 0 8px' }}>預約表單尚未開放</h1>
         <p style={{ fontSize: 14, color: '#666', margin: 0 }}>請繼續使用 LINE 官方帳號填寫預約資訊。</p>
       </div>
@@ -103,7 +105,7 @@ export function LiffBook() {
   const [showInfoHub, setShowInfoHub] = useState(false)
   const [showCoachSection, setShowCoachSection] = useState(false)
   const [pickDate, setPickDate] = useState('')
-  const [pickTimePref, setPickTimePref] = useState<TimePreference>('any')
+  const [pickTimePref, setPickTimePref] = useState<TimePreference>('morning')
 
   useEffect(() => {
     if (step === 2 && form.beginnerCount == null) {
@@ -285,7 +287,6 @@ export function LiffBook() {
                         width: '100%',
                       }}
                     >
-                      <div style={{ fontSize: 32, marginBottom: 4 }}>{opt.emoji}</div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>{opt.labelZh}</div>
                       <div style={{ fontSize: 11, color: '#888', marginTop: 4, lineHeight: 1.35 }}>{opt.tagline}</div>
                     </button>
@@ -313,7 +314,7 @@ export function LiffBook() {
                 setForm(prev => ({ ...prev, activity: 'BOTH' }))
               }}
             >
-              <div style={{ fontSize: 15, fontWeight: 700 }}>🌊🏄 {BOTH_ACTIVITY_SHORT}</div>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{BOTH_ACTIVITY_SHORT}</div>
               <div style={{ fontSize: 11, color: form.activity === 'BOTH' ? 'rgba(255,255,255,0.85)' : '#888', marginTop: 4 }}>
                 快艇衝浪 + 寬板滑水 · 需大船
               </div>
@@ -342,6 +343,7 @@ export function LiffBook() {
 
             <div>
               <div style={fieldLabel}>其中幾位初學</div>
+              <div style={{ fontSize: 11, color: '#999', marginBottom: 10 }}>{BEGINNER_LESSON_NOTE}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {beginnerCountOptions(form.headcount).map(n => (
                   <button
@@ -457,17 +459,17 @@ export function LiffBook() {
             <div style={{ ...bookCard, border: '2px solid #4a4a4a' }}>
               {isBothActivities(form.activity) ? (
                 <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>
-                  🌊🏄 {BOTH_ACTIVITY_SHORT}
+                  {BOTH_ACTIVITY_SHORT}
                 </div>
               ) : selectedActivity ? (
                 <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>
-                  {selectedActivity.emoji} {selectedActivity.labelZh}
+                  {selectedActivity.labelZh}
                 </div>
               ) : null}
               <div style={{ fontSize: 14, lineHeight: 1.9, color: '#444' }}>
                 <div>{form.headcount} 人 · {form.beginnerCount != null ? (form.beginnerCount === form.headcount ? '全部初學' : form.beginnerCount === 0 ? '無初學' : formatBeginnerCount(form.beginnerCount)) : '—'}</div>
                 <div>
-                  📅 {(form.preferredDates.length ? form.preferredDates : commitSchedule()).map(p =>
+                  {(form.preferredDates.length ? form.preferredDates : commitSchedule()).map(p =>
                     `${p.date.slice(5).replace('-', '/')} ${TIME_PREFERENCE_OPTIONS.find(o => o.value === p.timePreference)?.label}`,
                   ).join('、')}
                 </div>
@@ -519,13 +521,15 @@ export function LiffBook() {
           </>
         )}
 
+        <BookStaffHint />
+
         {step <= 2 ? (
           <button
             type="button"
             onClick={() => { triggerHaptic('light'); setShowInfoHub(v => !v) }}
             style={infoHubBtnStyle}
           >
-            {showInfoHub ? '▲ 收合' : '📖 更多：G23 · FAQ · 交通'}
+            {showInfoHub ? '▲ 收合' : '更多：G23 · FAQ'}
           </button>
         ) : (
           <button

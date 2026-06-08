@@ -16,7 +16,7 @@ export function BookStaffHint() {
   }
 
   return (
-    <p style={{ fontSize: 11, color: '#aaa', textAlign: 'center', margin: '10px 0 0' }}>
+    <p style={{ fontSize: 11, color: '#aaa', textAlign: 'center', margin: '12px 0 4px' }}>
       不懂？
       <button
         type="button"

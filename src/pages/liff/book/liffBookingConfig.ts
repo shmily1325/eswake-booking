@@ -93,8 +93,10 @@ export function syncBookingPeople(
 export const TIME_PREFERENCE_OPTIONS: { value: TimePreference; label: string }[] = [
   { value: 'morning', label: '上午' },
   { value: 'afternoon', label: '下午' },
-  { value: 'any', label: '皆可' },
 ]
+
+/** 初學體驗時數說明（小編指定文案） */
+export const BEGINNER_LESSON_NOTE = '岸上10分+水上20分'
 
 export const PRICING_EDUCATION = {
   title: '費用怎麼算？',

@@ -2,7 +2,7 @@ export type ActivityCode = 'WB' | 'WS'
 /** 含「兩個一起」 */
 export type ActivityChoice = ActivityCode | 'BOTH'
 export type SkillLevel = 'first_time' | 'experienced'
-export type TimePreference = 'morning' | 'afternoon' | 'any'
+export type TimePreference = 'morning' | 'afternoon'
 export type CoachChoice = 'none' | 'designated'
 
 export interface PreferredDate {

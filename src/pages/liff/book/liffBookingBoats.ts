@@ -52,15 +52,15 @@ export function activityBoatNote(activity: ActivityChoice): string {
 export function describeBoatForBooking(activity: ActivityChoice, headcount: number): string {
   const tier = inferBoatTier(activity, headcount)
   if (activity === 'BOTH') {
-    return `🛥 大船（兩個一起 · 最多 ${BOAT_BIG_MAX} 人）`
+    return `大船（兩個一起 · 最多 ${BOAT_BIG_MAX} 人）`
   }
   if (activity === 'WS') {
-    return `🛥 大船（最多 ${BOAT_BIG_MAX} 人）`
+    return `大船（最多 ${BOAT_BIG_MAX} 人）`
   }
   if (tier === 'big') {
-    return `🛥 大船（${headcount} 人，最多 ${BOAT_BIG_MAX} 人）`
+    return `大船（${headcount} 人，最多 ${BOAT_BIG_MAX} 人）`
   }
-  return `🚤 小船（${headcount} 人，最多 ${BOAT_SMALL_MAX} 人）`
+  return `小船（${headcount} 人，最多 ${BOAT_SMALL_MAX} 人）`
 }
 
 export function isHeadcountValid(activity: ActivityChoice, headcount: number): boolean {

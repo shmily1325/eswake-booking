@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
+import { BEGINNER_LESSON_NOTE } from './liffBookingConfig'
 import { firstTimeUnitPrice, sessionBlockRate } from './liffBookingPrices'
 import { bookCard } from './bookStyles'
-import { BookStaffHint } from './BookStaffHint'
 import type { ActivityChoice, ActivityCode } from './types'
 
 const row: CSSProperties = {
@@ -44,7 +44,7 @@ export function BookEssentialsPanel({ memberRate = false, selectedActivity = nul
 
         <div style={labelCol}>
           <div>初學</div>
-          <div style={{ fontSize: 10, color: '#bbb' }}>含10分鐘岸上教學</div>
+          <div style={{ fontSize: 10, color: '#bbb' }}>{BEGINNER_LESSON_NOTE}</div>
         </div>
         <div style={colStyle('WS', selectedActivity)}>${firstTimeUnitPrice('WS').toLocaleString()}</div>
         <div style={colStyle('WB', selectedActivity)}>${firstTimeUnitPrice('WB').toLocaleString()}</div>
@@ -57,11 +57,9 @@ export function BookEssentialsPanel({ memberRate = false, selectedActivity = nul
 
       <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, color: '#333' }}>② 船</div>
       <div style={{ fontSize: 12, color: '#555', lineHeight: 1.45 }}>
-        🚤 小船 ≤6 · 僅寬板滑水<br />
-        🛥 大船 ≤10 · 兩項皆可
+        小船 ≤6 · 僅寬板滑水<br />
+        大船 ≤10 · 兩項皆可
       </div>
-
-      <BookStaffHint />
     </div>
   )
 }
