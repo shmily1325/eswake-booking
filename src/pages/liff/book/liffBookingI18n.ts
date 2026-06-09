@@ -257,8 +257,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       experienced: '已經滑過',
       experiencedNote: '20 分鐘計價',
       allFirstTime: '全部',
-      noneFirstTime: '0',
-      nFirstTime: n => `${n}`,
+      noneFirstTime: '0 位',
+      nFirstTime: n => `${n} 位`,
       experienceSummary: (headcount, beginnerCount) => {
         if (beginnerCount == null) return '—'
         if (beginnerCount === headcount) return '全部體驗'
@@ -619,7 +619,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       activityChip: {
         WS: 'Big boat only',
         BOTH: 'Big boat · mixed session',
-        WB: 'Small or big · your choice',
+        WB: 'Small or big boat',
       },
       step1Title: 'Boat preference',
       step1Hint: 'Solo riders welcome',
@@ -656,22 +656,23 @@ export function activityDisplayLabel(code: ActivityChoice, locale: BookLocale): 
   return activityDetailTitle(code, locale)
 }
 
-/** Step 1 segment／詳情：主標 + 副標，中英排版一致 */
+/** Step 1 segment：中文主標+英文副標；EN 主標+船型提示（activityChip） */
 export function activitySegmentLabels(
   code: 'WS' | 'WB' | 'BOTH',
   locale: BookLocale,
 ): { primary: string; secondary: string } {
   const current = BOOK_I18N[locale].step1.activities[code]
-  const alt = BOOK_I18N[locale === 'en' ? 'zh' : 'en'].step1.activities[code]
   return locale === 'en'
-    ? { primary: current.labelEn, secondary: alt.labelZh }
+    ? { primary: current.labelEn, secondary: BOOK_I18N.en.boat.activityChip[code] }
     : { primary: current.labelZh, secondary: current.labelEn }
 }
 
-/** Step 1 詳情標題：中文（English）／ English（中文） */
+/** Step 1 詳情標題：中文（English）；EN 僅主標 */
 export function activityDetailTitle(code: ActivityChoice, locale: BookLocale): string {
-  const { primary, secondary } = activitySegmentLabels(code, locale)
-  return `${primary}（${secondary}）`
+  const current = BOOK_I18N[locale].step1.activities[code]
+  return locale === 'en'
+    ? current.labelEn
+    : `${current.labelZh}（${current.labelEn}）`
 }
 
 export function activityTitleLabel(code: ActivityCode, locale: BookLocale): string {
