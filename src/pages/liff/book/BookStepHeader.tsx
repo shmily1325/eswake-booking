@@ -1,3 +1,4 @@
+import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { BookLocaleToggle, useBookLocale } from './BookLocaleContext'
 import { bookHeader, progressBar, progressFill } from './bookStyles'
 import { BOOK_TYPE as ty } from './bookTheme'
@@ -16,32 +17,12 @@ export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderPr
 
   return (
     <header style={bookHeader}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        marginBottom: 14,
-        gap: 8,
-      }}>
-        <div>
-          <div style={{ fontSize: ty.caption, fontWeight: 600, opacity: 0.8, letterSpacing: '0.05em' }}>
-            {s.header.brand}
-          </div>
-          <div style={{ fontSize: ty.title, fontWeight: 700, marginTop: 2, lineHeight: 1.2, opacity: 0.95 }}>
-            {s.header.title}
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-          <BookLocaleToggle />
-          <img
-            src="/logo_circle (white).png"
-            alt=""
-            width={36}
-            height={36}
-            style={{ objectFit: 'contain', opacity: 0.95 }}
-          />
-        </div>
-      </div>
+      <EsBrandLockup
+        brand={s.header.brand}
+        subtitle={s.header.title}
+        trailing={<BookLocaleToggle />}
+        style={{ marginBottom: 14 }}
+      />
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
         {s.steps.map(st => {

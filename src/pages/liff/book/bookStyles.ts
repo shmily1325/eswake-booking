@@ -8,11 +8,11 @@ export const bookPage: CSSProperties = {
 }
 
 export const bookHeader: CSSProperties = {
-  background: T.headerGrad,
+  background: T.headerBg,
   color: 'white',
   padding: '18px 16px 14px',
   paddingTop: 'calc(18px + env(safe-area-inset-top, 0px))',
-  boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
 }
 
 export const bookCard: CSSProperties = {
