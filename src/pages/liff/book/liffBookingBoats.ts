@@ -82,9 +82,9 @@ export function step1ActivityChip(
 ): string {
   if (activity === 'WS') return `大船 · ≤${BOAT_BIG_MAX}人`
   if (activity === 'BOTH') return `大船 · 兩項`
-  if (boatPreference === 'small') return `小船 · ≤${BOAT_SMALL_MAX}人`
+  if (boatPreference === 'small') return `小船 · 7+兩艘`
   if (boatPreference === 'big') return `大船 · ≤${BOAT_BIG_MAX}人`
-  return '小船／大船'
+  return '小船／大船 · 7+可2艘'
 }
 
 /** @deprecated 請改用 step1ActivityChip */

@@ -35,7 +35,10 @@ interface BookBoatPickerProps {
 
 export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps) {
   const title = variant === 'step1' ? '坐什麼船？' : '7 人以上怎麼安排？'
-  const smallCap = variant === 'largeGroup' ? '7人+' : `≤${BOAT_SMALL_MAX}人`
+  const smallCap =
+    variant === 'largeGroup'
+      ? `2 艘 · ${BOAT_SMALL_MAX + 1}～${BOAT_BIG_MAX}人`
+      : `≤${BOAT_SMALL_MAX}人 · 7+兩艘`
   const bigCap = `≤${BOAT_BIG_MAX}人`
 
   return (
@@ -54,6 +57,7 @@ export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps
           <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{smallCap}</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>
             ${FIRST_TIME_WB_SMALL.toLocaleString()}
+            <span style={{ fontSize: 10, fontWeight: 600 }}>／人</span>
           </div>
         </button>
         <button
@@ -66,6 +70,7 @@ export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps
           <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{bigCap}</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>
             ${FIRST_TIME_BIG_BOAT.toLocaleString()}
+            <span style={{ fontSize: 10, fontWeight: 600 }}>／人</span>
           </div>
         </button>
       </div>

@@ -99,11 +99,11 @@ function selectedPrice(
   boatPreference: BoatPreference | null,
 ): string | null {
   if (!selected) return null
-  if (code === 'WS' || code === 'BOTH') return `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
+  if (code === 'WS' || code === 'BOTH') return `$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人`
   if (code === 'WB') {
     if (!boatPreference) return null
     const n = boatPreference === 'small' ? FIRST_TIME_WB_SMALL : FIRST_TIME_BIG_BOAT
-    return `$${n.toLocaleString()}`
+    return `$${n.toLocaleString()}／人`
   }
   return null
 }
@@ -120,7 +120,7 @@ export function BookEssentialsPanel({
     onChange(code)
   }
 
-  const priceRange = `初學 $${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()} · ${STEP1_PRICE_RANGE_SUFFIX}`
+  const priceRange = `初學 $${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人 · ${STEP1_PRICE_RANGE_SUFFIX}`
 
   return (
     <div style={{ ...bookCard, marginBottom: 12, padding: '14px 14px 12px' }}>
@@ -168,7 +168,7 @@ export function BookEssentialsPanel({
               </div>
               <div style={tagline}>{activityTagline('BOTH')}</div>
               {value === 'BOTH' ? (
-                <div style={priceLine}>${FIRST_TIME_BIG_BOAT.toLocaleString()}</div>
+                <div style={priceLine}>${FIRST_TIME_BIG_BOAT.toLocaleString()}／人</div>
               ) : null}
             </div>
           </div>
