@@ -1,7 +1,20 @@
 /**
- * 預約表單專用綁定畫面（與會員專區 BindingForm 分離，不共用、不修改原元件）
+ * 預約表單專用綁定（未綁定會員可選；多數人略過以訪客填寫）
  */
+import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { liffTrack } from '../track'
+import {
+  liffBindingCard,
+  liffBindingShell,
+  liffGhostBtn,
+  liffInput,
+  liffLabel,
+  liffLineBtn,
+  liffPrimaryBtn,
+  liffSelect,
+  LIFF_THEME,
+  LIFF_TYPE,
+} from '../liffUiStyles'
 import { BookLocaleToggle, useBookLocale } from './BookLocaleContext'
 
 interface BookBindingGateProps {
@@ -55,15 +68,7 @@ export function BookBindingGate({
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%)',
-      padding: '20px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-    }}>
+    <div style={{ ...liffBindingShell, position: 'relative' }}>
       <BookLocaleToggle
         surface="header"
         style={{
@@ -72,57 +77,44 @@ export function BookBindingGate({
           right: 16,
         }}
       />
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '32px 24px',
-        maxWidth: '400px',
-        width: '100%',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img
-            src="/logo_circle (black).png"
-            alt="ES Wake Logo"
-            style={{
-              width: '80px',
-              height: '80px',
-              marginBottom: '16px',
-              objectFit: 'contain',
-              display: 'block',
-              marginLeft: 'auto',
-              marginRight: 'auto',
-            }}
-          />
-          <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#333', margin: '0 0 8px' }}>
-            {b.title}
-          </h1>
-          <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
-            {b.subtitle}
-          </p>
-        </div>
+      <div style={liffBindingCard}>
+        <EsBrandLockup
+          brand={s.header.brand}
+          subtitle={s.header.title}
+          variant="onLight"
+          align="center"
+          logoSize={48}
+          style={{ marginBottom: 8, justifyContent: 'center' }}
+        />
+        <p style={{
+          fontSize: LIFF_TYPE.body,
+          color: LIFF_THEME.muted,
+          margin: '0 0 24px',
+          textAlign: 'center',
+          lineHeight: 1.5,
+        }}>
+          {b.subtitle}
+        </p>
 
         {bindingError && (
           <div style={{
             background: '#fff2f0',
             border: '1px solid #ffccc7',
-            borderRadius: '8px',
+            borderRadius: '12px',
             padding: '12px 16px',
             marginBottom: '16px',
           }}>
-            <div style={{ fontSize: '14px', color: '#cf1322', marginBottom: '8px', fontWeight: '600' }}>
+            <div style={{ fontSize: LIFF_TYPE.body, color: '#cf1322', marginBottom: '8px', fontWeight: '600' }}>
               ❌ {bindingError}
             </div>
-            <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
+            <div style={{ fontSize: 13, color: LIFF_THEME.muted, lineHeight: '1.5' }}>
               {b.errorHelp}
             </div>
           </div>
         )}
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
-            {b.phone}
-          </label>
+          <label style={liffLabel}>{b.phone}</label>
           <input
             type="tel"
             value={phone}
@@ -131,27 +123,17 @@ export function BookBindingGate({
               setBindingError(null)
             }}
             placeholder={b.phonePh}
-            style={{
-              width: '100%',
-              padding: '14px',
-              border: bindingError ? '2px solid #ff4d4f' : '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '16px',
-              boxSizing: 'border-box',
-              outline: 'none',
-            }}
+            style={liffInput(!!bindingError)}
           />
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
-            {b.birthday}
-          </label>
+          <label style={liffLabel}>{b.birthday}</label>
           <div style={{ display: 'flex', gap: '8px' }}>
             <select
               value={birthYear}
               onChange={(e) => setBirthYear(e.target.value)}
-              style={{ flex: 1.2, padding: '14px 8px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '16px', background: 'white' }}
+              style={{ ...liffSelect, flex: 1.2 }}
             >
               <option value="">{b.year}</option>
               {Array.from({ length: 100 }, (_, i) => {
@@ -162,7 +144,7 @@ export function BookBindingGate({
             <select
               value={birthMonth}
               onChange={(e) => setBirthMonth(e.target.value)}
-              style={{ flex: 1, padding: '14px 8px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '16px', background: 'white' }}
+              style={liffSelect}
             >
               <option value="">{b.month}</option>
               {Array.from({ length: 12 }, (_, i) => (
@@ -174,7 +156,7 @@ export function BookBindingGate({
             <select
               value={birthDay}
               onChange={(e) => setBirthDay(e.target.value)}
-              style={{ flex: 1, padding: '14px 8px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '16px', background: 'white' }}
+              style={liffSelect}
             >
               <option value="">{b.day}</option>
               {Array.from({ length: 31 }, (_, i) => (
@@ -190,18 +172,7 @@ export function BookBindingGate({
           type="button"
           onClick={onSubmit}
           disabled={binding || !isFormValid}
-          style={{
-            width: '100%',
-            padding: '14px',
-            background: binding || !isFormValid ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: binding || !isFormValid ? 'not-allowed' : 'pointer',
-            marginBottom: '10px',
-          }}
+          style={{ ...liffPrimaryBtn(!binding && !!isFormValid), marginBottom: '10px' }}
         >
           {binding ? b.submitting : b.submit}
         </button>
@@ -210,36 +181,13 @@ export function BookBindingGate({
           type="button"
           onClick={onSkip}
           disabled={binding}
-          style={{
-            width: '100%',
-            padding: '12px',
-            background: 'transparent',
-            color: '#666',
-            border: 'none',
-            fontSize: '14px',
-            cursor: binding ? 'not-allowed' : 'pointer',
-            marginBottom: '16px',
-          }}
+          style={{ ...liffGhostBtn, marginBottom: '16px', cursor: binding ? 'not-allowed' : 'pointer' }}
         >
           {b.skip}
         </button>
 
         {oaUrl && (
-          <button
-            type="button"
-            onClick={openOfficialContact}
-            style={{
-              width: '100%',
-              padding: '12px',
-              background: '#00b900',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '15px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
+          <button type="button" onClick={openOfficialContact} style={liffLineBtn}>
             {b.contactOfficial}
           </button>
         )}

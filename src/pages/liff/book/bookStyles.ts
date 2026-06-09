@@ -281,7 +281,7 @@ export const detailPanel = (active: boolean): CSSProperties => ({
   borderRadius: 14,
   border: active ? `1px solid #e0e0e0` : '1px dashed #ddd',
   background: active ? '#fff' : T.surfaceMuted,
-  borderLeft: active ? `3px solid ${T.lineGreen}` : undefined,
+  borderLeft: active ? `3px solid ${T.headerBg}` : undefined,
 })
 
 export const metaChip: CSSProperties = {

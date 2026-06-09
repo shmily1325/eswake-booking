@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { liffHintBox, LIFF_THEME } from '../liffUiStyles'
 
 /** 全站共用一句（非預約分頁頂部） */
 export const LIFF_CONTACT_LINE = '需協助請私訊官方'
@@ -8,7 +9,7 @@ export function LiffContactBar() {
     <div
       style={{
         fontSize: '12px',
-        color: '#999',
+        color: LIFF_THEME.mutedLight,
         textAlign: 'center',
         marginBottom: '12px',
         lineHeight: 1.4,
@@ -24,16 +25,10 @@ export function LiffPageHint({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
-        padding: '10px 12px',
-        background: '#f0f7ff',
-        borderRadius: '6px',
-        marginBottom: '12px',
-        fontSize: '13px',
-        color: '#666',
+        ...liffHintBox,
         display: 'flex',
         alignItems: 'flex-start',
         gap: '6px',
-        lineHeight: 1.5,
       }}
     >
       <span aria-hidden style={{ flexShrink: 0, lineHeight: 1.45 }}>

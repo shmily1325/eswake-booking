@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { EsBrandLockup } from '../../../components/EsBrandLockup'
+import { ES_BRAND } from '../../../lib/esBrandTokens'
+import { liffPrimaryBtn, LIFF_TYPE } from '../liffUiStyles'
 import { useBookLocale } from './BookLocaleContext'
 import { bookPage } from './bookStyles'
 import { BOOK_THEME as T } from './bookTheme'
@@ -37,26 +40,24 @@ export function BookBootScreen({ phase = 'init', onRetry, liffOpenUrl }: BookBoo
       padding: '24px 20px',
       textAlign: 'center',
     }}>
-      <img
-        src="/logo_circle (black).png"
-        alt=""
-        width={56}
-        height={56}
-        style={{ objectFit: 'contain', marginBottom: 20, opacity: 0.9 }}
+      <EsBrandLockup
+        brand={s.header.brand}
+        subtitle={s.header.title}
+        variant="onLight"
+        align="center"
+        logoSize={48}
+        style={{ marginBottom: 20, justifyContent: 'center' }}
       />
-      <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, marginBottom: 8 }}>
-        {s.header.brand} {s.header.title}
-      </div>
       <div style={{
         width: 28,
         height: 28,
         border: `3px solid ${T.surfaceInset}`,
-        borderTopColor: T.lineGreen,
+        borderTopColor: ES_BRAND.headerBg,
         borderRadius: '50%',
         animation: 'book-boot-spin 0.8s linear infinite',
         marginBottom: 14,
       }} />
-      <div style={{ fontSize: 14, color: T.muted, lineHeight: 1.5 }}>
+      <div style={{ fontSize: LIFF_TYPE.body, color: T.muted, lineHeight: 1.5 }}>
         {phaseLabel}
       </div>
       {slow && !stuck && (
@@ -94,16 +95,7 @@ export function BookBootScreen({ phase = 'init', onRetry, liffOpenUrl }: BookBoo
           <button
             type="button"
             onClick={() => (onRetry ? onRetry() : window.location.reload())}
-            style={{
-              padding: '12px 24px',
-              border: 'none',
-              borderRadius: 12,
-              background: T.accent,
-              color: 'white',
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            style={{ ...liffPrimaryBtn(true), width: 'auto', padding: '12px 24px' }}
           >
             {s.boot.retry}
           </button>

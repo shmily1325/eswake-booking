@@ -1,5 +1,6 @@
 // 交易記錄彈出框組件
 
+import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 import type { Transaction } from '../types'
 import { getCategoryLabel, getCategoryUnit } from '../types'
 
@@ -18,7 +19,7 @@ export function TransactionModal({
   category,
   transactions,
   loading,
-  formatFriendlyDate
+  formatFriendlyDate,
 }: TransactionModalProps) {
   if (!show) return null
 
@@ -36,7 +37,7 @@ export function TransactionModal({
         background: 'rgba(0, 0, 0, 0.5)',
         display: 'flex',
         alignItems: 'flex-end',
-        zIndex: 9999
+        zIndex: 9999,
       }}
     >
       <div
@@ -44,60 +45,60 @@ export function TransactionModal({
         style={{
           width: '100%',
           maxHeight: '70dvh',
-          background: 'white',
-          borderRadius: '16px 16px 0 0',
+          background: LIFF_THEME.cardBg,
+          borderRadius: `${LIFF_THEME.cardRadius}px ${LIFF_THEME.cardRadius}px 0 0`,
           padding: '20px',
           overflowY: 'auto',
           animation: 'slideUp 0.3s ease-out',
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
+          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
         }}
       >
-        {/* 標題欄 */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: '16px',
           paddingBottom: '12px',
-          borderBottom: '2px solid #f0f0f0'
+          borderBottom: LIFF_THEME.cardBorder,
         }}>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#333' }}>
+          <h3 style={{ margin: 0, fontSize: LIFF_TYPE.display - 2, fontWeight: 700, color: LIFF_THEME.inkSoft }}>
             {getCategoryLabel(category)} 交易記錄
           </h3>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="關閉"
             style={{
-              background: 'none',
+              background: LIFF_THEME.surfaceInset,
               border: 'none',
-              fontSize: '24px',
-              color: '#999',
+              borderRadius: '50%',
+              fontSize: '18px',
+              color: LIFF_THEME.muted,
               cursor: 'pointer',
-              padding: '0',
-              width: '30px',
-              height: '30px',
+              width: '32px',
+              height: '32px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
             }}
           >
             ✕
           </button>
         </div>
 
-        {/* 交易列表 */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: LIFF_THEME.muted }}>
             載入中...
           </div>
         ) : transactions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: LIFF_THEME.muted }}>
             最近兩個月無交易記錄
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {transactions.map((transaction) => {
               const isIncrease = transaction.adjust_type === 'increase' || transaction.transaction_type === 'charge'
-              const color = isIncrease ? '#52c41a' : '#ff4d4f'
+              const color = isIncrease ? '#2e7d32' : '#c62828'
               const sign = isIncrease ? '+' : '-'
               const value = Math.abs(transaction.amount || transaction.minutes || 0)
 
@@ -106,24 +107,25 @@ export function TransactionModal({
                   key={transaction.id}
                   style={{
                     padding: '14px',
-                    background: '#f8f9fa',
-                    borderRadius: '8px',
-                    borderLeft: `4px solid ${color}`
+                    background: LIFF_THEME.surfaceInset,
+                    borderRadius: '12px',
+                    border: LIFF_THEME.cardBorder,
+                    borderLeft: `4px solid ${color}`,
                   }}
                 >
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'flex-start',
-                    marginBottom: '6px'
+                    marginBottom: '6px',
                   }}>
-                    <div style={{ fontSize: '14px', color: '#666' }}>
+                    <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.muted }}>
                       {formatFriendlyDate(transaction.transaction_date)}
                     </div>
                     <div style={{
-                      fontSize: '18px',
-                      fontWeight: '600',
-                      color
+                      fontSize: LIFF_TYPE.display - 2,
+                      fontWeight: 700,
+                      color,
                     }}>
                       {sign}
                       {unit === '元' ? '$' : ''}
@@ -131,11 +133,11 @@ export function TransactionModal({
                       {unit === '分' ? '分' : ''}
                     </div>
                   </div>
-                  <div style={{ fontSize: '14px', color: '#333', marginBottom: '4px' }}>
+                  <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.inkSoft, marginBottom: '4px' }}>
                     {transaction.description}
                   </div>
                   {transaction.notes && (
-                    <div style={{ fontSize: '13px', color: '#999' }}>
+                    <div style={{ fontSize: 13, color: LIFF_THEME.mutedLight }}>
                       備註：{transaction.notes}
                     </div>
                   )}
@@ -161,4 +163,3 @@ export function TransactionModal({
     </div>
   )
 }
-

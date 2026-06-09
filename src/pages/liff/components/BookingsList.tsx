@@ -1,20 +1,12 @@
 // 預約列表組件
 
-import type { CSSProperties } from 'react'
 import type { Booking } from '../types'
+import { liffContentPanel, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 import { BookingCard } from './BookingCard'
 import { BookingsListSkeleton } from './BookingsListSkeleton'
 import { LiffPageHint } from './LiffPageHint'
 
-const BOOKINGS_PAGE_HINT = '以下為即將到來的預約，若要更改請私訊官方。'
-
-/** 與 BalanceView / MemberProfileView 外層一致 */
-const liffContentPanel: CSSProperties = {
-  background: 'white',
-  borderRadius: '12px',
-  padding: '20px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-}
+const BOOKINGS_PAGE_HINT = '更改預約請私訊官方'
 
 interface BookingsListProps {
   bookings: Booking[]
@@ -50,10 +42,10 @@ export function BookingsList({
       >
         <LiffPageHint>{BOOKINGS_PAGE_HINT}</LiffPageHint>
         <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
-        <div style={{ fontSize: '18px', fontWeight: 600, color: '#333', marginBottom: '8px' }}>
+        <div style={{ fontSize: LIFF_TYPE.display - 2, fontWeight: 600, color: LIFF_THEME.inkSoft, marginBottom: '8px' }}>
           目前沒有預約
         </div>
-        <div style={{ fontSize: '14px', color: '#999' }}>您目前沒有即將到來的預約</div>
+        <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.mutedLight }}>您目前沒有即將到來的預約</div>
       </div>
     )
   }

@@ -561,11 +561,10 @@ export function LiffMyBookings() {
 
       {/* Content（順序：預約 → 儲值 → 商品 → 會員） */}
       <div style={{ padding: '16px' }}>
-        {activeTab !== 'bookings' && <LiffContactBar />}
-        {member && expiryBannerLines.length > 0 && (
+        {activeTab !== 'bookings' && expiryBannerLines.length === 0 && <LiffContactBar />}
+        {member && expiryBannerLines.length > 0 && activeTab !== 'profile' && (
           <LiffExpiryBanner
             lines={expiryBannerLines}
-            isOnProfileTab={activeTab === 'profile'}
             onOpenProfile={() => {
               triggerHaptic('light')
               setActiveTab('profile')

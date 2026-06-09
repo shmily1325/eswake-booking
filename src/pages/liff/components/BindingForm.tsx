@@ -1,5 +1,18 @@
-// 綁定表單組件
+// 會員專區首次綁定（新 LINE 用戶進專區時；預約流程較少走到）
+
+import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { liffTrack } from '../track'
+import {
+  liffBindingCard,
+  liffBindingShell,
+  liffInput,
+  liffLabel,
+  liffLineBtn,
+  liffPrimaryBtn,
+  liffSelect,
+  LIFF_THEME,
+  LIFF_TYPE,
+} from '../liffUiStyles'
 
 interface BindingFormProps {
   phone: string
@@ -28,7 +41,7 @@ export function BindingForm({
   binding,
   bindingError,
   setBindingError,
-  onSubmit
+  onSubmit,
 }: BindingFormProps) {
   const isFormValid = phone && birthYear && birthMonth && birthDay
   const oaUrl = import.meta.env.VITE_LINE_OA_URL as string | undefined
@@ -48,87 +61,43 @@ export function BindingForm({
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%)',
-      padding: '20px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '32px 24px',
-        maxWidth: '400px',
-        width: '100%',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
-      }}>
-        <div style={{
+    <div style={liffBindingShell}>
+      <div style={liffBindingCard}>
+        <EsBrandLockup
+          variant="onLight"
+          subtitle="會員專區"
+          align="center"
+          logoSize={48}
+          style={{ marginBottom: 8, justifyContent: 'center' }}
+        />
+        <p style={{
+          fontSize: LIFF_TYPE.body,
+          color: LIFF_THEME.muted,
+          margin: '0 0 24px',
           textAlign: 'center',
-          marginBottom: '24px'
         }}>
-          <img 
-            src="/logo_circle (black).png" 
-            alt="ES Wake Logo" 
-            style={{ 
-              width: '80px', 
-              height: '80px', 
-              marginBottom: '16px',
-              objectFit: 'contain',
-              // Tailwind v4 preflight 把 <img> 設為 display:block，
-              // 父層的 text-align:center 對 block 不生效，這裡用 margin auto 自己置中
-              display: 'block',
-              marginLeft: 'auto',
-              marginRight: 'auto'
-            }} 
-          />
-          <h1 style={{
-            fontSize: '24px',
-            fontWeight: '700',
-            color: '#333',
-            margin: '0 0 8px'
-          }}>
-            ES WAKE 會員專區
-          </h1>
-          <p style={{
-            fontSize: '14px',
-            color: '#666',
-            margin: 0
-          }}>
-            首次使用需要綁定您的電話號碼
-          </p>
-          
-        </div>
+          首次使用需要綁定您的電話號碼
+        </p>
 
-        {/* 錯誤提示 */}
         {bindingError && (
           <div style={{
             background: '#fff2f0',
             border: '1px solid #ffccc7',
-            borderRadius: '8px',
+            borderRadius: '12px',
             padding: '12px 16px',
-            marginBottom: '16px'
+            marginBottom: '16px',
           }}>
-            <div style={{ fontSize: '14px', color: '#cf1322', marginBottom: '8px', fontWeight: '600' }}>
+            <div style={{ fontSize: LIFF_TYPE.body, color: '#cf1322', marginBottom: '8px', fontWeight: '600' }}>
               ❌ {bindingError}
             </div>
-            <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
+            <div style={{ fontSize: 13, color: LIFF_THEME.muted, lineHeight: '1.5' }}>
               如果您確定正確，請直接<strong>私訊官方帳號</strong>告知您的手機號碼，我們會協助您完成綁定！
             </div>
           </div>
         )}
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#555',
-            marginBottom: '8px'
-          }}>
-            手機號碼
-          </label>
+          <label style={liffLabel}>手機號碼</label>
           <input
             type="tel"
             value={phone}
@@ -137,54 +106,20 @@ export function BindingForm({
               setBindingError(null)
             }}
             placeholder="請輸入您的手機號碼"
-            style={{
-              width: '100%',
-              padding: '14px',
-              border: bindingError ? '2px solid #ff4d4f' : '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '16px',
-              boxSizing: 'border-box',
-              outline: 'none',
-              transition: 'border-color 0.2s'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#5a5a5a'}
-            onBlur={(e) => e.target.style.borderColor = bindingError ? '#ff4d4f' : '#e0e0e0'}
+            style={liffInput(!!bindingError)}
           />
-          <div style={{
-            fontSize: '12px',
-            color: '#999',
-            marginTop: '6px'
-          }}>
+          <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.mutedLight, marginTop: '6px' }}>
             例如：0912345678
           </div>
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#555',
-            marginBottom: '8px'
-          }}>
-            生日
-          </label>
+          <label style={liffLabel}>生日</label>
           <div style={{ display: 'flex', gap: '8px' }}>
-            {/* 年 */}
             <select
               value={birthYear}
               onChange={(e) => setBirthYear(e.target.value)}
-              style={{
-                flex: 1.2,
-                padding: '14px 8px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                boxSizing: 'border-box',
-                outline: 'none',
-                background: 'white',
-                color: birthYear ? '#333' : '#999'
-              }}
+              style={{ ...liffSelect, flex: 1.2, color: birthYear ? LIFF_THEME.inkSoft : LIFF_THEME.mutedLight }}
             >
               <option value="">年</option>
               {Array.from({ length: 100 }, (_, i) => {
@@ -192,42 +127,20 @@ export function BindingForm({
                 return <option key={year} value={year}>{year}</option>
               })}
             </select>
-            {/* 月 */}
             <select
               value={birthMonth}
               onChange={(e) => setBirthMonth(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '14px 8px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                boxSizing: 'border-box',
-                outline: 'none',
-                background: 'white',
-                color: birthMonth ? '#333' : '#999'
-              }}
+              style={{ ...liffSelect, color: birthMonth ? LIFF_THEME.inkSoft : LIFF_THEME.mutedLight }}
             >
               <option value="">月</option>
               {Array.from({ length: 12 }, (_, i) => (
                 <option key={i + 1} value={String(i + 1).padStart(2, '0')}>{i + 1}月</option>
               ))}
             </select>
-            {/* 日 */}
             <select
               value={birthDay}
               onChange={(e) => setBirthDay(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '14px 8px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                boxSizing: 'border-box',
-                outline: 'none',
-                background: 'white',
-                color: birthDay ? '#333' : '#999'
-              }}
+              style={{ ...liffSelect, color: birthDay ? LIFF_THEME.inkSoft : LIFF_THEME.mutedLight }}
             >
               <option value="">日</option>
               {Array.from({ length: 31 }, (_, i) => (
@@ -238,84 +151,44 @@ export function BindingForm({
         </div>
 
         <button
+          type="button"
           onClick={onSubmit}
           disabled={binding || !isFormValid}
-          style={{
-            width: '100%',
-            padding: '14px',
-            background: binding || !isFormValid
-              ? '#ccc' 
-              : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: binding || !isFormValid ? 'not-allowed' : 'pointer',
-            transition: 'transform 0.1s',
-            marginBottom: '16px'
-          }}
-          onMouseDown={(e) => {
-            if (!binding && isFormValid) {
-              (e.target as HTMLElement).style.transform = 'scale(0.98)'
-            }
-          }}
-          onMouseUp={(e) => {
-            (e.target as HTMLElement).style.transform = 'scale(1)'
-          }}
+          style={{ ...liffPrimaryBtn(!binding && !!isFormValid), marginBottom: '16px' }}
         >
           {binding ? '綁定中...' : '開始綁定'}
         </button>
 
-        <div
-          style={{
-            background: '#f8f9fa',
-            padding: '12px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            color: '#888',
-            lineHeight: 1.5,
-          }}
-        >
+        <div style={{
+          background: LIFF_THEME.surfaceInset,
+          padding: '12px',
+          borderRadius: '12px',
+          fontSize: LIFF_TYPE.caption,
+          color: LIFF_THEME.muted,
+          lineHeight: 1.5,
+        }}>
           輸入手機與生日即可綁定
         </div>
 
-        <div style={{ marginTop: '12px' }}>
-          <div
-            style={{
-              background: '#fff7e6',
-              border: '1px solid #ffd591',
-              borderRadius: '8px',
+        {oaUrl && (
+          <div style={{ marginTop: '12px' }}>
+            <div style={{
+              background: '#fffbe6',
+              border: '1px solid #ffe58f',
+              borderRadius: '12px',
               padding: '12px',
-              color: '#8c6d1f',
-              fontSize: '12px',
+              color: '#614700',
+              fontSize: LIFF_TYPE.caption,
               lineHeight: 1.5,
-            }}
-          >
-            <div style={{ marginBottom: oaUrl ? 8 : 0 }}>尚未加入？私訊官方詢問</div>
-            {oaUrl && (
-              <button
-                type="button"
-                onClick={openOfficialContact}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  background: '#00b900',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
+            }}>
+              <div style={{ marginBottom: 8 }}>尚未加入？私訊官方詢問</div>
+              <button type="button" onClick={openOfficialContact} style={liffLineBtn}>
                 私訊官方帳號
               </button>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
 }
-

@@ -1,5 +1,6 @@
 // 儲值餘額視圖組件
 
+import { liffContentPanel } from '../liffUiStyles'
 import type { Member } from '../types'
 import { BalanceCard } from './BalanceCard'
 
@@ -10,14 +11,7 @@ interface BalanceViewProps {
 
 export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
   return (
-    <div
-      style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-      }}
-    >
+    <div style={liffContentPanel}>
       <div
         style={{
           display: 'grid',

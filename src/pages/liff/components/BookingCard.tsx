@@ -2,6 +2,7 @@
 
 import { isFacility } from '../../../utils/facility'
 import { displayCoachNameForTomorrowReminder } from '../../../utils/tomorrowReminderDisplay'
+import { liffCard, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 import type { Booking } from '../types'
 
 interface BookingCardProps {
@@ -32,18 +33,16 @@ export function BookingCard({
   return (
     <div
       style={{
-        background: 'white',
-        borderRadius: '12px',
+        ...liffCard,
         padding: '16px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        borderLeft: `4px solid ${booking.boats?.color || '#1976d2'}`,
+        borderLeft: `4px solid ${booking.boats?.color || LIFF_THEME.inkSoft}`,
       }}
     >
       <div
         style={{
-          fontSize: '16px',
+          fontSize: LIFF_TYPE.title,
           fontWeight: '600',
-          color: '#333',
+          color: LIFF_THEME.inkSoft,
           marginBottom: '12px',
           display: 'flex',
           alignItems: 'center',
@@ -59,23 +58,23 @@ export function BookingCard({
           gap: '16px',
           marginBottom: '12px',
           padding: '12px',
-          background: '#f0f5ff',
-          borderRadius: '8px',
+          background: LIFF_THEME.surfaceInset,
+          borderRadius: '12px',
         }}
       >
         {isFirstOfDay && (
           <div>
-            <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>抵達時間</div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: '#1976d2' }}>
+            <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.muted, marginBottom: '4px' }}>抵達時間</div>
+            <div style={{ fontSize: LIFF_TYPE.display, fontWeight: '700', color: LIFF_THEME.ink }}>
               {getArrivalTime(booking.start_at)}
             </div>
           </div>
         )}
-        <div style={isFirstOfDay ? { borderLeft: '1px solid #d0d0d0', paddingLeft: '16px' } : {}}>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
+        <div style={isFirstOfDay ? { borderLeft: `1px solid ${LIFF_THEME.inputBorder}`, paddingLeft: '16px' } : {}}>
+          <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.muted, marginBottom: '4px' }}>
             {isFacilityBooking ? '開始時間' : '下水時間'}
           </div>
-          <div style={{ fontSize: '20px', fontWeight: '700', color: '#333' }}>
+          <div style={{ fontSize: LIFF_TYPE.display, fontWeight: '700', color: LIFF_THEME.ink }}>
             {getStartTime(booking.start_at)}
           </div>
         </div>
@@ -94,23 +93,23 @@ export function BookingCard({
             width: '20px',
             height: '20px',
             borderRadius: '4px',
-            background: booking.boats?.color || '#1976d2',
+            background: booking.boats?.color || LIFF_THEME.inkSoft,
           }}
         />
-        <span style={{ fontSize: '15px', fontWeight: '600', color: '#555' }}>
+        <span style={{ fontSize: LIFF_TYPE.body + 1, fontWeight: '600', color: LIFF_THEME.inkSoft }}>
           {booking.boats?.name || '未指定'}
         </span>
       </div>
 
       <div
         style={{
-          fontSize: '14px',
-          color: '#666',
+          fontSize: LIFF_TYPE.body,
+          color: LIFF_THEME.muted,
           marginBottom: '8px',
         }}
       >
         {booking.duration_min} 分鐘
-        <span style={{ color: '#999', marginLeft: '8px' }}>
+        <span style={{ color: LIFF_THEME.mutedLight, marginLeft: '8px' }}>
           (結束: {getEndTime(booking.start_at, booking.duration_min)})
         </span>
       </div>
@@ -118,8 +117,8 @@ export function BookingCard({
       {coachNames && (
         <div
           style={{
-            fontSize: '14px',
-            color: '#666',
+            fontSize: LIFF_TYPE.body,
+            color: LIFF_THEME.muted,
           }}
         >
           指定教練: {coachNames}
@@ -140,10 +139,11 @@ export function BookingCard({
               key={idx}
               style={{
                 padding: '4px 10px',
-                background: '#e8f4fd',
-                color: '#1976d2',
+                background: LIFF_THEME.surfaceInset,
+                color: LIFF_THEME.inkSoft,
                 borderRadius: '12px',
-                fontSize: '12px',
+                fontSize: LIFF_TYPE.caption,
+                border: LIFF_THEME.cardBorder,
               }}
             >
               {type}
@@ -157,14 +157,14 @@ export function BookingCard({
           style={{
             marginTop: '12px',
             padding: '12px',
-            background: '#f8f9fa',
-            borderRadius: '8px',
-            fontSize: '13px',
-            color: '#555',
+            background: LIFF_THEME.surfaceInset,
+            borderRadius: '12px',
+            fontSize: 13,
+            color: LIFF_THEME.inkSoft,
             lineHeight: '1.5',
           }}
         >
-          <div style={{ fontWeight: '600', marginBottom: '4px', color: '#666' }}>備註</div>
+          <div style={{ fontWeight: '600', marginBottom: '4px', color: LIFF_THEME.muted }}>備註</div>
           {booking.notes}
         </div>
       )}

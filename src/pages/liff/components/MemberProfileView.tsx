@@ -7,6 +7,7 @@ import {
   getMembershipExpiryRowStatus,
   type LiffExpiryRowStatus
 } from '../liffExpiryAlerts'
+import { liffContentPanel, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 
 interface MemberProfileViewProps {
   member: Member
@@ -94,7 +95,7 @@ function Row({ label, value, badge }: { label: string; value: string; badge?: Re
         borderBottom: '1px solid #f0f0f0',
       }}
     >
-      <span style={{ fontSize: '13px', color: '#888', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: LIFF_TYPE.caption + 1, color: LIFF_THEME.muted, flexShrink: 0 }}>{label}</span>
       <div
         style={{
           display: 'flex',
@@ -106,8 +107,8 @@ function Row({ label, value, badge }: { label: string; value: string; badge?: Re
       >
         <span
           style={{
-            fontSize: '15px',
-            color: '#333',
+            fontSize: LIFF_TYPE.body + 1,
+            color: LIFF_THEME.inkSoft,
             fontWeight: 500,
             textAlign: 'right',
             wordBreak: 'break-all',
@@ -156,14 +157,7 @@ function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number;
 
 export function MemberProfileView({ member }: MemberProfileViewProps) {
   return (
-    <div
-      style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-      }}
-    >
+    <div style={liffContentPanel}>
       <Row label="會員類型" value={membershipTypeLine(member)} />
       <Row label="手機號碼" value={member.phone?.trim() || '—'} />
       <Row label="生日" value={formatMonthDaySlash(member.birthday)} />

@@ -12,6 +12,8 @@ interface EsBrandLockupProps {
   /** 點擊 logo／字標導向（Shop 首頁等） */
   brandTo?: string
   trailing?: ReactNode
+  /** 綁定卡等置中版面 */
+  align?: 'start' | 'center'
   style?: CSSProperties
 }
 
@@ -24,6 +26,7 @@ export function EsBrandLockup({
   logoSize = 32,
   brandTo,
   trailing,
+  align = 'start',
   style,
 }: EsBrandLockupProps) {
   const onDark = variant === 'onDark'
@@ -31,8 +34,16 @@ export function EsBrandLockup({
   const subtitleColor = onDark ? 'rgba(255,255,255,0.78)' : '#666'
   const logoSrc = onDark ? ES_BRAND.logoWhite : ES_BRAND.logoBlack
 
+  const centered = align === 'center'
+
   const brandBlock = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      minWidth: 0,
+      justifyContent: centered ? 'center' : undefined,
+    }}>
       <img
         src={logoSrc}
         alt=""
@@ -41,7 +52,7 @@ export function EsBrandLockup({
         style={{ objectFit: 'contain', flexShrink: 0, display: 'block' }}
         draggable={false}
       />
-      <div style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, textAlign: centered ? 'center' : undefined }}>
         <div
           style={{
             fontSize: 15,

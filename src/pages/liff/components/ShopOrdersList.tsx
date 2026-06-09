@@ -1,5 +1,6 @@
-import { useState, type CSSProperties } from 'react'
+import { useState } from 'react'
 import { usePullToRefresh } from '../../../hooks/usePullToRefresh'
+import { liffContentPanel } from '../liffUiStyles'
 import type { LiffShopOrder } from '../liffShopOrders'
 import {
   LIFF_ORDER_STATUS,
@@ -7,13 +8,6 @@ import {
   liffDeliveryLabel,
   liffOrderStatus,
 } from '../liffShopOrders'
-
-const liffContentPanel: CSSProperties = {
-  background: 'white',
-  borderRadius: '12px',
-  padding: '20px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-}
 
 function formatOrderDate(createdAt: string): string {
   const d = createdAt.split('T')[0]

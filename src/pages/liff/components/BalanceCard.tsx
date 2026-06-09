@@ -1,5 +1,7 @@
 // 儲值卡片組件
 
+import { LIFF_THEME } from '../liffUiStyles'
+
 interface BalanceCardProps {
   label: string
   emoji: string
@@ -27,7 +29,7 @@ export function BalanceCard({
       onClick={() => onClick(category)}
       style={{
         background: 'white',
-        borderRadius: '8px',
+        borderRadius: LIFF_THEME.cardRadius,
         padding: '16px',
         border: `2px solid ${color}15`,
         cursor: 'pointer',

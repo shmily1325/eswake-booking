@@ -1,6 +1,7 @@
 // LIFF 分頁：僅 active 顯示 emoji，避免四格過擠
 
 import { triggerHaptic } from '../../../utils/haptic'
+import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 import type { TabType } from '../types'
 
 const TABS: { tab: TabType; label: string; emoji: string }[] = [
@@ -42,12 +43,12 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
               padding: '12px 4px',
               border: 'none',
               background: 'transparent',
-              color: active ? '#333' : '#9e9e9e',
+              color: active ? LIFF_THEME.tabActive : LIFF_THEME.tabInactive,
               fontWeight: active ? 600 : 400,
-              fontSize: '13px',
+              fontSize: LIFF_TYPE.caption + 1,
               letterSpacing: '0.02em',
               cursor: 'pointer',
-              borderBottom: active ? '2px solid #333' : '2px solid transparent',
+              borderBottom: active ? `2px solid ${LIFF_THEME.tabActive}` : '2px solid transparent',
               transition: 'color 0.15s, border-color 0.15s',
             }}
           >
