@@ -45,16 +45,19 @@ import { designatedCoachPrice20 } from './liffBookingCoaches'
 import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
 import {
   bookCard,
+  bookFieldGroup,
   bookInput,
   bookPage,
   chipBtn,
   fieldLabel,
   fieldHint,
+  footerBlockHint,
   linePrimaryBtn,
   primaryBtn,
   secondaryBtn,
   stickyFooter,
 } from './bookStyles'
+import { getStepBlockReason } from './liffBookingValidation'
 import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
@@ -381,6 +384,9 @@ function LiffBookInner() {
     ? `${s.estimate.about} ${estimate.totalLabel}`
     : null
 
+  const stepReady = canNext()
+  const blockReason = stepReady ? null : getStepBlockReason(step, form, pickDate, s.validation)
+
   return (
     <div style={bookPage}>
       <LiffStyles />
@@ -404,86 +410,93 @@ function LiffBookInner() {
         {/* Step 2: 誰要滑 */}
         {step === 2 && (
           <div style={bookCard}>
-            <div style={{ marginBottom: 20 }}>
-              <div style={fieldLabel}>{s.step2.headcount}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {HEADCOUNT_OPTIONS.map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    className="book-chip-btn"
-                    style={{ ...chipBtn(form.headcount === n), flex: '1 1 calc(20% - 8px)', minWidth: 52, padding: '12px 0' }}
-                    onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {estimate && <BookEstimateCard estimate={estimate} />}
 
-            {form.activity === 'WB' && (
-              <div style={{ marginBottom: 20 }}>
-                <BookBoatPicker
-                  variant={wbNeedsLargeGroupBoatChoice(form.activity, form.headcount, form.followBoatCount) ? 'largeGroup' : 'step1'}
-                  value={form.boatPreference}
-                  headcount={onBoatTotal(form.headcount, form.followBoatCount)}
-                  onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
-                />
-              </div>
-            )}
-
-            <div>
-              {form.headcount === 1 ? (
-                <>
-                  <div style={fieldLabel}>{s.step2.experienceSingle}</div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+            <div style={bookFieldGroup}>
+              <div style={{ marginBottom: 16 }}>
+                <div style={fieldLabel}>{s.step2.headcount}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {HEADCOUNT_OPTIONS.map(n => (
                     <button
+                      key={n}
                       type="button"
                       className="book-chip-btn"
-                      style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '10px 0' }}
-                      onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
+                      style={{ ...chipBtn(form.headcount === n), flex: '1 1 calc(20% - 8px)', minWidth: 52, padding: '12px 0' }}
+                      onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
                     >
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>{s.step2.firstTime}</div>
-                      <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{s.step2.firstTimeNote}</div>
+                      {n}
                     </button>
-                    <button
-                      type="button"
-                      className="book-chip-btn"
-                      style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '10px 0' }}
-                      onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
-                    >
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>{s.step2.experienced}</div>
-                      <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{s.step2.experiencedNote}</div>
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={fieldLabel}>{s.step2.experienceMulti}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {beginnerCountOptions(form.headcount).map(n => (
+                  ))}
+                </div>
+              </div>
+
+              {form.activity === 'WB' && (
+                <div style={{ marginBottom: 16 }}>
+                  <BookBoatPicker
+                    variant={wbNeedsLargeGroupBoatChoice(form.activity, form.headcount, form.followBoatCount) ? 'largeGroup' : 'step1'}
+                    value={form.boatPreference}
+                    headcount={onBoatTotal(form.headcount, form.followBoatCount)}
+                    onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
+                  />
+                </div>
+              )}
+
+              <div style={{ marginBottom: 12 }}>
+                {form.headcount === 1 ? (
+                  <>
+                    <div style={fieldLabel}>{s.step2.experienceSingle}</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        key={n}
                         type="button"
                         className="book-chip-btn"
-                        style={chipBtn(form.beginnerCount === n)}
-                        onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: n }) }))}
+                        style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '10px 0' }}
+                        onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
                       >
-                        {n === form.headcount ? s.step2.allFirstTime : n === 0 ? s.step2.noneFirstTime : s.step2.nFirstTime(n)}
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{s.step2.firstTime}</div>
+                        <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{s.step2.firstTimeNote}</div>
                       </button>
-                    ))}
-                  </div>
-                </>
-              )}
+                      <button
+                        type="button"
+                        className="book-chip-btn"
+                        style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '10px 0' }}
+                        onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
+                      >
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{s.step2.experienced}</div>
+                        <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{s.step2.experiencedNote}</div>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={fieldLabel}>{s.step2.experienceMulti}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {beginnerCountOptions(form.headcount).map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          className="book-chip-btn"
+                          style={chipBtn(form.beginnerCount === n)}
+                          onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: n }) }))}
+                        >
+                          {n === form.headcount ? s.step2.allFirstTime : n === 0 ? s.step2.noneFirstTime : s.step2.nFirstTime(n)}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
-            <BookFollowBoatPanel
-              riders={form.headcount}
-              value={form.followBoatCount}
-              onChange={count => setForm(prev => ({ ...prev, followBoatCount: count }))}
-            />
-
-            {estimate && <BookEstimateCard estimate={estimate} />}
+            <div style={{ marginBottom: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#bbb', letterSpacing: '0.06em', marginBottom: 8 }}>
+                {s.step2.optionalLabel}
+              </div>
+              <BookFollowBoatPanel
+                riders={form.headcount}
+                value={form.followBoatCount}
+                onChange={count => setForm(prev => ({ ...prev, followBoatCount: count }))}
+              />
+            </div>
 
             <BookContextTips step={2} form={form} pickTimePref={pickTimePref} />
 
@@ -730,31 +743,36 @@ function LiffBookInner() {
         )}
       </main>
 
-      <footer style={stickyFooter}>
-        {step > 1 && (
-          <button type="button" style={secondaryBtn} onClick={goBack}>{s.footer.back}</button>
-        )}
-        {step < totalSteps ? (
-          <button
-            type="button"
-            className="book-primary-btn"
-            style={{ ...primaryBtn, opacity: canNext() ? 1 : 0.4 }}
-            disabled={!canNext()}
-            onClick={goNext}
-          >
-            {nextLabel}
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="book-primary-btn"
-            style={{ ...linePrimaryBtn, opacity: canNext() ? 1 : 0.4 }}
-            disabled={!canNext()}
-            onClick={handleSubmit}
-          >
-            {s.footer.submitLine}
-          </button>
-        )}
+      <footer style={{ ...stickyFooter, flexDirection: 'column', alignItems: 'stretch' }}>
+        {blockReason ? (
+          <div style={footerBlockHint} role="status">{blockReason}</div>
+        ) : null}
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          {step > 1 && (
+            <button type="button" style={secondaryBtn} onClick={goBack}>{s.footer.back}</button>
+          )}
+          {step < totalSteps ? (
+            <button
+              type="button"
+              className="book-primary-btn"
+              style={{ ...primaryBtn, opacity: stepReady ? 1 : 0.4 }}
+              disabled={!stepReady}
+              onClick={goNext}
+            >
+              {nextLabel}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="book-primary-btn"
+              style={{ ...linePrimaryBtn, opacity: stepReady ? 1 : 0.4 }}
+              disabled={!stepReady}
+              onClick={handleSubmit}
+            >
+              {s.footer.submitLine}
+            </button>
+          )}
+        </div>
       </footer>
     </div>
   )

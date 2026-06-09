@@ -13,7 +13,7 @@ export function BookEstimateCard({ estimate, defaultExpanded = false }: BookEsti
   const [expanded, setExpanded] = useState(defaultExpanded)
 
   return (
-    <div style={{ ...infoBox, marginTop: 12, marginBottom: 0 }}>
+    <div style={{ ...infoBox, marginTop: 0, marginBottom: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
         <div style={{ fontSize: 20, fontWeight: 700 }}>{s.estimate.about} {estimate.totalLabel}</div>
         <div style={{ fontSize: 12, color: '#666' }}>{estimate.tierLabel}</div>

@@ -165,6 +165,28 @@ export const fieldLabel: CSSProperties = {
   letterSpacing: '0.03em',
 }
 
+/** Step 2 必填區塊分組 */
+export const bookFieldGroup: CSSProperties = {
+  padding: '14px 14px 4px',
+  borderRadius: 12,
+  background: T.surfaceInset,
+  border: '1px solid #ececec',
+  marginBottom: 16,
+}
+
+export const footerBlockHint: CSSProperties = {
+  width: '100%',
+  fontSize: 12,
+  color: '#b45309',
+  textAlign: 'center',
+  lineHeight: 1.45,
+  marginBottom: 10,
+  padding: '8px 10px',
+  borderRadius: 8,
+  background: '#fffbeb',
+  border: '1px solid #fde68a',
+}
+
 export const fieldHint: CSSProperties = {
   fontSize: 11,
   color: T.mutedLight,

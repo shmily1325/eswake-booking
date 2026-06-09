@@ -75,13 +75,13 @@ export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderPr
       <div style={progressBar}><div style={progressFill(progressPct)} /></div>
 
       {priceHint && (
-        <div style={{
-          marginTop: 10,
-          fontSize: 14,
-          fontWeight: 600,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          💰 {priceHint}
+        <div style={{ marginTop: 10, fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.01em' }}>
+            {priceHint}
+          </div>
+          <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>
+            {s.estimate.reference}
+          </div>
         </div>
       )}
       {memberHint && (

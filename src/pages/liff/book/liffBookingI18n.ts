@@ -39,6 +39,7 @@ export interface BookI18nStrings {
     memberRateApplied: string
   }
   step2: {
+    optionalLabel: string
     headcount: string
     experienceSingle: string
     experienceMulti: string
@@ -133,6 +134,15 @@ export interface BookI18nStrings {
     errorHelp: string
   }
   footer: { back: string; next: string; confirm: string; submitLine: string }
+  validation: {
+    pickActivity: string
+    pickExperience: string
+    pickBoat: string
+    pickDate: string
+    pickCoach: string
+    fillName: string
+    fillPhone: string
+  }
   staff: {
     unsure: string
     needHelp: string
@@ -143,7 +153,7 @@ export interface BookI18nStrings {
     step4Hint: string
     splitActivityMsg: string
   }
-  estimate: { about: string; expand: string; collapse: string }
+  estimate: { about: string; reference: string; expand: string; collapse: string }
   pricing: {
     member: string
     guest: string
@@ -196,6 +206,7 @@ export interface BookI18nStrings {
     perPerson: string
   }
   reminders: {
+    title: string
     earlyCoach: string
     dualBig: string
     dualSmall: string
@@ -249,6 +260,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       memberRateApplied: '已滑過已套用會員價',
     },
     step2: {
+      optionalLabel: '選填',
       headcount: '幾人',
       experienceSingle: '體驗，還是已經滑過？',
       experienceMulti: '其中幾位體驗',
@@ -348,6 +360,15 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       errorHelp: '若確定資料正確，請私訊官方帳號協助綁定。',
     },
     footer: { back: '返回', next: '下一步', confirm: '確認', submitLine: '用 LINE 送出' },
+    validation: {
+      pickActivity: '請先選擇項目',
+      pickExperience: '請選擇體驗人數',
+      pickBoat: '請先選擇船型',
+      pickDate: '請選擇至少一個偏好日期',
+      pickCoach: '請選擇教練，或改為不指定',
+      fillName: '請填寫姓名',
+      fillPhone: '請填寫有效電話（至少 8 碼）',
+    },
     staff: {
       unsure: '還是選不出來？',
       needHelp: '還是有問題？',
@@ -358,7 +379,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       step4Hint: '特殊需求可寫備註；表單沒涵蓋的情況再問小編。',
       splitActivityMsg: '我們有人想玩寬板、有人想衝浪（人數各不同，例如 5 人裡 2 位寬板、3 位衝浪），請協助安排與報價。',
     },
-    estimate: { about: '約', expand: '看明細', collapse: '收合明細' },
+    estimate: { about: '約', reference: '參考價', expand: '看明細', collapse: '收合明細' },
     pricing: {
       member: '會員',
       guest: '非會員',
@@ -418,6 +439,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       perPerson: '／人',
     },
     reminders: {
+      title: '本梯次提醒',
       earlyCoach: '如欲預約 8 點前時段，需指定教練課程。',
       dualBig: '船上 11 人以上需 2 艘大船，實際安排以小編回覆為準。',
       dualSmall: '船上 7 人以上選小船，需 2 艘小船安排座位。',
@@ -469,6 +491,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       memberRateApplied: 'Member rate applied (returning riders)',
     },
     step2: {
+      optionalLabel: 'Optional',
       headcount: 'How many riders',
       experienceSingle: 'First time or experienced?',
       experienceMulti: 'How many first-timers?',
@@ -568,6 +591,15 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       errorHelp: 'If your details are correct, message us to link your account.',
     },
     footer: { back: 'Back', next: 'Next', confirm: 'Review', submitLine: 'Send via LINE' },
+    validation: {
+      pickActivity: 'Choose an activity first',
+      pickExperience: 'Select how many are first-timers',
+      pickBoat: 'Choose a boat preference',
+      pickDate: 'Add at least one preferred date',
+      pickCoach: 'Pick a coach or choose no preference',
+      fillName: 'Enter your name',
+      fillPhone: 'Enter a valid phone (at least 8 digits)',
+    },
     staff: {
       unsure: 'Still can\'t decide?',
       needHelp: 'Still have questions?',
@@ -578,7 +610,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       step4Hint: 'Use notes for special requests; ask us if the form does not cover your case.',
       splitActivityMsg: 'We have a split group (e.g. some wakeboard, some wakesurf) — please help arrange and quote.',
     },
-    estimate: { about: 'Est.', expand: 'Details', collapse: 'Hide details' },
+    estimate: { about: 'Est.', reference: 'Reference only', expand: 'Details', collapse: 'Hide details' },
     pricing: {
       member: 'member',
       guest: 'non-member',
@@ -638,6 +670,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       perPerson: '/person',
     },
     reminders: {
+      title: 'Session notes',
       earlyCoach: 'Sessions before 8 AM require a designated coach.',
       dualBig: '11+ on board may need 2 big boats — staff will confirm.',
       dualSmall: '7+ on board with small boats needs 2 boats for seating.',

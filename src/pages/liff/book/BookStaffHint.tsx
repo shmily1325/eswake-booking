@@ -5,16 +5,27 @@ import { useBookLocale } from './BookLocaleContext'
 import type { CoachOption, LiffBookingFormState, TimePreference } from './types'
 import { buildStaffHelpMessage, openStaffHelp } from './bookStaffHelp'
 
-const linkBtn: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  border: 'none',
-  background: 'none',
-  color: '#00b900',
-  fontSize: 11,
+const wrap: CSSProperties = {
+  textAlign: 'center',
+  margin: '14px 0 0',
+  fontSize: 12,
+  color: '#999',
+  lineHeight: 1.65,
+}
+
+const pillBtn: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: 8,
+  padding: '8px 18px',
+  borderRadius: 999,
+  border: '1px solid rgba(0,185,0,0.35)',
+  background: 'rgba(0,185,0,0.08)',
+  color: '#009900',
+  fontSize: 13,
   fontWeight: 600,
   cursor: 'pointer',
-  textDecoration: 'underline',
 }
 
 interface BookStaffHintProps {
@@ -54,44 +65,32 @@ export function BookStaffHint({
 
   if (step === 1) {
     return (
-      <div style={{ textAlign: 'center', margin: '14px 0 6px', fontSize: 12, color: '#999', lineHeight: 1.65 }}>
+      <div style={{ ...wrap, margin: '14px 0 6px' }}>
         <div style={{ fontSize: 11, color: '#aaa' }}>
           {s.staff.splitActivity}
         </div>
-        <div style={{ marginTop: 6 }}>
-          <span>{s.staff.unsure}</span>
-          <button type="button" onClick={handleAsk} style={{ ...linkBtn, fontSize: 12, marginLeft: 2 }}>
-            {s.staff.askStaff}
-          </button>
-        </div>
+        <div style={{ marginTop: 6 }}>{s.staff.unsure}</div>
+        <button type="button" onClick={handleAsk} style={pillBtn}>
+          {s.staff.askStaff}
+        </button>
       </div>
     )
   }
 
-  const isMixedSkill = form.beginnerCount != null
-    && form.beginnerCount > 0
-    && form.beginnerCount < form.headcount
-
-  const contextualNote = step === 2 && isMixedSkill
-    ? s.staff.step2MixedNote
-    : step === 4
-      ? s.staff.step4Hint
-      : null
+  const contextualNote = step === 4 ? s.staff.step4Hint : null
 
   if (step === 2 || step === 3 || step === 4) {
     return (
-      <div style={{ textAlign: 'center', margin: '14px 0 0', fontSize: 12, color: '#999', lineHeight: 1.65 }}>
+      <div style={wrap}>
         {contextualNote ? (
           <div style={{ fontSize: 11, color: '#aaa', marginBottom: 6 }}>
             {contextualNote}
           </div>
         ) : null}
-        <div>
-          <span>{s.staff.needHelp}</span>
-          <button type="button" onClick={handleAsk} style={{ ...linkBtn, fontSize: 12, marginLeft: 2 }}>
-            {s.staff.askStaff}
-          </button>
-        </div>
+        <div>{s.staff.needHelp}</div>
+        <button type="button" onClick={handleAsk} style={pillBtn}>
+          {s.staff.askStaff}
+        </button>
       </div>
     )
   }

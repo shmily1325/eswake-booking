@@ -31,11 +31,10 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
   return (
     <div
       style={{
-        marginTop: 20,
-        border: '1px solid #e8e8e8',
+        border: '1px dashed #ddd',
         borderRadius: 10,
         overflow: 'hidden',
-        background: 'white',
+        background: '#fafafa',
       }}
     >
       <button
