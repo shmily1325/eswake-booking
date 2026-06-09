@@ -29,6 +29,7 @@ import {
   BOTH_ACTIVITY_SHORT,
   isLiffBookEnabled,
   syncActivityChoice,
+  BEGINNER_LESSON_NOTE,
 } from './liffBookingConfig'
 import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
 import { boatLayoutLabel, wbNeedsLargeGroupBoatChoice } from './liffBookingBoats'
@@ -42,6 +43,7 @@ import {
   dateChip,
   dateScrollRow,
   fieldLabel,
+  fieldHint,
   primaryBtn,
   secondaryBtn,
   stickyFooter,
@@ -52,7 +54,8 @@ import { liffTrack } from '../track'
 import {
   NOTES_PLACEHOLDER,
   OFFICIAL_INFO_URL,
-  STEP4_CONFIRM_NOTES,
+  STEP3_SCHEDULE_NOTE,
+  STEP4_CONFIRM_NOTE,
 } from './liffBookingContent'
 
 const INITIAL_STATE: LiffBookingFormState = {
@@ -306,17 +309,19 @@ export function LiffBook() {
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       type="button"
-                      style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '12px 0' }}
+                      style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '10px 0' }}
                       onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
                     >
-                      初學
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>初學</div>
+                      <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{BEGINNER_LESSON_NOTE}</div>
                     </button>
                     <button
                       type="button"
-                      style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '12px 0' }}
+                      style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '10px 0' }}
                       onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
                     >
-                      非初學
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>非初學</div>
+                      <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>20 分鐘計價</div>
                     </button>
                   </div>
                 </>
@@ -382,6 +387,7 @@ export function LiffBook() {
                 </button>
               ))}
             </div>
+            <div style={fieldHint}>{STEP3_SCHEDULE_NOTE}</div>
 
             {!showCoachSection ? (
               <div style={{ marginTop: 16 }}>
@@ -393,9 +399,8 @@ export function LiffBook() {
                     color: '#888', fontSize: 13, cursor: 'pointer', textDecoration: 'underline',
                   }}
                 >
-                  ＋ 指定教練（選填）
+                  ＋ 指定教練（選填 · 8 點前需指定）
                 </button>
-                <div style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>指定教練另計；8 點前需指定</div>
               </div>
             ) : (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
@@ -433,7 +438,7 @@ export function LiffBook() {
               </div>
             )}
 
-            <BookContextTips step={3} form={form} pickTimePref={pickTimePref} pickDate={pickDate} />
+            <BookContextTips step={3} form={form} pickTimePref={pickTimePref} />
           </div>
         )}
 
@@ -469,12 +474,9 @@ export function LiffBook() {
               {estimate && (
                 <>
                   <BookEstimateCard estimate={estimate} defaultExpanded />
-                  <p style={{ fontSize: 11, color: '#999', margin: '8px 0 0' }}>{estimate.disclaimer}</p>
-                  <ul style={{ fontSize: 11, color: '#999', margin: '8px 0 0', paddingLeft: 18, lineHeight: 1.6 }}>
-                    {STEP4_CONFIRM_NOTES.map(note => (
-                      <li key={note}>{note}</li>
-                    ))}
-                  </ul>
+                  <p style={{ fontSize: 11, color: '#999', margin: '8px 0 0', lineHeight: 1.5 }}>
+                    {estimate.disclaimer} · {STEP4_CONFIRM_NOTE}
+                  </p>
                 </>
               )}
             </div>

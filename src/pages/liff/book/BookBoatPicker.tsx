@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { BOAT_BIG_MAX, BOAT_SMALL_MAX } from './liffBookingBoats'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { chipBtn } from './bookStyles'
 import type { BoatPreference } from './types'
@@ -34,6 +35,8 @@ interface BookBoatPickerProps {
 
 export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps) {
   const title = variant === 'step1' ? '坐什麼船？' : '7 人以上怎麼安排？'
+  const smallCap = variant === 'largeGroup' ? '7人+' : `≤${BOAT_SMALL_MAX}人`
+  const bigCap = `≤${BOAT_BIG_MAX}人`
 
   return (
     <div style={wrap}>
@@ -48,6 +51,7 @@ export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps
           <div style={{ fontSize: 12, fontWeight: 600 }}>
             {variant === 'largeGroup' ? '2 艘小船' : '小船'}
           </div>
+          <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{smallCap}</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>
             ${FIRST_TIME_WB_SMALL.toLocaleString()}
           </div>
@@ -59,6 +63,7 @@ export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps
           aria-pressed={value === 'big'}
         >
           <div style={{ fontSize: 12, fontWeight: 600 }}>大船</div>
+          <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{bigCap}</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>
             ${FIRST_TIME_BIG_BOAT.toLocaleString()}
           </div>

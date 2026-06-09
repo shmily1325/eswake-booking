@@ -150,6 +150,13 @@ export const fieldLabel: CSSProperties = {
   letterSpacing: '0.02em',
 }
 
+export const fieldHint: CSSProperties = {
+  fontSize: 11,
+  color: '#aaa',
+  marginTop: 6,
+  lineHeight: 1.45,
+}
+
 export const dateScrollRow: CSSProperties = {
   display: 'flex',
   gap: 8,

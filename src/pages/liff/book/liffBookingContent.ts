@@ -19,8 +19,8 @@ export const STEP1_ACTIVITY_DIFF_LINES = [
   '寬板滑水：雙腳固定、全程抓繩，速度較快',
 ] as const
 
-/** Step 1／4 費用已含（濃縮） */
-export const STEP1_INCLUDES_NOTE = '初學價已含：裝備、教練、船、保險、停車'
+/** Step 1 頂部價格區間（決策用，非卡片大字） */
+export const STEP1_PRICE_RANGE_SUFFIX = '已含裝備、教練、船'
 
 /** Step 1 選 WB 時船型提示 */
 export const STEP1_WB_BOAT_NOTE = '小船僅寬板滑水；快艇衝浪與兩項一起需大船'
@@ -32,12 +32,12 @@ export const STEP2_FOLLOW_BOAT_NOTE =
 /** Step 3 時段說明 */
 export const STEP3_SCHEDULE_NOTE = '時段為偏好，小編回覆後才確認'
 
-/** Step 4 確認頁固定說明 */
-export const STEP4_CONFIRM_NOTES = [
-  '以上為參考價，以小編回覆為準',
-  '跟船：第 1 位免費，第 2 位起 $300',
-  '費用已含裝備、教練、船、保險、停車',
-] as const
+/** Step 4 確認頁固定說明（一行） */
+export const STEP4_CONFIRM_NOTE =
+  '參考價以小編回覆為準 · 跟船第 2 位起 $300 · 已含裝備教練'
+
+/** @deprecated 請改用 STEP4_CONFIRM_NOTE */
+export const STEP4_CONFIRM_NOTES = [STEP4_CONFIRM_NOTE] as const
 
 export const NOTES_PLACEHOLDER = '跟船人數、特殊需求（選填）'
 

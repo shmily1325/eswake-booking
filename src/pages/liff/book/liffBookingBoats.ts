@@ -75,11 +75,21 @@ export function activityBoatNote(activity: ActivityChoice): string {
   return `小船或大船 · ≤${BOAT_SMALL_MAX} / ${BOAT_BIG_MAX} 人`
 }
 
-/** Step 1 項目卡片上的船型標籤 */
+/** Step 1 項目卡片上的規則標籤（寫在 chip，不另起段落） */
+export function step1ActivityChip(
+  activity: ActivityCode | 'BOTH',
+  boatPreference: BoatPreference | null = null,
+): string {
+  if (activity === 'WS') return `大船 · ≤${BOAT_BIG_MAX}人`
+  if (activity === 'BOTH') return `大船 · 兩項`
+  if (boatPreference === 'small') return `小船 · ≤${BOAT_SMALL_MAX}人`
+  if (boatPreference === 'big') return `大船 · ≤${BOAT_BIG_MAX}人`
+  return '小船／大船'
+}
+
+/** @deprecated 請改用 step1ActivityChip */
 export function step1BoatChip(activity: ActivityCode | 'BOTH'): string {
-  if (activity === 'WS') return '大船'
-  if (activity === 'WB') return '選船'
-  return '大船'
+  return step1ActivityChip(activity)
 }
 
 export function wbNeedsLargeGroupBoatChoice(activity: ActivityChoice | null, headcount: number): boolean {
