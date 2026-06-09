@@ -1,5 +1,8 @@
 import type { CSSProperties } from 'react'
-import { BOAT_BIG_MAX, BOAT_SMALL_MAX } from './liffBookingBoats'
+import {
+  STEP1_BOAT_COPY,
+  STEP2_LARGE_GROUP_COPY,
+} from './liffBookingBoats'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { chipBtn } from './bookStyles'
 import type { BoatPreference } from './types'
@@ -15,6 +18,12 @@ const label: CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   color: '#444',
+  marginBottom: 4,
+}
+
+const hint: CSSProperties = {
+  fontSize: 10,
+  color: '#999',
   marginBottom: 8,
 }
 
@@ -26,6 +35,14 @@ const btn = (selected: boolean): CSSProperties => ({
   lineHeight: 1.3,
 })
 
+const capacityNote: CSSProperties = {
+  fontSize: 10,
+  color: '#aaa',
+  textAlign: 'center',
+  marginTop: 8,
+  lineHeight: 1.45,
+}
+
 interface BookBoatPickerProps {
   /** step1：寬板選船；largeGroup：7 人以上安排 */
   variant: 'step1' | 'largeGroup'
@@ -34,16 +51,13 @@ interface BookBoatPickerProps {
 }
 
 export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps) {
-  const title = variant === 'step1' ? '坐什麼船？' : '7 人以上怎麼安排？'
-  const smallCap =
-    variant === 'largeGroup'
-      ? `2 艘 · ${BOAT_SMALL_MAX + 1}～${BOAT_BIG_MAX}人`
-      : `≤${BOAT_SMALL_MAX}人 · 7+兩艘`
-  const bigCap = `≤${BOAT_BIG_MAX}人`
+  const isStep1 = variant === 'step1'
+  const copy = isStep1 ? STEP1_BOAT_COPY : STEP2_LARGE_GROUP_COPY
 
   return (
     <div style={wrap}>
-      <div style={label}>{title}</div>
+      <div style={label}>{copy.title}</div>
+      {isStep1 ? <div style={hint}>{STEP1_BOAT_COPY.hint}</div> : null}
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           type="button"
@@ -52,9 +66,11 @@ export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps
           aria-pressed={value === 'small'}
         >
           <div style={{ fontSize: 12, fontWeight: 600 }}>
-            {variant === 'largeGroup' ? '2 艘小船' : '小船'}
+            {isStep1 ? '小船' : '2 艘小船'}
           </div>
-          <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{smallCap}</div>
+          <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+            {isStep1 ? STEP1_BOAT_COPY.smallSub : STEP2_LARGE_GROUP_COPY.smallSub}
+          </div>
           <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>
             ${FIRST_TIME_WB_SMALL.toLocaleString()}
             <span style={{ fontSize: 10, fontWeight: 600 }}>／人</span>
@@ -67,13 +83,16 @@ export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps
           aria-pressed={value === 'big'}
         >
           <div style={{ fontSize: 12, fontWeight: 600 }}>大船</div>
-          <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{bigCap}</div>
+          <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+            {isStep1 ? STEP1_BOAT_COPY.bigSub : STEP2_LARGE_GROUP_COPY.bigSub}
+          </div>
           <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>
             ${FIRST_TIME_BIG_BOAT.toLocaleString()}
             <span style={{ fontSize: 10, fontWeight: 600 }}>／人</span>
           </div>
         </button>
       </div>
+      {isStep1 ? <div style={capacityNote}>{STEP1_BOAT_COPY.capacityNote}</div> : null}
     </div>
   )
 }

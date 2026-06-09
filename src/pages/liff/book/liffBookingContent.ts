@@ -22,8 +22,8 @@ export const STEP1_ACTIVITY_DIFF_LINES = [
 /** Step 1 頂部價格區間（決策用，非卡片大字） */
 export const STEP1_PRICE_RANGE_SUFFIX = '已含裝備、教練、船'
 
-/** Step 1 選 WB 時船型提示 */
-export const STEP1_WB_BOAT_NOTE = '小船僅寬板滑水；快艇衝浪與兩項一起需大船'
+/** Step 1 選 WB 時船型提示（詳情區一行） */
+export const STEP1_WB_BOAT_NOTE = '寬板可選小船或大船；衝浪與兩項一起需大船'
 
 /** Step 2 跟船（濃縮自 FAQ follow-boat） */
 export const STEP2_FOLLOW_BOAT_NOTE =

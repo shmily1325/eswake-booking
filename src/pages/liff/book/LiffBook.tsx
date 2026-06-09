@@ -192,12 +192,10 @@ export function LiffBook() {
   const canNext = (): boolean => {
     switch (step) {
       case 1:
-        return form.activity != null && (form.activity !== 'WB' || form.boatPreference != null)
+        return form.activity != null
       case 2:
         if (form.beginnerCount == null) return false
-        if (form.activity === 'WB' && wbNeedsLargeGroupBoatChoice(form.activity, form.headcount)) {
-          return form.boatPreference != null
-        }
+        if (form.activity === 'WB' && !form.boatPreference) return false
         return true
       case 3: {
         if (!pickDate && form.preferredDates.length === 0) return false
@@ -272,9 +270,7 @@ export function LiffBook() {
           <BookEssentialsPanel
             memberRate={memberRate}
             value={form.activity}
-            boatPreference={form.boatPreference}
             onChange={code => setForm(prev => ({ ...prev, ...syncActivityChoice(code) }))}
-            onBoatPreferenceChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
           />
         )}
 
@@ -297,10 +293,10 @@ export function LiffBook() {
               </div>
             </div>
 
-            {form.activity === 'WB' && wbNeedsLargeGroupBoatChoice(form.activity, form.headcount) && (
+            {form.activity === 'WB' && (
               <div style={{ marginBottom: 20 }}>
                 <BookBoatPicker
-                  variant="largeGroup"
+                  variant={wbNeedsLargeGroupBoatChoice(form.activity, form.headcount) ? 'largeGroup' : 'step1'}
                   value={form.boatPreference}
                   onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
                 />

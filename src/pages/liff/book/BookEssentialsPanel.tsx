@@ -9,18 +9,15 @@ import {
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { step1ActivityChip } from './liffBookingBoats'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
-import { BookBoatPicker } from './BookBoatPicker'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import { STEP1_PRICE_RANGE_SUFFIX } from './liffBookingContent'
 import { bookCard } from './bookStyles'
-import type { ActivityChoice, ActivityCode, BoatPreference } from './types'
+import type { ActivityChoice, ActivityCode } from './types'
 
 interface BookEssentialsPanelProps {
   memberRate?: boolean
   value: ActivityChoice | null
-  boatPreference: BoatPreference | null
   onChange: (code: ActivityChoice) => void
-  onBoatPreferenceChange: (pref: BoatPreference) => void
 }
 
 const priceRangeHeader: CSSProperties = {
@@ -103,15 +100,10 @@ function activityTagline(code: ActivityChoice): string {
   return getActivityInfo(code).tagline
 }
 
-function selectedPrice(
-  code: ActivityChoice,
-  boatPreference: BoatPreference | null,
-): string | null {
+function selectedPrice(code: ActivityChoice): string | null {
   if (code === 'WS' || code === 'BOTH') return `$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人`
   if (code === 'WB') {
-    if (!boatPreference) return null
-    const n = boatPreference === 'small' ? FIRST_TIME_WB_SMALL : FIRST_TIME_BIG_BOAT
-    return `$${n.toLocaleString()}／人`
+    return `$${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人`
   }
   return null
 }
@@ -138,9 +130,7 @@ function detailTitle(code: ActivityChoice): string {
 export function BookEssentialsPanel({
   memberRate = false,
   value,
-  boatPreference,
   onChange,
-  onBoatPreferenceChange,
 }: BookEssentialsPanelProps) {
   const pick = (code: ActivityChoice) => {
     triggerHaptic('light')
@@ -149,10 +139,8 @@ export function BookEssentialsPanel({
 
   const priceRange = `初學 $${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人 · ${STEP1_PRICE_RANGE_SUFFIX}`
   const active = value
-  const chipLabel = active
-    ? step1ActivityChip(active, active === 'WB' ? boatPreference : null)
-    : null
-  const price = active ? selectedPrice(active, boatPreference) : null
+  const chipLabel = active ? step1ActivityChip(active) : null
+  const price = active ? selectedPrice(active) : null
 
   return (
     <div style={{ ...bookCard, marginBottom: 12, padding: '14px 14px 12px' }}>
@@ -190,16 +178,6 @@ export function BookEssentialsPanel({
               videoId={getActivityInfo(active as ActivityCode).youtubeVideoId}
               title={detailTitle(active)}
             />
-          )}
-
-          {active === 'WB' && (
-            <div style={{ marginTop: 10 }}>
-              <BookBoatPicker
-                variant="step1"
-                value={boatPreference}
-                onChange={onBoatPreferenceChange}
-              />
-            </div>
           )}
 
           {active === 'BOTH' && (

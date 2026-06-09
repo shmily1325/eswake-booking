@@ -5,6 +5,22 @@ export type BoatTier = 'small' | 'big'
 export const BOAT_SMALL_MAX = 6
 export const BOAT_BIG_MAX = 10
 
+/** Step 2 寬板選船（偏好／價位，不依人數配船） */
+export const STEP1_BOAT_COPY = {
+  title: '偏好哪種船？',
+  hint: '1 人也可約',
+  smallSub: '基本型 · 僅寬板',
+  bigSub: '空間較大',
+  capacityNote: `小船最多 ${BOAT_SMALL_MAX} 人 · 大船最多 ${BOAT_BIG_MAX} 人`,
+} as const
+
+/** Step 2 寬板 7 人以上安排 */
+export const STEP2_LARGE_GROUP_COPY = {
+  title: '7 人以上怎麼安排？',
+  smallSub: '7～10 人',
+  bigSub: '單艘即可',
+} as const
+
 /** 計價規則（給客人看的摘要） */
 export const PRICING_RULES = [
   { icon: '🎓', text: '初學者 → 初次體驗價（每人）' },
@@ -71,20 +87,15 @@ export function boatLayoutLabel(
 
 export function activityBoatNote(activity: ActivityChoice): string {
   if (activity === 'WS') return `僅大船 · 最多 ${BOAT_BIG_MAX} 人`
-  if (activity === 'BOTH') return `固定大船 · 最多 ${BOAT_BIG_MAX} 人`
-  return `小船或大船 · ≤${BOAT_SMALL_MAX} / ${BOAT_BIG_MAX} 人`
+  if (activity === 'BOTH') return `固定大船 · 兩項`
+  return '小船或大船 · 依偏好'
 }
 
-/** Step 1 項目卡片上的規則標籤（寫在 chip，不另起段落） */
-export function step1ActivityChip(
-  activity: ActivityCode | 'BOTH',
-  boatPreference: BoatPreference | null = null,
-): string {
-  if (activity === 'WS') return `大船 · ≤${BOAT_BIG_MAX}人`
+/** Step 1 項目 chip（僅活動） */
+export function step1ActivityChip(activity: ActivityCode | 'BOTH'): string {
+  if (activity === 'WS') return `大船 · 最多 ${BOAT_BIG_MAX} 人`
   if (activity === 'BOTH') return `大船 · 兩項`
-  if (boatPreference === 'small') return `小船 · 7+兩艘`
-  if (boatPreference === 'big') return `大船 · ≤${BOAT_BIG_MAX}人`
-  return '小船／大船 · 7+可2艘'
+  return '小船或大船 · 依偏好'
 }
 
 /** @deprecated 請改用 step1ActivityChip */
@@ -109,10 +120,7 @@ export function describeBoatForBooking(
     return `大船（最多 ${BOAT_BIG_MAX} 人）`
   }
   const layout = boatLayoutLabel(activity, headcount, boatPreference)
-  if (layout === '2 艘小船') {
-    return `${layout}（${headcount} 人）`
-  }
-  return `${layout}（${headcount} 人，最多 ${layout === '大船' ? BOAT_BIG_MAX : BOAT_SMALL_MAX} 人）`
+  return `${layout}（${headcount} 人）`
 }
 
 export function isHeadcountValid(activity: ActivityChoice, headcount: number): boolean {
