@@ -138,6 +138,22 @@ export function isLiffBookEnabled(): boolean {
   return true
 }
 
+/** 預約頁 LIFF App ID（Rich Menu「我要預約」用）；未設則 fallback VITE_LIFF_ID */
+export function resolveLiffBookId(): string | undefined {
+  const bookId = (import.meta.env.VITE_LIFF_BOOK_ID as string | undefined)?.trim()
+  const fallback = (import.meta.env.VITE_LIFF_ID as string | undefined)?.trim()
+  return bookId || fallback || undefined
+}
+
+/** Rich Menu / 分享用 LIFF 連結 */
+export function liffBookShareUrl(): string | null {
+  const id = resolveLiffBookId()
+  return id ? `https://liff.line.me/${id}` : null
+}
+
+/** LINE Developers 後台 Endpoint URL 路徑 */
+export const LIFF_BOOK_ENDPOINT_PATH = '/liff/book'
+
 export function activityDisplayName(code: ActivityChoice): string {
   if (code === 'BOTH') return BOTH_ACTIVITY_LABEL
   const a = getActivityInfo(code)

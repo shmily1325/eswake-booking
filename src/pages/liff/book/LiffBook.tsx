@@ -30,6 +30,7 @@ import {
   isLiffBookEnabled,
   syncActivityChoice,
   BEGINNER_LESSON_NOTE,
+  resolveLiffBookId,
 } from './liffBookingConfig'
 import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
 import { boatLayoutLabel, wbNeedsLargeGroupBoatChoice } from './liffBookingBoats'
@@ -103,7 +104,11 @@ export function LiffBook() {
     bindingFormProps,
     skipBinding,
     retryInit,
-  } = useLiffMember({ requireBinding: false, trackIconId: 'liff_book_open' })
+  } = useLiffMember({
+    requireBinding: false,
+    trackIconId: 'liff_book_open',
+    liffId: resolveLiffBookId(),
+  })
 
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<LiffBookingFormState>(INITIAL_STATE)

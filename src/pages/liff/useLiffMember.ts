@@ -18,10 +18,12 @@ export interface UseLiffMemberOptions {
   requireBinding?: boolean
   /** LIFF 初始化成功後的追蹤 icon_id */
   trackIconId?: string
+  /** 覆寫 LIFF App ID（預約頁用 VITE_LIFF_BOOK_ID） */
+  liffId?: string
 }
 
 export function useLiffMember(options: UseLiffMemberOptions = {}) {
-  const { requireBinding = true, trackIconId = 'liff_open' } = options
+  const { requireBinding = true, trackIconId = 'liff_open', liffId: liffIdOverride } = options
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -89,7 +91,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
 
   const initLiff = useCallback(async () => {
     try {
-      const liffId = import.meta.env.VITE_LIFF_ID
+      const liffId = liffIdOverride ?? import.meta.env.VITE_LIFF_ID
       if (!liffId) {
         setError('LIFF ID 未設置')
         setLoading(false)
@@ -117,7 +119,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
       setError(unknownErrorMessage(err, 'LIFF 初始化失敗'))
       setLoading(false)
     }
-  }, [checkBinding])
+  }, [checkBinding, liffIdOverride])
 
   useEffect(() => {
     void initLiff()
