@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 import type { Booking } from '../types'
 import { BookingCard } from './BookingCard'
+import { BookingsListSkeleton } from './BookingsListSkeleton'
 import { LiffPageHint } from './LiffPageHint'
 
 const BOOKINGS_PAGE_HINT = '以下為即將到來的預約，若要更改請私訊官方。'
@@ -18,6 +19,7 @@ const liffContentPanel: CSSProperties = {
 interface BookingsListProps {
   bookings: Booking[]
   viewerMemberName: string
+  loading?: boolean
   formatDate: (dateString: string) => string
   getArrivalTime: (startAt: string) => string
   getStartTime: (startAt: string) => string
@@ -27,11 +29,16 @@ interface BookingsListProps {
 export function BookingsList({
   bookings,
   viewerMemberName,
+  loading = false,
   formatDate,
   getArrivalTime,
   getStartTime,
   getEndTime,
 }: BookingsListProps) {
+  if (loading) {
+    return <BookingsListSkeleton />
+  }
+
   if (bookings.length === 0) {
     return (
       <div

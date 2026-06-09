@@ -5,12 +5,14 @@ import type { Member } from '../types'
 
 interface LiffHeaderProps {
   member: Member | null
+  /** LINE 顯示名稱；會員資料未到時先問候用 */
+  lineDisplayName?: string | null
   refreshing: boolean
   onRefresh: () => void
 }
 
-export function LiffHeader({ member, refreshing, onRefresh }: LiffHeaderProps) {
-  const hiName = member ? displayNameForLiff(member) : ''
+export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: LiffHeaderProps) {
+  const hiName = member ? displayNameForLiff(member) : (lineDisplayName?.trim() || '')
   return (
     <div style={{
       background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
