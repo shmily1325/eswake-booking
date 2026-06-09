@@ -1,216 +1,46 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { setupGlobalErrorHandler } from './utils/debugHelpers'
 import { getLocalDateString } from './utils/date'
+import { LiffBootScreen } from './pages/liff/LiffBootScreen'
+import { isShopSubdomain } from './pages/shop/lib/shopPaths'
 
-// 啟用全局錯誤捕獲
 setupGlobalErrorHandler()
 
 // 每日自動重新整理：確保用戶使用最新版本
 const checkDailyRefresh = () => {
   try {
     const today = getLocalDateString()
-    
-    // 清除 URL 中的 _r 參數（重整後美化網址）
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.has('_r')) {
       urlParams.delete('_r')
       const cleanUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
       window.history.replaceState({}, '', cleanUrl)
     }
-    
-    // 安全機制：檢查「今天」是否已嘗試過（用日期而非單純標記，解決手機 sessionStorage 跨日持續問題）
     const attemptedDate = sessionStorage.getItem('app_refresh_attempted_date')
     if (attemptedDate === today) return
-    
     const lastDate = localStorage.getItem('app_last_refresh_date')
-    
     if (lastDate !== today) {
-      // 記錄今天已嘗試（防止無限循環）
       sessionStorage.setItem('app_refresh_attempted_date', today)
-      try { localStorage.setItem('app_last_refresh_date', today) } catch { /* localStorage may be unavailable */ }
-      
-      // 有舊紀錄才重整（第一次使用不重整）
+      try { localStorage.setItem('app_last_refresh_date', today) } catch { /* ignore */ }
       if (lastDate) {
-        // 強制重新載入（加上時間戳避免快取）
         window.location.href = window.location.pathname + '?_r=' + Date.now()
       }
     }
-  } catch { /* ignore refresh errors */ }
+  } catch { /* ignore */ }
 }
 checkDailyRefresh()
 
-import { LoginPage } from './components/LoginPage'
-import { HomePage } from './pages/HomePage'
-import { DayView } from './pages/DayView'
-import { SearchPage } from './pages/SearchPage'
-import { SearchBookings } from './pages/SearchBookings'
-// import { CoachCheck } from './pages/CoachCheck'
-import { CoachReport } from './pages/coach/CoachReport'
-import { MyReport } from './pages/coach/MyReport'
-import { CoachAdmin } from './pages/coach/CoachAdmin'
-import { CoachAssignment } from './pages/coach/CoachAssignment'
-import { MemberImport } from './pages/member/MemberImport'
-import { AuditLog } from './pages/admin/AuditLog'
-import { TomorrowReminder } from './pages/TomorrowReminder'
-import { BackupPage } from './pages/admin/BackupPage'
-import { MemberManagement } from './pages/member/MemberManagement'
-import { MemberPhoneEditPage } from './pages/member/MemberPhoneEditPage'
-import { BoardManagement } from './pages/admin/BoardManagement'
-import { BaoHub } from './pages/BaoHub'
-import { StaffManagement } from './pages/admin/StaffManagement'
-import { BoatManagement } from './pages/admin/BoatManagement'
-import { ProductHub } from './pages/admin/products/ProductHub'
-import { OrderSettlePage } from './pages/admin/orders/OrderSettlePage'
-// import { EditorHub } from './pages/EditorHub' // 已整合到人員管理
-import { QuickTransaction } from './pages/QuickTransaction'
-import { MemberTransaction } from './pages/member/MemberTransaction'
-import { AnnouncementManagement } from './pages/admin/AnnouncementManagement'
-import { LineBindingStatus } from './pages/admin/LineBindingStatus'
-import { LineSettings } from './pages/admin/LineSettings'
-import { Statistics } from './pages/admin/Statistics'
-import { BoatUsageHoursPage } from './pages/admin/BoatUsageHoursPage'
-import { CoachDailyView } from './pages/coach/CoachDailyView'
-// import { PermissionManagement } from './pages/admin/PermissionManagement' // 暫時停用
-import { UnauthorizedPage } from './pages/UnauthorizedPage'
-import { LoginAccessDeniedPage } from './pages/LoginAccessDeniedPage'
-import { LiffMyBookings } from './pages/LiffMyBookings'
-// 預約 LIFF 獨立 chunk，避免首次載入下載整包後台 JS
+const AdminApp = lazy(() => import('./AdminApp'))
+const LiffMyBookings = lazy(() =>
+  import('./pages/LiffMyBookings').then(m => ({ default: m.LiffMyBookings })),
+)
 const LiffBook = lazy(() =>
   import('./pages/liff/book/LiffBook').then(m => ({ default: m.LiffBook })),
 )
-// 商城（公開、給匿名訪客）獨立成一個 chunk，避免後台 JS 拖累首次載入
 const ShopApp = lazy(() => import('./pages/shop/ShopApp'))
-import { ClickTrackProvider } from './components/ClickTrackProvider'
-import { isAllowedUser } from './utils/auth'
-import { isShopSubdomain } from './pages/shop/lib/shopPaths'
 
-function AppContent() {
-  const { user, loading } = useAuth()
-  const isOnline = useOnlineStatus()
-  const [loginAllowanceResolved, setLoginAllowanceResolved] = useState(false)
-  const [loginAllowanceOk, setLoginAllowanceOk] = useState(false)
-  // 記錄上一次已驗證過的 user.id，避免 token refresh / 切換分頁回來時
-  // user 物件 reference 變了就重跑驗證、使整個 App 短暫 unmount（會把開啟中的對話框 / 表單吃掉）
-  const lastCheckedUserIdRef = useRef<string | null>(null)
-
-  // 登入名單（allowed_users ＋超級管理員）— 在登入與權限快取層就擋
-  useEffect(() => {
-    if (loading) {
-      return
-    }
-    if (!user) {
-      lastCheckedUserIdRef.current = null
-      setLoginAllowanceResolved(true)
-      setLoginAllowanceOk(true)
-      return
-    }
-    // 同一個使用者（token refresh 時 reference 會變但 id 不變）就跳過，
-    // 避免把 loginAllowanceResolved 打回 false，導致整棵路由 unmount
-    if (lastCheckedUserIdRef.current === user.id) {
-      return
-    }
-    let cancelled = false
-    isAllowedUser(user)
-      .then((ok) => {
-        if (!cancelled) {
-          setLoginAllowanceOk(ok)
-          setLoginAllowanceResolved(true)
-          lastCheckedUserIdRef.current = user.id
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLoginAllowanceOk(false)
-          setLoginAllowanceResolved(true)
-          lastCheckedUserIdRef.current = user.id
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [user, loading])
-
-  // 每日自動重新整理邏輯已在模組頂層的 checkDailyRefresh() 執行
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-lg text-gray-600">
-        載入中...
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <LoginPage />
-  }
-
-  if (!loginAllowanceResolved) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-lg text-gray-600">
-        載入中...
-      </div>
-    )
-  }
-
-  if (!loginAllowanceOk) {
-    return <LoginAccessDeniedPage />
-  }
-
-  return (
-    <ClickTrackProvider user={user}>
-    <ErrorBoundary>
-      {/* 離線狀態提示 */}
-      {!isOnline && (
-        <div className="fixed top-0 left-0 right-0 bg-orange-500 text-white py-3 px-5 text-center z-9999 text-base font-semibold shadow-md">
-          ⚠️ 網路連線已中斷，請檢查您的網路設定
-        </div>
-      )}
-
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/day" element={<DayView />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/search-bookings" element={<SearchBookings />} />
-        {/* <Route path="/coach-check" element={<CoachCheck />} /> */}
-        <Route path="/coach-report" element={<CoachReport />} />
-        <Route path="/my-report" element={<MyReport />} />
-        <Route path="/my-report-detail" element={<CoachReport autoFilterByUser={true} />} />
-        <Route path="/coach-admin" element={<CoachAdmin />} />
-        <Route path="/coach-assignment" element={<CoachAssignment />} />
-        <Route path="/member-import" element={<MemberImport />} />
-        <Route path="/audit-log" element={<AuditLog />} />
-        <Route path="/tomorrow" element={<TomorrowReminder />} />
-        <Route path="/backup" element={<BackupPage />} />
-        <Route path="/quick-transaction" element={<QuickTransaction />} />
-        <Route path="/member-transaction" element={<MemberTransaction />} />
-        <Route path="/bao" element={<BaoHub />} />
-        <Route path="/members" element={<MemberManagement />} />
-        <Route path="/member-phone-edit" element={<MemberPhoneEditPage />} />
-        <Route path="/boards" element={<BoardManagement />} />
-        <Route path="/staff" element={<StaffManagement />} />
-        <Route path="/announcements" element={<AnnouncementManagement />} />
-        <Route path="/line-binding" element={<LineBindingStatus />} />
-        <Route path="/line-settings" element={<LineSettings />} />
-        <Route path="/coach-daily" element={<CoachDailyView />} />
-        {/* <Route path="/permissions" element={<PermissionManagement />} /> */}
-        <Route path="/boats" element={<BoatManagement />} />
-        <Route path="/products/*" element={<ProductHub />} />
-        <Route path="/order-settle" element={<OrderSettlePage />} />
-        <Route path="/statistics" element={<Statistics />} />
-        <Route path="/boat-usage-hours" element={<BoatUsageHoursPage />} />
-        {/* <Route path="/editor" element={<EditorHub />} /> */}
-        <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      </Routes>
-    </ErrorBoundary>
-    </ClickTrackProvider>
-  )
-}
-
-/** 獨立 chunk 還在下載時的極簡 loading（不要讓畫面整片空白） */
 function RouteChunkFallback({ label = '載入中...' }: { label?: string }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 text-sm text-gray-500">
@@ -220,10 +50,7 @@ function RouteChunkFallback({ label = '載入中...' }: { label?: string }) {
 }
 
 function App() {
-  // 確保在客戶端環境中執行
-  if (typeof window === 'undefined') {
-    return null
-  }
+  if (typeof window === 'undefined') return null
 
   const shopOnly = isShopSubdomain()
 
@@ -231,7 +58,6 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         {shopOnly ? (
-          /* shop.eswakeschool.com：只載入商城，根路徑即首頁 */
           <Routes>
             <Route
               path="/*"
@@ -244,17 +70,22 @@ function App() {
           </Routes>
         ) : (
           <Routes>
-            {/* LIFF 頁面不需要系統登入驗證 */}
-            <Route path="/liff" element={<LiffMyBookings />} />
+            <Route
+              path="/liff"
+              element={
+                <Suspense fallback={<LiffBootScreen label="載入會員專區…" />}>
+                  <LiffMyBookings />
+                </Suspense>
+              }
+            />
             <Route
               path="/liff/book"
               element={
-                <Suspense fallback={<RouteChunkFallback label="載入預約表單..." />}>
+                <Suspense fallback={<LiffBootScreen label="載入預約表單…" />}>
                   <LiffBook />
                 </Suspense>
               }
             />
-            {/* 商城完全公開、無需登入；整包 lazy load，匿名訪客不必下載後台 JS */}
             <Route
               path="/shop/*"
               element={
@@ -263,12 +94,14 @@ function App() {
                 </Suspense>
               }
             />
-            {/* 其他頁面需要登入驗證 */}
-            <Route path="*" element={
-              <AuthProvider>
-                <AppContent />
-              </AuthProvider>
-            } />
+            <Route
+              path="*"
+              element={
+                <Suspense fallback={<RouteChunkFallback label="載入系統…" />}>
+                  <AdminApp />
+                </Suspense>
+              }
+            />
           </Routes>
         )}
       </BrowserRouter>
@@ -277,4 +110,3 @@ function App() {
 }
 
 export default App
-

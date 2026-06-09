@@ -3,7 +3,8 @@ import { supabase } from '../../../lib/supabase'
 import { getLocalDateString } from '../../../utils/date'
 import { triggerHaptic } from '../../../utils/haptic'
 import { useLiffMember } from '../useLiffMember'
-import { ErrorView, LoadingSkeleton, LiffStyles } from '../components'
+import { ErrorView, LiffStyles } from '../components'
+import { BookBootScreen } from './BookBootScreen'
 import { BookPageStyles } from './BookPageStyles'
 import { BookBindingGate } from './BookBindingGate'
 import { BookEssentialsPanel } from './BookEssentialsPanel'
@@ -12,6 +13,8 @@ import { BookStepHeader } from './BookStepHeader'
 import { BookContextTips } from './BookContextTips'
 import { BookBoatPicker } from './BookBoatPicker'
 import { BookStaffHint } from './BookStaffHint'
+import { BookDateCalendar } from './BookDateCalendar'
+import { BookCoachPicker } from './BookCoachPicker'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import type {
   CoachOption,
@@ -20,7 +23,7 @@ import type {
 } from './types'
 import {
   beginnerCountOptions,
-  formatBeginnerCount,
+  formatExperienceSummary,
   HEADCOUNT_OPTIONS,
   MAX_PREFERRED_DATES,
   syncBookingPeople,
@@ -37,14 +40,13 @@ import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
 import { boatLayoutLabel, wbNeedsLargeGroupBoatChoice } from './liffBookingBoats'
 import { bookMemberRate } from './liffBookingPrices'
 import { computePriceEstimate } from './liffBookingPricing'
+import { designatedCoachPrice20 } from './liffBookingCoaches'
 import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
 import {
   bookCard,
   bookInput,
   bookPage,
   chipBtn,
-  dateChip,
-  dateScrollRow,
   fieldLabel,
   fieldHint,
   linePrimaryBtn,
@@ -76,8 +78,6 @@ const INITIAL_STATE: LiffBookingFormState = {
   notes: '',
 }
 
-const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'] as const
-
 function NotEnabledView() {
   return (
     <div style={{ ...bookPage, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -90,16 +90,12 @@ function NotEnabledView() {
   )
 }
 
-function formatDateChip(ymd: string) {
-  const d = new Date(`${ymd}T12:00:00`)
-  return { wd: WEEKDAY[d.getDay()], md: `${d.getMonth() + 1}/${d.getDate()}` }
-}
-
 export function LiffBook() {
   useRouteDocumentMeta(ROUTE_OG_BY_PATH['/liff/book'])
 
   const {
     loading: liffLoading,
+    bootPhase: liffBootPhase,
     error: liffError,
     member,
     lineUserId,
@@ -141,6 +137,14 @@ export function LiffBook() {
   }, [member])
 
   useEffect(() => {
+    if (form.coachChoice !== 'designated' || !form.coachId || !form.activity) return
+    const coach = coaches.find(c => c.id === form.coachId)
+    if (!coach || designatedCoachPrice20(coach, form.activity) == null) {
+      setForm(prev => ({ ...prev, coachId: null }))
+    }
+  }, [form.activity, form.coachChoice, form.coachId, coaches])
+
+  useEffect(() => {
     let cancelled = false
     async function load() {
       try {
@@ -170,17 +174,6 @@ export function LiffBook() {
   const estimate = useMemo(() => computePriceEstimate(form, coaches, member), [form, coaches, member])
 
   const totalSteps = BOOKING_WIZARD_STEPS.length
-
-  const upcomingDates = useMemo(() => {
-    const out: string[] = []
-    const today = new Date()
-    for (let i = 0; i < 21; i++) {
-      const d = new Date(today)
-      d.setDate(d.getDate() + i)
-      out.push(getLocalDateString(d))
-    }
-    return out
-  }, [])
 
   const commitSchedule = (): LiffBookingFormState['preferredDates'] => {
     if (!pickDate) return form.preferredDates
@@ -246,7 +239,14 @@ export function LiffBook() {
 
   if (!isLiffBookEnabled()) return <NotEnabledView />
   if (liffError) return <ErrorView error={liffError} onRetry={() => void retryInit()} />
-  if (liffLoading) return <LoadingSkeleton />
+  if (liffLoading) {
+    return (
+      <BookBootScreen
+        phase={liffBootPhase}
+        onRetry={() => void retryInit()}
+      />
+    )
+  }
   if (shouldShowBindingForm) {
     return <BookBindingGate {...bindingFormProps} onSkip={skipBinding} />
   }
@@ -314,7 +314,7 @@ export function LiffBook() {
             <div>
               {form.headcount === 1 ? (
                 <>
-                  <div style={fieldLabel}>是否初學</div>
+                  <div style={fieldLabel}>是否為體驗／第一次</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       type="button"
@@ -322,7 +322,7 @@ export function LiffBook() {
                       style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '10px 0' }}
                       onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
                     >
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>初學</div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>體驗</div>
                       <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{BEGINNER_LESSON_NOTE}</div>
                     </button>
                     <button
@@ -331,14 +331,14 @@ export function LiffBook() {
                       style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '10px 0' }}
                       onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
                     >
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>非初學</div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>已經滑過</div>
                       <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>20 分鐘計價</div>
                     </button>
                   </div>
                 </>
               ) : (
                 <>
-                  <div style={fieldLabel}>其中幾位初學</div>
+                  <div style={fieldLabel}>其中幾位是體驗／第一次</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {beginnerCountOptions(form.headcount).map(n => (
                       <button
@@ -348,7 +348,7 @@ export function LiffBook() {
                         style={chipBtn(form.beginnerCount === n)}
                         onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: n }) }))}
                       >
-                        {n === form.headcount ? '全部' : n === 0 ? '無' : formatBeginnerCount(n)}
+                        {n === form.headcount ? '全部體驗' : n === 0 ? '無體驗' : `${n} 位體驗`}
                       </button>
                     ))}
                   </div>
@@ -365,26 +365,11 @@ export function LiffBook() {
         {/* Step 3: 什麼時候 + 教練選填 */}
         {step === 3 && (
           <div style={bookCard}>
-            <div style={fieldLabel}>日期</div>
-            <div style={dateScrollRow}>
-              {upcomingDates.map(ymd => {
-                const blocked = blockedDates.has(ymd)
-                const { wd, md } = formatDateChip(ymd)
-                const selected = pickDate === ymd
-                return (
-                  <button
-                    key={ymd}
-                    type="button"
-                    disabled={blocked}
-                    style={dateChip(selected, blocked)}
-                    onClick={() => { triggerHaptic('light'); setPickDate(ymd) }}
-                  >
-                    <div style={{ fontSize: 11, opacity: 0.9 }}>{wd}</div>
-                    <div style={{ fontSize: 15, fontWeight: 700 }}>{md}</div>
-                  </button>
-                )
-              })}
-            </div>
+            <BookDateCalendar
+              value={pickDate}
+              blockedDates={blockedDates}
+              onChange={setPickDate}
+            />
 
             <div style={{ ...fieldLabel, marginTop: 16 }}>時段</div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -437,19 +422,12 @@ export function LiffBook() {
                   </button>
                 </div>
                 {form.coachChoice === 'designated' && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {coaches.map(c => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className="book-chip-btn"
-                        style={chipBtn(form.coachId === c.id)}
-                        onClick={() => setForm(prev => ({ ...prev, coachId: c.id }))}
-                      >
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
+                  <BookCoachPicker
+                    coaches={coaches}
+                    activity={form.activity}
+                    value={form.coachId}
+                    onChange={coachId => setForm(prev => ({ ...prev, coachId }))}
+                  />
                 )}
               </div>
             )}
@@ -474,7 +452,7 @@ export function LiffBook() {
                 </div>
               ) : null}
               <div style={{ fontSize: 14, lineHeight: 1.9, color: '#444' }}>
-                <div>{form.headcount} 人 · {form.beginnerCount != null ? (form.beginnerCount === form.headcount ? '全部初學' : form.beginnerCount === 0 ? '無初學' : formatBeginnerCount(form.beginnerCount)) : '—'}</div>
+                <div>{form.headcount} 人 · {formatExperienceSummary(form.headcount, form.beginnerCount)}</div>
                 {form.activity ? (
                   <div>船型：{boatLayoutLabel(form.activity, form.headcount, form.boatPreference)}</div>
                 ) : null}
@@ -491,7 +469,7 @@ export function LiffBook() {
                 <>
                   <BookEstimateCard estimate={estimate} defaultExpanded />
                   <p style={{ fontSize: 11, color: '#999', margin: '8px 0 0', lineHeight: 1.5 }}>
-                    {estimate.disclaimer} · {STEP4_CONFIRM_NOTE}
+                    {STEP4_CONFIRM_NOTE}
                   </p>
                 </>
               )}

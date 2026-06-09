@@ -26,7 +26,7 @@ export function buildStaffHelpMessage(
   if (step >= 2) {
     lines.push(`人數：${form.headcount} 人`)
     if (form.beginnerCount != null) {
-      lines.push(`初學：${formatBeginnerCount(form.beginnerCount)}`)
+      lines.push(`體驗：${formatBeginnerCount(form.beginnerCount)}`)
     }
   }
   if (step >= 3) {

@@ -113,7 +113,7 @@ export function step1PricingLegend(experiencedMemberRate: boolean): { beginner: 
   const small = sessionBlockRate('small', experiencedMemberRate)
   const big = sessionBlockRate('big', experiencedMemberRate)
   return {
-    beginner: `初學：${BEGINNER_LESSON_NOTE}`,
-    experienced: `非初學：${small.blockMin} 分鐘 · 小船 $${small.price.toLocaleString()} · 大船 $${big.price.toLocaleString()}`,
+    beginner: `體驗：${BEGINNER_LESSON_NOTE}`,
+    experienced: `已滑過：${small.blockMin} 分鐘 · 小船 $${small.price.toLocaleString()} · 大船 $${big.price.toLocaleString()}`,
   }
 }

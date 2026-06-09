@@ -43,8 +43,8 @@ export function largeGroupBigLabel(headcount: number): string {
 
 /** 計價規則（給客人看的摘要） */
 export const PRICING_RULES = [
-  { icon: '🎓', text: '初學者 → 初次體驗價（每人）' },
-  { icon: '⏱', text: '非初學 → 依時數計價（每 20 或 30 分）' },
+  { icon: '🎓', text: '體驗／第一次 → 初次體驗價（每人）' },
+  { icon: '⏱', text: '已滑過 → 每人 20 分鐘計價' },
   { icon: '📚', text: '指定教練 → 另外加價' },
 ] as const
 

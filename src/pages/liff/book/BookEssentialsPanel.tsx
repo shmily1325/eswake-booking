@@ -76,7 +76,7 @@ export function BookEssentialsPanel({
     onChange(code)
   }
 
-  const priceRange = `初學 $${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人 · ${STEP1_PRICE_RANGE_SUFFIX}`
+  const priceRange = `體驗 $${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人 · ${STEP1_PRICE_RANGE_SUFFIX}`
   const active = value
   const chipLabel = active ? step1ActivityChip(active) : null
   const price = active ? selectedPrice(active) : null
@@ -139,7 +139,7 @@ export function BookEssentialsPanel({
       )}
 
       {!LIFF_BOOK_GUEST_PRICING_ONLY && memberRate ? (
-        <div style={{ fontSize: 10, color: '#bbb', marginTop: 10, textAlign: 'center' }}>非初學已套用會員價</div>
+        <div style={{ fontSize: 10, color: '#bbb', marginTop: 10, textAlign: 'center' }}>已滑過已套用會員價</div>
       ) : null}
     </div>
   )

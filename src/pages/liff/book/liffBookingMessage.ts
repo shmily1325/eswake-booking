@@ -46,7 +46,7 @@ export function renderBookingInquiryMessage(
 
   lines.push(`預約人數：${state.headcount} 人`)
   if (state.beginnerCount != null) {
-    lines.push(`幾位初學：${formatBeginnerCount(state.beginnerCount)}`)
+    lines.push(`幾位體驗：${formatBeginnerCount(state.beginnerCount)}`)
   }
   lines.push(`預約項目：${state.activity ? activityDisplayName(state.activity) : '—'}`)
   if (state.activity) {

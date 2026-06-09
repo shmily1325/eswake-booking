@@ -29,7 +29,7 @@ export const ACTIVITY_OPTIONS: ActivityInfo[] = [
     bullets: [
       '腳未固定在板上，穩定後可放開繩子',
       '船速較緩慢，節奏接近衝浪',
-      '初學較容易有「站在浪上」的成就感',
+      '體驗較容易有「站在浪上」的成就感',
     ],
     bestFor: '第一次體驗、喜歡衝浪感、不想腳被綁住',
     youtubeVideoId: 'esgwXR0ikOU',
@@ -67,7 +67,15 @@ export function beginnerCountOptions(headcount: number): number[] {
 }
 
 export function formatBeginnerCount(n: number): string {
-  return `${n} 初`
+  return `${n} 位體驗`
+}
+
+/** Step 2／確認頁：體驗人數摘要 */
+export function formatExperienceSummary(headcount: number, beginnerCount: number | null): string {
+  if (beginnerCount == null) return '—'
+  if (beginnerCount === headcount) return '全部體驗'
+  if (beginnerCount === 0) return '無體驗'
+  return formatBeginnerCount(beginnerCount)
 }
 
 /** 依「幾初」自動對應 LINE 表單的「是否第一次滑」 */
@@ -101,8 +109,11 @@ export const TIME_PREFERENCE_OPTIONS: { value: TimePreference; label: string }[]
   { value: 'afternoon', label: '下午' },
 ]
 
-/** 初學體驗時數說明（小編指定文案） */
-export const BEGINNER_LESSON_NOTE = '陸上10分＋水上20分'
+/** 水上計時：每人 20 分（陸上一起上課，不計入時數） */
+export const WATER_MIN_PER_PERSON = 20
+
+/** 初學體驗說明（小編指定文案） */
+export const BEGINNER_LESSON_NOTE = '陸上一起上課 · 水上每人20分'
 
 /** Step 1 價格面板：非初學價先以非會員顯示供審核（初學不分會員） */
 export const LIFF_BOOK_GUEST_PRICING_ONLY = true

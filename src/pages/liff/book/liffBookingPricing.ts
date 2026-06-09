@@ -1,13 +1,17 @@
 import type { ActivityChoice, CoachOption, LiffBookingFormState } from './types'
 import type { Member } from '../types'
-import { activityDisplayName, BOTH_ACTIVITY_SHORT } from './liffBookingConfig'
+import {
+  activityDisplayName,
+  BOTH_ACTIVITY_SHORT,
+  WATER_MIN_PER_PERSON,
+} from './liffBookingConfig'
 import { boatLayoutLabel, resolveBoatTier, usesDualBigBoats, wbUsesDualSmallBoats } from './liffBookingBoats'
 import {
-  estimateSessionBlocks,
   firstTimeUnitPrice,
   bookMemberRate,
   sessionBlockRate,
 } from './liffBookingPrices'
+import { designatedCoachPrice20 } from './liffBookingCoaches'
 
 export function priceDesignatedLesson(pricePer30Min: number, minutes: number): number {
   return Math.floor(pricePer30Min * minutes / 30)
@@ -25,15 +29,16 @@ export interface PriceEstimate {
   disclaimer: string
 }
 
+/** 估算水上總時數：每人 20 分（陸上一起，不計時） */
 export function computeDuration(state: LiffBookingFormState): { minutes: number; label: string } {
   const beginners = state.beginnerCount ?? 0
   const experienced = Math.max(0, state.headcount - beginners)
-  const minutes = Math.max(40, beginners * 40 + experienced * 30)
-  const beginnerPart = beginners > 0 ? `${beginners} 位初學` : '無初學'
-  const expPart = experienced > 0 ? `、${experienced} 位非初學` : ''
+  const minutes = state.headcount * WATER_MIN_PER_PERSON
+  const beginnerPart = beginners > 0 ? `${beginners} 位體驗` : '無體驗'
+  const expPart = experienced > 0 ? `、${experienced} 位已滑過` : ''
   return {
     minutes,
-    label: `${state.headcount} 人（${beginnerPart}${expPart}）`,
+    label: `${state.headcount} 人（${beginnerPart}${expPart}）· 水上約 ${minutes} 分`,
   }
 }
 
@@ -78,30 +83,21 @@ export function computePriceEstimate(
           ? '2 艘大船'
           : ''
     detailLines.push(
-      `初學 ${beginners} 位 × $${unit.toLocaleString()}（初次體驗${boatHint ? ` · ${boatHint}` : ''}）`,
+      `體驗 ${beginners} 位 × $${unit.toLocaleString()}（初次體驗 · 陸上一起${boatHint ? ` · ${boatHint}` : ''}）`,
     )
     if (beginners === state.headcount) {
       tierLabel = activity === 'BOTH' ? BOTH_ACTIVITY_SHORT : '初次體驗'
     } else {
-      tierLabel = '混合（初學＋非初學）'
+      tierLabel = '混合（體驗＋已滑過）'
     }
   }
 
   if (experienced > 0) {
-    const expMinutes = experienced * 30
     const { blockMin, price } = sessionBlockRate(boatTier, memberRate)
-    const blocks = estimateSessionBlocks(expMinutes, blockMin)
-    const sub = blocks * price
+    const sub = experienced * price
     boatTotal += sub
     detailLines.push(
-      `非初學 ${experienced} 位 · 約 ${blocks} × ${blockMin} 分 × $${price.toLocaleString()}（${memberRate ? '會員' : '非會員'}）`,
-    )
-  } else if (beginners === 0) {
-    const { blockMin, price } = sessionBlockRate(boatTier, memberRate)
-    const blocks = estimateSessionBlocks(minutes, blockMin)
-    boatTotal = blocks * price
-    detailLines.push(
-      `約 ${blocks} × ${blockMin} 分 × $${price.toLocaleString()}（${memberRate ? '會員' : '非會員'}）`,
+      `已滑過 ${experienced} 位 × ${blockMin} 分 × $${price.toLocaleString()}（${memberRate ? '會員' : '非會員'}）`,
     )
   }
 
@@ -109,10 +105,13 @@ export function computePriceEstimate(
   let coachExtra = 0
   if (state.coachChoice === 'designated' && state.coachId) {
     const coach = coaches.find(c => c.id === state.coachId)
-    if (coach?.designated_lesson_price_30min) {
-      coachExtra = priceDesignatedLesson(coach.designated_lesson_price_30min, minutes)
-      coachLine = { coachName: coach.name, amount: coachExtra }
-      detailLines.push(`指定 ${coach.name} +$${coachExtra.toLocaleString()}`)
+    if (coach) {
+      const price20 = designatedCoachPrice20(coach, state.activity)
+      if (price20 != null) {
+        coachExtra = price20
+        coachLine = { coachName: coach.name, amount: coachExtra }
+        detailLines.push(`指定 ${coach.name} +$${coachExtra.toLocaleString()}（20 分）`)
+      }
     }
   }
 
@@ -127,11 +126,7 @@ export function computePriceEstimate(
     totalMin: total,
     totalMax: total,
     totalLabel: `$${total.toLocaleString()}`,
-    disclaimer: beginners > 0 && experienced > 0
-      ? '混合初學／非初學之實際費用依現場排班為準'
-      : activity === 'BOTH'
-        ? '兩個一起需大船，時數分配依現場排班為準'
-        : '實際費用依現場排班為準',
+    disclaimer: '',
   }
 }
 

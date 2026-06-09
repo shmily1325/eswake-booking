@@ -37,6 +37,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
   } = options
 
   const [loading, setLoading] = useState(true)
+  const [bootPhase, setBootPhase] = useState<'init' | 'login'>('init')
   const [bindingLoading, setBindingLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [member, setMember] = useState<Member | null>(null)
@@ -115,6 +116,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
   }, [requireBinding, trackIconId, nonBlockingBinding, resolveMember])
 
   const initLiff = useCallback(async () => {
+    setBootPhase('init')
     try {
       const liffId = liffIdOverride ?? import.meta.env.VITE_LIFF_ID
       if (!liffId) {
@@ -126,6 +128,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
       await initLiffSdk(liffId)
 
       if (!liff.isLoggedIn()) {
+        setBootPhase('login')
         liff.login()
         return
       }
@@ -235,6 +238,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
 
   return {
     loading,
+    bootPhase,
     bindingLoading,
     error,
     member,
