@@ -12,7 +12,7 @@ import {
   type EditorFeatureKey
 } from '../utils/auth'
 import { supabase } from '../lib/supabase'
-import { EsNavLogo } from '../components/EsNavLogo'
+import { HubMenuIcon } from '../components/IconSlot'
 import { ExternalNavLink } from '../components/ExternalNavLink'
 import { getPublicShopHomeUrl, isExternalNavLink, SHOP_NAV_LOGO_SRC } from '../lib/shopPublicUrl'
 import { useState, useEffect, type CSSProperties } from 'react'
@@ -380,13 +380,7 @@ export function HomePage() {
                 }
                 const inner = (
                   <>
-                    <div style={{ marginBottom: '5px' }}>
-                      {item.iconSrc ? (
-                        <EsNavLogo size={isMobile ? 38 : 42} />
-                      ) : (
-                        <span style={{ fontSize: '42px' }}>{item.icon}</span>
-                      )}
-                    </div>
+                    <HubMenuIcon icon={item.icon} iconSrc={item.iconSrc} isMobile={isMobile} />
                     <h2 style={{
                       margin: 0,
                       fontSize: isMobile ? '16px' : '18px',
@@ -501,14 +495,7 @@ export function HomePage() {
 
                     const inner = (
                       <>
-                        <div
-                          style={{
-                            fontSize: '42px',
-                            marginBottom: '5px'
-                          }}
-                        >
-                          {item.icon}
-                        </div>
+                        <HubMenuIcon icon={item.icon} isMobile={isMobile} />
 
                         <h2
                           style={{
