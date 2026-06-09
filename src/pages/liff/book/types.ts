@@ -14,7 +14,7 @@ export type BoatPreference = 'small' | 'big'
 
 export interface LiffBookingFormState {
   activity: ActivityChoice | null
-  /** 寬板 ≤6 人時選小船或大船；其餘項目固定大船 */
+  /** 寬板選小船或大船（7 人↑ 小船＝2 艘）；衝浪／兩項＝大船 */
   boatPreference: BoatPreference | null
   skillLevel: SkillLevel | null
   headcount: number

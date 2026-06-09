@@ -102,9 +102,9 @@ export const TIME_PREFERENCE_OPTIONS: { value: TimePreference; label: string }[]
 ]
 
 /** 初學體驗時數說明（小編指定文案） */
-export const BEGINNER_LESSON_NOTE = '岸上 10 分＋水上 20 分'
+export const BEGINNER_LESSON_NOTE = '陸上10分＋水上20分'
 
-/** Step 1 價格面板：先以非會員初學為主供審核（Step 2+ 估算仍依會員身份） */
+/** Step 1 價格面板：非初學價先以非會員顯示供審核（初學不分會員） */
 export const LIFF_BOOK_GUEST_PRICING_ONLY = true
 
 export const PRICING_EDUCATION = {

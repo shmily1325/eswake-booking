@@ -13,6 +13,37 @@ export interface FaqItem {
 export const ACTIVITY_COMPARISON_INTRO =
   '不確定選哪個？先看下面兩項差異，選定後可播放起滑影片。'
 
+/** Step 1 內嵌：兩項差異（濃縮自 FAQ activity-diff） */
+export const STEP1_ACTIVITY_DIFF_LINES = [
+  '快艇衝浪：腳不固定，穩定後可放繩，節奏像衝浪',
+  '寬板滑水：雙腳固定、全程抓繩，速度較快',
+] as const
+
+/** Step 1／4 費用已含（濃縮） */
+export const STEP1_INCLUDES_NOTE = '初學價已含：裝備、教練、船、保險、停車'
+
+/** Step 1 選 WB 時船型提示 */
+export const STEP1_WB_BOAT_NOTE = '小船僅寬板滑水；快艇衝浪與兩項一起需大船'
+
+/** Step 2 跟船（濃縮自 FAQ follow-boat） */
+export const STEP2_FOLLOW_BOAT_NOTE =
+  '親友不滑可跟船：第 1 位免費，第 2 位起每位 $300（請在備註告知人數）'
+
+/** Step 3 時段說明 */
+export const STEP3_SCHEDULE_NOTE = '時段為偏好，小編回覆後才確認'
+
+/** Step 4 確認頁固定說明 */
+export const STEP4_CONFIRM_NOTES = [
+  '以上為參考價，以小編回覆為準',
+  '跟船：第 1 位免費，第 2 位起 $300',
+  '費用已含裝備、教練、船、保險、停車',
+] as const
+
+export const NOTES_PLACEHOLDER = '跟船人數、特殊需求（選填）'
+
+/** 官網（穿著、交通等詳細須知） */
+export const OFFICIAL_INFO_URL = 'https://eswakeschool.com'
+
 /** 交通資訊（sites.google.com/.../交通方式） */
 export const TRANSPORT_INFO = {
   title: '交通方式',

@@ -1,5 +1,6 @@
 import type { ActivityCode } from './types'
 import type { BoatTier } from './liffBookingBoats'
+import { BEGINNER_LESSON_NOTE } from './liffBookingConfig'
 export const OFFICIAL_PRICE_INCLUDES =
   '所有費用已含：基本裝備、教練、船、保險、停車費、冬季防寒衣。'
 
@@ -58,7 +59,7 @@ export const FIRST_TIME_WB_SMALL = 1700
 /** G21、黑豹大船：WB 與 WS 初次體驗同價 */
 export const FIRST_TIME_BIG_BOAT = 2500
 
-/** 依項目與船型計初次體驗單價（非會員；會員初次體驗同價） */
+/** 依項目與船型計初次體驗單價（初學不分會員） */
 export function firstTimeUnitPrice(activity: ActivityCode, boatTier: BoatTier): number {
   if (activity === 'WS') return FIRST_TIME_BIG_BOAT
   return boatTier === 'big' ? FIRST_TIME_BIG_BOAT : FIRST_TIME_WB_SMALL
@@ -105,4 +106,14 @@ export function activityPriceFromLine(activity: ActivityCode): string {
     return `初次 小船 $${FIRST_TIME_WB_SMALL.toLocaleString()} · 大船 $${FIRST_TIME_BIG_BOAT.toLocaleString()}`
   }
   return `初次 $${FIRST_TIME_BIG_BOAT.toLocaleString()}`
+}
+
+/** Step 1 集中價格說明（初學／非初學各一行；會員價僅適用非初學） */
+export function step1PricingLegend(experiencedMemberRate: boolean): { beginner: string; experienced: string } {
+  const small = sessionBlockRate('small', experiencedMemberRate)
+  const big = sessionBlockRate('big', experiencedMemberRate)
+  return {
+    beginner: `初學：${BEGINNER_LESSON_NOTE}`,
+    experienced: `非初學：${small.blockMin} 分鐘 · 小船 $${small.price.toLocaleString()} · 大船 $${big.price.toLocaleString()}`,
+  }
 }

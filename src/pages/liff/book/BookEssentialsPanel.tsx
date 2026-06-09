@@ -1,16 +1,22 @@
 import type { CSSProperties } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
 import {
-  BEGINNER_LESSON_NOTE,
   BOTH_ACTIVITY_SHORT,
   getActivityInfo,
   LIFF_BOOK_GUEST_PRICING_ONLY,
 } from './liffBookingConfig'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
-import { step1BoatChip, STEP1_BOAT_SUMMARY } from './liffBookingBoats'
+import { step1BoatChip } from './liffBookingBoats'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
+import { BookBoatPicker } from './BookBoatPicker'
+import { BookPricingLegend } from './BookPricingLegend'
 import { BookVideoPlayer } from './BookVideoPlayer'
-import { bookCard, chipBtn } from './bookStyles'
+import {
+  STEP1_ACTIVITY_DIFF_LINES,
+  STEP1_INCLUDES_NOTE,
+  STEP1_WB_BOAT_NOTE,
+} from './liffBookingContent'
+import { bookCard } from './bookStyles'
 import type { ActivityChoice, ActivityCode, BoatPreference } from './types'
 
 const ACTIVITY_CODES: ActivityCode[] = ['WS', 'WB']
@@ -38,7 +44,7 @@ function activityCardStyle(code: ActivityCode | 'BOTH', selected: ActivityChoice
     flexDirection: 'column',
     height: isBoth ? undefined : '100%',
     transition: 'opacity 0.15s, border-color 0.15s',
-    ...(isBoth ? { width: '100%', marginTop: 8, marginBottom: 10 } : {}),
+    ...(isBoth ? { width: '100%', marginTop: 8, marginBottom: 8 } : {}),
   }
 }
 
@@ -53,91 +59,44 @@ const selectArea: CSSProperties = {
   flex: 1,
 }
 
-const boatChip: CSSProperties = {
+const chip: CSSProperties = {
   display: 'inline-block',
-  marginTop: 5,
+  marginTop: 4,
   padding: '2px 7px',
   borderRadius: 999,
   background: '#f0f0f0',
   fontSize: 10,
   fontWeight: 600,
   color: '#666',
-  lineHeight: 1.4,
 }
 
-const priceSlot: CSSProperties = {
-  minHeight: 46,
-  marginTop: 6,
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  gap: 2,
-}
-
-const noteSlot: CSSProperties = {
+const priceLine: CSSProperties = {
   minHeight: 28,
-  fontSize: 10,
-  color: '#aaa',
-  marginTop: 4,
-  lineHeight: 1.4,
-  display: 'flex',
-  alignItems: 'flex-start',
+  marginTop: 6,
+  fontSize: 18,
+  fontWeight: 700,
+  color: '#111',
+  lineHeight: 1.1,
 }
 
-const dualPriceRow = (active: boolean): CSSProperties => ({
-  display: 'flex',
-  alignItems: 'baseline',
-  justifyContent: 'space-between',
-  gap: 4,
+const mutedBox: CSSProperties = {
   fontSize: 11,
-  color: active ? '#111' : '#888',
-  fontWeight: active ? 700 : 500,
-})
-
-const boatOptionBtn = (selected: boolean): CSSProperties => ({
-  ...chipBtn(selected),
-  flex: 1,
-  padding: '10px 8px',
-  textAlign: 'center',
-  lineHeight: 1.35,
-})
-
-function ActivityTitle({ code, label }: { code: ActivityCode; label: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-      <BookActivityIcon code={code} size={28} style={{ margin: 0, flexShrink: 0 }} />
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#222', lineHeight: 1.25 }}>{label}</div>
-    </div>
-  )
+  color: '#777',
+  lineHeight: 1.55,
+  marginBottom: 10,
 }
 
-function WsPrice() {
-  return (
-    <div style={priceSlot}>
-      <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1 }}>
-        ${FIRST_TIME_BIG_BOAT.toLocaleString()}
-      </div>
-    </div>
-  )
+const mutedLine: CSSProperties = {
+  fontSize: 10,
+  color: '#999',
+  lineHeight: 1.5,
+  marginTop: 6,
 }
 
-function WbPrice({ selected, boatPreference }: { selected: boolean; boatPreference: BoatPreference | null }) {
-  return (
-    <div style={priceSlot}>
-      <div style={dualPriceRow(selected && boatPreference === 'small')}>
-        <span>小船</span>
-        <span style={{ fontSize: selected && boatPreference === 'small' ? 16 : 13 }}>
-          ${FIRST_TIME_WB_SMALL.toLocaleString()}
-        </span>
-      </div>
-      <div style={dualPriceRow(selected && boatPreference === 'big')}>
-        <span>大船</span>
-        <span style={{ fontSize: selected && boatPreference === 'big' ? 16 : 13 }}>
-          ${FIRST_TIME_BIG_BOAT.toLocaleString()}
-        </span>
-      </div>
-    </div>
-  )
+function wbSelectedPrice(pref: BoatPreference | null): string | null {
+  if (!pref) return null
+  const n = pref === 'small' ? FIRST_TIME_WB_SMALL : FIRST_TIME_BIG_BOAT
+  return `$${n.toLocaleString()}`
 }
 
 export function BookEssentialsPanel({
@@ -152,29 +111,21 @@ export function BookEssentialsPanel({
     onChange(code)
   }
 
-  const pickBoat = (pref: BoatPreference) => {
-    triggerHaptic('light')
-    onBoatPreferenceChange(pref)
-  }
-
   return (
     <div style={{ ...bookCard, marginBottom: 12, padding: '14px 14px 12px' }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#222', marginBottom: 4 }}>
-        預約前先知道
-      </div>
-      <div style={{ fontSize: 11, color: '#999', marginBottom: 10 }}>
-        看影片、比價格，點選想玩的項目
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>預約前先知道</div>
+        <div style={{ fontSize: 10, color: '#bbb' }}>初學價</div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#999', letterSpacing: '0.02em' }}>
-          初學體驗
-        </div>
-        {LIFF_BOOK_GUEST_PRICING_ONLY ? (
-          <div style={{ fontSize: 10, color: '#bbb' }}>非會員價</div>
-        ) : (
-          <div style={{ fontSize: 10, color: '#bbb' }}>{memberRate ? '會員價' : '非會員價'}</div>
-        )}
+      <BookPricingLegend memberRate={memberRate} />
+
+      <div style={mutedBox}>
+        <div style={{ fontWeight: 600, color: '#666', marginBottom: 4 }}>不確定選哪個？</div>
+        {STEP1_ACTIVITY_DIFF_LINES.map(line => (
+          <div key={line}>· {line}</div>
+        ))}
+        <div style={{ marginTop: 6, color: '#999' }}>{STEP1_INCLUDES_NOTE}</div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'stretch' }}>
@@ -184,10 +135,16 @@ export function BookEssentialsPanel({
           return (
             <div key={code} style={activityCardStyle(code, value)}>
               <button type="button" style={selectArea} onClick={() => pick(code)} aria-pressed={selected}>
-                <ActivityTitle code={code} label={info.labelZh} />
-                <span style={boatChip}>{step1BoatChip(code)}</span>
-                {code === 'WS' ? <WsPrice /> : <WbPrice selected={selected} boatPreference={boatPreference} />}
-                <div style={noteSlot}>{BEGINNER_LESSON_NOTE}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BookActivityIcon code={code} size={28} style={{ margin: 0, flexShrink: 0 }} />
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>{info.labelZh}</div>
+                </div>
+                <span style={chip}>{step1BoatChip(code)}</span>
+                <div style={priceLine}>
+                  {code === 'WS'
+                    ? `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
+                    : wbSelectedPrice(selected ? boatPreference : null) ?? '\u00A0'}
+                </div>
               </button>
               <BookVideoPlayer variant="compact" videoId={info.youtubeVideoId} title={info.labelZh} />
             </div>
@@ -196,41 +153,13 @@ export function BookEssentialsPanel({
       </div>
 
       {value === 'WB' && (
-        <div
-          style={{
-            marginBottom: 10,
-            padding: '12px',
-            borderRadius: 10,
-            background: '#f7f7f7',
-            border: '1px solid #ececec',
-          }}
-        >
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#444', marginBottom: 8 }}>坐什麼船？</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              style={boatOptionBtn(boatPreference === 'small')}
-              onClick={() => pickBoat('small')}
-              aria-pressed={boatPreference === 'small'}
-            >
-              <div style={{ fontSize: 12, fontWeight: 600 }}>小船</div>
-              <div style={{ fontSize: 17, fontWeight: 700, marginTop: 2 }}>${FIRST_TIME_WB_SMALL.toLocaleString()}</div>
-              <div style={{ fontSize: 10, color: '#999', marginTop: 2 }}>較便宜</div>
-            </button>
-            <button
-              type="button"
-              style={boatOptionBtn(boatPreference === 'big')}
-              onClick={() => pickBoat('big')}
-              aria-pressed={boatPreference === 'big'}
-            >
-              <div style={{ fontSize: 12, fontWeight: 600 }}>大船</div>
-              <div style={{ fontSize: 17, fontWeight: 700, marginTop: 2 }}>${FIRST_TIME_BIG_BOAT.toLocaleString()}</div>
-              <div style={{ fontSize: 10, color: '#999', marginTop: 2 }}>與衝浪同價</div>
-            </button>
-          </div>
-          <div style={{ fontSize: 10, color: '#aaa', marginTop: 8, lineHeight: 1.45 }}>
-            7 人以上需大船
-          </div>
+        <div style={{ marginBottom: 8 }}>
+          <BookBoatPicker
+            variant="step1"
+            value={boatPreference}
+            onChange={onBoatPreferenceChange}
+          />
+          <div style={mutedLine}>{STEP1_WB_BOAT_NOTE}</div>
         </div>
       )}
 
@@ -240,41 +169,18 @@ export function BookEssentialsPanel({
         onClick={() => pick('BOTH')}
         aria-pressed={value === 'BOTH'}
       >
-        <div style={{ ...selectArea, flex: undefined, padding: '12px 12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <BookBothIcons size={28} style={{ margin: 0, flexShrink: 0 }} />
+        <div style={{ ...selectArea, flex: undefined, padding: '12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <BookBothIcons size={28} style={{ margin: 0, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>{BOTH_ACTIVITY_SHORT}</div>
+            <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>大船 · ${FIRST_TIME_BIG_BOAT.toLocaleString()} · 同一時段體驗兩項</div>
           </div>
-          <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>快艇衝浪 + 寬板滑水</div>
-          <span style={boatChip}>{step1BoatChip('BOTH')}</span>
-          <div style={priceSlot}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#111', lineHeight: 1.1 }}>
-              ${FIRST_TIME_BIG_BOAT.toLocaleString()}
-            </div>
-          </div>
-          <div style={noteSlot}>{BEGINNER_LESSON_NOTE}</div>
         </div>
       </button>
 
-      <div
-        style={{
-          fontSize: 10,
-          color: '#888',
-          lineHeight: 1.55,
-          padding: '8px 10px',
-          borderRadius: 8,
-          background: '#f7f7f7',
-          marginTop: 2,
-        }}
-      >
-        {STEP1_BOAT_SUMMARY}
-      </div>
-
-      <div style={{ fontSize: 10, color: '#bbb', marginTop: 8, lineHeight: 1.45 }}>
-        {LIFF_BOOK_GUEST_PRICING_ONLY ? '非初學價格詳見「更多：G23 · FAQ」' : null}
-        {LIFF_BOOK_GUEST_PRICING_ONLY ? <span style={{ margin: '0 4px' }}>·</span> : null}
-        {memberRate ? '已套用會員價' : '會員另有優惠'}
-      </div>
+      {!LIFF_BOOK_GUEST_PRICING_ONLY && memberRate ? (
+        <div style={{ fontSize: 10, color: '#bbb', marginTop: 8 }}>非初學已套用會員價</div>
+      ) : null}
     </div>
   )
 }
