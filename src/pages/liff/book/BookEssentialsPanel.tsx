@@ -17,6 +17,7 @@ import {
   segmentRow,
   segmentZh,
 } from './bookStyles'
+import { BOOK_TYPE as ty } from './bookTheme'
 import type { ActivityChoice, ActivityCode } from './types'
 
 interface BookEssentialsPanelProps {
@@ -99,15 +100,15 @@ export function BookEssentialsPanel({
 
       {active && act ? (
         <div style={detailPanel(true)}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>
+          <div style={{ fontSize: ty.title, fontWeight: 700, color: '#222' }}>
             {activityDetailTitle(active, locale)}
           </div>
           {chipLabel ? <span style={metaChip}>{chipLabel}</span> : null}
-          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5, marginTop: 8 }}>
+          <div style={{ fontSize: ty.body, color: '#666', lineHeight: 1.5, marginTop: 8 }}>
             {s.step1.playMode[active]}
           </div>
           {active === 'BOTH' ? (
-            <div style={{ fontSize: 11, color: '#888', lineHeight: 1.5, marginTop: 6 }}>
+            <div style={{ fontSize: ty.caption, color: '#888', lineHeight: 1.5, marginTop: 6 }}>
               {s.step1.bothNote}
             </div>
           ) : null}
@@ -122,7 +123,7 @@ export function BookEssentialsPanel({
                 posterSrc={videoPoster(active as ActivityCode).src}
                 posterSrcSet={`${videoPoster(active as ActivityCode).src} 1x, ${videoPoster(active as ActivityCode).src2x} 2x`}
               />
-              <div style={{ fontSize: 10, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
+              <div style={{ fontSize: ty.caption, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
                 {s.step1.videoMandarinNote}
               </div>
             </div>
@@ -135,13 +136,13 @@ export function BookEssentialsPanel({
           )}
         </div>
       ) : (
-        <div style={{ ...detailPanel(false), textAlign: 'center', color: '#aaa', fontSize: 13, padding: '20px 14px' }}>
+        <div style={{ ...detailPanel(false), textAlign: 'center', color: '#aaa', fontSize: ty.body, padding: '20px 14px' }}>
           {s.step1.pickPrompt}
         </div>
       )}
 
       {!LIFF_BOOK_GUEST_PRICING_ONLY && memberRate ? (
-        <div style={{ fontSize: 10, color: '#bbb', marginTop: 10, textAlign: 'center' }}>{s.step1.memberRateApplied}</div>
+        <div style={{ fontSize: ty.caption, color: '#bbb', marginTop: 10, textAlign: 'center' }}>{s.step1.memberRateApplied}</div>
       ) : null}
     </div>
   )

@@ -4,11 +4,12 @@ import { liffTrack } from '../track'
 import { useBookLocale } from './BookLocaleContext'
 import type { CoachOption, LiffBookingFormState, TimePreference } from './types'
 import { buildStaffHelpMessage, openStaffHelp } from './bookStaffHelp'
+import { BOOK_TYPE as ty } from './bookTheme'
 
 const wrap: CSSProperties = {
   textAlign: 'center',
   margin: '14px 0 0',
-  fontSize: 12,
+  fontSize: ty.caption,
   color: '#999',
   lineHeight: 1.65,
 }
@@ -23,7 +24,7 @@ const pillBtn: CSSProperties = {
   border: '1px solid rgba(0,185,0,0.35)',
   background: 'rgba(0,185,0,0.08)',
   color: '#009900',
-  fontSize: 13,
+  fontSize: ty.body,
   fontWeight: 600,
   cursor: 'pointer',
 }
@@ -66,7 +67,7 @@ export function BookStaffHint({
   if (step === 1) {
     return (
       <div style={{ ...wrap, margin: '14px 0 6px' }}>
-        <div style={{ fontSize: 11, color: '#aaa' }}>
+        <div style={{ fontSize: ty.caption, color: '#aaa' }}>
           {s.staff.splitActivity}
         </div>
         <div style={{ marginTop: 6 }}>{s.staff.unsure}</div>
@@ -83,7 +84,7 @@ export function BookStaffHint({
     return (
       <div style={wrap}>
         {contextualNote ? (
-          <div style={{ fontSize: 11, color: '#aaa', marginBottom: 6 }}>
+          <div style={{ fontSize: ty.caption, color: '#aaa', marginBottom: 6 }}>
             {contextualNote}
           </div>
         ) : null}

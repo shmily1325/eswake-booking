@@ -4,6 +4,7 @@ import { useBookLocale } from './BookLocaleContext'
 import { FOLLOW_BOAT_OPTIONS } from './liffBookingConfig'
 import { followBoatFee } from './liffBookingPrices'
 import { chipBtn, fieldLabel } from './bookStyles'
+import { BOOK_TYPE as ty } from './bookTheme'
 
 interface BookFollowBoatPanelProps {
   riders: number
@@ -46,7 +47,7 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
           border: 'none',
           background: open ? '#fafafa' : 'white',
           textAlign: 'left',
-          fontSize: 14,
+          fontSize: ty.body,
           fontWeight: 600,
           color: '#333',
           cursor: 'pointer',
@@ -75,7 +76,7 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
             background: '#fafafa',
           }}
         >
-          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ fontSize: ty.caption, color: '#666', lineHeight: 1.6, marginBottom: 12 }}>
             {s.step2.followBoat.rule}
           </div>
           <div style={fieldLabel}>{s.step2.followBoat.countLabel}</div>
@@ -96,7 +97,7 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
             <>
               <div
                 style={{
-                  fontSize: 13,
+                  fontSize: ty.body,
                   fontWeight: 600,
                   color: '#444',
                   marginTop: 12,
@@ -108,14 +109,14 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
               >
                 {s.step2.followBoat.onBoatSummary(riders, value)}
               </div>
-              <div style={{ fontSize: 11, color: '#888', marginTop: 8, lineHeight: 1.5 }}>
+              <div style={{ fontSize: ty.caption, color: '#888', marginTop: 8, lineHeight: 1.5 }}>
                 {fee > 0
                   ? s.step2.followBoat.feeHint(value, `$${fee.toLocaleString()}`)
                   : s.step2.followBoat.freeHint}
               </div>
             </>
           ) : null}
-          <div style={{ fontSize: 10, color: '#aaa', marginTop: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: ty.caption, color: '#aaa', marginTop: 8, lineHeight: 1.5 }}>
             {s.step2.followBoat.capacityNote}
           </div>
         </div>

@@ -6,6 +6,7 @@ import {
   filterLiffBookCoaches,
 } from './liffBookingCoaches'
 import type { ActivityChoice, CoachOption } from './types'
+import { BOOK_TYPE as ty } from './bookTheme'
 
 interface BookCoachPickerProps {
   coaches: CoachOption[]
@@ -26,7 +27,7 @@ export function BookCoachPicker({
 
   if (visible.length === 0) {
     return (
-      <div style={{ fontSize: 13, color: '#888', lineHeight: 1.5 }}>
+      <div style={{ fontSize: ty.body, color: '#888', lineHeight: 1.5 }}>
         {cp.empty}
       </div>
     )
@@ -57,17 +58,17 @@ export function BookCoachPicker({
               onChange(coach.id)
             }}
           >
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{coach.name}</span>
+            <span style={{ fontSize: ty.body, fontWeight: 600 }}>{coach.name}</span>
             {priceLabel ? (
               <span style={{
-                fontSize: 13,
+                fontSize: ty.body,
                 fontWeight: 600,
                 opacity: selected ? 0.9 : 0.85,
               }}>
                 {priceLabel}
               </span>
             ) : (
-              <span style={{ fontSize: 12, opacity: 0.7 }}>{cp.askStaff}</span>
+              <span style={{ fontSize: ty.caption, opacity: 0.7 }}>{cp.askStaff}</span>
             )}
           </button>
         )

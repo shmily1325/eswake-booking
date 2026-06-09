@@ -8,6 +8,7 @@ import {
   classifyBookingDate,
   monthBookability,
 } from './liffBookingDates'
+import { BOOK_TYPE as ty } from './bookTheme'
 
 interface BookDateCalendarProps {
   value: string
@@ -84,7 +85,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
         >
           ‹
         </button>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>
+        <div style={{ fontSize: ty.title, fontWeight: 700, color: '#222' }}>
           {cal.monthLabel(viewYear, viewMonth)}
         </div>
         <button
@@ -100,7 +101,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
 
       {bookability === 'closed' && (
         <div style={{
-          fontSize: 12,
+          fontSize: ty.caption,
           color: '#888',
           textAlign: 'center',
           padding: '10px 8px',
@@ -119,7 +120,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
         textAlign: 'center',
       }}>
         {weekHeader.map((wd, i) => (
-          <div key={`${wd}-${i}`} style={{ fontSize: 11, fontWeight: 600, color: '#999', padding: '4px 0' }}>
+          <div key={`${wd}-${i}`} style={{ fontSize: ty.caption, fontWeight: 600, color: '#999', padding: '4px 0' }}>
             {wd}
           </div>
         ))}
@@ -145,7 +146,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
                 borderRadius: 10,
                 background: selected ? '#4a4a4a' : disabled ? '#fafafa' : '#fff',
                 color: selected ? '#fff' : disabled ? '#ccc' : '#333',
-                fontSize: 14,
+                fontSize: ty.body,
                 fontWeight: selected ? 700 : 500,
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 padding: 0,

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { BOOK_THEME as T } from './bookTheme'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 export const bookPage: CSSProperties = {
   minHeight: '100vh',
@@ -25,14 +25,14 @@ export const bookCard: CSSProperties = {
 }
 
 export const bookSectionTitle: CSSProperties = {
-  fontSize: '17px',
+  fontSize: ty.title,
   fontWeight: 700,
   color: T.ink,
   margin: '0 0 4px',
 }
 
 export const bookSectionSub: CSSProperties = {
-  fontSize: '13px',
+  fontSize: ty.caption,
   color: T.muted,
   margin: '0 0 16px',
   lineHeight: 1.5,
@@ -57,7 +57,7 @@ export const chipBtn = (selected: boolean): CSSProperties => ({
   borderRadius: '999px',
   background: selected ? T.accent : 'white',
   color: selected ? 'white' : T.inkSoft,
-  fontSize: '14px',
+  fontSize: ty.body,
   fontWeight: selected ? 600 : 400,
   cursor: 'pointer',
 })
@@ -67,7 +67,7 @@ export const infoBox: CSSProperties = {
   border: '1px solid #bae0ff',
   borderRadius: '12px',
   padding: '12px 14px',
-  fontSize: '13px',
+  fontSize: ty.body,
   color: '#444',
   lineHeight: 1.6,
   marginTop: '12px',
@@ -78,7 +78,7 @@ export const warnBox: CSSProperties = {
   border: '1px solid #ffe58f',
   borderRadius: '12px',
   padding: '12px 14px',
-  fontSize: '13px',
+  fontSize: ty.body,
   color: '#614700',
   lineHeight: 1.5,
   marginTop: '12px',
@@ -106,7 +106,7 @@ export const primaryBtn: CSSProperties = {
   color: 'white',
   border: 'none',
   borderRadius: '12px',
-  fontSize: '16px',
+  fontSize: ty.title,
   fontWeight: 600,
   cursor: 'pointer',
 }
@@ -123,7 +123,7 @@ export const secondaryBtn: CSSProperties = {
   color: '#555',
   border: '1px solid #ddd',
   borderRadius: '12px',
-  fontSize: '15px',
+  fontSize: ty.body,
   cursor: 'pointer',
 }
 
@@ -158,11 +158,11 @@ export const bigActivityBtn = (selected: boolean): CSSProperties => ({
 })
 
 export const fieldLabel: CSSProperties = {
-  fontSize: 13,
+  fontSize: ty.body,
   fontWeight: 600,
   color: T.muted,
   marginBottom: 10,
-  letterSpacing: '0.03em',
+  letterSpacing: '0.02em',
 }
 
 /** Step 2 必填區塊分組 */
@@ -176,7 +176,7 @@ export const bookFieldGroup: CSSProperties = {
 
 export const footerBlockHint: CSSProperties = {
   width: '100%',
-  fontSize: 12,
+  fontSize: ty.caption,
   color: '#b45309',
   textAlign: 'center',
   lineHeight: 1.45,
@@ -188,7 +188,7 @@ export const footerBlockHint: CSSProperties = {
 }
 
 export const fieldHint: CSSProperties = {
-  fontSize: 11,
+  fontSize: ty.caption,
   color: T.mutedLight,
   marginTop: 6,
   lineHeight: 1.45,
@@ -199,7 +199,7 @@ export const bookInput: CSSProperties = {
   padding: 14,
   border: '1px solid #e0e0e0',
   borderRadius: 12,
-  fontSize: 16,
+  fontSize: ty.title,
   boxSizing: 'border-box',
   background: T.surfaceMuted,
   outline: 'none',
@@ -229,7 +229,7 @@ export const dateChip = (selected: boolean, disabled: boolean): CSSProperties =>
 
 /** Step 1 價格區塊 banner */
 export const priceBanner: CSSProperties = {
-  fontSize: 11,
+  fontSize: ty.caption,
   color: T.muted,
   lineHeight: 1.5,
   marginBottom: 14,
@@ -261,17 +261,17 @@ export const segmentBtn = (selected: boolean): CSSProperties => ({
 })
 
 export const segmentZh: CSSProperties = {
-  fontSize: 12,
+  fontSize: ty.body,
   fontWeight: 700,
   color: T.ink,
   wordBreak: 'keep-all',
 }
 
 export const segmentEn: CSSProperties = {
-  fontSize: 9,
+  fontSize: ty.caption,
   fontWeight: 500,
   color: T.muted,
-  marginTop: 3,
+  marginTop: 4,
   wordBreak: 'break-word',
 }
 
@@ -287,10 +287,10 @@ export const detailPanel = (active: boolean): CSSProperties => ({
 export const metaChip: CSSProperties = {
   display: 'inline-block',
   marginTop: 8,
-  padding: '3px 9px',
+  padding: '4px 10px',
   borderRadius: 999,
   background: T.accentSoft,
-  fontSize: 10,
+  fontSize: ty.caption,
   fontWeight: 600,
   color: T.inkSoft,
   letterSpacing: '0.02em',
@@ -298,7 +298,7 @@ export const metaChip: CSSProperties = {
 
 export const priceLine: CSSProperties = {
   marginTop: 10,
-  fontSize: 22,
+  fontSize: ty.display,
   fontWeight: 700,
   color: T.ink,
   lineHeight: 1.1,

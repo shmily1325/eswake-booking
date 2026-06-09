@@ -1,5 +1,6 @@
 import { BookLocaleToggle, useBookLocale } from './BookLocaleContext'
 import { bookHeader, progressBar, progressFill } from './bookStyles'
+import { BOOK_TYPE as ty } from './bookTheme'
 
 interface BookStepHeaderProps {
   step: number
@@ -23,10 +24,10 @@ export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderPr
         gap: 8,
       }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.75, letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: ty.caption, fontWeight: 600, opacity: 0.8, letterSpacing: '0.05em' }}>
             {s.header.brand}
           </div>
-          <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2, lineHeight: 1.2 }}>
+          <div style={{ fontSize: ty.title, fontWeight: 700, marginTop: 2, lineHeight: 1.2, opacity: 0.95 }}>
             {s.header.title}
           </div>
         </div>
@@ -52,9 +53,9 @@ export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderPr
               style={{
                 flex: 1,
                 textAlign: 'center',
-                fontSize: 11,
+                fontSize: ty.caption,
                 fontWeight: active ? 700 : 500,
-                padding: '7px 0',
+                padding: '8px 0',
                 borderRadius: 999,
                 background: active
                   ? 'rgba(255,255,255,0.24)'
@@ -71,21 +72,21 @@ export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderPr
         })}
       </div>
 
-      <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0, lineHeight: 1.3 }}>{meta.title}</h1>
+      <h1 style={{ fontSize: ty.display, fontWeight: 700, margin: 0, lineHeight: 1.3 }}>{meta.title}</h1>
       <div style={progressBar}><div style={progressFill(progressPct)} /></div>
 
       {priceHint && (
         <div style={{ marginTop: 10, fontVariantNumeric: 'tabular-nums' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.01em' }}>
+          <div style={{ fontSize: ty.display, fontWeight: 700, letterSpacing: '0.01em' }}>
             {priceHint}
           </div>
-          <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>
+          <div style={{ fontSize: ty.caption, opacity: 0.75, marginTop: 2 }}>
             {s.estimate.reference}
           </div>
         </div>
       )}
       {memberHint && (
-        <div style={{ fontSize: 11, opacity: 0.75, marginTop: 4 }}>{s.header.memberRateHint}</div>
+        <div style={{ fontSize: ty.caption, opacity: 0.8, marginTop: 4 }}>{s.header.memberRateHint}</div>
       )}
     </header>
   )

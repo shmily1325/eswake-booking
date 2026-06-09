@@ -6,6 +6,7 @@ import {
   type BookI18nStrings,
   type BookLocale,
 } from './liffBookingI18n'
+import { BOOK_TYPE as ty } from './bookTheme'
 
 interface BookLocaleContextValue {
   locale: BookLocale
@@ -56,7 +57,7 @@ export function BookLocaleToggle({ style, surface = 'header' }: BookLocaleToggle
     padding: '4px 10px',
     border: 'none',
     borderRadius: 999,
-    fontSize: 11,
+    fontSize: ty.caption,
     fontWeight: active ? 700 : 500,
     cursor: 'pointer',
     background: active

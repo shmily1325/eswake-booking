@@ -1,3 +1,15 @@
+/** 預約表單字級（4 級，最低 12px） */
+export const BOOK_TYPE = {
+  /** 步驟標題、大價格 */
+  display: 20,
+  /** 卡片標題、活動/船型主標 */
+  title: 16,
+  /** 正文、chip、欄位 label、輸入 */
+  body: 14,
+  /** 提示、副標、pill、metadata */
+  caption: 12,
+} as const
+
 /** 預約表單視覺 token（與會員專區同色系，略加層次） */
 export const BOOK_THEME = {
   ink: '#1a1a1a',

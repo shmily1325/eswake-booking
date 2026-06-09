@@ -3,6 +3,7 @@ import { infoBox, warnBox } from './bookStyles'
 import type { LiffBookingFormState, TimePreference } from './types'
 import { BOAT_BIG_DUAL_MIN, BOAT_SMALL_DUAL_MIN, onBoatTotal, usesBigBoat } from './liffBookingBoats'
 import type { BookI18nStrings } from './liffBookingI18n'
+import { BOOK_TYPE as ty } from './bookTheme'
 
 interface BookContextTipsProps {
   step: 2 | 3 | 4
@@ -26,11 +27,11 @@ export function BookContextTips({ step, form, pickTimePref }: BookContextTipsPro
         ...boxStyle,
         marginTop: 12,
         marginBottom: 0,
-        fontSize: 13,
+        fontSize: ty.body,
         lineHeight: 1.55,
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: tips.length > 1 ? 8 : 0, opacity: 0.9 }}>
+      <div style={{ fontSize: ty.caption, fontWeight: 700, marginBottom: tips.length > 1 ? 8 : 0, opacity: 0.9 }}>
         {s.reminders.title}
       </div>
       {tips.length === 1 ? (

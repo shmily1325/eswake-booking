@@ -63,6 +63,7 @@ import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
 import { OFFICIAL_INFO_URL } from './liffBookingContent'
+import { BOOK_TYPE as ty } from './bookTheme'
 
 function bookStepExtras(
   step: number,
@@ -467,8 +468,8 @@ function LiffBookInner() {
                         style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '10px 0' }}
                         onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
                       >
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>{s.step2.firstTime}</div>
-                        <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{s.step2.firstTimeNote}</div>
+                        <div style={{ fontSize: ty.body, fontWeight: 600 }}>{s.step2.firstTime}</div>
+                        <div style={{ fontSize: ty.caption, opacity: 0.85, marginTop: 3 }}>{s.step2.firstTimeNote}</div>
                       </button>
                       <button
                         type="button"
@@ -476,8 +477,8 @@ function LiffBookInner() {
                         style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '10px 0' }}
                         onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
                       >
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>{s.step2.experienced}</div>
-                        <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{s.step2.experiencedNote}</div>
+                        <div style={{ fontSize: ty.body, fontWeight: 600 }}>{s.step2.experienced}</div>
+                        <div style={{ fontSize: ty.caption, opacity: 0.85, marginTop: 3 }}>{s.step2.experiencedNote}</div>
                       </button>
                     </div>
                   </>
@@ -503,7 +504,7 @@ function LiffBookInner() {
             </div>
 
             <div style={{ marginBottom: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#bbb', letterSpacing: '0.06em', marginBottom: 8 }}>
+              <div style={{ fontSize: ty.caption, fontWeight: 600, color: '#bbb', letterSpacing: '0.05em', marginBottom: 8 }}>
                 {s.step2.optionalLabel}
               </div>
               <BookFollowBoatPanel
@@ -561,7 +562,7 @@ function LiffBookInner() {
                             padding: '10px 12px',
                             background: '#f5f5f5',
                             borderRadius: 10,
-                            fontSize: 14,
+                            fontSize: ty.body,
                           }}
                         >
                           <span>{formatPreferredDateLabel(pd, locale, s.step3.morning, s.step3.afternoon)}</span>
@@ -574,7 +575,7 @@ function LiffBookInner() {
                               border: 'none',
                               background: 'none',
                               color: '#999',
-                              fontSize: 12,
+                              fontSize: ty.caption,
                               cursor: 'pointer',
                               textDecoration: 'underline',
                             }}
@@ -598,7 +599,7 @@ function LiffBookInner() {
                       borderRadius: 10,
                       background: 'white',
                       color: canAddPreferredDate ? '#555' : '#bbb',
-                      fontSize: 13,
+                      fontSize: ty.body,
                       fontWeight: 600,
                       cursor: canAddPreferredDate ? 'pointer' : 'not-allowed',
                     }}
@@ -617,7 +618,7 @@ function LiffBookInner() {
                   onClick={() => { triggerHaptic('light'); setShowCoachSection(true) }}
                   style={{
                     padding: 0, border: 'none', background: 'none',
-                    color: '#888', fontSize: 13, cursor: 'pointer', textDecoration: 'underline',
+                    color: '#888', fontSize: ty.body, cursor: 'pointer', textDecoration: 'underline',
                   }}
                 >
                   {s.step3.addCoach}
@@ -668,15 +669,15 @@ function LiffBookInner() {
               {isBothActivities(form.activity) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <BookBothIcons size={32} style={{ margin: 0 }} />
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>{s.step1.bothShort}</div>
+                  <div style={{ fontSize: ty.title, fontWeight: 700 }}>{s.step1.bothShort}</div>
                 </div>
               ) : selectedActivity ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <BookActivityIcon code={selectedActivity.code} size={40} style={{ margin: 0 }} />
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>{activityTitleLabel(selectedActivity.code, locale)}</div>
+                  <div style={{ fontSize: ty.title, fontWeight: 700 }}>{activityTitleLabel(selectedActivity.code, locale)}</div>
                 </div>
               ) : null}
-              <div style={{ fontSize: 14, lineHeight: 1.9, color: '#444' }}>
+              <div style={{ fontSize: ty.body, lineHeight: 1.9, color: '#444' }}>
                 <div>
                   {form.headcount} {s.step4.people} · {s.step2.experienceSummary(form.headcount, form.beginnerCount)}
                   {form.followBoatCount > 0 ? ` · ${s.step4.followBoatSummary(form.followBoatCount)}` : ''}
@@ -699,21 +700,21 @@ function LiffBookInner() {
               {estimate && (
                 <>
                   <BookEstimateCard estimate={estimate} defaultExpanded />
-                  <p style={{ fontSize: 11, color: '#999', margin: '8px 0 0', lineHeight: 1.5 }}>
+                  <p style={{ fontSize: ty.caption, color: '#999', margin: '8px 0 0', lineHeight: 1.5 }}>
                     {s.step4.confirmNote}
                   </p>
                 </>
               )}
             </div>
 
-            <p style={{ fontSize: 12, color: '#888', margin: '0 0 10px', lineHeight: 1.5, textAlign: 'center' }}>
+            <p style={{ fontSize: ty.caption, color: '#888', margin: '0 0 10px', lineHeight: 1.5, textAlign: 'center' }}>
               {s.step4.submitHint}
             </p>
 
             <div style={bookCard}>
               <div style={fieldLabel}>{s.step4.contact}</div>
               {member ? (
-                <div style={{ fontSize: 11, color: '#888', marginBottom: 10 }}>{s.step4.memberPrefill}</div>
+                <div style={{ fontSize: ty.caption, color: '#888', marginBottom: 10 }}>{s.step4.memberPrefill}</div>
               ) : null}
               <input
                 value={form.contactName}
@@ -738,7 +739,7 @@ function LiffBookInner() {
               <BookStaffHint step={4} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
             </div>
 
-            <p style={{ fontSize: 11, color: '#aaa', textAlign: 'center', margin: '10px 0 0' }}>
+            <p style={{ fontSize: ty.caption, color: '#aaa', textAlign: 'center', margin: '10px 0 0' }}>
               <a href={OFFICIAL_INFO_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#999' }}>
                 {s.step4.attireLink}
               </a>
@@ -746,8 +747,8 @@ function LiffBookInner() {
 
             {desktopMessage && (
               <div style={bookCard}>
-                <p style={{ fontSize: 13, margin: '0 0 8px' }}>{s.step4.desktopCopy}</p>
-                <textarea readOnly value={desktopMessage} rows={6} style={{ width: '100%', fontSize: 13, boxSizing: 'border-box' }} />
+                <p style={{ fontSize: ty.body, margin: '0 0 8px' }}>{s.step4.desktopCopy}</p>
+                <textarea readOnly value={desktopMessage} rows={6} style={{ width: '100%', fontSize: ty.body, boxSizing: 'border-box' }} />
               </div>
             )}
           </>
