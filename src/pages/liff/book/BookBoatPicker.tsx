@@ -53,7 +53,7 @@ interface BookBoatPickerProps {
 }
 
 export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: BookBoatPickerProps) {
-  const { s } = useBookLocale()
+  const { locale, s } = useBookLocale()
   const boat = s.boat
   const isStep1 = variant === 'step1'
   const dualBig = headcount >= BOAT_BIG_DUAL_MIN
@@ -107,7 +107,6 @@ export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: Book
         </button>
       </div>
       {isStep1 ? <div style={capacityNote}>{boat.capacityNote}</div> : null}
-
       {isStep1 ? (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e8e8e8' }}>
           <BookVideoPlayer
@@ -116,9 +115,11 @@ export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: Book
             title={boat.introVideoLabel}
             label={boat.introVideoLabel}
           />
-          <div style={{ fontSize: 10, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
-            {s.step1.videoMandarinNote}
-          </div>
+          {locale === 'en' ? (
+            <div style={{ fontSize: 10, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
+              {s.step1.videoMandarinNote}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

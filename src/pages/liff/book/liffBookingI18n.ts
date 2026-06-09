@@ -438,7 +438,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       largeGroupBigSingle: '單艘即可',
       capacityNote: '小船 6 人/艘 · 7+ 兩艘 · 大船 10 人/艘 · 11+ 兩艘',
       perPerson: '／人',
-      introVideoLabel: '船型介紹影片',
+      introVideoLabel: '船型介紹',
     },
     reminders: {
       title: '本梯次提醒',
@@ -670,7 +670,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       largeGroupBigSingle: 'Single boat OK',
       capacityNote: 'Small 6/boat · 7+ needs 2 · Big 10/boat · 11+ needs 2',
       perPerson: '/person',
-      introVideoLabel: 'Boat intro video',
+      introVideoLabel: 'Boat intro',
     },
     reminders: {
       title: 'Session notes',
