@@ -28,6 +28,7 @@ import { ROUTE_OG_BY_PATH } from '../../lib/routeOgMeta'
 import { LiffBootScreen } from './LiffBootScreen'
 import {
   enrichMemberForLiff,
+  ensureLiffLoggedIn,
   initLiffSdk,
   isFirstDocumentLoadThisNavigation,
   liteMemberFromRow,
@@ -241,10 +242,8 @@ export function LiffMyBookings() {
       setBootLabel('連接 LINE…')
       await initLiffSdk(liffId)
 
-      if (!liff.isLoggedIn()) {
-        liff.login()
-        return
-      }
+      const loginResult = await ensureLiffLoggedIn()
+      if (loginResult !== 'logged_in') return
 
       setBootLabel('確認會員…')
       const profile = await liff.getProfile()

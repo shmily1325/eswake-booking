@@ -6,6 +6,7 @@ import { triggerHaptic } from '../../utils/haptic'
 import type { Member } from './types'
 import {
   initLiffSdk,
+  ensureLiffLoggedIn,
   isFirstDocumentLoadThisNavigation,
   unknownErrorMessage,
   enrichMemberForLiff,
@@ -131,11 +132,12 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
 
       await initLiffSdk(liffId, readyBeforeProfile ? { retryDelaysMs: LIFF_INIT_FAST_RETRY_DELAYS_MS } : undefined)
 
-      if (!liff.isLoggedIn()) {
+      const loginResult = await ensureLiffLoggedIn()
+      if (loginResult === 'login_redirect') {
         setBootPhase('login')
-        liff.login()
         return
       }
+      if (loginResult === 'reload') return
 
       if (nonBlockingBinding && readyBeforeProfile) {
         setLoading(false)

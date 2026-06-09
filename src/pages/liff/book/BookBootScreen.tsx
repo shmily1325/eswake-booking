@@ -8,9 +8,10 @@ export type BookBootPhase = 'chunk' | 'init' | 'login'
 interface BookBootScreenProps {
   phase?: BookBootPhase
   onRetry?: () => void
+  liffOpenUrl?: string | null
 }
 
-export function BookBootScreen({ phase = 'init', onRetry }: BookBootScreenProps) {
+export function BookBootScreen({ phase = 'init', onRetry, liffOpenUrl }: BookBootScreenProps) {
   const { s } = useBookLocale()
   const [slow, setSlow] = useState(false)
   const [stuck, setStuck] = useState(false)
@@ -61,6 +62,28 @@ export function BookBootScreen({ phase = 'init', onRetry }: BookBootScreenProps)
       {slow && !stuck && (
         <div style={{ fontSize: 12, color: T.mutedLight, marginTop: 10, lineHeight: 1.5 }}>
           {s.boot.slow}
+        </div>
+      )}
+      {stuck && liffOpenUrl && (
+        <div style={{ marginTop: 16, maxWidth: 280 }}>
+          <div style={{ fontSize: 12, color: T.muted, marginBottom: 12, lineHeight: 1.55 }}>
+            {s.boot.loginFallback}
+          </div>
+          <a
+            href={liffOpenUrl}
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              borderRadius: 12,
+              background: T.lineGreen,
+              color: 'white',
+              fontSize: 15,
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            {s.boot.openInLine}
+          </a>
         </div>
       )}
       {stuck && (

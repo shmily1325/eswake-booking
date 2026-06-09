@@ -25,7 +25,7 @@ export interface BookI18nStrings {
   header: { brand: string; title: string; memberRateHint: string }
   localeToggle: { zh: string; en: string }
   steps: readonly { id: number; title: string; pill: string }[]
-  boot: { chunk: string; init: string; login: string; slow: string; stuck: string; retry: string }
+  boot: { chunk: string; init: string; login: string; slow: string; stuck: string; retry: string; loginFallback: string; openInLine: string }
   notEnabled: { title: string; body: string }
   step1: {
     priceSuffix: string
@@ -239,6 +239,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       slow: '網路較慢，請稍候…',
       stuck: '載入時間較久。請重新整理，或關閉後再點一次連結。',
       retry: '重新整理',
+      loginFallback: '若登入畫面出現錯誤，請改從 LINE 重新開啟：',
+      openInLine: '在 LINE 中開啟',
     },
     notEnabled: { title: '預約表單尚未開放', body: '請繼續使用 LINE 官方帳號填寫預約資訊。' },
     step1: {
@@ -472,6 +474,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       slow: 'Slow network, please wait…',
       stuck: 'Taking longer than usual. Refresh or reopen the link.',
       retry: 'Refresh',
+      loginFallback: 'If sign-in fails, reopen from LINE:',
+      openInLine: 'Open in LINE',
     },
     notEnabled: { title: 'Booking not available yet', body: 'Please book via our LINE official account.' },
     step1: {

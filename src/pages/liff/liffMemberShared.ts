@@ -8,6 +8,25 @@ export const LIFF_MEMBER_SELECT =
 const LIFF_INIT_MAX_ATTEMPTS = 3
 const LIFF_INIT_RETRY_DELAYS_MS = [400, 800]
 export const LIFF_INIT_FAST_RETRY_DELAYS_MS = [200, 400]
+/** init 後 LINE WebView 橋接就緒前，isLoggedIn 可能短暫回 false */
+const LIFF_LOGIN_POLL_DELAYS_MS = [100, 200, 400, 800]
+
+export const LIFF_MEMBER_ENDPOINT_PATH = '/liff'
+
+export function buildLiffShareUrl(liffId: string): string {
+  return `https://liff.line.me/${liffId}`
+}
+
+/** OAuth redirectUri 必須以 LIFF Endpoint URL 為前綴（保留供日後需要時使用） */
+export function buildLiffLoginRedirectUri(endpointPath: string): string {
+  const normalized = endpointPath.replace(/\/+$/, '') || '/'
+  const current = window.location.pathname.replace(/\/+$/, '') || '/'
+  const origin = window.location.origin
+  if (current === normalized || current.startsWith(`${normalized}/`)) {
+    return `${origin}${window.location.pathname}${window.location.search}`
+  }
+  return `${origin}${normalized}`
+}
 
 function sleep(ms: number) {
   return new Promise<void>(resolve => setTimeout(resolve, ms))
@@ -49,6 +68,34 @@ export async function initLiffSdk(
     }
   }
   throw lastErr
+}
+
+export type EnsureLiffLoggedInResult = 'logged_in' | 'login_redirect' | 'reload'
+
+/**
+ * init 完成後確認登入狀態。
+ * LINE 內建瀏覽器：先輪詢 isLoggedIn（冷啟動常短暫 false），仍失敗則 reload 一次，不呼叫 liff.login()（易 OAuth 400）。
+ * 外部瀏覽器：才走 liff.login()。
+ */
+export async function ensureLiffLoggedIn(): Promise<EnsureLiffLoggedInResult> {
+  if (liff.isLoggedIn()) return 'logged_in'
+
+  for (const delay of LIFF_LOGIN_POLL_DELAYS_MS) {
+    await sleep(delay)
+    if (liff.isLoggedIn()) return 'logged_in'
+  }
+
+  if (liff.isInClient()) {
+    if (isFirstDocumentLoadThisNavigation()) {
+      console.warn('LIFF 冷啟動登入狀態未就緒，自動重新載入一次')
+      window.location.reload()
+      return 'reload'
+    }
+    throw new Error('無法取得 LINE 登入狀態，請關閉後從 LINE 重新開啟連結')
+  }
+
+  liff.login()
+  return 'login_redirect'
 }
 
 type LiffMemberRow = {

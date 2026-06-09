@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react'
 interface LiffBootScreenProps {
   label?: string
   onRetry?: () => void
+  /** 登入異常時，改從 LINE 開啟的 LIFF 連結 */
+  liffOpenUrl?: string | null
 }
 
 /** LIFF chunk 下載中（輕量，不拉預約樣式進主 bundle） */
-export function LiffBootScreen({ label = '載入中…', onRetry }: LiffBootScreenProps) {
+export function LiffBootScreen({ label = '載入中…', onRetry, liffOpenUrl }: LiffBootScreenProps) {
   const [slow, setSlow] = useState(false)
   const [stuck, setStuck] = useState(false)
 
@@ -49,6 +51,28 @@ export function LiffBootScreen({ label = '載入中…', onRetry }: LiffBootScre
       <div style={{ fontSize: 14, color: '#888', lineHeight: 1.5 }}>{label}</div>
       {slow && !stuck && (
         <div style={{ fontSize: 12, color: '#aaa', marginTop: 10 }}>網路較慢，請稍候…</div>
+      )}
+      {stuck && liffOpenUrl && (
+        <div style={{ marginTop: 16, maxWidth: 300 }}>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 12, lineHeight: 1.55 }}>
+            若登入畫面出現錯誤，請改從 LINE 重新開啟：
+          </div>
+          <a
+            href={liffOpenUrl}
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              borderRadius: 12,
+              background: '#00b900',
+              color: 'white',
+              fontSize: 15,
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            在 LINE 中開啟
+          </a>
+        </div>
       )}
       {stuck && (
         <div style={{ marginTop: 16 }}>
