@@ -49,7 +49,7 @@ export const liffCard: CSSProperties = {
 export const liffPrimaryBtn = (enabled = true): CSSProperties => ({
   width: '100%',
   padding: '14px',
-  background: enabled ? ES_BRAND.headerBg : '#ccc',
+  background: enabled ? ES_BRAND.ctaBg : '#ccc',
   color: 'white',
   border: 'none',
   borderRadius: '12px',

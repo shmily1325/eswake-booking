@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useBookLocale } from './BookLocaleContext'
 import type { PriceEstimate } from './liffBookingPricing'
-import { infoBox } from './bookStyles'
+import { estimateBox, estimateDetailPanel, estimateTierPill } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookEstimateCardProps {
@@ -10,24 +11,65 @@ interface BookEstimateCardProps {
   memberHint?: boolean
 }
 
+const detailRow = (isLast: boolean): CSSProperties => ({
+  fontSize: ty.caption,
+  color: T.estimateDetailInk,
+  lineHeight: 1.5,
+  padding: '5px 0',
+  borderBottom: isLast ? 'none' : `1px solid ${T.estimateBorder}`,
+})
+
 export function BookEstimateCard({ estimate, defaultExpanded = false, memberHint = false }: BookEstimateCardProps) {
   const { s } = useBookLocale()
   const [expanded, setExpanded] = useState(defaultExpanded)
+  const hasDetails = estimate.detailLines.length > 0
 
   return (
-    <div style={{ ...infoBox, marginTop: 0, marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-        <div style={{ fontSize: ty.display, fontWeight: 700 }}>{s.estimate.about} {estimate.totalLabel}</div>
-        <div style={{ fontSize: ty.caption, color: T.muted }}>{estimate.tierLabel}</div>
+    <div style={{ ...estimateBox, marginTop: 0, marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: ty.body, fontWeight: 600, color: T.estimateAccent }}>
+          {s.estimate.title}
+        </span>
+        <span style={estimateTierPill}>{estimate.tierLabel}</span>
       </div>
-      <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 2 }}>{s.estimate.reference}</div>
+
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          gap: 8,
+          marginTop: 8,
+        }}
+      >
+        <span
+          style={{
+            fontSize: ty.title,
+            fontWeight: 600,
+            color: T.ink,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {s.estimate.about} {estimate.totalLabel}
+        </span>
+        <span style={{ fontSize: ty.caption, color: T.muted, flexShrink: 0 }}>{s.estimate.reference}</span>
+      </div>
+
       {memberHint ? (
         <div style={{ fontSize: ty.caption, color: T.muted, marginTop: 4 }}>{s.header.memberRateHint}</div>
       ) : null}
-      {expanded && estimate.detailLines.map(line => (
-        <div key={line} style={{ fontSize: ty.caption, marginTop: 6, opacity: 0.9 }}>{line}</div>
-      ))}
-      {estimate.detailLines.length > 0 && (
+
+      {expanded && hasDetails ? (
+        <div style={{ ...estimateDetailPanel, marginTop: 10 }}>
+          {estimate.detailLines.map((line, i) => (
+            <div key={line} style={detailRow(i === estimate.detailLines.length - 1)}>
+              {line}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {hasDetails ? (
         <button
           type="button"
           onClick={() => setExpanded(v => !v)}
@@ -36,15 +78,16 @@ export function BookEstimateCard({ estimate, defaultExpanded = false, memberHint
             padding: 0,
             border: 'none',
             background: 'none',
-            color: T.muted,
+            color: T.estimateAccent,
             fontSize: ty.caption,
+            fontWeight: 500,
             cursor: 'pointer',
             textDecoration: 'underline',
           }}
         >
           {expanded ? s.estimate.collapse : s.estimate.expand}
         </button>
-      )}
+      ) : null}
     </div>
   )
 }

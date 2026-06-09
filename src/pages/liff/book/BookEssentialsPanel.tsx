@@ -7,7 +7,7 @@ import { step1ActivityChip } from './liffBookingBoats'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import {
-  bookCard,
+  bookFieldGroup,
   detailPanel,
   metaChip,
   priceBanner,
@@ -74,76 +74,78 @@ export function BookEssentialsPanel({
   const act = active ? s.step1.activities[active] : null
 
   return (
-    <div style={{ ...bookCard, marginBottom: 12, padding: '16px 16px 14px' }}>
-      <div style={priceBanner}>{priceRange}</div>
+    <>
+      <div style={{ ...priceBanner, marginBottom: 0 }}>{priceRange}</div>
 
-      <div style={segmentRow}>
-        {STEP1_ACTIVITY_CHOICES.map(choice => {
-          const selected = value === choice.code
-          const { primary, secondary } = activitySegmentLabels(choice.code, locale)
-          return (
-            <button
-              key={choice.code}
-              type="button"
-              className="book-segment-btn"
-              style={segmentBtn(selected)}
-              onClick={() => pick(choice.code)}
-              aria-pressed={selected}
-            >
-              {segmentIcon(choice.code)}
-              <div style={segmentZh}>{primary}</div>
-              <div style={segmentEn}>{secondary}</div>
-            </button>
-          )
-        })}
-      </div>
+      <div style={{ ...bookFieldGroup, marginTop: 12 }}>
+        <div style={{ ...segmentRow, marginBottom: active ? 14 : 0 }}>
+          {STEP1_ACTIVITY_CHOICES.map(choice => {
+            const selected = value === choice.code
+            const { primary, secondary } = activitySegmentLabels(choice.code, locale)
+            return (
+              <button
+                key={choice.code}
+                type="button"
+                className="book-segment-btn"
+                style={segmentBtn(selected)}
+                onClick={() => pick(choice.code)}
+                aria-pressed={selected}
+              >
+                {segmentIcon(choice.code)}
+                <div style={segmentZh}>{primary}</div>
+                <div style={segmentEn}>{secondary}</div>
+              </button>
+            )
+          })}
+        </div>
 
-      {active && act ? (
-        <div style={detailPanel(true)}>
-          <div style={{ fontSize: ty.title, fontWeight: 700, color: '#222' }}>
-            {activityDetailTitle(active, locale)}
-          </div>
-          {chipLabel ? <span style={metaChip}>{chipLabel}</span> : null}
-          <div style={{ fontSize: ty.body, color: '#666', lineHeight: 1.5, marginTop: 8 }}>
-            {s.step1.playMode[active]}
-          </div>
-          {active === 'BOTH' ? (
-            <div style={{ fontSize: ty.caption, color: '#888', lineHeight: 1.5, marginTop: 6 }}>
-              {s.step1.bothNote}
+        {active && act ? (
+          <div style={detailPanel(true)}>
+            <div style={{ fontSize: ty.title, fontWeight: 700, color: T.ink }}>
+              {activityDetailTitle(active, locale)}
             </div>
-          ) : null}
-          {price ? <div style={priceLine}>{price}</div> : null}
-
-          {active !== 'BOTH' && (
-            <div style={{ marginTop: 12 }}>
-              <BookVideoPlayer
-                variant="compact"
-                videoId={active === 'WS' ? 'esgwXR0ikOU' : 'oHp8IeOvbdk'}
-                title={act.labelEn}
-                posterSrc={videoPoster(active as ActivityCode).src}
-                posterSrcSet={`${videoPoster(active as ActivityCode).src} 1x, ${videoPoster(active as ActivityCode).src2x} 2x`}
-              />
-              <div style={{ fontSize: ty.caption, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
-                {s.step1.videoMandarinNote}
+            {chipLabel ? <span style={metaChip}>{chipLabel}</span> : null}
+            <div style={{ fontSize: ty.body, color: T.muted, lineHeight: 1.5, marginTop: 8 }}>
+              {s.step1.playMode[active]}
+            </div>
+            {active === 'BOTH' ? (
+              <div style={{ fontSize: ty.caption, color: T.muted, lineHeight: 1.5, marginTop: 6 }}>
+                {s.step1.bothNote}
               </div>
-            </div>
-          )}
+            ) : null}
+            {price ? <div style={priceLine}>{price}</div> : null}
 
-          {active === 'BOTH' && (
-            <div style={{ marginTop: 12, padding: '12px 0 4px' }}>
-              <BookBothIcons size={40} gap={10} />
-            </div>
-          )}
-        </div>
-      ) : (
-        <div style={{ ...detailPanel(false), textAlign: 'center', color: '#aaa', fontSize: ty.body, padding: '20px 14px' }}>
-          {s.step1.pickPrompt}
-        </div>
-      )}
+            {active !== 'BOTH' && (
+              <div style={{ marginTop: 12 }}>
+                <BookVideoPlayer
+                  variant="compact"
+                  videoId={active === 'WS' ? 'esgwXR0ikOU' : 'oHp8IeOvbdk'}
+                  title={act.labelEn}
+                  posterSrc={videoPoster(active as ActivityCode).src}
+                  posterSrcSet={`${videoPoster(active as ActivityCode).src} 1x, ${videoPoster(active as ActivityCode).src2x} 2x`}
+                />
+                <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 6, textAlign: 'center' }}>
+                  {s.step1.videoMandarinNote}
+                </div>
+              </div>
+            )}
+
+            {active === 'BOTH' && (
+              <div style={{ marginTop: 12, padding: '12px 0 4px' }}>
+                <BookBothIcons size={40} gap={10} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ ...detailPanel(false), textAlign: 'center', color: T.mutedLight, fontSize: ty.body, padding: '20px 14px' }}>
+            {s.step1.pickPrompt}
+          </div>
+        )}
+      </div>
 
       {!LIFF_BOOK_GUEST_PRICING_ONLY && memberRate ? (
         <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 10, textAlign: 'center' }}>{s.step1.memberRateApplied}</div>
       ) : null}
-    </div>
+    </>
   )
 }

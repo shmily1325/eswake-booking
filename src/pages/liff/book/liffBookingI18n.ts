@@ -154,7 +154,7 @@ export interface BookI18nStrings {
     step4Hint: string
     splitActivityMsg: string
   }
-  estimate: { about: string; reference: string; expand: string; collapse: string }
+  estimate: { title: string; about: string; reference: string; expand: string; collapse: string }
   pricing: {
     member: string
     guest: string
@@ -384,7 +384,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       step4Hint: '特殊需求可寫備註；表單沒涵蓋的情況再問小編。',
       splitActivityMsg: '我們有人想玩寬板、有人想衝浪（人數各不同，例如 5 人裡 2 位寬板、3 位衝浪），請協助安排與報價。',
     },
-    estimate: { about: '約', reference: '參考價', expand: '看明細', collapse: '收合明細' },
+    estimate: { title: '費用估算', about: '約', reference: '參考價', expand: '看明細', collapse: '收合明細' },
     pricing: {
       member: '會員',
       guest: '非會員',
@@ -622,7 +622,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       step4Hint: 'Use notes for special requests; ask us if the form does not cover your case.',
       splitActivityMsg: 'We have a split group (e.g. some wakeboard, some wakesurf) — please help arrange and quote.',
     },
-    estimate: { about: 'Est.', reference: 'Reference only', expand: 'Details', collapse: 'Hide details' },
+    estimate: { title: 'Price estimate', about: 'Est.', reference: 'Reference only', expand: 'Details', collapse: 'Hide details' },
     pricing: {
       member: 'member',
       guest: 'non-member',

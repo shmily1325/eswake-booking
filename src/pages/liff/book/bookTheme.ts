@@ -31,6 +31,11 @@ export const BOOK_THEME = {
   accent: '#4a4a4a',
   accentSoft: 'rgba(74,74,74,0.08)',
   /** 主按鈕（比 header 純黑略輕，減少上下夾擠感） */
-  ctaBg: '#2d2d2d',
+  ctaBg: ES_BRAND.ctaBg,
   borderSubtle: '#e4e6ea',
+  /** 估價卡：淡海藍底，與表單灰白區隔 */
+  estimateBg: '#f0f6fa',
+  estimateBorder: '#c5dce8',
+  estimateAccent: '#2b6b8a',
+  estimateDetailInk: '#3d5566',
 } as const

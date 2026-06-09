@@ -63,7 +63,7 @@ export const chipBtn = (selected: boolean): CSSProperties => ({
   cursor: 'pointer',
 })
 
-/** 估價、提示等內容區塊（中性灰，與表單同層次） */
+/** 一般提示區塊（中性灰） */
 export const infoBox: CSSProperties = {
   background: T.surfaceMuted,
   border: `1px solid ${T.borderSubtle}`,
@@ -73,6 +73,57 @@ export const infoBox: CSSProperties = {
   color: T.inkSoft,
   lineHeight: 1.6,
   marginTop: '12px',
+}
+
+/** 估價卡（淡海藍，與表單區隔） */
+export const estimateBox: CSSProperties = {
+  background: T.estimateBg,
+  border: `1px solid ${T.estimateBorder}`,
+  borderLeft: `3px solid ${T.estimateAccent}`,
+  borderRadius: '12px',
+  padding: '12px 14px',
+  fontSize: ty.body,
+  color: T.estimateDetailInk,
+  lineHeight: 1.55,
+  marginTop: '12px',
+}
+
+export const estimateTierPill: CSSProperties = {
+  fontSize: ty.caption,
+  fontWeight: 600,
+  color: T.estimateAccent,
+  background: 'rgba(43,107,138,0.12)',
+  padding: '3px 10px',
+  borderRadius: 999,
+  flexShrink: 0,
+}
+
+export const estimateDetailPanel: CSSProperties = {
+  marginTop: 12,
+  padding: '10px 12px',
+  background: T.cardBg,
+  borderRadius: 10,
+  border: `1px solid ${T.estimateBorder}`,
+}
+
+/** 選填區塊（跟船等） */
+export const optionalPanel: CSSProperties = {
+  border: '1px dashed #ddd',
+  borderRadius: 10,
+  overflow: 'hidden',
+  background: T.surfaceMuted,
+}
+
+export const estimateInsetHighlight: CSSProperties = {
+  fontSize: ty.body,
+  fontWeight: 600,
+  color: T.estimateDetailInk,
+  marginTop: 12,
+  padding: '10px 12px',
+  background: T.estimateBg,
+  border: `1px solid ${T.estimateBorder}`,
+  borderRadius: 8,
+  lineHeight: 1.5,
 }
 
 export const warnBox: CSSProperties = {
@@ -192,12 +243,6 @@ export const listItemRow: CSSProperties = {
   background: T.surfaceMuted,
   borderRadius: 10,
   fontSize: ty.body,
-}
-
-/** Step 4 確認摘要卡 */
-export const bookConfirmCard: CSSProperties = {
-  ...bookCard,
-  border: `2px solid ${T.accent}`,
 }
 
 export const footerBlockHint: CSSProperties = {

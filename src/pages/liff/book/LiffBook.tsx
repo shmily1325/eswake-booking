@@ -46,7 +46,6 @@ import { designatedCoachPrice20 } from './liffBookingCoaches'
 import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
 import {
   bookCard,
-  bookConfirmCard,
   bookFieldGroup,
   bookInput,
   listItemRow,
@@ -413,17 +412,20 @@ function LiffBookInner() {
       <main style={{ padding: 16 }}>
         {/* Step 1: 玩什麼 */}
         {step === 1 && (
-          <BookEssentialsPanel
-            memberRate={memberRate}
-            value={form.activity}
-            onChange={code => setForm(prev => ({ ...prev, ...syncActivityChoice(code) }))}
-          />
+          <div style={bookCard}>
+            <BookEssentialsPanel
+              memberRate={memberRate}
+              value={form.activity}
+              onChange={code => setForm(prev => ({ ...prev, ...syncActivityChoice(code) }))}
+            />
+            <BookStaffHint step={1} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
+          </div>
         )}
 
         {/* Step 2: 誰要滑 */}
         {step === 2 && (
           <div style={bookCard}>
-            {estimate && <BookEstimateCard estimate={estimate} memberHint={showMemberHint} />}
+            {estimate && <BookEstimateCard estimate={estimate} memberHint={showMemberHint} defaultExpanded />}
 
             <div style={bookFieldGroup}>
               <div style={{ marginBottom: 16 }}>
@@ -612,8 +614,8 @@ function LiffBookInner() {
                 </button>
               </div>
             ) : (
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-                <div style={{ ...fieldLabel, marginBottom: 8 }}>{s.step3.designateCoach}</div>
+              <div style={{ marginTop: 16 }}>
+                <div style={optionalSectionLabel}>{s.step3.designateCoach}</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   <button
                     type="button"
@@ -652,81 +654,83 @@ function LiffBookInner() {
         {/* Step 4: 確認 */}
         {step === 4 && (
           <>
-            <div style={bookConfirmCard}>
+            <div style={bookCard}>
               {estimate && <BookEstimateCard estimate={estimate} defaultExpanded memberHint={showMemberHint} />}
 
-              {isBothActivities(form.activity) ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <BookBothIcons size={32} style={{ margin: 0 }} />
-                  <div style={{ fontSize: ty.title, fontWeight: 700 }}>{s.step1.bothShort}</div>
-                </div>
-              ) : selectedActivity ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <BookActivityIcon code={selectedActivity.code} size={40} style={{ margin: 0 }} />
-                  <div style={{ fontSize: ty.title, fontWeight: 700 }}>{activityTitleLabel(selectedActivity.code, locale)}</div>
-                </div>
-              ) : null}
-              <div style={{ fontSize: ty.body, lineHeight: 1.9, color: '#444' }}>
-                <div>
-                  {form.headcount} {s.step4.people} · {s.step2.experienceSummary(form.headcount, form.beginnerCount)}
-                  {form.followBoatCount > 0 ? ` · ${s.step4.followBoatSummary(form.followBoatCount)}` : ''}
-                </div>
-                {form.followBoatCount > 0 ? (
-                  <div>{s.step4.onBoatTotal}：{s.step4.onBoatTotalSummary(form.headcount, form.followBoatCount)}</div>
+              <div style={bookFieldGroup}>
+                {isBothActivities(form.activity) ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <BookBothIcons size={32} style={{ margin: 0 }} />
+                    <div style={{ fontSize: ty.title, fontWeight: 700, color: T.ink }}>{s.step1.bothShort}</div>
+                  </div>
+                ) : selectedActivity ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <BookActivityIcon code={selectedActivity.code} size={40} style={{ margin: 0 }} />
+                    <div style={{ fontSize: ty.title, fontWeight: 700, color: T.ink }}>{activityTitleLabel(selectedActivity.code, locale)}</div>
+                  </div>
                 ) : null}
-                {form.activity ? (
-                  <div>{s.step4.boat}: {boatLayoutLabel(form.activity, form.headcount, form.boatPreference, locale, form.followBoatCount)}</div>
+                <div style={{ fontSize: ty.body, lineHeight: 1.85, color: T.inkSoft }}>
+                  <div>
+                    {form.headcount} {s.step4.people} · {s.step2.experienceSummary(form.headcount, form.beginnerCount)}
+                    {form.followBoatCount > 0 ? ` · ${s.step4.followBoatSummary(form.followBoatCount)}` : ''}
+                  </div>
+                  {form.followBoatCount > 0 ? (
+                    <div>{s.step4.onBoatTotal}：{s.step4.onBoatTotalSummary(form.headcount, form.followBoatCount)}</div>
+                  ) : null}
+                  {form.activity ? (
+                    <div>{s.step4.boat}: {boatLayoutLabel(form.activity, form.headcount, form.boatPreference, locale, form.followBoatCount)}</div>
+                  ) : null}
+                  <div>
+                    {(form.preferredDates.length ? form.preferredDates : commitSchedule()).map(p =>
+                      `${p.date.slice(5).replace('-', '/')} ${p.timePreference === 'morning' ? s.step3.morning : s.step3.afternoon}`,
+                    ).join(locale === 'zh' ? '、' : ', ')}
+                  </div>
+                  <div>
+                    {s.step4.coach}: {form.coachChoice === 'designated' ? coaches.find(c => c.id === form.coachId)?.name ?? '—' : s.step4.coachNone}
+                  </div>
+                </div>
+                {estimate ? (
+                  <p style={{ fontSize: ty.caption, color: T.muted, margin: '10px 0 0', lineHeight: 1.5 }}>
+                    {s.step4.confirmNote}
+                  </p>
                 ) : null}
-                <div>
-                  {(form.preferredDates.length ? form.preferredDates : commitSchedule()).map(p =>
-                    `${p.date.slice(5).replace('-', '/')} ${p.timePreference === 'morning' ? s.step3.morning : s.step3.afternoon}`,
-                  ).join(locale === 'zh' ? '、' : ', ')}
-                </div>
-                <div>
-                  {s.step4.coach}: {form.coachChoice === 'designated' ? coaches.find(c => c.id === form.coachId)?.name ?? '—' : s.step4.coachNone}
-                </div>
               </div>
-              {estimate ? (
-                <p style={{ fontSize: ty.caption, color: T.muted, margin: '12px 0 0', lineHeight: 1.5 }}>
-                  {s.step4.confirmNote}
-                </p>
-              ) : null}
-            </div>
 
-            <p style={{ fontSize: ty.caption, color: '#888', margin: '0 0 10px', lineHeight: 1.5, textAlign: 'center' }}>
-              {s.step4.submitHint}
-            </p>
-
-            <div style={bookCard}>
-              <div style={fieldLabel}>{s.step4.contact}</div>
-              {member ? (
-                <div style={{ fontSize: ty.caption, color: '#888', marginBottom: 10 }}>{s.step4.memberPrefill}</div>
-              ) : null}
-              <input
-                value={form.contactName}
-                onChange={e => setForm(prev => ({ ...prev, contactName: e.target.value }))}
-                placeholder={s.step4.namePh}
-                style={{ ...bookInput, marginBottom: 10 }}
-              />
-              <input
-                type="tel"
-                value={form.contactPhone}
-                onChange={e => setForm(prev => ({ ...prev, contactPhone: e.target.value }))}
-                placeholder={s.step4.phonePh}
-                style={{ ...bookInput, marginBottom: 10 }}
-              />
-              <input
-                value={form.notes}
-                onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder={form.activity === 'BOTH' ? s.step4.notesPhBoth : s.step4.notesPh}
-                style={bookInput}
-              />
+              <div style={{ ...bookFieldGroup, marginBottom: 0 }}>
+                <div style={fieldLabel}>{s.step4.contact}</div>
+                {member ? (
+                  <div style={{ fontSize: ty.caption, color: T.muted, marginBottom: 10 }}>{s.step4.memberPrefill}</div>
+                ) : null}
+                <input
+                  value={form.contactName}
+                  onChange={e => setForm(prev => ({ ...prev, contactName: e.target.value }))}
+                  placeholder={s.step4.namePh}
+                  style={{ ...bookInput, marginBottom: 10 }}
+                />
+                <input
+                  type="tel"
+                  value={form.contactPhone}
+                  onChange={e => setForm(prev => ({ ...prev, contactPhone: e.target.value }))}
+                  placeholder={s.step4.phonePh}
+                  style={{ ...bookInput, marginBottom: 10 }}
+                />
+                <input
+                  value={form.notes}
+                  onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder={form.activity === 'BOTH' ? s.step4.notesPhBoth : s.step4.notesPh}
+                  style={bookInput}
+                />
+              </div>
 
               <BookStaffHint step={4} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
             </div>
 
-            <p style={{ fontSize: ty.caption, color: '#aaa', textAlign: 'center', margin: '10px 0 0' }}>
-              <a href={OFFICIAL_INFO_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#999' }}>
+            <p style={{ fontSize: ty.caption, color: T.muted, margin: '0 0 10px', lineHeight: 1.5, textAlign: 'center' }}>
+              {s.step4.submitHint}
+            </p>
+
+            <p style={{ fontSize: ty.caption, color: T.mutedLight, textAlign: 'center', margin: '0 0 12px' }}>
+              <a href={OFFICIAL_INFO_URL} target="_blank" rel="noopener noreferrer" style={{ color: T.muted }}>
                 {s.step4.attireLink}
               </a>
             </p>
@@ -738,10 +742,6 @@ function LiffBookInner() {
               </div>
             )}
           </>
-        )}
-
-        {step === 1 && (
-          <BookStaffHint step={step} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
         )}
       </main>
 

@@ -3,8 +3,8 @@ import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
 import { FOLLOW_BOAT_OPTIONS } from './liffBookingConfig'
 import { followBoatFee } from './liffBookingPrices'
-import { chipBtn, fieldLabel } from './bookStyles'
-import { BOOK_TYPE as ty } from './bookTheme'
+import { chipBtn, estimateInsetHighlight, fieldLabel, optionalPanel } from './bookStyles'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookFollowBoatPanelProps {
   riders: number
@@ -30,14 +30,7 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
   const fee = followBoatFee(value)
 
   return (
-    <div
-      style={{
-        border: '1px dashed #ddd',
-        borderRadius: 10,
-        overflow: 'hidden',
-        background: '#fafafa',
-      }}
-    >
+    <div style={optionalPanel}>
       <button
         type="button"
         onClick={toggle}
@@ -45,11 +38,11 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
           width: '100%',
           padding: '14px 16px',
           border: 'none',
-          background: open ? '#fafafa' : 'white',
+          background: open ? T.surfaceMuted : T.cardBg,
           textAlign: 'left',
           fontSize: ty.body,
           fontWeight: 600,
-          color: '#333',
+          color: T.inkSoft,
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
@@ -60,23 +53,23 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
         <span>
           {s.step2.followBoat.toggle}
           {value > 0 ? (
-            <span style={{ fontWeight: 500, color: '#666', marginLeft: 6 }}>
+            <span style={{ fontWeight: 500, color: T.muted, marginLeft: 6 }}>
               · {s.step2.followBoat.selected(value)}
             </span>
           ) : null}
         </span>
-        <span style={{ color: '#999', fontSize: 18, lineHeight: 1 }}>{open ? '−' : '+'}</span>
+        <span style={{ color: T.mutedLight, fontSize: 18, lineHeight: 1 }}>{open ? '−' : '+'}</span>
       </button>
 
       {open && (
         <div
           style={{
             padding: '14px 16px 16px',
-            borderTop: '1px solid #eee',
-            background: '#fafafa',
+            borderTop: `1px solid ${T.borderSubtle}`,
+            background: T.surfaceMuted,
           }}
         >
-          <div style={{ fontSize: ty.caption, color: '#666', lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ fontSize: ty.caption, color: T.muted, lineHeight: 1.6, marginBottom: 12 }}>
             {s.step2.followBoat.rule}
           </div>
           <div style={fieldLabel}>{s.step2.followBoat.countLabel}</div>
@@ -95,28 +88,17 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
           </div>
           {value > 0 ? (
             <>
-              <div
-                style={{
-                  fontSize: ty.body,
-                  fontWeight: 600,
-                  color: '#444',
-                  marginTop: 12,
-                  padding: '10px 12px',
-                  background: '#f5f8fc',
-                  borderRadius: 8,
-                  lineHeight: 1.5,
-                }}
-              >
+              <div style={estimateInsetHighlight}>
                 {s.step2.followBoat.onBoatSummary(riders, value)}
               </div>
-              <div style={{ fontSize: ty.caption, color: '#888', marginTop: 8, lineHeight: 1.5 }}>
+              <div style={{ fontSize: ty.caption, color: T.muted, marginTop: 8, lineHeight: 1.5 }}>
                 {fee > 0
                   ? s.step2.followBoat.feeHint(value, `$${fee.toLocaleString()}`)
                   : s.step2.followBoat.freeHint}
               </div>
             </>
           ) : null}
-          <div style={{ fontSize: ty.caption, color: '#aaa', marginTop: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 8, lineHeight: 1.5 }}>
             {s.step2.followBoat.capacityNote}
           </div>
         </div>
