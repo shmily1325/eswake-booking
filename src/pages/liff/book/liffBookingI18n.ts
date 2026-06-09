@@ -162,7 +162,7 @@ export interface BookI18nStrings {
     bothActivities: string
     mixedSkill: string
     waterAbout: (minutes: number) => string
-    designatedCoach: (name: string, amount: string) => string
+    designatedCoach: (name: string, count: number, unitAmount: string) => string
     followBoatLine: (count: number, fee: string) => string
     coachBothEstimate: string
   }
@@ -392,7 +392,10 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       bothActivities: '混合梯次',
       mixedSkill: '混合（體驗＋已滑過）',
       waterAbout: m => `水上約 ${m} 分`,
-      designatedCoach: (name, amount) => `指定 ${name} +${amount}（20 分）`,
+      designatedCoach: (name, count, unit) =>
+        count === 1
+          ? `指定 ${name} +${unit}（20 分）`
+          : `指定 ${name} ${count} 位 × 20 分 × ${unit}`,
       followBoatLine: (count, fee) =>
         count <= 1
           ? `跟船 ${count} 位（第 1 位免費）`
@@ -627,7 +630,10 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       bothActivities: 'Mixed session',
       mixedSkill: 'Mixed (first-timers + experienced)',
       waterAbout: m => `~${m} min on water`,
-      designatedCoach: (name, amount) => `Coach ${name} +${amount} (20 min)`,
+      designatedCoach: (name, count, unit) =>
+        count === 1
+          ? `Coach ${name} +${unit} (20 min)`
+          : `Coach ${name} ${count} × 20 min × ${unit}`,
       followBoatLine: (count, fee) =>
         count <= 1
           ? `Non-riders ${count} (1st free)`

@@ -272,13 +272,15 @@ export function computePriceEstimate(
 
       const price20 = designatedCoachPrice20(coach, state.activity)
 
-      if (price20 != null) {
+      if (price20 != null && experienced > 0) {
 
-        coachExtra = price20
+        coachExtra = price20 * experienced
 
         coachLine = { coachName: coach.name, amount: coachExtra }
 
-        detailLines.push(s.pricing.designatedCoach(coach.name, `$${coachExtra.toLocaleString()}`))
+        detailLines.push(
+          s.pricing.designatedCoach(coach.name, experienced, `$${price20.toLocaleString()}`),
+        )
         if (activity === 'BOTH' && coachHasSplitRates(coach)) {
           detailLines.push(s.pricing.coachBothEstimate)
         }
