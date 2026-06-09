@@ -18,7 +18,9 @@ export const BOOKING_REMINDERS = [
 /** 船型介紹影片（LINE 客服常用） */
 export const BOAT_INTRO_VIDEO_ID = 'nHYWwOX3rpY'
 
-export const BOAT_COMFORT_NOTE = '大船最多 10 人，8 人以下較為舒適空間。'
+export const BOAT_COMFORT_NOTE = '大船單艘最多 10 人，8 人以下較為舒適。'
+
+export const BOAT_DUAL_BIG_NOTE = '11 人以上需 2 艘大船，實際安排以小編回覆為準。'
 
 export const BOAT_BOTH_ACTIVITIES_NOTE =
   '不同活動可同時預約；若同一時段想體驗 Wakeboard 與 Wakesurf，需預約大船。'

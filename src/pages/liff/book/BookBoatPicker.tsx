@@ -2,6 +2,9 @@ import type { CSSProperties } from 'react'
 import {
   STEP1_BOAT_COPY,
   STEP2_LARGE_GROUP_COPY,
+  largeGroupBigLabel,
+  largeGroupBigSub,
+  largeGroupSmallSub,
 } from './liffBookingBoats'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { chipBtn } from './bookStyles'
@@ -48,9 +51,10 @@ interface BookBoatPickerProps {
   variant: 'step1' | 'largeGroup'
   value: BoatPreference | null
   onChange: (pref: BoatPreference) => void
+  headcount?: number
 }
 
-export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps) {
+export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: BookBoatPickerProps) {
   const isStep1 = variant === 'step1'
   const copy = isStep1 ? STEP1_BOAT_COPY : STEP2_LARGE_GROUP_COPY
 
@@ -69,7 +73,7 @@ export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps
             {isStep1 ? '小船' : '2 艘小船'}
           </div>
           <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
-            {isStep1 ? STEP1_BOAT_COPY.smallSub : STEP2_LARGE_GROUP_COPY.smallSub}
+            {isStep1 ? STEP1_BOAT_COPY.smallSub : largeGroupSmallSub(headcount)}
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>
             ${FIRST_TIME_WB_SMALL.toLocaleString()}
@@ -82,9 +86,11 @@ export function BookBoatPicker({ variant, value, onChange }: BookBoatPickerProps
           onClick={() => onChange('big')}
           aria-pressed={value === 'big'}
         >
-          <div style={{ fontSize: 12, fontWeight: 600 }}>大船</div>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>
+            {isStep1 ? '大船' : largeGroupBigLabel(headcount)}
+          </div>
           <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
-            {isStep1 ? STEP1_BOAT_COPY.bigSub : STEP2_LARGE_GROUP_COPY.bigSub}
+            {isStep1 ? STEP1_BOAT_COPY.bigSub : largeGroupBigSub(headcount)}
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>
             ${FIRST_TIME_BIG_BOAT.toLocaleString()}

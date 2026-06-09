@@ -1,7 +1,7 @@
 import type { ActivityChoice, CoachOption, LiffBookingFormState } from './types'
 import type { Member } from '../types'
 import { activityDisplayName, BOTH_ACTIVITY_SHORT } from './liffBookingConfig'
-import { boatLayoutLabel, resolveBoatTier, wbUsesDualSmallBoats } from './liffBookingBoats'
+import { boatLayoutLabel, resolveBoatTier, usesDualBigBoats, wbUsesDualSmallBoats } from './liffBookingBoats'
 import {
   estimateSessionBlocks,
   firstTimeUnitPrice,
@@ -69,10 +69,14 @@ export function computePriceEstimate(
       firstTimeActivity === 'WB'
         ? wbUsesDualSmallBoats(state.headcount, state.boatPreference)
           ? '2 艘小船'
-          : boatTier === 'big'
-            ? '大船'
-            : '小船'
-        : ''
+          : usesDualBigBoats(activity, state.headcount, state.boatPreference)
+            ? '2 艘大船'
+            : boatTier === 'big'
+              ? '大船'
+              : '小船'
+        : usesDualBigBoats(activity, state.headcount, state.boatPreference)
+          ? '2 艘大船'
+          : ''
     detailLines.push(
       `初學 ${beginners} 位 × $${unit.toLocaleString()}（初次體驗${boatHint ? ` · ${boatHint}` : ''}）`,
     )

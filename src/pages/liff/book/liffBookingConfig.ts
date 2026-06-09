@@ -59,7 +59,7 @@ export const SKILL_OPTIONS = [
   { value: 'experienced' as const, label: '已經滑過', hint: '能穩定起滑或想進階' },
 ]
 
-export const HEADCOUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
+export const HEADCOUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
 
 /** 依人數產生 0初～N初 選項 */
 export function beginnerCountOptions(headcount: number): number[] {

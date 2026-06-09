@@ -1,6 +1,7 @@
 import { infoBox, warnBox } from './bookStyles'
 import type { LiffBookingFormState, TimePreference } from './types'
-import { BOAT_COMFORT_NOTE, BOOKING_REMINDERS } from './liffBookingReminders'
+import { BOAT_COMFORT_NOTE, BOAT_DUAL_BIG_NOTE, BOOKING_REMINDERS } from './liffBookingReminders'
+import { BOAT_BIG_DUAL_MIN } from './liffBookingBoats'
 
 interface BookContextTipsProps {
   step: 2 | 3 | 4
@@ -34,6 +35,10 @@ function resolveContextTip(
   pickTimePref: TimePreference,
 ): { text: string; tone: 'info' | 'warn' } | null {
   const earlyCoach = BOOKING_REMINDERS.find(r => r.id === 'early-coach')!.text
+
+  if (step === 2 && form.headcount >= BOAT_BIG_DUAL_MIN) {
+    return { text: BOAT_DUAL_BIG_NOTE, tone: 'info' }
+  }
 
   if (step === 2 && form.headcount > 8) {
     return { text: BOAT_COMFORT_NOTE, tone: 'info' }

@@ -298,6 +298,7 @@ export function LiffBook() {
                 <BookBoatPicker
                   variant={wbNeedsLargeGroupBoatChoice(form.activity, form.headcount) ? 'largeGroup' : 'step1'}
                   value={form.boatPreference}
+                  headcount={form.headcount}
                   onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
                 />
               </div>
