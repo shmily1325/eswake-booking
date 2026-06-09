@@ -1,6 +1,8 @@
 import { BOAT_BIG_DUAL_MIN } from './liffBookingBoats'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { useBookLocale } from './BookLocaleContext'
+import { BOAT_INTRO_VIDEO_ID } from './liffBookingReminders'
+import { BookVideoPlayer } from './BookVideoPlayer'
 import { chipBtn } from './bookStyles'
 import { BOOK_THEME as T } from './bookTheme'
 import type { BoatPreference } from './types'
@@ -105,6 +107,20 @@ export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: Book
         </button>
       </div>
       {isStep1 ? <div style={capacityNote}>{boat.capacityNote}</div> : null}
+
+      {isStep1 ? (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e8e8e8' }}>
+          <BookVideoPlayer
+            variant="compact"
+            videoId={BOAT_INTRO_VIDEO_ID}
+            title={boat.introVideoLabel}
+            label={boat.introVideoLabel}
+          />
+          <div style={{ fontSize: 10, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
+            {s.step1.videoMandarinNote}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
