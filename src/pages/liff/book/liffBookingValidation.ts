@@ -6,6 +6,7 @@ export function getStepBlockReason(
   form: LiffBookingFormState,
   pickDate: string,
   v: BookI18nStrings['validation'],
+  lineUserId?: string | null,
 ): string | null {
   switch (step) {
     case 1:
@@ -19,6 +20,7 @@ export function getStepBlockReason(
       if (form.coachChoice === 'designated' && !form.coachId) return v.pickCoach
       return null
     case 4:
+      if (!lineUserId) return v.connectingLine
       if (!form.contactName.trim()) return v.fillName
       if (form.contactPhone.replace(/\D/g, '').length < 8) return v.fillPhone
       return null

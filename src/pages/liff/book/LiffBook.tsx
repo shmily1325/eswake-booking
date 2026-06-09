@@ -3,7 +3,8 @@ import { supabase } from '../../../lib/supabase'
 import { buildAllDayBlockedDates } from './liffBookingDates'
 import { triggerHaptic } from '../../../utils/haptic'
 import { useLiffMember } from '../useLiffMember'
-import { ErrorView, LiffStyles } from '../components'
+import { ErrorView } from '../components/ErrorView'
+import { LiffStyles } from '../components/LiffStyles'
 import { BookBootScreen } from './BookBootScreen'
 import { BookPageStyles } from './BookPageStyles'
 import { BookBindingGate } from './BookBindingGate'
@@ -161,6 +162,7 @@ function LiffBookInner() {
     trackIconId: 'liff_book_open',
     liffId: resolveLiffBookId(),
     nonBlockingBinding: true,
+    readyBeforeProfile: true,
     lightMember: true,
   })
 
@@ -211,8 +213,9 @@ function LiffBookInner() {
   }, [form.activity, form.coachChoice, form.coachId, coaches])
 
   useEffect(() => {
+    if (!wizardReady) return
     let cancelled = false
-    async function load() {
+    const load = async () => {
       try {
         const [coachRes, restrictRes] = await Promise.all([
           supabase.from('coaches').select('id, name, designated_lesson_price_30min').eq('status', 'active').order('name'),
@@ -225,9 +228,17 @@ function LiffBookInner() {
         // 估算可 fallback，不阻擋流程
       }
     }
-    void load()
-    return () => { cancelled = true }
-  }, [])
+    const schedule = () => { void load() }
+    const idleId = typeof requestIdleCallback !== 'undefined'
+      ? requestIdleCallback(schedule, { timeout: 2000 })
+      : undefined
+    const timerId = idleId == null ? window.setTimeout(schedule, 400) : undefined
+    return () => {
+      cancelled = true
+      if (idleId != null && typeof cancelIdleCallback !== 'undefined') cancelIdleCallback(idleId)
+      if (timerId != null) window.clearTimeout(timerId)
+    }
+  }, [wizardReady])
 
   const estimate = useMemo(
     () => computePriceEstimate(form, coaches, member, locale),
@@ -296,7 +307,11 @@ function LiffBookInner() {
         return true
       }
       case 4:
-        return form.contactName.trim().length > 0 && form.contactPhone.replace(/\D/g, '').length >= 8
+        return (
+          form.contactName.trim().length > 0
+          && form.contactPhone.replace(/\D/g, '').length >= 8
+          && lineUserId != null
+        )
       default: return false
     }
   }
@@ -335,7 +350,7 @@ function LiffBookInner() {
   }
 
   const handleSubmit = () => {
-    if (!canNext()) return
+    if (!lineUserId || !canNext()) return
     triggerHaptic('medium')
     const payload = buildBookingInquiry(form, coaches, member, locale)
     if (payload.stillTooLong) {
@@ -385,7 +400,7 @@ function LiffBookInner() {
     : null
 
   const stepReady = canNext()
-  const blockReason = stepReady ? null : getStepBlockReason(step, form, pickDate, s.validation)
+  const blockReason = stepReady ? null : getStepBlockReason(step, form, pickDate, s.validation, lineUserId)
 
   return (
     <div style={bookPage}>

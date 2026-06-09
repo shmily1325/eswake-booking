@@ -142,6 +142,7 @@ export interface BookI18nStrings {
     pickCoach: string
     fillName: string
     fillPhone: string
+    connectingLine: string
   }
   staff: {
     unsure: string
@@ -369,6 +370,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       pickCoach: '請選擇教練，或改為不指定',
       fillName: '請填寫姓名',
       fillPhone: '請填寫有效電話（至少 8 碼）',
+      connectingLine: '正在連接 LINE…',
     },
     staff: {
       unsure: '還是選不出來？',
@@ -601,6 +603,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       pickCoach: 'Pick a coach or choose no preference',
       fillName: 'Enter your name',
       fillPhone: 'Enter a valid phone (at least 8 digits)',
+      connectingLine: 'Connecting to LINE…',
     },
     staff: {
       unsure: 'Still can\'t decide?',

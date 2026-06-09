@@ -7,6 +7,7 @@ export const LIFF_MEMBER_SELECT =
 
 const LIFF_INIT_MAX_ATTEMPTS = 3
 const LIFF_INIT_RETRY_DELAYS_MS = [400, 800]
+export const LIFF_INIT_FAST_RETRY_DELAYS_MS = [200, 400]
 
 function sleep(ms: number) {
   return new Promise<void>(resolve => setTimeout(resolve, ms))
@@ -28,7 +29,11 @@ export function isFirstDocumentLoadThisNavigation(): boolean {
   }
 }
 
-export async function initLiffSdk(liffId: string): Promise<void> {
+export async function initLiffSdk(
+  liffId: string,
+  options?: { retryDelaysMs?: number[] },
+): Promise<void> {
+  const retryDelays = options?.retryDelaysMs ?? LIFF_INIT_RETRY_DELAYS_MS
   let lastErr: unknown
   for (let attempt = 0; attempt < LIFF_INIT_MAX_ATTEMPTS; attempt++) {
     try {
@@ -37,7 +42,7 @@ export async function initLiffSdk(liffId: string): Promise<void> {
     } catch (e) {
       lastErr = e
       if (attempt < LIFF_INIT_MAX_ATTEMPTS - 1) {
-        const delay = LIFF_INIT_RETRY_DELAYS_MS[attempt] ?? 600
+        const delay = retryDelays[attempt] ?? 600
         console.warn(`LIFF init 第 ${attempt + 1} 次失敗，${delay}ms 後重試`, e)
         await sleep(delay)
       }

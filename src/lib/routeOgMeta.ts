@@ -1,6 +1,9 @@
 export interface RouteOgMeta {
   title: string
   description: string
+  /** 相對於 site origin，預設 /logo.png */
+  image?: string
+  imageType?: string
 }
 
 /** 依路徑的 Open Graph（LINE / Facebook 分享預覽） */
@@ -11,7 +14,9 @@ export const ROUTE_OG_BY_PATH: Record<string, RouteOgMeta> = {
   },
   '/liff/book': {
     title: 'ES WAKE 線上預約',
-    description: '選活動、填人數與日期，一鍵送出預約詢問 — ES Wake 滑水學校',
+    description: '寬板滑水、快艇衝浪 — 選人數與偏好日期，送出後小編 LINE 回覆確認',
+    image: '/liff/book/og.webp',
+    imageType: 'image/webp',
   },
 }
 
@@ -37,7 +42,10 @@ function replaceMetaContent(html: string, pattern: RegExp, content: string): str
 
 /** 將 index.html 的 OG / title 換成該路由專用（供 Vercel Edge Middleware 使用） */
 export function injectRouteOgTags(html: string, meta: RouteOgMeta, canonicalUrl: string): string {
-  const imageUrl = `${new URL(canonicalUrl).origin}/logo.png`
+  const origin = new URL(canonicalUrl).origin
+  const imagePath = meta.image ?? '/logo.png'
+  const imageUrl = `${origin}${imagePath.startsWith('/') ? imagePath : `/${imagePath}`}`
+  const imageType = meta.imageType ?? (imagePath.endsWith('.webp') ? 'image/webp' : 'image/png')
   const safeTitle = escapeHtmlAttr(meta.title)
   const safeUrl = escapeHtmlAttr(canonicalUrl)
 
@@ -47,6 +55,9 @@ export function injectRouteOgTags(html: string, meta: RouteOgMeta, canonicalUrl:
   out = replaceMetaContent(out, /(<meta property="og:title" content=")[^"]*(")/, meta.title)
   out = replaceMetaContent(out, /(<meta property="og:description" content=")[^"]*(")/, meta.description)
   out = replaceMetaContent(out, /(<meta property="og:image" content=")[^"]*(")/, imageUrl)
+  if (out.includes('property="og:image:type"')) {
+    out = replaceMetaContent(out, /(<meta property="og:image:type" content=")[^"]*(")/, imageType)
+  }
   out = replaceMetaContent(out, /(<meta name="twitter:title" content=")[^"]*(")/, meta.title)
   out = replaceMetaContent(out, /(<meta name="twitter:description" content=")[^"]*(")/, meta.description)
   out = replaceMetaContent(out, /(<meta name="twitter:image" content=")[^"]*(")/, imageUrl)

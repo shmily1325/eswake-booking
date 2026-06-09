@@ -17,8 +17,16 @@ describe('routeOgMeta', () => {
   it('maps /liff and /liff/book', () => {
     expect(getRouteOgMeta('/liff')?.title).toBe('ES WAKE 會員專區')
     expect(getRouteOgMeta('/liff/book')?.title).toBe('ES WAKE 線上預約')
+    expect(getRouteOgMeta('/liff/book')?.image).toBe('/liff/book/og.webp')
     expect(getRouteOgMeta('/liff/book/')).not.toBeNull()
     expect(getRouteOgMeta('/shop')).toBeNull()
+  })
+
+  it('uses route-specific og:image for /liff/book', () => {
+    const meta = getRouteOgMeta('/liff/book')!
+    const out = injectRouteOgTags(SAMPLE_HTML, meta, 'https://eswake-booking.vercel.app/liff/book')
+    expect(out).toContain('property="og:image" content="https://eswake-booking.vercel.app/liff/book/og.webp"')
+    expect(out).toContain('寬板滑水、快艇衝浪')
   })
 
   it('injects route-specific OG tags', () => {

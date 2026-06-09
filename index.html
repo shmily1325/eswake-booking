@@ -29,18 +29,27 @@
     <meta name="twitter:description" content="各式滑水裝備、救生衣、防寒衣" />
     <meta name="twitter:image" content="https://eswake-booking.vercel.app/logo.png" />
 
-    <!--
-      Web font：Inter（拉丁字）+ Noto Sans TC（中文）
-      - 用 variable font 一個檔案涵蓋 400~900 全 weight，網路傳輸更省
-      - display=swap：避免 FOIT，先顯示 fallback 字體、字載完再 swap
-      - preconnect 提前建立連線，第一次載入快幾百毫秒
-    -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=Noto+Sans+TC:wght@400..900&display=swap"
-      rel="stylesheet"
-    />
+    <!-- LIFF：提前連 LINE CDN；略過 Google Fonts 以加快首次載入 -->
+    <link rel="preconnect" href="https://static.line-scdn.net" crossorigin />
+    <link rel="preconnect" href="https://api.line.me" />
+    <script>
+      var isLiff = location.pathname === '/liff' || location.pathname.startsWith('/liff/')
+      if (!isLiff) {
+        var g1 = document.createElement('link')
+        g1.rel = 'preconnect'
+        g1.href = 'https://fonts.googleapis.com'
+        document.head.appendChild(g1)
+        var g2 = document.createElement('link')
+        g2.rel = 'preconnect'
+        g2.href = 'https://fonts.gstatic.com'
+        g2.crossOrigin = 'anonymous'
+        document.head.appendChild(g2)
+        var g3 = document.createElement('link')
+        g3.rel = 'stylesheet'
+        g3.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=Noto+Sans+TC:wght@400..900&display=swap'
+        document.head.appendChild(g3)
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

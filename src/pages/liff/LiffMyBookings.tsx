@@ -23,6 +23,8 @@ import {
 import { buildLiffExpiryBannerLines } from './liffExpiryAlerts'
 import { liffTrack, liffTrackFlushQueueNow } from './track'
 import { fetchLiffShopOrders, type LiffShopOrder } from './liffShopOrders'
+import { useRouteDocumentMeta } from '../../lib/useRouteDocumentMeta'
+import { ROUTE_OG_BY_PATH } from '../../lib/routeOgMeta'
 
 const LIFF_MEMBER_SELECT =
   'id, name, nickname, phone, birthday, membership_type, membership_partner_id, membership_end_date, board_slot_number, board_expiry_date, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours'
@@ -144,6 +146,7 @@ async function enrichMemberForLiff(raw: Record<string, unknown>): Promise<Member
 }
 
 export function LiffMyBookings() {
+  useRouteDocumentMeta(ROUTE_OG_BY_PATH['/liff'])
   const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

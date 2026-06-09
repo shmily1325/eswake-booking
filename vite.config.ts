@@ -16,9 +16,13 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         // 使用更簡單的方法：只分離 React 核心庫，其他都在一起
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom', 'react-is']
-        }
+        manualChunks(id) {
+          if (id.includes('node_modules/@line/liff')) return 'line-liff'
+          if (id.includes('node_modules/@supabase/supabase-js')) return 'supabase'
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom') || id.includes('node_modules/react-is')) {
+            return 'react-vendor'
+          }
+        },
       }
     }
   }

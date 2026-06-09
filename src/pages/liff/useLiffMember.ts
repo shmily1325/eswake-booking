@@ -11,6 +11,7 @@ import {
   enrichMemberForLiff,
   liteMemberFromRow,
   LIFF_MEMBER_SELECT,
+  LIFF_INIT_FAST_RETRY_DELAYS_MS,
 } from './liffMemberShared'
 import { liffTrackFlushQueueNow } from './track'
 
@@ -23,6 +24,8 @@ export interface UseLiffMemberOptions {
   liffId?: string
   /** 先顯示頁面，背景查綁定（預約頁用） */
   nonBlockingBinding?: boolean
+  /** 預約頁：liff.init 成功後先出表單，profile 背景載入 */
+  readyBeforeProfile?: boolean
   /** 綁定查詢略過置板／雙人會籍（預約頁用） */
   lightMember?: boolean
 }
@@ -33,6 +36,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
     trackIconId = 'liff_open',
     liffId: liffIdOverride,
     nonBlockingBinding = false,
+    readyBeforeProfile = false,
     lightMember = false,
   } = options
 
@@ -125,11 +129,27 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
         return
       }
 
-      await initLiffSdk(liffId)
+      await initLiffSdk(liffId, readyBeforeProfile ? { retryDelaysMs: LIFF_INIT_FAST_RETRY_DELAYS_MS } : undefined)
 
       if (!liff.isLoggedIn()) {
         setBootPhase('login')
         liff.login()
+        return
+      }
+
+      if (nonBlockingBinding && readyBeforeProfile) {
+        setLoading(false)
+        void (async () => {
+          try {
+            const profile = await liff.getProfile()
+            setLineUserId(profile.userId)
+            setLineDisplayName(profile.displayName ?? null)
+            await checkBinding(profile.userId, profile.displayName ?? null)
+          } catch (err: unknown) {
+            console.error('LIFF profile 載入失敗:', err)
+            setError(unknownErrorMessage(err, 'LIFF 初始化失敗'))
+          }
+        })()
         return
       }
 
@@ -153,7 +173,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
       setError(unknownErrorMessage(err, 'LIFF 初始化失敗'))
       setLoading(false)
     }
-  }, [checkBinding, liffIdOverride, nonBlockingBinding])
+  }, [checkBinding, liffIdOverride, nonBlockingBinding, readyBeforeProfile])
 
   useEffect(() => {
     void initLiff()
