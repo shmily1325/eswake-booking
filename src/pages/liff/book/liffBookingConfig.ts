@@ -20,7 +20,7 @@ export interface ActivityInfo {
 export const ACTIVITY_OPTIONS: ActivityInfo[] = [
   {
     code: 'WS',
-    label: 'Wakesurf',
+    label: 'Wakesurfing',
     labelZh: '快艇衝浪',
     tagline: '腳不固定 · 類似衝浪',
     emoji: '🌊',
@@ -36,7 +36,7 @@ export const ACTIVITY_OPTIONS: ActivityInfo[] = [
   },
   {
     code: 'WB',
-    label: 'Wakeboard',
+    label: 'Wakeboarding',
     labelZh: '寬板滑水',
     tagline: '雙腳固定 · 速度與跳躍',
     emoji: '🏄',
@@ -118,7 +118,19 @@ export const PRICING_EDUCATION = {
 export const MAX_PREFERRED_DATES = 3
 
 export const BOTH_ACTIVITY_SHORT = '兩個一起'
+export const BOTH_ACTIVITY_EN = 'Wakesurfing + Wakeboarding'
 export const BOTH_ACTIVITY_LABEL = `${BOTH_ACTIVITY_SHORT}（快艇衝浪 + 寬板滑水）`
+
+/** Step 1 三選一（完整品牌用字，不縮寫） */
+export const STEP1_ACTIVITY_CHOICES: {
+  code: ActivityChoice
+  labelZh: string
+  labelEn: string
+}[] = [
+  { code: 'WS', labelZh: '快艇衝浪', labelEn: 'Wakesurfing' },
+  { code: 'WB', labelZh: '寬板滑水', labelEn: 'Wakeboarding' },
+  { code: 'BOTH', labelZh: BOTH_ACTIVITY_SHORT, labelEn: BOTH_ACTIVITY_EN },
+]
 
 export function isBothActivities(code: ActivityChoice | null | undefined): code is 'BOTH' {
   return code === 'BOTH'

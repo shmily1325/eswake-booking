@@ -1,9 +1,10 @@
 import type { CSSProperties } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
 import {
-  BOTH_ACTIVITY_SHORT,
+  BOTH_ACTIVITY_LABEL,
   getActivityInfo,
   LIFF_BOOK_GUEST_PRICING_ONLY,
+  STEP1_ACTIVITY_CHOICES,
 } from './liffBookingConfig'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { step1ActivityChip } from './liffBookingBoats'
@@ -14,70 +15,12 @@ import { STEP1_PRICE_RANGE_SUFFIX } from './liffBookingContent'
 import { bookCard } from './bookStyles'
 import type { ActivityChoice, ActivityCode, BoatPreference } from './types'
 
-const ACTIVITY_CODES: ActivityCode[] = ['WS', 'WB']
-
 interface BookEssentialsPanelProps {
   memberRate?: boolean
   value: ActivityChoice | null
   boatPreference: BoatPreference | null
   onChange: (code: ActivityChoice) => void
   onBoatPreferenceChange: (pref: BoatPreference) => void
-}
-
-function activityCardStyle(code: ActivityCode | 'BOTH', selected: ActivityChoice | null): CSSProperties {
-  const isBoth = code === 'BOTH'
-  const isSelected = selected === code
-  const dimmed = selected != null && !isSelected
-  return {
-    borderRadius: 12,
-    border: isSelected ? '2px solid #4a4a4a' : '1px solid #ececec',
-    background: isSelected ? '#fafafa' : '#fff',
-    boxShadow: isSelected ? '0 0 0 2px rgba(74,74,74,0.08)' : 'none',
-    opacity: dimmed ? 0.45 : 1,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    height: isBoth ? undefined : '100%',
-    transition: 'opacity 0.15s, border-color 0.15s',
-    ...(isBoth ? { width: '100%', marginTop: 8, marginBottom: 8 } : {}),
-  }
-}
-
-const selectArea: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '10px 10px 8px',
-  border: 'none',
-  background: 'transparent',
-  cursor: 'pointer',
-  textAlign: 'left',
-  flex: 1,
-}
-
-const chip: CSSProperties = {
-  display: 'inline-block',
-  marginTop: 4,
-  padding: '2px 7px',
-  borderRadius: 999,
-  background: '#f0f0f0',
-  fontSize: 10,
-  fontWeight: 600,
-  color: '#666',
-}
-
-const tagline: CSSProperties = {
-  fontSize: 11,
-  color: '#888',
-  lineHeight: 1.45,
-  marginTop: 6,
-}
-
-const priceLine: CSSProperties = {
-  marginTop: 8,
-  fontSize: 18,
-  fontWeight: 700,
-  color: '#111',
-  lineHeight: 1.1,
 }
 
 const priceRangeHeader: CSSProperties = {
@@ -88,17 +31,82 @@ const priceRangeHeader: CSSProperties = {
   textAlign: 'center',
 }
 
-function activityTagline(code: ActivityCode | 'BOTH'): string {
+const segmentRow: CSSProperties = {
+  display: 'flex',
+  gap: 6,
+  marginBottom: 12,
+}
+
+const segmentBtn = (selected: boolean): CSSProperties => ({
+  flex: 1,
+  minWidth: 0,
+  padding: '10px 6px',
+  border: selected ? '2px solid #4a4a4a' : '1px solid #e8e8e8',
+  borderRadius: 10,
+  background: selected ? '#fafafa' : '#fff',
+  cursor: 'pointer',
+  textAlign: 'center',
+  lineHeight: 1.35,
+  transition: 'border-color 0.15s, background 0.15s',
+})
+
+const segmentZh: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: '#222',
+  wordBreak: 'keep-all',
+}
+
+const segmentEn: CSSProperties = {
+  fontSize: 9,
+  fontWeight: 500,
+  color: '#888',
+  marginTop: 3,
+  wordBreak: 'break-word',
+}
+
+const detailPanel: CSSProperties = {
+  padding: '12px 12px 10px',
+  borderRadius: 10,
+  border: '1px solid #ececec',
+  background: '#fafafa',
+}
+
+const chip: CSSProperties = {
+  display: 'inline-block',
+  marginTop: 8,
+  padding: '2px 7px',
+  borderRadius: 999,
+  background: '#f0f0f0',
+  fontSize: 10,
+  fontWeight: 600,
+  color: '#666',
+}
+
+const tagline: CSSProperties = {
+  fontSize: 12,
+  color: '#666',
+  lineHeight: 1.5,
+  marginTop: 8,
+}
+
+const priceLine: CSSProperties = {
+  marginTop: 10,
+  fontSize: 20,
+  fontWeight: 700,
+  color: '#111',
+  lineHeight: 1.1,
+}
+
+function activityTagline(code: ActivityChoice): string {
   if (code === 'BOTH') return '同一時段體驗兩項'
   return getActivityInfo(code).tagline
 }
 
 function selectedPrice(
-  code: ActivityCode | 'BOTH',
-  selected: boolean,
+  code: ActivityChoice,
   boatPreference: BoatPreference | null,
 ): string | null {
-  if (!selected) return null
   if (code === 'WS' || code === 'BOTH') return `$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人`
   if (code === 'WB') {
     if (!boatPreference) return null
@@ -106,6 +114,25 @@ function selectedPrice(
     return `$${n.toLocaleString()}／人`
   }
   return null
+}
+
+function segmentIcon(code: ActivityChoice) {
+  if (code === 'BOTH') {
+    return <BookBothIcons size={22} gap={4} style={{ margin: '0 auto 6px' }} />
+  }
+  return (
+    <BookActivityIcon
+      code={code}
+      size={24}
+      style={{ margin: '0 auto 6px' }}
+    />
+  )
+}
+
+function detailTitle(code: ActivityChoice): string {
+  if (code === 'BOTH') return BOTH_ACTIVITY_LABEL
+  const info = getActivityInfo(code)
+  return `${info.labelZh}（${info.label}）`
 }
 
 export function BookEssentialsPanel({
@@ -121,67 +148,69 @@ export function BookEssentialsPanel({
   }
 
   const priceRange = `初學 $${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人 · ${STEP1_PRICE_RANGE_SUFFIX}`
+  const active = value
+  const chipLabel = active
+    ? step1ActivityChip(active, active === 'WB' ? boatPreference : null)
+    : null
+  const price = active ? selectedPrice(active, boatPreference) : null
 
   return (
     <div style={{ ...bookCard, marginBottom: 12, padding: '14px 14px 12px' }}>
       <div style={priceRangeHeader}>{priceRange}</div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'stretch' }}>
-        {ACTIVITY_CODES.map(code => {
-          const info = getActivityInfo(code)
-          const selected = value === code
-          const chipLabel = step1ActivityChip(
-            code,
-            code === 'WB' && selected ? boatPreference : null,
-          )
-          const price = selectedPrice(code, selected, boatPreference)
+      <div style={segmentRow}>
+        {STEP1_ACTIVITY_CHOICES.map(choice => {
+          const selected = value === choice.code
           return (
-            <div key={code} style={activityCardStyle(code, value)}>
-              <button type="button" style={selectArea} onClick={() => pick(code)} aria-pressed={selected}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <BookActivityIcon code={code} size={28} style={{ margin: 0, flexShrink: 0 }} />
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>{info.labelZh}</div>
-                </div>
-                <span style={chip}>{chipLabel}</span>
-                <div style={tagline}>{activityTagline(code)}</div>
-                {price ? <div style={priceLine}>{price}</div> : null}
-              </button>
-              <BookVideoPlayer variant="compact" videoId={info.youtubeVideoId} title={info.labelZh} />
-            </div>
+            <button
+              key={choice.code}
+              type="button"
+              style={segmentBtn(selected)}
+              onClick={() => pick(choice.code)}
+              aria-pressed={selected}
+            >
+              {segmentIcon(choice.code)}
+              <div style={segmentZh}>{choice.labelZh}</div>
+              <div style={segmentEn}>{choice.labelEn}</div>
+            </button>
           )
         })}
       </div>
 
-      <button
-        type="button"
-        style={{ ...activityCardStyle('BOTH', value), padding: 0, cursor: 'pointer', textAlign: 'left' }}
-        onClick={() => pick('BOTH')}
-        aria-pressed={value === 'BOTH'}
-      >
-        <div style={{ ...selectArea, flex: undefined, padding: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <BookBothIcons size={28} style={{ margin: 0, flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>{BOTH_ACTIVITY_SHORT}</div>
-                <span style={{ ...chip, marginTop: 0 }}>{step1ActivityChip('BOTH')}</span>
-              </div>
-              <div style={tagline}>{activityTagline('BOTH')}</div>
-              {value === 'BOTH' ? (
-                <div style={priceLine}>${FIRST_TIME_BIG_BOAT.toLocaleString()}／人</div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </button>
+      {active ? (
+        <div style={detailPanel}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#222' }}>{detailTitle(active)}</div>
+          {chipLabel ? <span style={chip}>{chipLabel}</span> : null}
+          <div style={tagline}>{activityTagline(active)}</div>
+          {price ? <div style={priceLine}>{price}</div> : null}
 
-      {value === 'WB' && (
-        <div style={{ marginTop: 8 }}>
-          <BookBoatPicker
-            variant="step1"
-            value={boatPreference}
-            onChange={onBoatPreferenceChange}
-          />
+          {active !== 'BOTH' && (
+            <BookVideoPlayer
+              variant="compact"
+              videoId={getActivityInfo(active as ActivityCode).youtubeVideoId}
+              title={detailTitle(active)}
+            />
+          )}
+
+          {active === 'WB' && (
+            <div style={{ marginTop: 10 }}>
+              <BookBoatPicker
+                variant="step1"
+                value={boatPreference}
+                onChange={onBoatPreferenceChange}
+              />
+            </div>
+          )}
+
+          {active === 'BOTH' && (
+            <div style={{ marginTop: 10 }}>
+              <BookBothIcons size={36} gap={8} />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ ...detailPanel, textAlign: 'center', color: '#aaa', fontSize: 13 }}>
+          請選擇想體驗的項目
         </div>
       )}
 
