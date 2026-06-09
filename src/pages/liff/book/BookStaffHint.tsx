@@ -23,16 +23,12 @@ interface BookStaffHintProps {
   pickTimePref?: TimePreference
 }
 
-function stepHint(step: number): string | null {
-  if (step === 1) return '還是不確定選哪個？'
-  if (step === 4) return '特殊需求可寫備註；表單沒涵蓋的情況再問小編。'
-  return null
+function step4Hint(): string {
+  return '特殊需求可寫備註；表單沒涵蓋的情況再問小編。'
 }
 
 /** 全頁低調協助入口；跳 LINE 時帶目前步驟與已選項目 */
 export function BookStaffHint({ step, form, coaches, pickDate, pickTimePref }: BookStaffHintProps) {
-  const extra = stepHint(step)
-
   const handleAsk = () => {
     triggerHaptic('light')
     openStaffHelp(buildStaffHelpMessage(step, form, coaches, {
@@ -41,9 +37,20 @@ export function BookStaffHint({ step, form, coaches, pickDate, pickTimePref }: B
     }))
   }
 
+  if (step === 1) {
+    return (
+      <div style={{ textAlign: 'center', margin: '14px 0 6px', fontSize: 12, color: '#999', lineHeight: 1.6 }}>
+        <span>還是不確定選哪個？</span>
+        <button type="button" onClick={handleAsk} style={{ ...linkBtn, fontSize: 12, marginLeft: 2 }}>
+          問小編
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div style={{ textAlign: 'center', margin: '14px 0 6px', fontSize: 11, color: '#aaa', lineHeight: 1.6 }}>
-      {extra ? <div style={{ marginBottom: 4, color: '#999' }}>{extra}</div> : null}
+      {step === 4 ? <div style={{ marginBottom: 4, color: '#999' }}>{step4Hint()}</div> : null}
       <span>填表有問題？</span>
       <button type="button" onClick={handleAsk} style={linkBtn}>
         小編可協助

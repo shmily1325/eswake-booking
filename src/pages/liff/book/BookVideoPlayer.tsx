@@ -71,10 +71,11 @@ const compactThumb: CSSProperties = {
   marginTop: 0,
   padding: 0,
   border: 'none',
-  borderRadius: 8,
+  borderRadius: 12,
   overflow: 'hidden',
   cursor: 'pointer',
   background: '#f0f0f0',
+  boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
 }
 
 const playBadge: CSSProperties = {
@@ -94,6 +95,9 @@ interface BookVideoPlayerProps {
   /** step 1 用小縮圖；須知用文字連結 */
   variant?: 'compact' | 'link'
   label?: string
+  /** 自訂封面（優先於 YouTube 預設縮圖） */
+  posterSrc?: string
+  posterSrcSet?: string
 }
 
 export function BookVideoPlayer({
@@ -101,6 +105,8 @@ export function BookVideoPlayer({
   title,
   variant = 'link',
   label = '影片',
+  posterSrc,
+  posterSrcSet,
 }: BookVideoPlayerProps) {
   const [open, setOpen] = useState(false)
 
@@ -123,7 +129,8 @@ export function BookVideoPlayer({
       {variant === 'compact' ? (
         <button type="button" style={compactThumb} onClick={openSheet} aria-label={`播放${title}`}>
           <img
-            src={youtubeThumbnailUrl(videoId)}
+            src={posterSrc ?? youtubeThumbnailUrl(videoId)}
+            srcSet={posterSrcSet}
             alt=""
             loading="lazy"
             style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }}

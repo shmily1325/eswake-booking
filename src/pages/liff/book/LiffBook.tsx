@@ -4,6 +4,7 @@ import { getLocalDateString } from '../../../utils/date'
 import { triggerHaptic } from '../../../utils/haptic'
 import { useLiffMember } from '../useLiffMember'
 import { ErrorView, LoadingSkeleton, LiffStyles } from '../components'
+import { BookPageStyles } from './BookPageStyles'
 import { BookBindingGate } from './BookBindingGate'
 import { BookEssentialsPanel } from './BookEssentialsPanel'
 import { BookEstimateCard } from './BookEstimateCard'
@@ -39,12 +40,14 @@ import { computePriceEstimate } from './liffBookingPricing'
 import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
 import {
   bookCard,
+  bookInput,
   bookPage,
   chipBtn,
   dateChip,
   dateScrollRow,
   fieldLabel,
   fieldHint,
+  linePrimaryBtn,
   primaryBtn,
   secondaryBtn,
   stickyFooter,
@@ -260,6 +263,7 @@ export function LiffBook() {
   return (
     <div style={bookPage}>
       <LiffStyles />
+      <BookPageStyles />
       <BookStepHeader
         step={step}
         priceHint={headerPriceText}
@@ -286,6 +290,7 @@ export function LiffBook() {
                   <button
                     key={n}
                     type="button"
+                    className="book-chip-btn"
                     style={{ ...chipBtn(form.headcount === n), flex: '1 1 calc(20% - 8px)', minWidth: 52, padding: '12px 0' }}
                     onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
                   >
@@ -313,6 +318,7 @@ export function LiffBook() {
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       type="button"
+                      className="book-chip-btn"
                       style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '10px 0' }}
                       onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
                     >
@@ -321,6 +327,7 @@ export function LiffBook() {
                     </button>
                     <button
                       type="button"
+                      className="book-chip-btn"
                       style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '10px 0' }}
                       onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
                     >
@@ -337,6 +344,7 @@ export function LiffBook() {
                       <button
                         key={n}
                         type="button"
+                        className="book-chip-btn"
                         style={chipBtn(form.beginnerCount === n)}
                         onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: n }) }))}
                       >
@@ -384,6 +392,7 @@ export function LiffBook() {
                 <button
                   key={opt.value}
                   type="button"
+                  className="book-chip-btn"
                   style={{ ...chipBtn(pickTimePref === opt.value), flex: 1, padding: '12px 0' }}
                   onClick={() => setPickTimePref(opt.value)}
                 >
@@ -412,6 +421,7 @@ export function LiffBook() {
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   <button
                     type="button"
+                    className="book-chip-btn"
                     style={{ ...chipBtn(form.coachChoice === 'none'), flex: 1 }}
                     onClick={() => setForm(prev => ({ ...prev, coachChoice: 'none', coachId: null }))}
                   >
@@ -419,6 +429,7 @@ export function LiffBook() {
                   </button>
                   <button
                     type="button"
+                    className="book-chip-btn"
                     style={{ ...chipBtn(form.coachChoice === 'designated'), flex: 1 }}
                     onClick={() => setForm(prev => ({ ...prev, coachChoice: 'designated' }))}
                   >
@@ -431,6 +442,7 @@ export function LiffBook() {
                       <button
                         key={c.id}
                         type="button"
+                        className="book-chip-btn"
                         style={chipBtn(form.coachId === c.id)}
                         onClick={() => setForm(prev => ({ ...prev, coachId: c.id }))}
                       >
@@ -495,20 +507,20 @@ export function LiffBook() {
                 value={form.contactName}
                 onChange={e => setForm(prev => ({ ...prev, contactName: e.target.value }))}
                 placeholder="姓名"
-                style={{ width: '100%', padding: 14, border: '1px solid #ddd', borderRadius: 10, fontSize: 16, boxSizing: 'border-box', marginBottom: 10 }}
+                style={{ ...bookInput, marginBottom: 10 }}
               />
               <input
                 type="tel"
                 value={form.contactPhone}
                 onChange={e => setForm(prev => ({ ...prev, contactPhone: e.target.value }))}
                 placeholder="電話"
-                style={{ width: '100%', padding: 14, border: '1px solid #ddd', borderRadius: 10, fontSize: 16, boxSizing: 'border-box', marginBottom: 10 }}
+                style={{ ...bookInput, marginBottom: 10 }}
               />
               <input
                 value={form.notes}
                 onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
                 placeholder={NOTES_PLACEHOLDER}
-                style={{ width: '100%', padding: 14, border: '1px solid #ddd', borderRadius: 10, fontSize: 16, boxSizing: 'border-box' }}
+                style={bookInput}
               />
             </div>
 
@@ -537,6 +549,7 @@ export function LiffBook() {
         {step < totalSteps ? (
           <button
             type="button"
+            className="book-primary-btn"
             style={{ ...primaryBtn, opacity: canNext() ? 1 : 0.4 }}
             disabled={!canNext()}
             onClick={goNext}
@@ -546,7 +559,8 @@ export function LiffBook() {
         ) : (
           <button
             type="button"
-            style={{ ...primaryBtn, background: '#00b900', opacity: canNext() ? 1 : 0.4 }}
+            className="book-primary-btn"
+            style={{ ...linePrimaryBtn, opacity: canNext() ? 1 : 0.4 }}
             disabled={!canNext()}
             onClick={handleSubmit}
           >

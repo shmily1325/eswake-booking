@@ -126,8 +126,8 @@ export function activityBoatNote(activity: ActivityChoice): string {
 
 /** Step 1 項目 chip（僅活動） */
 export function step1ActivityChip(activity: ActivityCode | 'BOTH'): string {
-  if (activity === 'WS') return `大船 · ${BOAT_BIG_MAX} 人/艘`
-  if (activity === 'BOTH') return `大船 · 兩項`
+  if (activity === 'WS') return '固定大船'
+  if (activity === 'BOTH') return '固定大船 · 兩項'
   return '小船或大船 · 依偏好'
 }
 
