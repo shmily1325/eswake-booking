@@ -12,9 +12,8 @@ import {
   type EditorFeatureKey
 } from '../utils/auth'
 import { supabase } from '../lib/supabase'
-import { EsNavLogo } from '../components/EsNavLogo'
+import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
 import { ExternalNavLink } from '../components/ExternalNavLink'
-import { getPublicShopHomeUrl, isExternalNavLink, SHOP_NAV_LOGO_SRC } from '../lib/shopPublicUrl'
 import { useState, useEffect, type CSSProperties } from 'react'
 
 // 菜單按鈕 Skeleton 組件
@@ -115,8 +114,6 @@ export function HomePage() {
   type HomeMenuItem = {
     title: string
     icon: string
-    /** 有值時用 ES logo 取代 emoji icon */
-    iconSrc?: string
     link: string
     subtitle?: string
     isAdmin?: boolean
@@ -197,8 +194,7 @@ export function HomePage() {
     },
     {
       title: 'ES SHOP',
-      icon: '',
-      iconSrc: SHOP_NAV_LOGO_SRC,
+      icon: '🛒',
       link: getPublicShopHomeUrl(),
       subtitle: 'shop.eswakeschool.com',
       editorFeature: ['can_products', 'can_products_view'],
@@ -381,11 +377,7 @@ export function HomePage() {
                 const inner = (
                   <>
                     <div style={{ marginBottom: '5px' }}>
-                      {item.iconSrc ? (
-                        <EsNavLogo size={isMobile ? 36 : 42} opticalMatch />
-                      ) : (
-                        <span style={{ fontSize: '42px' }}>{item.icon}</span>
-                      )}
+                      <span style={{ fontSize: '42px' }}>{item.icon}</span>
                     </div>
                     <h2 style={{
                       margin: 0,

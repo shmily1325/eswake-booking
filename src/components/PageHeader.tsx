@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { isExternalNavLink } from '../lib/shopPublicUrl'
-import { EsNavLogo } from './EsNavLogo'
 import { ExternalNavLink } from './ExternalNavLink'
 import { UserMenu } from './UserMenu'
 import type { User } from '@supabase/supabase-js'
@@ -20,7 +19,7 @@ interface PageHeaderProps {
   /** 待結帳筆數角標（管理員） */
   pendingSettleCount?: number
   showHomeLink?: boolean
-  extraLinks?: Array<{ label: string; link: string; iconSrc?: string }>
+  extraLinks?: Array<{ label: string; link: string }>
 }
 
 const NAV_LINK_ICONS: Record<string, string> = {
@@ -143,18 +142,8 @@ export function PageHeader({
     minHeight: useIconOnlyNav ? 36 : undefined,
   }
 
-  const renderNavLabel = (label: string, link: string, iconSrc?: string) => {
-    if (iconSrc) {
-      const text = useIconOnlyNav ? null : toDesktopNavLabel(label, link)
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: text ? 6 : 0 }}>
-          <EsNavLogo size={useIconOnlyNav ? 28 : 20} />
-          {text}
-        </span>
-      )
-    }
-    return useIconOnlyNav ? toMobileNavIcon(label, link) : toDesktopNavLabel(label, link)
-  }
+  const renderNavLabel = (label: string, link: string) =>
+    useIconOnlyNav ? toMobileNavIcon(label, link) : toDesktopNavLabel(label, link)
 
   const navLinks = (
     <>
@@ -171,7 +160,7 @@ export function PageHeader({
               title={aria}
               data-track={track}
             >
-              {renderNavLabel(link.label, link.link, link.iconSrc)}
+              {renderNavLabel(link.label, link.link)}
             </ExternalNavLink>
           )
         }
@@ -184,7 +173,7 @@ export function PageHeader({
             title={aria}
             data-track={track}
           >
-            {renderNavLabel(link.label, link.link, link.iconSrc)}
+            {renderNavLabel(link.label, link.link)}
           </Link>
         )
       })}
