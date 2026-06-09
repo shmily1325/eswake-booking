@@ -2,6 +2,7 @@
  * 預約表單專用綁定畫面（與會員專區 BindingForm 分離，不共用、不修改原元件）
  */
 import { liffTrack } from '../track'
+import { BookLocaleToggle, useBookLocale } from './BookLocaleContext'
 
 interface BookBindingGateProps {
   phone: string
@@ -34,6 +35,8 @@ export function BookBindingGate({
   onSubmit,
   onSkip,
 }: BookBindingGateProps) {
+  const { locale, s } = useBookLocale()
+  const b = s.binding
   const isFormValid = phone && birthYear && birthMonth && birthDay
   const oaUrl = import.meta.env.VITE_LINE_OA_URL as string | undefined
 
@@ -59,7 +62,16 @@ export function BookBindingGate({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      position: 'relative',
     }}>
+      <BookLocaleToggle
+        surface="header"
+        style={{
+          position: 'absolute',
+          top: 'calc(16px + env(safe-area-inset-top, 0px))',
+          right: 16,
+        }}
+      />
       <div style={{
         background: 'white',
         borderRadius: '16px',
@@ -83,10 +95,10 @@ export function BookBindingGate({
             }}
           />
           <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#333', margin: '0 0 8px' }}>
-            ES WAKE 預約
+            {b.title}
           </h1>
           <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
-            綁定會員可自動帶入姓名與電話；也可略過以訪客身份填寫
+            {b.subtitle}
           </p>
         </div>
 
@@ -102,14 +114,14 @@ export function BookBindingGate({
               ❌ {bindingError}
             </div>
             <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-              若確定資料正確，請私訊官方帳號協助綁定。
+              {b.errorHelp}
             </div>
           </div>
         )}
 
         <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
-            手機號碼
+            {b.phone}
           </label>
           <input
             type="tel"
@@ -118,7 +130,7 @@ export function BookBindingGate({
               setPhone(e.target.value)
               setBindingError(null)
             }}
-            placeholder="請輸入您的手機號碼"
+            placeholder={b.phonePh}
             style={{
               width: '100%',
               padding: '14px',
@@ -133,7 +145,7 @@ export function BookBindingGate({
 
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
-            生日
+            {b.birthday}
           </label>
           <div style={{ display: 'flex', gap: '8px' }}>
             <select
@@ -141,7 +153,7 @@ export function BookBindingGate({
               onChange={(e) => setBirthYear(e.target.value)}
               style={{ flex: 1.2, padding: '14px 8px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '16px', background: 'white' }}
             >
-              <option value="">年</option>
+              <option value="">{b.year}</option>
               {Array.from({ length: 100 }, (_, i) => {
                 const year = new Date().getFullYear() - i
                 return <option key={year} value={year}>{year}</option>
@@ -152,9 +164,11 @@ export function BookBindingGate({
               onChange={(e) => setBirthMonth(e.target.value)}
               style={{ flex: 1, padding: '14px 8px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '16px', background: 'white' }}
             >
-              <option value="">月</option>
+              <option value="">{b.month}</option>
               {Array.from({ length: 12 }, (_, i) => (
-                <option key={i + 1} value={String(i + 1).padStart(2, '0')}>{i + 1}月</option>
+                <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                  {locale === 'zh' ? b.monthUnit(i + 1) : b.monthUnit(i + 1)}
+                </option>
               ))}
             </select>
             <select
@@ -162,9 +176,11 @@ export function BookBindingGate({
               onChange={(e) => setBirthDay(e.target.value)}
               style={{ flex: 1, padding: '14px 8px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '16px', background: 'white' }}
             >
-              <option value="">日</option>
+              <option value="">{b.day}</option>
               {Array.from({ length: 31 }, (_, i) => (
-                <option key={i + 1} value={String(i + 1).padStart(2, '0')}>{i + 1}日</option>
+                <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                  {locale === 'zh' ? b.dayUnit(i + 1) : b.dayUnit(i + 1)}
+                </option>
               ))}
             </select>
           </div>
@@ -187,7 +203,7 @@ export function BookBindingGate({
             marginBottom: '10px',
           }}
         >
-          {binding ? '綁定中...' : '綁定並繼續'}
+          {binding ? b.submitting : b.submit}
         </button>
 
         <button
@@ -205,7 +221,7 @@ export function BookBindingGate({
             marginBottom: '16px',
           }}
         >
-          略過，以訪客身份填寫
+          {b.skip}
         </button>
 
         {oaUrl && (
@@ -224,7 +240,7 @@ export function BookBindingGate({
               cursor: 'pointer',
             }}
           >
-            私訊官方帳號
+            {b.contactOfficial}
           </button>
         )}
       </div>

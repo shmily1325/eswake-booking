@@ -22,8 +22,10 @@ import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import type {
   CoachOption,
   LiffBookingFormState,
+  PreferredDate,
   TimePreference,
 } from './types'
+import type { BookLocale } from './liffBookingI18n'
 import {
   beginnerCountOptions,
   HEADCOUNT_OPTIONS,
@@ -58,6 +60,33 @@ import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
 import { OFFICIAL_INFO_URL } from './liffBookingContent'
 
+function bookStepExtras(
+  step: number,
+  form: LiffBookingFormState,
+  options?: { dateCount?: number },
+): Record<string, unknown> {
+  const base = { step, ...(form.activity ? { activity: form.activity } : {}) }
+  switch (step) {
+    case 2:
+      return {
+        ...base,
+        headcount: form.headcount,
+        ...(form.beginnerCount != null ? { beginnerCount: form.beginnerCount } : {}),
+        skillLevel: form.skillLevel,
+        ...(form.boatPreference ? { boatPreference: form.boatPreference } : {}),
+      }
+    case 3:
+      return {
+        ...base,
+        coachChoice: form.coachChoice,
+        ...(form.coachId ? { coachId: form.coachId } : {}),
+        dateCount: options?.dateCount ?? form.preferredDates.length,
+      }
+    default:
+      return base
+  }
+}
+
 const INITIAL_STATE: LiffBookingFormState = {
   activity: null,
   boatPreference: null,
@@ -71,6 +100,21 @@ const INITIAL_STATE: LiffBookingFormState = {
   contactPhone: '',
   notes: '',
   followBoatCount: 0,
+}
+
+function formatPreferredDateLabel(
+  pd: PreferredDate,
+  locale: BookLocale,
+  morning: string,
+  afternoon: string,
+): string {
+  const d = new Date(`${pd.date}T12:00:00`)
+  const time = pd.timePreference === 'morning' ? morning : afternoon
+  if (locale === 'en') {
+    return `${d.toLocaleDateString('en', { month: 'numeric', day: 'numeric', weekday: 'short' })} ${time}`
+  }
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六'] as const
+  return `${d.getMonth() + 1}/${d.getDate()}（${weekdays[d.getDay()]}）${time}`
 }
 
 function NotEnabledView() {
@@ -104,6 +148,7 @@ function LiffBookInner() {
     error: liffError,
     member,
     lineUserId,
+    lineDisplayName,
     shouldShowBindingForm,
     bindingFormProps,
     skipBinding,
@@ -132,14 +177,27 @@ function LiffBookInner() {
   }, [step, form.beginnerCount])
 
   useEffect(() => {
-    if (member) {
-      setForm(prev => ({
-        ...prev,
-        contactName: prev.contactName || member.name,
-        contactPhone: prev.contactPhone || member.phone?.replace(/\D/g, '') || '',
-      }))
-    }
-  }, [member])
+    const name = member?.nickname?.trim() || member?.name?.trim() || lineDisplayName?.trim() || ''
+    const phone = member?.phone?.replace(/\D/g, '') || ''
+    if (!name && !phone) return
+    setForm(prev => ({
+      ...prev,
+      contactName: prev.contactName || name,
+      contactPhone: prev.contactPhone || phone,
+    }))
+  }, [member, lineDisplayName])
+
+  const wizardReady = !liffLoading && !liffError && !shouldShowBindingForm
+
+  useEffect(() => {
+    if (!wizardReady || !lineUserId) return
+    liffTrack({
+      icon_id: `liff_book_step_view:${step}`,
+      line_user_id: lineUserId,
+      member_id: member?.id,
+      extras: { step, ...(form.activity ? { activity: form.activity } : {}) },
+    })
+  }, [step, wizardReady, lineUserId])
 
   useEffect(() => {
     if (form.coachChoice !== 'designated' || !form.coachId || !form.activity) return
@@ -175,6 +233,40 @@ function LiffBookInner() {
 
   const totalSteps = s.steps.length
 
+  const addPreferredDate = () => {
+    if (!pickDate) return
+    triggerHaptic('light')
+    setForm(prev => {
+      const exists = prev.preferredDates.some(p => p.date === pickDate)
+      if (exists) {
+        return {
+          ...prev,
+          preferredDates: prev.preferredDates.map(p =>
+            p.date === pickDate ? { ...p, timePreference: pickTimePref } : p,
+          ),
+        }
+      }
+      if (prev.preferredDates.length >= MAX_PREFERRED_DATES) return prev
+      return {
+        ...prev,
+        preferredDates: [...prev.preferredDates, { date: pickDate, timePreference: pickTimePref }],
+      }
+    })
+  }
+
+  const removePreferredDate = (date: string) => {
+    triggerHaptic('light')
+    setForm(prev => ({
+      ...prev,
+      preferredDates: prev.preferredDates.filter(p => p.date !== date),
+    }))
+  }
+
+  const canAddPreferredDate = Boolean(pickDate) && (
+    form.preferredDates.some(p => p.date === pickDate)
+    || form.preferredDates.length < MAX_PREFERRED_DATES
+  )
+
   const commitSchedule = (): LiffBookingFormState['preferredDates'] => {
     if (!pickDate) return form.preferredDates
     const exists = form.preferredDates.some(p => p.date === pickDate)
@@ -209,18 +301,33 @@ function LiffBookInner() {
   const goNext = () => {
     if (!canNext()) return
     triggerHaptic('light')
-    if (lineUserId) {
-      liffTrack({ icon_id: `liff_book_step_${step}_next`, line_user_id: lineUserId, member_id: member?.id })
-    }
+    let dateCount = form.preferredDates.length
     if (step === 3) {
       const dates = commitSchedule()
+      dateCount = dates.length
       setForm(prev => ({ ...prev, preferredDates: dates }))
+    }
+    if (lineUserId) {
+      liffTrack({
+        icon_id: `liff_book_step_complete:${step}`,
+        line_user_id: lineUserId,
+        member_id: member?.id,
+        extras: bookStepExtras(step, form, { dateCount }),
+      })
     }
     setStep(s => Math.min(totalSteps, s + 1))
   }
 
   const goBack = () => {
     triggerHaptic('light')
+    if (lineUserId) {
+      liffTrack({
+        icon_id: `liff_book_step_back:${step}`,
+        line_user_id: lineUserId,
+        member_id: member?.id,
+        extras: { step, ...(form.activity ? { activity: form.activity } : {}) },
+      })
+    }
     setStep(s => Math.max(1, s - 1))
   }
 
@@ -229,10 +336,20 @@ function LiffBookInner() {
     triggerHaptic('medium')
     const payload = buildBookingInquiry(form, coaches, member, locale)
     if (payload.stillTooLong) {
-      alert(locale === 'en' ? 'Message too long — shorten notes and try again.' : '訊息過長，請精簡備註後再試')
+      alert(s.step4.messageTooLong)
       return
     }
-    liffTrack({ icon_id: 'liff_book_submit', line_user_id: lineUserId, member_id: member?.id })
+    liffTrack({
+      icon_id: 'liff_book_submit',
+      line_user_id: lineUserId,
+      member_id: member?.id,
+      extras: {
+        activity: form.activity,
+        headcount: form.headcount,
+        coachChoice: form.coachChoice,
+        dateCount: form.preferredDates.length,
+      },
+    })
     const result = launchBookingInquiry(payload)
     if (result.mode === 'desktop-fallback') setDesktopMessage(result.message)
   }
@@ -369,6 +486,8 @@ function LiffBookInner() {
             {estimate && <BookEstimateCard estimate={estimate} />}
 
             <BookContextTips step={2} form={form} pickTimePref={pickTimePref} />
+
+            <BookStaffHint step={2} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
           </div>
         )}
 
@@ -396,6 +515,72 @@ function LiffBookInner() {
               ))}
             </div>
             <div style={fieldHint}>{s.step3.scheduleNote}</div>
+
+            {(form.preferredDates.length > 0 || pickDate) && (
+              <div style={{ marginTop: 16 }}>
+                {form.preferredDates.length > 0 ? (
+                  <>
+                    <div style={fieldLabel}>{s.step3.preferredDates}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+                      {form.preferredDates.map(pd => (
+                        <div
+                          key={pd.date}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 8,
+                            padding: '10px 12px',
+                            background: '#f5f5f5',
+                            borderRadius: 10,
+                            fontSize: 14,
+                          }}
+                        >
+                          <span>{formatPreferredDateLabel(pd, locale, s.step3.morning, s.step3.afternoon)}</span>
+                          <button
+                            type="button"
+                            onClick={() => removePreferredDate(pd.date)}
+                            style={{
+                              margin: 0,
+                              padding: '4px 8px',
+                              border: 'none',
+                              background: 'none',
+                              color: '#999',
+                              fontSize: 12,
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                            }}
+                          >
+                            {s.step3.removeDate}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+                {pickDate ? (
+                  <button
+                    type="button"
+                    onClick={addPreferredDate}
+                    disabled={!canAddPreferredDate}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px dashed #ccc',
+                      borderRadius: 10,
+                      background: 'white',
+                      color: canAddPreferredDate ? '#555' : '#bbb',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: canAddPreferredDate ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    {s.step3.addDateBtn}
+                  </button>
+                ) : null}
+                <div style={{ ...fieldHint, marginTop: 8, marginBottom: 0 }}>{s.step3.maxDates}</div>
+              </div>
+            )}
 
             {!showCoachSection ? (
               <div style={{ marginTop: 16 }}>
@@ -443,6 +628,8 @@ function LiffBookInner() {
             )}
 
             <BookContextTips step={3} form={form} pickTimePref={pickTimePref} />
+
+            <BookStaffHint step={3} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
           </div>
         )}
 
@@ -497,6 +684,9 @@ function LiffBookInner() {
 
             <div style={bookCard}>
               <div style={fieldLabel}>{s.step4.contact}</div>
+              {member ? (
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 10 }}>{s.step4.memberPrefill}</div>
+              ) : null}
               <input
                 value={form.contactName}
                 onChange={e => setForm(prev => ({ ...prev, contactName: e.target.value }))}
@@ -516,6 +706,8 @@ function LiffBookInner() {
                 placeholder={form.activity === 'BOTH' ? s.step4.notesPhBoth : s.step4.notesPh}
                 style={bookInput}
               />
+
+              <BookStaffHint step={4} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
             </div>
 
             <p style={{ fontSize: 11, color: '#aaa', textAlign: 'center', margin: '10px 0 0' }}>
@@ -533,7 +725,9 @@ function LiffBookInner() {
           </>
         )}
 
-        <BookStaffHint step={step} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} />
+        {step === 1 && (
+          <BookStaffHint step={step} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
+        )}
       </main>
 
       <footer style={stickyFooter}>

@@ -69,7 +69,13 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
       </button>
 
       {open && (
-        <div style={{ padding: '0 16px 14px' }}>
+        <div
+          style={{
+            padding: '14px 16px 16px',
+            borderTop: '1px solid #eee',
+            background: '#fafafa',
+          }}
+        >
           <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6, marginBottom: 12 }}>
             {s.step2.followBoat.rule}
           </div>

@@ -1,3 +1,4 @@
+import type { BookLocale } from './liffBookingI18n'
 import type { ActivityChoice, CoachOption } from './types'
 
 /** LIFF 指定教練：不顯示（客人會用群組聯繫） */
@@ -93,11 +94,43 @@ export function designatedCoachPrice20(
   return activity === 'WB' ? rates.wb : rates.ws
 }
 
+function formatCoachPrice(n: number): string {
+  return `$${n.toLocaleString()}`
+}
+
+/** 教練列表顯示用（BOTH 且兩價不同時顯示 WB · WS） */
 export function designatedCoachPriceLabel(
   coach: CoachOption,
   activity: ActivityChoice | null,
+  locale: BookLocale = 'zh',
 ): string | null {
-  const price = designatedCoachPrice20(coach, activity)
-  if (price == null) return null
-  return `$${price.toLocaleString()}`
+  if (!activity) return null
+
+  const rates = resolveCoachRates(coach)
+  if (!rates) return null
+
+  if (activity === 'WB') {
+    return rates.wb != null ? formatCoachPrice(rates.wb) : null
+  }
+  if (activity === 'WS') {
+    return rates.ws != null ? formatCoachPrice(rates.ws) : null
+  }
+
+  const wb = rates.wb
+  const ws = rates.ws
+  if (wb == null && ws == null) return null
+  if (wb != null && ws == null) return formatCoachPrice(wb)
+  if (ws != null && wb == null) return formatCoachPrice(ws)
+  if (wb === ws) return formatCoachPrice(wb!)
+
+  const wbTag = locale === 'en' ? 'WB' : '寬板'
+  const wsTag = locale === 'en' ? 'WS' : '衝浪'
+  return `${wbTag} ${formatCoachPrice(wb!)} · ${wsTag} ${formatCoachPrice(ws!)}`
+}
+
+/** BOTH 混合梯次：WB／WS 價格是否不同（估價備註用） */
+export function coachHasSplitRates(coach: CoachOption): boolean {
+  const rates = resolveCoachRates(coach)
+  if (!rates || rates.wb == null || rates.ws == null) return false
+  return rates.wb !== rates.ws
 }

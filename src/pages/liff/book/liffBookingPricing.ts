@@ -20,7 +20,7 @@ import {
 
 } from './liffBookingPrices'
 
-import { designatedCoachPrice20 } from './liffBookingCoaches'
+import { coachHasSplitRates, designatedCoachPrice20 } from './liffBookingCoaches'
 
 import { activityDisplayLabel } from './liffBookingI18n'
 
@@ -279,6 +279,9 @@ export function computePriceEstimate(
         coachLine = { coachName: coach.name, amount: coachExtra }
 
         detailLines.push(s.pricing.designatedCoach(coach.name, `$${coachExtra.toLocaleString()}`))
+        if (activity === 'BOTH' && coachHasSplitRates(coach)) {
+          detailLines.push(s.pricing.coachBothEstimate)
+        }
 
       }
 

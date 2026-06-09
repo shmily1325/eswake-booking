@@ -2,6 +2,7 @@ import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
 import { LIFF_BOOK_GUEST_PRICING_ONLY, STEP1_ACTIVITY_CHOICES } from './liffBookingConfig'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
+import { activityDetailTitle, activitySegmentLabels } from './liffBookingI18n'
 import { step1ActivityChip } from './liffBookingBoats'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import { BookVideoPlayer } from './BookVideoPlayer'
@@ -24,10 +25,10 @@ interface BookEssentialsPanelProps {
   onChange: (code: ActivityChoice) => void
 }
 
-function selectedPrice(code: ActivityChoice): string | null {
-  if (code === 'WS' || code === 'BOTH') return `$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人`
+function selectedPrice(code: ActivityChoice, perPerson: string, rangeSep: string): string | null {
+  if (code === 'WS' || code === 'BOTH') return `$${FIRST_TIME_BIG_BOAT.toLocaleString()}${perPerson}`
   if (code === 'WB') {
-    return `$${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人`
+    return `$${FIRST_TIME_WB_SMALL.toLocaleString()}${rangeSep}$${FIRST_TIME_BIG_BOAT.toLocaleString()}${perPerson}`
   }
   return null
 }
@@ -62,14 +63,13 @@ export function BookEssentialsPanel({
     onChange(code)
   }
 
-  const perPerson = locale === 'en' ? '/person' : '／人'
-  const priceRange = locale === 'en'
-    ? `First-time $${FIRST_TIME_WB_SMALL.toLocaleString()}–$${FIRST_TIME_BIG_BOAT.toLocaleString()}${perPerson} · ${s.step1.priceSuffix}`
-    : `體驗 $${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}${perPerson} · ${s.step1.priceSuffix}`
+  const perPerson = s.boat.perPerson
+  const rangeSep = locale === 'en' ? '–' : '～'
+  const priceRange = s.step1.priceBannerRange(FIRST_TIME_WB_SMALL, FIRST_TIME_BIG_BOAT)
 
   const active = value
-  const chipLabel = active ? step1ActivityChip(active) : null
-  const price = active ? selectedPrice(active)?.replace('／人', perPerson) ?? null : null
+  const chipLabel = active ? step1ActivityChip(active, locale) : null
+  const price = active ? selectedPrice(active, perPerson, rangeSep) ?? null : null
   const act = active ? s.step1.activities[active] : null
 
   return (
@@ -79,7 +79,7 @@ export function BookEssentialsPanel({
       <div style={segmentRow}>
         {STEP1_ACTIVITY_CHOICES.map(choice => {
           const selected = value === choice.code
-          const labels = s.step1.activities[choice.code]
+          const { primary, secondary } = activitySegmentLabels(choice.code, locale)
           return (
             <button
               key={choice.code}
@@ -90,8 +90,8 @@ export function BookEssentialsPanel({
               aria-pressed={selected}
             >
               {segmentIcon(choice.code)}
-              <div style={segmentZh}>{labels.labelZh}</div>
-              <div style={segmentEn}>{labels.labelEn}</div>
+              <div style={segmentZh}>{primary}</div>
+              <div style={segmentEn}>{secondary}</div>
             </button>
           )
         })}
@@ -100,7 +100,7 @@ export function BookEssentialsPanel({
       {active && act ? (
         <div style={detailPanel(true)}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>
-            {locale === 'en' ? act.labelEn : `${act.labelZh}（${act.labelEn}）`}
+            {activityDetailTitle(active, locale)}
           </div>
           {chipLabel ? <span style={metaChip}>{chipLabel}</span> : null}
           <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5, marginTop: 8 }}>
@@ -122,11 +122,9 @@ export function BookEssentialsPanel({
                 posterSrc={videoPoster(active as ActivityCode).src}
                 posterSrcSet={`${videoPoster(active as ActivityCode).src} 1x, ${videoPoster(active as ActivityCode).src2x} 2x`}
               />
-              {locale === 'en' && (
-                <div style={{ fontSize: 10, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
-                  {s.step1.videoMandarinNote}
-                </div>
-              )}
+              <div style={{ fontSize: 10, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
+                {s.step1.videoMandarinNote}
+              </div>
             </div>
           )}
 

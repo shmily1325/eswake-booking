@@ -130,7 +130,7 @@ export function BookVideoPlayer({
   return (
     <>
       {variant === 'compact' ? (
-        <button type="button" style={compactThumb} onClick={openSheet} aria-label={`播放${title}`}>
+        <button type="button" style={compactThumb} onClick={openSheet} aria-label={s.video.playAria(title)}>
           <img
             src={posterSrc ?? youtubeThumbnailUrl(videoId)}
             srcSet={posterSrcSet}

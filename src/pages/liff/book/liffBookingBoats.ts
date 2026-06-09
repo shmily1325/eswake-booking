@@ -1,4 +1,4 @@
-import type { BookLocale } from './liffBookingI18n'
+import { BOOK_I18N, type BookLocale } from './liffBookingI18n'
 import type { ActivityChoice, ActivityCode, BoatPreference } from './types'
 
 export type BoatTier = 'small' | 'big'
@@ -147,10 +147,8 @@ export function activityBoatNote(activity: ActivityChoice): string {
 }
 
 /** Step 1 項目 chip（僅活動） */
-export function step1ActivityChip(activity: ActivityCode | 'BOTH'): string {
-  if (activity === 'WS') return '固定大船'
-  if (activity === 'BOTH') return '固定大船 · 混合梯次'
-  return '小船或大船 · 依偏好'
+export function step1ActivityChip(activity: ActivityCode | 'BOTH', locale: BookLocale = 'zh'): string {
+  return BOOK_I18N[locale].boat.activityChip[activity]
 }
 
 /** @deprecated 請改用 step1ActivityChip */

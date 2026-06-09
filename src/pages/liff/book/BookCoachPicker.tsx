@@ -20,7 +20,7 @@ export function BookCoachPicker({
   value,
   onChange,
 }: BookCoachPickerProps) {
-  const { s } = useBookLocale()
+  const { locale, s } = useBookLocale()
   const cp = s.step3.coachPicker
   const visible = filterLiffBookCoaches(coaches, activity)
 
@@ -36,7 +36,7 @@ export function BookCoachPicker({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {visible.map(coach => {
         const selected = value === coach.id
-        const priceLabel = designatedCoachPriceLabel(coach, activity)
+        const priceLabel = designatedCoachPriceLabel(coach, activity, locale)
         return (
           <button
             key={coach.id}

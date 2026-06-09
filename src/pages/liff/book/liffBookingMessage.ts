@@ -5,7 +5,6 @@ import { BOOK_I18N, activityDisplayLabel, type BookLocale } from './liffBookingI
 import { boatLayoutLabel, onBoatTotal } from './liffBookingBoats'
 import {
   computePriceEstimate,
-  skillLabel,
   type PriceEstimate,
 } from './liffBookingPricing'
 
@@ -67,8 +66,6 @@ export function renderBookingInquiryMessage(
   if (state.activity) {
     lines.push(`${m.boat}：${boatLayoutLabel(state.activity, state.headcount, state.boatPreference, locale, state.followBoatCount)}`)
   }
-  lines.push(`${m.firstTimeSkill}：${skillLabel(state.skillLevel, locale)}`)
-
   lines.push(`${m.datesTitle}：`)
   if (state.preferredDates.length === 0) {
     lines.push(`  ${m.noDates}`)
@@ -101,9 +98,6 @@ export function renderBookingInquiryMessage(
     lines.push('')
     lines.push(`${m.notes}：${state.notes.trim()}`)
   }
-
-  lines.push('')
-  lines.push(m.footer)
 
   return lines.join('\n')
 }
