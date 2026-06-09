@@ -30,4 +30,7 @@ export const BOOK_THEME = {
   lineGreenSoft: 'rgba(0,185,0,0.14)',
   accent: '#4a4a4a',
   accentSoft: 'rgba(74,74,74,0.08)',
+  /** 主按鈕（比 header 純黑略輕，減少上下夾擠感） */
+  ctaBg: '#2d2d2d',
+  borderSubtle: '#e4e6ea',
 } as const

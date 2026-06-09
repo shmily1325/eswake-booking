@@ -46,8 +46,11 @@ import { designatedCoachPrice20 } from './liffBookingCoaches'
 import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
 import {
   bookCard,
+  bookConfirmCard,
   bookFieldGroup,
   bookInput,
+  listItemRow,
+  optionalSectionLabel,
   bookPage,
   chipBtn,
   fieldLabel,
@@ -63,7 +66,7 @@ import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
 import { OFFICIAL_INFO_URL } from './liffBookingContent'
-import { BOOK_TYPE as ty } from './bookTheme'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 function bookStepExtras(
   step: number,
@@ -396,9 +399,7 @@ function LiffBookInner() {
       ? s.footer.confirm
       : s.footer.next
 
-  const headerPriceText = estimate && step >= 2
-    ? `${s.estimate.about} ${estimate.totalLabel}`
-    : null
+  const showMemberHint = memberRate && step >= 2 && (form.beginnerCount ?? 0) < form.headcount
 
   const stepReady = canNext()
   const blockReason = stepReady ? null : getStepBlockReason(step, form, pickDate, s.validation, lineUserId)
@@ -407,11 +408,7 @@ function LiffBookInner() {
     <div style={bookPage}>
       <LiffStyles />
       <BookPageStyles />
-      <BookStepHeader
-        step={step}
-        priceHint={headerPriceText}
-        memberHint={memberRate && step >= 2 && (form.beginnerCount ?? 0) < form.headcount}
-      />
+      <BookStepHeader step={step} />
 
       <main style={{ padding: 16 }}>
         {/* Step 1: 玩什麼 */}
@@ -426,7 +423,7 @@ function LiffBookInner() {
         {/* Step 2: 誰要滑 */}
         {step === 2 && (
           <div style={bookCard}>
-            {estimate && <BookEstimateCard estimate={estimate} />}
+            {estimate && <BookEstimateCard estimate={estimate} memberHint={showMemberHint} />}
 
             <div style={bookFieldGroup}>
               <div style={{ marginBottom: 16 }}>
@@ -504,9 +501,7 @@ function LiffBookInner() {
             </div>
 
             <div style={{ marginBottom: 4 }}>
-              <div style={{ fontSize: ty.caption, fontWeight: 600, color: '#bbb', letterSpacing: '0.05em', marginBottom: 8 }}>
-                {s.step2.optionalLabel}
-              </div>
+              <div style={optionalSectionLabel}>{s.step2.optionalLabel}</div>
               <BookFollowBoatPanel
                 riders={form.headcount}
                 value={form.followBoatCount}
@@ -523,6 +518,9 @@ function LiffBookInner() {
         {/* Step 3: 什麼時候 + 教練選填 */}
         {step === 3 && (
           <div style={bookCard}>
+            {estimate && <BookEstimateCard estimate={estimate} memberHint={showMemberHint} />}
+
+            <div style={bookFieldGroup}>
             <BookDateCalendar
               value={pickDate}
               blockedDates={blockedDates}
@@ -552,19 +550,7 @@ function LiffBookInner() {
                     <div style={fieldLabel}>{s.step3.preferredDates}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
                       {form.preferredDates.map(pd => (
-                        <div
-                          key={pd.date}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: 8,
-                            padding: '10px 12px',
-                            background: '#f5f5f5',
-                            borderRadius: 10,
-                            fontSize: ty.body,
-                          }}
-                        >
+                        <div key={pd.date} style={listItemRow}>
                           <span>{formatPreferredDateLabel(pd, locale, s.step3.morning, s.step3.afternoon)}</span>
                           <button
                             type="button"
@@ -574,7 +560,7 @@ function LiffBookInner() {
                               padding: '4px 8px',
                               border: 'none',
                               background: 'none',
-                              color: '#999',
+                              color: T.muted,
                               fontSize: ty.caption,
                               cursor: 'pointer',
                               textDecoration: 'underline',
@@ -598,7 +584,7 @@ function LiffBookInner() {
                       border: '1px dashed #ccc',
                       borderRadius: 10,
                       background: 'white',
-                      color: canAddPreferredDate ? '#555' : '#bbb',
+                      color: canAddPreferredDate ? T.inkSoft : T.mutedLight,
                       fontSize: ty.body,
                       fontWeight: 600,
                       cursor: canAddPreferredDate ? 'pointer' : 'not-allowed',
@@ -610,6 +596,7 @@ function LiffBookInner() {
                 <div style={{ ...fieldHint, marginTop: 8, marginBottom: 0 }}>{s.step3.maxDates}</div>
               </div>
             )}
+            </div>
 
             {!showCoachSection ? (
               <div style={{ marginTop: 16 }}>
@@ -618,7 +605,7 @@ function LiffBookInner() {
                   onClick={() => { triggerHaptic('light'); setShowCoachSection(true) }}
                   style={{
                     padding: 0, border: 'none', background: 'none',
-                    color: '#888', fontSize: ty.body, cursor: 'pointer', textDecoration: 'underline',
+                    color: T.muted, fontSize: ty.body, cursor: 'pointer', textDecoration: 'underline',
                   }}
                 >
                   {s.step3.addCoach}
@@ -665,7 +652,9 @@ function LiffBookInner() {
         {/* Step 4: 確認 */}
         {step === 4 && (
           <>
-            <div style={{ ...bookCard, border: '2px solid #4a4a4a' }}>
+            <div style={bookConfirmCard}>
+              {estimate && <BookEstimateCard estimate={estimate} defaultExpanded memberHint={showMemberHint} />}
+
               {isBothActivities(form.activity) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <BookBothIcons size={32} style={{ margin: 0 }} />
@@ -697,14 +686,11 @@ function LiffBookInner() {
                   {s.step4.coach}: {form.coachChoice === 'designated' ? coaches.find(c => c.id === form.coachId)?.name ?? '—' : s.step4.coachNone}
                 </div>
               </div>
-              {estimate && (
-                <>
-                  <BookEstimateCard estimate={estimate} defaultExpanded />
-                  <p style={{ fontSize: ty.caption, color: '#999', margin: '8px 0 0', lineHeight: 1.5 }}>
-                    {s.step4.confirmNote}
-                  </p>
-                </>
-              )}
+              {estimate ? (
+                <p style={{ fontSize: ty.caption, color: T.muted, margin: '12px 0 0', lineHeight: 1.5 }}>
+                  {s.step4.confirmNote}
+                </p>
+              ) : null}
             </div>
 
             <p style={{ fontSize: ty.caption, color: '#888', margin: '0 0 10px', lineHeight: 1.5, textAlign: 'center' }}>

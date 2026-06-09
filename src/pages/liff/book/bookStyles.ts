@@ -63,13 +63,14 @@ export const chipBtn = (selected: boolean): CSSProperties => ({
   cursor: 'pointer',
 })
 
+/** 估價、提示等內容區塊（中性灰，與表單同層次） */
 export const infoBox: CSSProperties = {
-  background: '#f0f7ff',
-  border: '1px solid #bae0ff',
+  background: T.surfaceMuted,
+  border: `1px solid ${T.borderSubtle}`,
   borderRadius: '12px',
   padding: '12px 14px',
   fontSize: ty.body,
-  color: '#444',
+  color: T.inkSoft,
   lineHeight: 1.6,
   marginTop: '12px',
 }
@@ -103,7 +104,7 @@ export const stickyFooter: CSSProperties = {
 export const primaryBtn: CSSProperties = {
   flex: 1,
   padding: '14px',
-  background: T.headerBg,
+  background: T.ctaBg,
   color: 'white',
   border: 'none',
   borderRadius: '12px',
@@ -160,18 +161,43 @@ export const bigActivityBtn = (selected: boolean): CSSProperties => ({
 export const fieldLabel: CSSProperties = {
   fontSize: ty.body,
   fontWeight: 600,
-  color: T.muted,
+  color: T.inkSoft,
   marginBottom: 10,
   letterSpacing: '0.02em',
 }
 
-/** Step 2 必填區塊分組 */
+/** 各步必填表單分組 */
 export const bookFieldGroup: CSSProperties = {
   padding: '14px 14px 4px',
   borderRadius: 12,
-  background: T.surfaceInset,
-  border: '1px solid #ececec',
+  background: T.cardBg,
+  border: `1px solid ${T.borderSubtle}`,
   marginBottom: 16,
+}
+
+export const optionalSectionLabel: CSSProperties = {
+  fontSize: ty.caption,
+  fontWeight: 600,
+  color: T.muted,
+  letterSpacing: '0.05em',
+  marginBottom: 8,
+}
+
+export const listItemRow: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  padding: '10px 12px',
+  background: T.surfaceMuted,
+  borderRadius: 10,
+  fontSize: ty.body,
+}
+
+/** Step 4 確認摘要卡 */
+export const bookConfirmCard: CSSProperties = {
+  ...bookCard,
+  border: `2px solid ${T.accent}`,
 }
 
 export const footerBlockHint: CSSProperties = {
@@ -236,8 +262,8 @@ export const priceBanner: CSSProperties = {
   textAlign: 'center',
   padding: '8px 10px',
   borderRadius: 10,
-  background: T.surfaceInset,
-  border: '1px solid #ececec',
+  background: T.surfaceMuted,
+  border: `1px solid ${T.borderSubtle}`,
 }
 
 /** Step 1 三選一 segment */
@@ -281,7 +307,7 @@ export const detailPanel = (active: boolean): CSSProperties => ({
   borderRadius: 14,
   border: active ? `1px solid #e0e0e0` : '1px dashed #ddd',
   background: active ? '#fff' : T.surfaceMuted,
-  borderLeft: active ? `3px solid ${T.headerBg}` : undefined,
+  borderLeft: active ? `3px solid ${T.accent}` : undefined,
 })
 
 export const metaChip: CSSProperties = {
@@ -298,7 +324,7 @@ export const metaChip: CSSProperties = {
 
 export const priceLine: CSSProperties = {
   marginTop: 10,
-  fontSize: ty.display,
+  fontSize: ty.title,
   fontWeight: 700,
   color: T.ink,
   lineHeight: 1.1,

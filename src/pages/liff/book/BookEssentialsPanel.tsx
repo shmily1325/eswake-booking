@@ -17,7 +17,7 @@ import {
   segmentRow,
   segmentZh,
 } from './bookStyles'
-import { BOOK_TYPE as ty } from './bookTheme'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 import type { ActivityChoice, ActivityCode } from './types'
 
 interface BookEssentialsPanelProps {
@@ -142,7 +142,7 @@ export function BookEssentialsPanel({
       )}
 
       {!LIFF_BOOK_GUEST_PRICING_ONLY && memberRate ? (
-        <div style={{ fontSize: ty.caption, color: '#bbb', marginTop: 10, textAlign: 'center' }}>{s.step1.memberRateApplied}</div>
+        <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 10, textAlign: 'center' }}>{s.step1.memberRateApplied}</div>
       ) : null}
     </div>
   )

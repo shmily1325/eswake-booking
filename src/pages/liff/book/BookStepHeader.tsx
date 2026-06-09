@@ -5,11 +5,9 @@ import { BOOK_TYPE as ty } from './bookTheme'
 
 interface BookStepHeaderProps {
   step: number
-  priceHint?: string | null
-  memberHint?: boolean
 }
 
-export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderProps) {
+export function BookStepHeader({ step }: BookStepHeaderProps) {
   const { s } = useBookLocale()
   const total = s.steps.length
   const meta = s.steps[step - 1]
@@ -55,20 +53,6 @@ export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderPr
 
       <h1 style={{ fontSize: ty.display, fontWeight: 700, margin: 0, lineHeight: 1.3 }}>{meta.title}</h1>
       <div style={progressBar}><div style={progressFill(progressPct)} /></div>
-
-      {priceHint && (
-        <div style={{ marginTop: 10, fontVariantNumeric: 'tabular-nums' }}>
-          <div style={{ fontSize: ty.display, fontWeight: 700, letterSpacing: '0.01em' }}>
-            {priceHint}
-          </div>
-          <div style={{ fontSize: ty.caption, opacity: 0.75, marginTop: 2 }}>
-            {s.estimate.reference}
-          </div>
-        </div>
-      )}
-      {memberHint && (
-        <div style={{ fontSize: ty.caption, opacity: 0.8, marginTop: 4 }}>{s.header.memberRateHint}</div>
-      )}
     </header>
   )
 }
