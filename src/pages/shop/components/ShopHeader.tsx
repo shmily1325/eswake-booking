@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { useShopCart } from '../hooks/useShopCart'
 import { getShopReturnTo } from '../lib/shopReturnTo'
 import { SHOP_COPY } from '../lib/shopCopy'
@@ -56,11 +57,11 @@ export function ShopHeader({
   return (
     <header
       className={
-        'sticky top-0 z-30 bg-black text-white ' +
-        (blendBelow ? 'shadow-none border-b border-white/10' : 'shadow-md')
+        'sticky top-0 z-30 bg-black text-white border-b border-white/10 ' +
+        (blendBelow ? 'shadow-none' : '')
       }
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-3 md:justify-start">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-14 py-2 flex items-center justify-between gap-2 sm:gap-3 md:justify-start">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
           {showBack && (
             <Link
@@ -72,28 +73,13 @@ export function ShopHeader({
               <span className="hidden sm:inline">Back</span>
             </Link>
           )}
-          <Link
-            to={shopListPath()}
-            className="flex items-center gap-2 sm:gap-2.5 min-w-0"
-            aria-label="ES Wake Shop"
-          >
-            <img
-              src="/logo_circle (white).png"
-              alt=""
-              className="h-8 w-8 sm:h-8 sm:w-8 shrink-0 select-none"
-              draggable={false}
-            />
-            <span
-              className={
-                'font-black italic tracking-wider uppercase whitespace-nowrap leading-none ' +
-                (showBack
-                  ? 'hidden min-[380px]:inline text-sm sm:text-lg'
-                  : 'inline text-sm sm:text-lg')
-              }
-            >
-              ES Shop
-            </span>
-          </Link>
+          <EsBrandLockup
+            subtitle="Shop"
+            logoSize={28}
+            brandTo={shopListPath()}
+            subtitleClassName={showBack ? 'hidden min-[380px]:block' : undefined}
+            style={{ marginBottom: 0, alignItems: 'center' }}
+          />
         </div>
 
         {/* 桌機：header 內搜尋；手機用分類 chips，不佔首屏 */}

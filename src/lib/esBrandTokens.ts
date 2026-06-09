@@ -5,4 +5,7 @@ export const ES_BRAND = {
   logoBlack: '/logo_circle (black).png',
   headerBg: '#000000',
   headerBorderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+  /** 預約／會員內容區底色 */
+  pageBg: '#f4f5f7',
+  progressFill: '#ffffff',
 } as const

@@ -19,7 +19,7 @@ export const BOOK_THEME = {
   muted: '#888',
   mutedLight: '#aaa',
   headerBg: ES_BRAND.headerBg,
-  pageBg: 'linear-gradient(180deg, #e8eaed 0%, #f4f5f7 10%, #f4f5f7 100%)',
+  pageBg: ES_BRAND.pageBg,
   cardBg: '#fff',
   cardBorder: '1px solid rgba(0,0,0,0.06)',
   cardShadow: '0 2px 14px rgba(0,0,0,0.07)',

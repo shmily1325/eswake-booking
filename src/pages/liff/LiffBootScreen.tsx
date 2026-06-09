@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ES_BRAND } from '../../lib/esBrandTokens'
 
 interface LiffBootScreenProps {
   label?: string
@@ -24,7 +25,7 @@ export function LiffBootScreen({ label = '載入中…', onRetry, liffOpenUrl }:
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(180deg, #e8eaed 0%, #f4f5f7 10%, #f4f5f7 100%)',
+      background: ES_BRAND.pageBg,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',

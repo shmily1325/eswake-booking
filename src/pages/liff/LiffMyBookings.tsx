@@ -25,6 +25,7 @@ import { liffTrack, liffTrackFlushQueueNow } from './track'
 import { fetchLiffShopOrders, type LiffShopOrder } from './liffShopOrders'
 import { useRouteDocumentMeta } from '../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../lib/routeOgMeta'
+import { ES_BRAND } from '../../lib/esBrandTokens'
 import { LiffBootScreen } from './LiffBootScreen'
 import {
   enrichMemberForLiff,
@@ -537,7 +538,7 @@ export function LiffMyBookings() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f5f5f5'
+      background: ES_BRAND.pageBg
     }}>
       {/* Header */}
       <LiffHeader

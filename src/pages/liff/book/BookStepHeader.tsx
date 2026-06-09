@@ -41,7 +41,7 @@ export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderPr
                 background: active
                   ? 'rgba(255,255,255,0.24)'
                   : done
-                    ? 'rgba(0,185,0,0.32)'
+                    ? 'rgba(255,255,255,0.18)'
                     : 'rgba(255,255,255,0.08)',
                 color: active || done ? 'white' : 'rgba(255,255,255,0.5)',
                 boxShadow: active ? 'inset 0 0 0 1px rgba(255,255,255,0.15)' : 'none',

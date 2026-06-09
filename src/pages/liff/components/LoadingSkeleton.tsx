@@ -1,10 +1,12 @@
 // 載入骨架屏組件
 
+import { ES_BRAND } from '../../../lib/esBrandTokens'
+
 export function LoadingSkeleton() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f5f5f5',
+      background: ES_BRAND.pageBg,
       padding: '16px'
     }}>
       {/* 頭部骨架屏 */}

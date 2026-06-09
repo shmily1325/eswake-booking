@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 export const bookPage: CSSProperties = {
@@ -102,7 +103,7 @@ export const stickyFooter: CSSProperties = {
 export const primaryBtn: CSSProperties = {
   flex: 1,
   padding: '14px',
-  background: `linear-gradient(135deg, #5a5a5a 0%, ${T.accent} 100%)`,
+  background: T.headerBg,
   color: 'white',
   border: 'none',
   borderRadius: '12px',
@@ -138,8 +139,7 @@ export const progressBar: CSSProperties = {
 export const progressFill = (pct: number): CSSProperties => ({
   height: '100%',
   width: `${pct}%`,
-  background: T.lineGreen,
-  boxShadow: `0 0 8px ${T.lineGreenSoft}`,
+  background: ES_BRAND.progressFill,
   transition: 'width 0.25s ease',
 })
 
