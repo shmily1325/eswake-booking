@@ -321,7 +321,7 @@ export const segmentRow: CSSProperties = {
 export const segmentBtn = (selected: boolean): CSSProperties => ({
   flex: 1,
   minWidth: 0,
-  padding: '12px 8px',
+  padding: '12px 6px',
   border: selected ? `2px solid ${T.accent}` : '1px solid #e8e8e8',
   borderRadius: 14,
   background: selected ? T.surfaceMuted : '#fff',
@@ -332,18 +332,21 @@ export const segmentBtn = (selected: boolean): CSSProperties => ({
 })
 
 export const segmentZh: CSSProperties = {
-  fontSize: ty.body,
+  fontSize: ty.caption,
   fontWeight: 700,
   color: T.ink,
-  wordBreak: 'keep-all',
+  lineHeight: 1.25,
+  whiteSpace: 'nowrap',
 }
 
 export const segmentEn: CSSProperties = {
-  fontSize: ty.caption,
+  fontSize: 11,
   fontWeight: 500,
   color: T.muted,
   marginTop: 4,
-  wordBreak: 'break-word',
+  lineHeight: 1.25,
+  whiteSpace: 'nowrap',
+  letterSpacing: '-0.02em',
 }
 
 /** Step 1 選中後的詳情區 */

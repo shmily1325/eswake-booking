@@ -645,7 +645,7 @@ function LiffBookInner() {
               </div>
             )}
 
-            <BookContextTips step={3} form={form} pickTimePref={pickTimePref} />
+            <BookContextTips step={3} form={form} pickTimePref={pickTimePref} coachSectionOpen={showCoachSection} />
 
             <BookStaffHint step={3} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
           </div>
@@ -721,8 +721,6 @@ function LiffBookInner() {
                   style={bookInput}
                 />
               </div>
-
-              <BookStaffHint step={4} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
             </div>
 
             <p style={{ fontSize: ty.caption, color: T.muted, margin: '0 0 10px', lineHeight: 1.5, textAlign: 'center' }}>

@@ -86,13 +86,20 @@ export function skillLevelFromBeginners(headcount: number, beginnerCount: number
   return beginnerCount >= headcount ? 'first_time' : 'experienced'
 }
 
-/** 更新人數／初學時同步 skillLevel（預設全部初學） */
+/** 更新人數／初學時同步 skillLevel（預設全部體驗） */
 export function syncBookingPeople(
   prev: LiffBookingFormState,
   patch: { headcount?: number; beginnerCount?: number },
 ): Pick<LiffBookingFormState, 'headcount' | 'beginnerCount' | 'skillLevel'> {
   const headcount = patch.headcount ?? prev.headcount
-  let beginnerCount = patch.beginnerCount ?? prev.beginnerCount ?? headcount
+  let beginnerCount: number
+  if (patch.beginnerCount != null) {
+    beginnerCount = patch.beginnerCount
+  } else if (patch.headcount != null) {
+    beginnerCount = headcount
+  } else {
+    beginnerCount = prev.beginnerCount ?? headcount
+  }
   if (beginnerCount > headcount) beginnerCount = headcount
   return {
     headcount,
@@ -120,14 +127,6 @@ export const BEGINNER_LESSON_NOTE = '陸上一起上課 · 水上每人20分'
 
 /** Step 1 價格面板：非初學價先以非會員顯示供審核（初學不分會員） */
 export const LIFF_BOOK_GUEST_PRICING_ONLY = true
-
-export const PRICING_EDUCATION = {
-  title: '費用怎麼算？',
-  intro: '不同船型收費不同。實際以現場排班為準。',
-  coachNote: '指定教練額外加價；不指定依當日排班。',
-  earlyMorningNote: '✨ 8 點前需指定教練',
-  disclaimer: '估算僅供參考',
-}
 
 export const MAX_PREFERRED_DATES = 3
 

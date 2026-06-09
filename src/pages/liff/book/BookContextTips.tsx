@@ -9,13 +9,15 @@ interface BookContextTipsProps {
   step: 2 | 3 | 4
   form: LiffBookingFormState
   pickTimePref: TimePreference
+  /** Step 3: coach picker expanded — add-coach link is hidden, so show early-coach tip here */
+  coachSectionOpen?: boolean
 }
 
 type Tip = { text: string; tone: 'info' | 'warn' }
 
-export function BookContextTips({ step, form, pickTimePref }: BookContextTipsProps) {
+export function BookContextTips({ step, form, pickTimePref, coachSectionOpen }: BookContextTipsProps) {
   const { s } = useBookLocale()
-  const tips = resolveContextTips(step, form, pickTimePref, s)
+  const tips = resolveContextTips(step, form, pickTimePref, s, coachSectionOpen)
   if (!tips.length) return null
 
   const hasWarn = tips.some(t => t.tone === 'warn')
@@ -52,17 +54,9 @@ function resolveContextTips(
   form: LiffBookingFormState,
   pickTimePref: TimePreference,
   s: BookI18nStrings,
+  coachSectionOpen?: boolean,
 ): Tip[] {
   const tips: Tip[] = []
-
-  if (
-    step === 2
-    && form.beginnerCount != null
-    && form.beginnerCount > 0
-    && form.beginnerCount < form.headcount
-  ) {
-    tips.push({ text: s.step2.mixedSkillHint, tone: 'info' })
-  }
 
   if (step === 2 && form.activity) {
     const aboard = onBoatTotal(form.headcount, form.followBoatCount)
@@ -84,7 +78,12 @@ function resolveContextTips(
     }
   }
 
-  if ((step === 3 || step === 4) && (pickTimePref === 'morning' || form.coachChoice === 'designated')) {
+  const needsEarlyCoach =
+    pickTimePref === 'morning'
+    && form.coachChoice !== 'designated'
+    && (step === 4 || (step === 3 && coachSectionOpen))
+
+  if (needsEarlyCoach) {
     tips.push({ text: s.reminders.earlyCoach, tone: 'warn' })
   }
 

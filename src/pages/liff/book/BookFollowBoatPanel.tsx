@@ -97,10 +97,11 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
                   : s.step2.followBoat.freeHint}
               </div>
             </>
-          ) : null}
-          <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 8, lineHeight: 1.5 }}>
-            {s.step2.followBoat.capacityNote}
-          </div>
+          ) : (
+            <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 12, lineHeight: 1.5 }}>
+              {s.step2.followBoat.capacityNote}
+            </div>
+          )}
         </div>
       )}
     </div>

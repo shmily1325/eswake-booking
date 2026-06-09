@@ -202,7 +202,7 @@ export function computePriceEstimate(
 
       detailLines.push(
 
-        `體驗 ${beginners} 位 × $${unit.toLocaleString()}（初次體驗 · 陸上一起${hint ? ` · ${hint}` : ''}）`,
+        `體驗 ${beginners} 位 × $${unit.toLocaleString()}（初次體驗${hint ? ` · ${hint}` : ''}）`,
 
       )
 

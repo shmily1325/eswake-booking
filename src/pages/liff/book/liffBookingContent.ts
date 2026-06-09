@@ -56,8 +56,11 @@ export const STEP4_CONFIRM_NOTES = [STEP4_CONFIRM_NOTE] as const
 
 export const NOTES_PLACEHOLDER = '跟船人數、特殊需求（選填）'
 
-/** 官網（穿著、交通等詳細須知） */
-export const OFFICIAL_INFO_URL = 'https://eswakeschool.com'
+/** 官網（Google Sites） */
+export const OFFICIAL_SITE_URL = 'https://www.eswakeschool.com/'
+
+/** Step 4 等處連結（穿著見常見 QA、交通見交通方式） */
+export const OFFICIAL_INFO_URL = OFFICIAL_SITE_URL
 
 /** 交通資訊（sites.google.com/.../交通方式） */
 export const TRANSPORT_INFO = {

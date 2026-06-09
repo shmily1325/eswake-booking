@@ -78,7 +78,7 @@ export function BookEssentialsPanel({
       <div style={{ ...priceBanner, marginBottom: 0 }}>{priceRange}</div>
 
       <div style={{ ...bookFieldGroup, marginTop: 12 }}>
-        <div style={{ ...segmentRow, marginBottom: active ? 14 : 0 }}>
+        <div style={{ ...segmentRow, marginBottom: 14 }}>
           {STEP1_ACTIVITY_CHOICES.map(choice => {
             const selected = value === choice.code
             const { primary, secondary } = activitySegmentLabels(choice.code, locale)
@@ -105,14 +105,6 @@ export function BookEssentialsPanel({
               {activityDetailTitle(active, locale)}
             </div>
             {chipLabel ? <span style={metaChip}>{chipLabel}</span> : null}
-            <div style={{ fontSize: ty.body, color: T.muted, lineHeight: 1.5, marginTop: 8 }}>
-              {s.step1.playMode[active]}
-            </div>
-            {active === 'BOTH' ? (
-              <div style={{ fontSize: ty.caption, color: T.muted, lineHeight: 1.5, marginTop: 6 }}>
-                {s.step1.bothNote}
-              </div>
-            ) : null}
             {price ? <div style={priceLine}>{price}</div> : null}
 
             {active !== 'BOTH' && (

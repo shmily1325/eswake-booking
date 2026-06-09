@@ -10,7 +10,7 @@ export const BOOKING_REMINDERS = [
   {
     id: 'early-coach',
     icon: '✨',
-    text: '如欲預約 8 點前時段，需指定教練課程。',
+    text: '如欲預約 8 點前時段，需指定教練。',
     when: 'morning-or-coach' as const,
   },
 ] as const

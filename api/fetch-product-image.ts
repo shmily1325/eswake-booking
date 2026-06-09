@@ -13,7 +13,7 @@ const COMPRESS_MAX_PX = 1024
 const COMPRESS_JPEG_QUALITY = 82
 const MAX_CANDIDATES = 8
 const FETCH_UA =
-  'Mozilla/5.0 (compatible; ESWake-ProductImageImport/1.0; +https://eswakeschool.com)'
+  'Mozilla/5.0 (compatible; ESWake-ProductImageImport/1.0; +https://www.eswakeschool.com/)'
 
 const SUPER_ADMINS = [
   'callumbao1122@gmail.com',

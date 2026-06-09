@@ -31,10 +31,8 @@ export interface BookI18nStrings {
     priceSuffix: string
     priceBannerRange: (low: number, high: number) => string
     pickPrompt: string
-    playMode: Record<'WS' | 'WB' | 'BOTH', string>
     activities: Record<'WS' | 'WB' | 'BOTH', { labelZh: string; labelEn: string }>
     bothShort: string
-    bothNote: string
     videoMandarinNote: string
     memberRateApplied: string
   }
@@ -51,7 +49,6 @@ export interface BookI18nStrings {
     noneFirstTime: string
     nFirstTime: (n: number) => string
     experienceSummary: (headcount: number, beginnerCount: number | null) => string
-    mixedSkillHint: string
     followBoat: {
       toggle: string
       rule: string
@@ -151,7 +148,6 @@ export interface BookI18nStrings {
     splitActivity: string
     step2MixedNote: string
     formHelp: string
-    step4Hint: string
     splitActivityMsg: string
   }
   estimate: { title: string; about: string; reference: string; expand: string; collapse: string }
@@ -248,18 +244,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       priceBannerRange: (low, high) =>
         `體驗 $${low.toLocaleString()}～$${high.toLocaleString()}／人 · 已含裝備、教練、船`,
       pickPrompt: '請選擇想體驗的項目',
-      playMode: {
-        WS: '全部人都玩快艇衝浪',
-        WB: '全部都玩寬板滑水',
-        BOTH: '同一梯次，部分寬板、部分衝浪（固定大船）',
-      },
       activities: {
         WS: { labelZh: '快艇衝浪', labelEn: 'Wakesurfing' },
         WB: { labelZh: '寬板滑水', labelEn: 'Wakeboarding' },
         BOTH: { labelZh: '兩個一起', labelEn: 'WB + WS mix' },
       },
       bothShort: '兩個一起',
-      bothNote: '請在備註寫各幾人（例：2 寬板、3 衝浪）',
       videoMandarinNote: '影片為中文解說',
       memberRateApplied: '已滑過已套用會員價',
     },
@@ -281,10 +271,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         if (beginnerCount === 0) return '皆已滑過'
         return `${beginnerCount} 位體驗`
       },
-      mixedSkillHint: '體驗與已滑過混合，以下為參考價。',
       followBoat: {
         toggle: '有人不玩、想跟船？',
-        rule: '親友不滑水可跟船：第 1 位免費，第 2 位起每位 $300。跟船也占船上座位。',
+        rule: '親友不滑水可跟船：第 1 位免費，第 2 位起每位 $300。',
         countLabel: '幾位跟船',
         none: '不需要',
         nFollowers: n => `${n} 位`,
@@ -378,10 +367,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       unsure: '還是選不出來？',
       needHelp: '還是有問題？',
       askStaff: '問小編',
-      splitActivity: '大家想玩不一樣？→ 改選「兩個一起」',
+      splitActivity: '大家想玩的不一樣？→ 改選「兩個一起」',
       step2MixedNote: '體驗與已滑過混合，估價僅供參考。',
       formHelp: '小編可協助',
-      step4Hint: '特殊需求可寫備註；表單沒涵蓋的情況再問小編。',
       splitActivityMsg: '我們有人想玩寬板、有人想衝浪（人數各不同，例如 5 人裡 2 位寬板、3 位衝浪），請協助安排與報價。',
     },
     estimate: { title: '費用估算', about: '約', reference: '參考價', expand: '看明細', collapse: '收合明細' },
@@ -426,9 +414,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     boat: {
       activityChip: {
-        WS: '固定大船',
-        BOTH: '固定大船 · 混合梯次',
-        WB: '小船或大船 · 依偏好',
+        WS: '大船',
+        BOTH: '大船',
+        WB: '小船/大船',
       },
       step1Title: '偏好哪種船？',
       step1Hint: '1 人也可約',
@@ -449,7 +437,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     reminders: {
       title: '本梯次提醒',
-      earlyCoach: '如欲預約 8 點前時段，需指定教練課程。',
+      earlyCoach: '如欲預約 8 點前時段，需指定教練。',
       dualBig: '船上 11 人以上需 2 艘大船，實際安排以小編回覆為準。',
       dualSmall: '船上 7 人以上選小船，需 2 艘小船安排座位。',
       comfort: '大船單艘最多 10 人，船上 8 人以下較為舒適。',
@@ -486,18 +474,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       priceBannerRange: (low, high) =>
         `First-time $${low.toLocaleString()}–$${high.toLocaleString()}/person · Gear, coach & boat included`,
       pickPrompt: 'Choose an activity',
-      playMode: {
-        WS: 'Everyone does wakesurfing',
-        WB: 'Everyone does wakeboarding',
-        BOTH: 'Same session — some wakeboard, some wakesurf (big boat)',
-      },
       activities: {
         WS: { labelZh: 'Wakesurfing', labelEn: 'Wakesurfing' },
         WB: { labelZh: 'Wakeboarding', labelEn: 'Wakeboarding' },
         BOTH: { labelZh: 'Mixed', labelEn: 'WB + WS mix' },
       },
       bothShort: 'Mixed group',
-      bothNote: 'Note how many per activity (e.g. 2 WB, 3 WS)',
       videoMandarinNote: 'Video in Mandarin',
       memberRateApplied: 'Member rate applied (returning riders)',
     },
@@ -519,10 +501,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         if (beginnerCount === 0) return 'All experienced'
         return `${beginnerCount} first-timer${beginnerCount > 1 ? 's' : ''}`
       },
-      mixedSkillHint: 'Mixed first-timers & experienced — estimate below.',
       followBoat: {
         toggle: 'Someone not riding but coming along?',
-        rule: 'Non-riders may join: 1st free, $300 each from the 2nd. They count toward boat seats.',
+        rule: 'Non-riders may join: 1st free, $300 each from the 2nd.',
         countLabel: 'How many non-riders',
         none: 'None',
         nFollowers: n => `${n}`,
@@ -619,7 +600,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       splitActivity: 'Split on activities? → pick “Mixed”',
       step2MixedNote: 'Mixed first-timers & experienced — estimate only.',
       formHelp: 'Need help?',
-      step4Hint: 'Use notes for special requests; ask us if the form does not cover your case.',
       splitActivityMsg: 'We have a split group (e.g. some wakeboard, some wakesurf) — please help arrange and quote.',
     },
     estimate: { title: 'Price estimate', about: 'Est.', reference: 'Reference only', expand: 'Details', collapse: 'Hide details' },
@@ -664,9 +644,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     boat: {
       activityChip: {
-        WS: 'Big boat only',
-        BOTH: 'Big boat · mixed session',
-        WB: 'Small or big boat',
+        WS: 'Big boat',
+        BOTH: 'Big boat',
+        WB: 'Small/Big boat',
       },
       step1Title: 'Boat preference',
       step1Hint: 'Solo riders welcome',
@@ -711,9 +691,11 @@ export function activitySegmentLabels(
   locale: BookLocale,
 ): { primary: string; secondary: string } {
   const current = BOOK_I18N[locale].step1.activities[code]
+  const segmentEnLabel =
+    code === 'WB' ? 'Wakeboard' : code === 'WS' ? 'Wakesurf' : current.labelEn
   return locale === 'en'
-    ? { primary: current.labelEn, secondary: BOOK_I18N.en.boat.activityChip[code] }
-    : { primary: current.labelZh, secondary: current.labelEn }
+    ? { primary: segmentEnLabel, secondary: BOOK_I18N.en.boat.activityChip[code] }
+    : { primary: current.labelZh, secondary: segmentEnLabel }
 }
 
 /** Step 1 詳情標題：中文（English）；EN 僅主標 */

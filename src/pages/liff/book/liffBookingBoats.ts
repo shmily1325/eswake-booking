@@ -142,8 +142,8 @@ export function boatLayoutLabel(
 
 export function activityBoatNote(activity: ActivityChoice): string {
   if (activity === 'WS') return `僅大船 · ${BOAT_BIG_MAX} 人/艘 · 11+ 兩艘`
-  if (activity === 'BOTH') return `固定大船 · 混合梯次`
-  return '小船或大船 · 依偏好'
+  if (activity === 'BOTH') return '大船'
+  return '小船/大船'
 }
 
 /** Step 1 項目 chip（僅活動） */

@@ -78,16 +78,9 @@ export function BookStaffHint({
     )
   }
 
-  const contextualNote = step === 4 ? s.staff.step4Hint : null
-
-  if (step === 2 || step === 3 || step === 4) {
+  if (step === 2 || step === 3) {
     return (
       <div style={wrap}>
-        {contextualNote ? (
-          <div style={{ fontSize: ty.caption, color: '#aaa', marginBottom: 6 }}>
-            {contextualNote}
-          </div>
-        ) : null}
         <div>{s.staff.needHelp}</div>
         <button type="button" onClick={handleAsk} style={pillBtn}>
           {s.staff.askStaff}
