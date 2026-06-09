@@ -3,7 +3,7 @@ import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
 import { FOLLOW_BOAT_OPTIONS } from './liffBookingConfig'
 import { followBoatFee } from './liffBookingPrices'
-import { chipBtn, estimateInsetHighlight, fieldLabel, optionalPanel } from './bookStyles'
+import { chipBtn, fieldLabel, optionalPanel } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookFollowBoatPanelProps {
@@ -87,21 +87,14 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
             ))}
           </div>
           {value > 0 ? (
-            <>
-              <div style={estimateInsetHighlight}>
-                {s.step2.followBoat.onBoatSummary(riders, value)}
-              </div>
-              <div style={{ fontSize: ty.caption, color: T.muted, marginTop: 8, lineHeight: 1.5 }}>
-                {fee > 0
-                  ? s.step2.followBoat.feeHint(value, `$${fee.toLocaleString()}`)
-                  : s.step2.followBoat.freeHint}
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 12, lineHeight: 1.5 }}>
-              {s.step2.followBoat.capacityNote}
+            <div style={{ fontSize: ty.caption, color: T.muted, marginTop: 10, lineHeight: 1.5 }}>
+              {s.step2.followBoat.aboardLine(
+                riders,
+                value,
+                fee > 0 ? `+$${fee.toLocaleString()}` : null,
+              )}
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </div>

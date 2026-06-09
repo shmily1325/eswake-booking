@@ -123,7 +123,7 @@ export const TIME_PREFERENCE_OPTIONS: { value: TimePreference; label: string }[]
 export const WATER_MIN_PER_PERSON = 20
 
 /** 初學體驗說明（小編指定文案） */
-export const BEGINNER_LESSON_NOTE = '陸上一起上課 · 水上每人20分'
+export const BEGINNER_LESSON_NOTE = '陸上教學 10 分鐘 · 水上每人 20 分鐘'
 
 /** Step 1 價格面板：非初學價先以非會員顯示供審核（初學不分會員） */
 export const LIFF_BOOK_GUEST_PRICING_ONLY = true

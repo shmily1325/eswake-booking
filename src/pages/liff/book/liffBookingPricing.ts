@@ -6,7 +6,7 @@ import { BOOK_I18N, type BookLocale } from './liffBookingI18n'
 
 import { WATER_MIN_PER_PERSON } from './liffBookingConfig'
 
-import { boatLayoutLabel, onBoatTotal, resolveBoatTier, usesDualBigBoats, wbUsesDualSmallBoats } from './liffBookingBoats'
+import { resolveBoatTier } from './liffBookingBoats'
 
 import {
 
@@ -45,48 +45,6 @@ export interface PriceEstimate {
   totalLabel: string
 
   disclaimer: string
-
-}
-
-
-
-function boatHintLabel(
-
-  activity: ActivityChoice,
-
-  riders: number,
-
-  followBoat: number,
-
-  boatPreference: LiffBookingFormState['boatPreference'],
-
-  firstTimeActivity: 'WB' | 'WS',
-
-  boatTier: ReturnType<typeof resolveBoatTier>,
-
-  locale: BookLocale,
-
-): string {
-
-  const aboard = onBoatTotal(riders, followBoat)
-
-  const layout = boatLayoutLabel(activity, riders, boatPreference, locale, followBoat)
-
-  if (firstTimeActivity === 'WB') {
-
-    if (wbUsesDualSmallBoats(aboard, boatPreference)) return layout
-
-    if (usesDualBigBoats(activity, aboard, boatPreference)) return layout
-
-    if (boatTier === 'big') return layout
-
-    return layout
-
-  }
-
-  if (usesDualBigBoats(activity, aboard, boatPreference)) return layout
-
-  return ''
 
 }
 
@@ -164,21 +122,7 @@ export function computePriceEstimate(
 
   const firstTimeActivity: 'WB' | 'WS' = activity === 'BOTH' ? 'WS' : activity
 
-  const bothLabel = s.step1.bothShort
-
-
-
-  const layout = boatLayoutLabel(activity, state.headcount, state.boatPreference, locale, state.followBoatCount)
-
-  const detailLines: string[] = [
-
-    locale === 'zh'
-
-      ? activity === 'BOTH' ? `船型：大船（${bothLabel}）` : `船型：${layout}`
-
-      : activity === 'BOTH' ? `Boat: big (${bothLabel})` : `Boat: ${layout}`,
-
-  ]
+  const detailLines: string[] = []
 
   let boatTotal = 0
 
@@ -196,23 +140,13 @@ export function computePriceEstimate(
 
     boatTotal += unit * beginners
 
-    const hint = boatHintLabel(activity, state.headcount, state.followBoatCount, state.boatPreference, firstTimeActivity, boatTier, locale)
-
     if (locale === 'zh') {
 
-      detailLines.push(
-
-        `體驗 ${beginners} 位 × $${unit.toLocaleString()}（初次體驗${hint ? ` · ${hint}` : ''}）`,
-
-      )
+      detailLines.push(`${beginners} 體驗 × $${unit.toLocaleString()}`)
 
     } else {
 
-      detailLines.push(
-
-        `First-timers ${beginners} × $${unit.toLocaleString()} (package${hint ? ` · ${hint}` : ''})`,
-
-      )
+      detailLines.push(`${beginners} first-timer${beginners > 1 ? 's' : ''} × $${unit.toLocaleString()}`)
 
     }
 
@@ -232,27 +166,17 @@ export function computePriceEstimate(
 
   if (experienced > 0) {
 
-    const { blockMin, price } = sessionBlockRate(boatTier, memberRate)
+    const { price } = sessionBlockRate(boatTier, memberRate)
 
     boatTotal += experienced * price
 
-    const rateTag = memberRate ? s.pricing.member : s.pricing.guest
-
     if (locale === 'zh') {
 
-      detailLines.push(
-
-        `已滑過 ${experienced} 位 × ${blockMin} 分 × $${price.toLocaleString()}（${rateTag}）`,
-
-      )
+      detailLines.push(`${experienced} 已滑過 × $${price.toLocaleString()}`)
 
     } else {
 
-      detailLines.push(
-
-        `Experienced ${experienced} × ${blockMin} min × $${price.toLocaleString()} (${rateTag})`,
-
-      )
+      detailLines.push(`${experienced} experienced × $${price.toLocaleString()}`)
 
     }
 

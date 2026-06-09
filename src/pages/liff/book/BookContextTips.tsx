@@ -1,5 +1,6 @@
 import { useBookLocale } from './BookLocaleContext'
-import { infoBox, warnBox } from './bookStyles'
+import { reminderBox, warnBox } from './bookStyles'
+import { BOOK_THEME as T } from './bookTheme'
 import type { LiffBookingFormState, TimePreference } from './types'
 import { BOAT_BIG_DUAL_MIN, BOAT_SMALL_DUAL_MIN, onBoatTotal, usesBigBoat } from './liffBookingBoats'
 import type { BookI18nStrings } from './liffBookingI18n'
@@ -21,7 +22,7 @@ export function BookContextTips({ step, form, pickTimePref, coachSectionOpen }: 
   if (!tips.length) return null
 
   const hasWarn = tips.some(t => t.tone === 'warn')
-  const boxStyle = hasWarn ? warnBox : infoBox
+  const boxStyle = hasWarn ? warnBox : reminderBox
 
   return (
     <div
@@ -33,9 +34,17 @@ export function BookContextTips({ step, form, pickTimePref, coachSectionOpen }: 
         lineHeight: 1.55,
       }}
     >
-      <div style={{ fontSize: ty.caption, fontWeight: 700, marginBottom: tips.length > 1 ? 8 : 0, opacity: 0.9 }}>
-        {s.reminders.title}
-      </div>
+      {tips.length > 1 ? (
+        <div style={{
+          fontSize: ty.caption,
+          fontWeight: 700,
+          marginBottom: 8,
+          color: hasWarn ? '#ad6800' : T.estimateAccent,
+          letterSpacing: '0.02em',
+        }}>
+          {s.reminders.title}
+        </div>
+      ) : null}
       {tips.length === 1 ? (
         <div>{tips[0].text}</div>
       ) : (

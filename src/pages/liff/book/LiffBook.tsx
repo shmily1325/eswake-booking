@@ -52,6 +52,9 @@ import {
   optionalSectionLabel,
   bookPage,
   chipBtn,
+  experienceChipBtn,
+  experienceChipNote,
+  experienceChipTitle,
   fieldLabel,
   fieldHint,
   footerBlockHint,
@@ -398,8 +401,6 @@ function LiffBookInner() {
       ? s.footer.confirm
       : s.footer.next
 
-  const showMemberHint = memberRate && step >= 2 && (form.beginnerCount ?? 0) < form.headcount
-
   const stepReady = canNext()
   const blockReason = stepReady ? null : getStepBlockReason(step, form, pickDate, s.validation, lineUserId)
 
@@ -425,7 +426,7 @@ function LiffBookInner() {
         {/* Step 2: 誰要滑 */}
         {step === 2 && (
           <div style={bookCard}>
-            {estimate && <BookEstimateCard estimate={estimate} memberHint={showMemberHint} defaultExpanded />}
+            {estimate && <BookEstimateCard key="est-2" estimate={estimate} defaultExpanded />}
 
             <div style={bookFieldGroup}>
               <div style={{ marginBottom: 16 }}>
@@ -460,24 +461,29 @@ function LiffBookInner() {
                 {form.headcount === 1 ? (
                   <>
                     <div style={fieldLabel}>{s.step2.experienceSingle}</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
                       <button
                         type="button"
                         className="book-chip-btn"
-                        style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '10px 0' }}
+                        style={experienceChipBtn(form.beginnerCount === 1)}
                         onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
                       >
-                        <div style={{ fontSize: ty.body, fontWeight: 600 }}>{s.step2.firstTime}</div>
-                        <div style={{ fontSize: ty.caption, opacity: 0.85, marginTop: 3 }}>{s.step2.firstTimeNote}</div>
+                        <div style={experienceChipTitle}>{s.step2.firstTime}</div>
+                        <div style={experienceChipNote(form.beginnerCount === 1)}>
+                          <div>{s.step2.firstTimeLand}</div>
+                          <div>{s.step2.firstTimeWater}</div>
+                        </div>
                       </button>
                       <button
                         type="button"
                         className="book-chip-btn"
-                        style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '10px 0' }}
+                        style={experienceChipBtn(form.beginnerCount === 0)}
                         onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
                       >
-                        <div style={{ fontSize: ty.body, fontWeight: 600 }}>{s.step2.experienced}</div>
-                        <div style={{ fontSize: ty.caption, opacity: 0.85, marginTop: 3 }}>{s.step2.experiencedNote}</div>
+                        <div style={experienceChipTitle}>{s.step2.experienced}</div>
+                        <div style={experienceChipNote(form.beginnerCount === 0)}>
+                          {s.step2.experiencedNote}
+                        </div>
                       </button>
                     </div>
                   </>
@@ -512,15 +518,13 @@ function LiffBookInner() {
             </div>
 
             <BookContextTips step={2} form={form} pickTimePref={pickTimePref} />
-
-            <BookStaffHint step={2} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
           </div>
         )}
 
         {/* Step 3: 什麼時候 + 教練選填 */}
         {step === 3 && (
           <div style={bookCard}>
-            {estimate && <BookEstimateCard estimate={estimate} memberHint={showMemberHint} />}
+            {estimate && <BookEstimateCard key="est-3" estimate={estimate} />}
 
             <div style={bookFieldGroup}>
             <BookDateCalendar
@@ -655,7 +659,7 @@ function LiffBookInner() {
         {step === 4 && (
           <>
             <div style={bookCard}>
-              {estimate && <BookEstimateCard estimate={estimate} defaultExpanded memberHint={showMemberHint} />}
+              {estimate && <BookEstimateCard key="est-4" estimate={estimate} defaultExpanded />}
 
               <div style={bookFieldGroup}>
                 {isBothActivities(form.activity) ? (

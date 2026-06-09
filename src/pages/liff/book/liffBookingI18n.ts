@@ -42,7 +42,8 @@ export interface BookI18nStrings {
     experienceSingle: string
     experienceMulti: string
     firstTime: string
-    firstTimeNote: string
+    firstTimeLand: string
+    firstTimeWater: string
     experienced: string
     experiencedNote: string
     allFirstTime: string
@@ -56,10 +57,7 @@ export interface BookI18nStrings {
       none: string
       nFollowers: (n: number) => string
       selected: (n: number) => string
-      freeHint: string
-      feeHint: (n: number, fee: string) => string
-      onBoatSummary: (riders: number, follow: number) => string
-      capacityNote: string
+      aboardLine: (riders: number, follow: number, fee: string | null) => string
     }
   }
   step3: {
@@ -259,9 +257,10 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       experienceSingle: '體驗，還是已經滑過？',
       experienceMulti: '其中幾位體驗',
       firstTime: '體驗',
-      firstTimeNote: '陸上一起上課 · 水上每人 20 分',
+      firstTimeLand: '陸上教學 10 分鐘',
+      firstTimeWater: '水上每人 20 分鐘',
       experienced: '已經滑過',
-      experiencedNote: '20 分鐘計價',
+      experiencedNote: '每人 20 分鐘',
       allFirstTime: '全部',
       noneFirstTime: '0 位',
       nFirstTime: n => `${n} 位`,
@@ -278,10 +277,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         none: '不需要',
         nFollowers: n => `${n} 位`,
         selected: n => `跟船 ${n} 位`,
-        freeHint: '第 1 位跟船免費',
-        feeHint: (n, fee) => `跟船 ${n} 位（第 1 位免費）· 估計 +${fee}`,
-        onBoatSummary: (riders, follow) => `船上共 ${riders + follow} 人（${riders} 滑水 + ${follow} 跟船）`,
-        capacityNote: '跟船計入船上總人數，影響船型與座位安排。',
+        aboardLine: (riders, follow, fee) =>
+          fee ? `船上 ${riders + follow} 人 · ${fee}` : `船上 ${riders + follow} 人 · 跟船免費`,
       },
     },
     step3: {
@@ -381,14 +378,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       mixedSkill: '混合（體驗＋已滑過）',
       waterAbout: m => `水上約 ${m} 分`,
       designatedCoach: (name, count, unit) =>
-        count === 1
-          ? `指定 ${name} +${unit}（20 分）`
-          : `指定 ${name} ${count} 位 × 20 分 × ${unit}`,
-      followBoatLine: (count, fee) =>
-        count <= 1
-          ? `跟船 ${count} 位（第 1 位免費）`
-          : `跟船 ${count} 位（第 1 位免費）· +${fee}`,
-      coachBothEstimate: '混合梯次指定教練以較高價估算，實際依項目計',
+        count === 1 ? `教練 ${name} ${unit}` : `教練 ${name} ${count}×${unit}`,
+      followBoatLine: (_count, fee) => (fee === '$0' ? '跟船免費' : `跟船 ${fee}`),
+      coachBothEstimate: '混合梯次教練價以較高計',
     },
     lineMessage: {
       title: '預約需求',
@@ -489,9 +481,10 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       experienceSingle: 'First time or experienced?',
       experienceMulti: 'How many first-timers?',
       firstTime: 'First time',
-      firstTimeNote: 'Land lesson together · 20 min water each',
+      firstTimeLand: '10 min land lesson',
+      firstTimeWater: '20 min water each',
       experienced: 'Experienced',
-      experiencedNote: 'Priced per 20 min',
+      experiencedNote: '20 min each',
       allFirstTime: 'All',
       noneFirstTime: '0',
       nFirstTime: n => `${n}`,
@@ -508,10 +501,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         none: 'None',
         nFollowers: n => `${n}`,
         selected: n => `${n} non-rider${n > 1 ? 's' : ''}`,
-        freeHint: 'First non-rider is free',
-        feeHint: (n, fee) => `${n} non-rider${n > 1 ? 's' : ''} (1st free) · est. +${fee}`,
-        onBoatSummary: (riders, follow) => `${riders + follow} on board (${riders} riding + ${follow} non-riding)`,
-        capacityNote: 'Non-riders count toward total seats and may affect boat layout.',
+        aboardLine: (riders, follow, fee) =>
+          fee ? `${riders + follow} on board · ${fee}` : `${riders + follow} on board · 1st free`,
       },
     },
     step3: {
@@ -611,14 +602,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       mixedSkill: 'Mixed (first-timers + experienced)',
       waterAbout: m => `~${m} min on water`,
       designatedCoach: (name, count, unit) =>
-        count === 1
-          ? `Coach ${name} +${unit} (20 min)`
-          : `Coach ${name} ${count} × 20 min × ${unit}`,
-      followBoatLine: (count, fee) =>
-        count <= 1
-          ? `Non-riders ${count} (1st free)`
-          : `Non-riders ${count} (1st free) · +${fee}`,
-      coachBothEstimate: 'Mixed session coach fee uses higher rate — final price per activity',
+        count === 1 ? `Coach ${name} ${unit}` : `Coach ${name} ${count}×${unit}`,
+      followBoatLine: (_count, fee) => (fee === '$0' ? 'Non-rider free' : `Non-riders ${fee}`),
+      coachBothEstimate: 'Mixed session coach uses higher rate',
     },
     lineMessage: {
       title: 'Booking request',

@@ -7,8 +7,8 @@ import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookEstimateCardProps {
   estimate: PriceEstimate
+  /** Step 2 & 4: expanded; Step 3: collapsed */
   defaultExpanded?: boolean
-  memberHint?: boolean
 }
 
 const detailRow = (isLast: boolean): CSSProperties => ({
@@ -19,7 +19,7 @@ const detailRow = (isLast: boolean): CSSProperties => ({
   borderBottom: isLast ? 'none' : `1px solid ${T.estimateBorder}`,
 })
 
-export function BookEstimateCard({ estimate, defaultExpanded = false, memberHint = false }: BookEstimateCardProps) {
+export function BookEstimateCard({ estimate, defaultExpanded = false }: BookEstimateCardProps) {
   const { s } = useBookLocale()
   const [expanded, setExpanded] = useState(defaultExpanded)
   const hasDetails = estimate.detailLines.length > 0
@@ -27,21 +27,6 @@ export function BookEstimateCard({ estimate, defaultExpanded = false, memberHint
   return (
     <div style={{ ...estimateBox, marginTop: 0, marginBottom: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: ty.body, fontWeight: 600, color: T.estimateAccent }}>
-          {s.estimate.title}
-        </span>
-        <span style={estimateTierPill}>{estimate.tierLabel}</span>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          gap: 8,
-          marginTop: 8,
-        }}
-      >
         <span
           style={{
             fontSize: ty.title,
@@ -52,12 +37,8 @@ export function BookEstimateCard({ estimate, defaultExpanded = false, memberHint
         >
           {s.estimate.about} {estimate.totalLabel}
         </span>
-        <span style={{ fontSize: ty.caption, color: T.muted, flexShrink: 0 }}>{s.estimate.reference}</span>
+        <span style={estimateTierPill}>{estimate.tierLabel}</span>
       </div>
-
-      {memberHint ? (
-        <div style={{ fontSize: ty.caption, color: T.muted, marginTop: 4 }}>{s.header.memberRateHint}</div>
-      ) : null}
 
       {expanded && hasDetails ? (
         <div style={{ ...estimateDetailPanel, marginTop: 10 }}>

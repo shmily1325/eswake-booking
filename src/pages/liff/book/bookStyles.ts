@@ -63,6 +63,33 @@ export const chipBtn = (selected: boolean): CSSProperties => ({
   cursor: 'pointer',
 })
 
+/** Step 2 體驗／已滑過（方角、可放兩行說明） */
+export const experienceChipBtn = (selected: boolean): CSSProperties => ({
+  flex: 1,
+  minWidth: 0,
+  padding: '12px 8px',
+  border: selected ? `2px solid ${T.accent}` : '1px solid #e8e8e8',
+  borderRadius: 14,
+  background: selected ? T.accent : '#fff',
+  color: selected ? 'white' : T.inkSoft,
+  textAlign: 'center',
+  cursor: 'pointer',
+  lineHeight: 1.35,
+})
+
+export const experienceChipTitle: CSSProperties = {
+  fontSize: ty.body,
+  fontWeight: 700,
+}
+
+export const experienceChipNote = (selected: boolean): CSSProperties => ({
+  fontSize: 11,
+  fontWeight: 400,
+  marginTop: 6,
+  lineHeight: 1.5,
+  color: selected ? 'rgba(255,255,255,0.9)' : T.muted,
+})
+
 /** 一般提示區塊（中性灰） */
 export const infoBox: CSSProperties = {
   background: T.surfaceMuted,
@@ -72,6 +99,19 @@ export const infoBox: CSSProperties = {
   fontSize: ty.body,
   color: T.inkSoft,
   lineHeight: 1.6,
+  marginTop: '12px',
+}
+
+/** 本梯次提醒（參考資訊，與估價卡同色系） */
+export const reminderBox: CSSProperties = {
+  background: T.estimateBg,
+  border: `1px solid ${T.estimateBorder}`,
+  borderLeft: `3px solid ${T.estimateAccent}`,
+  borderRadius: '12px',
+  padding: '12px 14px',
+  fontSize: ty.body,
+  color: T.estimateDetailInk,
+  lineHeight: 1.55,
   marginTop: '12px',
 }
 
@@ -129,6 +169,7 @@ export const estimateInsetHighlight: CSSProperties = {
 export const warnBox: CSSProperties = {
   background: '#fffbe6',
   border: '1px solid #ffe58f',
+  borderLeft: '3px solid #faad14',
   borderRadius: '12px',
   padding: '12px 14px',
   fontSize: ty.body,

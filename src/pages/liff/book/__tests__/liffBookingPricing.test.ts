@@ -28,7 +28,7 @@ describe('computePriceEstimate designated coach', () => {
     const estimate = computePriceEstimate(baseForm, [coach], null, 'zh')
     expect(estimate).not.toBeNull()
     expect(estimate!.coachLine).toEqual({ coachName: '巨陽尼', amount: 1000 })
-    expect(estimate!.detailLines.some(l => l.includes('2 位 × 20 分 × $500'))).toBe(true)
+    expect(estimate!.detailLines.some(l => l.includes('教練 巨陽尼') && l.includes('500'))).toBe(true)
   })
 
   it('does not charge designated coach for all beginners', () => {
