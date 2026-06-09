@@ -46,25 +46,58 @@ export async function initLiffSdk(liffId: string): Promise<void> {
   throw lastErr
 }
 
-export async function enrichMemberForLiff(raw: Record<string, unknown>): Promise<Member> {
-  const r = raw as {
-    id: string
-    name: string
-    nickname: string | null
-    phone: string | null
-    birthday?: string | null
-    membership_type?: string | null
-    membership_partner_id?: string | null
-    membership_end_date?: string | null
-    board_slot_number?: string | null
-    board_expiry_date?: string | null
-    balance?: number | null
-    vip_voucher_amount?: number | null
-    designated_lesson_minutes?: number | null
-    boat_voucher_g23_minutes?: number | null
-    boat_voucher_g21_panther_minutes?: number | null
-    gift_boat_hours?: number | null
+type LiffMemberRow = {
+  id: string
+  name: string
+  nickname: string | null
+  phone: string | null
+  birthday?: string | null
+  membership_type?: string | null
+  membership_partner_id?: string | null
+  membership_end_date?: string | null
+  board_slot_number?: string | null
+  board_expiry_date?: string | null
+  balance?: number | null
+  vip_voucher_amount?: number | null
+  designated_lesson_minutes?: number | null
+  boat_voucher_g23_minutes?: number | null
+  boat_voucher_g21_panther_minutes?: number | null
+  gift_boat_hours?: number | null
+}
+
+function buildMember(
+  r: LiffMemberRow,
+  extras: { board_slots: Member['board_slots']; partner: Member['partner'] },
+): Member {
+  return {
+    id: r.id,
+    name: r.name,
+    nickname: r.nickname,
+    phone: r.phone,
+    birthday: r.birthday ?? undefined,
+    membership_type: r.membership_type ?? null,
+    membership_partner_id: r.membership_partner_id ?? null,
+    membership_end_date: r.membership_end_date ?? null,
+    board_slot_number: r.board_slot_number ?? null,
+    board_expiry_date: r.board_expiry_date ?? null,
+    board_slots: extras.board_slots,
+    partner: extras.partner,
+    balance: r.balance ?? undefined,
+    vip_voucher_amount: r.vip_voucher_amount ?? undefined,
+    designated_lesson_minutes: r.designated_lesson_minutes ?? undefined,
+    boat_voucher_g23_minutes: r.boat_voucher_g23_minutes ?? undefined,
+    boat_voucher_g21_panther_minutes: r.boat_voucher_g21_panther_minutes ?? undefined,
+    gift_boat_hours: r.gift_boat_hours ?? undefined,
   }
+}
+
+/** 預約頁用：略過置板／雙人會籍查詢，只帶姓名電話與會籍欄位 */
+export function liteMemberFromRow(raw: Record<string, unknown>): Member {
+  return buildMember(raw as LiffMemberRow, { board_slots: [], partner: null })
+}
+
+export async function enrichMemberForLiff(raw: Record<string, unknown>): Promise<Member> {
+  const r = raw as LiffMemberRow
 
   const boardsRes = await supabase
     .from('board_storage')
@@ -96,26 +129,7 @@ export async function enrichMemberForLiff(raw: Record<string, unknown>): Promise
     }
   }
 
-  return {
-    id: r.id,
-    name: r.name,
-    nickname: r.nickname,
-    phone: r.phone,
-    birthday: r.birthday ?? undefined,
-    membership_type: r.membership_type ?? null,
-    membership_partner_id: r.membership_partner_id ?? null,
-    membership_end_date: r.membership_end_date ?? null,
-    board_slot_number: r.board_slot_number ?? null,
-    board_expiry_date: r.board_expiry_date ?? null,
-    board_slots,
-    partner,
-    balance: r.balance ?? undefined,
-    vip_voucher_amount: r.vip_voucher_amount ?? undefined,
-    designated_lesson_minutes: r.designated_lesson_minutes ?? undefined,
-    boat_voucher_g23_minutes: r.boat_voucher_g23_minutes ?? undefined,
-    boat_voucher_g21_panther_minutes: r.boat_voucher_g21_panther_minutes ?? undefined,
-    gift_boat_hours: r.gift_boat_hours ?? undefined,
-  }
+  return buildMember(r, { board_slots, partner })
 }
 
 export async function fetchMemberByLineUserId(userId: string): Promise<Member | null> {

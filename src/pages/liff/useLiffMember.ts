@@ -9,6 +9,7 @@ import {
   isFirstDocumentLoadThisNavigation,
   unknownErrorMessage,
   enrichMemberForLiff,
+  liteMemberFromRow,
   LIFF_MEMBER_SELECT,
 } from './liffMemberShared'
 import { liffTrackFlushQueueNow } from './track'
@@ -20,12 +21,23 @@ export interface UseLiffMemberOptions {
   trackIconId?: string
   /** 覆寫 LIFF App ID（預約頁用 VITE_LIFF_BOOK_ID） */
   liffId?: string
+  /** 先顯示頁面，背景查綁定（預約頁用） */
+  nonBlockingBinding?: boolean
+  /** 綁定查詢略過置板／雙人會籍（預約頁用） */
+  lightMember?: boolean
 }
 
 export function useLiffMember(options: UseLiffMemberOptions = {}) {
-  const { requireBinding = true, trackIconId = 'liff_open', liffId: liffIdOverride } = options
+  const {
+    requireBinding = true,
+    trackIconId = 'liff_open',
+    liffId: liffIdOverride,
+    nonBlockingBinding = false,
+    lightMember = false,
+  } = options
 
   const [loading, setLoading] = useState(true)
+  const [bindingLoading, setBindingLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [member, setMember] = useState<Member | null>(null)
   const [lineUserId, setLineUserId] = useState<string | null>(null)
@@ -40,7 +52,16 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
   const [binding, setBinding] = useState(false)
   const [bindingError, setBindingError] = useState<string | null>(null)
 
+  const resolveMember = useCallback(
+    async (memberData: Record<string, unknown>): Promise<Member> => {
+      if (lightMember) return liteMemberFromRow(memberData)
+      return enrichMemberForLiff(memberData)
+    },
+    [lightMember],
+  )
+
   const checkBinding = useCallback(async (userId: string, displayName: string | null) => {
+    if (nonBlockingBinding) setBindingLoading(true)
     try {
       const { data: binding } = await supabase
         .from('line_bindings')
@@ -51,15 +72,15 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
 
       if (binding?.members) {
         const memberData = binding.members as Record<string, unknown>
-        const enriched = await enrichMemberForLiff(memberData)
-        setMember(enriched)
+        const resolved = await resolveMember(memberData)
+        setMember(resolved)
         setShowBindingForm(false)
         void liffTrackFlushQueueNow()
         void import('./track').then(({ liffTrack }) => {
           liffTrack({
             icon_id: trackIconId,
             line_user_id: userId,
-            member_id: enriched.id,
+            member_id: resolved.id,
             extras: { display_name: displayName ?? undefined },
           })
         })
@@ -85,9 +106,13 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
     } catch {
       if (requireBinding) setShowBindingForm(true)
     } finally {
-      setLoading(false)
+      if (nonBlockingBinding) {
+        setBindingLoading(false)
+      } else {
+        setLoading(false)
+      }
     }
-  }, [requireBinding, trackIconId])
+  }, [requireBinding, trackIconId, nonBlockingBinding, resolveMember])
 
   const initLiff = useCallback(async () => {
     try {
@@ -108,7 +133,13 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
       const profile = await liff.getProfile()
       setLineUserId(profile.userId)
       setLineDisplayName(profile.displayName ?? null)
-      await checkBinding(profile.userId, profile.displayName ?? null)
+
+      if (nonBlockingBinding) {
+        setLoading(false)
+        void checkBinding(profile.userId, profile.displayName ?? null)
+      } else {
+        await checkBinding(profile.userId, profile.displayName ?? null)
+      }
     } catch (err: unknown) {
       console.error('LIFF 初始化失敗:', err)
       const msg = unknownErrorMessage(err, '')
@@ -119,7 +150,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
       setError(unknownErrorMessage(err, 'LIFF 初始化失敗'))
       setLoading(false)
     }
-  }, [checkBinding, liffIdOverride])
+  }, [checkBinding, liffIdOverride, nonBlockingBinding])
 
   useEffect(() => {
     void initLiff()
@@ -182,7 +213,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
         .eq('id', memberData.id)
         .single()
 
-      const enriched = await enrichMemberForLiff((fullMemberData ?? memberData) as Record<string, unknown>)
+      const enriched = await resolveMember((fullMemberData ?? memberData) as Record<string, unknown>)
       setMember(enriched)
       setShowBindingForm(false)
       setSkippedBinding(false)
@@ -192,7 +223,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
     } finally {
       setBinding(false)
     }
-  }, [phone, lineUserId, birthYear, birthMonth, birthDay])
+  }, [phone, lineUserId, birthYear, birthMonth, birthDay, resolveMember])
 
   const skipBinding = useCallback(() => {
     triggerHaptic('light')
@@ -204,6 +235,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
 
   return {
     loading,
+    bindingLoading,
     error,
     member,
     lineUserId,

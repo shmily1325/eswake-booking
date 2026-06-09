@@ -108,6 +108,8 @@ export function LiffBook() {
     requireBinding: false,
     trackIconId: 'liff_book_open',
     liffId: resolveLiffBookId(),
+    nonBlockingBinding: true,
+    lightMember: true,
   })
 
   const [step, setStep] = useState(1)
