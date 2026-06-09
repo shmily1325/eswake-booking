@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
+import { useBookLocale } from './BookLocaleContext'
 import { openYoutubeVideo, youtubeEmbedUrl, youtubeThumbnailUrl } from './bookMedia'
 
 const overlay: CSSProperties = {
@@ -104,10 +105,12 @@ export function BookVideoPlayer({
   videoId,
   title,
   variant = 'link',
-  label = '影片',
+  label,
   posterSrc,
   posterSrcSet,
 }: BookVideoPlayerProps) {
+  const { s } = useBookLocale()
+  const playLabel = label ?? s.video.playLabel
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -152,15 +155,15 @@ export function BookVideoPlayer({
             textDecoration: 'underline',
           }}
         >
-          ▶ {label}
+          ▶ {playLabel}
         </button>
       )}
 
       {open && (
         <div style={overlay} role="dialog" aria-modal="true" aria-label={title}>
-          <button type="button" style={backdrop} aria-label="關閉" onClick={() => setOpen(false)} />
+          <button type="button" style={backdrop} aria-label={s.video.close} onClick={() => setOpen(false)} />
           <div style={sheet}>
-            <button type="button" style={closeBtn} aria-label="關閉" onClick={() => setOpen(false)}>
+            <button type="button" style={closeBtn} aria-label={s.video.close} onClick={() => setOpen(false)}>
               ×
             </button>
             <div style={{ color: 'white', fontSize: 14, fontWeight: 600, marginBottom: 8, paddingRight: 36 }}>
@@ -180,7 +183,7 @@ export function BookVideoPlayer({
               style={fallbackLink}
               onClick={() => openYoutubeVideo(videoId)}
             >
-              若無法播放，改在 YouTube 開啟
+              {s.video.cantPlay}
             </button>
           </div>
         </div>

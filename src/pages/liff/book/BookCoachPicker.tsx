@@ -1,4 +1,5 @@
 import { triggerHaptic } from '../../../utils/haptic'
+import { useBookLocale } from './BookLocaleContext'
 import { chipBtn } from './bookStyles'
 import {
   designatedCoachPriceLabel,
@@ -19,12 +20,14 @@ export function BookCoachPicker({
   value,
   onChange,
 }: BookCoachPickerProps) {
+  const { s } = useBookLocale()
+  const cp = s.step3.coachPicker
   const visible = filterLiffBookCoaches(coaches, activity)
 
   if (visible.length === 0) {
     return (
       <div style={{ fontSize: 13, color: '#888', lineHeight: 1.5 }}>
-        目前無可指定的教練，請選「不指定」或聯繫小編。
+        {cp.empty}
       </div>
     )
   }
@@ -64,7 +67,7 @@ export function BookCoachPicker({
                 {priceLabel}
               </span>
             ) : (
-              <span style={{ fontSize: 12, opacity: 0.7 }}>請洽小編</span>
+              <span style={{ fontSize: 12, opacity: 0.7 }}>{cp.askStaff}</span>
             )}
           </button>
         )

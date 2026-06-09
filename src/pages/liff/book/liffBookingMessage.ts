@@ -1,12 +1,8 @@
 import { getOaId, isMobileDevice } from '../../shop/lib/lineDeepLink'
 import type { CoachOption, LiffBookingFormState } from './types'
 import type { Member } from '../types'
-import {
-  formatTimePreference,
-  activityDisplayName,
-  formatBeginnerCount,
-} from './liffBookingConfig'
-import { boatLayoutLabel } from './liffBookingBoats'
+import { BOOK_I18N, activityDisplayLabel, type BookLocale } from './liffBookingI18n'
+import { boatLayoutLabel, onBoatTotal } from './liffBookingBoats'
 import {
   computePriceEstimate,
   skillLabel,
@@ -21,10 +17,18 @@ export interface BookingInquiryPayload {
   stillTooLong: boolean
 }
 
-function formatDateFriendly(ymd: string): string {
+function formatDateFriendly(ymd: string, locale: BookLocale): string {
   const d = new Date(`${ymd}T12:00:00`)
-  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+  if (locale === 'en') {
+    return d.toLocaleDateString('en', { month: 'numeric', day: 'numeric', weekday: 'short' })
+  }
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六'] as const
   return `${d.getMonth() + 1}/${d.getDate()}（${weekdays[d.getDay()]}）`
+}
+
+function formatTimePreference(pref: LiffBookingFormState['preferredDates'][0]['timePreference'], locale: BookLocale): string {
+  const s = BOOK_I18N[locale].step3
+  return pref === 'morning' ? s.morning : s.afternoon
 }
 
 function buildOaMessageUrl(message: string): string {
@@ -36,58 +40,70 @@ export function renderBookingInquiryMessage(
   state: LiffBookingFormState,
   coaches: CoachOption[],
   estimate: PriceEstimate | null,
+  locale: BookLocale = 'zh',
 ): string {
+  const m = BOOK_I18N[locale].lineMessage
   const coach =
     state.coachChoice === 'designated' && state.coachId
       ? coaches.find(c => c.id === state.coachId)
       : null
 
-  const lines: string[] = ['🏄 預約需求', '']
+  const lines: string[] = [m.title, '']
 
-  lines.push(`預約人數：${state.headcount} 人`)
+  const peopleUnit = locale === 'zh' ? ' 人' : ''
+  lines.push(`${m.headcount}：${state.headcount}${peopleUnit}`)
   if (state.beginnerCount != null) {
-    lines.push(`幾位體驗：${formatBeginnerCount(state.beginnerCount)}`)
+    const ftLabel = locale === 'zh'
+      ? `${state.beginnerCount} 位體驗`
+      : `${state.beginnerCount} first-timer${state.beginnerCount > 1 ? 's' : ''}`
+    lines.push(`${m.firstTimeCount}：${ftLabel}`)
   }
-  lines.push(`預約項目：${state.activity ? activityDisplayName(state.activity) : '—'}`)
+  if (state.followBoatCount > 0) {
+    lines.push(`${m.followBoat}：${state.followBoatCount}${peopleUnit}`)
+    const aboard = onBoatTotal(state.headcount, state.followBoatCount)
+    lines.push(`${m.onBoatTotal}：${aboard}${peopleUnit}`)
+  }
+  lines.push(`${m.activity}：${state.activity ? activityDisplayLabel(state.activity, locale) : '—'}`)
   if (state.activity) {
-    lines.push(`船型：${boatLayoutLabel(state.activity, state.headcount, state.boatPreference)}`)
+    lines.push(`${m.boat}：${boatLayoutLabel(state.activity, state.headcount, state.boatPreference, locale, state.followBoatCount)}`)
   }
-  lines.push(`是否是第一次滑：${skillLabel(state.skillLevel)}`)
+  lines.push(`${m.firstTimeSkill}：${skillLabel(state.skillLevel, locale)}`)
 
-  lines.push('希望預約的日期及時間：')
+  lines.push(`${m.datesTitle}：`)
   if (state.preferredDates.length === 0) {
-    lines.push('  （尚未選擇）')
+    lines.push(`  ${m.noDates}`)
   } else {
     for (const pd of state.preferredDates) {
-      lines.push(`  - ${formatDateFriendly(pd.date)} ${formatTimePreference(pd.timePreference)}`)
+      lines.push(`  - ${formatDateFriendly(pd.date, locale)} ${formatTimePreference(pd.timePreference, locale)}`)
     }
   }
 
   if (coach) {
-    lines.push(`是否指定教練：希望指定 ${coach.name}`)
+    lines.push(m.coachDesignated(coach.name))
   } else if (state.coachChoice === 'designated') {
-    lines.push('是否指定教練：希望指定（未選教練）')
+    lines.push(m.coachDesignatedMissing)
   } else {
-    lines.push('是否指定教練：不指定，依排班')
+    lines.push(m.coachNone)
   }
 
   lines.push('')
-  lines.push(`姓名：${state.contactName.trim() || '—'}`)
-  lines.push(`電話：${state.contactPhone.trim() || '—'}`)
+  lines.push(`${m.name}：${state.contactName.trim() || '—'}`)
+  lines.push(`${m.phone}：${state.contactPhone.trim() || '—'}`)
 
   if (estimate) {
+    const refNote = locale === 'zh' ? '僅供參考' : 'estimate only'
     lines.push('')
-    lines.push(`費用估算：${estimate.totalLabel}（${estimate.tierLabel}，僅供參考）`)
+    lines.push(`${m.estimate}：${estimate.totalLabel}（${estimate.tierLabel}，${refNote}）`)
     lines.push(`${estimate.durationLabel}`)
   }
 
   if (state.notes.trim()) {
     lines.push('')
-    lines.push(`備註：${state.notes.trim()}`)
+    lines.push(`${m.notes}：${state.notes.trim()}`)
   }
 
   lines.push('')
-  lines.push('（此訊息由 ES WAKE 預約表單產生）')
+  lines.push(m.footer)
 
   return lines.join('\n')
 }
@@ -96,9 +112,10 @@ export function buildBookingInquiry(
   state: LiffBookingFormState,
   coaches: CoachOption[],
   member: Member | null,
+  locale: BookLocale = 'zh',
 ): BookingInquiryPayload {
-  const estimate = computePriceEstimate(state, coaches, member)
-  const message = renderBookingInquiryMessage(state, coaches, estimate)
+  const estimate = computePriceEstimate(state, coaches, member, locale)
+  const message = renderBookingInquiryMessage(state, coaches, estimate, locale)
   const url = buildOaMessageUrl(message)
   return {
     url,
@@ -117,9 +134,4 @@ export function launchBookingInquiry(payload: BookingInquiryPayload): BookingInq
     return { mode: 'mobile-deeplink' }
   }
   return { mode: 'desktop-fallback', message: payload.message }
-}
-
-export function activityLabelForMessage(code: LiffBookingFormState['activity']): string {
-  if (!code) return '—'
-  return activityDisplayName(code)
 }

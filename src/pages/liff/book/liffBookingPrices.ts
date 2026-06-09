@@ -55,6 +55,14 @@ export const OFFICIAL_PRICE_SECTIONS: OfficialPriceSection[] = [
   },
 ]
 
+/** 跟船：第 1 位免費，第 2 位起每位 */
+export const FOLLOW_BOAT_EXTRA_PER_PERSON = 300
+
+export function followBoatFee(count: number): number {
+  if (count <= 1) return 0
+  return (count - 1) * FOLLOW_BOAT_EXTRA_PER_PERSON
+}
+
 export const FIRST_TIME_WB_SMALL = 1700
 /** G21、黑豹大船：WB 與 WS 初次體驗同價 */
 export const FIRST_TIME_BIG_BOAT = 2500

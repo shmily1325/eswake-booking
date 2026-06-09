@@ -20,6 +20,8 @@ export interface LiffBookingFormState {
   headcount: number
   /** 幾位初學（0～headcount） */
   beginnerCount: number | null
+  /** 跟船人數（不滑水、僅跟船；第 1 位免費） */
+  followBoatCount: number
   coachChoice: CoachChoice
   coachId: string | null
   preferredDates: PreferredDate[]

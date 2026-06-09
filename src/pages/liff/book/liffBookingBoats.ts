@@ -1,3 +1,4 @@
+import type { BookLocale } from './liffBookingI18n'
 import type { ActivityChoice, ActivityCode, BoatPreference } from './types'
 
 export type BoatTier = 'small' | 'big'
@@ -12,6 +13,11 @@ export const BOAT_BIG_DUAL_MIN = BOAT_BIG_MAX + 1
 
 /** 表單人數上限（2 艘小船） */
 export const BOOKING_HEADCOUNT_MAX = BOAT_SMALL_MAX * 2
+
+/** 船上總人數（滑水 + 跟船，跟船占座位） */
+export function onBoatTotal(riders: number, followBoat = 0): number {
+  return riders + followBoat
+}
 
 /** Step 2 寬板選船（偏好／價位，不依人數配船） */
 export const STEP1_BOAT_COPY = {
@@ -105,29 +111,45 @@ export function boatTierLabel(tier: BoatTier): string {
   return tier === 'small' ? '小船' : '大船'
 }
 
-/** 顯示／LINE 訊息用船型文案 */
+const BOAT_LAYOUT_LABEL: Record<BookLocale, Record<'2big' | 'big' | '2small' | 'small', string>> = {
+  zh: { '2big': '2 艘大船', big: '大船', '2small': '2 艘小船', small: '小船' },
+  en: { '2big': '2 big boats', big: 'Big boat', '2small': '2 small boats', small: 'Small boat' },
+}
+
+function boatLayoutKey(
+  activity: ActivityChoice,
+  aboard: number,
+  boatPreference: BoatPreference | null,
+): keyof typeof BOAT_LAYOUT_LABEL.zh {
+  if (usesDualBigBoats(activity, aboard, boatPreference)) return '2big'
+  if (activity === 'WS' || activity === 'BOTH') return 'big'
+  if (boatPreference === 'big') return 'big'
+  if (aboard >= BOAT_SMALL_DUAL_MIN) return '2small'
+  return 'small'
+}
+
+/** 顯示／LINE 訊息用船型文案（座位判斷含跟船） */
 export function boatLayoutLabel(
   activity: ActivityChoice,
-  headcount: number,
+  riders: number,
   boatPreference: BoatPreference | null,
+  locale: BookLocale = 'zh',
+  followBoat = 0,
 ): string {
-  if (usesDualBigBoats(activity, headcount, boatPreference)) return '2 艘大船'
-  if (activity === 'WS' || activity === 'BOTH') return '大船'
-  if (boatPreference === 'big') return '大船'
-  if (headcount >= BOAT_SMALL_DUAL_MIN) return '2 艘小船'
-  return '小船'
+  const aboard = onBoatTotal(riders, followBoat)
+  return BOAT_LAYOUT_LABEL[locale][boatLayoutKey(activity, aboard, boatPreference)]
 }
 
 export function activityBoatNote(activity: ActivityChoice): string {
   if (activity === 'WS') return `僅大船 · ${BOAT_BIG_MAX} 人/艘 · 11+ 兩艘`
-  if (activity === 'BOTH') return `固定大船 · 兩項`
+  if (activity === 'BOTH') return `固定大船 · 混合梯次`
   return '小船或大船 · 依偏好'
 }
 
 /** Step 1 項目 chip（僅活動） */
 export function step1ActivityChip(activity: ActivityCode | 'BOTH'): string {
   if (activity === 'WS') return '固定大船'
-  if (activity === 'BOTH') return '固定大船 · 兩項'
+  if (activity === 'BOTH') return '固定大船 · 混合梯次'
   return '小船或大船 · 依偏好'
 }
 
@@ -136,21 +158,30 @@ export function step1BoatChip(activity: ActivityCode | 'BOTH'): string {
   return step1ActivityChip(activity)
 }
 
-export function wbNeedsLargeGroupBoatChoice(activity: ActivityChoice | null, headcount: number): boolean {
-  return activity === 'WB' && headcount >= BOAT_SMALL_DUAL_MIN
+export function wbNeedsLargeGroupBoatChoice(
+  activity: ActivityChoice | null,
+  riders: number,
+  followBoat = 0,
+): boolean {
+  return activity === 'WB' && onBoatTotal(riders, followBoat) >= BOAT_SMALL_DUAL_MIN
 }
 
 /** Step 2：依目前選項顯示會用哪種船 */
 export function describeBoatForBooking(
   activity: ActivityChoice,
-  headcount: number,
+  riders: number,
   boatPreference: BoatPreference | null = null,
+  followBoat = 0,
 ): string {
-  const layout = boatLayoutLabel(activity, headcount, boatPreference)
+  const aboard = onBoatTotal(riders, followBoat)
+  const layout = boatLayoutLabel(activity, riders, boatPreference, 'zh', followBoat)
   if (activity === 'BOTH') {
-    return `${layout}（兩個一起 · ${headcount} 人）`
+    return `${layout}（混合梯次 · 船上 ${aboard} 人）`
   }
-  return `${layout}（${headcount} 人）`
+  if (followBoat > 0) {
+    return `${layout}（船上 ${aboard} 人 · ${riders} 滑 + ${followBoat} 跟）`
+  }
+  return `${layout}（${riders} 人）`
 }
 
 export function isHeadcountValid(activity: ActivityChoice, headcount: number): boolean {

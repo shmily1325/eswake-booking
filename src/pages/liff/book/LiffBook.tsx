@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { getLocalDateString } from '../../../utils/date'
+import { buildAllDayBlockedDates } from './liffBookingDates'
 import { triggerHaptic } from '../../../utils/haptic'
 import { useLiffMember } from '../useLiffMember'
 import { ErrorView, LiffStyles } from '../components'
@@ -9,12 +9,15 @@ import { BookPageStyles } from './BookPageStyles'
 import { BookBindingGate } from './BookBindingGate'
 import { BookEssentialsPanel } from './BookEssentialsPanel'
 import { BookEstimateCard } from './BookEstimateCard'
+import { BookFollowBoatPanel } from './BookFollowBoatPanel'
 import { BookStepHeader } from './BookStepHeader'
 import { BookContextTips } from './BookContextTips'
 import { BookBoatPicker } from './BookBoatPicker'
 import { BookStaffHint } from './BookStaffHint'
 import { BookDateCalendar } from './BookDateCalendar'
 import { BookCoachPicker } from './BookCoachPicker'
+import { BookLocaleProvider, useBookLocale } from './BookLocaleContext'
+import { activityTitleLabel } from './liffBookingI18n'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import type {
   CoachOption,
@@ -23,21 +26,17 @@ import type {
 } from './types'
 import {
   beginnerCountOptions,
-  formatExperienceSummary,
   HEADCOUNT_OPTIONS,
   MAX_PREFERRED_DATES,
   syncBookingPeople,
   TIME_PREFERENCE_OPTIONS,
   getActivityInfo,
   isBothActivities,
-  BOTH_ACTIVITY_SHORT,
   isLiffBookEnabled,
   syncActivityChoice,
-  BEGINNER_LESSON_NOTE,
   resolveLiffBookId,
 } from './liffBookingConfig'
-import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
-import { boatLayoutLabel, wbNeedsLargeGroupBoatChoice } from './liffBookingBoats'
+import { boatLayoutLabel, onBoatTotal, wbNeedsLargeGroupBoatChoice } from './liffBookingBoats'
 import { bookMemberRate } from './liffBookingPrices'
 import { computePriceEstimate } from './liffBookingPricing'
 import { designatedCoachPrice20 } from './liffBookingCoaches'
@@ -57,12 +56,7 @@ import {
 import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
-import {
-  NOTES_PLACEHOLDER,
-  OFFICIAL_INFO_URL,
-  STEP3_SCHEDULE_NOTE,
-  STEP4_CONFIRM_NOTE,
-} from './liffBookingContent'
+import { OFFICIAL_INFO_URL } from './liffBookingContent'
 
 const INITIAL_STATE: LiffBookingFormState = {
   activity: null,
@@ -76,15 +70,17 @@ const INITIAL_STATE: LiffBookingFormState = {
   contactName: '',
   contactPhone: '',
   notes: '',
+  followBoatCount: 0,
 }
 
 function NotEnabledView() {
+  const { s } = useBookLocale()
   return (
     <div style={{ ...bookPage, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ ...bookCard, maxWidth: 360, textAlign: 'center' }}>
         <div style={{ fontSize: 40, marginBottom: 12, fontWeight: 700, color: '#444' }}>ES</div>
-        <h1 style={{ fontSize: 18, margin: '0 0 8px' }}>預約表單尚未開放</h1>
-        <p style={{ fontSize: 14, color: '#666', margin: 0 }}>請繼續使用 LINE 官方帳號填寫預約資訊。</p>
+        <h1 style={{ fontSize: 18, margin: '0 0 8px' }}>{s.notEnabled.title}</h1>
+        <p style={{ fontSize: 14, color: '#666', margin: 0 }}>{s.notEnabled.body}</p>
       </div>
     </div>
   )
@@ -92,6 +88,15 @@ function NotEnabledView() {
 
 export function LiffBook() {
   useRouteDocumentMeta(ROUTE_OG_BY_PATH['/liff/book'])
+  return (
+    <BookLocaleProvider>
+      <LiffBookInner />
+    </BookLocaleProvider>
+  )
+}
+
+function LiffBookInner() {
+  const { locale, s } = useBookLocale()
 
   const {
     loading: liffLoading,
@@ -150,19 +155,11 @@ export function LiffBook() {
       try {
         const [coachRes, restrictRes] = await Promise.all([
           supabase.from('coaches').select('id, name, designated_lesson_price_30min').eq('status', 'active').order('name'),
-          supabase.from('reservation_restrictions').select('start_date, end_date, is_active').eq('is_active', true),
+          supabase.from('reservation_restrictions').select('start_date, end_date, start_time, end_time, is_active').eq('is_active', true),
         ])
         if (cancelled) return
         setCoaches(coachRes.data ?? [])
-        const blocked = new Set<string>()
-        for (const r of restrictRes.data ?? []) {
-          const d0 = new Date(`${r.start_date}T12:00:00`)
-          const d1 = new Date(`${r.end_date}T12:00:00`)
-          for (let d = new Date(d0); d <= d1; d.setDate(d.getDate() + 1)) {
-            blocked.add(getLocalDateString(d))
-          }
-        }
-        setBlockedDates(blocked)
+        setBlockedDates(buildAllDayBlockedDates(restrictRes.data ?? []))
       } catch {
         // 估算可 fallback，不阻擋流程
       }
@@ -171,9 +168,12 @@ export function LiffBook() {
     return () => { cancelled = true }
   }, [])
 
-  const estimate = useMemo(() => computePriceEstimate(form, coaches, member), [form, coaches, member])
+  const estimate = useMemo(
+    () => computePriceEstimate(form, coaches, member, locale),
+    [form, coaches, member, locale],
+  )
 
-  const totalSteps = BOOKING_WIZARD_STEPS.length
+  const totalSteps = s.steps.length
 
   const commitSchedule = (): LiffBookingFormState['preferredDates'] => {
     if (!pickDate) return form.preferredDates
@@ -227,9 +227,9 @@ export function LiffBook() {
   const handleSubmit = () => {
     if (!canNext()) return
     triggerHaptic('medium')
-    const payload = buildBookingInquiry(form, coaches, member)
+    const payload = buildBookingInquiry(form, coaches, member, locale)
     if (payload.stillTooLong) {
-      alert('訊息過長，請精簡備註後再試')
+      alert(locale === 'en' ? 'Message too long — shorten notes and try again.' : '訊息過長，請精簡備註後再試')
       return
     }
     liffTrack({ icon_id: 'liff_book_submit', line_user_id: lineUserId, member_id: member?.id })
@@ -254,10 +254,14 @@ export function LiffBook() {
   const selectedActivity =
     form.activity && !isBothActivities(form.activity) ? getActivityInfo(form.activity) : null
   const memberRate = bookMemberRate(member?.membership_type)
-  const nextLabel = step === totalSteps ? '用 LINE 送出' : step === 3 ? '確認' : '下一步'
+  const nextLabel = step === totalSteps
+    ? s.footer.submitLine
+    : step === 3
+      ? s.footer.confirm
+      : s.footer.next
 
   const headerPriceText = estimate && step >= 2
-    ? `約 ${estimate.totalLabel}`
+    ? `${s.estimate.about} ${estimate.totalLabel}`
     : null
 
   return (
@@ -284,7 +288,7 @@ export function LiffBook() {
         {step === 2 && (
           <div style={bookCard}>
             <div style={{ marginBottom: 20 }}>
-              <div style={fieldLabel}>幾人</div>
+              <div style={fieldLabel}>{s.step2.headcount}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {HEADCOUNT_OPTIONS.map(n => (
                   <button
@@ -303,9 +307,9 @@ export function LiffBook() {
             {form.activity === 'WB' && (
               <div style={{ marginBottom: 20 }}>
                 <BookBoatPicker
-                  variant={wbNeedsLargeGroupBoatChoice(form.activity, form.headcount) ? 'largeGroup' : 'step1'}
+                  variant={wbNeedsLargeGroupBoatChoice(form.activity, form.headcount, form.followBoatCount) ? 'largeGroup' : 'step1'}
                   value={form.boatPreference}
-                  headcount={form.headcount}
+                  headcount={onBoatTotal(form.headcount, form.followBoatCount)}
                   onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
                 />
               </div>
@@ -314,7 +318,7 @@ export function LiffBook() {
             <div>
               {form.headcount === 1 ? (
                 <>
-                  <div style={fieldLabel}>是否為體驗／第一次</div>
+                  <div style={fieldLabel}>{s.step2.experienceSingle}</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       type="button"
@@ -322,8 +326,8 @@ export function LiffBook() {
                       style={{ ...chipBtn(form.beginnerCount === 1), flex: 1, padding: '10px 0' }}
                       onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
                     >
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>體驗</div>
-                      <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{BEGINNER_LESSON_NOTE}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{s.step2.firstTime}</div>
+                      <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{s.step2.firstTimeNote}</div>
                     </button>
                     <button
                       type="button"
@@ -331,14 +335,14 @@ export function LiffBook() {
                       style={{ ...chipBtn(form.beginnerCount === 0), flex: 1, padding: '10px 0' }}
                       onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
                     >
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>已經滑過</div>
-                      <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>20 分鐘計價</div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{s.step2.experienced}</div>
+                      <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>{s.step2.experiencedNote}</div>
                     </button>
                   </div>
                 </>
               ) : (
                 <>
-                  <div style={fieldLabel}>其中幾位是體驗／第一次</div>
+                  <div style={fieldLabel}>{s.step2.experienceMulti}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {beginnerCountOptions(form.headcount).map(n => (
                       <button
@@ -348,13 +352,19 @@ export function LiffBook() {
                         style={chipBtn(form.beginnerCount === n)}
                         onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: n }) }))}
                       >
-                        {n === form.headcount ? '全部體驗' : n === 0 ? '無體驗' : `${n} 位體驗`}
+                        {n === form.headcount ? s.step2.allFirstTime : n === 0 ? s.step2.noneFirstTime : s.step2.nFirstTime(n)}
                       </button>
                     ))}
                   </div>
                 </>
               )}
             </div>
+
+            <BookFollowBoatPanel
+              riders={form.headcount}
+              value={form.followBoatCount}
+              onChange={count => setForm(prev => ({ ...prev, followBoatCount: count }))}
+            />
 
             {estimate && <BookEstimateCard estimate={estimate} />}
 
@@ -371,7 +381,7 @@ export function LiffBook() {
               onChange={setPickDate}
             />
 
-            <div style={{ ...fieldLabel, marginTop: 16 }}>時段</div>
+            <div style={{ ...fieldLabel, marginTop: 16 }}>{s.step3.timeSlot}</div>
             <div style={{ display: 'flex', gap: 8 }}>
               {TIME_PREFERENCE_OPTIONS.map(opt => (
                 <button
@@ -381,11 +391,11 @@ export function LiffBook() {
                   style={{ ...chipBtn(pickTimePref === opt.value), flex: 1, padding: '12px 0' }}
                   onClick={() => setPickTimePref(opt.value)}
                 >
-                  {opt.label}
+                  {opt.value === 'morning' ? s.step3.morning : s.step3.afternoon}
                 </button>
               ))}
             </div>
-            <div style={fieldHint}>{STEP3_SCHEDULE_NOTE}</div>
+            <div style={fieldHint}>{s.step3.scheduleNote}</div>
 
             {!showCoachSection ? (
               <div style={{ marginTop: 16 }}>
@@ -397,12 +407,12 @@ export function LiffBook() {
                     color: '#888', fontSize: 13, cursor: 'pointer', textDecoration: 'underline',
                   }}
                 >
-                  ＋ 指定教練（選填 · 8 點前需指定）
+                  {s.step3.addCoach}
                 </button>
               </div>
             ) : (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-                <div style={{ ...fieldLabel, marginBottom: 8 }}>指定教練</div>
+                <div style={{ ...fieldLabel, marginBottom: 8 }}>{s.step3.designateCoach}</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   <button
                     type="button"
@@ -410,7 +420,7 @@ export function LiffBook() {
                     style={{ ...chipBtn(form.coachChoice === 'none'), flex: 1 }}
                     onClick={() => setForm(prev => ({ ...prev, coachChoice: 'none', coachId: null }))}
                   >
-                    不指定
+                    {s.step3.coachNone}
                   </button>
                   <button
                     type="button"
@@ -418,7 +428,7 @@ export function LiffBook() {
                     style={{ ...chipBtn(form.coachChoice === 'designated'), flex: 1 }}
                     onClick={() => setForm(prev => ({ ...prev, coachChoice: 'designated' }))}
                   >
-                    指定
+                    {s.step3.coachYes}
                   </button>
                 </div>
                 {form.coachChoice === 'designated' && (
@@ -443,74 +453,80 @@ export function LiffBook() {
               {isBothActivities(form.activity) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <BookBothIcons size={32} style={{ margin: 0 }} />
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>{BOTH_ACTIVITY_SHORT}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>{s.step1.bothShort}</div>
                 </div>
               ) : selectedActivity ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <BookActivityIcon code={selectedActivity.code} size={40} style={{ margin: 0 }} />
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>{selectedActivity.labelZh}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>{activityTitleLabel(selectedActivity.code, locale)}</div>
                 </div>
               ) : null}
               <div style={{ fontSize: 14, lineHeight: 1.9, color: '#444' }}>
-                <div>{form.headcount} 人 · {formatExperienceSummary(form.headcount, form.beginnerCount)}</div>
+                <div>
+                  {form.headcount} {s.step4.people} · {s.step2.experienceSummary(form.headcount, form.beginnerCount)}
+                  {form.followBoatCount > 0 ? ` · ${s.step4.followBoatSummary(form.followBoatCount)}` : ''}
+                </div>
+                {form.followBoatCount > 0 ? (
+                  <div>{s.step4.onBoatTotal}：{s.step4.onBoatTotalSummary(form.headcount, form.followBoatCount)}</div>
+                ) : null}
                 {form.activity ? (
-                  <div>船型：{boatLayoutLabel(form.activity, form.headcount, form.boatPreference)}</div>
+                  <div>{s.step4.boat}: {boatLayoutLabel(form.activity, form.headcount, form.boatPreference, locale, form.followBoatCount)}</div>
                 ) : null}
                 <div>
                   {(form.preferredDates.length ? form.preferredDates : commitSchedule()).map(p =>
-                    `${p.date.slice(5).replace('-', '/')} ${TIME_PREFERENCE_OPTIONS.find(o => o.value === p.timePreference)?.label}`,
-                  ).join('、')}
+                    `${p.date.slice(5).replace('-', '/')} ${p.timePreference === 'morning' ? s.step3.morning : s.step3.afternoon}`,
+                  ).join(locale === 'zh' ? '、' : ', ')}
                 </div>
                 <div>
-                  教練：{form.coachChoice === 'designated' ? coaches.find(c => c.id === form.coachId)?.name ?? '—' : '不指定'}
+                  {s.step4.coach}: {form.coachChoice === 'designated' ? coaches.find(c => c.id === form.coachId)?.name ?? '—' : s.step4.coachNone}
                 </div>
               </div>
               {estimate && (
                 <>
                   <BookEstimateCard estimate={estimate} defaultExpanded />
                   <p style={{ fontSize: 11, color: '#999', margin: '8px 0 0', lineHeight: 1.5 }}>
-                    {STEP4_CONFIRM_NOTE}
+                    {s.step4.confirmNote}
                   </p>
                 </>
               )}
             </div>
 
             <p style={{ fontSize: 12, color: '#888', margin: '0 0 10px', lineHeight: 1.5, textAlign: 'center' }}>
-              送出後小編會在 LINE 回覆確認，尚未保留時段
+              {s.step4.submitHint}
             </p>
 
             <div style={bookCard}>
-              <div style={fieldLabel}>姓名與電話</div>
+              <div style={fieldLabel}>{s.step4.contact}</div>
               <input
                 value={form.contactName}
                 onChange={e => setForm(prev => ({ ...prev, contactName: e.target.value }))}
-                placeholder="姓名"
+                placeholder={s.step4.namePh}
                 style={{ ...bookInput, marginBottom: 10 }}
               />
               <input
                 type="tel"
                 value={form.contactPhone}
                 onChange={e => setForm(prev => ({ ...prev, contactPhone: e.target.value }))}
-                placeholder="電話"
+                placeholder={s.step4.phonePh}
                 style={{ ...bookInput, marginBottom: 10 }}
               />
               <input
                 value={form.notes}
                 onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder={NOTES_PLACEHOLDER}
+                placeholder={form.activity === 'BOTH' ? s.step4.notesPhBoth : s.step4.notesPh}
                 style={bookInput}
               />
             </div>
 
             <p style={{ fontSize: 11, color: '#aaa', textAlign: 'center', margin: '10px 0 0' }}>
               <a href={OFFICIAL_INFO_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#999' }}>
-                穿著建議與交通方式 →
+                {s.step4.attireLink}
               </a>
             </p>
 
             {desktopMessage && (
               <div style={bookCard}>
-                <p style={{ fontSize: 13, margin: '0 0 8px' }}>請複製訊息到 LINE 官方帳號：</p>
+                <p style={{ fontSize: 13, margin: '0 0 8px' }}>{s.step4.desktopCopy}</p>
                 <textarea readOnly value={desktopMessage} rows={6} style={{ width: '100%', fontSize: 13, boxSizing: 'border-box' }} />
               </div>
             )}
@@ -522,7 +538,7 @@ export function LiffBook() {
 
       <footer style={stickyFooter}>
         {step > 1 && (
-          <button type="button" style={secondaryBtn} onClick={goBack}>返回</button>
+          <button type="button" style={secondaryBtn} onClick={goBack}>{s.footer.back}</button>
         )}
         {step < totalSteps ? (
           <button
@@ -542,7 +558,7 @@ export function LiffBook() {
             disabled={!canNext()}
             onClick={handleSubmit}
           >
-            用 LINE 送出
+            {s.footer.submitLine}
           </button>
         )}
       </footer>

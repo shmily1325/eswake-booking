@@ -1,4 +1,4 @@
-import { BOOKING_WIZARD_STEPS } from './liffBookingSteps'
+import { BookLocaleToggle, useBookLocale } from './BookLocaleContext'
 import { bookHeader, progressBar, progressFill } from './bookStyles'
 
 interface BookStepHeaderProps {
@@ -8,42 +8,47 @@ interface BookStepHeaderProps {
 }
 
 export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderProps) {
-  const total = BOOKING_WIZARD_STEPS.length
-  const meta = BOOKING_WIZARD_STEPS[step - 1]
+  const { s } = useBookLocale()
+  const total = s.steps.length
+  const meta = s.steps[step - 1]
   const progressPct = (step / total) * 100
 
   return (
     <header style={bookHeader}>
       <div style={{
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
         marginBottom: 14,
+        gap: 8,
       }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.75, letterSpacing: '0.06em' }}>
-            ES WAKE
+            {s.header.brand}
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2, lineHeight: 1.2 }}>
-            線上預約
+            {s.header.title}
           </div>
         </div>
-        <img
-          src="/logo_circle (white).png"
-          alt=""
-          width={36}
-          height={36}
-          style={{ objectFit: 'contain', opacity: 0.95 }}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+          <BookLocaleToggle />
+          <img
+            src="/logo_circle (white).png"
+            alt=""
+            width={36}
+            height={36}
+            style={{ objectFit: 'contain', opacity: 0.95 }}
+          />
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        {BOOKING_WIZARD_STEPS.map(s => {
-          const done = s.id < step
-          const active = s.id === step
+        {s.steps.map(st => {
+          const done = st.id < step
+          const active = st.id === step
           return (
             <div
-              key={s.id}
+              key={st.id}
               style={{
                 flex: 1,
                 textAlign: 'center',
@@ -60,7 +65,7 @@ export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderPr
                 boxShadow: active ? 'inset 0 0 0 1px rgba(255,255,255,0.15)' : 'none',
               }}
             >
-              {s.pill}
+              {st.pill}
             </div>
           )
         })}
@@ -80,7 +85,7 @@ export function BookStepHeader({ step, priceHint, memberHint }: BookStepHeaderPr
         </div>
       )}
       {memberHint && (
-        <div style={{ fontSize: 11, opacity: 0.75, marginTop: 4 }}>會員價估算</div>
+        <div style={{ fontSize: 11, opacity: 0.75, marginTop: 4 }}>{s.header.memberRateHint}</div>
       )}
     </header>
   )

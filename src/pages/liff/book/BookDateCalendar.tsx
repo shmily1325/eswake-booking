@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
+import { useBookLocale } from './BookLocaleContext'
 import { fieldHint } from './bookStyles'
 import {
   bookingLastDate,
   buildMonthGrid,
   classifyBookingDate,
   monthBookability,
-  monthLabel,
 } from './liffBookingDates'
 
 interface BookDateCalendarProps {
@@ -15,9 +15,14 @@ interface BookDateCalendarProps {
   onChange: (ymd: string) => void
 }
 
-const WEEK_HEADER = ['日', '一', '二', '三', '四', '五', '六'] as const
+const WEEK_HEADER_EN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const
+const WEEK_HEADER_ZH = ['日', '一', '二', '三', '四', '五', '六'] as const
 
 export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCalendarProps) {
+  const { locale, s } = useBookLocale()
+  const cal = s.step3.calendar
+  const weekHeader = locale === 'en' ? WEEK_HEADER_EN : WEEK_HEADER_ZH
+
   const today = useMemo(() => new Date(), [])
   const [viewYear, setViewYear] = useState(() => {
     const base = value ? new Date(`${value}T12:00:00`) : today
@@ -30,7 +35,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
 
   const bookability = monthBookability(viewYear, viewMonth, today)
   const grid = buildMonthGrid(viewYear, viewMonth)
-  const lastBookable = bookingLastDate(today)
+  const lastBookable = bookingLastDate(today).replace(/-/g, '/')
 
   const shiftMonth = (delta: number) => {
     const d = new Date(viewYear, viewMonth + delta, 1)
@@ -55,6 +60,13 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
     onChange(ymd)
   }
 
+  const statusTitle = (status: ReturnType<typeof classifyBookingDate>) => {
+    if (status === 'closed') return cal.closed
+    if (status === 'blocked') return cal.blocked
+    if (status === 'past') return cal.past
+    return undefined
+  }
+
   return (
     <div>
       <div style={{
@@ -68,19 +80,19 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
           disabled={!canPrev}
           onClick={() => shiftMonth(-1)}
           style={navBtn(!canPrev)}
-          aria-label="上個月"
+          aria-label={cal.prevMonth}
         >
           ‹
         </button>
         <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>
-          {monthLabel(viewYear, viewMonth)}
+          {cal.monthLabel(viewYear, viewMonth)}
         </div>
         <button
           type="button"
           disabled={!canNext}
           onClick={() => shiftMonth(1)}
           style={navBtn(!canNext)}
-          aria-label="下個月"
+          aria-label={cal.nextMonth}
         >
           ›
         </button>
@@ -96,7 +108,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
           background: '#f5f5f5',
           borderRadius: 10,
         }}>
-          尚未開放預約
+          {cal.notOpen}
         </div>
       )}
 
@@ -106,8 +118,8 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
         gap: 4,
         textAlign: 'center',
       }}>
-        {WEEK_HEADER.map(wd => (
-          <div key={wd} style={{ fontSize: 11, fontWeight: 600, color: '#999', padding: '4px 0' }}>
+        {weekHeader.map((wd, i) => (
+          <div key={`${wd}-${i}`} style={{ fontSize: 11, fontWeight: 600, color: '#999', padding: '4px 0' }}>
             {wd}
           </div>
         ))}
@@ -138,11 +150,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 padding: 0,
               }}
-              title={
-                status === 'closed' ? '尚未開放' :
-                status === 'blocked' ? '不可預約' :
-                status === 'past' ? '已過期' : undefined
-              }
+              title={statusTitle(status)}
             >
               {dayNum}
             </button>
@@ -151,7 +159,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
       </div>
 
       <div style={{ ...fieldHint, marginTop: 10, textAlign: 'center' }}>
-        可預約至 {lastBookable.replace(/-/g, '/')}
+        {cal.bookUntil(lastBookable)}
       </div>
     </div>
   )

@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useBookLocale } from './BookLocaleContext'
 import { bookPage } from './bookStyles'
 import { BOOK_THEME as T } from './bookTheme'
 
 export type BookBootPhase = 'chunk' | 'init' | 'login'
-
-const PHASE_LABEL: Record<BookBootPhase, string> = {
-  chunk: '載入預約表單…',
-  init: '正在啟動…',
-  login: '正在連接 LINE…',
-}
 
 interface BookBootScreenProps {
   phase?: BookBootPhase
@@ -16,8 +11,11 @@ interface BookBootScreenProps {
 }
 
 export function BookBootScreen({ phase = 'init', onRetry }: BookBootScreenProps) {
+  const { s } = useBookLocale()
   const [slow, setSlow] = useState(false)
   const [stuck, setStuck] = useState(false)
+
+  const phaseLabel = phase === 'login' ? s.boot.login : s.boot.init
 
   useEffect(() => {
     const slowTimer = window.setTimeout(() => setSlow(true), 5000)
@@ -46,7 +44,7 @@ export function BookBootScreen({ phase = 'init', onRetry }: BookBootScreenProps)
         style={{ objectFit: 'contain', marginBottom: 20, opacity: 0.9 }}
       />
       <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, marginBottom: 8 }}>
-        ES WAKE 線上預約
+        {s.header.brand} {s.header.title}
       </div>
       <div style={{
         width: 28,
@@ -58,17 +56,17 @@ export function BookBootScreen({ phase = 'init', onRetry }: BookBootScreenProps)
         marginBottom: 14,
       }} />
       <div style={{ fontSize: 14, color: T.muted, lineHeight: 1.5 }}>
-        {PHASE_LABEL[phase]}
+        {phaseLabel}
       </div>
       {slow && !stuck && (
         <div style={{ fontSize: 12, color: T.mutedLight, marginTop: 10, lineHeight: 1.5 }}>
-          網路較慢，請稍候…
+          {s.boot.slow}
         </div>
       )}
       {stuck && (
         <div style={{ marginTop: 16, maxWidth: 280 }}>
           <div style={{ fontSize: 12, color: T.muted, marginBottom: 12, lineHeight: 1.55 }}>
-            載入時間較久。請重新整理，或關閉後再點一次連結。
+            {s.boot.stuck}
           </div>
           <button
             type="button"
@@ -84,7 +82,7 @@ export function BookBootScreen({ phase = 'init', onRetry }: BookBootScreenProps)
               cursor: 'pointer',
             }}
           >
-            重新整理
+            {s.boot.retry}
           </button>
         </div>
       )}

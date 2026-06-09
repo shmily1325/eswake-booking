@@ -1,5 +1,26 @@
 import { getLocalDateString } from '../../../utils/date'
 
+export interface RestrictionDateRow {
+  start_date: string
+  end_date: string
+  start_time: string | null
+  end_time: string | null
+}
+
+/** 僅「全天不約船」公告（start_time／end_time 皆空）才擋日期；部分時段不擋 */
+export function buildAllDayBlockedDates(restrictions: RestrictionDateRow[]): Set<string> {
+  const blocked = new Set<string>()
+  for (const r of restrictions) {
+    if (r.start_time || r.end_time) continue
+    const d0 = new Date(`${r.start_date}T12:00:00`)
+    const d1 = new Date(`${r.end_date}T12:00:00`)
+    for (let d = new Date(d0); d <= d1; d.setDate(d.getDate() + 1)) {
+      blocked.add(getLocalDateString(d))
+    }
+  }
+  return blocked
+}
+
 /** 可預約截止日：當月 1 日起可約到「次月底」（例：6/1～7/31） */
 export function bookingLastDate(today: Date = new Date()): string {
   const y = today.getFullYear()

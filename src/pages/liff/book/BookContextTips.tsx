@@ -1,7 +1,7 @@
+import { useBookLocale } from './BookLocaleContext'
 import { infoBox, warnBox } from './bookStyles'
 import type { LiffBookingFormState, TimePreference } from './types'
-import { BOAT_COMFORT_NOTE, BOAT_DUAL_BIG_NOTE, BOOKING_REMINDERS } from './liffBookingReminders'
-import { BOAT_BIG_DUAL_MIN } from './liffBookingBoats'
+import { BOAT_BIG_DUAL_MIN, BOAT_SMALL_DUAL_MIN, onBoatTotal, usesBigBoat } from './liffBookingBoats'
 
 interface BookContextTipsProps {
   step: 2 | 3 | 4
@@ -9,9 +9,9 @@ interface BookContextTipsProps {
   pickTimePref: TimePreference
 }
 
-/** 每步最多一條補充說明；其餘靠選項與 chip 傳達 */
 export function BookContextTips({ step, form, pickTimePref }: BookContextTipsProps) {
-  const tip = resolveContextTip(step, form, pickTimePref)
+  const { s } = useBookLocale()
+  const tip = resolveContextTip(step, form, pickTimePref, s)
   if (!tip) return null
 
   return (
@@ -33,19 +33,39 @@ function resolveContextTip(
   step: 2 | 3 | 4,
   form: LiffBookingFormState,
   pickTimePref: TimePreference,
+  s: ReturnType<typeof useBookLocale>['s'],
 ): { text: string; tone: 'info' | 'warn' } | null {
-  const earlyCoach = BOOKING_REMINDERS.find(r => r.id === 'early-coach')!.text
-
-  if (step === 2 && form.headcount >= BOAT_BIG_DUAL_MIN) {
-    return { text: BOAT_DUAL_BIG_NOTE, tone: 'info' }
+  if (
+    step === 2
+    && form.beginnerCount != null
+    && form.beginnerCount > 0
+    && form.beginnerCount < form.headcount
+  ) {
+    return { text: s.step2.mixedSkillHint, tone: 'info' }
   }
 
-  if (step === 2 && form.headcount > 8) {
-    return { text: BOAT_COMFORT_NOTE, tone: 'info' }
+  if (step === 2 && form.activity) {
+    const aboard = onBoatTotal(form.headcount, form.followBoatCount)
+
+    if (
+      form.activity === 'WB'
+      && form.boatPreference === 'small'
+      && aboard >= BOAT_SMALL_DUAL_MIN
+    ) {
+      return { text: s.reminders.dualSmall, tone: 'info' }
+    }
+
+    if (aboard >= BOAT_BIG_DUAL_MIN && usesBigBoat(form.activity, form.boatPreference)) {
+      return { text: s.reminders.dualBig, tone: 'info' }
+    }
+
+    if (aboard > 8 && usesBigBoat(form.activity, form.boatPreference)) {
+      return { text: s.reminders.comfort, tone: 'info' }
+    }
   }
 
   if ((step === 3 || step === 4) && (pickTimePref === 'morning' || form.coachChoice === 'designated')) {
-    return { text: earlyCoach, tone: 'warn' }
+    return { text: s.reminders.earlyCoach, tone: 'warn' }
   }
 
   return null

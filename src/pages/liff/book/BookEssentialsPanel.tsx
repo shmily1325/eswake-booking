@@ -1,15 +1,10 @@
 import { triggerHaptic } from '../../../utils/haptic'
-import {
-  BOTH_ACTIVITY_LABEL,
-  getActivityInfo,
-  LIFF_BOOK_GUEST_PRICING_ONLY,
-  STEP1_ACTIVITY_CHOICES,
-} from './liffBookingConfig'
+import { useBookLocale } from './BookLocaleContext'
+import { LIFF_BOOK_GUEST_PRICING_ONLY, STEP1_ACTIVITY_CHOICES } from './liffBookingConfig'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { step1ActivityChip } from './liffBookingBoats'
 import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
 import { BookVideoPlayer } from './BookVideoPlayer'
-import { STEP1_PRICE_RANGE_SUFFIX } from './liffBookingContent'
 import {
   bookCard,
   detailPanel,
@@ -27,11 +22,6 @@ interface BookEssentialsPanelProps {
   memberRate?: boolean
   value: ActivityChoice | null
   onChange: (code: ActivityChoice) => void
-}
-
-function activityTagline(code: ActivityChoice): string {
-  if (code === 'BOTH') return '同一時段體驗兩項'
-  return getActivityInfo(code).tagline
 }
 
 function selectedPrice(code: ActivityChoice): string | null {
@@ -55,12 +45,6 @@ function segmentIcon(code: ActivityChoice) {
   )
 }
 
-function detailTitle(code: ActivityChoice): string {
-  if (code === 'BOTH') return BOTH_ACTIVITY_LABEL
-  const info = getActivityInfo(code)
-  return `${info.labelZh}（${info.label}）`
-}
-
 function videoPoster(code: ActivityCode) {
   const base = code === 'WS' ? '/liff/book/ws-thumb' : '/liff/book/wb-thumb'
   return { src: `${base}.webp`, src2x: `${base}@2x.webp` }
@@ -71,15 +55,22 @@ export function BookEssentialsPanel({
   value,
   onChange,
 }: BookEssentialsPanelProps) {
+  const { locale, s } = useBookLocale()
+
   const pick = (code: ActivityChoice) => {
     triggerHaptic('light')
     onChange(code)
   }
 
-  const priceRange = `體驗 $${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}／人 · ${STEP1_PRICE_RANGE_SUFFIX}`
+  const perPerson = locale === 'en' ? '/person' : '／人'
+  const priceRange = locale === 'en'
+    ? `First-time $${FIRST_TIME_WB_SMALL.toLocaleString()}–$${FIRST_TIME_BIG_BOAT.toLocaleString()}${perPerson} · ${s.step1.priceSuffix}`
+    : `體驗 $${FIRST_TIME_WB_SMALL.toLocaleString()}～$${FIRST_TIME_BIG_BOAT.toLocaleString()}${perPerson} · ${s.step1.priceSuffix}`
+
   const active = value
   const chipLabel = active ? step1ActivityChip(active) : null
-  const price = active ? selectedPrice(active) : null
+  const price = active ? selectedPrice(active)?.replace('／人', perPerson) ?? null : null
+  const act = active ? s.step1.activities[active] : null
 
   return (
     <div style={{ ...bookCard, marginBottom: 12, padding: '16px 16px 14px' }}>
@@ -88,6 +79,7 @@ export function BookEssentialsPanel({
       <div style={segmentRow}>
         {STEP1_ACTIVITY_CHOICES.map(choice => {
           const selected = value === choice.code
+          const labels = s.step1.activities[choice.code]
           return (
             <button
               key={choice.code}
@@ -98,31 +90,43 @@ export function BookEssentialsPanel({
               aria-pressed={selected}
             >
               {segmentIcon(choice.code)}
-              <div style={segmentZh}>{choice.labelZh}</div>
-              <div style={segmentEn}>{choice.labelEn}</div>
+              <div style={segmentZh}>{labels.labelZh}</div>
+              <div style={segmentEn}>{labels.labelEn}</div>
             </button>
           )
         })}
       </div>
 
-      {active ? (
+      {active && act ? (
         <div style={detailPanel(true)}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>{detailTitle(active)}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#222' }}>
+            {locale === 'en' ? act.labelEn : `${act.labelZh}（${act.labelEn}）`}
+          </div>
           {chipLabel ? <span style={metaChip}>{chipLabel}</span> : null}
           <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5, marginTop: 8 }}>
-            {activityTagline(active)}
+            {s.step1.playMode[active]}
           </div>
+          {active === 'BOTH' ? (
+            <div style={{ fontSize: 11, color: '#888', lineHeight: 1.5, marginTop: 6 }}>
+              {s.step1.bothNote}
+            </div>
+          ) : null}
           {price ? <div style={priceLine}>{price}</div> : null}
 
           {active !== 'BOTH' && (
             <div style={{ marginTop: 12 }}>
               <BookVideoPlayer
                 variant="compact"
-                videoId={getActivityInfo(active as ActivityCode).youtubeVideoId}
-                title={detailTitle(active)}
+                videoId={active === 'WS' ? 'esgwXR0ikOU' : 'oHp8IeOvbdk'}
+                title={act.labelEn}
                 posterSrc={videoPoster(active as ActivityCode).src}
                 posterSrcSet={`${videoPoster(active as ActivityCode).src} 1x, ${videoPoster(active as ActivityCode).src2x} 2x`}
               />
+              {locale === 'en' && (
+                <div style={{ fontSize: 10, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
+                  {s.step1.videoMandarinNote}
+                </div>
+              )}
             </div>
           )}
 
@@ -134,12 +138,12 @@ export function BookEssentialsPanel({
         </div>
       ) : (
         <div style={{ ...detailPanel(false), textAlign: 'center', color: '#aaa', fontSize: 13, padding: '20px 14px' }}>
-          請選擇想體驗的項目
+          {s.step1.pickPrompt}
         </div>
       )}
 
       {!LIFF_BOOK_GUEST_PRICING_ONLY && memberRate ? (
-        <div style={{ fontSize: 10, color: '#bbb', marginTop: 10, textAlign: 'center' }}>已滑過已套用會員價</div>
+        <div style={{ fontSize: 10, color: '#bbb', marginTop: 10, textAlign: 'center' }}>{s.step1.memberRateApplied}</div>
       ) : null}
     </div>
   )

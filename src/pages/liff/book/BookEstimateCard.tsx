@@ -1,20 +1,21 @@
 import { useState } from 'react'
+import { useBookLocale } from './BookLocaleContext'
 import type { PriceEstimate } from './liffBookingPricing'
 import { infoBox } from './bookStyles'
 
 interface BookEstimateCardProps {
   estimate: PriceEstimate
-  /** 預設收合明細 */
   defaultExpanded?: boolean
 }
 
 export function BookEstimateCard({ estimate, defaultExpanded = false }: BookEstimateCardProps) {
+  const { s } = useBookLocale()
   const [expanded, setExpanded] = useState(defaultExpanded)
 
   return (
     <div style={{ ...infoBox, marginTop: 12, marginBottom: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>約 {estimate.totalLabel}</div>
+        <div style={{ fontSize: 20, fontWeight: 700 }}>{s.estimate.about} {estimate.totalLabel}</div>
         <div style={{ fontSize: 12, color: '#666' }}>{estimate.tierLabel}</div>
       </div>
       {expanded && estimate.detailLines.map(line => (
@@ -35,7 +36,7 @@ export function BookEstimateCard({ estimate, defaultExpanded = false }: BookEsti
             textDecoration: 'underline',
           }}
         >
-          {expanded ? '收合明細' : '看明細'}
+          {expanded ? s.estimate.collapse : s.estimate.expand}
         </button>
       )}
     </div>
