@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { isExternalNavLink } from '../lib/shopPublicUrl'
-import { HEADER_NAV_BUTTON_SIZE, HeaderNavIcon } from './IconSlot'
+import { EsNavLogo } from './EsNavLogo'
 import { ExternalNavLink } from './ExternalNavLink'
 import { UserMenu } from './UserMenu'
 import type { User } from '@supabase/supabase-js'
@@ -128,42 +128,32 @@ export function PageHeader({
   const displayTitle = stripLeadingEmoji(title)
 
   const navButtonStyle: React.CSSProperties = {
-    padding: useIconOnlyNav ? '8px' : '6px 12px',
+    padding: useIconOnlyNav ? '6px 8px' : '6px 12px',
     background: 'rgba(255, 255, 255, 0.15)',
     color: 'white',
     textDecoration: 'none',
     borderRadius: designSystem.borderRadius.sm,
-    fontSize: useIconOnlyNav
-      ? undefined
-      : designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
+    fontSize: designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
     border: '1px solid rgba(255, 255, 255, 0.2)',
     whiteSpace: 'nowrap',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: useIconOnlyNav ? HEADER_NAV_BUTTON_SIZE : undefined,
-    minHeight: useIconOnlyNav ? HEADER_NAV_BUTTON_SIZE : undefined,
+    minWidth: useIconOnlyNav ? 36 : undefined,
+    minHeight: useIconOnlyNav ? 36 : undefined,
   }
 
   const renderNavLabel = (label: string, link: string, iconSrc?: string) => {
-    if (useIconOnlyNav) {
-      return (
-        <HeaderNavIcon
-          iconSrc={iconSrc}
-          emoji={iconSrc ? undefined : toMobileNavIcon(label, link)}
-        />
-      )
-    }
     if (iconSrc) {
-      const text = toDesktopNavLabel(label, link)
+      const text = useIconOnlyNav ? null : toDesktopNavLabel(label, link)
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <HeaderNavIcon iconSrc={iconSrc} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: text ? 6 : 0 }}>
+          <EsNavLogo size={useIconOnlyNav ? 28 : 20} />
           {text}
         </span>
       )
     }
-    return toDesktopNavLabel(label, link)
+    return useIconOnlyNav ? toMobileNavIcon(label, link) : toDesktopNavLabel(label, link)
   }
 
   const navLinks = (
@@ -290,7 +280,7 @@ export function PageHeader({
           >
             {displayTitle}
           </h1>
-          {useTwoRowMobile && user && <UserMenu user={user} compact />}
+          {useTwoRowMobile && user && <UserMenu user={user} />}
         </div>
         <div
           style={{
@@ -303,7 +293,7 @@ export function PageHeader({
           }}
         >
           {navLinks}
-          {(!useTwoRowMobile || !isMobile) && user && <UserMenu user={user} compact />}
+          {(!useTwoRowMobile || !isMobile) && user && <UserMenu user={user} />}
         </div>
       </div>
     </div>

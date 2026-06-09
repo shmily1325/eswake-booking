@@ -7,7 +7,7 @@ import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { isAdmin } from '../utils/auth'
-import { HubMenuIcon } from '../components/IconSlot'
+import { EsNavLogo } from '../components/EsNavLogo'
 import { ExternalNavLink } from '../components/ExternalNavLink'
 import { getPublicShopHomeUrl, isExternalNavLink, SHOP_NAV_LOGO_SRC } from '../lib/shopPublicUrl'
 
@@ -17,6 +17,13 @@ export function BaoHub() {
   const { isMobile } = useResponsive()
   const userIsAdmin = isAdmin(user)
   const { count: pendingSettleCount } = usePendingBillOrderCount(userIsAdmin)
+
+  const renderMenuIcon = (feature: { icon: string; iconSrc?: string }) =>
+    feature.iconSrc ? (
+      <EsNavLogo size={isMobile ? 36 : 42} opticalMatch />
+    ) : (
+      feature.icon
+    )
 
   // 權限檢查：只有管理員可以進入
   useEffect(() => {
@@ -274,11 +281,12 @@ export function BaoHub() {
                     }}>
                       即將推出
                     </div>
-                    <HubMenuIcon
-                      icon={feature.icon}
-                      iconSrc={feature.iconSrc}
-                      isMobile={isMobile}
-                    />
+                    <div style={{
+                      fontSize: isMobile ? '36px' : '42px',
+                      marginBottom: isMobile ? '8px' : '12px'
+                    }}>
+                      {renderMenuIcon(feature)}
+                    </div>
                     <h2 style={{
                       margin: 0,
                       fontSize: isMobile ? '15px' : '17px',
@@ -308,11 +316,12 @@ export function BaoHub() {
                       gap: isMobile ? '8px' : '12px'
                     }}
                   >
-                    <HubMenuIcon
-                      icon={feature.icon}
-                      iconSrc={feature.iconSrc}
-                      isMobile={isMobile}
-                    />
+                    <div style={{
+                      fontSize: isMobile ? '36px' : '42px',
+                      marginBottom: '5px'
+                    }}>
+                      {renderMenuIcon(feature)}
+                    </div>
                     <h2 style={{
                       margin: 0,
                       fontSize: isMobile ? '15px' : '17px',
@@ -355,11 +364,9 @@ export function BaoHub() {
                       e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
                     }}
                   >
-                    <HubMenuIcon
-                      icon={feature.icon}
-                      iconSrc={feature.iconSrc}
-                      isMobile={isMobile}
-                    />
+                    <div style={{ fontSize: isMobile ? '36px' : '42px', marginBottom: '5px' }}>
+                      {renderMenuIcon(feature)}
+                    </div>
                     <h2 style={{
                       margin: 0,
                       fontSize: isMobile ? '15px' : '17px',
@@ -414,11 +421,9 @@ export function BaoHub() {
                       e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
                     }}
                   >
-                    <HubMenuIcon
-                      icon={feature.icon}
-                      iconSrc={feature.iconSrc}
-                      isMobile={isMobile}
-                    />
+                    <div style={{ fontSize: isMobile ? '36px' : '42px', marginBottom: '5px' }}>
+                      {renderMenuIcon(feature)}
+                    </div>
                     <h2
                       style={{
                         margin: 0,

@@ -2,15 +2,11 @@ import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
-import { HEADER_NAV_BUTTON_SIZE, HEADER_NAV_ICON_SIZE } from './IconSlot'
-
 interface UserMenuProps {
   user: User
-  /** 與 PageHeader 導覽按鈕同高（36px） */
-  compact?: boolean
 }
 
-export function UserMenu({ user, compact = false }: UserMenuProps) {
+export function UserMenu({ user }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -28,16 +24,12 @@ export function UserMenu({ user, compact = false }: UserMenuProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: compact ? HEADER_NAV_BUTTON_SIZE : undefined,
-          height: compact ? HEADER_NAV_BUTTON_SIZE : undefined,
-          padding: compact ? 6 : 4,
+          padding: '4px',
           borderRadius: '50%',
-          border: compact ? '2px solid rgba(255, 255, 255, 0.35)' : '2px solid #ddd',
+          border: '2px solid #ddd',
           backgroundColor: 'white',
           cursor: 'pointer',
           transition: 'all 0.2s ease',
-          boxSizing: 'border-box',
-          flexShrink: 0,
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.borderColor = '#007bff'
@@ -52,8 +44,8 @@ export function UserMenu({ user, compact = false }: UserMenuProps) {
           src={user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.email || 'User')}`}
           alt={user.email}
           style={{
-            width: compact ? HEADER_NAV_ICON_SIZE : '32px',
-            height: compact ? HEADER_NAV_ICON_SIZE : '32px',
+            width: '32px',
+            height: '32px',
             borderRadius: '50%',
             display: 'block',
           }}
@@ -106,4 +98,3 @@ export function UserMenu({ user, compact = false }: UserMenuProps) {
     </div>
   )
 }
-
