@@ -24,8 +24,6 @@ interface BookEstimateCardProps {
 
   compact?: boolean
 
-  showMixedNote?: boolean
-
 }
 
 
@@ -77,8 +75,6 @@ export function BookEstimateCard({
   defaultExpanded = false,
 
   compact = false,
-
-  showMixedNote = false,
 
 }: BookEstimateCardProps) {
 
@@ -147,16 +143,6 @@ export function BookEstimateCard({
               </div>
 
             ))}
-
-          </div>
-
-        ) : null}
-
-        {showMixedNote ? (
-
-          <div style={{ fontSize: ty.caption, color: T.estimateDetailInk, marginTop: 8, lineHeight: 1.5 }}>
-
-            {s.step2.mixedSkillNote}
 
           </div>
 
@@ -237,18 +223,6 @@ export function BookEstimateCard({
           {expanded ? s.estimate.collapse : s.estimate.expand}
 
         </button>
-
-      ) : null}
-
-
-
-      {showMixedNote ? (
-
-        <div style={{ fontSize: ty.caption, color: T.estimateDetailInk, marginTop: 8, lineHeight: 1.5 }}>
-
-          {s.step2.mixedSkillNote}
-
-        </div>
 
       ) : null}
 

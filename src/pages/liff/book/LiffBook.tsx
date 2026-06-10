@@ -311,11 +311,6 @@ function BookWizardCore({
     [form, coaches, member, locale],
   )
 
-  const mixedSkill =
-    form.beginnerCount != null
-    && form.beginnerCount > 0
-    && form.beginnerCount < form.headcount
-
   const syncPrimarySchedule = (date: string, timePref: TimePreference) => {
     if (!date || showAlternateDates) return
     setForm(prev => ({ ...prev, preferredDates: [{ date, timePreference: timePref }] }))
@@ -536,13 +531,7 @@ function BookWizardCore({
             <BookContextTips step={2} form={form} pickTimePref={pickTimePref} />
 
             {estimate ? (
-              <BookEstimateCard
-                key="est-2"
-                estimate={estimate}
-                compact
-                defaultExpanded={mixedSkill}
-                showMixedNote={mixedSkill}
-              />
+              <BookEstimateCard key="est-2" estimate={estimate} compact />
             ) : null}
 
             <BookStaffHint
@@ -704,7 +693,7 @@ function BookWizardCore({
             )}
 
             {estimate ? (
-              <BookEstimateCard key="est-3" estimate={estimate} compact showMixedNote={mixedSkill} />
+              <BookEstimateCard key="est-3" estimate={estimate} compact />
             ) : null}
           </div>
         )}
@@ -722,12 +711,7 @@ function BookWizardCore({
               />
 
               {estimate ? (
-                <BookEstimateCard
-                  key="est-4"
-                  estimate={estimate}
-                  defaultExpanded
-                  showMixedNote={mixedSkill}
-                />
+                <BookEstimateCard key="est-4" estimate={estimate} defaultExpanded />
               ) : null}
 
               <div style={{ ...bookFieldGroup, marginBottom: 0, marginTop: 16 }}>

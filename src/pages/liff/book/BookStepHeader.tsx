@@ -1,6 +1,6 @@
 import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { BookLocaleToggle, useBookLocale } from './BookLocaleContext'
-import { bookHeader, progressBar, progressFill } from './bookStyles'
+import { bookHeader, bookHeaderBelowBrand, progressBar, progressFill } from './bookStyles'
 import { BOOK_TYPE as ty } from './bookTheme'
 
 interface BookStepHeaderProps {
@@ -18,10 +18,7 @@ export function BookStepHeader({ step, showBrand = true }: BookStepHeaderProps) 
   return (
     <header style={{
       ...bookHeader,
-      ...(showBrand ? {} : {
-        paddingTop: 14,
-        borderTop: 'none',
-      }),
+      ...(showBrand ? {} : { ...bookHeaderBelowBrand, borderTop: 'none' }),
     }}
     >
       {showBrand ? (

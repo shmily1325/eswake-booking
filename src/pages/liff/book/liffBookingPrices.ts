@@ -100,7 +100,8 @@ export function step2FirstTimePriceLabel(
 ): string {
   const priceWS = `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
   const priceWB = `$${FIRST_TIME_WB_SMALL.toLocaleString()}`
-  if (activity === 'WS' || activity === 'BOTH') return s.step2.firstTimeUnitPrice(priceWS)
+  if (activity === 'BOTH') return s.step2.firstTimeUnitPricePerActivity(priceWS)
+  if (activity === 'WS') return s.step2.firstTimeUnitPrice(priceWS)
   if (boatPreference === 'small') return s.step2.firstTimeUnitPrice(priceWB)
   return s.step2.firstTimeUnitPrice(priceWS)
 }

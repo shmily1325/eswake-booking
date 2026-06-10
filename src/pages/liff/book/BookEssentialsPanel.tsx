@@ -27,7 +27,7 @@ interface BookEssentialsPanelProps {
 const CHOICES: ActivityCode[] = ['WS', 'WB']
 
 function videoPoster(code: ActivityCode) {
-  const base = code === 'WS' ? '/liff/book/ws-thumb' : '/liff/book/wb-thumb'
+  const base = code === 'WS' ? '/liff/book/ws-poster' : '/liff/book/wb-poster'
   return { src: `${base}.webp`, src2x: `${base}@2x.webp` }
 }
 

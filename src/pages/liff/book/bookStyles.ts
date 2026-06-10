@@ -9,11 +9,20 @@ export const bookPage: CSSProperties = {
 }
 
 export const bookHeader: CSSProperties = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 30,
   background: T.headerBg,
   color: 'white',
   padding: '18px 16px 14px',
   paddingTop: 'calc(18px + env(safe-area-inset-top, 0px))',
   borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+}
+
+/** /book：步驟列 sticky 於 BookHeader 下方 */
+export const bookHeaderBelowBrand: CSSProperties = {
+  top: 'calc(56px + env(safe-area-inset-top, 0px))',
+  paddingTop: 14,
 }
 
 export const bookCard: CSSProperties = {
@@ -570,30 +579,22 @@ export const segmentPriceFirst: CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
 }
 
-export const segmentPriceReturningLabel: CSSProperties = {
-  fontSize: 10,
-  fontWeight: 600,
-  color: T.muted,
-  marginTop: 6,
-  lineHeight: 1.3,
-  letterSpacing: '0.02em',
-}
-
-export const segmentPriceReturningAmount: CSSProperties = {
+export const segmentPriceReturningLine: CSSProperties = {
   fontSize: ty.caption,
-  fontWeight: 700,
+  fontWeight: 600,
   color: T.inkSoft,
-  marginTop: 2,
-  lineHeight: 1.4,
+  marginTop: 5,
+  lineHeight: 1.35,
   fontVariantNumeric: 'tabular-nums',
 }
 
-export const segmentPriceUnit: CSSProperties = {
+export const segmentPriceMemberNote: CSSProperties = {
   fontSize: 10,
   fontWeight: 500,
-  color: T.mutedLight,
-  marginTop: 3,
+  color: T.muted,
+  marginTop: 2,
   lineHeight: 1.3,
+  fontVariantNumeric: 'tabular-nums',
 }
 
 export const bothSegmentBtn = (selected: boolean): CSSProperties => ({

@@ -31,6 +31,8 @@ function keyGrayToAlpha(data) {
   }
 }
 
+const WHITE = { r: 255, g: 255, b: 255 }
+
 async function exportIcon(code, size, suffix) {
   const input = resolveSrc(code)
   const { data, info } = await sharp(input).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
@@ -42,13 +44,26 @@ async function exportIcon(code, size, suffix) {
     .toFile(path.join(OUT, `${code}-thumb${suffix}.webp`))
 }
 
+/** 影片封面：白底 16:9（取代 YouTube 預設縮圖） */
+async function exportPoster(code, width, height, suffix) {
+  const input = resolveSrc(code)
+  await sharp(input)
+    .resize(width, height, { fit: 'contain', background: WHITE })
+    .webp({ quality: 90 })
+    .toFile(path.join(OUT, `${code}-poster${suffix}.webp`))
+}
+
 async function main() {
   fs.mkdirSync(OUT, { recursive: true })
   await exportIcon('ws', 96, '')
   await exportIcon('ws', 192, '@2x')
   await exportIcon('wb', 96, '')
   await exportIcon('wb', 192, '@2x')
-  console.log('Exported transparent icons to public/liff/book/')
+  await exportPoster('ws', 640, 360, '')
+  await exportPoster('ws', 1280, 720, '@2x')
+  await exportPoster('wb', 640, 360, '')
+  await exportPoster('wb', 1280, 720, '@2x')
+  console.log('Exported icons + white poster covers to public/liff/book/')
 }
 
 main().catch(err => {

@@ -143,13 +143,7 @@ export function computePriceEstimate(
     }
 
     if (beginners === state.headcount) {
-
       tierLabel = activity === 'BOTH' ? s.pricing.bothActivities : s.pricing.firstTime
-
-    } else {
-
-      tierLabel = s.pricing.mixedSkill
-
     }
 
   }
