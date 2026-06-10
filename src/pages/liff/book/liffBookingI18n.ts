@@ -41,6 +41,8 @@ export interface BookI18nStrings {
     bothSub: string
     bothPrice: (amount: string) => string
     bothShort: string
+    mixedToggle: string
+    bothNote: string
     videoMandarinNote: string
     memberRateApplied: string
   }
@@ -53,6 +55,7 @@ export interface BookI18nStrings {
     allFirstTime: string
     allExperienced: string
     partialFirstTime: string
+    mixedExperienceToggle: string
     partialCountLabel: string
     firstTime: string
     firstTimeLand: string
@@ -259,7 +262,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     localeToggle: { zh: '中文', en: 'EN' },
     common: { priceIncludes: '已含裝備、教練、船、保險' },
     steps: [
-      { id: 1, title: '選項目', pill: '項目', subtitle: '選想玩的項目，可多選' },
+      { id: 1, title: '選項目', pill: '項目', subtitle: '選想玩的項目' },
       { id: 2, title: '填人數', pill: '人數', subtitle: '幾位下水、第一次嗎、船型偏好' },
       { id: 3, title: '選時間', pill: '時間', subtitle: '偏好日期與時段（尚未保留）' },
       { id: 4, title: '預約摘要', pill: '摘要', subtitle: '確認內容後送出' },
@@ -293,18 +296,21 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       bothSub: '同一趟船 · 大船',
       bothPrice: amount => `${amount}／人`,
       bothShort: '快艇衝浪＋寬板滑水',
+      mixedToggle: '有人想玩另一種？',
+      bothNote: '有人快艇衝浪、有人寬板滑水 · 點項目可改選單一種',
       videoMandarinNote: '影片為中文解說',
       memberRateApplied: '已滑過已套用會員價',
     },
     step2: {
       optionalLabel: '選填',
       headcount: '幾位要下水？',
-      headcountHint: '親友不玩可跟船（選填）',
+      headcountHint: '只計要下水的人',
       experienceSingle: '第一次玩嗎？',
       experienceMulti: '第一次玩嗎？',
       allFirstTime: '都是第一次',
       allExperienced: '都滑過了',
       partialFirstTime: '有人第一次、有人滑過',
+      mixedExperienceToggle: '有人第一次、有人滑過？',
       partialCountLabel: '幾位第一次？',
       firstTime: '體驗',
       firstTimeLand: '陸上教學 10 分鐘',
@@ -555,18 +561,21 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       bothSub: 'Same boat trip · big boat',
       bothPrice: amount => `${amount}/person`,
       bothShort: 'Wakesurf + wakeboard',
+      mixedToggle: 'Someone wants the other activity?',
+      bothNote: 'Mixed group · tap an activity to pick just one',
       videoMandarinNote: 'Video in Mandarin',
       memberRateApplied: 'Member rate applied (returning riders)',
     },
     step2: {
       optionalLabel: 'Optional',
       headcount: 'How many riding?',
-      headcountHint: 'Non-riders may join the boat (optional)',
+      headcountHint: 'Riders only',
       experienceSingle: 'First time?',
       experienceMulti: 'First time?',
       allFirstTime: 'All first-timers',
       allExperienced: 'All experienced',
       partialFirstTime: 'Mix of both',
+      mixedExperienceToggle: 'Mix of first-timers and experienced?',
       partialCountLabel: 'How many first-timers?',
       firstTime: 'First time',
       firstTimeLand: '10 min land lesson',

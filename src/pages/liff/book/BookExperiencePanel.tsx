@@ -1,6 +1,7 @@
 import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
 import { chipBtn, fieldLabel, selectionDetail } from './bookStyles'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookExperiencePanelProps {
   headcount: number
@@ -80,11 +81,11 @@ export function BookExperiencePanel({
   return (
     <div>
       <div style={fieldLabel}>{s.step2.experienceMulti}</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
         <button
           type="button"
           className="book-chip-btn"
-          style={{ ...chipBtn(mode === 'all_first'), width: '100%', padding: '12px 14px' }}
+          style={{ ...chipBtn(mode === 'all_first'), flex: 1, padding: '12px 0' }}
           onClick={() => apply({ beginnerCount: headcount })}
         >
           {s.step2.allFirstTime}
@@ -92,20 +93,32 @@ export function BookExperiencePanel({
         <button
           type="button"
           className="book-chip-btn"
-          style={{ ...chipBtn(mode === 'all_exp'), width: '100%', padding: '12px 14px' }}
+          style={{ ...chipBtn(mode === 'all_exp'), flex: 1, padding: '12px 0' }}
           onClick={() => apply({ beginnerCount: 0 })}
         >
           {s.step2.allExperienced}
         </button>
-        <button
-          type="button"
-          className="book-chip-btn"
-          style={{ ...chipBtn(mode === 'partial'), width: '100%', padding: '12px 14px' }}
-          onClick={() => apply({ beginnerCount: mode === 'partial' ? beginnerCount! : 1 })}
-        >
-          {s.step2.partialFirstTime}
-        </button>
       </div>
+
+      {mode !== 'partial' ? (
+        <div style={{ textAlign: 'center', marginTop: 10 }}>
+          <button
+            type="button"
+            onClick={() => apply({ beginnerCount: 1 })}
+            style={{
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              color: T.muted,
+              fontSize: ty.caption,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            {s.step2.mixedExperienceToggle}
+          </button>
+        </div>
+      ) : null}
 
       {mode === 'partial' ? (
         <div style={{ marginTop: 12 }}>
@@ -116,10 +129,16 @@ export function BookExperiencePanel({
                 key={n}
                 type="button"
                 className="book-chip-btn"
-                style={{ ...chipBtn(beginnerCount === n), minWidth: 52, padding: '10px 14px' }}
+                style={{
+                  ...chipBtn(beginnerCount === n),
+                  flex: '1 1 calc(20% - 8px)',
+                  minWidth: 44,
+                  padding: '12px 0',
+                }}
                 onClick={() => apply({ beginnerCount: n })}
+                aria-label={s.step2.nFirstTime(n)}
               >
-                {s.step2.nFirstTime(n)}
+                {n}
               </button>
             ))}
           </div>

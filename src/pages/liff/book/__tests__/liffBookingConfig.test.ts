@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { syncBookingPeople, toggleActivitySelection } from '../liffBookingConfig'
+import { isActivityCodeSelected, selectedActivityCodes, syncBookingPeople } from '../liffBookingConfig'
 import type { LiffBookingFormState } from '../types'
 
 const base: LiffBookingFormState = {
@@ -32,20 +32,16 @@ describe('syncBookingPeople', () => {
   })
 })
 
-describe('toggleActivitySelection', () => {
-  it('selects a single activity', () => {
-    expect(toggleActivitySelection(null, 'WS')).toBe('WS')
-    expect(toggleActivitySelection(null, 'WB')).toBe('WB')
+describe('selectedActivityCodes', () => {
+  it('maps single and mixed selections', () => {
+    expect(selectedActivityCodes('WS')).toEqual(['WS'])
+    expect(selectedActivityCodes('BOTH')).toEqual(['WS', 'WB'])
+    expect(selectedActivityCodes(null)).toEqual([])
   })
 
-  it('combines into BOTH when both are selected', () => {
-    expect(toggleActivitySelection('WS', 'WB')).toBe('BOTH')
-    expect(toggleActivitySelection('WB', 'WS')).toBe('BOTH')
-  })
-
-  it('deselects back to single or null', () => {
-    expect(toggleActivitySelection('BOTH', 'WS')).toBe('WB')
-    expect(toggleActivitySelection('BOTH', 'WB')).toBe('WS')
-    expect(toggleActivitySelection('WS', 'WS')).toBeNull()
+  it('reports selected codes for BOTH', () => {
+    expect(isActivityCodeSelected('BOTH', 'WS')).toBe(true)
+    expect(isActivityCodeSelected('BOTH', 'WB')).toBe(true)
+    expect(isActivityCodeSelected('WS', 'WB')).toBe(false)
   })
 })

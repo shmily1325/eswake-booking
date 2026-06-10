@@ -1,6 +1,6 @@
 import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
-import { LIFF_BOOK_GUEST_PRICING_ONLY, toggleActivitySelection } from './liffBookingConfig'
+import { LIFF_BOOK_GUEST_PRICING_ONLY } from './liffBookingConfig'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { activitySegmentLabels } from './liffBookingI18n'
 import { BookActivityIcon } from './BookActivityIcon'
@@ -8,16 +8,16 @@ import { BookVideoPlayer } from './BookVideoPlayer'
 import {
   bookFieldGroup,
   includesTrustLine,
+  selectionDetail,
   summaryPriceLine,
   segmentBtn,
-  segmentCheck,
   segmentEn,
   segmentMeta,
   segmentRow,
   segmentZh,
   step1Summary,
 } from './bookStyles'
-import { BOOK_TYPE as ty } from './bookTheme'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 import type { ActivityChoice, ActivityCode } from './types'
 
 interface BookEssentialsPanelProps {
@@ -65,9 +65,14 @@ export function BookEssentialsPanel({
   const priceWB = `$${FIRST_TIME_WB_SMALL.toLocaleString()}`
   const priceBoth = `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
 
-  const toggle = (code: ActivityCode) => {
+  const pickSingle = (code: ActivityCode) => {
     triggerHaptic('light')
-    onChange(toggleActivitySelection(value, code))
+    onChange(code)
+  }
+
+  const pickBoth = () => {
+    triggerHaptic('light')
+    onChange('BOTH')
   }
 
   const showVideo = value === 'WS' || value === 'WB'
@@ -86,10 +91,9 @@ export function BookEssentialsPanel({
               type="button"
               className="book-segment-btn"
               style={segmentBtn(selected)}
-              onClick={() => toggle(code)}
+              onClick={() => pickSingle(code)}
               aria-pressed={selected}
             >
-              {selected ? <span style={segmentCheck} aria-hidden>✓</span> : null}
               {segmentIcon(code)}
               <div style={segmentZh}>{primary}</div>
               <div style={segmentEn}>{secondary}</div>
@@ -98,6 +102,30 @@ export function BookEssentialsPanel({
           )
         })}
       </div>
+
+      {value === 'WS' || value === 'WB' ? (
+        <div style={{ textAlign: 'center', marginTop: 10 }}>
+          <button
+            type="button"
+            onClick={pickBoth}
+            style={{
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              color: T.muted,
+              fontSize: ty.caption,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            {s.step1.mixedToggle}
+          </button>
+        </div>
+      ) : null}
+
+      {value === 'BOTH' ? (
+        <div style={selectionDetail}>{s.step1.bothNote}</div>
+      ) : null}
 
       {showVideo && act ? (
         <div style={{ marginTop: 14 }}>

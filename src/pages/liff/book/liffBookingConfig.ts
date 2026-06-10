@@ -129,19 +129,6 @@ export function isActivityCodeSelected(activity: ActivityChoice | null, code: Ac
   return selectedActivityCodes(activity).includes(code)
 }
 
-/** 點選切換單項；兩項皆選 → BOTH；全不選 → null */
-export function toggleActivitySelection(
-  activity: ActivityChoice | null,
-  code: ActivityCode,
-): ActivityChoice | null {
-  const set = new Set(selectedActivityCodes(activity))
-  if (set.has(code)) set.delete(code)
-  else set.add(code)
-  if (set.size === 0) return null
-  if (set.size === 2) return 'BOTH'
-  return [...set][0]!
-}
-
 export const TIME_PREFERENCE_OPTIONS: { value: TimePreference; label: string }[] = [
   { value: 'morning', label: '上午' },
   { value: 'afternoon', label: '下午' },
