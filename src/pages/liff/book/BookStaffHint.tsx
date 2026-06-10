@@ -65,12 +65,13 @@ export function BookStaffHint({
   }
 
   if (step === 1) {
+    const showSplit = form.activity === 'WS' || form.activity === 'WB'
+    if (!showSplit) return null
     return (
       <div style={{ ...wrap, margin: '14px 0 6px' }}>
         <div style={{ fontSize: ty.caption, color: '#aaa' }}>
           {s.staff.splitActivity}
         </div>
-        <div style={{ marginTop: 6 }}>{s.staff.unsure}</div>
         <button type="button" onClick={handleAsk} style={pillBtn}>
           {s.staff.askStaff}
         </button>

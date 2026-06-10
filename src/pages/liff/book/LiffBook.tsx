@@ -10,16 +10,18 @@ import { BookPageStyles } from './BookPageStyles'
 import { BookBindingGate } from './BookBindingGate'
 import { BookEssentialsPanel } from './BookEssentialsPanel'
 import { BookEstimateCard } from './BookEstimateCard'
+import { BookExperiencePanel } from './BookExperiencePanel'
+import { BookConfirmSummary } from './BookConfirmSummary'
 import { BookFollowBoatPanel } from './BookFollowBoatPanel'
 import { BookStepHeader } from './BookStepHeader'
 import { BookContextTips } from './BookContextTips'
 import { BookBoatPicker } from './BookBoatPicker'
 import { BookStaffHint } from './BookStaffHint'
+import { LineInquiryModal } from '../../shop/components/LineInquiryModal'
 import { BookDateCalendar } from './BookDateCalendar'
 import { BookCoachPicker } from './BookCoachPicker'
 import { BookLocaleProvider, useBookLocale } from './BookLocaleContext'
-import { activityTitleLabel } from './liffBookingI18n'
-import { BookActivityIcon, BookBothIcons } from './BookActivityIcon'
+import type { BookWizardMode } from './bookWizardTypes'
 import type {
   CoachOption,
   LiffBookingFormState,
@@ -28,18 +30,15 @@ import type {
 } from './types'
 import type { BookLocale } from './liffBookingI18n'
 import {
-  beginnerCountOptions,
   HEADCOUNT_OPTIONS,
   MAX_PREFERRED_DATES,
   syncBookingPeople,
   TIME_PREFERENCE_OPTIONS,
-  getActivityInfo,
-  isBothActivities,
   isLiffBookEnabled,
   syncActivityChoice,
   resolveLiffBookId,
 } from './liffBookingConfig'
-import { boatLayoutLabel, onBoatTotal, wbNeedsLargeGroupBoatChoice } from './liffBookingBoats'
+import { onBoatTotal, wbNeedsLargeGroupBoatChoice } from './liffBookingBoats'
 import { bookMemberRate } from './liffBookingPrices'
 import { computePriceEstimate } from './liffBookingPricing'
 import { designatedCoachPrice20 } from './liffBookingCoaches'
@@ -52,11 +51,9 @@ import {
   optionalSectionLabel,
   bookPage,
   chipBtn,
-  experienceChipBtn,
-  experienceChipNote,
-  experienceChipTitle,
   fieldLabel,
   fieldHint,
+  selectedDatePill,
   footerBlockHint,
   linePrimaryBtn,
   primaryBtn,
@@ -68,6 +65,7 @@ import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
 import { OFFICIAL_INFO_URL } from './liffBookingContent'
+import { BookLayout } from '../../book/BookLayout'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 function bookStepExtras(
@@ -144,14 +142,28 @@ export function LiffBook() {
   useRouteDocumentMeta(ROUTE_OG_BY_PATH['/liff/book'])
   return (
     <BookLocaleProvider>
-      <LiffBookInner />
+      <LiffBookInner mode="liff" />
     </BookLocaleProvider>
   )
 }
 
-function LiffBookInner() {
-  const { locale, s } = useBookLocale()
+export function PublicBook() {
+  useRouteDocumentMeta(ROUTE_OG_BY_PATH['/book'])
+  return (
+    <BookLocaleProvider>
+      <BookLayout>
+        <PublicBookShell />
+      </BookLayout>
+    </BookLocaleProvider>
+  )
+}
 
+function PublicBookShell() {
+  if (!isLiffBookEnabled()) return <NotEnabledView />
+  return <BookWizardCore mode="public" usePublicChrome />
+}
+
+function LiffBookInner({ mode }: { mode: BookWizardMode }) {
   const {
     loading: liffLoading,
     bootPhase: liffBootPhase,
@@ -172,12 +184,53 @@ function LiffBookInner() {
     lightMember: true,
   })
 
+  if (!isLiffBookEnabled()) return <NotEnabledView />
+  if (liffError) return <ErrorView error={liffError} onRetry={() => void retryInit()} />
+  if (liffLoading) {
+    return (
+      <BookBootScreen
+        phase={liffBootPhase}
+        onRetry={() => void retryInit()}
+      />
+    )
+  }
+  if (mode === 'liff' && shouldShowBindingForm) {
+    return <BookBindingGate {...bindingFormProps} onSkip={skipBinding} />
+  }
+
+  return (
+    <BookWizardCore
+      mode={mode}
+      member={member}
+      lineUserId={lineUserId}
+      lineDisplayName={lineDisplayName}
+    />
+  )
+}
+
+function BookWizardCore({
+  mode,
+  member = null,
+  lineUserId = null,
+  lineDisplayName = null,
+  usePublicChrome = false,
+}: {
+  mode: BookWizardMode
+  member?: ReturnType<typeof useLiffMember>['member']
+  lineUserId?: string | null
+  lineDisplayName?: string | null
+  usePublicChrome?: boolean
+}) {
+  const { locale, s } = useBookLocale()
+  const requireLine = mode === 'liff'
+
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<LiffBookingFormState>(INITIAL_STATE)
   const [coaches, setCoaches] = useState<CoachOption[]>([])
   const [blockedDates, setBlockedDates] = useState<Set<string>>(new Set())
   const [desktopMessage, setDesktopMessage] = useState<string | null>(null)
   const [showCoachSection, setShowCoachSection] = useState(false)
+  const [showAlternateDates, setShowAlternateDates] = useState(false)
   const [pickDate, setPickDate] = useState('')
   const [pickTimePref, setPickTimePref] = useState<TimePreference>('morning')
 
@@ -198,17 +251,15 @@ function LiffBookInner() {
     }))
   }, [member, lineDisplayName])
 
-  const wizardReady = !liffLoading && !liffError && !shouldShowBindingForm
-
   useEffect(() => {
-    if (!wizardReady || !lineUserId) return
+    if (mode === 'liff' && !lineUserId) return
     liffTrack({
       icon_id: `liff_book_step_view:${step}`,
       line_user_id: lineUserId,
       member_id: member?.id,
-      extras: { step, ...(form.activity ? { activity: form.activity } : {}) },
+      extras: { step, mode, ...(form.activity ? { activity: form.activity } : {}) },
     })
-  }, [step, wizardReady, lineUserId])
+  }, [step, lineUserId, mode, form.activity, member?.id])
 
   useEffect(() => {
     if (form.coachChoice !== 'designated' || !form.coachId || !form.activity) return
@@ -219,7 +270,6 @@ function LiffBookInner() {
   }, [form.activity, form.coachChoice, form.coachId, coaches])
 
   useEffect(() => {
-    if (!wizardReady) return
     let cancelled = false
     const load = async () => {
       try {
@@ -244,16 +294,38 @@ function LiffBookInner() {
       if (idleId != null && typeof cancelIdleCallback !== 'undefined') cancelIdleCallback(idleId)
       if (timerId != null) window.clearTimeout(timerId)
     }
-  }, [wizardReady])
+  }, [])
 
   const estimate = useMemo(
     () => computePriceEstimate(form, coaches, member, locale),
     [form, coaches, member, locale],
   )
 
-  const totalSteps = s.steps.length
+  const mixedSkill =
+    form.beginnerCount != null
+    && form.beginnerCount > 0
+    && form.beginnerCount < form.headcount
 
-  const addPreferredDate = () => {
+  const syncPrimarySchedule = (date: string, timePref: TimePreference) => {
+    if (!date || showAlternateDates) return
+    setForm(prev => ({ ...prev, preferredDates: [{ date, timePreference: timePref }] }))
+  }
+
+  const handlePickDate = (ymd: string) => {
+    setPickDate(ymd)
+    if (!showAlternateDates) {
+      syncPrimarySchedule(ymd, pickTimePref)
+    }
+  }
+
+  const handlePickTimePref = (pref: TimePreference) => {
+    setPickTimePref(pref)
+    if (pickDate && !showAlternateDates) {
+      syncPrimarySchedule(pickDate, pref)
+    }
+  }
+
+  const addAlternateDate = () => {
     if (!pickDate) return
     triggerHaptic('light')
     setForm(prev => {
@@ -280,12 +352,8 @@ function LiffBookInner() {
       ...prev,
       preferredDates: prev.preferredDates.filter(p => p.date !== date),
     }))
+    if (pickDate === date) setPickDate('')
   }
-
-  const canAddPreferredDate = Boolean(pickDate) && (
-    form.preferredDates.some(p => p.date === pickDate)
-    || form.preferredDates.length < MAX_PREFERRED_DATES
-  )
 
   const commitSchedule = (): LiffBookingFormState['preferredDates'] => {
     if (!pickDate) return form.preferredDates
@@ -298,6 +366,8 @@ function LiffBookInner() {
     if (form.preferredDates.length >= MAX_PREFERRED_DATES) return form.preferredDates
     return [...form.preferredDates, { date: pickDate, timePreference: pickTimePref }]
   }
+
+  const totalSteps = s.steps.length
 
   const canNext = (): boolean => {
     switch (step) {
@@ -316,7 +386,7 @@ function LiffBookInner() {
         return (
           form.contactName.trim().length > 0
           && form.contactPhone.replace(/\D/g, '').length >= 8
-          && lineUserId != null
+          && (!requireLine || lineUserId != null)
         )
       default: return false
     }
@@ -356,57 +426,45 @@ function LiffBookInner() {
   }
 
   const handleSubmit = () => {
-    if (!lineUserId || !canNext()) return
+    if (!canNext()) return
     triggerHaptic('medium')
     const payload = buildBookingInquiry(form, coaches, member, locale)
     if (payload.stillTooLong) {
       alert(s.step4.messageTooLong)
       return
     }
-    liffTrack({
-      icon_id: 'liff_book_submit',
-      line_user_id: lineUserId,
-      member_id: member?.id,
-      extras: {
-        activity: form.activity,
-        headcount: form.headcount,
-        coachChoice: form.coachChoice,
-        dateCount: form.preferredDates.length,
-      },
-    })
+    if (lineUserId) {
+      liffTrack({
+        icon_id: 'liff_book_submit',
+        line_user_id: lineUserId,
+        member_id: member?.id,
+        extras: {
+          activity: form.activity,
+          headcount: form.headcount,
+          coachChoice: form.coachChoice,
+          dateCount: form.preferredDates.length,
+        },
+      })
+    }
     const result = launchBookingInquiry(payload)
     if (result.mode === 'desktop-fallback') setDesktopMessage(result.message)
   }
 
-  if (!isLiffBookEnabled()) return <NotEnabledView />
-  if (liffError) return <ErrorView error={liffError} onRetry={() => void retryInit()} />
-  if (liffLoading) {
-    return (
-      <BookBootScreen
-        phase={liffBootPhase}
-        onRetry={() => void retryInit()}
-      />
-    )
-  }
-  if (shouldShowBindingForm) {
-    return <BookBindingGate {...bindingFormProps} onSkip={skipBinding} />
-  }
-
-  const selectedActivity =
-    form.activity && !isBothActivities(form.activity) ? getActivityInfo(form.activity) : null
   const memberRate = bookMemberRate(member?.membership_type)
-  const nextLabel = step === totalSteps
-    ? s.footer.submitLine
-    : step === 3
-      ? s.footer.confirm
-      : s.footer.next
+  const primarySelection = pickDate
+    ? { date: pickDate, timePreference: pickTimePref }
+    : form.preferredDates[0] ?? null
+  const confirmDates = form.preferredDates.length ? form.preferredDates : commitSchedule()
 
+  const nextLabel = step === 3 ? s.footer.confirm : s.footer.next
   const stepReady = canNext()
-  const blockReason = stepReady ? null : getStepBlockReason(step, form, pickDate, s.validation, lineUserId)
+  const blockReason = stepReady
+    ? null
+    : getStepBlockReason(step, form, pickDate, s.validation, lineUserId, { requireLine })
 
   return (
-    <div style={bookPage}>
-      <LiffStyles />
+    <div style={usePublicChrome ? { ...bookPage, background: 'transparent' } : bookPage}>
+      {!usePublicChrome ? <LiffStyles /> : null}
       <BookPageStyles />
       <BookStepHeader step={step} />
 
@@ -426,11 +484,10 @@ function LiffBookInner() {
         {/* Step 2: 誰要滑 */}
         {step === 2 && (
           <div style={bookCard}>
-            {estimate && <BookEstimateCard key="est-2" estimate={estimate} defaultExpanded />}
-
             <div style={bookFieldGroup}>
               <div style={{ marginBottom: 16 }}>
                 <div style={fieldLabel}>{s.step2.headcount}</div>
+                <div style={{ ...fieldHint, marginTop: 0, marginBottom: 10 }}>{s.step2.headcountHint}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {HEADCOUNT_OPTIONS.map(n => (
                     <button
@@ -446,6 +503,14 @@ function LiffBookInner() {
                 </div>
               </div>
 
+              <div style={{ marginBottom: 16 }}>
+                <BookExperiencePanel
+                  headcount={form.headcount}
+                  beginnerCount={form.beginnerCount}
+                  onSyncPeople={patch => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, patch) }))}
+                />
+              </div>
+
               {form.activity === 'WB' && (
                 <div style={{ marginBottom: 16 }}>
                   <BookBoatPicker
@@ -456,56 +521,6 @@ function LiffBookInner() {
                   />
                 </div>
               )}
-
-              <div style={{ marginBottom: 12 }}>
-                {form.headcount === 1 ? (
-                  <>
-                    <div style={fieldLabel}>{s.step2.experienceSingle}</div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-                      <button
-                        type="button"
-                        className="book-chip-btn"
-                        style={experienceChipBtn(form.beginnerCount === 1)}
-                        onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 1 }) }))}
-                      >
-                        <div style={experienceChipTitle}>{s.step2.firstTime}</div>
-                        <div style={experienceChipNote(form.beginnerCount === 1)}>
-                          <div>{s.step2.firstTimeLand}</div>
-                          <div>{s.step2.firstTimeWater}</div>
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        className="book-chip-btn"
-                        style={experienceChipBtn(form.beginnerCount === 0)}
-                        onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: 0 }) }))}
-                      >
-                        <div style={experienceChipTitle}>{s.step2.experienced}</div>
-                        <div style={experienceChipNote(form.beginnerCount === 0)}>
-                          {s.step2.experiencedNote}
-                        </div>
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={fieldLabel}>{s.step2.experienceMulti}</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {beginnerCountOptions(form.headcount).map(n => (
-                        <button
-                          key={n}
-                          type="button"
-                          className="book-chip-btn"
-                          style={chipBtn(form.beginnerCount === n)}
-                          onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { beginnerCount: n }) }))}
-                        >
-                          {n === form.headcount ? s.step2.allFirstTime : n === 0 ? s.step2.noneFirstTime : s.step2.nFirstTime(n)}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
 
             <div style={{ marginBottom: 4 }}>
@@ -518,91 +533,128 @@ function LiffBookInner() {
             </div>
 
             <BookContextTips step={2} form={form} pickTimePref={pickTimePref} />
+
+            {estimate ? (
+              <BookEstimateCard
+                key="est-2"
+                estimate={estimate}
+                showMixedNote={mixedSkill}
+              />
+            ) : null}
+
+            <BookStaffHint step={2} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
           </div>
         )}
 
         {/* Step 3: 什麼時候 + 教練選填 */}
         {step === 3 && (
           <div style={bookCard}>
-            {estimate && <BookEstimateCard key="est-3" estimate={estimate} />}
-
             <div style={bookFieldGroup}>
-            <BookDateCalendar
-              value={pickDate}
-              blockedDates={blockedDates}
-              onChange={setPickDate}
-            />
+              <BookDateCalendar
+                value={pickDate}
+                blockedDates={blockedDates}
+                onChange={handlePickDate}
+              />
 
-            <div style={{ ...fieldLabel, marginTop: 16 }}>{s.step3.timeSlot}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {TIME_PREFERENCE_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className="book-chip-btn"
-                  style={{ ...chipBtn(pickTimePref === opt.value), flex: 1, padding: '12px 0' }}
-                  onClick={() => setPickTimePref(opt.value)}
-                >
-                  {opt.value === 'morning' ? s.step3.morning : s.step3.afternoon}
-                </button>
-              ))}
-            </div>
-            <div style={fieldHint}>{s.step3.scheduleNote}</div>
-
-            {(form.preferredDates.length > 0 || pickDate) && (
-              <div style={{ marginTop: 16 }}>
-                {form.preferredDates.length > 0 ? (
-                  <>
-                    <div style={fieldLabel}>{s.step3.preferredDates}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-                      {form.preferredDates.map(pd => (
-                        <div key={pd.date} style={listItemRow}>
-                          <span>{formatPreferredDateLabel(pd, locale, s.step3.morning, s.step3.afternoon)}</span>
-                          <button
-                            type="button"
-                            onClick={() => removePreferredDate(pd.date)}
-                            style={{
-                              margin: 0,
-                              padding: '4px 8px',
-                              border: 'none',
-                              background: 'none',
-                              color: T.muted,
-                              fontSize: ty.caption,
-                              cursor: 'pointer',
-                              textDecoration: 'underline',
-                            }}
-                          >
-                            {s.step3.removeDate}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : null}
-                {pickDate ? (
+              <div style={{ ...fieldLabel, marginTop: 16 }}>{s.step3.timeSlot}</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {TIME_PREFERENCE_OPTIONS.map(opt => (
                   <button
+                    key={opt.value}
                     type="button"
-                    onClick={addPreferredDate}
-                    disabled={!canAddPreferredDate}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px dashed #ccc',
-                      borderRadius: 10,
-                      background: 'white',
-                      color: canAddPreferredDate ? T.inkSoft : T.mutedLight,
-                      fontSize: ty.body,
-                      fontWeight: 600,
-                      cursor: canAddPreferredDate ? 'pointer' : 'not-allowed',
-                    }}
+                    className="book-chip-btn"
+                    style={{ ...chipBtn(pickTimePref === opt.value), flex: 1, padding: '12px 0' }}
+                    onClick={() => handlePickTimePref(opt.value)}
                   >
-                    {s.step3.addDateBtn}
+                    {opt.value === 'morning' ? s.step3.morning : s.step3.afternoon}
                   </button>
-                ) : null}
-                <div style={{ ...fieldHint, marginTop: 8, marginBottom: 0 }}>{s.step3.maxDates}</div>
+                ))}
               </div>
-            )}
+              <div style={fieldHint}>{s.step3.scheduleNote}</div>
+
+              {primarySelection ? (
+                <div style={selectedDatePill}>
+                  <span>
+                    {s.step3.selectedLabel}：
+                    {formatPreferredDateLabel(primarySelection, locale, s.step3.morning, s.step3.afternoon)}
+                  </span>
+                </div>
+              ) : null}
+
+              {!showAlternateDates ? (
+                <button
+                  type="button"
+                  onClick={() => { triggerHaptic('light'); setShowAlternateDates(true) }}
+                  style={{
+                    marginTop: 12,
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    color: T.muted,
+                    fontSize: ty.caption,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  {s.step3.addAlternateDates}
+                </button>
+              ) : (
+                <div style={{ marginTop: 16 }}>
+                  {form.preferredDates.length > 0 ? (
+                    <>
+                      <div style={fieldLabel}>{s.step3.preferredDates}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+                        {form.preferredDates.map(pd => (
+                          <div key={pd.date} style={listItemRow}>
+                            <span>{formatPreferredDateLabel(pd, locale, s.step3.morning, s.step3.afternoon)}</span>
+                            <button
+                              type="button"
+                              onClick={() => removePreferredDate(pd.date)}
+                              style={{
+                                margin: 0,
+                                padding: '4px 8px',
+                                border: 'none',
+                                background: 'none',
+                                color: T.muted,
+                                fontSize: ty.caption,
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                              }}
+                            >
+                              {s.step3.removeDate}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                  {pickDate && form.preferredDates.length < MAX_PREFERRED_DATES && !form.preferredDates.some(p => p.date === pickDate) ? (
+                    <button
+                      type="button"
+                      onClick={addAlternateDate}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px dashed #ccc',
+                        borderRadius: 10,
+                        background: 'white',
+                        color: T.inkSoft,
+                        fontSize: ty.body,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {s.step3.addAlternateDates}
+                    </button>
+                  ) : null}
+                  <div style={{ ...fieldHint, marginTop: 8, marginBottom: 0 }}>{s.step3.maxDates}</div>
+                </div>
+              )}
             </div>
+
+            {pickTimePref === 'morning' && form.coachChoice !== 'designated' ? (
+              <div style={{ ...fieldHint, marginTop: 12, color: '#ad6800' }}>{s.step3.earlyCoachNote}</div>
+            ) : null}
 
             {!showCoachSection ? (
               <div style={{ marginTop: 16 }}>
@@ -614,7 +666,7 @@ function LiffBookInner() {
                     color: T.muted, fontSize: ty.body, cursor: 'pointer', textDecoration: 'underline',
                   }}
                 >
-                  {s.step3.addCoach}
+                  {s.step3.addCoachShort}
                 </button>
               </div>
             ) : (
@@ -649,7 +701,9 @@ function LiffBookInner() {
               </div>
             )}
 
-            <BookContextTips step={3} form={form} pickTimePref={pickTimePref} coachSectionOpen={showCoachSection} />
+            <BookContextTips step={3} form={form} pickTimePref={pickTimePref} />
+
+            {estimate ? <BookEstimateCard key="est-3" estimate={estimate} showMixedNote={mixedSkill} /> : null}
 
             <BookStaffHint step={3} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
           </div>
@@ -659,48 +713,24 @@ function LiffBookInner() {
         {step === 4 && (
           <>
             <div style={bookCard}>
-              {estimate && <BookEstimateCard key="est-4" estimate={estimate} defaultExpanded />}
+              <BookConfirmSummary
+                form={form}
+                coaches={coaches}
+                dates={confirmDates}
+                locale={locale}
+                formatDate={pd => formatPreferredDateLabel(pd, locale, s.step3.morning, s.step3.afternoon)}
+              />
 
-              <div style={bookFieldGroup}>
-                {isBothActivities(form.activity) ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <BookBothIcons size={32} style={{ margin: 0 }} />
-                    <div style={{ fontSize: ty.title, fontWeight: 700, color: T.ink }}>{s.step1.bothShort}</div>
-                  </div>
-                ) : selectedActivity ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <BookActivityIcon code={selectedActivity.code} size={40} style={{ margin: 0 }} />
-                    <div style={{ fontSize: ty.title, fontWeight: 700, color: T.ink }}>{activityTitleLabel(selectedActivity.code, locale)}</div>
-                  </div>
-                ) : null}
-                <div style={{ fontSize: ty.body, lineHeight: 1.85, color: T.inkSoft }}>
-                  <div>
-                    {form.headcount} {s.step4.people} · {s.step2.experienceSummary(form.headcount, form.beginnerCount)}
-                    {form.followBoatCount > 0 ? ` · ${s.step4.followBoatSummary(form.followBoatCount)}` : ''}
-                  </div>
-                  {form.followBoatCount > 0 ? (
-                    <div>{s.step4.onBoatTotal}：{s.step4.onBoatTotalSummary(form.headcount, form.followBoatCount)}</div>
-                  ) : null}
-                  {form.activity ? (
-                    <div>{s.step4.boat}: {boatLayoutLabel(form.activity, form.headcount, form.boatPreference, locale, form.followBoatCount)}</div>
-                  ) : null}
-                  <div>
-                    {(form.preferredDates.length ? form.preferredDates : commitSchedule()).map(p =>
-                      `${p.date.slice(5).replace('-', '/')} ${p.timePreference === 'morning' ? s.step3.morning : s.step3.afternoon}`,
-                    ).join(locale === 'zh' ? '、' : ', ')}
-                  </div>
-                  <div>
-                    {s.step4.coach}: {form.coachChoice === 'designated' ? coaches.find(c => c.id === form.coachId)?.name ?? '—' : s.step4.coachNone}
-                  </div>
-                </div>
-                {estimate ? (
-                  <p style={{ fontSize: ty.caption, color: T.muted, margin: '10px 0 0', lineHeight: 1.5 }}>
-                    {s.step4.confirmNote}
-                  </p>
-                ) : null}
-              </div>
+              {estimate ? (
+                <BookEstimateCard
+                  key="est-4"
+                  estimate={estimate}
+                  defaultExpanded
+                  showMixedNote={mixedSkill}
+                />
+              ) : null}
 
-              <div style={{ ...bookFieldGroup, marginBottom: 0 }}>
+              <div style={{ ...bookFieldGroup, marginBottom: 0, marginTop: 16 }}>
                 <div style={fieldLabel}>{s.step4.contact}</div>
                 {member ? (
                   <div style={{ fontSize: ty.caption, color: T.muted, marginBottom: 10 }}>{s.step4.memberPrefill}</div>
@@ -737,12 +767,10 @@ function LiffBookInner() {
               </a>
             </p>
 
-            {desktopMessage && (
-              <div style={bookCard}>
-                <p style={{ fontSize: ty.body, margin: '0 0 8px' }}>{s.step4.desktopCopy}</p>
-                <textarea readOnly value={desktopMessage} rows={6} style={{ width: '100%', fontSize: ty.body, boxSizing: 'border-box' }} />
-              </div>
-            )}
+            <LineInquiryModal
+              message={desktopMessage}
+              onClose={() => setDesktopMessage(null)}
+            />
           </>
         )}
       </main>
@@ -773,7 +801,7 @@ function LiffBookInner() {
               disabled={!stepReady}
               onClick={handleSubmit}
             >
-              {s.footer.submitLine}
+              {s.footer.submitConfirm}
             </button>
           )}
         </div>

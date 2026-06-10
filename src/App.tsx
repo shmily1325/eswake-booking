@@ -11,6 +11,9 @@ const LiffMyBookings = lazy(() =>
 const LiffBook = lazy(() =>
   import('./pages/liff/book/LiffBook').then(m => ({ default: m.LiffBook })),
 )
+const PublicBook = lazy(() =>
+  import('./pages/liff/book/LiffBook').then(m => ({ default: m.PublicBook })),
+)
 const ShopApp = lazy(() => import('./pages/shop/ShopApp'))
 
 function RouteChunkFallback({ label = '載入中...' }: { label?: string }) {
@@ -42,6 +45,14 @@ function App() {
           </Routes>
         ) : (
           <Routes>
+            <Route
+              path="/book"
+              element={
+                <Suspense fallback={<RouteChunkFallback label="載入預約表單…" />}>
+                  <PublicBook />
+                </Suspense>
+              }
+            />
             <Route
               path="/liff/book"
               element={

@@ -67,6 +67,9 @@ export const FIRST_TIME_WB_SMALL = 1700
 /** G21、黑豹大船：WB 與 WS 初次體驗同價 */
 export const FIRST_TIME_BIG_BOAT = 2500
 
+/** 表單各步短版「已含」說明（單一來源） */
+export const BOOK_PRICE_INCLUDES_SHORT = '已含裝備、教練、船、保險'
+
 /** 依項目與船型計初次體驗單價（初學不分會員） */
 export function firstTimeUnitPrice(activity: ActivityCode, boatTier: BoatTier): number {
   if (activity === 'WS') return FIRST_TIME_BIG_BOAT

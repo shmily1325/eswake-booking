@@ -1,5 +1,5 @@
+import { useState } from 'react'
 import { BOAT_BIG_DUAL_MIN } from './liffBookingBoats'
-import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { useBookLocale } from './BookLocaleContext'
 import { BOAT_INTRO_VIDEO_ID } from './liffBookingReminders'
 import { BookVideoPlayer } from './BookVideoPlayer'
@@ -58,6 +58,7 @@ export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: Book
   const boat = s.boat
   const isStep1 = variant === 'step1'
   const dualBig = headcount >= BOAT_BIG_DUAL_MIN
+  const [videoOpen, setVideoOpen] = useState(false)
 
   const smallTitle = isStep1 ? boat.small : boat.twoSmallBoats
   const smallSub = isStep1
@@ -85,10 +86,6 @@ export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: Book
           <div style={{ fontSize: ty.caption, color: value === 'small' ? 'rgba(255,255,255,0.85)' : '#888', marginTop: 3 }}>
             {smallSub}
           </div>
-          <div style={{ fontSize: ty.title, fontWeight: 700, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>
-            ${FIRST_TIME_WB_SMALL.toLocaleString()}
-            <span style={{ fontSize: ty.caption, fontWeight: 600 }}>{boat.perPerson}</span>
-          </div>
         </button>
         <button
           type="button"
@@ -101,24 +98,39 @@ export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: Book
           <div style={{ fontSize: ty.caption, color: value === 'big' ? 'rgba(255,255,255,0.85)' : '#888', marginTop: 3 }}>
             {bigSub}
           </div>
-          <div style={{ fontSize: ty.title, fontWeight: 700, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>
-            ${FIRST_TIME_BIG_BOAT.toLocaleString()}
-            <span style={{ fontSize: ty.caption, fontWeight: 600 }}>{boat.perPerson}</span>
-          </div>
         </button>
       </div>
       {isStep1 ? <div style={capacityNote}>{boat.capacityNote}</div> : null}
       {isStep1 ? (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e8e8e8' }}>
-          <BookVideoPlayer
-            variant="compact"
-            videoId={BOAT_INTRO_VIDEO_ID}
-            title={boat.introVideoLabel}
-            label={boat.introVideoLabel}
-          />
-          {locale === 'en' ? (
-            <div style={{ fontSize: ty.caption, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
-              {s.step1.videoMandarinNote}
+        <div style={{ marginTop: 10 }}>
+          <button
+            type="button"
+            onClick={() => setVideoOpen(v => !v)}
+            style={{
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              color: T.muted,
+              fontSize: ty.caption,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            {videoOpen ? '收合船型介紹' : boat.introVideoLabel}
+          </button>
+          {videoOpen ? (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #e8e8e8' }}>
+              <BookVideoPlayer
+                variant="compact"
+                videoId={BOAT_INTRO_VIDEO_ID}
+                title={boat.introVideoLabel}
+                label={boat.introVideoLabel}
+              />
+              {locale === 'en' ? (
+                <div style={{ fontSize: ty.caption, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
+                  {s.step1.videoMandarinNote}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

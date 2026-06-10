@@ -24,7 +24,8 @@ export function persistBookLocale(locale: BookLocale): void {
 export interface BookI18nStrings {
   header: { brand: string; title: string; memberRateHint: string }
   localeToggle: { zh: string; en: string }
-  steps: readonly { id: number; title: string; pill: string }[]
+  steps: readonly { id: number; title: string; pill: string; subtitle: string }[]
+  common: { priceIncludes: string }
   boot: { chunk: string; init: string; login: string; slow: string; stuck: string; retry: string; loginFallback: string; openInLine: string }
   notEnabled: { title: string; body: string }
   step1: {
@@ -32,6 +33,13 @@ export interface BookI18nStrings {
     priceBannerRange: (low: number, high: number) => string
     pickPrompt: string
     activities: Record<'WS' | 'WB' | 'BOTH', { labelZh: string; labelEn: string }>
+    diffWS: string
+    diffWB: string
+    priceWS: (amount: string) => string
+    priceWBFrom: (amount: string) => string
+    bothLabel: string
+    bothSub: string
+    bothPrice: (amount: string) => string
     bothShort: string
     videoMandarinNote: string
     memberRateApplied: string
@@ -39,17 +47,21 @@ export interface BookI18nStrings {
   step2: {
     optionalLabel: string
     headcount: string
+    headcountHint: string
     experienceSingle: string
     experienceMulti: string
+    allFirstTime: string
+    allExperienced: string
+    partialFirstTime: string
+    partialCountLabel: string
     firstTime: string
     firstTimeLand: string
     firstTimeWater: string
     experienced: string
     experiencedNote: string
-    allFirstTime: string
-    noneFirstTime: string
     nFirstTime: (n: number) => string
     experienceSummary: (headcount: number, beginnerCount: number | null) => string
+    mixedSkillNote: string
     followBoat: {
       toggle: string
       rule: string
@@ -84,12 +96,21 @@ export interface BookI18nStrings {
       empty: string
       askStaff: string
     }
+    selectedLabel: string
+    addAlternateDates: string
     preferredDates: string
-    addDateBtn: string
     maxDates: string
     removeDate: string
+    earlyCoachNote: string
+    addCoachShort: string
   }
   step4: {
+    summaryTitle: string
+    labelActivity: string
+    labelPeople: string
+    labelBoat: string
+    labelDates: string
+    labelCoach: string
     confirmNote: string
     submitHint: string
     messageTooLong: string
@@ -128,7 +149,7 @@ export interface BookI18nStrings {
     contactOfficial: string
     errorHelp: string
   }
-  footer: { back: string; next: string; confirm: string; submitLine: string }
+  footer: { back: string; next: string; confirm: string; submitLine: string; submitConfirm: string }
   validation: {
     pickActivity: string
     pickExperience: string
@@ -148,7 +169,14 @@ export interface BookI18nStrings {
     formHelp: string
     splitActivityMsg: string
   }
-  estimate: { title: string; about: string; reference: string; expand: string; collapse: string }
+  estimate: {
+    title: string
+    about: string
+    reference: string
+    expand: string
+    collapse: string
+    referenceNote: string
+  }
   pricing: {
     member: string
     guest: string
@@ -220,11 +248,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
   zh: {
     header: { brand: 'ES WAKE', title: '線上預約', memberRateHint: '會員價估算' },
     localeToggle: { zh: '中文', en: 'EN' },
+    common: { priceIncludes: '已含裝備、教練、船、保險' },
     steps: [
-      { id: 1, title: '選項目', pill: '項目' },
-      { id: 2, title: '幾人玩', pill: '人數' },
-      { id: 3, title: '選時間', pill: '時間' },
-      { id: 4, title: '確認送出', pill: '送出' },
+      { id: 1, title: '選項目', pill: '項目', subtitle: '想玩哪一種？' },
+      { id: 2, title: '幾人玩', pill: '人數', subtitle: '幾位下水？第一次嗎？' },
+      { id: 3, title: '選時間', pill: '時間', subtitle: '想哪天？偏好上午或下午' },
+      { id: 4, title: '確認送出', pill: '送出', subtitle: '檢查後傳給小編確認' },
     ],
     boot: {
       chunk: '載入預約表單…',
@@ -238,32 +267,43 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     notEnabled: { title: '預約表單尚未開放', body: '請繼續使用 LINE 官方帳號填寫預約資訊。' },
     step1: {
-      priceSuffix: '已含裝備、教練、船',
+      priceSuffix: '已含裝備、教練、船、保險',
       priceBannerRange: (low, high) =>
-        `體驗 $${low.toLocaleString()}～$${high.toLocaleString()}／人 · 已含裝備、教練、船`,
+        `體驗 $${low.toLocaleString()}～$${high.toLocaleString()}／人 · 已含裝備、教練、船、保險`,
       pickPrompt: '請選擇想體驗的項目',
       activities: {
         WS: { labelZh: '快艇衝浪', labelEn: 'Wakesurfing' },
         WB: { labelZh: '寬板滑水', labelEn: 'Wakeboarding' },
         BOTH: { labelZh: '兩個一起', labelEn: 'WB + WS mix' },
       },
-      bothShort: '兩個一起',
+      diffWS: '腳不固定 · 像衝浪',
+      diffWB: '雙腳固定 · 速度較快',
+      priceWS: amount => `${amount}／人`,
+      priceWBFrom: amount => `${amount}起／人`,
+      bothLabel: '有人衝浪、有人滑水',
+      bothSub: '同一梯次混合 · 大船',
+      bothPrice: amount => `${amount}／人`,
+      bothShort: '混合梯次',
       videoMandarinNote: '影片為中文解說',
       memberRateApplied: '已滑過已套用會員價',
     },
     step2: {
       optionalLabel: '選填',
-      headcount: '幾人',
-      experienceSingle: '體驗，還是已經滑過？',
-      experienceMulti: '其中幾位體驗',
+      headcount: '幾位要下水？',
+      headcountHint: '親友不玩可跟船（選填）',
+      experienceSingle: '第一次玩嗎？',
+      experienceMulti: '第一次玩嗎？',
+      allFirstTime: '都是第一次',
+      allExperienced: '都滑過了',
+      partialFirstTime: '有人第一次、有人滑過',
+      partialCountLabel: '幾位第一次？',
       firstTime: '體驗',
       firstTimeLand: '陸上教學 10 分鐘',
       firstTimeWater: '水上每人 20 分鐘',
       experienced: '已經滑過',
       experiencedNote: '每人 20 分鐘',
-      allFirstTime: '全部',
-      noneFirstTime: '0 位',
-      nFirstTime: n => `${n} 位`,
+      nFirstTime: n => `${n} 位第一次`,
+      mixedSkillNote: '體驗與已滑過混合，參考價供估算，實際費用小編確認。',
       experienceSummary: (headcount, beginnerCount) => {
         if (beginnerCount == null) return '—'
         if (beginnerCount === headcount) return '全部體驗'
@@ -286,8 +326,10 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       timeSlot: '時段',
       morning: '上午',
       afternoon: '下午',
-      scheduleNote: '時段為偏好，小編回覆後才確認',
+      scheduleNote: '偏好時段，小編 LINE 回覆後才確認',
       addCoach: '＋ 指定教練（選填 · 8 點前需指定）',
+      addCoachShort: '指定教練（選填）',
+      earlyCoachNote: '如欲預約 8 點前時段，需指定教練。',
       designateCoach: '指定教練',
       coachNone: '不指定',
       coachYes: '指定',
@@ -305,14 +347,21 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         empty: '目前無可指定的教練，請選「不指定」或聯繫小編。',
         askStaff: '請洽小編',
       },
-      preferredDates: '偏好日期',
-      addDateBtn: '＋ 加入此日期',
-      maxDates: '最多 3 個偏好日期',
+      selectedLabel: '已選',
+      addAlternateDates: '＋ 再加備選日（最多 3 個）',
+      preferredDates: '備選日期',
+      maxDates: '最多 3 個備選日',
       removeDate: '移除',
     },
     step4: {
-      confirmNote: '參考價以小編回覆為準 · 跟船第 2 位起 $300 · 已含裝備教練',
-      submitHint: '送出後小編會在 LINE 回覆確認，尚未保留時段',
+      summaryTitle: '預約摘要',
+      labelActivity: '項目',
+      labelPeople: '人數',
+      labelBoat: '船型',
+      labelDates: '日期',
+      labelCoach: '教練',
+      confirmNote: '參考價以小編回覆為準',
+      submitHint: '尚未保留時段，小編會在 LINE 回覆確認',
       messageTooLong: '訊息過長，請精簡備註後再試',
       contact: '姓名與電話',
       namePh: '姓名',
@@ -349,7 +398,13 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       contactOfficial: '私訊官方帳號',
       errorHelp: '若確定資料正確，請私訊官方帳號協助綁定。',
     },
-    footer: { back: '返回', next: '下一步', confirm: '確認', submitLine: '用 LINE 送出' },
+    footer: {
+      back: '返回',
+      next: '下一步',
+      confirm: '確認',
+      submitLine: '用 LINE 送出',
+      submitConfirm: '傳給小編確認',
+    },
     validation: {
       pickActivity: '請先選擇項目',
       pickExperience: '請選擇體驗人數',
@@ -369,7 +424,14 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       formHelp: '小編可協助',
       splitActivityMsg: '我們有人想玩寬板、有人想衝浪（人數各不同，例如 5 人裡 2 位寬板、3 位衝浪），請協助安排與報價。',
     },
-    estimate: { title: '費用估算', about: '約', reference: '參考價', expand: '看明細', collapse: '收合明細' },
+    estimate: {
+      title: '費用估算',
+      about: '約',
+      reference: '參考價',
+      expand: '看明細',
+      collapse: '收合明細',
+      referenceNote: '參考價以小編回覆為準',
+    },
     pricing: {
       member: '會員',
       guest: '非會員',
@@ -444,11 +506,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
   en: {
     header: { brand: 'ES WAKE', title: 'Book Online', memberRateHint: 'Member rate estimate' },
     localeToggle: { zh: '中文', en: 'EN' },
+    common: { priceIncludes: 'Gear, coach, boat & insurance included' },
     steps: [
-      { id: 1, title: 'Activity', pill: 'Activity' },
-      { id: 2, title: 'Group', pill: 'Group' },
-      { id: 3, title: 'Schedule', pill: 'Time' },
-      { id: 4, title: 'Confirm', pill: 'Send' },
+      { id: 1, title: 'Activity', pill: 'Activity', subtitle: 'What would you like to try?' },
+      { id: 2, title: 'Group', pill: 'Group', subtitle: 'How many riding? First-timers?' },
+      { id: 3, title: 'Schedule', pill: 'Time', subtitle: 'Preferred date & morning or afternoon' },
+      { id: 4, title: 'Confirm', pill: 'Send', subtitle: 'Review and send to our team' },
     ],
     boot: {
       chunk: 'Loading booking form…',
@@ -462,32 +525,43 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     notEnabled: { title: 'Booking not available yet', body: 'Please book via our LINE official account.' },
     step1: {
-      priceSuffix: 'Gear, coach & boat included',
+      priceSuffix: 'Gear, coach, boat & insurance included',
       priceBannerRange: (low, high) =>
-        `First-time $${low.toLocaleString()}–$${high.toLocaleString()}/person · Gear, coach & boat included`,
+        `First-time $${low.toLocaleString()}–$${high.toLocaleString()}/person · Gear, coach, boat & insurance included`,
       pickPrompt: 'Choose an activity',
       activities: {
         WS: { labelZh: 'Wakesurfing', labelEn: 'Wakesurfing' },
         WB: { labelZh: 'Wakeboarding', labelEn: 'Wakeboarding' },
         BOTH: { labelZh: 'Mixed', labelEn: 'WB + WS mix' },
       },
+      diffWS: 'Feet free · surf feel',
+      diffWB: 'Boots fixed · faster',
+      priceWS: amount => `${amount}/person`,
+      priceWBFrom: amount => `from ${amount}/person`,
+      bothLabel: 'Some surf, some board',
+      bothSub: 'Mixed session · big boat',
+      bothPrice: amount => `${amount}/person`,
       bothShort: 'Mixed group',
       videoMandarinNote: 'Video in Mandarin',
       memberRateApplied: 'Member rate applied (returning riders)',
     },
     step2: {
       optionalLabel: 'Optional',
-      headcount: 'How many riders',
-      experienceSingle: 'First time or experienced?',
-      experienceMulti: 'How many first-timers?',
+      headcount: 'How many riding?',
+      headcountHint: 'Non-riders may join the boat (optional)',
+      experienceSingle: 'First time?',
+      experienceMulti: 'First time?',
+      allFirstTime: 'All first-timers',
+      allExperienced: 'All experienced',
+      partialFirstTime: 'Mix of both',
+      partialCountLabel: 'How many first-timers?',
       firstTime: 'First time',
       firstTimeLand: '10 min land lesson',
       firstTimeWater: '20 min water each',
       experienced: 'Experienced',
       experiencedNote: '20 min each',
-      allFirstTime: 'All',
-      noneFirstTime: '0',
-      nFirstTime: n => `${n}`,
+      nFirstTime: n => `${n} first-timer${n > 1 ? 's' : ''}`,
+      mixedSkillNote: 'Mixed skill group — estimate only; staff will confirm pricing.',
       experienceSummary: (headcount, beginnerCount) => {
         if (beginnerCount == null) return '—'
         if (beginnerCount === headcount) return 'All first-timers'
@@ -510,8 +584,10 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       timeSlot: 'Time preference',
       morning: 'Morning',
       afternoon: 'Afternoon',
-      scheduleNote: 'Preference only — confirmed after staff replies',
+      scheduleNote: 'Preference only — staff confirms on LINE',
       addCoach: '+ Request a coach (optional · required before 8 AM)',
+      addCoachShort: 'Request a coach (optional)',
+      earlyCoachNote: 'Sessions before 8 AM require a designated coach.',
       designateCoach: 'Coach preference',
       coachNone: 'No preference',
       coachYes: 'Request coach',
@@ -529,14 +605,21 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         empty: 'No coaches listed — choose no preference or contact us.',
         askStaff: 'Contact us',
       },
-      preferredDates: 'Preferred dates',
-      addDateBtn: '+ Add this date',
+      selectedLabel: 'Selected',
+      addAlternateDates: '+ Add alternate date (up to 3)',
+      preferredDates: 'Alternate dates',
       maxDates: 'Up to 3 preferred dates',
       removeDate: 'Remove',
     },
     step4: {
-      confirmNote: 'Estimate only · Extra rider $300 from 2nd · Gear & coach included',
-      submitHint: 'Staff will confirm on LINE — slot not held until then',
+      summaryTitle: 'Summary',
+      labelActivity: 'Activity',
+      labelPeople: 'Riders',
+      labelBoat: 'Boat',
+      labelDates: 'Dates',
+      labelCoach: 'Coach',
+      confirmNote: 'Estimate only — staff will confirm',
+      submitHint: 'Slot not held until staff replies on LINE',
       messageTooLong: 'Message too long — shorten notes and try again.',
       contact: 'Name & phone',
       namePh: 'Name',
@@ -573,7 +656,13 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       contactOfficial: 'Message us on LINE',
       errorHelp: 'If your details are correct, message us to link your account.',
     },
-    footer: { back: 'Back', next: 'Next', confirm: 'Review', submitLine: 'Send via LINE' },
+    footer: {
+      back: 'Back',
+      next: 'Next',
+      confirm: 'Review',
+      submitLine: 'Send via LINE',
+      submitConfirm: 'Send to our team',
+    },
     validation: {
       pickActivity: 'Choose an activity first',
       pickExperience: 'Select how many are first-timers',
@@ -593,7 +682,14 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       formHelp: 'Need help?',
       splitActivityMsg: 'We have a split group (e.g. some wakeboard, some wakesurf) — please help arrange and quote.',
     },
-    estimate: { title: 'Price estimate', about: 'Est.', reference: 'Reference only', expand: 'Details', collapse: 'Hide details' },
+    estimate: {
+      title: 'Price estimate',
+      about: 'Est.',
+      reference: 'Reference only',
+      expand: 'Details',
+      collapse: 'Hide details',
+      referenceNote: 'Estimate only — staff will confirm',
+    },
     pricing: {
       member: 'member',
       guest: 'non-member',

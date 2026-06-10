@@ -7,7 +7,9 @@ export function getStepBlockReason(
   pickDate: string,
   v: BookI18nStrings['validation'],
   lineUserId?: string | null,
+  options?: { requireLine?: boolean },
 ): string | null {
+  const requireLine = options?.requireLine ?? true
   switch (step) {
     case 1:
       return form.activity == null ? v.pickActivity : null
@@ -20,7 +22,7 @@ export function getStepBlockReason(
       if (form.coachChoice === 'designated' && !form.coachId) return v.pickCoach
       return null
     case 4:
-      if (!lineUserId) return v.connectingLine
+      if (requireLine && !lineUserId) return v.connectingLine
       if (!form.contactName.trim()) return v.fillName
       if (form.contactPhone.replace(/\D/g, '').length < 8) return v.fillPhone
       return null

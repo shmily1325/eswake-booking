@@ -10,15 +10,13 @@ interface BookContextTipsProps {
   step: 2 | 3 | 4
   form: LiffBookingFormState
   pickTimePref: TimePreference
-  /** Step 3: coach picker expanded — add-coach link is hidden, so show early-coach tip here */
-  coachSectionOpen?: boolean
 }
 
 type Tip = { text: string; tone: 'info' | 'warn' }
 
-export function BookContextTips({ step, form, pickTimePref, coachSectionOpen }: BookContextTipsProps) {
+export function BookContextTips({ step, form, pickTimePref }: BookContextTipsProps) {
   const { s } = useBookLocale()
-  const tips = resolveContextTips(step, form, pickTimePref, s, coachSectionOpen)
+  const tips = resolveContextTips(step, form, pickTimePref, s)
   if (!tips.length) return null
 
   const hasWarn = tips.some(t => t.tone === 'warn')
@@ -63,7 +61,6 @@ function resolveContextTips(
   form: LiffBookingFormState,
   pickTimePref: TimePreference,
   s: BookI18nStrings,
-  coachSectionOpen?: boolean,
 ): Tip[] {
   const tips: Tip[] = []
 
@@ -90,7 +87,7 @@ function resolveContextTips(
   const needsEarlyCoach =
     pickTimePref === 'morning'
     && form.coachChoice !== 'designated'
-    && (step === 4 || (step === 3 && coachSectionOpen))
+    && (step === 3 || step === 4)
 
   if (needsEarlyCoach) {
     tips.push({ text: s.reminders.earlyCoach, tone: 'warn' })

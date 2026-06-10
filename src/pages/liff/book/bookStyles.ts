@@ -419,3 +419,76 @@ export const priceLine: CSSProperties = {
   lineHeight: 1.1,
   fontVariantNumeric: 'tabular-nums',
 }
+
+export const includesTrustLine: CSSProperties = {
+  fontSize: ty.caption,
+  color: T.muted,
+  textAlign: 'center',
+  lineHeight: 1.5,
+  marginTop: 12,
+}
+
+export const segmentMeta: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 500,
+  color: T.muted,
+  marginTop: 5,
+  lineHeight: 1.35,
+}
+
+export const segmentPrice: CSSProperties = {
+  fontSize: ty.caption,
+  fontWeight: 700,
+  color: T.inkSoft,
+  marginTop: 4,
+  fontVariantNumeric: 'tabular-nums',
+}
+
+export const bothSegmentBtn = (selected: boolean): CSSProperties => ({
+  width: '100%',
+  marginTop: 8,
+  padding: '12px 14px',
+  border: selected ? `2px solid ${T.accent}` : '1px solid #e8e8e8',
+  borderRadius: 14,
+  background: selected ? T.surfaceMuted : '#fff',
+  cursor: 'pointer',
+  textAlign: 'left',
+  lineHeight: 1.35,
+  boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.03)',
+})
+
+export const selectedDatePill: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  marginTop: 10,
+  padding: '8px 12px',
+  borderRadius: 999,
+  background: T.estimateBg,
+  border: `1px solid ${T.estimateBorder}`,
+  fontSize: ty.body,
+  fontWeight: 600,
+  color: T.estimateDetailInk,
+}
+
+export const summaryRow: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  fontSize: ty.body,
+  lineHeight: 1.55,
+  padding: '6px 0',
+  borderBottom: `1px solid ${T.borderSubtle}`,
+}
+
+export const summaryLabel: CSSProperties = {
+  flex: '0 0 52px',
+  fontSize: ty.caption,
+  fontWeight: 600,
+  color: T.muted,
+}
+
+export const summaryValue: CSSProperties = {
+  flex: 1,
+  color: T.inkSoft,
+  minWidth: 0,
+}

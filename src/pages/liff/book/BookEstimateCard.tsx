@@ -2,13 +2,14 @@ import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useBookLocale } from './BookLocaleContext'
 import type { PriceEstimate } from './liffBookingPricing'
-import { estimateBox, estimateDetailPanel, estimateTierPill } from './bookStyles'
+import { estimateBox, estimateDetailPanel, estimateTierPill, includesTrustLine } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookEstimateCardProps {
   estimate: PriceEstimate
-  /** Step 2 & 4: expanded; Step 3: collapsed */
+  /** Step 2 & 3: collapsed; Step 4: expanded */
   defaultExpanded?: boolean
+  showMixedNote?: boolean
 }
 
 const detailRow = (isLast: boolean): CSSProperties => ({
@@ -19,7 +20,11 @@ const detailRow = (isLast: boolean): CSSProperties => ({
   borderBottom: isLast ? 'none' : `1px solid ${T.estimateBorder}`,
 })
 
-export function BookEstimateCard({ estimate, defaultExpanded = false }: BookEstimateCardProps) {
+export function BookEstimateCard({
+  estimate,
+  defaultExpanded = false,
+  showMixedNote = false,
+}: BookEstimateCardProps) {
   const { s } = useBookLocale()
   const [expanded, setExpanded] = useState(defaultExpanded)
   const hasDetails = estimate.detailLines.length > 0
@@ -69,6 +74,19 @@ export function BookEstimateCard({ estimate, defaultExpanded = false }: BookEsti
           {expanded ? s.estimate.collapse : s.estimate.expand}
         </button>
       ) : null}
+
+      {showMixedNote ? (
+        <div style={{ fontSize: ty.caption, color: T.estimateDetailInk, marginTop: 8, lineHeight: 1.5 }}>
+          {s.step2.mixedSkillNote}
+        </div>
+      ) : null}
+
+      <div style={{ ...includesTrustLine, marginTop: 10, marginBottom: 4, textAlign: 'left' }}>
+        {s.common.priceIncludes}
+      </div>
+      <div style={{ fontSize: ty.caption, color: T.muted, lineHeight: 1.45 }}>
+        {s.estimate.referenceNote}
+      </div>
     </div>
   )
 }

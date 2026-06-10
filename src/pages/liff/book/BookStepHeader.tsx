@@ -52,6 +52,15 @@ export function BookStepHeader({ step }: BookStepHeaderProps) {
       </div>
 
       <h1 style={{ fontSize: ty.display, fontWeight: 700, margin: 0, lineHeight: 1.3 }}>{meta.title}</h1>
+      <p style={{
+        fontSize: ty.caption,
+        color: 'rgba(255,255,255,0.78)',
+        margin: '6px 0 0',
+        lineHeight: 1.45,
+      }}
+      >
+        {meta.subtitle}
+      </p>
       <div style={progressBar}><div style={progressFill(progressPct)} /></div>
     </header>
   )

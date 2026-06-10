@@ -18,6 +18,12 @@ export const ROUTE_OG_BY_PATH: Record<string, RouteOgMeta> = {
     image: '/liff/book/og.webp',
     imageType: 'image/webp',
   },
+  '/book': {
+    title: 'ES WAKE 線上預約',
+    description: '寬板滑水、快艇衝浪 — 選人數與偏好日期，送出後小編 LINE 回覆確認',
+    image: '/liff/book/og.webp',
+    imageType: 'image/webp',
+  },
 }
 
 export function normalizeOgPath(pathname: string): string {
