@@ -44,6 +44,7 @@ export interface BookI18nStrings {
     bothShort: string
     mixedToggle: string
     bothNote: string
+    bothNoteAction: string
     videoMandarinNote: string
     memberRateApplied: string
   }
@@ -310,7 +311,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       bothPrice: amount => `每項 ${amount}／人`,
       bothShort: '快艇衝浪＋寬板滑水',
       mixedToggle: '有人衝浪、有人滑水？',
-      bothNote: '同一梯次可混搭 · 自己兩項都玩也行，每項各算 · 點項目可改選單一種',
+      bothNote: '同一梯次可混搭 · 自己兩項都玩也行，每項各算',
+      bothNoteAction: '點項目可改選單一種',
       videoMandarinNote: '影片為中文解說',
       memberRateApplied: '已滑過已套用會員價',
     },
@@ -591,7 +593,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       bothPrice: amount => `${amount}/activity/person`,
       bothShort: 'Wakesurf + wakeboard',
       mixedToggle: 'Some wakesurf, some wakeboard?',
-      bothNote: 'Mixed group on same trip · Or play both yourself — each priced separately · Tap an activity to pick just one',
+      bothNote: 'Mixed group on same trip · Or play both yourself — each priced separately',
+      bothNoteAction: 'Tap an activity to pick just one',
       videoMandarinNote: 'Video in Mandarin',
       memberRateApplied: 'Member rate applied (returning riders)',
     },

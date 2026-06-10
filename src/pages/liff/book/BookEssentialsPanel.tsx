@@ -123,7 +123,10 @@ export function BookEssentialsPanel({
       ) : null}
 
       {value === 'BOTH' ? (
-        <div style={selectionDetail}>{s.step1.bothNote}</div>
+        <div style={selectionDetail}>
+          <div>{s.step1.bothNote}</div>
+          <div style={{ marginTop: 4 }}>{s.step1.bothNoteAction}</div>
+        </div>
       ) : null}
 
       {showVideo && act ? (
