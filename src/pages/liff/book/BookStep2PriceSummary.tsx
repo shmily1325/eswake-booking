@@ -1,5 +1,5 @@
 import { useBookLocale } from './BookLocaleContext'
-import { includesTrustLine, segmentPriceMemberNote, segmentPriceReturningLine, step1Summary, summaryPriceLine } from './bookStyles'
+import { includesTrustLine, segmentPriceMemberNote, step1Summary, summaryPriceLine } from './bookStyles'
 import {
   step2ExperiencedSessionRates,
   step2FirstTimePriceLabel,
