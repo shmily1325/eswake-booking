@@ -52,7 +52,6 @@ export function BookExperiencePanel({
   if (headcount === 1) {
     return (
       <div>
-        <div style={fieldLabel}>{s.step2.experienceSingle}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             type="button"
@@ -81,7 +80,6 @@ export function BookExperiencePanel({
 
   return (
     <div>
-      <div style={fieldLabel}>{s.step2.experienceMulti}</div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           type="button"

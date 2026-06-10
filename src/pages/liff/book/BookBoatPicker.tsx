@@ -6,7 +6,6 @@ import { BookVideoPlayer } from './BookVideoPlayer'
 import { boatTierDisplayPricing } from './liffBookingPrices'
 import {
   fieldHint,
-  fieldLabel,
   segmentBtn,
   segmentMeta,
   segmentPriceBlock,
@@ -86,7 +85,6 @@ export function BookBoatPicker({ value, onChange, aboard = 0 }: BookBoatPickerPr
 
   return (
     <div>
-      <div style={fieldLabel}>{boat.step1Title}</div>
       {needsDualContext ? (
         <div style={{ ...fieldHint, marginTop: 0, marginBottom: 4 }}>{boat.groupContext(aboard)}</div>
       ) : null}

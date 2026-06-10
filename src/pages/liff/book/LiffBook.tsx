@@ -14,6 +14,7 @@ import { BookExperiencePanel } from './BookExperiencePanel'
 import { BookHeadcountStepper } from './BookHeadcountStepper'
 import { BookPricingLegend } from './BookPricingLegend'
 import { BookStep2PriceSummary } from './BookStep2PriceSummary'
+import { BookStep2Summary } from './BookStep2Summary'
 import { BookConfirmSummary } from './BookConfirmSummary'
 import { BookFollowBoatPanel } from './BookFollowBoatPanel'
 import { BookStepHeader } from './BookStepHeader'
@@ -53,6 +54,7 @@ import {
   listItemRow,
   optionalSectionLabel,
   bookPage,
+  reminderBox,
   chipBtn,
   fieldLabel,
   fieldHint,
@@ -486,7 +488,6 @@ function BookWizardCore({
           <div style={bookCard}>
             <div style={bookFieldGroup}>
               <div style={{ marginBottom: 16 }}>
-                <div style={fieldLabel}>{s.step2.headcount}</div>
                 <BookHeadcountStepper
                   value={form.headcount}
                   onChange={n => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
@@ -515,10 +516,10 @@ function BookWizardCore({
               ) : null}
 
               <BookStep2PriceSummary form={form} />
+              <BookStep2Summary form={form} estimate={estimate} />
             </div>
 
             <div style={{ marginBottom: 4 }}>
-              <div style={optionalSectionLabel}>{s.step2.optionalLabel}</div>
               <BookFollowBoatPanel
                 riders={form.headcount}
                 value={form.followBoatCount}
@@ -533,6 +534,7 @@ function BookWizardCore({
                 key="est-2"
                 estimate={estimate}
                 compact
+                defaultExpanded={mixedSkill}
                 showMixedNote={mixedSkill}
               />
             ) : null}
@@ -565,6 +567,11 @@ function BookWizardCore({
                   </button>
                 ))}
               </div>
+              {pickDate ? (
+                <div style={{ ...reminderBox, marginTop: 12, fontSize: ty.caption }}>
+                  {s.step3.schedulePendingNote}
+                </div>
+              ) : null}
               {!showAlternateDates ? (
                 <button
                   type="button"

@@ -515,6 +515,20 @@ export const includesTrustLine: CSSProperties = {
   marginTop: 6,
 }
 
+/** Step 2 選完後的一行摘要 */
+export const step2SummaryLine: CSSProperties = {
+  marginTop: 14,
+  padding: '10px 12px',
+  background: T.estimateBg,
+  border: `1px solid ${T.estimateBorder}`,
+  borderRadius: 10,
+  fontSize: ty.caption,
+  fontWeight: 600,
+  color: T.ink,
+  textAlign: 'center',
+  lineHeight: 1.5,
+}
+
 /** Step 1 選完後的價格＋已含說明 */
 export const step1Summary: CSSProperties = {
   marginTop: 14,

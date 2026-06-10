@@ -58,10 +58,13 @@ export function BookStaffHint({
       member_id: memberId,
       extras: { step, ...(form.activity ? { activity: form.activity } : {}) },
     })
+    const presetQuestion = step === 1 && (form.activity === 'WS' || form.activity === 'WB')
+      ? s.staff.splitActivityMsg
+      : undefined
     openStaffHelp(buildStaffHelpMessage(step, form, coaches, locale, {
       date: pickDate,
       timePreference: pickTimePref,
-    }))
+    }, presetQuestion))
   }
 
   if (step === 1) {

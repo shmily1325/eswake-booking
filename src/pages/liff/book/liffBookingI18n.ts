@@ -37,6 +37,7 @@ export interface BookI18nStrings {
     diffWB: string
     priceWS: (amount: string) => string
     priceWBFrom: (amount: string) => string
+    priceWBDual: (small: string, big: string) => string
     bothLabel: string
     bothSub: string
     bothPrice: (amount: string) => string
@@ -78,6 +79,8 @@ export interface BookI18nStrings {
     partialDetail: (beginners: number, headcount: number) => string
     nFirstTime: (n: number) => string
     experienceSummary: (headcount: number, beginnerCount: number | null) => string
+    summaryPeople: (n: number) => string
+    summaryEstimate: (total: string) => string
     mixedSkillNote: string
     followBoat: {
       toggle: string
@@ -94,6 +97,7 @@ export interface BookI18nStrings {
     morning: string
     afternoon: string
     scheduleNote: string
+    schedulePendingNote: string
     addCoach: string
     designateCoach: string
     coachNone: string
@@ -187,6 +191,8 @@ export interface BookI18nStrings {
     unsure: string
     needHelp: string
     askStaff: string
+    helpOpener: string
+    helpPrompt: string
     splitActivity: string
     step2MixedNote: string
     formHelp: string
@@ -212,24 +218,13 @@ export interface BookI18nStrings {
     coachBothEstimate: string
   }
   lineMessage: {
-    title: string
-    headcount: string
-    followBoat: string
-    onBoatTotal: string
-    firstTimeCount: string
-    activity: string
-    boat: string
-    firstTimeSkill: string
-    datesTitle: string
-    noDates: string
-    coachDesignated: (name: string) => string
-    coachDesignatedMissing: string
+    submitTitle: string
+    coachLine: (name: string) => string
     coachNone: string
-    name: string
-    phone: string
-    estimate: string
-    notes: string
-    footer: string
+    coachMissing: string
+    contactLine: (name: string, phone: string) => string
+    estimateLine: (total: string) => string
+    notesPrefix: string
     skillFirstTime: string
     skillExperienced: string
   }
@@ -310,6 +305,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       diffWB: '雙腳固定 · 速度較快',
       priceWS: amount => `${amount}／人`,
       priceWBFrom: amount => `${amount}起／人`,
+      priceWBDual: (small, big) => `小船 ${small} · 大船 ${big}／人`,
       bothLabel: '有人快艇衝浪、有人寬板滑水',
       bothSub: '同一趟船 · 大船',
       bothPrice: amount => `${amount}／人`,
@@ -360,6 +356,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         if (beginnerCount === 0) return '皆已滑過'
         return `${beginnerCount} 位體驗`
       },
+      summaryPeople: n => `${n} 人`,
+      summaryEstimate: total => `約 ${total}`,
       followBoat: {
         toggle: '有人不玩、想跟船？',
         countLabel: '幾位跟船',
@@ -376,6 +374,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       morning: '上午',
       afternoon: '下午',
       scheduleNote: '偏好時段，小編 LINE 回覆後才確認',
+      schedulePendingNote: '送出後由小編確認梯次與船位，尚未保留',
       addCoach: '＋ 指定教練（選填 · 8 點前需指定）',
       addCoachShort: '指定教練（選填）',
       addCoachMorningShort: '指定教練（8 點前需指定）',
@@ -469,10 +468,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       unsure: '還是選不出來？',
       needHelp: '還是有問題？',
       askStaff: '問小編',
+      helpOpener: '嗨，預約想請教～',
+      helpPrompt: '想請教：',
       splitActivity: '大家想玩不一樣？→ 選「有人快艇衝浪、有人寬板滑水」',
       step2MixedNote: '體驗與已滑過混合，估價僅供參考。',
       formHelp: '小編可協助',
-      splitActivityMsg: '我們有人想玩寬板滑水、有人想快艇衝浪（人數各不同，例如 5 人裡 2 位寬板、3 位衝浪），請協助安排與報價。',
+      splitActivityMsg: '有人寬板、有人衝浪，人數不同，請協助安排與報價',
     },
     estimate: {
       title: '費用估算',
@@ -495,24 +496,13 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       coachBothEstimate: '快艇衝浪＋寬板滑水教練價以較高計',
     },
     lineMessage: {
-      title: '預約需求',
-      headcount: '預約人數',
-      followBoat: '跟船人數',
-      onBoatTotal: '船上共',
-      firstTimeCount: '幾位體驗',
-      activity: '預約項目',
-      boat: '船型',
-      firstTimeSkill: '是否是第一次滑',
-      datesTitle: '希望預約的日期及時間',
-      noDates: '（尚未選擇）',
-      coachDesignated: name => `是否指定教練：希望指定 ${name}`,
-      coachDesignatedMissing: '是否指定教練：希望指定（未選教練）',
-      coachNone: '是否指定教練：不指定',
-      name: '姓名',
-      phone: '電話',
-      estimate: '費用估算',
-      notes: '備註',
-      footer: '（此訊息由 ES WAKE 預約表單產生）',
+      submitTitle: '【預約】',
+      coachLine: name => `教練 ${name}`,
+      coachNone: '教練 不指定',
+      coachMissing: '教練 待指定',
+      contactLine: (name, phone) => `${name} · ${phone}`,
+      estimateLine: total => `約 ${total}（參考）`,
+      notesPrefix: '備註：',
       skillFirstTime: '第一次體驗',
       skillExperienced: '已經滑過',
     },
@@ -598,6 +588,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       diffWB: 'Boots fixed · faster',
       priceWS: amount => `${amount}/person`,
       priceWBFrom: amount => `from ${amount}/person`,
+      priceWBDual: (small, big) => `Small ${small} · Big ${big}/person`,
       bothLabel: 'Some wakesurf, some wakeboard',
       bothSub: 'Same boat trip · big boat',
       bothPrice: amount => `${amount}/person`,
@@ -648,6 +639,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         if (beginnerCount === 0) return 'All experienced'
         return `${beginnerCount} first-timer${beginnerCount > 1 ? 's' : ''}`
       },
+      summaryPeople: n => `${n} rider${n > 1 ? 's' : ''}`,
+      summaryEstimate: total => `~${total}`,
       followBoat: {
         toggle: 'Someone not riding but coming along?',
         countLabel: 'How many non-riders',
@@ -664,6 +657,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       morning: 'Morning',
       afternoon: 'Afternoon',
       scheduleNote: 'Preference only — staff confirms on LINE',
+      schedulePendingNote: 'Not reserved yet — staff will confirm slot & boat after you submit',
       addCoach: '+ Request a coach (optional · required before 8 AM)',
       addCoachShort: 'Request a coach (optional)',
       addCoachMorningShort: 'Request a coach (required before 8 AM)',
@@ -757,10 +751,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       unsure: 'Still can\'t decide?',
       needHelp: 'Still have questions?',
       askStaff: 'Ask us',
+      helpOpener: 'Hi — booking question:',
+      helpPrompt: 'Question: ',
       splitActivity: 'Mixed group? → pick “Some wakesurf, some wakeboard”',
       step2MixedNote: 'Mixed first-timers & experienced — estimate only.',
       formHelp: 'Need help?',
-      splitActivityMsg: 'We have a split group (e.g. some wakeboard, some wakesurf) — please help arrange and quote.',
+      splitActivityMsg: 'Split group (wakeboard + wakesurf) — please help arrange & quote',
     },
     estimate: {
       title: 'Price estimate',
@@ -783,24 +779,13 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       coachBothEstimate: 'Wakesurf + wakeboard coach uses higher rate',
     },
     lineMessage: {
-      title: 'Booking request',
-      headcount: 'Riders',
-      followBoat: 'Non-riders',
-      onBoatTotal: 'On board',
-      firstTimeCount: 'First-timers',
-      activity: 'Activity',
-      boat: 'Boat',
-      firstTimeSkill: 'Experience level',
-      datesTitle: 'Preferred date & time',
-      noDates: '(not selected)',
-      coachDesignated: name => `Coach: request ${name}`,
-      coachDesignatedMissing: 'Coach: requested (not selected)',
+      submitTitle: '[Booking]',
+      coachLine: name => `Coach ${name}`,
       coachNone: 'Coach: no preference',
-      name: 'Name',
-      phone: 'Phone',
-      estimate: 'Price estimate',
-      notes: 'Notes',
-      footer: '(Sent from ES WAKE booking form)',
+      coachMissing: 'Coach: TBD',
+      contactLine: (name, phone) => `${name} · ${phone}`,
+      estimateLine: total => `~${total} (estimate)`,
+      notesPrefix: 'Notes: ',
       skillFirstTime: 'First time',
       skillExperienced: 'Experienced',
     },

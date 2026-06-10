@@ -45,11 +45,12 @@ function step1PriceLabel(
   activity: ActivityChoice,
   s: ReturnType<typeof useBookLocale>['s'],
   priceWS: string,
-  priceWB: string,
+  priceWBSmall: string,
+  priceWBBig: string,
   priceBoth: string,
 ): string {
   if (activity === 'WS') return s.step1.priceWS(priceWS)
-  if (activity === 'WB') return s.step1.priceWBFrom(priceWB)
+  if (activity === 'WB') return s.step1.priceWBDual(priceWBSmall, priceWBBig)
   return s.step1.bothPrice(priceBoth)
 }
 
@@ -59,7 +60,8 @@ export function BookEssentialsPanel({
 }: BookEssentialsPanelProps) {
   const { locale, s } = useBookLocale()
   const priceWS = `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
-  const priceWB = `$${FIRST_TIME_WB_SMALL.toLocaleString()}`
+  const priceWBSmall = `$${FIRST_TIME_WB_SMALL.toLocaleString()}`
+  const priceWBBig = `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
   const priceBoth = `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
 
   const pickSingle = (code: ActivityCode) => {
@@ -141,7 +143,7 @@ export function BookEssentialsPanel({
 
       {value ? (
         <div style={step1Summary}>
-          <div style={summaryPriceLine}>{step1PriceLabel(value, s, priceWS, priceWB, priceBoth)}</div>
+          <div style={summaryPriceLine}>{step1PriceLabel(value, s, priceWS, priceWBSmall, priceWBBig, priceBoth)}</div>
           <div style={includesTrustLine}>{s.common.priceIncludes}</div>
         </div>
       ) : null}
