@@ -33,7 +33,7 @@ import type {
   PreferredDate,
   TimePreference,
 } from './types'
-import type { BookLocale } from './liffBookingI18n'
+import { getStepNextLabel, type BookLocale } from './liffBookingI18n'
 import {
   MAX_PREFERRED_DATES,
   syncBookingPeople,
@@ -57,6 +57,7 @@ import {
   reminderBox,
   chipBtn,
   fieldLabel,
+  stepFieldPrompt,
   fieldHint,
   footerBlockHint,
   linePrimaryBtn,
@@ -246,6 +247,10 @@ function BookWizardCore({
   }, [step, form.beginnerCount])
 
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [step])
+
+  useEffect(() => {
     const name = member?.nickname?.trim() || member?.name?.trim() || lineDisplayName?.trim() || ''
     const phone = member?.phone?.replace(/\D/g, '') || ''
     if (!name && !phone) return
@@ -257,7 +262,7 @@ function BookWizardCore({
   }, [member, lineDisplayName])
 
   useEffect(() => {
-    if (mode === 'liff' && !lineUserId) return
+    if (mode !== 'liff' || !lineUserId) return
     liffTrack({
       icon_id: `liff_book_step_view:${step}`,
       line_user_id: lineUserId,
@@ -406,7 +411,7 @@ function BookWizardCore({
       dateCount = dates.length
       setForm(prev => ({ ...prev, preferredDates: dates }))
     }
-    if (lineUserId) {
+    if (mode === 'liff' && lineUserId) {
       liffTrack({
         icon_id: `liff_book_step_complete:${step}`,
         line_user_id: lineUserId,
@@ -419,7 +424,7 @@ function BookWizardCore({
 
   const goBack = () => {
     triggerHaptic('light')
-    if (lineUserId) {
+    if (mode === 'liff' && lineUserId) {
       liffTrack({
         icon_id: `liff_book_step_back:${step}`,
         line_user_id: lineUserId,
@@ -438,7 +443,7 @@ function BookWizardCore({
       alert(s.step4.messageTooLong)
       return
     }
-    if (lineUserId) {
+    if (mode === 'liff' && lineUserId) {
       liffTrack({
         icon_id: 'liff_book_submit',
         line_user_id: lineUserId,
@@ -457,7 +462,7 @@ function BookWizardCore({
 
   const confirmDates = form.preferredDates.length ? form.preferredDates : commitSchedule()
 
-  const nextLabel = s.footer.next
+  const nextLabel = getStepNextLabel(step, s.footer)
   const stepReady = canNext()
   const blockReason = stepReady
     ? null
@@ -488,6 +493,7 @@ function BookWizardCore({
           <div style={bookCard}>
             <div style={bookFieldGroup}>
               <div style={{ marginBottom: 16 }}>
+                <div style={stepFieldPrompt}>{s.step2.headcount}</div>
                 <BookHeadcountStepper
                   value={form.headcount}
                   onChange={n => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
@@ -539,7 +545,16 @@ function BookWizardCore({
               />
             ) : null}
 
-            <BookStaffHint step={2} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
+            <BookStaffHint
+              step={2}
+              form={form}
+              coaches={coaches}
+              pickDate={pickDate}
+              pickTimePref={pickTimePref}
+              lineUserId={lineUserId}
+              memberId={member?.id}
+              track={mode === 'liff'}
+            />
           </div>
         )}
 

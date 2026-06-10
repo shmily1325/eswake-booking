@@ -37,6 +37,7 @@ interface BookStaffHintProps {
   pickTimePref?: TimePreference
   lineUserId: string | null
   memberId?: string | null
+  track?: boolean
 }
 
 export function BookStaffHint({
@@ -47,17 +48,20 @@ export function BookStaffHint({
   pickTimePref,
   lineUserId,
   memberId,
+  track = true,
 }: BookStaffHintProps) {
   const { locale, s } = useBookLocale()
 
   const handleAsk = () => {
     triggerHaptic('light')
-    liffTrack({
-      icon_id: `liff_book_staff_help:${step}`,
-      line_user_id: lineUserId,
-      member_id: memberId,
-      extras: { step, ...(form.activity ? { activity: form.activity } : {}) },
-    })
+    if (track && lineUserId) {
+      liffTrack({
+        icon_id: `liff_book_staff_help:${step}`,
+        line_user_id: lineUserId,
+        member_id: memberId,
+        extras: { step, ...(form.activity ? { activity: form.activity } : {}) },
+      })
+    }
     const presetQuestion = step === 1 && (form.activity === 'WS' || form.activity === 'WB')
       ? s.staff.splitActivityMsg
       : undefined

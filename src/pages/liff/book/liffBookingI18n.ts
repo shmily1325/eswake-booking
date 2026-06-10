@@ -173,6 +173,8 @@ export interface BookI18nStrings {
   footer: {
     back: string
     next: string
+    /** Step 1–3 primary CTA: guided label for the next step */
+    nextByStep: readonly [string, string, string]
     confirm: string
     submitLine: string
     submitConfirm: string
@@ -275,7 +277,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     localeToggle: { zh: '中文', en: 'EN' },
     common: { priceIncludes: '已含裝備、教練、船、保險' },
     steps: [
-      { id: 1, title: '選項目', pill: '項目', subtitle: '選想玩的項目' },
+      { id: 1, title: '選項目', pill: '項目', subtitle: '快艇衝浪?寬板滑水?' },
       { id: 2, title: '填人數', pill: '人數', subtitle: '幾位下水、第一次嗎、船型偏好' },
       { id: 3, title: '選時間', pill: '時間', subtitle: '偏好日期與時段（尚未保留）' },
       { id: 4, title: '預約摘要', pill: '摘要', subtitle: '確認內容後送出' },
@@ -450,6 +452,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     footer: {
       back: '返回',
       next: '下一步',
+      nextByStep: ['填人數', '選時間', '看摘要'],
       confirm: '確認',
       submitLine: '用 LINE 送出',
       submitConfirm: '送出預約需求',
@@ -558,7 +561,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     localeToggle: { zh: '中文', en: 'EN' },
     common: { priceIncludes: 'Gear, coach, boat & insurance included' },
     steps: [
-      { id: 1, title: 'Activity', pill: 'Activity', subtitle: 'Pick one or both activities' },
+      { id: 1, title: 'Activity', pill: 'Activity', subtitle: 'Wakesurf, wakeboard, or both' },
       { id: 2, title: 'Group', pill: 'Group', subtitle: 'Headcount, experience & boat preference' },
       { id: 3, title: 'Schedule', pill: 'Time', subtitle: 'Preferred date & time (not held yet)' },
       { id: 4, title: 'Summary', pill: 'Review', subtitle: 'Review & submit' },
@@ -733,6 +736,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     footer: {
       back: 'Back',
       next: 'Next',
+      nextByStep: ['Group size', 'Pick dates', 'Review'],
       confirm: 'Review',
       submitLine: 'Send via LINE',
       submitConfirm: 'Submit request',
@@ -836,6 +840,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       close: 'Close',
     },
   },
+}
+
+/** Footer CTA for steps 1–3: guided label toward the next step (not generic「下一步」). */
+export function getStepNextLabel(step: number, footer: BookI18nStrings['footer']): string {
+  if (step >= 1 && step <= 3) return footer.nextByStep[step - 1]
+  return footer.next
 }
 
 export function activityDisplayLabel(code: ActivityChoice, locale: BookLocale): string {

@@ -263,6 +263,16 @@ export const fieldLabel: CSSProperties = {
   letterSpacing: '0.02em',
 }
 
+/** Step 2 第一個控制項：置中短問句（配合 stepper，非重複 header 副標） */
+export const stepFieldPrompt: CSSProperties = {
+  fontSize: ty.title,
+  fontWeight: 700,
+  color: T.ink,
+  textAlign: 'center',
+  marginBottom: 10,
+  lineHeight: 1.35,
+}
+
 /** 各步必填表單分組 */
 export const bookFieldGroup: CSSProperties = {
   padding: '14px 14px 4px',
@@ -289,15 +299,6 @@ export const listItemRow: CSSProperties = {
   background: T.surfaceMuted,
   borderRadius: 10,
   fontSize: ty.body,
-}
-
-export const footerReassurance: CSSProperties = {
-  width: '100%',
-  fontSize: ty.caption,
-  color: T.muted,
-  textAlign: 'center',
-  lineHeight: 1.5,
-  marginBottom: 10,
 }
 
 export const footerBlockHint: CSSProperties = {
