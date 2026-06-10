@@ -501,7 +501,7 @@ function BookWizardCore({
                   beginnerCount={form.beginnerCount}
                   onSyncPeople={patch => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, patch) }))}
                 />
-                {form.activity && form.activity !== 'WB' ? (
+                {form.activity && form.activity !== 'WB' && form.beginnerCount == null ? (
                   <BookPricingLegend activity={form.activity} />
                 ) : null}
               </div>
@@ -517,7 +517,7 @@ function BookWizardCore({
               ) : null}
 
               <BookStep2PriceSummary form={form} />
-              <BookStep2Summary form={form} estimate={estimate} />
+              <BookStep2Summary form={form} estimate={null} />
             </div>
 
             <div style={{ marginBottom: 4 }}>

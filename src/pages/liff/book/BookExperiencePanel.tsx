@@ -25,13 +25,9 @@ function experienceDetail(
   s: ReturnType<typeof useBookLocale>['s'],
 ): string | null {
   if (beginnerCount == null) return null
-  if (headcount === 1) {
-    return beginnerCount === 1 ? s.step2.firstTimeDetail : s.step2.experiencedNote
+  if (beginnerCount > 0 && beginnerCount < headcount) {
+    return s.step2.partialDetail(beginnerCount, headcount)
   }
-  const mode = resolveMultiMode(headcount, beginnerCount)
-  if (mode === 'all_first') return s.step2.firstTimeDetail
-  if (mode === 'all_exp') return s.step2.experiencedNote
-  if (mode === 'partial') return s.step2.partialDetail(beginnerCount, headcount)
   return null
 }
 

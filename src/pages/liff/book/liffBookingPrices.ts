@@ -1,5 +1,6 @@
 import type { ActivityChoice, ActivityCode, BoatPreference, LiffBookingFormState } from './types'
 import type { BoatTier } from './liffBookingBoats'
+import { resolveBoatTier } from './liffBookingBoats'
 import type { BookI18nStrings } from './liffBookingI18n'
 import { BEGINNER_LESSON_NOTE } from './liffBookingConfig'
 export const OFFICIAL_PRICE_INCLUDES =
@@ -93,6 +94,16 @@ export function step2ShowsFirstTimePrice(
   return true
 }
 
+/** Step 2：全員已滑過且條件足夠時顯示計時單價 */
+export function step2ShowsExperiencedPrice(
+  form: Pick<LiffBookingFormState, 'activity' | 'boatPreference' | 'beginnerCount' | 'headcount'>,
+): boolean {
+  if (!form.activity) return false
+  if (form.beginnerCount !== 0) return false
+  if (form.activity === 'WB' && !form.boatPreference) return false
+  return true
+}
+
 export function step2FirstTimePriceLabel(
   activity: ActivityChoice,
   boatPreference: BoatPreference | null,
@@ -104,6 +115,13 @@ export function step2FirstTimePriceLabel(
   if (activity === 'WS') return s.step2.firstTimeUnitPrice(priceWS)
   if (boatPreference === 'small') return s.step2.firstTimeUnitPrice(priceWB)
   return s.step2.firstTimeUnitPrice(priceWS)
+}
+
+export function step2ExperiencedSessionRates(
+  form: Pick<LiffBookingFormState, 'activity' | 'boatPreference' | 'headcount'>,
+): { guest: number; member: number } {
+  const tier = resolveBoatTier(form.activity!, form.headcount, form.boatPreference)
+  return sessionDualRates(tier)
 }
 
 /** Step 1 卡片顯示用 */

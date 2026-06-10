@@ -312,7 +312,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       bothShort: '快艇衝浪＋寬板滑水',
       mixedToggle: '有人衝浪、有人滑水？',
       bothNote: '同一梯次可混搭 · 自己兩項都玩也行，每項各算',
-      bothNoteAction: '點項目可改選單一種',
+      bothNoteAction: '點項目可改回選單一種',
       videoMandarinNote: '影片為中文解說',
       memberRateApplied: '已滑過已套用會員價',
     },
@@ -340,12 +340,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         `體驗 小船 $${small.toLocaleString()} · 大船 $${big.toLocaleString()} · 陸上 10 分 + 水上每人 20 分`,
       pricingLegendFirstTimeBig: price =>
         `體驗 $${price.toLocaleString()} · 陸上 10 分 + 水上每人 20 分`,
-      pricingLegendExperiencedWB: (blockMin, smallGuest, smallMember, bigGuest, bigMember) => {
+      pricingLegendExperiencedWB: (_blockMin, smallGuest, smallMember, bigGuest, bigMember) => {
         const dual = (g: number, m: number) => `$${g.toLocaleString()}（會員 $${m.toLocaleString()}）`
-        return `已滑過 ${blockMin} 分鐘 · 小船 ${dual(smallGuest, smallMember)} · 大船 ${dual(bigGuest, bigMember)}`
+        return `已滑過 小船 ${dual(smallGuest, smallMember)} · 大船 ${dual(bigGuest, bigMember)}`
       },
-      pricingLegendExperiencedBig: (blockMin, guest, member) =>
-        `已滑過 ${blockMin} 分鐘 · $${guest.toLocaleString()}（會員 $${member.toLocaleString()}）`,
+      pricingLegendExperiencedBig: (_blockMin, guest, member) =>
+        `已滑過 $${guest.toLocaleString()}（會員 $${member.toLocaleString()}）`,
       estimateExperiencedDetail: (count, guest, member) =>
         `${count} 已滑過 × $${guest.toLocaleString()}（會員 $${member.toLocaleString()}）`,
       partialDetail: (beginners, headcount) =>
@@ -622,12 +622,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         `First-timer small boat $${small.toLocaleString()} · big boat $${big.toLocaleString()} · 10 min land + 20 min water each`,
       pricingLegendFirstTimeBig: price =>
         `First-timer $${price.toLocaleString()} · 10 min land + 20 min water each`,
-      pricingLegendExperiencedWB: (blockMin, smallGuest, smallMember, bigGuest, bigMember) => {
+      pricingLegendExperiencedWB: (_blockMin, smallGuest, smallMember, bigGuest, bigMember) => {
         const dual = (g: number, m: number) => `$${g.toLocaleString()} (member $${m.toLocaleString()})`
-        return `Returning ${blockMin} min · small ${dual(smallGuest, smallMember)} · big ${dual(bigGuest, bigMember)}`
+        return `Returning small ${dual(smallGuest, smallMember)} · big ${dual(bigGuest, bigMember)}`
       },
-      pricingLegendExperiencedBig: (blockMin, guest, member) =>
-        `Returning ${blockMin} min · $${guest.toLocaleString()} (member $${member.toLocaleString()})`,
+      pricingLegendExperiencedBig: (_blockMin, guest, member) =>
+        `Returning $${guest.toLocaleString()} (member $${member.toLocaleString()})`,
       estimateExperiencedDetail: (count, guest, member) =>
         `${count} returning × $${guest.toLocaleString()} (member $${member.toLocaleString()})`,
       partialDetail: (beginners, headcount) =>

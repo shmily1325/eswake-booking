@@ -24,14 +24,14 @@ const baseForm: LiffBookingFormState = {
 }
 
 describe('computePriceEstimate designated coach', () => {
-  it('multiplies 20-min coach rate by experienced headcount', () => {
+  it('multiplies 20-min coach rate by all riders on water', () => {
     const estimate = computePriceEstimate(baseForm, [coach], null, 'zh')
     expect(estimate).not.toBeNull()
     expect(estimate!.coachLine).toEqual({ coachName: '巨陽尼', amount: 1000 })
     expect(estimate!.detailLines.some(l => l.includes('教練 巨陽尼') && l.includes('500'))).toBe(true)
   })
 
-  it('does not charge designated coach for all beginners', () => {
+  it('includes designated coach fee for all beginners', () => {
     const estimate = computePriceEstimate(
       { ...baseForm, beginnerCount: 2, skillLevel: 'first_time' },
       [coach],
@@ -39,7 +39,7 @@ describe('computePriceEstimate designated coach', () => {
       'zh',
     )
     expect(estimate).not.toBeNull()
-    expect(estimate!.coachLine).toBeNull()
-    expect(estimate!.detailLines.some(l => l.includes('指定 巨陽尼'))).toBe(false)
+    expect(estimate!.coachLine).toEqual({ coachName: '巨陽尼', amount: 1000 })
+    expect(estimate!.detailLines.some(l => l.includes('教練 巨陽尼') && l.includes('2×'))).toBe(true)
   })
 })
