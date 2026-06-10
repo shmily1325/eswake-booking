@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
+import { BookHeadcountStepper } from './BookHeadcountStepper'
 import { useBookLocale } from './BookLocaleContext'
-import { FOLLOW_BOAT_OPTIONS } from './liffBookingConfig'
+import { FOLLOW_BOAT_MAX } from './liffBookingConfig'
 import { followBoatFee } from './liffBookingPrices'
-import { chipBtn, fieldLabel, optionalPanel } from './bookStyles'
+import { fieldLabel, optionalPanel } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookFollowBoatPanelProps {
@@ -21,7 +22,7 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
     setOpen(v => !v)
   }
 
-  const pick = (n: number) => {
+  const setCount = (n: number) => {
     triggerHaptic('light')
     onChange(n)
     if (n > 0) setOpen(true)
@@ -73,21 +74,14 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
             {s.step2.followBoat.rule}
           </div>
           <div style={fieldLabel}>{s.step2.followBoat.countLabel}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {FOLLOW_BOAT_OPTIONS.map(n => (
-              <button
-                key={n}
-                type="button"
-                className="book-chip-btn"
-                style={chipBtn(value === n)}
-                onClick={() => pick(n)}
-              >
-                {n === 0 ? s.step2.followBoat.none : s.step2.followBoat.nFollowers(n)}
-              </button>
-            ))}
-          </div>
+          <BookHeadcountStepper
+            value={value}
+            min={0}
+            max={FOLLOW_BOAT_MAX}
+            onChange={setCount}
+          />
           {value > 0 ? (
-            <div style={{ fontSize: ty.caption, color: T.muted, marginTop: 10, lineHeight: 1.5 }}>
+            <div style={{ fontSize: ty.caption, color: T.muted, marginTop: 10, lineHeight: 1.5, textAlign: 'center' }}>
               {s.step2.followBoat.aboardLine(
                 riders,
                 value,

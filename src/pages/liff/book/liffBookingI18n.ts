@@ -63,6 +63,19 @@ export interface BookI18nStrings {
     firstTimeDetail: string
     experienced: string
     experiencedNote: string
+    firstTimeUnitPrice: (amount: string) => string
+    sessionDualPrice: (guest: number, member: number) => string
+    pricingLegendFirstTimeWB: (small: number, big: number) => string
+    pricingLegendFirstTimeBig: (price: number) => string
+    pricingLegendExperiencedWB: (
+      blockMin: number,
+      smallGuest: number,
+      smallMember: number,
+      bigGuest: number,
+      bigMember: number,
+    ) => string
+    pricingLegendExperiencedBig: (blockMin: number, guest: number, member: number) => string
+    estimateExperiencedDetail: (count: number, guest: number, member: number) => string
     partialDetail: (beginners: number, headcount: number) => string
     nFirstTime: (n: number) => string
     experienceSummary: (headcount: number, beginnerCount: number | null) => string
@@ -226,10 +239,15 @@ export interface BookI18nStrings {
     activityChip: Record<'WS' | 'WB' | 'BOTH', string>
     step1Title: string
     step1Hint: string
+    groupContext: (aboard: number) => string
     small: string
     big: string
-    smallSub: string
-    bigSub: string
+    smallSeatingSingle: string
+    smallSeatingDual: string
+    bigSeatingSingle: string
+    bigSeatingDual: string
+    segmentPrice: (firstTime: number, guestSession: number, memberSession: number) => string
+    /** @deprecated large-group variant removed */
     largeGroupTitle: string
     twoSmallBoats: string
     twoBigBoats: string
@@ -296,7 +314,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       bothSub: '同一趟船 · 大船',
       bothPrice: amount => `${amount}／人`,
       bothShort: '快艇衝浪＋寬板滑水',
-      mixedToggle: '有人想玩另一種？',
+      mixedToggle: '兩個都想玩？',
       bothNote: '有人快艇衝浪、有人寬板滑水 · 點項目可改選單一種',
       videoMandarinNote: '影片為中文解說',
       memberRateApplied: '已滑過已套用會員價',
@@ -317,7 +335,22 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       firstTimeWater: '水上每人 20 分鐘',
       firstTimeDetail: '陸上教學 10 分鐘 · 水上每人 20 分鐘',
       experienced: '已經滑過',
-      experiencedNote: '水上每人 20 分鐘',
+      experiencedNote: '水上每人 20 分鐘計價',
+      firstTimeUnitPrice: amount => `體驗 ${amount}／人`,
+      sessionDualPrice: (guest, member) =>
+        `$${guest.toLocaleString()}（會員 $${member.toLocaleString()}）`,
+      pricingLegendFirstTimeWB: (small, big) =>
+        `體驗 小船 $${small.toLocaleString()} · 大船 $${big.toLocaleString()} · 陸上 10 分 + 水上每人 20 分`,
+      pricingLegendFirstTimeBig: price =>
+        `體驗 $${price.toLocaleString()} · 陸上 10 分 + 水上每人 20 分`,
+      pricingLegendExperiencedWB: (blockMin, smallGuest, smallMember, bigGuest, bigMember) => {
+        const dual = (g: number, m: number) => `$${g.toLocaleString()}（會員 $${m.toLocaleString()}）`
+        return `已滑過 ${blockMin} 分鐘 · 小船 ${dual(smallGuest, smallMember)} · 大船 ${dual(bigGuest, bigMember)}`
+      },
+      pricingLegendExperiencedBig: (blockMin, guest, member) =>
+        `已滑過 ${blockMin} 分鐘 · $${guest.toLocaleString()}（會員 $${member.toLocaleString()}）`,
+      estimateExperiencedDetail: (count, guest, member) =>
+        `${count} 已滑過 × $${guest.toLocaleString()}（會員 $${member.toLocaleString()}）`,
       partialDetail: (beginners, headcount) =>
         `${beginners} 位體驗 · ${headcount - beginners} 位已滑過`,
       nFirstTime: n => `${n} 位第一次`,
@@ -493,10 +526,18 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       },
       step1Title: '偏好哪種船？',
       step1Hint: '1 人也可約',
+      groupContext: aboard =>
+        aboard >= 11
+          ? `船上 ${aboard} 人 · 小船或大船皆可能需 2 艘`
+          : `船上 ${aboard} 人 · 選小船會安排 2 艘`,
       small: '小船',
       big: '大船',
-      smallSub: '基本型 · 僅寬板',
-      bigSub: '空間較大',
+      smallSeatingSingle: '6 人/艘',
+      smallSeatingDual: '需 2 艘 · 6 人/艘',
+      bigSeatingSingle: '10 人/艘',
+      bigSeatingDual: '需 2 艘 · 10 人/艘',
+      segmentPrice: (firstTime, guestSession, memberSession) =>
+        `體驗 $${firstTime.toLocaleString()} · 已滑過 $${guestSession.toLocaleString()}（會員 $${memberSession.toLocaleString()}）/20分`,
       largeGroupTitle: '7 人以上怎麼安排？',
       twoSmallBoats: '2 艘小船',
       twoBigBoats: '2 艘大船',
@@ -561,7 +602,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       bothSub: 'Same boat trip · big boat',
       bothPrice: amount => `${amount}/person`,
       bothShort: 'Wakesurf + wakeboard',
-      mixedToggle: 'Someone wants the other activity?',
+      mixedToggle: 'Want both?',
       bothNote: 'Mixed group · tap an activity to pick just one',
       videoMandarinNote: 'Video in Mandarin',
       memberRateApplied: 'Member rate applied (returning riders)',
@@ -582,7 +623,22 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       firstTimeWater: '20 min water each',
       firstTimeDetail: '10 min land · 20 min water each',
       experienced: 'Experienced',
-      experiencedNote: '20 min water each',
+      experiencedNote: '20 min water, time-based rate',
+      firstTimeUnitPrice: amount => `First-timer ${amount}/person`,
+      sessionDualPrice: (guest, member) =>
+        `$${guest.toLocaleString()} (member $${member.toLocaleString()})`,
+      pricingLegendFirstTimeWB: (small, big) =>
+        `First-timer small boat $${small.toLocaleString()} · big boat $${big.toLocaleString()} · 10 min land + 20 min water each`,
+      pricingLegendFirstTimeBig: price =>
+        `First-timer $${price.toLocaleString()} · 10 min land + 20 min water each`,
+      pricingLegendExperiencedWB: (blockMin, smallGuest, smallMember, bigGuest, bigMember) => {
+        const dual = (g: number, m: number) => `$${g.toLocaleString()} (member $${m.toLocaleString()})`
+        return `Returning ${blockMin} min · small ${dual(smallGuest, smallMember)} · big ${dual(bigGuest, bigMember)}`
+      },
+      pricingLegendExperiencedBig: (blockMin, guest, member) =>
+        `Returning ${blockMin} min · $${guest.toLocaleString()} (member $${member.toLocaleString()})`,
+      estimateExperiencedDetail: (count, guest, member) =>
+        `${count} returning × $${guest.toLocaleString()} (member $${member.toLocaleString()})`,
       partialDetail: (beginners, headcount) =>
         `${beginners} first-timer${beginners > 1 ? 's' : ''} · ${headcount - beginners} experienced`,
       nFirstTime: n => `${n} first-timer${n > 1 ? 's' : ''}`,
@@ -758,10 +814,18 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       },
       step1Title: 'Boat preference',
       step1Hint: 'Solo riders welcome',
+      groupContext: aboard =>
+        aboard >= 11
+          ? `${aboard} on board · small or big may need 2 boats`
+          : `${aboard} on board · small boat = 2 boats`,
       small: 'Small boat',
       big: 'Big boat',
-      smallSub: 'Basic · wakeboard only',
-      bigSub: 'More space',
+      smallSeatingSingle: '6 per boat',
+      smallSeatingDual: '2 boats · 6 each',
+      bigSeatingSingle: '10 per boat',
+      bigSeatingDual: '2 boats · 10 each',
+      segmentPrice: (firstTime, guestSession, memberSession) =>
+        `First-timer $${firstTime.toLocaleString()} · returning $${guestSession.toLocaleString()} (member $${memberSession.toLocaleString()})/20 min`,
       largeGroupTitle: '7+ riders — boat setup',
       twoSmallBoats: '2 small boats',
       twoBigBoats: '2 big boats',

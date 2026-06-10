@@ -12,6 +12,7 @@ import { BookEssentialsPanel } from './BookEssentialsPanel'
 import { BookEstimateCard } from './BookEstimateCard'
 import { BookExperiencePanel } from './BookExperiencePanel'
 import { BookHeadcountStepper } from './BookHeadcountStepper'
+import { BookPricingLegend } from './BookPricingLegend'
 import { BookStep2PriceSummary } from './BookStep2PriceSummary'
 import { BookConfirmSummary } from './BookConfirmSummary'
 import { BookFollowBoatPanel } from './BookFollowBoatPanel'
@@ -41,8 +42,7 @@ import {
   clearActivityChoice,
   resolveLiffBookId,
 } from './liffBookingConfig'
-import { onBoatTotal, wbNeedsLargeGroupBoatChoice } from './liffBookingBoats'
-import { bookMemberRate } from './liffBookingPrices'
+import { onBoatTotal } from './liffBookingBoats'
 import { computePriceEstimate } from './liffBookingPricing'
 import { designatedCoachPrice20 } from './liffBookingCoaches'
 import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
@@ -67,6 +67,7 @@ import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
 import { OFFICIAL_INFO_URL } from './liffBookingContent'
+import { BookHeader } from '../../book/BookHeader'
 import { BookLayout } from '../../book/BookLayout'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
@@ -154,6 +155,7 @@ export function PublicBook() {
   return (
     <BookLocaleProvider>
       <BookLayout>
+        <BookHeader />
         <PublicBookShell />
       </BookLayout>
     </BookLocaleProvider>
@@ -225,7 +227,6 @@ function BookWizardCore({
 }) {
   const { locale, s } = useBookLocale()
   const requireLine = mode === 'liff'
-
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<LiffBookingFormState>(INITIAL_STATE)
   const [coaches, setCoaches] = useState<CoachOption[]>([])
@@ -452,7 +453,6 @@ function BookWizardCore({
     if (result.mode === 'desktop-fallback') setDesktopMessage(result.message)
   }
 
-  const memberRate = bookMemberRate(member?.membership_type)
   const confirmDates = form.preferredDates.length ? form.preferredDates : commitSchedule()
 
   const nextLabel = s.footer.next
@@ -465,14 +465,13 @@ function BookWizardCore({
     <div style={usePublicChrome ? { ...bookPage, background: 'transparent' } : bookPage}>
       {!usePublicChrome ? <LiffStyles /> : null}
       <BookPageStyles />
-      <BookStepHeader step={step} />
+      <BookStepHeader step={step} showBrand={!usePublicChrome} />
 
       <main style={{ padding: 16 }}>
         {/* Step 1: 玩什麼 */}
         {step === 1 && (
           <div style={bookCard}>
             <BookEssentialsPanel
-              memberRate={memberRate}
               value={form.activity}
               onChange={(code: ActivityChoice | null) => setForm(prev => ({
                 ...prev,
@@ -495,24 +494,26 @@ function BookWizardCore({
                 />
               </div>
 
+              {form.activity === 'WB' ? (
+                <div style={{ marginBottom: 16 }}>
+                  <BookBoatPicker
+                    value={form.boatPreference}
+                    aboard={onBoatTotal(form.headcount, form.followBoatCount)}
+                    onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
+                  />
+                </div>
+              ) : null}
+
               <div style={{ marginBottom: 16 }}>
                 <BookExperiencePanel
                   headcount={form.headcount}
                   beginnerCount={form.beginnerCount}
                   onSyncPeople={patch => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, patch) }))}
                 />
+                {form.activity && form.activity !== 'WB' ? (
+                  <BookPricingLegend activity={form.activity} />
+                ) : null}
               </div>
-
-              {form.activity === 'WB' && (
-                <div style={{ marginBottom: 16 }}>
-                  <BookBoatPicker
-                    variant={wbNeedsLargeGroupBoatChoice(form.activity, form.headcount, form.followBoatCount) ? 'largeGroup' : 'step1'}
-                    value={form.boatPreference}
-                    headcount={onBoatTotal(form.headcount, form.followBoatCount)}
-                    onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
-                  />
-                </div>
-              )}
 
               <BookStep2PriceSummary form={form} />
             </div>

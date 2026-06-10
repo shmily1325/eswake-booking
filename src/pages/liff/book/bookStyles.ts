@@ -464,6 +464,16 @@ export const selectionDetail: CSSProperties = {
   lineHeight: 1.5,
 }
 
+/** Step 2 體驗／已滑過計價說明 */
+export const pricingNote: CSSProperties = {
+  fontSize: ty.caption,
+  color: T.muted,
+  lineHeight: 1.55,
+  marginTop: 12,
+  marginBottom: 4,
+  textAlign: 'center',
+}
+
 export const stepperRow: CSSProperties = {
   display: 'flex',
   alignItems: 'center',

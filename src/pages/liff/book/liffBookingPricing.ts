@@ -12,9 +12,7 @@ import {
 
   firstTimeUnitPrice,
 
-  bookMemberRate,
-
-  sessionBlockRate,
+  sessionDualRates,
 
   followBoatFee,
 
@@ -96,7 +94,7 @@ export function computePriceEstimate(
 
   coaches: CoachOption[],
 
-  member: Member | null,
+  _member: Member | null,
 
   locale: BookLocale = 'zh',
 
@@ -116,8 +114,6 @@ export function computePriceEstimate(
 
   const experienced = Math.max(0, state.headcount - beginners)
 
-  const memberRate = bookMemberRate(member?.membership_type)
-
   const boatTier = resolveBoatTier(activity, state.headcount, state.boatPreference)
 
   const firstTimeActivity: 'WB' | 'WS' = activity === 'BOTH' ? 'WS' : activity
@@ -126,11 +122,7 @@ export function computePriceEstimate(
 
   let boatTotal = 0
 
-  let tierLabel = memberRate
-
-    ? locale === 'zh' ? '會員價' : 'Member rate'
-
-    : locale === 'zh' ? '非會員價' : 'Guest rate'
+  let tierLabel = locale === 'zh' ? '參考價' : 'Estimate'
 
 
 
@@ -166,19 +158,11 @@ export function computePriceEstimate(
 
   if (experienced > 0) {
 
-    const { price } = sessionBlockRate(boatTier, memberRate)
+    const { guest, member: memberPrice } = sessionDualRates(boatTier)
 
-    boatTotal += experienced * price
+    boatTotal += experienced * guest
 
-    if (locale === 'zh') {
-
-      detailLines.push(`${experienced} 已滑過 × $${price.toLocaleString()}`)
-
-    } else {
-
-      detailLines.push(`${experienced} experienced × $${price.toLocaleString()}`)
-
-    }
+    detailLines.push(s.step2.estimateExperiencedDetail(experienced, guest, memberPrice))
 
   }
 

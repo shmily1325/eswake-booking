@@ -5,22 +5,33 @@ import { BOOK_TYPE as ty } from './bookTheme'
 
 interface BookStepHeaderProps {
   step: number
+  /** /book：品牌列在 BookHeader，這裡只顯示步驟區 */
+  showBrand?: boolean
 }
 
-export function BookStepHeader({ step }: BookStepHeaderProps) {
+export function BookStepHeader({ step, showBrand = true }: BookStepHeaderProps) {
   const { s } = useBookLocale()
   const total = s.steps.length
   const meta = s.steps[step - 1]
   const progressPct = (step / total) * 100
 
   return (
-    <header style={bookHeader}>
-      <EsBrandLockup
-        brand={s.header.brand}
-        subtitle={s.header.title}
-        trailing={<BookLocaleToggle />}
-        style={{ marginBottom: 14 }}
-      />
+    <header style={{
+      ...bookHeader,
+      ...(showBrand ? {} : {
+        paddingTop: 14,
+        borderTop: 'none',
+      }),
+    }}
+    >
+      {showBrand ? (
+        <EsBrandLockup
+          brand={s.header.brand}
+          subtitle={s.header.title}
+          trailing={<BookLocaleToggle />}
+          style={{ marginBottom: 14 }}
+        />
+      ) : null}
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
         {s.steps.map(st => {

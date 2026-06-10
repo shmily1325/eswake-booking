@@ -82,12 +82,13 @@ export interface Step1FirstTimePrices {
   big: number
 }
 
-/** Step 2：有體驗價且條件足夠時顯示參考價 */
+/** Step 2：全員體驗且條件足夠時顯示體驗單價 */
 export function step2ShowsFirstTimePrice(
-  form: Pick<LiffBookingFormState, 'activity' | 'boatPreference' | 'beginnerCount'>,
+  form: Pick<LiffBookingFormState, 'activity' | 'boatPreference' | 'beginnerCount' | 'headcount'>,
 ): boolean {
   if (!form.activity) return false
   if (form.beginnerCount == null || form.beginnerCount === 0) return false
+  if (form.beginnerCount !== form.headcount) return false
   if (form.activity === 'WB' && !form.boatPreference) return false
   return true
 }
@@ -99,9 +100,9 @@ export function step2FirstTimePriceLabel(
 ): string {
   const priceWS = `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
   const priceWB = `$${FIRST_TIME_WB_SMALL.toLocaleString()}`
-  if (activity === 'WS' || activity === 'BOTH') return s.step1.priceWS(priceWS)
-  if (boatPreference === 'small') return s.step1.priceWBFrom(priceWB)
-  return s.step1.priceWS(priceWS)
+  if (activity === 'WS' || activity === 'BOTH') return s.step2.firstTimeUnitPrice(priceWS)
+  if (boatPreference === 'small') return s.step2.firstTimeUnitPrice(priceWB)
+  return s.step2.firstTimeUnitPrice(priceWS)
 }
 
 /** Step 1 卡片顯示用 */
@@ -110,6 +111,29 @@ export function step1FirstTimePrices(activity: ActivityCode): Step1FirstTimePric
     return { small: FIRST_TIME_WB_SMALL, big: FIRST_TIME_BIG_BOAT }
   }
   return { big: FIRST_TIME_BIG_BOAT }
+}
+
+export function boatTierFirstTimePrice(tier: BoatTier): number {
+  return tier === 'small' ? FIRST_TIME_WB_SMALL : FIRST_TIME_BIG_BOAT
+}
+
+/** 已滑過：非會員／會員計時價（體驗價不分會員） */
+export function sessionDualRates(tier: BoatTier): { blockMin: number; guest: number; member: number } {
+  return {
+    blockMin: sessionBlockRate(tier, false).blockMin,
+    guest: sessionBlockRate(tier, false).price,
+    member: sessionBlockRate(tier, true).price,
+  }
+}
+
+/** 選船按鈕：體驗價 + 已滑過雙档價 */
+export function boatTierDisplayPricing(tier: BoatTier) {
+  const session = sessionDualRates(tier)
+  return {
+    firstTime: boatTierFirstTimePrice(tier),
+    sessionGuest: session.guest,
+    sessionMember: session.member,
+  }
 }
 
 /** 小船僅 WB；大船為 G21／黑豹價（表單未選 G23） */
@@ -142,7 +166,34 @@ export function activityPriceFromLine(activity: ActivityCode): string {
   return `初次 $${FIRST_TIME_BIG_BOAT.toLocaleString()}`
 }
 
-/** Step 1 集中價格說明（初學／非初學各一行；會員價僅適用非初學） */
+/** Step 2 價格說明（體驗套餐 + 已滑過非會員／會員雙档） */
+export function bookingPricingLegendLines(
+  activity: ActivityChoice,
+  s: BookI18nStrings,
+): { firstTime: string; experienced: string } {
+  const small = sessionDualRates('small')
+  const big = sessionDualRates('big')
+
+  if (activity === 'WB') {
+    return {
+      firstTime: s.step2.pricingLegendFirstTimeWB(FIRST_TIME_WB_SMALL, FIRST_TIME_BIG_BOAT),
+      experienced: s.step2.pricingLegendExperiencedWB(
+        small.blockMin,
+        small.guest,
+        small.member,
+        big.guest,
+        big.member,
+      ),
+    }
+  }
+
+  return {
+    firstTime: s.step2.pricingLegendFirstTimeBig(FIRST_TIME_BIG_BOAT),
+    experienced: s.step2.pricingLegendExperiencedBig(big.blockMin, big.guest, big.member),
+  }
+}
+
+/** @deprecated Use bookingPricingLegendLines */
 export function step1PricingLegend(experiencedMemberRate: boolean): { beginner: string; experienced: string } {
   const small = sessionBlockRate('small', experiencedMemberRate)
   const big = sessionBlockRate('big', experiencedMemberRate)

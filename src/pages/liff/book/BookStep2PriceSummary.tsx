@@ -4,7 +4,7 @@ import { step2FirstTimePriceLabel, step2ShowsFirstTimePrice } from './liffBookin
 import type { LiffBookingFormState } from './types'
 
 interface BookStep2PriceSummaryProps {
-  form: Pick<LiffBookingFormState, 'activity' | 'boatPreference' | 'beginnerCount'>
+  form: Pick<LiffBookingFormState, 'activity' | 'boatPreference' | 'beginnerCount' | 'headcount'>
 }
 
 export function BookStep2PriceSummary({ form }: BookStep2PriceSummaryProps) {

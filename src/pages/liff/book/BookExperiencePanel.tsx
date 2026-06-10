@@ -1,4 +1,5 @@
 import { triggerHaptic } from '../../../utils/haptic'
+import { BookHeadcountStepper } from './BookHeadcountStepper'
 import { useBookLocale } from './BookLocaleContext'
 import { chipBtn, fieldLabel, selectionDetail } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
@@ -76,7 +77,7 @@ export function BookExperiencePanel({
   }
 
   const mode = resolveMultiMode(headcount, beginnerCount)
-  const partialOptions = Array.from({ length: Math.max(0, headcount - 1) }, (_, i) => i + 1)
+  const partialMax = Math.max(1, headcount - 1)
 
   return (
     <div>
@@ -123,25 +124,12 @@ export function BookExperiencePanel({
       {mode === 'partial' ? (
         <div style={{ marginTop: 12 }}>
           <div style={fieldLabel}>{s.step2.partialCountLabel}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {partialOptions.map(n => (
-              <button
-                key={n}
-                type="button"
-                className="book-chip-btn"
-                style={{
-                  ...chipBtn(beginnerCount === n),
-                  flex: '1 1 calc(20% - 8px)',
-                  minWidth: 44,
-                  padding: '12px 0',
-                }}
-                onClick={() => apply({ beginnerCount: n })}
-                aria-label={s.step2.nFirstTime(n)}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
+          <BookHeadcountStepper
+            value={beginnerCount ?? 1}
+            min={1}
+            max={partialMax}
+            onChange={n => apply({ beginnerCount: n })}
+          />
         </div>
       ) : null}
 

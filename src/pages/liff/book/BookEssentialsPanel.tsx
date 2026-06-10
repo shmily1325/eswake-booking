@@ -1,6 +1,5 @@
 import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
-import { LIFF_BOOK_GUEST_PRICING_ONLY } from './liffBookingConfig'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { activitySegmentLabels } from './liffBookingI18n'
 import { BookActivityIcon } from './BookActivityIcon'
@@ -21,7 +20,6 @@ import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 import type { ActivityChoice, ActivityCode } from './types'
 
 interface BookEssentialsPanelProps {
-  memberRate?: boolean
   value: ActivityChoice | null
   onChange: (code: ActivityChoice | null) => void
 }
@@ -56,7 +54,6 @@ function step1PriceLabel(
 }
 
 export function BookEssentialsPanel({
-  memberRate = false,
   value,
   onChange,
 }: BookEssentialsPanelProps) {
@@ -149,11 +146,6 @@ export function BookEssentialsPanel({
         </div>
       ) : null}
 
-      {!LIFF_BOOK_GUEST_PRICING_ONLY && memberRate ? (
-        <div style={{ fontSize: ty.caption, color: '#aaa', marginTop: 10, textAlign: 'center' }}>
-          {s.step1.memberRateApplied}
-        </div>
-      ) : null}
     </div>
   )
 }

@@ -61,8 +61,8 @@ export const SKILL_OPTIONS = [
 
 export const HEADCOUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
 
-/** 跟船人數選項（不計入滑水人數） */
-export const FOLLOW_BOAT_OPTIONS = [0, 1, 2, 3, 4, 5] as const
+/** 跟船人數上限（不計入滑水人數） */
+export const FOLLOW_BOAT_MAX = 5
 
 /** 依人數產生 0初～N初 選項 */
 export function beginnerCountOptions(headcount: number): number[] {
@@ -139,9 +139,6 @@ export const WATER_MIN_PER_PERSON = 20
 
 /** 初學體驗說明（小編指定文案） */
 export const BEGINNER_LESSON_NOTE = '陸上教學 10 分鐘 · 水上每人 20 分鐘'
-
-/** Step 1 價格面板：非初學價先以非會員顯示供審核（初學不分會員） */
-export const LIFF_BOOK_GUEST_PRICING_ONLY = true
 
 export const MAX_PREFERRED_DATES = 3
 
