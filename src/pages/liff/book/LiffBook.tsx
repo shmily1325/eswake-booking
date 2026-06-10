@@ -487,22 +487,11 @@ function BookWizardCore({
             <div style={bookFieldGroup}>
               <div style={{ marginBottom: 16 }}>
                 <div style={fieldLabel}>{s.step2.headcount}</div>
-                <div style={{ ...fieldHint, marginTop: 0, marginBottom: 4 }}>{s.step2.headcountHint}</div>
                 <BookHeadcountStepper
                   value={form.headcount}
                   onChange={n => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
                 />
               </div>
-
-              {form.activity === 'WB' ? (
-                <div style={{ marginBottom: 16 }}>
-                  <BookBoatPicker
-                    value={form.boatPreference}
-                    aboard={onBoatTotal(form.headcount, form.followBoatCount)}
-                    onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
-                  />
-                </div>
-              ) : null}
 
               <div style={{ marginBottom: 16 }}>
                 <BookExperiencePanel
@@ -514,6 +503,16 @@ function BookWizardCore({
                   <BookPricingLegend activity={form.activity} />
                 ) : null}
               </div>
+
+              {form.activity === 'WB' ? (
+                <div style={{ marginBottom: 16 }}>
+                  <BookBoatPicker
+                    value={form.boatPreference}
+                    aboard={onBoatTotal(form.headcount, form.followBoatCount)}
+                    onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
+                  />
+                </div>
+              ) : null}
 
               <BookStep2PriceSummary form={form} />
             </div>

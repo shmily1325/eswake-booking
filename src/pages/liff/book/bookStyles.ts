@@ -377,7 +377,7 @@ export const segmentBtn = (selected: boolean): CSSProperties => ({
   flex: 1,
   minWidth: 0,
   position: 'relative',
-  padding: '14px 8px 12px',
+  padding: '14px 10px 12px',
   border: selected ? `2px solid ${T.accent}` : '1px solid #e8e8e8',
   borderRadius: 14,
   background: selected ? T.surfaceMuted : '#fff',
@@ -537,6 +537,48 @@ export const segmentPrice: CSSProperties = {
   color: T.inkSoft,
   marginTop: 4,
   fontVariantNumeric: 'tabular-nums',
+}
+
+/** 選船按鈕內價格區（體驗／已滑過分行） */
+export const segmentPriceBlock: CSSProperties = {
+  marginTop: 10,
+  paddingTop: 10,
+  borderTop: `1px solid ${T.borderSubtle}`,
+  textAlign: 'center',
+}
+
+export const segmentPriceFirst: CSSProperties = {
+  fontSize: ty.caption,
+  fontWeight: 600,
+  color: T.ink,
+  lineHeight: 1.35,
+  fontVariantNumeric: 'tabular-nums',
+}
+
+export const segmentPriceReturningLabel: CSSProperties = {
+  fontSize: 10,
+  fontWeight: 600,
+  color: T.muted,
+  marginTop: 6,
+  lineHeight: 1.3,
+  letterSpacing: '0.02em',
+}
+
+export const segmentPriceReturningAmount: CSSProperties = {
+  fontSize: ty.caption,
+  fontWeight: 700,
+  color: T.inkSoft,
+  marginTop: 2,
+  lineHeight: 1.4,
+  fontVariantNumeric: 'tabular-nums',
+}
+
+export const segmentPriceUnit: CSSProperties = {
+  fontSize: 10,
+  fontWeight: 500,
+  color: T.mutedLight,
+  marginTop: 3,
+  lineHeight: 1.3,
 }
 
 export const bothSegmentBtn = (selected: boolean): CSSProperties => ({

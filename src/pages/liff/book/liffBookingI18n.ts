@@ -49,7 +49,6 @@ export interface BookI18nStrings {
   step2: {
     optionalLabel: string
     headcount: string
-    headcountHint: string
     experienceSingle: string
     experienceMulti: string
     allFirstTime: string
@@ -82,7 +81,6 @@ export interface BookI18nStrings {
     mixedSkillNote: string
     followBoat: {
       toggle: string
-      rule: string
       countLabel: string
       none: string
       nFollowers: (n: number) => string
@@ -238,7 +236,6 @@ export interface BookI18nStrings {
   boat: {
     activityChip: Record<'WS' | 'WB' | 'BOTH', string>
     step1Title: string
-    step1Hint: string
     groupContext: (aboard: number) => string
     small: string
     big: string
@@ -246,7 +243,10 @@ export interface BookI18nStrings {
     smallSeatingDual: string
     bigSeatingSingle: string
     bigSeatingDual: string
-    segmentPrice: (firstTime: number, guestSession: number, memberSession: number) => string
+    segmentFirstTimePrice: (firstTime: number) => string
+    segmentReturningLabel: string
+    segmentReturningPrice: (guestSession: number, memberSession: number) => string
+    segmentPer20Min: string
     /** @deprecated large-group variant removed */
     largeGroupTitle: string
     twoSmallBoats: string
@@ -322,7 +322,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     step2: {
       optionalLabel: '選填',
       headcount: '幾位要下水？',
-      headcountHint: '只計要下水的人',
       experienceSingle: '第一次玩嗎？',
       experienceMulti: '第一次玩嗎？',
       allFirstTime: '都是第一次',
@@ -363,7 +362,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       },
       followBoat: {
         toggle: '有人不玩、想跟船？',
-        rule: '親友不滑水可跟船：第 1 位免費，第 2 位起每位 $300。',
         countLabel: '幾位跟船',
         none: '不需要',
         nFollowers: n => `${n} 位`,
@@ -525,7 +523,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         WB: '小船/大船',
       },
       step1Title: '偏好哪種船？',
-      step1Hint: '1 人也可約',
       groupContext: aboard =>
         aboard >= 11
           ? `船上 ${aboard} 人 · 小船或大船皆可能需 2 艘`
@@ -536,8 +533,11 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       smallSeatingDual: '需 2 艘 · 6 人/艘',
       bigSeatingSingle: '10 人/艘',
       bigSeatingDual: '需 2 艘 · 10 人/艘',
-      segmentPrice: (firstTime, guestSession, memberSession) =>
-        `體驗 $${firstTime.toLocaleString()} · 已滑過 $${guestSession.toLocaleString()}（會員 $${memberSession.toLocaleString()}）/20分`,
+      segmentFirstTimePrice: firstTime => `體驗 $${firstTime.toLocaleString()}`,
+      segmentReturningLabel: '已滑過',
+      segmentReturningPrice: (guestSession, memberSession) =>
+        `$${guestSession.toLocaleString()}（會員 $${memberSession.toLocaleString()}）`,
+      segmentPer20Min: '20 分鐘／人',
       largeGroupTitle: '7 人以上怎麼安排？',
       twoSmallBoats: '2 艘小船',
       twoBigBoats: '2 艘大船',
@@ -610,7 +610,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     step2: {
       optionalLabel: 'Optional',
       headcount: 'How many riding?',
-      headcountHint: 'Riders only',
       experienceSingle: 'First time?',
       experienceMulti: 'First time?',
       allFirstTime: 'All first-timers',
@@ -651,7 +650,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       },
       followBoat: {
         toggle: 'Someone not riding but coming along?',
-        rule: 'Non-riders may join: 1st free, $300 each from the 2nd.',
         countLabel: 'How many non-riders',
         none: 'None',
         nFollowers: n => `${n}`,
@@ -813,7 +811,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         WB: 'Small/Big boat',
       },
       step1Title: 'Boat preference',
-      step1Hint: 'Solo riders welcome',
       groupContext: aboard =>
         aboard >= 11
           ? `${aboard} on board · small or big may need 2 boats`
@@ -824,8 +821,11 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       smallSeatingDual: '2 boats · 6 each',
       bigSeatingSingle: '10 per boat',
       bigSeatingDual: '2 boats · 10 each',
-      segmentPrice: (firstTime, guestSession, memberSession) =>
-        `First-timer $${firstTime.toLocaleString()} · returning $${guestSession.toLocaleString()} (member $${memberSession.toLocaleString()})/20 min`,
+      segmentFirstTimePrice: firstTime => `First-timer $${firstTime.toLocaleString()}`,
+      segmentReturningLabel: 'Returning',
+      segmentReturningPrice: (guestSession, memberSession) =>
+        `$${guestSession.toLocaleString()} (member $${memberSession.toLocaleString()})`,
+      segmentPer20Min: 'per 20 min',
       largeGroupTitle: '7+ riders — boat setup',
       twoSmallBoats: '2 small boats',
       twoBigBoats: '2 big boats',

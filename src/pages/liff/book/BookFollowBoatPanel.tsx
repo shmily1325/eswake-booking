@@ -70,9 +70,6 @@ export function BookFollowBoatPanel({ riders, value, onChange }: BookFollowBoatP
             background: T.surfaceMuted,
           }}
         >
-          <div style={{ fontSize: ty.caption, color: T.muted, lineHeight: 1.6, marginBottom: 12 }}>
-            {s.step2.followBoat.rule}
-          </div>
           <div style={fieldLabel}>{s.step2.followBoat.countLabel}</div>
           <BookHeadcountStepper
             value={value}
