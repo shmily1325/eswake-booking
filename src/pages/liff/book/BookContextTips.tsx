@@ -85,9 +85,9 @@ function resolveContextTips(
   }
 
   const needsEarlyCoach =
-    pickTimePref === 'morning'
+    step === 4
+    && pickTimePref === 'morning'
     && form.coachChoice !== 'designated'
-    && (step === 3 || step === 4)
 
   if (needsEarlyCoach) {
     tips.push({ text: s.reminders.earlyCoach, tone: 'warn' })

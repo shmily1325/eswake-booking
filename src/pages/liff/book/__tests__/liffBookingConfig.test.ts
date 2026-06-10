@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { syncBookingPeople } from '../liffBookingConfig'
+import { syncBookingPeople, toggleActivitySelection } from '../liffBookingConfig'
 import type { LiffBookingFormState } from '../types'
 
 const base: LiffBookingFormState = {
@@ -29,5 +29,23 @@ describe('syncBookingPeople', () => {
     const next = syncBookingPeople({ ...base, headcount: 3, beginnerCount: 3 }, { beginnerCount: 1 })
     expect(next.beginnerCount).toBe(1)
     expect(next.skillLevel).toBe('experienced')
+  })
+})
+
+describe('toggleActivitySelection', () => {
+  it('selects a single activity', () => {
+    expect(toggleActivitySelection(null, 'WS')).toBe('WS')
+    expect(toggleActivitySelection(null, 'WB')).toBe('WB')
+  })
+
+  it('combines into BOTH when both are selected', () => {
+    expect(toggleActivitySelection('WS', 'WB')).toBe('BOTH')
+    expect(toggleActivitySelection('WB', 'WS')).toBe('BOTH')
+  })
+
+  it('deselects back to single or null', () => {
+    expect(toggleActivitySelection('BOTH', 'WS')).toBe('WB')
+    expect(toggleActivitySelection('BOTH', 'WB')).toBe('WS')
+    expect(toggleActivitySelection('WS', 'WS')).toBeNull()
   })
 })

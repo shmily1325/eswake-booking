@@ -11,6 +11,8 @@ import { BookBindingGate } from './BookBindingGate'
 import { BookEssentialsPanel } from './BookEssentialsPanel'
 import { BookEstimateCard } from './BookEstimateCard'
 import { BookExperiencePanel } from './BookExperiencePanel'
+import { BookHeadcountStepper } from './BookHeadcountStepper'
+import { BookStep2PriceSummary } from './BookStep2PriceSummary'
 import { BookConfirmSummary } from './BookConfirmSummary'
 import { BookFollowBoatPanel } from './BookFollowBoatPanel'
 import { BookStepHeader } from './BookStepHeader'
@@ -23,6 +25,7 @@ import { BookCoachPicker } from './BookCoachPicker'
 import { BookLocaleProvider, useBookLocale } from './BookLocaleContext'
 import type { BookWizardMode } from './bookWizardTypes'
 import type {
+  ActivityChoice,
   CoachOption,
   LiffBookingFormState,
   PreferredDate,
@@ -30,12 +33,12 @@ import type {
 } from './types'
 import type { BookLocale } from './liffBookingI18n'
 import {
-  HEADCOUNT_OPTIONS,
   MAX_PREFERRED_DATES,
   syncBookingPeople,
   TIME_PREFERENCE_OPTIONS,
   isLiffBookEnabled,
   syncActivityChoice,
+  clearActivityChoice,
   resolveLiffBookId,
 } from './liffBookingConfig'
 import { onBoatTotal, wbNeedsLargeGroupBoatChoice } from './liffBookingBoats'
@@ -53,7 +56,6 @@ import {
   chipBtn,
   fieldLabel,
   fieldHint,
-  selectedDatePill,
   footerBlockHint,
   linePrimaryBtn,
   primaryBtn,
@@ -451,12 +453,9 @@ function BookWizardCore({
   }
 
   const memberRate = bookMemberRate(member?.membership_type)
-  const primarySelection = pickDate
-    ? { date: pickDate, timePreference: pickTimePref }
-    : form.preferredDates[0] ?? null
   const confirmDates = form.preferredDates.length ? form.preferredDates : commitSchedule()
 
-  const nextLabel = step === 3 ? s.footer.confirm : s.footer.next
+  const nextLabel = s.footer.next
   const stepReady = canNext()
   const blockReason = stepReady
     ? null
@@ -475,9 +474,11 @@ function BookWizardCore({
             <BookEssentialsPanel
               memberRate={memberRate}
               value={form.activity}
-              onChange={code => setForm(prev => ({ ...prev, ...syncActivityChoice(code) }))}
+              onChange={(code: ActivityChoice | null) => setForm(prev => ({
+                ...prev,
+                ...(code ? syncActivityChoice(code) : clearActivityChoice()),
+              }))}
             />
-            <BookStaffHint step={1} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
           </div>
         )}
 
@@ -487,20 +488,11 @@ function BookWizardCore({
             <div style={bookFieldGroup}>
               <div style={{ marginBottom: 16 }}>
                 <div style={fieldLabel}>{s.step2.headcount}</div>
-                <div style={{ ...fieldHint, marginTop: 0, marginBottom: 10 }}>{s.step2.headcountHint}</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {HEADCOUNT_OPTIONS.map(n => (
-                    <button
-                      key={n}
-                      type="button"
-                      className="book-chip-btn"
-                      style={{ ...chipBtn(form.headcount === n), flex: '1 1 calc(20% - 8px)', minWidth: 52, padding: '12px 0' }}
-                      onClick={() => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
+                <div style={{ ...fieldHint, marginTop: 0, marginBottom: 4 }}>{s.step2.headcountHint}</div>
+                <BookHeadcountStepper
+                  value={form.headcount}
+                  onChange={n => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
+                />
               </div>
 
               <div style={{ marginBottom: 16 }}>
@@ -521,6 +513,8 @@ function BookWizardCore({
                   />
                 </div>
               )}
+
+              <BookStep2PriceSummary form={form} />
             </div>
 
             <div style={{ marginBottom: 4 }}>
@@ -538,6 +532,7 @@ function BookWizardCore({
               <BookEstimateCard
                 key="est-2"
                 estimate={estimate}
+                compact
                 showMixedNote={mixedSkill}
               />
             ) : null}
@@ -570,17 +565,6 @@ function BookWizardCore({
                   </button>
                 ))}
               </div>
-              <div style={fieldHint}>{s.step3.scheduleNote}</div>
-
-              {primarySelection ? (
-                <div style={selectedDatePill}>
-                  <span>
-                    {s.step3.selectedLabel}：
-                    {formatPreferredDateLabel(primarySelection, locale, s.step3.morning, s.step3.afternoon)}
-                  </span>
-                </div>
-              ) : null}
-
               {!showAlternateDates ? (
                 <button
                   type="button"
@@ -652,10 +636,6 @@ function BookWizardCore({
               )}
             </div>
 
-            {pickTimePref === 'morning' && form.coachChoice !== 'designated' ? (
-              <div style={{ ...fieldHint, marginTop: 12, color: '#ad6800' }}>{s.step3.earlyCoachNote}</div>
-            ) : null}
-
             {!showCoachSection ? (
               <div style={{ marginTop: 16 }}>
                 <button
@@ -666,7 +646,7 @@ function BookWizardCore({
                     color: T.muted, fontSize: ty.body, cursor: 'pointer', textDecoration: 'underline',
                   }}
                 >
-                  {s.step3.addCoachShort}
+                  {pickTimePref === 'morning' ? s.step3.addCoachMorningShort : s.step3.addCoachShort}
                 </button>
               </div>
             ) : (
@@ -701,15 +681,13 @@ function BookWizardCore({
               </div>
             )}
 
-            <BookContextTips step={3} form={form} pickTimePref={pickTimePref} />
-
-            {estimate ? <BookEstimateCard key="est-3" estimate={estimate} showMixedNote={mixedSkill} /> : null}
-
-            <BookStaffHint step={3} form={form} coaches={coaches} pickDate={pickDate} pickTimePref={pickTimePref} lineUserId={lineUserId} memberId={member?.id} />
+            {estimate ? (
+              <BookEstimateCard key="est-3" estimate={estimate} compact showMixedNote={mixedSkill} />
+            ) : null}
           </div>
         )}
 
-        {/* Step 4: 確認 */}
+        {/* Step 4: 預約摘要 */}
         {step === 4 && (
           <>
             <div style={bookCard}>
@@ -756,10 +734,6 @@ function BookWizardCore({
                 />
               </div>
             </div>
-
-            <p style={{ fontSize: ty.caption, color: T.muted, margin: '0 0 10px', lineHeight: 1.5, textAlign: 'center' }}>
-              {s.step4.submitHint}
-            </p>
 
             <p style={{ fontSize: ty.caption, color: T.mutedLight, textAlign: 'center', margin: '0 0 12px' }}>
               <a href={OFFICIAL_INFO_URL} target="_blank" rel="noopener noreferrer" style={{ color: T.muted }}>

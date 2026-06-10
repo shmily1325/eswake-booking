@@ -1,12 +1,6 @@
 import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
-import {
-  chipBtn,
-  experienceChipBtn,
-  experienceChipNote,
-  experienceChipTitle,
-  fieldLabel,
-} from './bookStyles'
+import { chipBtn, fieldLabel, selectionDetail } from './bookStyles'
 
 interface BookExperiencePanelProps {
   headcount: number
@@ -23,6 +17,22 @@ function resolveMultiMode(headcount: number, beginnerCount: number | null): Mult
   return 'partial'
 }
 
+function experienceDetail(
+  headcount: number,
+  beginnerCount: number | null,
+  s: ReturnType<typeof useBookLocale>['s'],
+): string | null {
+  if (beginnerCount == null) return null
+  if (headcount === 1) {
+    return beginnerCount === 1 ? s.step2.firstTimeDetail : s.step2.experiencedNote
+  }
+  const mode = resolveMultiMode(headcount, beginnerCount)
+  if (mode === 'all_first') return s.step2.firstTimeDetail
+  if (mode === 'all_exp') return s.step2.experiencedNote
+  if (mode === 'partial') return s.step2.partialDetail(beginnerCount, headcount)
+  return null
+}
+
 export function BookExperiencePanel({
   headcount,
   beginnerCount,
@@ -35,35 +45,31 @@ export function BookExperiencePanel({
     onSyncPeople(patch)
   }
 
+  const detail = experienceDetail(headcount, beginnerCount, s)
+
   if (headcount === 1) {
     return (
       <div>
         <div style={fieldLabel}>{s.step2.experienceSingle}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <button
             type="button"
             className="book-chip-btn"
-            style={experienceChipBtn(beginnerCount === 1)}
+            style={{ ...chipBtn(beginnerCount === 1), flex: 1, padding: '12px 0' }}
             onClick={() => apply({ beginnerCount: 1 })}
           >
-            <div style={experienceChipTitle}>{s.step2.firstTime}</div>
-            <div style={experienceChipNote(beginnerCount === 1)}>
-              <div>{s.step2.firstTimeLand}</div>
-              <div>{s.step2.firstTimeWater}</div>
-            </div>
+            {s.step2.firstTime}
           </button>
           <button
             type="button"
             className="book-chip-btn"
-            style={experienceChipBtn(beginnerCount === 0)}
+            style={{ ...chipBtn(beginnerCount === 0), flex: 1, padding: '12px 0' }}
             onClick={() => apply({ beginnerCount: 0 })}
           >
-            <div style={experienceChipTitle}>{s.step2.experienced}</div>
-            <div style={experienceChipNote(beginnerCount === 0)}>
-              {s.step2.experiencedNote}
-            </div>
+            {s.step2.experienced}
           </button>
         </div>
+        {detail ? <div style={selectionDetail}>{detail}</div> : null}
       </div>
     )
   }
@@ -78,7 +84,7 @@ export function BookExperiencePanel({
         <button
           type="button"
           className="book-chip-btn"
-          style={{ ...chipBtn(mode === 'all_first'), width: '100%', textAlign: 'left', padding: '12px 14px' }}
+          style={{ ...chipBtn(mode === 'all_first'), width: '100%', padding: '12px 14px' }}
           onClick={() => apply({ beginnerCount: headcount })}
         >
           {s.step2.allFirstTime}
@@ -86,7 +92,7 @@ export function BookExperiencePanel({
         <button
           type="button"
           className="book-chip-btn"
-          style={{ ...chipBtn(mode === 'all_exp'), width: '100%', textAlign: 'left', padding: '12px 14px' }}
+          style={{ ...chipBtn(mode === 'all_exp'), width: '100%', padding: '12px 14px' }}
           onClick={() => apply({ beginnerCount: 0 })}
         >
           {s.step2.allExperienced}
@@ -94,7 +100,7 @@ export function BookExperiencePanel({
         <button
           type="button"
           className="book-chip-btn"
-          style={{ ...chipBtn(mode === 'partial'), width: '100%', textAlign: 'left', padding: '12px 14px' }}
+          style={{ ...chipBtn(mode === 'partial'), width: '100%', padding: '12px 14px' }}
           onClick={() => apply({ beginnerCount: mode === 'partial' ? beginnerCount! : 1 })}
         >
           {s.step2.partialFirstTime}
@@ -110,7 +116,7 @@ export function BookExperiencePanel({
                 key={n}
                 type="button"
                 className="book-chip-btn"
-                style={chipBtn(beginnerCount === n)}
+                style={{ ...chipBtn(beginnerCount === n), minWidth: 52, padding: '10px 14px' }}
                 onClick={() => apply({ beginnerCount: n })}
               >
                 {s.step2.nFirstTime(n)}
@@ -119,6 +125,8 @@ export function BookExperiencePanel({
           </div>
         </div>
       ) : null}
+
+      {detail ? <div style={selectionDetail}>{detail}</div> : null}
     </div>
   )
 }

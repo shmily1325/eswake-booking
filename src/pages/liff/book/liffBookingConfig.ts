@@ -114,6 +114,34 @@ export function syncActivityChoice(code: ActivityChoice): Pick<LiffBookingFormSt
   return { activity: code, boatPreference: 'big' }
 }
 
+export function clearActivityChoice(): Pick<LiffBookingFormState, 'activity' | 'boatPreference'> {
+  return { activity: null, boatPreference: null }
+}
+
+/** Step 1 複選：目前勾了哪些單項 */
+export function selectedActivityCodes(activity: ActivityChoice | null): ActivityCode[] {
+  if (!activity) return []
+  if (activity === 'BOTH') return ['WS', 'WB']
+  return [activity]
+}
+
+export function isActivityCodeSelected(activity: ActivityChoice | null, code: ActivityCode): boolean {
+  return selectedActivityCodes(activity).includes(code)
+}
+
+/** 點選切換單項；兩項皆選 → BOTH；全不選 → null */
+export function toggleActivitySelection(
+  activity: ActivityChoice | null,
+  code: ActivityCode,
+): ActivityChoice | null {
+  const set = new Set(selectedActivityCodes(activity))
+  if (set.has(code)) set.delete(code)
+  else set.add(code)
+  if (set.size === 0) return null
+  if (set.size === 2) return 'BOTH'
+  return [...set][0]!
+}
+
 export const TIME_PREFERENCE_OPTIONS: { value: TimePreference; label: string }[] = [
   { value: 'morning', label: '上午' },
   { value: 'afternoon', label: '下午' },
@@ -130,9 +158,9 @@ export const LIFF_BOOK_GUEST_PRICING_ONLY = true
 
 export const MAX_PREFERRED_DATES = 3
 
-export const BOTH_ACTIVITY_SHORT = '兩個一起'
-export const BOTH_ACTIVITY_EN = 'WB + WS mix'
-export const BOTH_ACTIVITY_LABEL = `${BOTH_ACTIVITY_SHORT}（部分寬板、部分衝浪）`
+export const BOTH_ACTIVITY_SHORT = '快艇衝浪＋寬板滑水'
+export const BOTH_ACTIVITY_EN = 'Wakesurf + wakeboard'
+export const BOTH_ACTIVITY_LABEL = '同一梯次有人寬板滑水、有人快艇衝浪'
 
 /** Step 1 三選一（完整品牌用字，不縮寫） */
 export const STEP1_ACTIVITY_CHOICES: {

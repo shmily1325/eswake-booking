@@ -1,5 +1,6 @@
-import type { ActivityCode } from './types'
+import type { ActivityChoice, ActivityCode, BoatPreference, LiffBookingFormState } from './types'
 import type { BoatTier } from './liffBookingBoats'
+import type { BookI18nStrings } from './liffBookingI18n'
 import { BEGINNER_LESSON_NOTE } from './liffBookingConfig'
 export const OFFICIAL_PRICE_INCLUDES =
   '所有費用已含：基本裝備、教練、船、保險、停車費、冬季防寒衣。'
@@ -79,6 +80,28 @@ export function firstTimeUnitPrice(activity: ActivityCode, boatTier: BoatTier): 
 export interface Step1FirstTimePrices {
   small?: number
   big: number
+}
+
+/** Step 2：有體驗價且條件足夠時顯示參考價 */
+export function step2ShowsFirstTimePrice(
+  form: Pick<LiffBookingFormState, 'activity' | 'boatPreference' | 'beginnerCount'>,
+): boolean {
+  if (!form.activity) return false
+  if (form.beginnerCount == null || form.beginnerCount === 0) return false
+  if (form.activity === 'WB' && !form.boatPreference) return false
+  return true
+}
+
+export function step2FirstTimePriceLabel(
+  activity: ActivityChoice,
+  boatPreference: BoatPreference | null,
+  s: BookI18nStrings,
+): string {
+  const priceWS = `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
+  const priceWB = `$${FIRST_TIME_WB_SMALL.toLocaleString()}`
+  if (activity === 'WS' || activity === 'BOTH') return s.step1.priceWS(priceWS)
+  if (boatPreference === 'small') return s.step1.priceWBFrom(priceWB)
+  return s.step1.priceWS(priceWS)
 }
 
 /** Step 1 卡片顯示用 */

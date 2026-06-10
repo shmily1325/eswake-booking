@@ -37,7 +37,7 @@ interface BookBothIconsProps {
   style?: CSSProperties
 }
 
-/** 兩個一起：並排顯示兩項 icon */
+/** 混合梯次：並排顯示兩項 icon */
 export function BookBothIcons({ size = 40, gap = 6, style }: BookBothIconsProps) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', gap, ...style }}>

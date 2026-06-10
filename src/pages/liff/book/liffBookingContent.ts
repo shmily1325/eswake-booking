@@ -23,18 +23,18 @@ export const STEP1_ACTIVITY_DIFF_LINES = [
 export const STEP1_PRICE_RANGE_SUFFIX = '已含裝備、教練、船'
 
 /** Step 1 選 WB 時船型提示（詳情區一行） */
-export const STEP1_WB_BOAT_NOTE = '寬板可選小船或大船；衝浪與混合梯次需大船'
+export const STEP1_WB_BOAT_NOTE = '寬板可選小船或大船；快艇衝浪與混合梯次需大船'
 
 /** Step 1 各選項玩法 */
 export const STEP1_PLAY_MODE: Record<'WS' | 'WB' | 'BOTH', string> = {
   WS: '全部人都玩快艇衝浪',
   WB: '全部都玩寬板滑水',
-  BOTH: '同一梯次，部分寬板、部分衝浪（固定大船）',
+  BOTH: '同一梯次，部分寬板滑水、部分快艇衝浪（固定大船）',
 }
 
-/** Step 1：只選單項但有人想玩另一項 → 改選「兩個一起」 */
+/** Step 1：只選單項但有人想玩另一項 */
 export const STEP1_SPLIT_ACTIVITY_HINT =
-  '只選衝浪或寬板，但有人想玩另一項？→ 改選「兩個一起」'
+  '只選快艇衝浪或寬板滑水，但有人想玩另一項？→ 選「有人快艇衝浪、有人寬板滑水」'
 
 /** Step 2：體驗＋已滑過混合，費用小編報價 */
 export const STEP2_MIXED_SKILL_HINT =
@@ -104,7 +104,7 @@ export const PRICING_CONTENT = {
       detail: '用於寬板滑水及快艇衝浪，單艘最多 10 人（8 人以下較舒適）；11 人以上可兩艘大船。',
     },
   ],
-  boatTypeNote: '同一梯次有人寬板、有人衝浪（混合梯次）需預約大船。價格依下方官方價目表。',
+  boatTypeNote: '同一梯次有人寬板滑水、有人快艇衝浪需預約大船。價格依下方官方價目表。',
   followBoat: {
     title: '跟船（親友不滑水）',
     detail: '第一位跟船乘客免費；第二位起每位 $300。',
@@ -126,7 +126,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     answer:
       '基本型（小船）：寬板滑水，單艘最多 6 人；7 人以上可兩艘小船。\n\n' +
       '豪華型、頂級型（大船）：寬板滑水及快艇衝浪，單艘最多 10 人（8 人以下較舒適）；11 人以上可兩艘大船。\n\n' +
-      '同一梯次有人寬板、有人衝浪（混合梯次）需預約大船。',
+      '同一梯次有人寬板滑水、有人快艇衝浪需預約大船。',
   },
   {
     id: 'clothing',

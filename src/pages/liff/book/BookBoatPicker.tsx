@@ -1,42 +1,12 @@
 import { useState } from 'react'
-import { BOAT_BIG_DUAL_MIN } from './liffBookingBoats'
+import { BOAT_BIG_DUAL_MIN, BOAT_SMALL_DUAL_MIN } from './liffBookingBoats'
 import { useBookLocale } from './BookLocaleContext'
 import { BOAT_INTRO_VIDEO_ID } from './liffBookingReminders'
 import { BookVideoPlayer } from './BookVideoPlayer'
-import { chipBtn } from './bookStyles'
+import { fieldLabel, segmentBtn, segmentMeta, segmentRow, segmentZh } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 import type { BoatPreference } from './types'
 import type { CSSProperties } from 'react'
-
-const wrap: CSSProperties = {
-  padding: '12px 14px',
-  borderRadius: 14,
-  background: T.surfaceMuted,
-  border: '1px solid #e8e8e8',
-}
-
-const label: CSSProperties = {
-  fontSize: ty.body,
-  fontWeight: 600,
-  color: T.inkSoft,
-  marginBottom: 4,
-}
-
-const hint: CSSProperties = {
-  fontSize: ty.caption,
-  color: T.muted,
-  marginBottom: 10,
-  lineHeight: 1.45,
-}
-
-const btn = (selected: boolean): CSSProperties => ({
-  ...chipBtn(selected),
-  flex: 1,
-  padding: '12px 8px',
-  textAlign: 'center',
-  lineHeight: 1.35,
-  borderRadius: 12,
-})
 
 const capacityNote: CSSProperties = {
   fontSize: ty.caption,
@@ -58,6 +28,7 @@ export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: Book
   const boat = s.boat
   const isStep1 = variant === 'step1'
   const dualBig = headcount >= BOAT_BIG_DUAL_MIN
+  const showCapacity = headcount >= BOAT_SMALL_DUAL_MIN
   const [videoOpen, setVideoOpen] = useState(false)
 
   const smallTitle = isStep1 ? boat.small : boat.twoSmallBoats
@@ -71,38 +42,33 @@ export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: Book
     : dualBig ? boat.largeGroupBigDual : boat.largeGroupBigSingle
 
   return (
-    <div style={wrap}>
-      <div style={label}>{isStep1 ? boat.step1Title : boat.largeGroupTitle}</div>
-      {isStep1 ? <div style={hint}>{boat.step1Hint}</div> : null}
-      <div style={{ display: 'flex', gap: 8 }}>
+    <div>
+      <div style={fieldLabel}>{isStep1 ? boat.step1Title : boat.largeGroupTitle}</div>
+      <div style={{ ...segmentRow, marginBottom: 0 }}>
         <button
           type="button"
-          className="book-chip-btn"
-          style={btn(value === 'small')}
+          className="book-segment-btn"
+          style={segmentBtn(value === 'small')}
           onClick={() => onChange('small')}
           aria-pressed={value === 'small'}
         >
-          <div style={{ fontSize: ty.body, fontWeight: 600 }}>{smallTitle}</div>
-          <div style={{ fontSize: ty.caption, color: value === 'small' ? 'rgba(255,255,255,0.85)' : '#888', marginTop: 3 }}>
-            {smallSub}
-          </div>
+          <div style={segmentZh}>{smallTitle}</div>
+          <div style={segmentMeta}>{smallSub}</div>
         </button>
         <button
           type="button"
-          className="book-chip-btn"
-          style={btn(value === 'big')}
+          className="book-segment-btn"
+          style={segmentBtn(value === 'big')}
           onClick={() => onChange('big')}
           aria-pressed={value === 'big'}
         >
-          <div style={{ fontSize: ty.body, fontWeight: 600 }}>{bigTitle}</div>
-          <div style={{ fontSize: ty.caption, color: value === 'big' ? 'rgba(255,255,255,0.85)' : '#888', marginTop: 3 }}>
-            {bigSub}
-          </div>
+          <div style={segmentZh}>{bigTitle}</div>
+          <div style={segmentMeta}>{bigSub}</div>
         </button>
       </div>
-      {isStep1 ? <div style={capacityNote}>{boat.capacityNote}</div> : null}
+      {isStep1 && showCapacity ? <div style={capacityNote}>{boat.capacityNote}</div> : null}
       {isStep1 ? (
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 10, textAlign: 'center' }}>
           <button
             type="button"
             onClick={() => setVideoOpen(v => !v)}
@@ -119,7 +85,7 @@ export function BookBoatPicker({ variant, value, onChange, headcount = 0 }: Book
             {videoOpen ? '收合船型介紹' : boat.introVideoLabel}
           </button>
           {videoOpen ? (
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #e8e8e8' }}>
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.borderSubtle}` }}>
               <BookVideoPlayer
                 variant="compact"
                 videoId={BOAT_INTRO_VIDEO_ID}

@@ -1,5 +1,5 @@
 export type ActivityCode = 'WB' | 'WS'
-/** 含「兩個一起」 */
+/** 含混合梯次（快艇衝浪＋寬板滑水） */
 export type ActivityChoice = ActivityCode | 'BOTH'
 export type SkillLevel = 'first_time' | 'experienced'
 export type TimePreference = 'morning' | 'afternoon'

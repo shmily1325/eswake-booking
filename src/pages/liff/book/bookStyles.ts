@@ -181,44 +181,49 @@ export const warnBox: CSSProperties = {
 export const stickyFooter: CSSProperties = {
   position: 'sticky',
   bottom: 0,
-  background: 'rgba(255,255,255,0.96)',
-  backdropFilter: 'blur(8px)',
-  WebkitBackdropFilter: 'blur(8px)',
-  borderTop: '1px solid #eee',
-  padding: '12px 16px',
-  paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+  background: T.cardBg,
+  borderTop: `1px solid ${T.borderSubtle}`,
+  padding: '10px 16px',
+  paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
   display: 'flex',
   gap: '10px',
   zIndex: 20,
-  boxShadow: '0 -4px 16px rgba(0,0,0,0.04)',
 }
 
 export const primaryBtn: CSSProperties = {
   flex: 1,
-  padding: '14px',
+  minHeight: 48,
+  padding: '12px 16px',
   background: T.ctaBg,
   color: 'white',
   border: 'none',
-  borderRadius: '12px',
-  fontSize: ty.title,
+  borderRadius: 999,
+  fontSize: ty.body,
   fontWeight: 600,
   cursor: 'pointer',
+  textAlign: 'center',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 }
 
 export const linePrimaryBtn: CSSProperties = {
   ...primaryBtn,
-  background: `linear-gradient(135deg, #06c506 0%, ${T.lineGreen} 100%)`,
-  boxShadow: '0 2px 10px rgba(0,185,0,0.25)',
+  background: T.lineGreen,
 }
 
 export const secondaryBtn: CSSProperties = {
-  padding: '14px 20px',
+  flex: '0 0 auto',
+  minHeight: 48,
+  padding: '12px 18px',
   background: 'white',
-  color: '#555',
-  border: '1px solid #ddd',
-  borderRadius: '12px',
+  color: T.inkSoft,
+  border: `1px solid ${T.borderSubtle}`,
+  borderRadius: 999,
   fontSize: ty.body,
+  fontWeight: 500,
   cursor: 'pointer',
+  textAlign: 'center',
 }
 
 export const progressBar: CSSProperties = {
@@ -284,6 +289,15 @@ export const listItemRow: CSSProperties = {
   background: T.surfaceMuted,
   borderRadius: 10,
   fontSize: ty.body,
+}
+
+export const footerReassurance: CSSProperties = {
+  width: '100%',
+  fontSize: ty.caption,
+  color: T.muted,
+  textAlign: 'center',
+  lineHeight: 1.5,
+  marginBottom: 10,
 }
 
 export const footerBlockHint: CSSProperties = {
@@ -362,7 +376,8 @@ export const segmentRow: CSSProperties = {
 export const segmentBtn = (selected: boolean): CSSProperties => ({
   flex: 1,
   minWidth: 0,
-  padding: '12px 6px',
+  position: 'relative',
+  padding: '14px 8px 12px',
   border: selected ? `2px solid ${T.accent}` : '1px solid #e8e8e8',
   borderRadius: 14,
   background: selected ? T.surfaceMuted : '#fff',
@@ -372,12 +387,28 @@ export const segmentBtn = (selected: boolean): CSSProperties => ({
   boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.03)',
 })
 
+export const segmentCheck: CSSProperties = {
+  position: 'absolute',
+  top: 6,
+  right: 6,
+  width: 18,
+  height: 18,
+  borderRadius: 999,
+  background: T.accent,
+  color: '#fff',
+  fontSize: 11,
+  fontWeight: 700,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  lineHeight: 1,
+}
+
 export const segmentZh: CSSProperties = {
-  fontSize: ty.caption,
+  fontSize: ty.body,
   fontWeight: 700,
   color: T.ink,
   lineHeight: 1.25,
-  whiteSpace: 'nowrap',
 }
 
 export const segmentEn: CSSProperties = {
@@ -420,12 +451,66 @@ export const priceLine: CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
 }
 
+export const summaryPriceLine: CSSProperties = {
+  ...priceLine,
+  marginTop: 0,
+}
+
+export const selectionDetail: CSSProperties = {
+  fontSize: ty.caption,
+  color: T.muted,
+  textAlign: 'center',
+  marginTop: 8,
+  lineHeight: 1.5,
+}
+
+export const stepperRow: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 20,
+  marginTop: 4,
+}
+
+export const stepperBtn: CSSProperties = {
+  width: 44,
+  height: 44,
+  borderRadius: 999,
+  border: `1px solid ${T.borderSubtle}`,
+  background: '#fff',
+  fontSize: ty.title,
+  fontWeight: 600,
+  color: T.ink,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  lineHeight: 1,
+}
+
+export const stepperValue: CSSProperties = {
+  fontSize: ty.display,
+  fontWeight: 700,
+  minWidth: 40,
+  textAlign: 'center',
+  fontVariantNumeric: 'tabular-nums',
+  color: T.ink,
+}
+
 export const includesTrustLine: CSSProperties = {
   fontSize: ty.caption,
   color: T.muted,
   textAlign: 'center',
   lineHeight: 1.5,
-  marginTop: 12,
+  marginTop: 6,
+}
+
+/** Step 1 選完後的價格＋已含說明 */
+export const step1Summary: CSSProperties = {
+  marginTop: 14,
+  paddingTop: 14,
+  borderTop: `1px solid ${T.borderSubtle}`,
+  textAlign: 'center',
 }
 
 export const segmentMeta: CSSProperties = {
