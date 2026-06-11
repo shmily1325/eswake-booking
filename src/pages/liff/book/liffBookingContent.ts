@@ -59,8 +59,8 @@ export const NOTES_PLACEHOLDER = '跟船人數、特殊需求（選填）'
 /** 官網（Google Sites） */
 export const OFFICIAL_SITE_URL = 'https://www.eswakeschool.com/'
 
-/** Step 4 等處連結（穿著見常見 QA、交通見交通方式） */
-export const OFFICIAL_INFO_URL = OFFICIAL_SITE_URL
+/** 行前須知（預設 guide 子網域；開發時由 resolveVisitGuideUrl 改為同源 /book/guide） */
+export const OFFICIAL_INFO_URL = 'https://guide.eswakeschool.com'
 
 /** 交通資訊（sites.google.com/.../交通方式） */
 export const TRANSPORT_INFO = {

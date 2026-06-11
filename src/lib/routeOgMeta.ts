@@ -24,6 +24,12 @@ export const ROUTE_OG_BY_PATH: Record<string, RouteOgMeta> = {
     image: '/liff/book/og.webp',
     imageType: 'image/webp',
   },
+  '/book/guide': {
+    title: 'ES WAKE 行前須知',
+    description: '穿著建議、交通方式、改期規則與預約當日提醒 — ES Wake 滑水學校',
+    image: '/liff/book/og-guide.webp',
+    imageType: 'image/webp',
+  },
 }
 
 export function normalizeOgPath(pathname: string): string {

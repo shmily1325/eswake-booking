@@ -2,7 +2,7 @@ import { EsBrandLockup } from '../../components/EsBrandLockup'
 import { BookLocaleToggle, useBookLocale } from '../liff/book/BookLocaleContext'
 
 /** /book 頂部：黑底品牌列（對標 ShopHeader） */
-export function BookHeader() {
+export function BookHeader({ pageTitle }: { pageTitle?: string }) {
   const { s } = useBookLocale()
 
   return (
@@ -13,7 +13,7 @@ export function BookHeader() {
       >
         <EsBrandLockup
           brand={s.header.brand}
-          subtitle={s.header.title}
+          subtitle={pageTitle ?? s.header.title}
           logoSize={28}
           trailing={<BookLocaleToggle />}
           style={{ marginBottom: 0, alignItems: 'center', width: '100%' }}

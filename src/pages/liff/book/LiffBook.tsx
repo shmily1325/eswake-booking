@@ -68,7 +68,7 @@ import { getStepBlockReason } from './liffBookingValidation'
 import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
-import { OFFICIAL_INFO_URL } from './liffBookingContent'
+import { resolveVisitGuideUrl } from './liffBookingGuide'
 import { BookHeader } from '../../book/BookHeader'
 import { BookLayout } from '../../book/BookLayout'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
@@ -733,7 +733,7 @@ function BookWizardCore({
             </div>
 
             <p style={{ fontSize: ty.caption, color: T.mutedLight, textAlign: 'center', margin: '0 0 12px' }}>
-              <a href={OFFICIAL_INFO_URL} target="_blank" rel="noopener noreferrer" style={{ color: T.muted }}>
+              <a href={resolveVisitGuideUrl()} target="_blank" rel="noopener noreferrer" style={{ color: T.muted }}>
                 {s.step4.attireLink}
               </a>
             </p>

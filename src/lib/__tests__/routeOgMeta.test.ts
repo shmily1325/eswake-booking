@@ -29,6 +29,10 @@ describe('routeOgMeta', () => {
     expect(out).toContain('寬板滑水、快艇衝浪')
   })
 
+  it('uses og-guide.webp for /book/guide', () => {
+    expect(getRouteOgMeta('/book/guide')?.image).toBe('/liff/book/og-guide.webp')
+  })
+
   it('injects route-specific OG tags', () => {
     const meta = getRouteOgMeta('/liff')!
     const out = injectRouteOgTags(SAMPLE_HTML, meta, 'https://eswake-booking.vercel.app/liff')

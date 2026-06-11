@@ -645,3 +645,37 @@ export const summaryValue: CSSProperties = {
   color: T.inkSoft,
   minWidth: 0,
 }
+
+export const guideBulletList: CSSProperties = {
+  margin: 0,
+  paddingLeft: 18,
+}
+
+export const guideGroupHeading: CSSProperties = {
+  fontSize: ty.body,
+  fontWeight: 700,
+  color: T.ink,
+  marginBottom: 6,
+}
+
+export const guideNoteBox: CSSProperties = {
+  background: T.estimateBg,
+  border: `1px solid ${T.estimateBorder}`,
+  borderRadius: 10,
+  padding: '10px 12px',
+  fontSize: ty.caption,
+  color: T.estimateDetailInk,
+  lineHeight: 1.55,
+}
+
+export const guideLinkBtn: CSSProperties = {
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  color: T.estimateAccent,
+  fontSize: ty.body,
+  fontWeight: 600,
+  cursor: 'pointer',
+  textDecoration: 'underline',
+  textAlign: 'left',
+}

@@ -264,6 +264,35 @@ export interface BookI18nStrings {
     cantPlay: string
     close: string
   }
+  guide: {
+    headerTitle: string
+    pageTitle: string
+    intro: string
+    backToBook: string
+    afterBooking: { title: string; items: readonly string[] }
+    cancelPolicy: { title: string; items: readonly string[] }
+    whatToBring: {
+      title: string
+      clothing: { heading: string; items: readonly string[]; avoid: string }
+      wetsuit: { heading: string; text: string }
+      personal: { heading: string; items: readonly string[] }
+      facilities: { heading: string; items: readonly string[] }
+    }
+    directions: {
+      title: string
+      addressLabel: string
+      address: string
+      mapQuery: string
+      gateNote: string
+      landmark: string
+      driving: {
+        heading: string
+        videos: { dadu: string; chengtai: string }
+      }
+      parking: { heading: string; car: string; scooter: string }
+      transit: { heading: string; lines: readonly string[]; videoLabel: string }
+    }
+  }
 }
 
 export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
@@ -414,7 +443,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       phonePh: '電話',
       notesPh: '特殊需求（選填）',
       notesPhBoth: '各幾人玩什麼（例：2 寬板、3 衝浪）· 特殊需求',
-      attireLink: '穿著建議與交通方式 →',
+      attireLink: '行前須知（穿著、交通、改期）→',
       desktopCopy: '請複製訊息到 LINE 官方帳號：',
       boat: '船型',
       coach: '教練',
@@ -541,6 +570,70 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       playAria: title => `播放${title}`,
       cantPlay: '若無法播放，改在 YouTube 開啟',
       close: '關閉',
+    },
+    guide: {
+      headerTitle: '行前須知',
+      pageTitle: '預約完成注意事項',
+      intro: '出發前請先看這裡：穿著、交通、改期規則與當日提醒。',
+      backToBook: '← 返回預約',
+      afterBooking: {
+        title: '預約完成注意事項',
+        items: [
+          '請記得預約的日期和時間。',
+          '請準時抵達，以免影響活動時間及下組客人。預約日前一天，官方會再發送提醒通知。',
+          '現場販售水上相關用品（衝浪褲、防曬帽、防曬乳、拖鞋等）與啤酒，若有需要請直接告知客服小幫手。',
+        ],
+      },
+      cancelPolicy: {
+        title: '取消與更改預約',
+        items: [
+          '出發日前 6 日至前 4 日內（不含出發日）可更改日期，但僅限一次；經改期後的活動恕不接受取消。',
+          '出發日前 3 日至當日內不接受更改日期。',
+          '遇天候狀況不佳時，請來訊詢問確認是否可進行活動。八里地勢臨海，天氣常與市區不同，往往市區下雨但八里沒有。',
+        ],
+      },
+      whatToBring: {
+        title: '服裝與隨身物品建議',
+        clothing: {
+          heading: '衣物',
+          items: ['背心、短袖上衣、泳裝、衝浪褲、短褲（不吸水材質皆可）'],
+          avoid: '✖ 不建議攜帶下水：泳鏡、眼鏡、飾品',
+        },
+        wetsuit: { heading: '冬季', text: '現場提供防寒衣。' },
+        personal: {
+          heading: '個人用品',
+          items: ['防曬乳、浴（毛）巾、換洗衣物（請自行攜帶）'],
+        },
+        facilities: {
+          heading: '設施提供',
+          items: ['廠房內有沐浴乳、吹風機、脫水機'],
+        },
+      },
+      directions: {
+        title: '地址與交通資訊',
+        addressLabel: '地址',
+        address: '新北市八里區龍米路一段170號之1',
+        mapQuery: '新北市八里區龍米路一段170號之1',
+        gateNote: '請注意！出入口為停車場鐵門，抵達後請透過官方 LINE 通知，將為你開啟鐵門。',
+        landmark: '出入口位於大橋遊艇公司右側，7-11 神州門市正對面。',
+        driving: {
+          heading: '開車或騎車',
+          videos: {
+            dadu: '大度路前往 ES（影片 0:00–1:25）',
+            chengtai: '成泰路前往 ES（影片 1:26–結束）',
+          },
+        },
+        parking: {
+          heading: '停車',
+          car: '汽車：請停畫有 ES WAKE 1～15 的車格',
+          scooter: '機車：請直接騎至廠房內停車',
+        },
+        transit: {
+          heading: '公車',
+          lines: ['捷運至「關渡站」→ 轉乘紅 13 或紅 22 →「關渡大橋站」下車'],
+          videoLabel: '公車路線短片',
+        },
+      },
     },
   },
   en: {
@@ -690,7 +783,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       phonePh: 'Phone',
       notesPh: 'Special requests (optional)',
       notesPhBoth: 'Headcount per activity (e.g. 2 WB, 3 WS) · special requests',
-      attireLink: 'What to wear & directions →',
+      attireLink: 'Visit guide (attire, directions, changes) →',
       desktopCopy: 'Copy this message to our LINE account:',
       boat: 'Boat',
       coach: 'Coach',
@@ -817,6 +910,70 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       playAria: title => `Play ${title}`,
       cantPlay: 'Open in YouTube if playback fails',
       close: 'Close',
+    },
+    guide: {
+      headerTitle: 'Visit guide',
+      pageTitle: 'After you book',
+      intro: 'Before you come: what to wear, how to get here, and change/cancel rules.',
+      backToBook: '← Back to booking',
+      afterBooking: {
+        title: 'After you book',
+        items: [
+          'Remember your confirmed date and time.',
+          'Please arrive on time so we can run on schedule for you and the next group. We send a reminder the day before.',
+          'We sell watersports gear (board shorts, hats, sunscreen, flip-flops) and beer on site — ask staff if you need anything.',
+        ],
+      },
+      cancelPolicy: {
+        title: 'Changes & cancellation',
+        items: [
+          '6–4 days before your session (not counting the day itself): one date change allowed; after a change, cancellation is not accepted.',
+          '3 days before through the day of: no date changes.',
+          'If weather looks bad, message us to confirm. Bali’s coast often differs from Taipei — it may rain in the city but stay dry here.',
+        ],
+      },
+      whatToBring: {
+        title: 'What to wear & bring',
+        clothing: {
+          heading: 'Clothing',
+          items: ['Tank top, tee, swimsuit, board shorts, quick-dry shorts — non-absorbent fabrics'],
+          avoid: '✖ Do not bring in the water: goggles, glasses, jewelry',
+        },
+        wetsuit: { heading: 'Winter', text: 'Wetsuits available on site.' },
+        personal: {
+          heading: 'Personal items',
+          items: ['Sunscreen, towel, change of clothes (bring your own)'],
+        },
+        facilities: {
+          heading: 'On site',
+          items: ['Body wash, hair dryers, spin dryer in the facility'],
+        },
+      },
+      directions: {
+        title: 'Address & directions',
+        addressLabel: 'Address',
+        address: 'No. 170-1, Sec. 1, Longmi Rd., Bali Dist., New Taipei City',
+        mapQuery: '新北市八里區龍米路一段170號之1',
+        gateNote: 'Entrance is a parking-lot gate. Message us on LINE when you arrive and we will open it.',
+        landmark: 'Entrance is to the right of Daqiao Yacht, across from 7-Eleven Shenzhou.',
+        driving: {
+          heading: 'By car or scooter',
+          videos: {
+            dadu: 'Via Dadu Rd (video 0:00–1:25)',
+            chengtai: 'Via Chengtai Rd (video 1:26–end)',
+          },
+        },
+        parking: {
+          heading: 'Parking',
+          car: 'Cars: spaces marked ES WAKE 1–15',
+          scooter: 'Scooters: ride into the facility to park',
+        },
+        transit: {
+          heading: 'Bus',
+          lines: ['MRT Guandu → bus R13 or R22 → Guandu Bridge stop'],
+          videoLabel: 'Bus route (short video)',
+        },
+      },
     },
   },
 }
