@@ -9,11 +9,11 @@ const AdminApp = lazy(() => import('./AdminApp'))
 const LiffMyBookings = lazy(() =>
   import('./pages/LiffMyBookings').then(m => ({ default: m.LiffMyBookings })),
 )
+const PublicBook = lazy(() =>
+  import('./pages/liff/book/PublicBook').then(m => ({ default: m.PublicBook })),
+)
 const LiffBook = lazy(() =>
   import('./pages/liff/book/LiffBook').then(m => ({ default: m.LiffBook })),
-)
-const PublicBook = lazy(() =>
-  import('./pages/liff/book/LiffBook').then(m => ({ default: m.PublicBook })),
 )
 const PublicBookGuide = lazy(() =>
   import('./pages/liff/book/BookGuide').then(m => ({ default: m.PublicBookGuide })),

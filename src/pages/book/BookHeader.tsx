@@ -6,7 +6,7 @@ export function BookHeader({ pageTitle }: { pageTitle?: string }) {
   const { s } = useBookLocale()
 
   return (
-    <header className="sticky top-0 z-30 bg-black text-white border-b border-white/10">
+    <header className="bg-black text-white border-b border-white/10">
       <div
         className="px-4 min-h-14 py-2 flex items-center"
         style={{ paddingTop: 'max(8px, env(safe-area-inset-top, 0px))' }}

@@ -1,15 +1,17 @@
 import { setupGlobalErrorHandler } from './utils/debugHelpers'
 import { getLocalDateString } from './utils/date'
+import { isPublicBookOrGuideEntry } from './lib/appEntry'
 
-/** 所有入口（含 LIFF 輕量路徑）共用的啟動設定 */
+/** 所有入口共用的啟動設定 */
 export function runAppBootstrap() {
   setupGlobalErrorHandler()
   checkDailyRefresh()
 }
 
-/** 每日自動重新整理：確保用戶使用最新版本 */
+/** 每日自動重新整理：確保用戶使用最新版本（公開 book/guide 略過，避免白屏雙載） */
 function checkDailyRefresh() {
   try {
+    if (isPublicBookOrGuideEntry()) return
     const today = getLocalDateString()
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.has('_r')) {
@@ -30,6 +32,4 @@ function checkDailyRefresh() {
   } catch { /* ignore */ }
 }
 
-export function isLiffPathname(pathname: string): boolean {
-  return pathname === '/liff' || pathname.startsWith('/liff/')
-}
+export { isLiffPathname, resolveAppEntry } from './lib/appEntry'

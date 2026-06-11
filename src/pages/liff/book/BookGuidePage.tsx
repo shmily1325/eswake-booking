@@ -1,5 +1,3 @@
-import { useLocation, useNavigate } from 'react-router-dom'
-
 import { useBookLocale } from './BookLocaleContext'
 import { BookGuideAccordion } from './BookGuideAccordion'
 import { BookVideoPlayer } from './BookVideoPlayer'
@@ -9,26 +7,13 @@ import {
   bookSectionTitle,
   guideBulletList,
   guideGroupHeading,
-  guideFooterBtn,
-  guideFooterLink,
   guideNoteBox,
 } from './bookStyles'
-import { bookWizardPath, isSameOriginGuide, resolveBookPublicUrl } from './bookPaths'
 import {
   BUS_DIRECTIONS_VIDEO_ID,
   DIRECTIONS_VIDEO_ID,
-  type BookGuideLocationState,
   visitMapUrl,
 } from './liffBookingGuide'
-import {
-  bookReturnUrlWithResume,
-  consumeGuideReturnUrl,
-  loadBookWizardSnapshot,
-  markResumeBookWizard,
-  parseGuideReturnFromSearch,
-  peekGuideReturnUrl,
-  RESUME_BOOK_WIZARD_STATE,
-} from './liffBookingWizardPersist'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 function GuideBullets({ items }: { items: readonly string[] }) {
@@ -44,28 +29,6 @@ function GuideBullets({ items }: { items: readonly string[] }) {
 export function BookGuidePage() {
   const { s } = useBookLocale()
   const g = s.guide
-  const navigate = useNavigate()
-  const location = useLocation()
-  const guideState = location.state as BookGuideLocationState | null
-  const returnFromQuery = parseGuideReturnFromSearch(location.search)
-  const fromBook =
-    guideState?.fromBook === true
-    || loadBookWizardSnapshot() != null
-    || returnFromQuery != null
-    || peekGuideReturnUrl() != null
-
-  const handleBackToBook = () => {
-    if (isSameOriginGuide()) {
-      navigate(guideState?.bookReturnPath ?? bookWizardPath(), { state: RESUME_BOOK_WIZARD_STATE })
-      return
-    }
-    markResumeBookWizard()
-    const returnUrl =
-      consumeGuideReturnUrl()
-      ?? returnFromQuery
-      ?? resolveBookPublicUrl()
-    window.location.href = bookReturnUrlWithResume(returnUrl)
-  }
 
   const sections = [
     {
@@ -146,25 +109,6 @@ export function BookGuidePage() {
       <p style={{ ...bookSectionSub, marginBottom: 16 }}>{g.intro}</p>
 
       <BookGuideAccordion sections={sections} defaultOpenId="after-booking" />
-
-      <div
-        style={{
-          marginTop: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 10,
-        }}
-      >
-        {fromBook ? (
-          <button type="button" style={guideFooterBtn} onClick={handleBackToBook}>
-            {g.back}
-          </button>
-        ) : null}
-        <a href={resolveBookPublicUrl()} style={guideFooterLink}>
-          {g.bookCta}
-        </a>
-      </div>
     </main>
   )
 }

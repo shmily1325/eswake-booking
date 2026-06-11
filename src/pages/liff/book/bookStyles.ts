@@ -10,19 +10,26 @@ export const bookPage: CSSProperties = {
 
 export const bookHeader: CSSProperties = {
   position: 'sticky',
-  top: 0,
+  top: 'env(safe-area-inset-top, 0px)',
   zIndex: 30,
   background: T.headerBg,
   color: 'white',
-  padding: '18px 16px 14px',
-  paddingTop: 'calc(18px + env(safe-area-inset-top, 0px))',
+  padding: '10px 16px',
   borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
 }
 
-/** /book：步驟列 sticky 於 BookHeader 下方 */
-export const bookHeaderBelowBrand: CSSProperties = {
-  top: 'calc(56px + env(safe-area-inset-top, 0px))',
-  paddingTop: 14,
+/** LIFF 品牌列（隨頁面捲走，不 sticky） */
+export const bookBrandBar: CSSProperties = {
+  background: T.headerBg,
+  color: 'white',
+  padding: '14px 16px',
+  paddingTop: 'calc(14px + env(safe-area-inset-top, 0px))',
+  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+}
+
+/** 步驟標題區（main 內，灰底上） */
+export const bookStepIntroBlock: CSSProperties = {
+  marginBottom: 12,
 }
 
 export const bookCard: CSSProperties = {
@@ -236,11 +243,11 @@ export const secondaryBtn: CSSProperties = {
 }
 
 export const progressBar: CSSProperties = {
-  height: '4px',
+  height: '3px',
   background: 'rgba(255,255,255,0.2)',
   borderRadius: '2px',
   overflow: 'hidden',
-  marginTop: '12px',
+  marginTop: 0,
 }
 
 export const progressFill = (pct: number): CSSProperties => ({

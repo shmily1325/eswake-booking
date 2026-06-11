@@ -32,9 +32,26 @@
     <!-- LIFF：提前連 LINE CDN；略過 Google Fonts 以加快首次載入 -->
     <link rel="preconnect" href="https://static.line-scdn.net" crossorigin />
     <link rel="preconnect" href="https://api.line.me" />
+    <style>
+      #app-boot {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f4f5f7;
+        color: #666;
+        font-size: 14px;
+        font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+      }
+    </style>
     <script>
-      var isLiff = location.pathname === '/liff' || location.pathname.startsWith('/liff/')
-      if (!isLiff) {
+      var path = location.pathname
+      var host = location.hostname.toLowerCase()
+      var isLiff = path === '/liff' || path.indexOf('/liff/') === 0
+      var isPublicBook = host === 'book.eswakeschool.com' || path === '/book' || path === '/book/'
+      var isPublicGuide = host === 'guide.eswakeschool.com' || path === '/book/guide' || path.indexOf('/book/guide/') === 0
+      var isPublic = isPublicBook || isPublicGuide
+      if (!isLiff && !isPublic) {
         var g1 = document.createElement('link')
         g1.rel = 'preconnect'
         g1.href = 'https://fonts.googleapis.com'
@@ -52,7 +69,7 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="app-boot">載入中…</div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

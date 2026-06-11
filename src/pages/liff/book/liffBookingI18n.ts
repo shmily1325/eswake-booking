@@ -268,8 +268,6 @@ export interface BookI18nStrings {
     headerTitle: string
     pageTitle: string
     intro: string
-    back: string
-    bookCta: string
     afterBooking: { title: string; items: readonly string[] }
     cancelPolicy: { title: string; items: readonly string[] }
     whatToBring: {
@@ -577,8 +575,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       headerTitle: '行前須知',
       pageTitle: '預約完成注意事項',
       intro: '出發前請先看這裡：穿著、交通、改期規則與當日提醒。',
-      back: '← 返回',
-      bookCta: '線上預約',
       afterBooking: {
         title: '預約完成注意事項',
         items: [
@@ -916,8 +912,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       headerTitle: 'Visit guide',
       pageTitle: 'After you book',
       intro: 'Before you come: what to wear, how to get here, and change/cancel rules.',
-      back: '← Back',
-      bookCta: 'Book online',
       afterBooking: {
         title: 'After you book',
         items: [
