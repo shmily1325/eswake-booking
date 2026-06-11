@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { useBookLocale } from './BookLocaleContext'
 import { BookGuideAccordion } from './BookGuideAccordion'
@@ -9,11 +9,14 @@ import {
   bookSectionTitle,
   guideBulletList,
   guideGroupHeading,
+  guideFooterBtn,
+  guideFooterLink,
   guideNoteBox,
 } from './bookStyles'
 import {
   BUS_DIRECTIONS_VIDEO_ID,
   DIRECTIONS_VIDEO_ID,
+  type BookGuideLocationState,
   visitMapUrl,
 } from './liffBookingGuide'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
@@ -31,6 +34,9 @@ function GuideBullets({ items }: { items: readonly string[] }) {
 export function BookGuidePage() {
   const { s } = useBookLocale()
   const g = s.guide
+  const navigate = useNavigate()
+  const location = useLocation()
+  const fromBook = (location.state as BookGuideLocationState | null)?.fromBook === true
 
   const sections = [
     {
@@ -112,22 +118,22 @@ export function BookGuidePage() {
 
       <BookGuideAccordion sections={sections} defaultOpenId="after-booking" />
 
-      <div style={{ marginTop: 20, textAlign: 'center' }}>
-        <Link
-          to="/book"
-          style={{
-            display: 'inline-block',
-            padding: '12px 20px',
-            borderRadius: 999,
-            border: `1px solid ${T.borderSubtle}`,
-            background: T.cardBg,
-            color: T.inkSoft,
-            fontSize: ty.body,
-            fontWeight: 600,
-            textDecoration: 'none',
-          }}
-        >
-          {g.backToBook}
+      <div
+        style={{
+          marginTop: 20,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 10,
+        }}
+      >
+        {fromBook ? (
+          <button type="button" style={guideFooterBtn} onClick={() => navigate(-1)}>
+            {g.back}
+          </button>
+        ) : null}
+        <Link to="/book" style={guideFooterLink}>
+          {g.bookCta}
         </Link>
       </div>
     </main>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { buildAllDayBlockedDates } from './liffBookingDates'
 import { triggerHaptic } from '../../../utils/haptic'
@@ -68,7 +69,12 @@ import { getStepBlockReason } from './liffBookingValidation'
 import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
-import { resolveVisitGuideUrl } from './liffBookingGuide'
+import {
+  BOOK_GUIDE_FROM_BOOK_STATE,
+  isSameOriginGuide,
+  resolveVisitGuideUrl,
+  VISIT_GUIDE_PATH,
+} from './liffBookingGuide'
 import { BookHeader } from '../../book/BookHeader'
 import { BookLayout } from '../../book/BookLayout'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
@@ -733,9 +739,24 @@ function BookWizardCore({
             </div>
 
             <p style={{ fontSize: ty.caption, color: T.mutedLight, textAlign: 'center', margin: '0 0 12px' }}>
-              <a href={resolveVisitGuideUrl()} target="_blank" rel="noopener noreferrer" style={{ color: T.muted }}>
-                {s.step4.attireLink}
-              </a>
+              {isSameOriginGuide() ? (
+                <Link
+                  to={VISIT_GUIDE_PATH}
+                  state={BOOK_GUIDE_FROM_BOOK_STATE}
+                  style={{ color: T.muted }}
+                >
+                  {s.step4.attireLink}
+                </Link>
+              ) : (
+                <a
+                  href={resolveVisitGuideUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: T.muted }}
+                >
+                  {s.step4.attireLink}
+                </a>
+              )}
             </p>
 
             <LineInquiryModal

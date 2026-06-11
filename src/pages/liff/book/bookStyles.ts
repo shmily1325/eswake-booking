@@ -683,6 +683,26 @@ export const guideGroupHeading: CSSProperties = {
   marginBottom: 6,
 }
 
+export const guideFooterBtn: CSSProperties = {
+  display: 'inline-block',
+  padding: '12px 20px',
+  borderRadius: 999,
+  border: `1px solid ${T.borderSubtle}`,
+  background: T.cardBg,
+  color: T.inkSoft,
+  fontSize: ty.body,
+  fontWeight: 600,
+  textDecoration: 'none',
+  cursor: 'pointer',
+}
+
+export const guideFooterLink: CSSProperties = {
+  ...guideFooterBtn,
+  color: T.estimateAccent,
+  borderColor: T.estimateBorder,
+  background: T.estimateBg,
+}
+
 export const guideNoteBox: CSSProperties = {
   background: T.estimateBg,
   border: `1px solid ${T.estimateBorder}`,
