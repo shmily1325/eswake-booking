@@ -2,8 +2,8 @@ import { useState, type ReactNode } from 'react'
 
 import { triggerHaptic } from '../../../utils/haptic'
 
-import { bookCard } from './bookStyles'
-import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
+import { bookCard, guideAccordionBody, guideAccordionHeader } from './bookStyles'
+import { BOOK_THEME as T } from './bookTheme'
 
 export interface GuideAccordionSection {
   id: string
@@ -33,23 +33,9 @@ export function BookGuideAccordion({ sections, defaultOpenId }: BookGuideAccordi
                 setOpenId(open ? null : section.id)
               }}
               aria-expanded={open}
-              style={{
-                width: '100%',
-                padding: '16px',
-                border: 'none',
-                background: open ? T.surfaceMuted : T.cardBg,
-                textAlign: 'left',
-                fontSize: ty.title,
-                fontWeight: 700,
-                color: T.ink,
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 12,
-              }}
+              style={guideAccordionHeader(open)}
             >
-              <span>{section.title}</span>
+              <span style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>{section.title}</span>
               <span
                 style={{
                   flexShrink: 0,
@@ -63,14 +49,7 @@ export function BookGuideAccordion({ sections, defaultOpenId }: BookGuideAccordi
               </span>
             </button>
             {open ? (
-              <div
-                style={{
-                  padding: '0 16px 16px',
-                  fontSize: ty.body,
-                  color: T.inkSoft,
-                  lineHeight: 1.65,
-                }}
-              >
+              <div style={guideAccordionBody}>
                 {section.content}
               </div>
             ) : null}

@@ -646,6 +646,31 @@ export const summaryValue: CSSProperties = {
   minWidth: 0,
 }
 
+export const guideAccordionHeader = (open: boolean): CSSProperties => ({
+  width: '100%',
+  padding: open ? '18px 16px 16px' : '18px 16px',
+  border: 'none',
+  background: open ? T.surfaceMuted : T.cardBg,
+  textAlign: 'left',
+  fontSize: ty.title,
+  fontWeight: 700,
+  lineHeight: 1.45,
+  color: T.ink,
+  cursor: 'pointer',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 12,
+})
+
+export const guideAccordionBody: CSSProperties = {
+  padding: '16px 16px 18px',
+  borderTop: `1px solid ${T.borderSubtle}`,
+  fontSize: ty.body,
+  color: T.inkSoft,
+  lineHeight: 1.65,
+}
+
 export const guideBulletList: CSSProperties = {
   margin: 0,
   paddingLeft: 18,
