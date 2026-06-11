@@ -61,7 +61,7 @@ import {
 } from './bookStyles'
 import { getStepBlockReason } from './liffBookingValidation'
 import { liffTrack } from '../track'
-import { openVisitGuide, resolveVisitGuideUrl } from './liffBookingGuide'
+import { resolveVisitGuideUrl } from './liffBookingGuide'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 function bookStepExtras(
@@ -654,20 +654,18 @@ export function BookWizardCore({
               </div>
             </div>
 
-            <p style={{ fontSize: ty.caption, color: T.mutedLight, textAlign: 'center', margin: '0 0 12px' }}>
-              <a
-                href={resolveVisitGuideUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => {
-                  e.preventDefault()
-                  openVisitGuide(mode)
-                }}
-                style={{ color: T.muted }}
-              >
-                {s.step4.attireLink}
-              </a>
-            </p>
+            {usePublicChrome ? (
+              <p style={{ fontSize: ty.caption, color: T.mutedLight, textAlign: 'center', margin: '0 0 12px' }}>
+                <a
+                  href={resolveVisitGuideUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: T.muted }}
+                >
+                  {s.step4.attireLink}
+                </a>
+              </p>
+            ) : null}
 
             <LineInquiryModal
               message={desktopMessage}
