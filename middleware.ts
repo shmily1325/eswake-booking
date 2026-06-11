@@ -54,8 +54,10 @@ export default async function middleware(request: Request) {
   }
 
   let meta = getRouteOgMeta(url.pathname)
-  if (!meta && hostname === bookHost) meta = getRouteOgMeta('/book')
-  if (!meta && hostname === guideHost) meta = getRouteOgMeta('/book/guide')
+  // 子網域根路徑才注入 book/guide OG；不可對 /assets/* 等靜態檔 fallback，否則 JS/CSS 會變 HTML
+  const spaRoot = url.pathname.replace(/\/$/, '') || '/'
+  if (!meta && spaRoot === '/' && hostname === bookHost) meta = getRouteOgMeta('/book')
+  if (!meta && spaRoot === '/' && hostname === guideHost) meta = getRouteOgMeta('/book/guide')
   if (!meta) return next()
 
   const indexRes = await fetch(new URL('/index.html', url.origin))
