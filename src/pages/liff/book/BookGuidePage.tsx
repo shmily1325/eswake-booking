@@ -21,9 +21,12 @@ import {
   visitMapUrl,
 } from './liffBookingGuide'
 import {
+  bookReturnUrlWithResume,
   consumeGuideReturnUrl,
   loadBookWizardSnapshot,
   markResumeBookWizard,
+  parseGuideReturnFromSearch,
+  peekGuideReturnUrl,
   RESUME_BOOK_WIZARD_STATE,
 } from './liffBookingWizardPersist'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
@@ -44,7 +47,12 @@ export function BookGuidePage() {
   const navigate = useNavigate()
   const location = useLocation()
   const guideState = location.state as BookGuideLocationState | null
-  const fromBook = guideState?.fromBook === true || loadBookWizardSnapshot() != null
+  const returnFromQuery = parseGuideReturnFromSearch(location.search)
+  const fromBook =
+    guideState?.fromBook === true
+    || loadBookWizardSnapshot() != null
+    || returnFromQuery != null
+    || peekGuideReturnUrl() != null
 
   const handleBackToBook = () => {
     if (isSameOriginGuide()) {
@@ -52,7 +60,11 @@ export function BookGuidePage() {
       return
     }
     markResumeBookWizard()
-    window.location.href = consumeGuideReturnUrl() ?? resolveBookPublicUrl()
+    const returnUrl =
+      consumeGuideReturnUrl()
+      ?? returnFromQuery
+      ?? resolveBookPublicUrl()
+    window.location.href = bookReturnUrlWithResume(returnUrl)
   }
 
   const sections = [

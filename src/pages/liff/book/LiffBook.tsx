@@ -81,10 +81,12 @@ import {
 } from './liffBookingGuide'
 import {
   clearBookWizardSnapshot,
+  guideUrlWithReturn,
   loadBookWizardSnapshot,
   saveBookWizardSnapshot,
   saveGuideReturnUrl,
   shouldResumeBookWizard,
+  shouldResumeFromQuery,
 } from './liffBookingWizardPersist'
 import { BookHeader } from '../../book/BookHeader'
 import { BookLayout } from '../../book/BookLayout'
@@ -262,6 +264,7 @@ function BookWizardCore({
     const resume =
       (location.state as { resumeBookWizard?: boolean } | null)?.resumeBookWizard
       || shouldResumeBookWizard()
+      || shouldResumeFromQuery(location.search)
     if (!resume) return
     const snap = loadBookWizardSnapshot()
     if (!snap) return
@@ -272,8 +275,11 @@ function BookWizardCore({
     setShowCoachSection(snap.showCoachSection)
     setShowAlternateDates(snap.showAlternateDates)
     clearBookWizardSnapshot()
-    window.history.replaceState({}, '', location.pathname)
-  }, [location.pathname, location.state])
+    const params = new URLSearchParams(location.search)
+    params.delete('resume')
+    const qs = params.toString()
+    window.history.replaceState({}, '', location.pathname + (qs ? `?${qs}` : ''))
+  }, [location.pathname, location.search, location.state])
 
   useEffect(() => {
     if (step === 2 && form.beginnerCount == null) {
@@ -499,7 +505,7 @@ function BookWizardCore({
     : getStepBlockReason(step, form, pickDate, s.validation, lineUserId, { requireLine })
 
   return (
-    <div style={usePublicChrome ? { ...bookPage, background: 'transparent' } : bookPage}>
+    <div style={bookPage}>
       {!usePublicChrome ? <LiffStyles /> : null}
       <BookPageStyles />
       <BookStepHeader step={step} showBrand={!usePublicChrome} />
@@ -789,7 +795,7 @@ function BookWizardCore({
                 </Link>
               ) : (
                 <a
-                  href={resolveVisitGuideUrl()}
+                  href={guideUrlWithReturn(resolveVisitGuideUrl(), bookWizardReturnUrl(mode))}
                   rel="noopener noreferrer"
                   onClick={() => {
                     saveBookWizardSnapshot({
