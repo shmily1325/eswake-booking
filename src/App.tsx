@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LiffBootScreen } from './pages/liff/LiffBootScreen'
+import { isBookSubdomain, isGuideSubdomain } from './pages/liff/book/bookPaths'
 import { isShopSubdomain } from './pages/shop/lib/shopPaths'
 
 const AdminApp = lazy(() => import('./AdminApp'))
@@ -31,6 +32,8 @@ function App() {
   if (typeof window === 'undefined') return null
 
   const shopOnly = isShopSubdomain()
+  const guideOnly = isGuideSubdomain()
+  const bookOnly = isBookSubdomain()
 
   return (
     <ErrorBoundary>
@@ -42,6 +45,28 @@ function App() {
               element={
                 <Suspense fallback={<RouteChunkFallback />}>
                   <ShopApp />
+                </Suspense>
+              }
+            />
+          </Routes>
+        ) : guideOnly ? (
+          <Routes>
+            <Route
+              path="/*"
+              element={
+                <Suspense fallback={<RouteChunkFallback label="載入行前須知…" />}>
+                  <PublicBookGuide />
+                </Suspense>
+              }
+            />
+          </Routes>
+        ) : bookOnly ? (
+          <Routes>
+            <Route
+              path="/*"
+              element={
+                <Suspense fallback={<RouteChunkFallback label="載入預約表單…" />}>
+                  <PublicBook />
                 </Suspense>
               }
             />

@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useBookLocale } from './BookLocaleContext'
 import { BookGuideAccordion } from './BookGuideAccordion'
@@ -13,12 +13,19 @@ import {
   guideFooterLink,
   guideNoteBox,
 } from './bookStyles'
+import { bookWizardPath, isSameOriginGuide, resolveBookPublicUrl } from './bookPaths'
 import {
   BUS_DIRECTIONS_VIDEO_ID,
   DIRECTIONS_VIDEO_ID,
   type BookGuideLocationState,
   visitMapUrl,
 } from './liffBookingGuide'
+import {
+  consumeGuideReturnUrl,
+  loadBookWizardSnapshot,
+  markResumeBookWizard,
+  RESUME_BOOK_WIZARD_STATE,
+} from './liffBookingWizardPersist'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 function GuideBullets({ items }: { items: readonly string[] }) {
@@ -36,7 +43,17 @@ export function BookGuidePage() {
   const g = s.guide
   const navigate = useNavigate()
   const location = useLocation()
-  const fromBook = (location.state as BookGuideLocationState | null)?.fromBook === true
+  const guideState = location.state as BookGuideLocationState | null
+  const fromBook = guideState?.fromBook === true || loadBookWizardSnapshot() != null
+
+  const handleBackToBook = () => {
+    if (isSameOriginGuide()) {
+      navigate(guideState?.bookReturnPath ?? bookWizardPath(), { state: RESUME_BOOK_WIZARD_STATE })
+      return
+    }
+    markResumeBookWizard()
+    window.location.href = consumeGuideReturnUrl() ?? resolveBookPublicUrl()
+  }
 
   const sections = [
     {
@@ -128,13 +145,13 @@ export function BookGuidePage() {
         }}
       >
         {fromBook ? (
-          <button type="button" style={guideFooterBtn} onClick={() => navigate(-1)}>
+          <button type="button" style={guideFooterBtn} onClick={handleBackToBook}>
             {g.back}
           </button>
         ) : null}
-        <Link to="/book" style={guideFooterLink}>
+        <a href={resolveBookPublicUrl()} style={guideFooterLink}>
           {g.bookCta}
-        </Link>
+        </a>
       </div>
     </main>
   )

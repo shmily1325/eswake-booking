@@ -1,5 +1,13 @@
 import { next } from '@vercel/functions'
 import {
+  bookLegacyRedirectResponse,
+  guideLegacyRedirectResponse,
+  isAllowedBookHostPath,
+  isAllowedGuideHostPath,
+  resolveBookHost,
+  resolveGuideHost,
+} from './src/lib/bookHost'
+import {
   isAllowedShopHostPath,
   resolveShopHost,
   shopLegacyRedirectResponse,
@@ -7,6 +15,8 @@ import {
 import { getRouteOgMeta, injectRouteOgTags, normalizeOgPath } from './src/lib/routeOgMeta'
 
 const shopHost = resolveShopHost(process.env.VITE_SHOP_BASE_URL ?? process.env.SHOP_BASE_URL)
+const bookHost = resolveBookHost(process.env.VITE_BOOK_BASE_URL ?? process.env.BOOK_BASE_URL)
+const guideHost = resolveGuideHost(process.env.VITE_GUIDE_BASE_URL ?? process.env.GUIDE_BASE_URL)
 
 export const config = {
   matcher: ['/((?!api/).*)'],
@@ -25,7 +35,27 @@ export default async function middleware(request: Request) {
     }
   }
 
-  const meta = getRouteOgMeta(url.pathname)
+  if (hostname === bookHost) {
+    const legacy = bookLegacyRedirectResponse(url)
+    if (legacy) return legacy
+
+    if (!isAllowedBookHostPath(url.pathname)) {
+      return new Response('Not Found', { status: 404 })
+    }
+  }
+
+  if (hostname === guideHost) {
+    const legacy = guideLegacyRedirectResponse(url)
+    if (legacy) return legacy
+
+    if (!isAllowedGuideHostPath(url.pathname)) {
+      return new Response('Not Found', { status: 404 })
+    }
+  }
+
+  let meta = getRouteOgMeta(url.pathname)
+  if (!meta && hostname === bookHost) meta = getRouteOgMeta('/book')
+  if (!meta && hostname === guideHost) meta = getRouteOgMeta('/book/guide')
   if (!meta) return next()
 
   const indexRes = await fetch(new URL('/index.html', url.origin))

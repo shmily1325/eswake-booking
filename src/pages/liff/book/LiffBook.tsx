@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { buildAllDayBlockedDates } from './liffBookingDates'
 import { triggerHaptic } from '../../../utils/haptic'
@@ -70,11 +70,22 @@ import { useRouteDocumentMeta } from '../../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../../lib/routeOgMeta'
 import { liffTrack } from '../track'
 import {
-  BOOK_GUIDE_FROM_BOOK_STATE,
+  bookWizardReturnPath,
+  bookWizardReturnUrl,
   isSameOriginGuide,
+} from './bookPaths'
+import {
+  bookGuideEntryState,
   resolveVisitGuideUrl,
   VISIT_GUIDE_PATH,
 } from './liffBookingGuide'
+import {
+  clearBookWizardSnapshot,
+  loadBookWizardSnapshot,
+  saveBookWizardSnapshot,
+  saveGuideReturnUrl,
+  shouldResumeBookWizard,
+} from './liffBookingWizardPersist'
 import { BookHeader } from '../../book/BookHeader'
 import { BookLayout } from '../../book/BookLayout'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
@@ -234,7 +245,9 @@ function BookWizardCore({
   usePublicChrome?: boolean
 }) {
   const { locale, s } = useBookLocale()
+  const location = useLocation()
   const requireLine = mode === 'liff'
+  const bookReturnPath = bookWizardReturnPath(mode)
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<LiffBookingFormState>(INITIAL_STATE)
   const [coaches, setCoaches] = useState<CoachOption[]>([])
@@ -244,6 +257,23 @@ function BookWizardCore({
   const [showAlternateDates, setShowAlternateDates] = useState(false)
   const [pickDate, setPickDate] = useState('')
   const [pickTimePref, setPickTimePref] = useState<TimePreference>('morning')
+
+  useEffect(() => {
+    const resume =
+      (location.state as { resumeBookWizard?: boolean } | null)?.resumeBookWizard
+      || shouldResumeBookWizard()
+    if (!resume) return
+    const snap = loadBookWizardSnapshot()
+    if (!snap) return
+    setStep(snap.step)
+    setForm(snap.form)
+    setPickDate(snap.pickDate)
+    setPickTimePref(snap.pickTimePref)
+    setShowCoachSection(snap.showCoachSection)
+    setShowAlternateDates(snap.showAlternateDates)
+    clearBookWizardSnapshot()
+    window.history.replaceState({}, '', location.pathname)
+  }, [location.pathname, location.state])
 
   useEffect(() => {
     if (step === 2 && form.beginnerCount == null) {
@@ -742,7 +772,17 @@ function BookWizardCore({
               {isSameOriginGuide() ? (
                 <Link
                   to={VISIT_GUIDE_PATH}
-                  state={BOOK_GUIDE_FROM_BOOK_STATE}
+                  state={bookGuideEntryState(bookReturnPath)}
+                  onClick={() =>
+                    saveBookWizardSnapshot({
+                      step,
+                      form,
+                      pickDate,
+                      pickTimePref,
+                      showCoachSection,
+                      showAlternateDates,
+                    })
+                  }
                   style={{ color: T.muted }}
                 >
                   {s.step4.attireLink}
@@ -750,8 +790,18 @@ function BookWizardCore({
               ) : (
                 <a
                   href={resolveVisitGuideUrl()}
-                  target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => {
+                    saveBookWizardSnapshot({
+                      step,
+                      form,
+                      pickDate,
+                      pickTimePref,
+                      showCoachSection,
+                      showAlternateDates,
+                    })
+                    saveGuideReturnUrl(bookWizardReturnUrl(mode))
+                  }}
                   style={{ color: T.muted }}
                 >
                   {s.step4.attireLink}
