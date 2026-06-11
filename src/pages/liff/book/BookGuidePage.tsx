@@ -2,16 +2,15 @@ import { Link } from 'react-router-dom'
 
 import { useBookLocale } from './BookLocaleContext'
 import { BookGuideAccordion } from './BookGuideAccordion'
+import { BookVideoPlayer } from './BookVideoPlayer'
 import {
   bookPage,
   bookSectionSub,
   bookSectionTitle,
   guideBulletList,
   guideGroupHeading,
-  guideLinkBtn,
   guideNoteBox,
 } from './bookStyles'
-import { openYoutubeVideo } from './bookMedia'
 import {
   BUS_DIRECTIONS_VIDEO_ID,
   DIRECTIONS_VIDEO_ID,
@@ -26,14 +25,6 @@ function GuideBullets({ items }: { items: readonly string[] }) {
         <li key={item}>{item}</li>
       ))}
     </ul>
-  )
-}
-
-function GuideVideoLink({ label, videoId }: { label: string; videoId: string }) {
-  return (
-    <button type="button" onClick={() => openYoutubeVideo(videoId)} style={guideLinkBtn}>
-      {label}
-    </button>
   )
 }
 
@@ -88,16 +79,26 @@ export function BookGuidePage() {
             {g.directions.landmark}
           </p>
           <div style={{ ...guideGroupHeading, marginTop: 16 }}>{g.directions.driving.heading}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-            <GuideVideoLink label={g.directions.driving.videos.dadu} videoId={DIRECTIONS_VIDEO_ID} />
-            <GuideVideoLink label={g.directions.driving.videos.chengtai} videoId={DIRECTIONS_VIDEO_ID} />
-          </div>
+          <p style={{ margin: '0 0 10px', color: T.muted, fontSize: ty.caption, lineHeight: 1.55 }}>
+            {g.directions.driving.note}
+          </p>
+          <BookVideoPlayer
+            variant="compact"
+            videoId={DIRECTIONS_VIDEO_ID}
+            title={g.directions.driving.videoLabel}
+            label={g.directions.driving.videoLabel}
+          />
           <div style={{ ...guideGroupHeading, marginTop: 16 }}>{g.directions.parking.heading}</div>
           <GuideBullets items={[g.directions.parking.car, g.directions.parking.scooter]} />
           <div style={{ ...guideGroupHeading, marginTop: 16 }}>{g.directions.transit.heading}</div>
           <GuideBullets items={g.directions.transit.lines} />
           <div style={{ marginTop: 10 }}>
-            <GuideVideoLink label={g.directions.transit.videoLabel} videoId={BUS_DIRECTIONS_VIDEO_ID} />
+            <BookVideoPlayer
+              variant="compact"
+              videoId={BUS_DIRECTIONS_VIDEO_ID}
+              title={g.directions.transit.videoLabel}
+              label={g.directions.transit.videoLabel}
+            />
           </div>
         </>
       ),

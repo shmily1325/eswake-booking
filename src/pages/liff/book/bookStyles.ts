@@ -668,14 +668,3 @@ export const guideNoteBox: CSSProperties = {
   lineHeight: 1.55,
 }
 
-export const guideLinkBtn: CSSProperties = {
-  padding: 0,
-  border: 'none',
-  background: 'none',
-  color: T.estimateAccent,
-  fontSize: ty.body,
-  fontWeight: 600,
-  cursor: 'pointer',
-  textDecoration: 'underline',
-  textAlign: 'left',
-}

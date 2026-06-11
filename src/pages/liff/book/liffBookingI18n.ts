@@ -287,7 +287,8 @@ export interface BookI18nStrings {
       landmark: string
       driving: {
         heading: string
-        videos: { dadu: string; chengtai: string }
+        note: string
+        videoLabel: string
       }
       parking: { heading: string; car: string; scooter: string }
       transit: { heading: string; lines: readonly string[]; videoLabel: string }
@@ -618,10 +619,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         landmark: '出入口位於大橋遊艇公司右側，7-11 神州門市正對面。',
         driving: {
           heading: '開車或騎車',
-          videos: {
-            dadu: '大度路前往 ES（影片 0:00–1:25）',
-            chengtai: '成泰路前往 ES（影片 1:26–結束）',
-          },
+          note: '同一支影片：大度路 0:00–1:25 · 成泰路 1:26–',
+          videoLabel: '路線影片',
         },
         parking: {
           heading: '停車',
@@ -958,10 +957,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         landmark: 'Entrance is to the right of Daqiao Yacht, across from 7-Eleven Shenzhou.',
         driving: {
           heading: 'By car or scooter',
-          videos: {
-            dadu: 'Via Dadu Rd (video 0:00–1:25)',
-            chengtai: 'Via Chengtai Rd (video 1:26–end)',
-          },
+          note: 'One video: Dadu Rd 0:00–1:25 · Chengtai Rd 1:26–',
+          videoLabel: 'Driving directions',
         },
         parking: {
           heading: 'Parking',
