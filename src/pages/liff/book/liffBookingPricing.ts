@@ -152,11 +152,11 @@ export function computePriceEstimate(
 
   if (experienced > 0) {
 
-    const { guest, member: memberPrice } = sessionDualRates(boatTier)
+    const { guest } = sessionDualRates(boatTier)
 
     boatTotal += experienced * guest
 
-    detailLines.push(s.step2.estimateExperiencedDetail(experienced, guest, memberPrice))
+    detailLines.push(s.step2.estimateExperiencedDetail(experienced, guest))
 
   }
 

@@ -4,7 +4,6 @@ import { BOAT_INTRO_VIDEO_ID } from './liffBookingReminders'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import { boatTierDisplayPricing } from './liffBookingPrices'
 import {
-  fieldHint,
   segmentBtn,
   segmentMeta,
   segmentPriceBlock,
@@ -73,16 +72,11 @@ export function BookBoatPicker({ value, onChange, aboard = 0 }: BookBoatPickerPr
   const boat = s.boat
   const smallPricing = boatTierDisplayPricing('small')
   const bigPricing = boatTierDisplayPricing('big')
-  const needsDualContext = aboard >= BOAT_SMALL_DUAL_MIN
-
   const smallSeating = aboard >= BOAT_SMALL_DUAL_MIN ? boat.smallSeatingDual : boat.smallSeatingSingle
   const bigSeating = aboard >= BOAT_BIG_DUAL_MIN ? boat.bigSeatingDual : boat.bigSeatingSingle
 
   return (
     <div>
-      {needsDualContext ? (
-        <div style={{ ...fieldHint, marginTop: 0, marginBottom: 4 }}>{boat.groupContext(aboard)}</div>
-      ) : null}
       <div
         style={{
           textAlign: 'center',

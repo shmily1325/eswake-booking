@@ -34,7 +34,6 @@ export function BookStep2PriceSummary({ form }: BookStep2PriceSummaryProps) {
       <div style={step1Summary}>
         <div style={summaryPriceLine}>{boat.segmentReturningLine(guest)}</div>
         <div style={segmentPriceMemberNote}>{boat.segmentMemberNote(member)}</div>
-        <div style={includesTrustLine}>{s.common.priceIncludes}</div>
       </div>
     )
   }

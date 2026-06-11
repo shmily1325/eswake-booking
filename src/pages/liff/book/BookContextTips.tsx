@@ -1,6 +1,5 @@
 import { useBookLocale } from './BookLocaleContext'
 import { reminderBox, warnBox } from './bookStyles'
-import { BOOK_THEME as T } from './bookTheme'
 import type { LiffBookingFormState, TimePreference } from './types'
 import { BOAT_BIG_DUAL_MIN, BOAT_SMALL_DUAL_MIN, onBoatTotal, usesBigBoat } from './liffBookingBoats'
 import type { BookI18nStrings } from './liffBookingI18n'
@@ -32,17 +31,6 @@ export function BookContextTips({ step, form, pickTimePref }: BookContextTipsPro
         lineHeight: 1.55,
       }}
     >
-      {tips.length > 1 ? (
-        <div style={{
-          fontSize: ty.caption,
-          fontWeight: 700,
-          marginBottom: 8,
-          color: hasWarn ? '#ad6800' : T.estimateAccent,
-          letterSpacing: '0.02em',
-        }}>
-          {s.reminders.title}
-        </div>
-      ) : null}
       {tips.length === 1 ? (
         <div>{tips[0].text}</div>
       ) : (
@@ -75,12 +63,12 @@ function resolveContextTips(
       tips.push({ text: s.reminders.dualSmall, tone: 'info' })
     }
 
-    if (aboard >= BOAT_BIG_DUAL_MIN && usesBigBoat(form.activity, form.boatPreference)) {
-      tips.push({ text: s.reminders.dualBig, tone: 'info' })
-    }
-
-    if (aboard > 8 && usesBigBoat(form.activity, form.boatPreference)) {
-      tips.push({ text: s.reminders.comfort, tone: 'info' })
+    if (usesBigBoat(form.activity, form.boatPreference)) {
+      if (aboard >= BOAT_BIG_DUAL_MIN) {
+        tips.push({ text: s.reminders.bigBoatDual, tone: 'info' })
+      } else if (aboard > 8) {
+        tips.push({ text: s.reminders.bigBoatComfort, tone: 'info' })
+      }
     }
   }
 

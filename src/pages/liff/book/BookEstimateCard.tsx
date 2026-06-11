@@ -6,7 +6,7 @@ import { useBookLocale } from './BookLocaleContext'
 
 import type { PriceEstimate } from './liffBookingPricing'
 
-import { estimateBox, estimateDetailPanel, estimateTierPill, includesTrustLine } from './bookStyles'
+import { estimateBox, estimateDetailPanel, estimateTierPill } from './bookStyles'
 
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
@@ -228,13 +228,7 @@ export function BookEstimateCard({
 
 
 
-      <div style={{ ...includesTrustLine, marginTop: 10, marginBottom: 4, textAlign: 'left' }}>
-
-        {s.common.priceIncludes}
-
-      </div>
-
-      <div style={{ fontSize: ty.caption, color: T.muted, lineHeight: 1.45 }}>
+      <div style={{ fontSize: ty.caption, color: T.muted, lineHeight: 1.45, marginTop: 10 }}>
 
         {s.estimate.referenceNote}
 

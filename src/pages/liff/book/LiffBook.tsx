@@ -54,7 +54,6 @@ import {
   listItemRow,
   optionalSectionLabel,
   bookPage,
-  reminderBox,
   chipBtn,
   fieldLabel,
   stepFieldPrompt,
@@ -571,11 +570,6 @@ function BookWizardCore({
                   </button>
                 ))}
               </div>
-              {pickDate ? (
-                <div style={{ ...reminderBox, marginTop: 12, fontSize: ty.caption }}>
-                  {s.step3.schedulePendingNote}
-                </div>
-              ) : null}
               {!showAlternateDates ? (
                 <button
                   type="button"
@@ -692,9 +686,6 @@ function BookWizardCore({
               </div>
             )}
 
-            {estimate ? (
-              <BookEstimateCard key="est-3" estimate={estimate} compact />
-            ) : null}
           </div>
         )}
 
