@@ -38,26 +38,30 @@ export function bookWizardReturnPath(mode: 'liff' | 'public'): string {
   return mode === 'liff' ? '/liff/book' : bookWizardPath()
 }
 
-/** 對外預約表完整 URL */
-export function resolveBookPublicUrl(): string {
-  const fromEnv = bookBaseUrlFromEnv()
-  if (fromEnv) return fromEnv.replace(/\/$/, '')
-  if (typeof window !== 'undefined') {
-    if (isBookSubdomain()) return window.location.origin
-    return `${window.location.origin}${LEGACY_BOOK_PATH}`
-  }
-  return `https://${resolveBookHost()}`
-}
-
 /** 對外行前須知完整 URL */
 export function resolveGuidePublicUrl(): string {
   const fromEnv = guideBaseUrlFromEnv()
   if (fromEnv) return fromEnv.replace(/\/$/, '')
   if (typeof window !== 'undefined') {
     if (isGuideSubdomain()) return window.location.origin
+    // 預約子網域不支援 /book/guide（middleware 會 404），改走 guide 子網域
+    if (isBookSubdomain()) return `https://${resolveGuideHost()}`
     return `${window.location.origin}${LEGACY_GUIDE_PATH}`
   }
   return `https://${resolveGuideHost()}`
+}
+
+/** 對外預約表完整 URL */
+export function resolveBookPublicUrl(): string {
+  const fromEnv = bookBaseUrlFromEnv()
+  if (fromEnv) return fromEnv.replace(/\/$/, '')
+  if (typeof window !== 'undefined') {
+    if (isBookSubdomain()) return window.location.origin
+    // guide 子網域不支援 /book，改走 book 子網域
+    if (isGuideSubdomain()) return `https://${resolveBookHost()}`
+    return `${window.location.origin}${LEGACY_BOOK_PATH}`
+  }
+  return `https://${resolveBookHost()}`
 }
 
 /** guide 與目前站點同源（可走 SPA 連結與 router 返回） */
