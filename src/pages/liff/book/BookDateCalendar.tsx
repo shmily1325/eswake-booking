@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
 import { fieldHint } from './bookStyles'
+import { getVenueDateString } from '../../../utils/date'
 import {
   bookingLastDate,
   buildMonthGrid,
@@ -24,19 +25,27 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
   const cal = s.step3.calendar
   const weekHeader = locale === 'en' ? WEEK_HEADER_EN : WEEK_HEADER_ZH
 
-  const today = useMemo(() => new Date(), [])
+  const todayStr = useMemo(() => getVenueDateString(), [])
   const [viewYear, setViewYear] = useState(() => {
-    const base = value ? new Date(`${value}T12:00:00`) : today
-    return base.getFullYear()
+    if (value) {
+      const [y] = value.split('-').map(Number)
+      return y
+    }
+    const [y] = todayStr.split('-').map(Number)
+    return y
   })
   const [viewMonth, setViewMonth] = useState(() => {
-    const base = value ? new Date(`${value}T12:00:00`) : today
-    return base.getMonth()
+    if (value) {
+      const [, m] = value.split('-').map(Number)
+      return m - 1
+    }
+    const [, m] = todayStr.split('-').map(Number)
+    return m - 1
   })
 
-  const bookability = monthBookability(viewYear, viewMonth, today)
+  const bookability = monthBookability(viewYear, viewMonth, todayStr)
   const grid = buildMonthGrid(viewYear, viewMonth)
-  const lastBookable = bookingLastDate(today).replace(/-/g, '/')
+  const lastBookable = bookingLastDate(todayStr).replace(/-/g, '/')
 
   const shiftMonth = (delta: number) => {
     const d = new Date(viewYear, viewMonth + delta, 1)
@@ -47,15 +56,15 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
   const canPrev = monthBookability(
     viewMonth === 0 ? viewYear - 1 : viewYear,
     viewMonth === 0 ? 11 : viewMonth - 1,
-    today,
+    todayStr,
   ) !== 'past'
 
   const nextMonth = viewMonth === 11 ? 0 : viewMonth + 1
   const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear
-  const canNext = monthBookability(nextYear, nextMonth, today) !== 'closed'
+  const canNext = monthBookability(nextYear, nextMonth, todayStr) !== 'closed'
 
   const pick = (ymd: string) => {
-    const status = classifyBookingDate(ymd, blockedDates, today)
+    const status = classifyBookingDate(ymd, blockedDates, todayStr)
     if (status !== 'open') return
     triggerHaptic('light')
     onChange(ymd)
@@ -128,7 +137,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
           if (!cell.ymd) {
             return <div key={`empty-${idx}`} />
           }
-          const status = classifyBookingDate(cell.ymd, blockedDates, today)
+          const status = classifyBookingDate(cell.ymd, blockedDates, todayStr)
           const selected = value === cell.ymd
           const dayNum = Number(cell.ymd.slice(-2))
           const disabled = status !== 'open'

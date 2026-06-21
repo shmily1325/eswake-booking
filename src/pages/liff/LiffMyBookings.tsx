@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import liff from '@line/liff'
-import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
+import {
+  addDaysToDate,
+  addMinutesToTime,
+  getLocalTimestamp,
+  getVenueDateString,
+  parseDbTimestamp,
+} from '../../utils/date'
 import { useToast } from '../../components/ui'
 import { triggerHaptic } from '../../utils/haptic'
 import type { Booking, Member, Transaction, TabType } from './types'
@@ -100,17 +106,15 @@ export function LiffMyBookings() {
   
   // 友好日期顯示
   const formatFriendlyDate = (dateStr: string) => {
-    const today = getLocalDateString()
-    const yesterday = new Date()
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayStr = getLocalDateString(yesterday)
-    
+    const today = getVenueDateString()
+    const yesterday = addDaysToDate(today, -1)
+
     if (dateStr === today) return '今天'
-    if (dateStr === yesterdayStr) return '昨天'
-    
-    // 顯示月/日
-    const date = new Date(dateStr)
-    return `${date.getMonth() + 1}/${date.getDate()}`
+    if (dateStr === yesterday) return '昨天'
+
+    const normalized = dateStr.includes('T') ? parseDbTimestamp(dateStr).date : dateStr
+    const [, month, day] = normalized.split('-')
+    return `${Number(month)}/${Number(day)}`
   }
 
   const expiryBannerLines = useMemo(() => buildLiffExpiryBannerLines(member), [member])
@@ -130,7 +134,7 @@ export function LiffMyBookings() {
 
   const loadBookings = async (memberId: string) => {
     try {
-      const today = getLocalDateString()
+      const today = getVenueDateString()
 
       const { data: bookingMembers } = await supabase
         .from('booking_members')
@@ -330,9 +334,7 @@ export function LiffMyBookings() {
     setLoadingTransactions(true)
     try {
       // 計算兩個月前的日期
-      const twoMonthsAgo = new Date()
-      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2)
-      const twoMonthsAgoStr = getLocalDateString(twoMonthsAgo)
+      const twoMonthsAgoStr = addDaysToDate(getVenueDateString(), -60)
 
       // 查詢該類別的交易記錄
       const { data, error } = await supabase
@@ -465,32 +467,21 @@ export function LiffMyBookings() {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const month = date.getMonth() + 1
-    const day = date.getDate()
+    const { date } = parseDbTimestamp(dateString.length >= 16 ? dateString : `${dateString}T00:00:00`)
+    const [, month, day] = date.split('-').map(Number)
     const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-    const weekday = weekdays[date.getDay()]
+    const [y, mo, d] = date.split('-').map(Number)
+    const weekday = weekdays[new Date(y, mo - 1, d).getDay()]
     return `${month}/${day} (${weekday})`
   }
 
-  const getEndTime = (startAt: string, duration: number) => {
-    const start = new Date(startAt)
-    const end = new Date(start.getTime() + duration * 60000)
-    return `${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`
-  }
-  
-  // 取得抵達時間（提前30分鐘）
-  const getArrivalTime = (startAt: string) => {
-    const start = new Date(startAt)
-    const arrival = new Date(start.getTime() - 30 * 60000)
-    return `${arrival.getHours().toString().padStart(2, '0')}:${arrival.getMinutes().toString().padStart(2, '0')}`
-  }
-  
-  // 取得下水時間
-  const getStartTime = (startAt: string) => {
-    const start = new Date(startAt)
-    return `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`
-  }
+  const getEndTime = (startAt: string, duration: number) =>
+    addMinutesToTime(parseDbTimestamp(startAt).time, duration)
+
+  const getArrivalTime = (startAt: string) =>
+    addMinutesToTime(parseDbTimestamp(startAt).time, -30)
+
+  const getStartTime = (startAt: string) => parseDbTimestamp(startAt).time
 
   // 錯誤頁面
   if (error) {

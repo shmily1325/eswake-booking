@@ -5,7 +5,16 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { getLocalDateString, getWeekdayText } from '../../utils/date'
+import {
+  addDaysToDate,
+  addMinutesToTime,
+  getVenueDateString,
+  getVenueTimeParts,
+  getWeekdayText,
+  isSlotInBookingRange,
+  parseDbTimestamp,
+  timeToMinutes,
+} from '../../utils/date'
 import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/designSystem'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
@@ -83,7 +92,7 @@ const UNAVAILABLE_SLOT_BG =
 export function CoachDailyView() {
   const user = useAuthUser()
   const [searchParams, setSearchParams] = useSearchParams()
-  const dateParam = searchParams.get('date') || getLocalDateString()
+  const dateParam = searchParams.get('date') || getVenueDateString()
   const { isMobile } = useResponsive()
   
   const [boats, setBoats] = useState<Boat[]>([])
@@ -264,8 +273,7 @@ export function CoachDailyView() {
 		const personIdToName = new Map<string, string>()
 
       for (const bk of dayBookings) {
-        const start = new Date(bk.start_at)
-        const startMin = start.getHours() * 60 + start.getMinutes()
+        const startMin = timeToMinutes(parseDbTimestamp(bk.start_at).time)
         const endMin = startMin + bk.duration_min
 
         const addSpan = (personId: string) => {
@@ -324,8 +332,7 @@ export function CoachDailyView() {
 			setRestrictionDayBlocks(resBlocks)
 
 			for (const bk of dayBookings) {
-				const start = new Date(bk.start_at)
-				const startMin = start.getHours() * 60 + start.getMinutes()
+				const startMin = timeToMinutes(parseDbTimestamp(bk.start_at).time)
 				const endMin = startMin + bk.duration_min
 				const hit = resBlocks.find(r => !(endMin <= r.startMin || startMin >= r.endMin))
 				if (hit) {
@@ -350,8 +357,7 @@ export function CoachDailyView() {
 			setBoatUnavailableBlocks(blocks)
 
 			for (const bk of dayBookings) {
-				const start = new Date(bk.start_at)
-				const startMin = start.getHours() * 60 + start.getMinutes()
+				const startMin = timeToMinutes(parseDbTimestamp(bk.start_at).time)
 				const endMin = startMin + bk.duration_min
 				const hit = blocks.find(b => b.boatId === bk.boat_id && !(endMin <= b.startMin || startMin >= b.endMin))
 				if (hit) {
@@ -392,16 +398,12 @@ export function CoachDailyView() {
 
   // 改變日期
   const handleDateChange = (days: number) => {
-    const currentDate = new Date(dateParam)
-    currentDate.setDate(currentDate.getDate() + days)
-    const newDate = getLocalDateString(currentDate)
-    setSearchParams({ date: newDate })
+    setSearchParams({ date: addDaysToDate(dateParam, days) })
   }
 
   // 跳轉到今天
   const goToToday = () => {
-    const today = getLocalDateString()
-    setSearchParams({ date: today })
+    setSearchParams({ date: getVenueDateString() })
   }
 
   const handleCoachFilterChange = (coachId: string) => {
@@ -413,9 +415,7 @@ export function CoachDailyView() {
   const getBookingForCell = (boatId: number, timeSlot: string): Booking | null => {
     const booking = filteredBookings.find(b => {
       if (b.boat_id !== boatId) return false
-      const bookingStart = new Date(b.start_at)
-      const bookingStartTime = `${bookingStart.getHours().toString().padStart(2, '0')}:${bookingStart.getMinutes().toString().padStart(2, '0')}`
-      return bookingStartTime === timeSlot
+      return parseDbTimestamp(b.start_at).time === timeSlot
     })
     return booking || null
   }
@@ -428,15 +428,10 @@ export function CoachDailyView() {
 
   // 判斷是否在預約時間內（非開始格）
   const isInBookingRange = (boatId: number, timeSlot: string): boolean => {
-    const [hour, minute] = timeSlot.split(':').map(Number)
-    const slotTime = new Date(dateParam)
-    slotTime.setHours(hour, minute, 0, 0)
-
     return filteredBookings.some(booking => {
       if (booking.boat_id !== boatId) return false
-      const start = new Date(booking.start_at)
-      const end = new Date(start.getTime() + booking.duration_min * 60000)
-      return slotTime > start && slotTime < end
+      const { time } = parseDbTimestamp(booking.start_at)
+      return isSlotInBookingRange(timeSlot, time, booking.duration_min)
     })
   }
 
@@ -460,11 +455,10 @@ export function CoachDailyView() {
     let latestMinutes = -Infinity
 
     filteredBookings.forEach(booking => {
-      const start = new Date(booking.start_at)
-      const end = new Date(start.getTime() + (booking.duration_min + 15) * 60000) // 加上接船時間
-      
-      const startMinutes = start.getHours() * 60 + start.getMinutes()
-      const endMinutes = end.getHours() * 60 + end.getMinutes()
+      const startMinutes = timeToMinutes(parseDbTimestamp(booking.start_at).time)
+      const endMinutes = timeToMinutes(
+        addMinutesToTime(parseDbTimestamp(booking.start_at).time, booking.duration_min + 15)
+      )
       
       earliestMinutes = Math.min(earliestMinutes, startMinutes)
       latestMinutes = Math.max(latestMinutes, endMinutes)
@@ -489,8 +483,7 @@ export function CoachDailyView() {
     if (!isMobile || !selectedCoachId) return new Set<string>()
     const covered = new Set<string>()
     filteredBookings.forEach(b => {
-      const start = new Date(b.start_at)
-      const startMin = start.getHours() * 60 + start.getMinutes()
+      const startMin = timeToMinutes(parseDbTimestamp(b.start_at).time)
       const slots = Math.ceil(b.duration_min / 15)
       for (let i = 1; i < slots; i++) {
         const min = startMin + i * 15
@@ -508,10 +501,8 @@ export function CoachDailyView() {
     if (!boat) return null
 
     // 只顯示預約時間（不含整理船時間）
-    const start = new Date(booking.start_at)
-    const endTime = new Date(start.getTime() + booking.duration_min * 60000)
-    const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
-    const endTimeStr = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
+    const startTime = parseDbTimestamp(booking.start_at).time
+    const endTimeStr = addMinutesToTime(startTime, booking.duration_min)
 
     // 判斷當前教練在這個預約中的角色
     const isCoach = booking.coaches?.some(c => c.id === selectedCoachId)
@@ -652,10 +643,8 @@ export function CoachDailyView() {
     const driverNames = booking.drivers?.map(d => d.name).join(', ') || ''
     
     // 只顯示預約時間（不含整理船時間）
-    const start = new Date(booking.start_at)
-    const endTime = new Date(start.getTime() + booking.duration_min * 60000)
-    const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
-    const endTimeStr = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`
+    const startTime = parseDbTimestamp(booking.start_at).time
+    const endTimeStr = addMinutesToTime(startTime, booking.duration_min)
 
     const isConflict = conflictedIds.has(booking.id)
 
@@ -924,19 +913,19 @@ export function CoachDailyView() {
               data-track="coach_daily_today"
               onClick={goToToday}
               style={{
-                background: dateParam === getLocalDateString() ? '#e8e8e8' : '#f0f7ff',
-                border: dateParam === getLocalDateString() ? '1px solid #ccc' : '1px solid #b3d4fc',
+                background: dateParam === getVenueDateString() ? '#e8e8e8' : '#f0f7ff',
+                border: dateParam === getVenueDateString() ? '1px solid #ccc' : '1px solid #b3d4fc',
                 borderRadius: '8px',
                 height: '44px',
                 padding: '0 12px',
                 fontSize: '14px',
                 fontWeight: '500',
-                color: dateParam === getLocalDateString() ? '#999' : '#1976d2',
+                color: dateParam === getVenueDateString() ? '#999' : '#1976d2',
                 whiteSpace: 'nowrap',
-                cursor: dateParam === getLocalDateString() ? 'default' : 'pointer',
+                cursor: dateParam === getVenueDateString() ? 'default' : 'pointer',
                 flexShrink: 0,
               }}
-              disabled={dateParam === getLocalDateString()}
+              disabled={dateParam === getVenueDateString()}
             >
               今天
             </button>
@@ -987,7 +976,10 @@ export function CoachDailyView() {
             color: '#999',
             textAlign: 'right'
           }}>
-            最後更新：{lastUpdate.getHours().toString().padStart(2, '0')}:{lastUpdate.getMinutes().toString().padStart(2, '0')}
+            最後更新：{(() => {
+              const { hours, minutes } = getVenueTimeParts(lastUpdate)
+              return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+            })()}
           </div>
         </div>
 
@@ -1108,10 +1100,8 @@ export function CoachDailyView() {
             </thead>
             <tbody style={{ position: 'relative' }}>
               {/* 當前時間線 - 只在電腦版顯示 */}
-              {!isMobile && dateParam === getLocalDateString() && (() => {
-                const now = currentTime
-                const hours = now.getHours()
-                const minutes = now.getMinutes()
+              {!isMobile && dateParam === getVenueDateString() && (() => {
+                const { hours, minutes } = getVenueTimeParts(currentTime)
                 const currentMinutes = hours * 60 + minutes
                 const startMinutes = 4 * 60 + 30 // 04:30
                 const slotIndex = Math.floor((currentMinutes - startMinutes) / 15)
@@ -1175,11 +1165,9 @@ export function CoachDailyView() {
                     {(isMobile && selectedCoachId) ? (
                       // 手機模式 + 選擇教練：合併所有船隻到一欄
                       (() => {
-                        const timeSlotBookings = filteredBookings.filter(b => {
-                          const bookingStart = new Date(b.start_at)
-                          const bookingStartTime = `${bookingStart.getHours().toString().padStart(2, '0')}:${bookingStart.getMinutes().toString().padStart(2, '0')}`
-                          return bookingStartTime === timeSlot
-                        })
+                        const timeSlotBookings = filteredBookings.filter(b =>
+                          parseDbTimestamp(b.start_at).time === timeSlot
+                        )
 
                         if (timeSlotBookings.length === 0) {
                           if (mobileCoachCoveredSlots.has(timeSlot)) return null

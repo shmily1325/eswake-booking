@@ -2,11 +2,11 @@
 
 import type { Member } from './types'
 import {
-  getLocalDateString,
   isDateExpired,
   isEndDateExpiringSoon,
   isEndDateInExpiryReminderWindow,
-  normalizeDate
+  normalizeDate,
+  getVenueDateString,
 } from '../../utils/date'
 
 export type LiffExpiryTone = 'danger' | 'warning' | 'info'
@@ -23,7 +23,7 @@ function daysUntilLocalEnd(dateStr: string): number | null {
   if (!n) return null
   const [y, mo, d] = n.split('-').map(Number)
   const end = new Date(y, mo - 1, d)
-  const [ty, tm, td] = getLocalDateString().split('-').map(Number)
+  const [ty, tm, td] = getVenueDateString().split('-').map(Number)
   const start = new Date(ty, tm - 1, td)
   return Math.round((end.getTime() - start.getTime()) / 86400000)
 }

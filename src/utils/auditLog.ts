@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { getVenueTimestamp } from './date'
 
 /**
  * 審計日誌工具
@@ -95,14 +96,7 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
 
   // 非阻塞寫入：在後台默默記錄，不等待完成
   void (async () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const hour = String(now.getHours()).padStart(2, '0')
-    const minute = String(now.getMinutes()).padStart(2, '0')
-    const second = String(now.getSeconds()).padStart(2, '0')
-    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    const created_at = getVenueTimestamp()
     
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
@@ -135,14 +129,7 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
 
   // 非阻塞寫入
   void (async () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const hour = String(now.getHours()).padStart(2, '0')
-    const minute = String(now.getMinutes()).padStart(2, '0')
-    const second = String(now.getSeconds()).padStart(2, '0')
-    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    const created_at = getVenueTimestamp()
     
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
@@ -201,14 +188,7 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
 
   // 非阻塞寫入
   void (async () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const hour = String(now.getHours()).padStart(2, '0')
-    const minute = String(now.getMinutes()).padStart(2, '0')
-    const second = String(now.getSeconds()).padStart(2, '0')
-    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    const created_at = getVenueTimestamp()
     
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
@@ -290,15 +270,7 @@ export async function logAction(
   details: string
 ): Promise<void> {
   try {
-    // 使用本地時間格式（與其他 log 函數一致）
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const hour = String(now.getHours()).padStart(2, '0')
-    const minute = String(now.getMinutes()).padStart(2, '0')
-    const second = String(now.getSeconds()).padStart(2, '0')
-    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    const created_at = getVenueTimestamp()
     
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,
@@ -356,14 +328,7 @@ export async function logCoachAssignment(params: CoachAssignmentLogParams) {
 
   // 非阻塞寫入
   void (async () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const hour = String(now.getHours()).padStart(2, '0')
-    const minute = String(now.getMinutes()).padStart(2, '0')
-    const second = String(now.getSeconds()).padStart(2, '0')
-    const created_at = `${year}-${month}-${day}T${hour}:${minute}:${second}`
+    const created_at = getVenueTimestamp()
     
     const { error } = await supabase.from('audit_log').insert({
       user_email: userEmail,

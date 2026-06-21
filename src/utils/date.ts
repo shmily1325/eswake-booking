@@ -1,5 +1,73 @@
 import { isFacility } from './facility'
 
+/** ES Wake 場地時區（台灣，無夏令時間） */
+export const VENUE_TIMEZONE = 'Asia/Taipei'
+
+/**
+ * 場地「今天」YYYY-MM-DD（Asia/Taipei，與瀏覽器所在地無關）
+ */
+export function getVenueDateString(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: VENUE_TIMEZONE }).format(date)
+}
+
+/** 場地現在的時分秒（Asia/Taipei） */
+export function getVenueTimeParts(date: Date = new Date()): {
+  hours: number
+  minutes: number
+  seconds: number
+} {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: VENUE_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const pick = (type: string) => Number(parts.find(p => p.type === type)?.value ?? 0)
+  return { hours: pick('hour'), minutes: pick('minute'), seconds: pick('second') }
+}
+
+/**
+ * 場地現在時間戳 YYYY-MM-DDTHH:mm:ss（寫入 DB TEXT 欄位用）
+ */
+export function getVenueTimestamp(date: Date = new Date()): string {
+  const ymd = getVenueDateString(date)
+  const { hours, minutes, seconds } = getVenueTimeParts(date)
+  return `${ymd}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+/** HH:mm → 自 00:00 起算的分鐘數 */
+export function timeToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  if (isNaN(h) || isNaN(m)) return 0
+  return h * 60 + m
+}
+
+/** 分鐘數 → HH:mm（模 24 小時） */
+export function minutesToTime(minutes: number): string {
+  const total = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60)
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+/** 場地時間 HH:mm 加減分鐘（不經 Date 時區） */
+export function addMinutesToTime(time: string, deltaMin: number): string {
+  return minutesToTime(timeToMinutes(time) + deltaMin)
+}
+
+/** 時間槽是否在預約區間內（不含起始格，供 rowSpan 表格用） */
+export function isSlotInBookingRange(
+  slotTime: string,
+  startTime: string,
+  durationMin: number,
+): boolean {
+  const slotMin = timeToMinutes(slotTime)
+  const startMin = timeToMinutes(startTime)
+  const endMin = startMin + durationMin
+  return slotMin > startMin && slotMin < endMin
+}
+
 /**
  * 獲取本地日期字串（避免時區偏移）
  * @param date - Date 對象，默認為當前時間
@@ -47,7 +115,7 @@ export function isDateExpired(dateStr: string | null | undefined): boolean {
   if (!dateStr) return false
   const normalized = normalizeDate(dateStr)
   if (!normalized) return false
-  return normalized < getLocalDateString()
+  return normalized < getVenueDateString()
 }
 
 /**
@@ -82,7 +150,7 @@ export function isEndDateInExpiryReminderWindow(
 ): boolean {
   const normalized = normalizeDate(dateStr)
   if (!normalized) return false
-  const limit = addDaysToDate(getLocalDateString(), days)
+  const limit = addDaysToDate(getVenueDateString(), days)
   return normalized <= limit
 }
 
@@ -129,19 +197,11 @@ export function getLocalDateTimeString(date: Date): string {
 }
 
 /**
- * 獲取當前本地時間戳（避免時區偏移）
- * 用於資料庫的 timestamp 欄位（stored as TEXT）
- * @returns YYYY-MM-DDTHH:mm:ss 格式的本地時間字串
+ * 獲取當前時間戳（Asia/Taipei 場地時間，stored as TEXT）
+ * @returns YYYY-MM-DDTHH:mm:ss 格式
  */
 export function getLocalTimestamp(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  const hours = String(now.getHours()).padStart(2, '0')
-  const minutes = String(now.getMinutes()).padStart(2, '0')
-  const seconds = String(now.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+  return getVenueTimestamp()
 }
 
 /**
@@ -193,11 +253,9 @@ export function formatDurationWithPickup(
     const cleanupTime = 15 // 整理船時間
     const totalDuration = durationMin + cleanupTime
     
-    // 計算接船時間
-    const startDate = new Date(startTime)
-    const pickupDate = new Date(startDate.getTime() + totalDuration * 60000)
-    const pickupTime = `${String(pickupDate.getHours()).padStart(2, '0')}:${String(pickupDate.getMinutes()).padStart(2, '0')}`
-    
+    const { time } = parseDbTimestamp(startTime)
+    const pickupTime = addMinutesToTime(time, totalDuration)
+
     return `${totalDuration}分，接船至 ${pickupTime}`
   }
   

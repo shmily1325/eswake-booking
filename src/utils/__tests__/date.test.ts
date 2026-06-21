@@ -3,9 +3,15 @@ import {
   getLocalDateString,
   getLocalDateTimeString,
   getLocalTimestamp,
+  getVenueDateString,
+  getVenueTimestamp,
   parseDbTimestamp,
   compareDateTimeStr,
-  formatDurationWithPickup
+  formatDurationWithPickup,
+  timeToMinutes,
+  addMinutesToTime,
+  isSlotInBookingRange,
+  addDaysToDate,
 } from '../date'
 
 describe('date.ts - 日期時間工具函數', () => {
@@ -54,19 +60,60 @@ describe('date.ts - 日期時間工具函數', () => {
     })
 
     it('應該返回正確的 YYYY-MM-DDTHH:mm:ss 格式', () => {
-      const mockDate = new Date(2025, 10, 24, 14, 30, 45) // 2025-11-24 14:30:45
+      const mockDate = new Date('2026-02-05T02:30:45Z')
       vi.setSystemTime(mockDate)
 
       const result = getLocalTimestamp()
-      expect(result).toBe('2025-11-24T14:30:45')
+      expect(result).toBe('2026-02-05T10:30:45')
     })
 
     it('應該包含秒數', () => {
-      const mockDate = new Date(2025, 0, 1, 0, 0, 9)
+      const mockDate = new Date('2026-01-01T16:00:09Z')
       vi.setSystemTime(mockDate)
 
       const result = getLocalTimestamp()
-      expect(result).toBe('2025-01-01T00:00:09')
+      expect(result).toBe('2026-01-02T00:00:09')
+    })
+  })
+
+  describe('getVenueDateString / getVenueTimestamp', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('應以 Asia/Taipei 格式化日期', () => {
+      vi.setSystemTime(new Date('2026-06-15T18:00:00Z'))
+      expect(getVenueDateString()).toBe('2026-06-16')
+    })
+
+    it('getVenueTimestamp 應為台灣時間', () => {
+      vi.setSystemTime(new Date('2026-02-05T02:30:45Z'))
+      expect(getVenueTimestamp()).toBe('2026-02-05T10:30:45')
+    })
+  })
+
+  describe('timeToMinutes / addMinutesToTime / isSlotInBookingRange', () => {
+    it('應正確換算與加減時間', () => {
+      expect(timeToMinutes('09:15')).toBe(555)
+      expect(addMinutesToTime('09:00', 90)).toBe('10:30')
+      expect(addMinutesToTime('23:30', 60)).toBe('00:30')
+    })
+
+    it('isSlotInBookingRange 不含起始格', () => {
+      expect(isSlotInBookingRange('09:15', '09:00', 60)).toBe(true)
+      expect(isSlotInBookingRange('09:00', '09:00', 60)).toBe(false)
+      expect(isSlotInBookingRange('10:00', '09:00', 60)).toBe(false)
+    })
+  })
+
+  describe('addDaysToDate', () => {
+    it('應正確加減日期', () => {
+      expect(addDaysToDate('2026-06-15', 1)).toBe('2026-06-16')
+      expect(addDaysToDate('2026-06-15', -1)).toBe('2026-06-14')
     })
   })
 

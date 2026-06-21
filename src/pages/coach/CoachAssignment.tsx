@@ -13,7 +13,7 @@ import { isFacility } from '../../utils/facility'
 import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { useToast, ToastContainer } from '../../components/ui'
-import { getWeekdayText } from '../../utils/date'
+import { addDaysToDate, getVenueDateString, getWeekdayText } from '../../utils/date'
 import {
   assignmentSnapshotKey,
   computeAssignmentChanges,
@@ -1231,12 +1231,7 @@ export function CoachAssignment() {
             }}>
               {/* 向前箭頭 */}
               <button
-                onClick={() => {
-                  const currentDate = new Date(selectedDate)
-                  currentDate.setDate(currentDate.getDate() - 1)
-                  const newDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
-                  setSelectedDate(newDate)
-                }}
+                onClick={() => setSelectedDate(addDaysToDate(selectedDate, -1))}
                 style={{
                   background: 'transparent',
                   border: `1px solid ${designSystem.colors.border.main}`,
@@ -1299,12 +1294,7 @@ export function CoachAssignment() {
               
               {/* 向後箭頭 */}
               <button
-                onClick={() => {
-                  const currentDate = new Date(selectedDate)
-                  currentDate.setDate(currentDate.getDate() + 1)
-                  const newDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
-                  setSelectedDate(newDate)
-                }}
+                onClick={() => setSelectedDate(addDaysToDate(selectedDate, 1))}
                 style={{
                   background: 'transparent',
                   border: `1px solid ${designSystem.colors.border.main}`,
@@ -1324,11 +1314,7 @@ export function CoachAssignment() {
 
               {/* 今天按鈕 - 與預約列表一致 */}
               <button
-                onClick={() => {
-                  const today = new Date()
-                  const newDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-                  setSelectedDate(newDate)
-                }}
+                onClick={() => setSelectedDate(getVenueDateString())}
                 style={{
                   background: designSystem.colors.secondary[100],
                   border: `1px solid ${designSystem.colors.secondary[300]}`,
@@ -1356,12 +1342,7 @@ export function CoachAssignment() {
           }}>
             {/* 向前箭頭 */}
             <button
-              onClick={() => {
-                const currentDate = new Date(selectedDate)
-                currentDate.setDate(currentDate.getDate() - 1)
-                const newDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
-                setSelectedDate(newDate)
-              }}
+              onClick={() => setSelectedDate(addDaysToDate(selectedDate, -1))}
               style={{
                 ...getButtonStyle('outline', 'medium', false),
                 padding: '8px 12px',
@@ -1404,12 +1385,7 @@ export function CoachAssignment() {
             
             {/* 向後箭頭 */}
             <button
-              onClick={() => {
-                const currentDate = new Date(selectedDate)
-                currentDate.setDate(currentDate.getDate() + 1)
-                const newDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
-                setSelectedDate(newDate)
-              }}
+              onClick={() => setSelectedDate(addDaysToDate(selectedDate, 1))}
               style={{
                 ...getButtonStyle('outline', 'medium', false),
                 padding: '8px 12px',

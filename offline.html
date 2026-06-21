@@ -1685,21 +1685,18 @@
         
         // 改變日期
         function handleDateChange(days) {
-            const currentDateObj = new Date(currentDate);
-            currentDateObj.setDate(currentDateObj.getDate() + days);
-            const newDate = currentDateObj.toISOString().split('T')[0];
-            loadAndDisplayBookings(newDate);
+            loadAndDisplayBookings(addDaysToDateStr(currentDate, days));
         }
         
         // 跳轉到今天
         function goToToday() {
-            const today = new Date().toISOString().split('T')[0];
-            loadAndDisplayBookings(today);
+            loadAndDisplayBookings(getVenueDateString());
         }
         
         // 格式化日期顯示
         function formatDisplayDate(dateStr) {
-            const date = new Date(dateStr);
+            const parts = dateStr.split('-').map(Number);
+            const date = new Date(parts[0], parts[1] - 1, parts[2]);
             const days = ['日', '一', '二', '三', '四', '五', '六'];
             const month = date.getMonth() + 1;
             const day = date.getDate();
@@ -1714,6 +1711,45 @@
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return year + '-' + month + '-' + day;
+        }
+
+        var VENUE_TIMEZONE = 'Asia/Taipei';
+
+        function getVenueDateString(date) {
+            var d = date || new Date();
+            return new Intl.DateTimeFormat('en-CA', { timeZone: VENUE_TIMEZONE }).format(d);
+        }
+
+        function addDaysToDateStr(dateStr, days) {
+            var parts = dateStr.split('-').map(Number);
+            var d = new Date(parts[0], parts[1] - 1, parts[2] + days);
+            return getLocalDateString(d);
+        }
+
+        function parseDbTime(startAt) {
+            var datetime = startAt.substring(0, 16);
+            var parts = datetime.split('T');
+            return { date: parts[0], time: parts[1] };
+        }
+
+        function timeToMinutes(time) {
+            var p = time.split(':').map(Number);
+            return p[0] * 60 + p[1];
+        }
+
+        function addMinutesToTimeStr(time, delta) {
+            var total = timeToMinutes(time) + delta;
+            total = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
+            var h = Math.floor(total / 60);
+            var m = total % 60;
+            return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        }
+
+        function isSlotInBookingRange(slotTime, startTime, durationMin) {
+            var slotMin = timeToMinutes(slotTime);
+            var startMin = timeToMinutes(startTime);
+            var endMin = startMin + durationMin;
+            return slotMin > startMin && slotMin < endMin;
         }
         
         // 獲取日期的星期幾（明日提醒用）
@@ -1856,32 +1892,23 @@
             const content = document.getElementById('coach-daily-content');
             // 固定使用桌面版樣式（與網頁版一致）
             const isMobile = false;
-            const today = getLocalDateString();
+            const today = getVenueDateString();
             const dateDisplay = formatDisplayDate(date);
             
             // 獲取某個時間點的預約
             const getBookingForCell = (boatId, timeSlot) => {
                 return bookings.find(b => {
                     if (b.boat_id !== boatId) return false;
-                    const bookingStart = new Date(b.start_at);
-                    const bookingStartTime = bookingStart.getHours().toString().padStart(2, '0') + ':' + bookingStart.getMinutes().toString().padStart(2, '0');
-                    return bookingStartTime === timeSlot;
+                    return parseDbTime(b.start_at).time === timeSlot;
                 }) || null;
             };
             
             // 判斷是否在預約時間內
             const isInBookingRange = (boatId, timeSlot) => {
-                const parts = timeSlot.split(':');
-                const hour = parseInt(parts[0]);
-                const minute = parseInt(parts[1]);
-                const slotTime = new Date(date);
-                slotTime.setHours(hour, minute, 0, 0);
-                
                 return bookings.some(booking => {
                     if (booking.boat_id !== boatId) return false;
-                    const start = new Date(booking.start_at);
-                    const end = new Date(start.getTime() + booking.duration_min * 60000);
-                    return slotTime > start && slotTime < end;
+                    var startTime = parseDbTime(booking.start_at).time;
+                    return isSlotInBookingRange(timeSlot, startTime, booking.duration_min);
                 });
             };
             
@@ -1904,10 +1931,8 @@
                     
                     if (isStart) {
                         renderedBookings.add(booking.id);
-                        const start = new Date(booking.start_at);
-                        const end = new Date(start.getTime() + booking.duration_min * 60000);
-                        const startTime = start.getHours().toString().padStart(2, '0') + ':' + start.getMinutes().toString().padStart(2, '0');
-                        const endTime = end.getHours().toString().padStart(2, '0') + ':' + end.getMinutes().toString().padStart(2, '0');
+                        var startTime = parseDbTime(booking.start_at).time;
+                        var endTime = addMinutesToTimeStr(startTime, booking.duration_min);
                         const slots = Math.ceil(booking.duration_min / 15);
                         
                         // 提取教練和駕駛名稱（確保正確處理資料結構）
@@ -2046,6 +2071,8 @@
         let searchActiveTab = 'member';
         let searchHasSearched = false;
         let currentSearchBookings = [];
+        let searchSelectedMemberId = null;
+        let searchSelectedMemberHint = '';
 
         // 日期時間格式化（與線上版邏輯一致，避免時區誤差）
         function formatBookingDateTime(isoString) {
@@ -2151,9 +2178,13 @@
                         <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
                             <!-- 預約人搜尋 -->
                             <form id="search-form-member" onsubmit="handleMemberBookingSearch(event)">
-                                <div style="margin-bottom: 16px;">
+                                <div style="margin-bottom: 16px; position: relative;">
                                     <label style="display: block; margin-bottom: 8px; font-size: 13px; color: #868e96; font-weight: 500;">預約人</label>
-                                    <input id="search-member-name" type="text" placeholder="搜尋會員或直接輸入姓名、電話" required style="
+                                    <input id="search-member-name" type="text" placeholder="搜尋會員或直接輸入姓名、電話" required
+                                        oninput="onMemberSearchInputChange()"
+                                        onfocus="onMemberSearchInputFocus()"
+                                        onblur="onMemberSearchInputBlur()"
+                                        style="
                                         width: 100%;
                                         padding: 14px 16px;
                                         font-size: 15px;
@@ -2162,6 +2193,8 @@
                                         outline: none;
                                         box-sizing: border-box;
                                     ">
+                                    <div id="search-member-selected-hint" style="display: none; font-size: 12px; color: #5a5a5a; margin-top: 6px;"></div>
+                                    <div id="search-member-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background-color: white; border: 1px solid #dee2e6; border-radius: 8px; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000;"></div>
                                 </div>
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
                                     <div>
@@ -2434,6 +2467,10 @@
                 if (nameInput) nameInput.value = '';
                 if (startInput) startInput.value = '';
                 if (endInput) endInput.value = '';
+                searchSelectedMemberId = null;
+                searchSelectedMemberHint = '';
+                hideMemberSearchDropdown();
+                updateMemberSearchSelectedHint();
             } else if (type === 'boat') {
                 const boatSelect = document.getElementById('search-boat-select');
                 const startInput = document.getElementById('search-boat-start');
@@ -2495,6 +2532,140 @@
             });
         }
 
+        function escapeHtml(text) {
+            if (text == null) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function getActiveMembersForSearch(allMembers) {
+            return (allMembers || []).filter(function (m) { return m.status === 'active'; });
+        }
+
+        function memberIdsMatchingKeywordOffline(members, searchTerm) {
+            var term = (searchTerm || '').trim();
+            if (!term) return [];
+            var lower = term.toLowerCase();
+            return members.filter(function (m) {
+                return (m.name && m.name.toLowerCase().indexOf(lower) !== -1) ||
+                    (m.nickname && m.nickname.toLowerCase().indexOf(lower) !== -1) ||
+                    (m.phone && m.phone.indexOf(term) !== -1);
+            }).map(function (m) { return m.id; });
+        }
+
+        function formatSelectedMemberHintOffline(member) {
+            if (member.nickname && member.nickname !== member.name) {
+                return member.nickname + '（' + member.name + '）';
+            }
+            return member.nickname || member.name;
+        }
+
+        function filterMembersForSearchDropdown(members, searchTerm) {
+            var term = (searchTerm || '').trim();
+            if (!term) return [];
+            var lower = term.toLowerCase();
+            return members.filter(function (m) {
+                return (m.name && m.name.toLowerCase().indexOf(lower) !== -1) ||
+                    (m.nickname && m.nickname.toLowerCase().indexOf(lower) !== -1) ||
+                    (m.phone && m.phone.indexOf(term) !== -1);
+            });
+        }
+
+        function hideMemberSearchDropdown() {
+            var dropdown = document.getElementById('search-member-dropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+
+        function updateMemberSearchSelectedHint() {
+            var hint = document.getElementById('search-member-selected-hint');
+            if (!hint) return;
+            if (searchSelectedMemberId && searchSelectedMemberHint) {
+                hint.textContent = '已選：' + searchSelectedMemberHint + ' · 僅顯示此會員預約';
+                hint.style.display = 'block';
+            } else {
+                hint.textContent = '';
+                hint.style.display = 'none';
+            }
+        }
+
+        function selectSearchMember(member) {
+            var input = document.getElementById('search-member-name');
+            if (input) input.value = member.nickname || member.name;
+            searchSelectedMemberId = member.id;
+            searchSelectedMemberHint = formatSelectedMemberHintOffline(member);
+            hideMemberSearchDropdown();
+            updateMemberSearchSelectedHint();
+        }
+
+        async function updateMemberSearchDropdown() {
+            var dropdown = document.getElementById('search-member-dropdown');
+            var input = document.getElementById('search-member-name');
+            if (!dropdown || !input) return;
+            if (searchSelectedMemberId) {
+                hideMemberSearchDropdown();
+                return;
+            }
+
+            var searchTerm = (input.value || '').trim();
+            if (!searchTerm) {
+                hideMemberSearchDropdown();
+                return;
+            }
+
+            if (!db) await initDatabase();
+            var allMembers = await getAllFromStore('members').catch(function () { return []; });
+            var activeMembers = getActiveMembersForSearch(allMembers);
+            var filtered = filterMembersForSearchDropdown(activeMembers, searchTerm);
+
+            if (!filtered.length) {
+                hideMemberSearchDropdown();
+                return;
+            }
+
+            dropdown.innerHTML = filtered.map(function (member) {
+                var label = member.nickname || member.name;
+                var namePart = member.nickname
+                    ? '<span style="color:#999;font-weight:normal;margin-left:6px;">(' + escapeHtml(member.name) + ')</span>'
+                    : '';
+                var phonePart = member.phone
+                    ? '<div style="font-size:12px;color:#666;margin-top:2px;">📱 ' + escapeHtml(member.phone) + '</div>'
+                    : '';
+                return '<div data-member-id="' + escapeHtml(member.id) + '" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;">' +
+                    '<div style="font-weight:500;color:#333;">' + escapeHtml(label) + namePart + '</div>' +
+                    phonePart +
+                    '</div>';
+            }).join('');
+
+            Array.prototype.forEach.call(dropdown.querySelectorAll('[data-member-id]'), function (el) {
+                el.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    var memberId = el.getAttribute('data-member-id');
+                    var member = filtered.find(function (m) { return m.id === memberId; });
+                    if (member) selectSearchMember(member);
+                });
+            });
+
+            dropdown.style.display = 'block';
+        }
+
+        function onMemberSearchInputChange() {
+            searchSelectedMemberId = null;
+            searchSelectedMemberHint = '';
+            updateMemberSearchSelectedHint();
+            void updateMemberSearchDropdown();
+        }
+
+        function onMemberSearchInputFocus() {
+            void updateMemberSearchDropdown();
+        }
+
+        function onMemberSearchInputBlur() {
+            setTimeout(hideMemberSearchDropdown, 200);
+        }
+
         // 依預約人搜尋
         async function handleMemberBookingSearch(event) {
             event.preventDefault();
@@ -2521,35 +2692,38 @@
                 }
 
                 const allMembers = await getAllFromStore('members').catch(function () { return []; });
-                const membersMap = {};
-                allMembers.forEach(function (m) { membersMap[m.id] = m; });
-
+                const activeMembers = getActiveMembersForSearch(allMembers);
                 const allBookingMembers = await getAllFromStore('booking_members').catch(function () { return []; });
 
-                const termLower = searchTerm.toLowerCase();
                 const matchedIdsSet = new Set();
 
-                // 從 booking_members + members 比對
-                allBookingMembers.forEach(function (bm) {
-                    const member = membersMap[bm.member_id];
-                    if (!member) return;
-                    const name = (member.name || '').toLowerCase();
-                    const nickname = (member.nickname || '').toLowerCase();
-                    const phone = member.phone || '';
-                    if ((name && name.indexOf(termLower) !== -1) ||
-                        (nickname && nickname.indexOf(termLower) !== -1) ||
-                        (phone && phone.indexOf(searchTerm) !== -1)) {
-                        matchedIdsSet.add(bm.booking_id);
-                    }
-                });
+                if (searchSelectedMemberId) {
+                    // 已從下拉選定會員：僅查此 member_id
+                    allBookingMembers.forEach(function (bm) {
+                        if (bm.member_id === searchSelectedMemberId) {
+                            matchedIdsSet.add(bm.booking_id);
+                        }
+                    });
+                } else {
+                    // 關鍵字模式：會員（姓名／暱稱／電話）+ contact_name（含訪客）
+                    var matchedMemberIds = memberIdsMatchingKeywordOffline(activeMembers, searchTerm);
+                    var matchedMemberIdSet = {};
+                    matchedMemberIds.forEach(function (id) { matchedMemberIdSet[id] = true; });
 
-                // 從 bookings.contact_name 比對
-                allBookings.forEach(function (b) {
-                    const contact = (b.contact_name || '').toLowerCase();
-                    if (contact && contact.indexOf(termLower) !== -1) {
-                        matchedIdsSet.add(b.id);
-                    }
-                });
+                    allBookingMembers.forEach(function (bm) {
+                        if (matchedMemberIdSet[bm.member_id]) {
+                            matchedIdsSet.add(bm.booking_id);
+                        }
+                    });
+
+                    var termLower = searchTerm.toLowerCase();
+                    allBookings.forEach(function (b) {
+                        var contact = (b.contact_name || '').toLowerCase();
+                        if (contact && contact.indexOf(termLower) !== -1) {
+                            matchedIdsSet.add(b.id);
+                        }
+                    });
+                }
 
                 let matchedBookings = allBookings.filter(function (b) { return matchedIdsSet.has(b.id); });
 

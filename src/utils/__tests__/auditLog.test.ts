@@ -20,6 +20,7 @@ vi.mock('../../lib/supabase', () => {
 
 // Import after mock
 import * as auditLog from '../auditLog'
+import { getVenueTimestamp } from '../date'
 import { supabase } from '../../lib/supabase'
 
 describe('auditLog 審計日誌工具', () => {
@@ -39,7 +40,7 @@ describe('auditLog 審計日誌工具', () => {
 
     // Mock Date for consistent timestamps
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-02-05T10:30:45'))
+    vi.setSystemTime(new Date('2026-02-05T02:30:45Z'))
   })
 
   afterEach(() => {
@@ -68,7 +69,7 @@ describe('auditLog 審計日誌工具', () => {
           action: 'create',
           table_name: 'bookings',
           details: '新增預約：2026/02/06 14:30 60分 G23 Fish | PAPA教練、Ivan教練 [WS+Wakeboard] [新手體驗] (填表人: 許書潔)',
-          created_at: '2026-02-05T10:30:45'
+          created_at: getVenueTimestamp()
         })
       })
     })
@@ -193,7 +194,7 @@ describe('auditLog 審計日誌工具', () => {
           action: 'update',
           table_name: 'bookings',
           details: '修改預約：2026/02/06 14:30 Fish，變更：時間從 14:00 改為 14:30、教練從 Ivan 改為 PAPA (填表人: 許書潔)',
-          created_at: '2026-02-05T10:30:45'
+          created_at: getVenueTimestamp()
         })
       })
     })
@@ -264,7 +265,7 @@ describe('auditLog 審計日誌工具', () => {
           action: 'delete',
           table_name: 'bookings',
           details: '刪除預約：2026/02/06 14:30 60分 G23 Fish | PAPA教練、Ivan教練 | 🚤Sky [WS+Wakeboard] [新手體驗] (填表人: 許書潔)',
-          created_at: '2026-02-05T10:30:45'
+          created_at: getVenueTimestamp()
         })
       })
     })
@@ -497,7 +498,7 @@ describe('auditLog 審計日誌工具', () => {
           action: 'update',
           table_name: 'coach_assignment',
           details: '排班：2026/02/06 14:30 G23 Fish，變更：指派教練：PAPA、指派駕駛：Sky',
-          created_at: '2026-02-05T10:30:45'
+          created_at: getVenueTimestamp()
         })
       })
     })

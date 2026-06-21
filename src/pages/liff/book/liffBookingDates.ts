@@ -1,4 +1,4 @@
-import { getLocalDateString } from '../../../utils/date'
+import { addDaysToDate, getLocalDateString, getVenueDateString } from '../../../utils/date'
 
 export interface RestrictionDateRow {
   start_date: string
@@ -12,20 +12,19 @@ export function buildAllDayBlockedDates(restrictions: RestrictionDateRow[]): Set
   const blocked = new Set<string>()
   for (const r of restrictions) {
     if (r.start_time || r.end_time) continue
-    const d0 = new Date(`${r.start_date}T12:00:00`)
-    const d1 = new Date(`${r.end_date}T12:00:00`)
-    for (let d = new Date(d0); d <= d1; d.setDate(d.getDate() + 1)) {
-      blocked.add(getLocalDateString(d))
+    let d = r.start_date
+    while (d <= r.end_date) {
+      blocked.add(d)
+      d = addDaysToDate(d, 1)
     }
   }
   return blocked
 }
 
 /** 可預約截止日：當月 1 日起可約到「次月底」（例：6/1～7/31） */
-export function bookingLastDate(today: Date = new Date()): string {
-  const y = today.getFullYear()
-  const m = today.getMonth()
-  return getLocalDateString(new Date(y, m + 2, 0))
+export function bookingLastDate(todayStr: string = getVenueDateString()): string {
+  const [y, m] = todayStr.split('-').map(Number)
+  return getLocalDateString(new Date(y, m + 1, 0))
 }
 
 export type DateAvailability = 'past' | 'blocked' | 'closed' | 'open'
@@ -33,11 +32,10 @@ export type DateAvailability = 'past' | 'blocked' | 'closed' | 'open'
 export function classifyBookingDate(
   ymd: string,
   blockedDates: Set<string>,
-  today: Date = new Date(),
+  todayStr: string = getVenueDateString(),
 ): DateAvailability {
-  const todayStr = getLocalDateString(today)
   if (ymd < todayStr) return 'past'
-  if (ymd > bookingLastDate(today)) return 'closed'
+  if (ymd > bookingLastDate(todayStr)) return 'closed'
   if (blockedDates.has(ymd)) return 'blocked'
   return 'open'
 }
@@ -48,12 +46,11 @@ export type MonthBookability = 'past' | 'closed' | 'partial' | 'open'
 export function monthBookability(
   year: number,
   monthIndex: number,
-  today: Date = new Date(),
+  todayStr: string = getVenueDateString(),
 ): MonthBookability {
   const firstStr = getLocalDateString(new Date(year, monthIndex, 1))
   const lastStr = getLocalDateString(new Date(year, monthIndex + 1, 0))
-  const todayStr = getLocalDateString(today)
-  const lastBookable = bookingLastDate(today)
+  const lastBookable = bookingLastDate(todayStr)
 
   if (lastStr < todayStr) return 'past'
   if (firstStr > lastBookable) return 'closed'
@@ -64,8 +61,9 @@ export function monthBookability(
 const WEEKDAY_ZH = ['日', '一', '二', '三', '四', '五', '六'] as const
 
 export function weekdayZh(ymd: string): string {
-  const d = new Date(`${ymd}T12:00:00`)
-  return WEEKDAY_ZH[d.getDay()]
+  const [y, m, d] = ymd.split('-').map(Number)
+  const day = new Date(y, m - 1, d).getDay()
+  return WEEKDAY_ZH[day]
 }
 
 /** 產生月曆格子（含前後月補白，6 列 × 7 欄） */
