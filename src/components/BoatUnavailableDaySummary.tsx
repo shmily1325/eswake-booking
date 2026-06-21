@@ -2,6 +2,11 @@ import { useMemo, type ReactNode } from 'react'
 import type { BoatUnavailableBlock } from '../utils/boatUnavailableDay'
 import { formatUnavailableRange } from '../utils/boatUnavailableDay'
 import type { RestrictionDayBlock } from '../utils/restrictionDayBlocks'
+import {
+  getEventDateLabel,
+  normalizeAnnouncementContent,
+  type DayViewAssignmentAnnouncement,
+} from '../utils/announcement'
 
 interface BoatRef {
   id: number
@@ -14,6 +19,8 @@ interface BoatUnavailableDaySummaryProps {
   isMobile: boolean
   /** 當日公告／受理限制時段（與預約衝突判定相同資料來源） */
   restrictionBlocks?: RestrictionDayBlock[]
+  /** 當日純文字交辦（無受理限制） */
+  assignmentAnnouncements?: DayViewAssignmentAnnouncement[]
 }
 
 function BombLine({ children }: { children: ReactNode }) {
@@ -33,11 +40,28 @@ function BombLine({ children }: { children: ReactNode }) {
   )
 }
 
+function AssignmentLine({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 0,
+      }}
+    >
+      <span style={{ flexShrink: 0, whiteSpace: 'pre' }}>{' - '}</span>
+      <span style={{ flex: '1 1 0%', minWidth: 0, whiteSpace: 'pre-wrap' }}>{children}</span>
+    </div>
+  )
+}
+
 export function BoatUnavailableDaySummary({
   blocks,
   boats,
   isMobile,
   restrictionBlocks = [],
+  assignmentAnnouncements = [],
 }: BoatUnavailableDaySummaryProps) {
   const lines = useMemo(() => {
     if (blocks.length === 0) return []
@@ -68,7 +92,21 @@ export function BoatUnavailableDaySummary({
     }))
   }, [restrictionBlocks])
 
-  if (lines.length === 0 && restrictionLines.length === 0) return null
+  const assignmentLines = useMemo(() => {
+    return assignmentAnnouncements.map((a) => {
+      const label = getEventDateLabel(a)
+      const content = normalizeAnnouncementContent(a.content)
+      const prefix = label ? `[${label}] ` : ''
+      return {
+        key: `assignment-${a.id}`,
+        text: `${prefix}${content}`,
+      }
+    })
+  }, [assignmentAnnouncements])
+
+  if (lines.length === 0 && restrictionLines.length === 0 && assignmentLines.length === 0) {
+    return null
+  }
 
   const bodyStyle = {
     display: 'flex' as const,
@@ -97,9 +135,27 @@ export function BoatUnavailableDaySummary({
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}
     >
+      {assignmentLines.length > 0 && (
+        <>
+          <div style={sectionTitleStyle}>交辦事項</div>
+          <div style={bodyStyle}>
+            {assignmentLines.map((row) => (
+              <AssignmentLine key={row.key}>{row.text}</AssignmentLine>
+            ))}
+          </div>
+        </>
+      )}
+
       {lines.length > 0 && (
         <>
-          <div style={sectionTitleStyle}>今日船隻維修／停用</div>
+          <div
+            style={{
+              ...sectionTitleStyle,
+              marginTop: assignmentLines.length > 0 ? '14px' : 0,
+            }}
+          >
+            船隻停用
+          </div>
           <div style={bodyStyle}>
             {lines.map((line) => (
               <BombLine key={line.key}>
@@ -116,10 +172,10 @@ export function BoatUnavailableDaySummary({
           <div
             style={{
               ...sectionTitleStyle,
-              marginTop: lines.length > 0 ? '14px' : 0,
+              marginTop: lines.length > 0 || assignmentLines.length > 0 ? '14px' : 0,
             }}
           >
-            今日公告／受理限制
+            預約限制
           </div>
           <div style={bodyStyle}>
             {restrictionLines.map((row) => (

@@ -103,6 +103,35 @@ export function groupAnnouncementsForDisplay(
 /**
  * 從 DB 資料還原表單的「事項開始日」與「提前一天顯示」
  */
+export type DayViewAssignmentAnnouncement = AnnouncementRecord & {
+  id: number
+  content: string
+  created_at?: string | null
+}
+
+/** 查看日當天是否在事項有效期內（不含「提前一天顯示」的明日預告） */
+export function isAnnouncementActiveOnDate(a: AnnouncementRecord, date: string): boolean {
+  const eventStart = getEventStartDate(a)
+  const end = a.end_date || a.display_date
+  return eventStart <= date && end >= date
+}
+
+/** 當日預約：純文字交辦（排除有受理限制的公告） */
+export function filterDayViewAssignments(
+  announcements: DayViewAssignmentAnnouncement[],
+  date: string,
+  restrictedAnnouncementIds: ReadonlySet<number>
+): DayViewAssignmentAnnouncement[] {
+  return announcements
+    .filter((a) => isAnnouncementActiveOnDate(a, date))
+    .filter((a) => !restrictedAnnouncementIds.has(a.id))
+    .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+}
+
+export function normalizeAnnouncementContent(content: string): string {
+  return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n+$/, '')
+}
+
 export function parseForEdit(a: AnnouncementRecord): {
   eventStartDate: string
   eventEndDate: string

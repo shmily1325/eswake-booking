@@ -31,6 +31,10 @@ import {
 } from '../utils/restrictionDayBlocks'
 import { BoatUnavailableDaySummary } from '../components/BoatUnavailableDaySummary'
 import { trackClickDedupedWithin } from '../utils/trackClick'
+import {
+  filterDayViewAssignments,
+  type DayViewAssignmentAnnouncement,
+} from '../utils/announcement'
 // import { checkGlobalRestriction } from '../utils/restriction'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
@@ -88,6 +92,7 @@ export function DayView() {
 	const [conflictReasons, setConflictReasons] = useState<Map<number, string>>(new Map())
   const [boatUnavailableBlocks, setBoatUnavailableBlocks] = useState<BoatUnavailableBlock[]>([])
   const [restrictionDayBlocks, setRestrictionDayBlocks] = useState<RestrictionDayBlock[]>([])
+  const [assignmentAnnouncements, setAssignmentAnnouncements] = useState<DayViewAssignmentAnnouncement[]>([])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [repeatDialogOpen, setRepeatDialogOpen] = useState(false)
@@ -147,6 +152,7 @@ export function DayView() {
       setConflictReasons(new Map())
       setBoatUnavailableBlocks([])
       setRestrictionDayBlocks([])
+      setAssignmentAnnouncements([])
       setDateChanging(true)
     }
 
@@ -371,9 +377,10 @@ export function DayView() {
         }
       }
 
-      // 2+3) 全域限制 + 船隻維修 — 兩者互相獨立，並行查詢
+      // 2+3+4) 全域限制 + 船隻維修 + 純文字交辦 — 並行查詢
       const targetDate = dateParam
-      const [restrictionResult, boatUnavailableResult] = await Promise.all([
+      const [restrictionResult, boatUnavailableResult, announcementResult, activeRestrictionsResult] =
+        await Promise.all([
         (supabase as any)
           .from('reservation_restrictions_with_announcement_view')
           .select('*')
@@ -385,11 +392,41 @@ export function DayView() {
           .select('boat_id, start_date, start_time, end_date, end_time, reason, is_active')
           .eq('is_active', true)
           .lte('start_date', targetDate)
-          .gte('end_date', targetDate)
+          .gte('end_date', targetDate),
+        supabase
+          .from('daily_announcements')
+          .select('id, content, display_date, end_date, show_one_day_early, created_at')
+          .lte('display_date', targetDate)
+          .or(`end_date.gte.${targetDate},end_date.is.null`)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('reservation_restrictions')
+          .select('announcement_id')
+          .eq('is_active', true),
       ])
 
       const { data: restrictionData, error: restrictionError } = restrictionResult
       const { data: boatUnavailableData, error: boatUnavailableError } = boatUnavailableResult
+      const { data: announcementData, error: announcementError } = announcementResult
+      const { data: activeRestrictionsData, error: activeRestrictionsError } =
+        activeRestrictionsResult
+
+      if (!announcementError && !activeRestrictionsError) {
+        const restrictedIds = new Set<number>(
+          (activeRestrictionsData ?? [])
+            .map((row: { announcement_id: number }) => row.announcement_id)
+            .filter((id: number | null | undefined): id is number => id != null)
+        )
+        setAssignmentAnnouncements(
+          filterDayViewAssignments(
+            (announcementData ?? []) as DayViewAssignmentAnnouncement[],
+            targetDate,
+            restrictedIds
+          )
+        )
+      } else {
+        setAssignmentAnnouncements([])
+      }
 
       if (!restrictionError && restrictionData && restrictionData.length > 0) {
         const resBlocks = mapRestrictionViewRowsToBlocks(
@@ -649,6 +686,7 @@ export function DayView() {
             boats={boats}
             isMobile={isMobile}
             restrictionBlocks={restrictionDayBlocks}
+            assignmentAnnouncements={assignmentAnnouncements}
           />
         )}
 
@@ -661,6 +699,7 @@ export function DayView() {
                   boats={boats}
                   isMobile={isMobile}
                   restrictionBlocks={restrictionDayBlocks}
+                  assignmentAnnouncements={assignmentAnnouncements}
                 />
               </>
             )}
