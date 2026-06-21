@@ -5,7 +5,7 @@ type ShopAvailability = ReturnType<typeof deriveVariantAvailability>
 const PILL: Record<ShopAvailability, { bg: string; color: string; label: string }> = {
   in_stock: { bg: '#e8f5e9', color: '#2e7d32', label: '現貨' },
   pre_order: { bg: '#fff8e1', color: '#f57f17', label: '預購' },
-  sold_out: { bg: '#f5f5f5', color: '#9e9e9e', label: '不顯示' },
+  sold_out: { bg: '#f5f5f5', color: '#9e9e9e', label: '已售完' },
 }
 
 export function ShopStatusPill({ status }: { status: ShopAvailability }) {

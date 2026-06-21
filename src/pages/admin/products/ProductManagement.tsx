@@ -67,6 +67,8 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
   const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
   const [onlyMissingImage, setOnlyMissingImage] = useState(false)
   const [onlyMissingCover, setOnlyMissingCover] = useState(false)
+  /** 已售完 archive：active 時只顯示 sold_out；預設隱藏已售完（搜尋時仍會找到） */
+  const [onlySoldOut, setOnlySoldOut] = useState(false)
 
   // 排序模式（記憶於 localStorage）
   const [sortBy, setSortBy] = useState<SortMode>(() => {
@@ -83,10 +85,48 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     setOnlyMissingPrice(false)
     setOnlyMissingImage(false)
     setOnlyMissingCover(false)
+    setOnlySoldOut(false)
     setSearch('')
   }
   const hasAnyFilter =
-    onlyMissingPrice || onlyMissingImage || onlyMissingCover || search.trim() !== ''
+    onlyMissingPrice ||
+    onlyMissingImage ||
+    onlyMissingCover ||
+    onlySoldOut ||
+    search.trim() !== ''
+
+  const toggleMissingPrice = () => {
+    setOnlyMissingPrice((v) => {
+      const next = !v
+      if (next) setOnlySoldOut(false)
+      return next
+    })
+  }
+  const toggleMissingImage = () => {
+    setOnlyMissingImage((v) => {
+      const next = !v
+      if (next) setOnlySoldOut(false)
+      return next
+    })
+  }
+  const toggleMissingCover = () => {
+    setOnlyMissingCover((v) => {
+      const next = !v
+      if (next) setOnlySoldOut(false)
+      return next
+    })
+  }
+  const toggleSoldOut = () => {
+    setOnlySoldOut((v) => {
+      const next = !v
+      if (next) {
+        setOnlyMissingPrice(false)
+        setOnlyMissingImage(false)
+        setOnlyMissingCover(false)
+      }
+      return next
+    })
+  }
 
   // 列表顯示模式：'gallery' = 圖大張只看縮圖；'table' = 詳細表格
   // 預設 gallery，使用者切換後記憶在 localStorage
@@ -180,10 +220,20 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     setActiveSubCat('all')
   }, [activeGroup])
 
+  const searchQuery = search.trim()
+  const hasSearch = searchQuery !== ''
+
   const filteredItems: VariantListItem[] = useMemo(() => {
     let items = tabItems
 
-    // 狀態篩選（從頂部儀表板點擊）
+    // 已售完 archive 或預設隱藏（搜尋時仍顯示已售完結果）
+    if (onlySoldOut) {
+      items = items.filter(isVariantSoldOut)
+    } else if (!hasSearch) {
+      items = items.filter((it) => !isVariantSoldOut(it))
+    }
+
+    // 待補資料篩選（與已售完 archive 互斥）
     if (onlyMissingPrice) {
       items = items.filter((it) => it.variant.price == null)
     }
@@ -195,24 +245,37 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     }
 
     // 搜尋：多關鍵字（空白分隔）AND
-    const q = search.trim()
-    if (q) {
-      items = items.filter((it) => variantMatchesSearchTokens(it, q))
+    if (hasSearch) {
+      items = items.filter((it) => variantMatchesSearchTokens(it, searchQuery))
     }
 
-    // 排序
     return sortItems(items, sortBy)
-  }, [tabItems, search, onlyMissingPrice, onlyMissingImage, onlyMissingCover, sortBy])
+  }, [
+    tabItems,
+    searchQuery,
+    hasSearch,
+    onlyMissingPrice,
+    onlyMissingImage,
+    onlyMissingCover,
+    onlySoldOut,
+    sortBy,
+  ])
 
-  /** 在「目前 tab + 搜尋」前提下，未進一步狀態篩選的清單，用來算缺價/沒圖數量 */
+  /** tab + 搜尋，用來算儀表板數字與 chip 計數 */
   const baseForCounts: VariantListItem[] = useMemo(() => {
-    let items = tabItems
-    const q = search.trim()
-    if (q) {
-      items = items.filter((it) => variantMatchesSearchTokens(it, q))
-    }
-    return items
-  }, [tabItems, search])
+    if (!hasSearch) return tabItems
+    return tabItems.filter((it) => variantMatchesSearchTokens(it, searchQuery))
+  }, [tabItems, searchQuery, hasSearch])
+
+  /** 主列表基準：不含已售完（種/件、待補 chip 計數） */
+  const activeBaseForCounts = useMemo(
+    () => baseForCounts.filter((it) => !isVariantSoldOut(it)),
+    [baseForCounts],
+  )
+  const soldOutCount = useMemo(
+    () => baseForCounts.filter(isVariantSoldOut).length,
+    [baseForCounts],
+  )
 
   const categories = useMemo(() => getAllCategories(), [])
 
@@ -323,21 +386,40 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         {!embedded && <PageHeader user={user} title="📦 商品管理" showBaoLink={isAdmin(user)} />}
 
-        {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面（皆為 SKU 種數，隨搜尋變動） */}
+        {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面 / 已售完（皆為 SKU 種數，隨搜尋變動） */}
         <InventoryDashboard
-          base={baseForCounts}
+          base={onlySoldOut ? baseForCounts.filter(isVariantSoldOut) : activeBaseForCounts}
           filtered={filteredItems}
           tabName={currentTabLabel}
           isFiltered={hasAnyFilter}
           onlyMissingPrice={onlyMissingPrice}
           onlyMissingImage={onlyMissingImage}
           onlyMissingCover={onlyMissingCover}
-          onToggleMissingPrice={() => setOnlyMissingPrice((v) => !v)}
-          onToggleMissingImage={() => setOnlyMissingImage((v) => !v)}
-          onToggleMissingCover={() => setOnlyMissingCover((v) => !v)}
+          onlySoldOut={onlySoldOut}
+          soldOutCount={soldOutCount}
+          onToggleMissingPrice={toggleMissingPrice}
+          onToggleMissingImage={toggleMissingImage}
+          onToggleMissingCover={toggleMissingCover}
+          onToggleSoldOut={toggleSoldOut}
           onClearAll={clearAllFilters}
           isMobile={isMobile}
         />
+
+        {onlySoldOut && (
+          <div
+            style={{
+              fontSize: 12,
+              color: '#757575',
+              background: '#fafafa',
+              border: '1px solid #ececec',
+              borderRadius: 8,
+              padding: '8px 12px',
+              marginBottom: 10,
+            }}
+          >
+            正在查看已售完商品 · 再按一次「已售完」或清除篩選返回
+          </div>
+        )}
 
         {/* 工具列：手機兩行（搜尋全寬 → 操作鈕），避免鎖定被 flex-wrap 擠到下一行 */}
         <div
@@ -699,22 +781,30 @@ function SortMenu({ value, onChange, isMobile }: SortMenuProps) {
 }
 
 // ============================================================
-//  庫存儀表板：種數／件數／缺價／沒實拍／沒封面
-//  - 沒篩選：顯示 tab 全庫總數
+//  庫存儀表板：種數／件數／缺價／沒實拍／沒封面／已售完
+//  - 沒篩選：顯示 tab 可售 SKU 總數（不含已售完）
 //  - 有篩選：顯示「目前 X 種 / 全 Y 種」
-//  - 缺價／沒實拍／沒封面：皆算 SKU（種）
+//  - 缺價／沒實拍／沒封面：皆算 SKU（種），不含已售完
+//  - 已售完 chip：永遠顯示 hidden 數量；點擊進 archive 視圖
 // ============================================================
+function isVariantSoldOut(it: VariantListItem): boolean {
+  return getVariantAvailability(it.variant) === 'sold_out'
+}
+
 interface InventoryDashboardProps {
-  base: VariantListItem[] // 套搜尋（不含狀態篩選）的清單，用來算缺價/沒圖數
+  base: VariantListItem[] // 套搜尋（不含進一步狀態篩選）的清單，用來算主數字/待補 chip
   filtered: VariantListItem[]
   tabName: string
   isFiltered: boolean
   onlyMissingPrice: boolean
   onlyMissingImage: boolean
   onlyMissingCover: boolean
+  onlySoldOut: boolean
+  soldOutCount: number
   onToggleMissingPrice: () => void
   onToggleMissingImage: () => void
   onToggleMissingCover: () => void
+  onToggleSoldOut: () => void
   onClearAll: () => void
   isMobile: boolean
 }
@@ -726,9 +816,12 @@ function InventoryDashboard({
   onlyMissingPrice,
   onlyMissingImage,
   onlyMissingCover,
+  onlySoldOut,
+  soldOutCount,
   onToggleMissingPrice,
   onToggleMissingImage,
   onToggleMissingCover,
+  onToggleSoldOut,
   onClearAll,
   isMobile,
 }: InventoryDashboardProps) {
@@ -818,6 +911,27 @@ function InventoryDashboard({
         />
       </div>
 
+      <div
+        style={{
+          width: 1,
+          height: 22,
+          background: '#eee',
+          flexShrink: 0,
+          display: isMobile ? 'none' : 'block',
+        }}
+      />
+
+      {/* 已售完 archive（預設隱藏；點擊只看已售完） */}
+      <DashboardStatChip
+        label="已售完"
+        count={soldOutCount}
+        active={onlySoldOut}
+        onClick={onToggleSoldOut}
+        color="#616161"
+        bgActive="#f5f5f5"
+        trackId="product_filter_sold_out"
+      />
+
       <div style={{ flex: 1 }} />
 
       {isFiltered && (
@@ -897,7 +1011,7 @@ function shopStatusBadge(
     return { bg: '#e8f5e9', color: '#2e7d32', label: `現貨 ${stock}` }
   }
   if (avail === 'pre_order') return { bg: '#fff8e1', color: '#f57f17', label: '預購' }
-  return { bg: '#f5f5f5', color: '#9e9e9e', label: '不顯示' }
+  return { bg: '#f5f5f5', color: '#9e9e9e', label: '已售完' }
 }
 
 function variantCardBorder(variant: ProductVariantRow, isPublic: boolean): string {

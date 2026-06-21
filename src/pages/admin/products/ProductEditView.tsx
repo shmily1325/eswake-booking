@@ -7,6 +7,7 @@ import { CoverImageEditor } from './CoverImageEditor'
 import { ImageUploader } from './ImageUploader'
 import {
   CATEGORY_SCHEMAS,
+  formatAttributes,
   getCategory,
   normalizeGenderValue,
   normalizeVariantAttributes,
@@ -28,6 +29,7 @@ import {
   deriveVariantAvailability,
 } from './availabilityHelpers'
 import { ShopStatusPill, ShopVisibilityPill } from './ShopStatusPill'
+import { collectZeroStockWarnings } from './productSaveWarnings'
 import { removeProductImage } from '../../../utils/imageUpload'
 import { trackClick } from '../../../utils/trackClick'
 import { formatDateTime } from '../../../utils/formatters'
@@ -147,6 +149,7 @@ export function ProductEditView({
   const [isPublic, setIsPublic] = useState<boolean>(isNew)
   const [drafts, setDrafts] = useState<DraftVariant[]>(() => (isNew ? [emptyDraft()] : []))
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmZeroStock, setConfirmZeroStock] = useState(false)
 
   /**
    * 這個編輯 session 內所有「上傳到 storage 的新檔路徑」。
@@ -279,6 +282,35 @@ export function ProductEditView({
 
   const visibleDrafts = drafts // 顯示全部，含 pendingDelete（給 UI 顯示「已標記刪除」狀態）
 
+  const originalVariantsById = useMemo(() => {
+    const map = new Map<string, ProductVariantRow>()
+    for (const v of original?.variants ?? []) {
+      map.set(v.id, v)
+    }
+    return map
+  }, [original])
+
+  const zeroStockWarnings = useMemo(
+    () => collectZeroStockWarnings(drafts, originalVariantsById),
+    [drafts, originalVariantsById],
+  )
+
+  const zeroStockConfirmMessage = useMemo(() => {
+    if (zeroStockWarnings.length === 0) return ''
+    const lines = zeroStockWarnings.map((d) => {
+      const spec = formatAttributes(category, d.attributes)?.trim()
+      const label = spec || d.vendor_code?.trim() || '未命名規格'
+      return `· ${label}`
+    })
+    return [
+      '以下規格庫存仍是 0，儲存後會變成「已售完」（商城不顯示）：',
+      '',
+      ...lines,
+      '',
+      '若剛到貨，請先填庫存再儲存。',
+    ].join('\n')
+  }, [zeroStockWarnings, category])
+
   const validate = (): string | null => {
     if (!brand.trim()) return '品牌為必填'
     if (!model.trim()) return '型號為必填'
@@ -298,12 +330,7 @@ export function ProductEditView({
     return null
   }
 
-  const handleSave = async () => {
-    const err = validate()
-    if (err) {
-      toast.error(err)
-      return
-    }
+  const performSave = async () => {
     setSaving(true)
     try {
       let pid = productId
@@ -403,6 +430,24 @@ export function ProductEditView({
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSave = () => {
+    const err = validate()
+    if (err) {
+      toast.error(err)
+      return
+    }
+    if (zeroStockWarnings.length > 0) {
+      setConfirmZeroStock(true)
+      return
+    }
+    void performSave()
+  }
+
+  const handleConfirmZeroStockSave = () => {
+    setConfirmZeroStock(false)
+    void performSave()
   }
 
   /** 取消編輯：把這個 session 上傳但沒寫入 DB 的圖全清掉，避免孤兒檔 */
@@ -748,6 +793,20 @@ export function ProductEditView({
           variant="danger"
           onConfirm={handleDeleteProduct}
           onClose={() => setConfirmDelete(false)}
+          isLoading={saving}
+        />
+      )}
+
+      {confirmZeroStock && (
+        <ConfirmModal
+          isOpen={confirmZeroStock}
+          title="庫存仍是 0"
+          message={zeroStockConfirmMessage}
+          confirmText="仍要儲存"
+          cancelText="回去填庫存"
+          variant="warning"
+          onConfirm={handleConfirmZeroStockSave}
+          onClose={() => setConfirmZeroStock(false)}
           isLoading={saving}
         />
       )}
