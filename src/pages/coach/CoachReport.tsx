@@ -55,6 +55,17 @@ const LESSON_TYPES = [
 /** 未回報模式：只查過去 N 天內已結束的預約 */
 const UNREPORTED_LOOKBACK_DAYS = 30
 
+/** coach_reports 戳章寫入失敗時，統一錯誤訊息（繁中） */
+function reportStatusSaveError(
+  dbMessage: string,
+  options?: { participantsAlreadySaved?: boolean }
+): Error {
+  const hint = options?.participantsAlreadySaved
+    ? '（參與者資料已存檔，請再試一次）'
+    : '請再試一次。'
+  return new Error(`記錄回報狀態失敗：${dbMessage}。${hint}`)
+}
+
 interface CoachReportProps {
   autoFilterByUser?: boolean // 是否自動根據登入用戶篩選教練
   embedded?: boolean // 是否嵌入在其他頁面中（隱藏 PageHeader）
@@ -568,9 +579,20 @@ export function CoachReport({
     // 檢查駕駛時數是否有變更
     const driverDurationChanged = originalDriverDuration === null || originalDriverDuration !== driverDuration
     
-    // 如果沒有變更，跳過更新
+    // 駕駛時數未變更時通常略過；若 DB 尚無戳章仍須寫入（例如 both 僅更新參與者）
     if (!driverDurationChanged) {
-      return
+      const { data: existing, error: fetchError } = await supabase
+        .from('coach_reports')
+        .select('id')
+        .eq('booking_id', reportingBookingId)
+        .eq('coach_id', reportingCoachId)
+        .maybeSingle()
+
+      if (fetchError) {
+        console.error('查詢回報狀態失敗:', fetchError)
+        throw reportStatusSaveError(fetchError.message)
+      }
+      if (existing) return
     }
 
     const { error } = await supabase
@@ -585,8 +607,8 @@ export function CoachReport({
       })
 
     if (error) {
-      console.error('提交駕駛回報失敗:', error)
-      throw new Error(`提交駕駛回報失敗: ${error.message}`)
+      console.error('記錄回報狀態失敗:', error)
+      throw reportStatusSaveError(error.message)
     }
   }
 
@@ -806,24 +828,22 @@ export function CoachReport({
         }
       }
 
-      // 確保在 coach_reports 中有記錄，用於追蹤教練是否已提交回報
-      // 注意：如果是 'both' 或 'driver' 類型，submitDriverReport 已經處理了
-      // 這裡只處理純 'coach' 類型的情況
-      if (reportType === 'coach') {
+      // 確保 coach_reports 有戳章（未回報列表與 ✓ 依此判斷；失敗須告知，不可靜默成功）
+      if (reportType === 'coach' || reportType === 'both') {
         const { error: upsertError } = await supabase
           .from('coach_reports')
           .upsert({
             booking_id: reportingBookingId,
             coach_id: reportingCoachId,
-            driver_duration_min: null, // 純教練不回報駕駛時數
+            driver_duration_min: reportType === 'both' ? driverDuration : null,
             reported_at: getLocalTimestamp()
           }, {
             onConflict: 'booking_id,coach_id'
           })
 
         if (upsertError) {
-          console.error('記錄教練回報狀態失敗:', upsertError)
-          // 不拋出錯誤，因為參與者已經成功提交
+          console.error('記錄回報狀態失敗:', upsertError)
+          throw reportStatusSaveError(upsertError.message, { participantsAlreadySaved: true })
         }
       }
     } catch (error) {
