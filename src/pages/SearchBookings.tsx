@@ -20,6 +20,10 @@ import {
   AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES,
   AVAILABILITY_SEARCH_CLIP_START_MINUTES,
 } from '../constants/booking'
+import {
+  memberIdsMatchingKeyword,
+  formatSelectedMemberHint,
+} from '../utils/searchBookingMemberQuery'
 
 function weekdayFromYmd(ymd: string): number {
   return new Date(`${ymd}T12:00:00`).getDay()
@@ -145,6 +149,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   
   const [canSearchBatch, setCanSearchBatch] = useState(false)
 
+  const selectedMember = useMemo(
+    () => (selectedMemberId ? members.find(m => m.id === selectedMemberId) ?? null : null),
+    [selectedMemberId, members],
+  )
+
   useEffect(() => {
     const check = async () => {
       if (!user) return
@@ -220,24 +229,37 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       // 最大返回數量限制，避免返回過多資料造成卡頓
       const MAX_RESULTS = 100
       
-      // 步驟 1: 並行查詢匹配的預約 ID（從兩個來源）
-      const [memberResult, bookingResult] = await Promise.all([
-        // 從 booking_members 查詢會員名稱
-        supabase
-          .from('booking_members')
-          .select('booking_id, members:member_id!inner(name)')
-          .ilike('members.name', `%${searchTerm}%`),
-        // 從 bookings 表查詢 contact_name
-        supabase
-          .from('bookings')
-          .select('id')
-          .ilike('contact_name', `%${searchTerm}%`)
-      ])
-      
-      // 合併找到的預約 ID
+      // 步驟 1: 查詢匹配的預約 ID
       const bookingIds = new Set<number>()
-      memberResult.data?.forEach(item => bookingIds.add(item.booking_id))
-      bookingResult.data?.forEach(item => bookingIds.add(item.id))
+
+      if (selectedMemberId) {
+        // 已從下拉選定會員：僅查此 member_id
+        const { data: memberLinks } = await supabase
+          .from('booking_members')
+          .select('booking_id')
+          .eq('member_id', selectedMemberId)
+        memberLinks?.forEach(item => bookingIds.add(item.booking_id))
+      } else {
+        // 關鍵字模式：會員（姓名／暱稱／電話）+ contact_name（含訪客）
+        const matchedMemberIds = memberIdsMatchingKeyword(members, searchTerm)
+        const memberBookingPromise = matchedMemberIds.length > 0
+          ? supabase
+              .from('booking_members')
+              .select('booking_id')
+              .in('member_id', matchedMemberIds)
+          : Promise.resolve({ data: [] as { booking_id: number }[], error: null })
+
+        const [memberResult, bookingResult] = await Promise.all([
+          memberBookingPromise,
+          supabase
+            .from('bookings')
+            .select('id')
+            .ilike('contact_name', `%${searchTerm}%`),
+        ])
+
+        memberResult.data?.forEach(item => bookingIds.add(item.booking_id))
+        bookingResult.data?.forEach(item => bookingIds.add(item.id))
+      }
       
       if (bookingIds.size === 0) {
         setBookings([])
@@ -803,6 +825,12 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 </button>
               )}
             </div>
+
+            {selectedMember && (
+              <div style={{ fontSize: '12px', color: '#5a5a5a', marginTop: '6px' }}>
+                已選：{formatSelectedMemberHint(selectedMember)} · 僅顯示此會員預約
+              </div>
+            )}
             
             {showMemberDropdown && filteredMembers.length > 0 && (
               <div style={{
