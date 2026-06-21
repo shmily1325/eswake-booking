@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Badge, useToast, ConfirmModal } from '../../../components/ui'
-import { PrimaryNumericInput, NumericTextInput } from '../../../components/ui/numericInputs'
+import { NumericTextInput } from '../../../components/ui/numericInputs'
 import { getInputStyle } from '../../../styles/designSystem'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { CoverImageEditor } from './CoverImageEditor'
@@ -108,7 +108,7 @@ function emptyDraft(): DraftVariant {
     vendor_code: '',
     attributes: {},
     price: '',
-    stock: '0',
+    stock: '',
     acceptPreOrder: false,
     last_stock_in_at: null,
     cover_image_url: null,
@@ -250,7 +250,7 @@ export function ProductEditView({
         vendor_code: lastActive.vendor_code,
         attributes: { ...lastActive.attributes },
         price: lastActive.price,
-        stock: '0',
+        stock: '',
         acceptPreOrder: lastActive.acceptPreOrder,
         last_stock_in_at: null,
         cover_image_url: null,
@@ -324,6 +324,7 @@ export function ProductEditView({
         const priceNum = Number(d.price)
         if (!Number.isFinite(priceNum) || priceNum < 0) return `規格 #${i + 1}：售價需為非負整數，或留空表待補`
       }
+      if (d.stock.trim() === '') return `規格 #${i + 1}：庫存為必填`
       const stockNum = Number(d.stock)
       if (!Number.isFinite(stockNum) || stockNum < 0) return `規格 #${i + 1}：庫存需為非負整數`
     }
@@ -935,19 +936,23 @@ function VariantBlock({
   const stockField = (
     <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
       <label style={labelStyle}>庫存 *</label>
-      <PrimaryNumericInput
-        value={Number(draft.stock) || 0}
-        min={0}
-        disabled={disabled || draft.pendingDelete}
-        placeholder="0"
-        onChange={(n) =>
-          onChange({
-            stock: String(n),
-            acceptPreOrder: n > 0 ? false : draft.acceptPreOrder,
-          })
-        }
-        suffix={<span style={{ fontSize: 14, color: '#666', flexShrink: 0 }}>件</span>}
-      />
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
+        <NumericTextInput
+          variant="course"
+          value={draft.stock}
+          disabled={disabled || draft.pendingDelete}
+          placeholder="請輸入"
+          isMobile={isMobile}
+          onChange={(digits) =>
+            onChange({
+              stock: digits,
+              acceptPreOrder:
+                digits !== '' && Number(digits) > 0 ? false : draft.acceptPreOrder,
+            })
+          }
+        />
+        <span style={{ fontSize: 14, color: '#666', flexShrink: 0 }}>件</span>
+      </div>
       {draft.last_stock_in_at && (
         <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>
           最近入庫：{formatDateTime(draft.last_stock_in_at)}
@@ -1203,7 +1208,9 @@ function VariantBlock({
             }}
           >
             {summary || draft.vendor_code || '（空白）'}
-            <span style={{ marginLeft: 8, color: '#999' }}>·庫存 {draft.stock || 0}</span>
+            <span style={{ marginLeft: 8, color: '#999' }}>
+              ·庫存 {draft.stock.trim() !== '' ? draft.stock : '未填'}
+            </span>
           </span>
         )}
         {!effectiveCollapsed && <span style={{ flex: 1 }} />}

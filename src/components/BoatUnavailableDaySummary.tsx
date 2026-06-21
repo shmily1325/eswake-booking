@@ -3,7 +3,7 @@ import type { BoatUnavailableBlock } from '../utils/boatUnavailableDay'
 import { formatUnavailableRange } from '../utils/boatUnavailableDay'
 import type { RestrictionDayBlock } from '../utils/restrictionDayBlocks'
 import {
-  getEventDateLabel,
+  getDayViewAssignmentDatePrefix,
   normalizeAnnouncementContent,
   type DayViewAssignmentAnnouncement,
 } from '../utils/announcement'
@@ -94,9 +94,8 @@ export function BoatUnavailableDaySummary({
 
   const assignmentLines = useMemo(() => {
     return assignmentAnnouncements.map((a) => {
-      const label = getEventDateLabel(a)
+      const prefix = getDayViewAssignmentDatePrefix(a)
       const content = normalizeAnnouncementContent(a.content)
-      const prefix = label ? `[${label}] ` : ''
       return {
         key: `assignment-${a.id}`,
         text: `${prefix}${content}`,

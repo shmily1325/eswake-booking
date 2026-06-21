@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   filterDayViewAssignments,
+  getDayViewAssignmentDatePrefix,
   getEventDateLabel,
   isAnnouncementActiveOnDate,
 } from '../announcement'
@@ -64,5 +65,23 @@ describe('filterDayViewAssignments', () => {
       created_at: null,
     }
     expect(getEventDateLabel(range)).toBe('3/16 - 3/21')
+    expect(getDayViewAssignmentDatePrefix(range)).toBe('[3/16 - 3/21] ')
+  })
+
+  it('單日不加日期前綴', () => {
+    const single = {
+      display_date: '2026-06-22',
+      end_date: '2026-06-22',
+      show_one_day_early: false,
+    }
+    expect(getDayViewAssignmentDatePrefix(single)).toBe('')
+
+    // 提前一天顯示存成兩日區間，但實質單日
+    const earlySingle = {
+      display_date: '2026-06-21',
+      end_date: '2026-06-22',
+      show_one_day_early: true,
+    }
+    expect(getDayViewAssignmentDatePrefix(earlySingle)).toBe('')
   })
 })

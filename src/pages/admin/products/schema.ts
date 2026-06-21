@@ -271,6 +271,19 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
       { key: 'size', label: '尺寸', type: 'text', required: false },
     ],
   },
+  wb_accessories: {
+    id: 'wb_accessories',
+    name: 'WB 配件',
+    shortName: '配件',
+    shopName: 'Accessories',
+    sortOrder: 35,
+    icon: '🎒',
+    shopGroup: 'Wakeboarding',
+    fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+      { key: 'color', label: '顏色', type: 'text', required: false },
+    ],
+  },
 
   // ===== Wakesurfing 系列 =====
   // 註：id 已經從 'wakesurf' rename 為 'ws_board'（migration 117）。
@@ -337,6 +350,19 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
+  ws_accessories: {
+    id: 'ws_accessories',
+    name: 'WS 配件',
+    shortName: '配件',
+    shopName: 'Accessories',
+    sortOrder: 45,
+    icon: '🎒',
+    shopGroup: 'Wakesurfing',
+    fields: [
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+      { key: 'color', label: '顏色', type: 'text', required: false },
     ],
   },
 }

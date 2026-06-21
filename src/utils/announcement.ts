@@ -129,7 +129,18 @@ export function filterDayViewAssignments(
 }
 
 export function normalizeAnnouncementContent(content: string): string {
-  return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n+$/, '')
+  return content
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/^\n+/, '')
+    .replace(/\n+$/, '')
+}
+
+/** 當日預約交辦：僅跨日區間加 [M/D - M/D]，單日不加（頁首已有日期） */
+export function getDayViewAssignmentDatePrefix(a: AnnouncementRecord): string {
+  const label = getEventDateLabel(a)
+  if (!label?.includes(' - ')) return ''
+  return `[${label}] `
 }
 
 export function parseForEdit(a: AnnouncementRecord): {
