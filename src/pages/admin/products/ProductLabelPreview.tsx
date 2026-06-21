@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import JsBarcode from 'jsbarcode'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { validateLabelCodeFormat } from './labelCode'
@@ -27,30 +27,22 @@ export function ProductLabelPreview({
   heightMm = DEFAULT_LABEL_HEIGHT_MM,
   isMobile = false,
 }: ProductLabelPreviewProps) {
-  const effectiveScale = scale ?? (isMobile ? 2.5 : 2.2)
+  const effectiveScale = scale ?? (isMobile ? 2.8 : 2.4)
   const [expanded, setExpanded] = useState(false)
 
   const trimmed = labelCode.trim()
   const formatError = trimmed ? validateLabelCodeFormat(trimmed) : null
   const hasPreview = Boolean(trimmed && !formatError)
 
-  const wPx = Math.round(widthMm * MM_TO_PX * effectiveScale)
-  const hPx = Math.round(heightMm * MM_TO_PX * effectiveScale)
+  const widthPx = Math.round(widthMm * MM_TO_PX * effectiveScale)
 
   const preview = (
-    <LabelCard
-      labelCode={labelCode}
-      scale={effectiveScale}
-      widthPx={wPx}
-      minHeightPx={hPx}
-      formatError={formatError}
-      isMobile={isMobile}
-    />
+    <LabelCard labelCode={labelCode} widthPx={widthPx} formatError={formatError} />
   )
 
   return (
     <>
-      <div style={{ width: '100%' }}>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {hasPreview ? (
           <button
             type="button"
@@ -64,9 +56,6 @@ export function ProductLabelPreview({
               background: 'transparent',
               cursor: isMobile ? 'pointer' : 'default',
               WebkitTapHighlightColor: 'transparent',
-              width: '100%',
-              display: 'flex',
-              justifyContent: 'center',
             }}
           >
             {preview}
@@ -102,11 +91,8 @@ export function ProductLabelPreview({
           <div onClick={(e) => e.stopPropagation()}>
             <LabelCard
               labelCode={labelCode}
-              scale={4.2}
-              widthPx={Math.round(widthMm * MM_TO_PX * 4.2)}
-              minHeightPx={Math.round(heightMm * MM_TO_PX * 4.2)}
+              widthPx={Math.round(widthMm * MM_TO_PX * 4.5)}
               formatError={formatError}
-              isMobile={isMobile}
             />
             <button
               type="button"
@@ -136,25 +122,38 @@ export function ProductLabelPreview({
 
 interface LabelCardProps {
   labelCode: string
-  scale: number
   widthPx: number
-  minHeightPx: number
   formatError: string | null
-  isMobile: boolean
 }
 
-function LabelCard({
-  labelCode,
-  scale,
-  widthPx,
-  minHeightPx,
-  formatError,
-  isMobile,
-}: LabelCardProps) {
+/** 依標籤寬度與代碼長度算各元素尺寸（方案 A：logo ~20% 寬 + 粗體一行 + 純條碼） */
+function labelMetrics(widthPx: number, codeLen: number) {
+  const w = widthPx
+  const baseFont = Math.max(12, Math.round(w * 0.068))
+  let fontSize = baseFont
+  if (codeLen > 16) fontSize = Math.round(baseFont * 0.72)
+  else if (codeLen > 12) fontSize = Math.round(baseFont * 0.85)
+
+  return {
+    pad: Math.max(7, Math.round(w * 0.045)),
+    logo: Math.max(26, Math.round(w * 0.2)),
+    fontSize,
+    barcodeHeight: Math.max(34, Math.round(w * 0.19)),
+    barWidth: Math.max(1.1, w * 0.0046),
+  }
+}
+
+const labelShellStyle = (widthPx: number): React.CSSProperties => ({
+  width: '100%',
+  maxWidth: widthPx,
+  boxSizing: 'border-box',
+})
+
+function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const trimmed = labelCode.trim()
   const displayCode = trimmed.toUpperCase()
-  const logoPx = Math.max(16, Math.round(12 * scale * 0.42))
+  const m = useMemo(() => labelMetrics(widthPx, displayCode.length), [widthPx, displayCode.length])
 
   useEffect(() => {
     const svg = svgRef.current
@@ -165,33 +164,32 @@ function LabelCard({
       JsBarcode(svg, displayCode, {
         format: 'CODE128',
         displayValue: false,
-        height: Math.max(24, Math.round(13 * scale * 0.9)),
+        height: m.barcodeHeight,
         margin: 0,
-        width: Math.max(1, 1.05 * scale * 0.45),
+        width: m.barWidth,
         background: '#ffffff',
         lineColor: '#000000',
       })
     } catch {
       // invalid barcode payload
     }
-  }, [displayCode, formatError, scale, trimmed])
+  }, [displayCode, formatError, m.barWidth, m.barcodeHeight, trimmed])
 
   if (!trimmed) {
     return (
       <div
         style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          padding: isMobile ? '14px 12px' : '12px',
-          borderRadius: 10,
-          border: '1px solid #ececec',
+          ...labelShellStyle(widthPx),
+          padding: `${m.pad}px`,
+          borderRadius: 6,
+          border: '1px solid #e5e7eb',
           background: '#fff',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
         }}
       >
-        <EsLogo size={28} faded />
+        <EsLogo size={m.logo} faded />
         <span style={{ fontSize: 13, color: '#aaa', lineHeight: 1.35, fontFamily: LABEL_FONT }}>
           輸入代碼後顯示標籤預覽
         </span>
@@ -203,10 +201,9 @@ function LabelCard({
     return (
       <div
         style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          padding: 12,
-          borderRadius: 10,
+          ...labelShellStyle(widthPx),
+          padding: m.pad,
+          borderRadius: 6,
           border: '1px solid #fecaca',
           background: '#fef2f2',
         }}
@@ -219,19 +216,15 @@ function LabelCard({
   return (
     <div
       style={{
-        width: isMobile ? '100%' : widthPx,
-        maxWidth: '100%',
-        minHeight: minHeightPx,
-        boxSizing: 'border-box',
+        ...labelShellStyle(widthPx),
         background: '#fff',
-        border: '1px solid #d1d5db',
-        borderRadius: 6,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-        padding: Math.round(6 * scale * 0.35),
+        border: '1px solid #999',
+        borderRadius: 3,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+        padding: m.pad,
         display: 'flex',
         flexDirection: 'column',
-        gap: Math.round(5 * scale * 0.28),
-        overflow: 'hidden',
+        gap: Math.max(4, Math.round(m.pad * 0.5)),
       }}
     >
       <div
@@ -239,22 +232,26 @@ function LabelCard({
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
-          gap: Math.round(5 * scale * 0.28),
+          gap: Math.round(m.pad * 0.6),
           minWidth: 0,
         }}
       >
-        <EsLogo size={logoPx} />
+        <EsLogo size={m.logo} />
         <div
           style={{
             flex: 1,
             minWidth: 0,
             fontFamily: LABEL_FONT,
-            fontWeight: 600,
-            fontSize: Math.max(10, Math.round(9 * scale * 0.5)),
-            letterSpacing: '0.01em',
-            lineHeight: 1.2,
-            wordBreak: 'break-all',
+            fontWeight: 700,
+            fontSize: m.fontSize,
+            letterSpacing: '0.015em',
+            lineHeight: 1.1,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            color: '#111',
           }}
+          title={displayCode}
         >
           {displayCode}
         </div>
