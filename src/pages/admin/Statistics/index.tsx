@@ -290,35 +290,38 @@ export function Statistics() {
     const endDate = new Date(now.getFullYear(), now.getMonth() + 3, 0)
     const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
 
-    // 兩個查詢都只依賴 [today, endDateStr]，並行送出可節省一輪 RTT
-    const [bookingsData, reportedBookings] = await Promise.all([
-      fetchAllPaginated<any>(async (from, to) => {
-        return supabase
-          .from('bookings')
-          .select(`
+    // 未來三個月預約量通常遠低於 1000；維持單次查詢，避免嵌套 select + range 在 PostgREST 出錯
+    const [bookingsResult, reportedBookingsResult] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select(`
           id, start_at, duration_min, contact_name,
           booking_coaches(coach_id, coaches(id, name)),
           booking_members(member_id, members(id, name, nickname))
         `)
-          .gte('start_at', `${today}T00:00:00`)
-          .lte('start_at', `${endDateStr}T23:59:59`)
-          .neq('status', 'cancelled')
-          .or('is_coach_practice.is.null,is_coach_practice.eq.false')
-          .order('start_at', { ascending: true })
-          .range(from, to)
-      }),
-      fetchAllPaginated<{ booking_id: number }>(async (from, to) => {
-        return supabase
-          .from('coach_reports')
-          .select('booking_id')
-          .gte('bookings!inner.start_at', `${today}T00:00:00`)
-          .lte('bookings!inner.start_at', `${endDateStr}T23:59:59`)
-          .order('id', { ascending: true })
-          .range(from, to)
-      })
+        .gte('start_at', `${today}T00:00:00`)
+        .lte('start_at', `${endDateStr}T23:59:59`)
+        .neq('status', 'cancelled')
+        .or('is_coach_practice.is.null,is_coach_practice.eq.false')
+        .order('start_at', { ascending: true }),
+      supabase
+        .from('coach_reports')
+        .select('booking_id, bookings!inner(start_at)')
+        .gte('bookings.start_at', `${today}T00:00:00`)
+        .lte('bookings.start_at', `${endDateStr}T23:59:59`),
     ])
 
-    const reportedBookingIds = new Set(reportedBookings.map(r => r.booking_id))
+    if (bookingsResult.error) {
+      throw new Error(`未來預約查詢失敗: ${bookingsResult.error.message}`)
+    }
+    if (reportedBookingsResult.error) {
+      throw new Error(`已回報預約查詢失敗: ${reportedBookingsResult.error.message}`)
+    }
+
+    const bookingsData = bookingsResult.data
+    const reportedBookings = reportedBookingsResult.data
+
+    const reportedBookingIds = new Set(reportedBookings?.map(r => r.booking_id) || [])
 
     let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
 
@@ -814,10 +817,14 @@ export function Statistics() {
       try {
         await Promise.all([
           loadMonthlyTrend(),
-          loadFutureBookings(),
           loadFinanceStats(),
           loadAllBoats()
         ])
+        try {
+          await loadFutureBookings()
+        } catch (error) {
+          console.error('載入排程預覽失敗:', error)
+        }
         setLastUpdated(new Date())
       } catch (error) {
         console.error('載入趨勢數據失敗:', error)
@@ -859,13 +866,17 @@ export function Statistics() {
     try {
       await Promise.all([
         loadMonthlyTrend(),
-        loadFutureBookings(),
         loadFinanceStats(),
         loadCoachStats(),
         loadMemberStats(),
         loadWeekdayStats(),
         loadMonthlyCoachPractice()
       ])
+      try {
+        await loadFutureBookings()
+      } catch (error) {
+        console.error('載入排程預覽失敗:', error)
+      }
       setLastUpdated(new Date())
     } catch (error) {
       console.error('重新整理失敗:', error)
