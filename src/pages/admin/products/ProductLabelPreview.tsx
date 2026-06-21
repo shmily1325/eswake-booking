@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { validateLabelCodeFormat } from './labelCode'
@@ -11,6 +12,7 @@ const LABEL_FONT =
   'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
 
 const MM_TO_PX = 3.7795275591
+const MODAL_Z_INDEX = 99999
 
 interface ProductLabelPreviewProps {
   labelCode: string
@@ -27,96 +29,338 @@ export function ProductLabelPreview({
   heightMm = DEFAULT_LABEL_HEIGHT_MM,
   isMobile = false,
 }: ProductLabelPreviewProps) {
-  const effectiveScale = scale ?? (isMobile ? 2.8 : 2.4)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(0)
   const [expanded, setExpanded] = useState(false)
 
   const trimmed = labelCode.trim()
   const formatError = trimmed ? validateLabelCodeFormat(trimmed) : null
   const hasPreview = Boolean(trimmed && !formatError)
 
-  const widthPx = Math.round(widthMm * MM_TO_PX * effectiveScale)
+  const baseWidthPx = widthMm * MM_TO_PX
+  const desktopWidthPx = Math.round(baseWidthPx * (scale ?? 2.4))
+  const fallbackWidthPx = Math.round(baseWidthPx * (isMobile ? 1.35 : 2.4))
 
-  const preview = (
-    <LabelCard labelCode={labelCode} widthPx={widthPx} formatError={formatError} />
-  )
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const update = () => setContainerWidth(el.clientWidth)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const inlineWidthPx =
+    isMobile && containerWidth > 0
+      ? containerWidth
+      : isMobile
+        ? fallbackWidthPx
+        : desktopWidthPx
+
+  const handleExpand = useCallback(() => {
+    if (isMobile && hasPreview) setExpanded(true)
+  }, [hasPreview, isMobile])
+
+  const expandOverlay =
+    expanded && hasPreview
+      ? createPortal(
+          <LabelExpandModal
+            labelCode={labelCode}
+            formatError={formatError}
+            widthMm={widthMm}
+            isMobile={isMobile}
+            onClose={() => setExpanded(false)}
+          />,
+          document.body,
+        )
+      : null
 
   return (
     <>
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        {hasPreview ? (
-          <button
-            type="button"
-            onClick={() => isMobile && setExpanded(true)}
-            disabled={!isMobile}
-            aria-label={isMobile ? '點一下放大標籤預覽' : undefined}
+      <div
+        ref={containerRef}
+        style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
+      >
+        {hasPreview && isMobile ? (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="點一下放大標籤預覽"
+            onClick={handleExpand}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                handleExpand()
+              }
+            }}
             style={{
-              margin: 0,
-              padding: 0,
-              border: 'none',
-              background: 'transparent',
-              cursor: isMobile ? 'pointer' : 'default',
+              display: 'block',
+              width: '100%',
+              cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation',
             }}
           >
-            {preview}
-          </button>
+            <LabelCard
+              labelCode={labelCode}
+              widthPx={inlineWidthPx}
+              formatError={formatError}
+            />
+          </div>
         ) : (
-          preview
+          <LabelCard
+            labelCode={labelCode}
+            widthPx={inlineWidthPx}
+            formatError={formatError}
+          />
         )}
         {hasPreview && (
-          <p style={{ ...hintStyle, textAlign: 'center' }}>
+          <p style={{ ...hintStyle, textAlign: isMobile ? 'center' : 'left' }}>
             標籤約 {widthMm}×{heightMm} mm
             {isMobile && <span style={{ marginLeft: 6, color: '#2563eb' }}>· 點預覽放大</span>}
           </p>
         )}
       </div>
+      {expandOverlay}
+    </>
+  )
+}
 
-      {expanded && hasPreview && (
+interface LabelExpandModalProps {
+  labelCode: string
+  formatError: string | null
+  widthMm: number
+  isMobile: boolean
+  onClose: () => void
+}
+
+function LabelExpandModal({
+  labelCode,
+  formatError,
+  widthMm,
+  isMobile,
+  onClose,
+}: LabelExpandModalProps) {
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const [sheetInnerWidth, setSheetInnerWidth] = useState(0)
+
+  useEffect(() => {
+    const scrollY = window.scrollY
+    const html = document.documentElement
+    const { body } = document
+    const prevHtmlOverflow = html.style.overflow
+    const prevBodyOverflow = body.style.overflow
+    const prevBodyPosition = body.style.position
+    const prevBodyTop = body.style.top
+    const prevBodyWidth = body.style.width
+
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.width = '100%'
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow
+      body.style.overflow = prevBodyOverflow
+      body.style.position = prevBodyPosition
+      body.style.top = prevBodyTop
+      body.style.width = prevBodyWidth
+      window.scrollTo(0, scrollY)
+    }
+  }, [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  useEffect(() => {
+    const el = sheetRef.current
+    if (!el) return
+    const update = () => setSheetInnerWidth(el.clientWidth)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const expandWidthPx = useMemo(() => {
+    if (isMobile && sheetInnerWidth > 0) return sheetInnerWidth
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 360
+    return Math.round(Math.min(vw * 0.88, widthMm * MM_TO_PX * 3.2))
+  }, [isMobile, sheetInnerWidth, widthMm])
+
+  const backdrop = (
+    <div
+      aria-hidden
+      onClick={onClose}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.72)',
+      }}
+    />
+  )
+
+  if (isMobile) {
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="標籤預覽放大"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100dvh',
+          minHeight: '-webkit-fill-available',
+          zIndex: MODAL_Z_INDEX,
+          isolation: 'isolate',
+        }}
+      >
+        {backdrop}
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="標籤預覽放大"
-          onClick={() => setExpanded(false)}
+          ref={sheetRef}
           style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(0,0,0,0.72)',
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            maxHeight: 'min(88dvh, calc(100dvh - env(safe-area-inset-top) - 12px))',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 20,
+            flexDirection: 'column',
+            background: '#fff',
+            borderRadius: '16px 16px 0 0',
+            boxShadow: '0 -8px 32px rgba(0,0,0,0.28)',
+            paddingTop: 12,
+            paddingLeft: 'max(16px, env(safe-area-inset-left))',
+            paddingRight: 'max(16px, env(safe-area-inset-right))',
+            paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+            boxSizing: 'border-box',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
-          <div onClick={(e) => e.stopPropagation()}>
-            <LabelCard
-              labelCode={labelCode}
-              widthPx={Math.round(widthMm * MM_TO_PX * 4.5)}
-              formatError={formatError}
-            />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 12,
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>標籤預覽</span>
             <button
               type="button"
-              onClick={() => setExpanded(false)}
+              onClick={onClose}
+              aria-label="關閉"
               style={{
-                display: 'block',
-                width: '100%',
-                marginTop: 16,
-                padding: '14px 16px',
                 border: 'none',
-                borderRadius: 12,
-                background: '#fff',
-                color: '#111',
-                fontSize: 16,
-                fontWeight: 600,
+                background: '#f3f4f6',
+                color: '#333',
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                fontSize: 18,
+                lineHeight: 1,
                 cursor: 'pointer',
+                touchAction: 'manipulation',
               }}
             >
-              關閉
+              ×
             </button>
           </div>
+          <LabelCard
+            labelCode={labelCode}
+            widthPx={expandWidthPx || Math.round(widthMm * MM_TO_PX * 2.8)}
+            formatError={formatError}
+          />
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              display: 'block',
+              width: '100%',
+              marginTop: 16,
+              padding: '14px 16px',
+              border: 'none',
+              borderRadius: 12,
+              background: '#111',
+              color: '#fff',
+              fontSize: 16,
+              fontWeight: 600,
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              flexShrink: 0,
+            }}
+          >
+            關閉
+          </button>
         </div>
-      )}
-    </>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="標籤預覽放大"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh',
+        zIndex: MODAL_Z_INDEX,
+        background: 'rgba(0,0,0,0.72)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        boxSizing: 'border-box',
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        ref={sheetRef}
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: expandWidthPx }}
+      >
+        <LabelCard labelCode={labelCode} widthPx={expandWidthPx} formatError={formatError} />
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            display: 'block',
+            width: '100%',
+            marginTop: 16,
+            padding: '14px 16px',
+            border: 'none',
+            borderRadius: 12,
+            background: '#fff',
+            color: '#111',
+            fontSize: 16,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          關閉
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -126,39 +370,86 @@ interface LabelCardProps {
   formatError: string | null
 }
 
-/** 依標籤寬度與代碼長度算各元素尺寸（方案 A：logo ~20% 寬 + 粗體一行 + 純條碼） */
-function labelMetrics(widthPx: number, codeLen: number) {
-  const w = widthPx
-  const baseFont = Math.max(12, Math.round(w * 0.068))
-  let fontSize = baseFont
-  if (codeLen > 16) fontSize = Math.round(baseFont * 0.72)
-  else if (codeLen > 12) fontSize = Math.round(baseFont * 0.85)
+let measureCanvas: HTMLCanvasElement | null = null
+
+function measureTextWidth(text: string, fontSize: number): number {
+  if (typeof document === 'undefined') return text.length * fontSize * 0.58
+  measureCanvas ??= document.createElement('canvas')
+  const ctx = measureCanvas.getContext('2d')
+  if (!ctx) return text.length * fontSize * 0.58
+  ctx.font = `700 ${fontSize}px ${LABEL_FONT}`
+  return ctx.measureText(text).width
+}
+
+function fitFontSize(displayCode: string, maxWidth: number, preferred: number): number {
+  const max = Math.max(preferred, 7)
+  for (let size = max; size >= 7; size--) {
+    if (measureTextWidth(displayCode, size) <= maxWidth) return size
+  }
+  return 7
+}
+
+/** 依實際渲染寬度算各元素尺寸；代碼自動縮字，不截斷 */
+function labelMetrics(widthPx: number, displayCode: string) {
+  const w = Math.max(widthPx, 120)
+  const codeLen = displayCode.length
+  const pad = Math.max(6, Math.round(w * 0.04))
+  const gap = Math.max(4, Math.round(pad * 0.55))
+  const logo = Math.max(18, Math.round(w * (codeLen > 14 ? 0.14 : 0.16)))
+
+  const textAreaWidth = Math.max(40, w - pad * 2 - logo - gap)
+  let preferredFont = Math.max(9, Math.round(w * 0.065))
+  if (codeLen > 16) preferredFont = Math.round(preferredFont * 0.78)
+  else if (codeLen > 12) preferredFont = Math.round(preferredFont * 0.88)
+
+  const fontSize = fitFontSize(displayCode, textAreaWidth, preferredFont)
 
   return {
-    pad: Math.max(7, Math.round(w * 0.045)),
-    logo: Math.max(26, Math.round(w * 0.2)),
+    pad,
+    gap,
+    logo,
     fontSize,
-    barcodeHeight: Math.max(34, Math.round(w * 0.19)),
-    barWidth: Math.max(1.1, w * 0.0046),
+    barcodeHeight: Math.max(28, Math.round(w * 0.16)),
+    barWidth: Math.max(0.9, w * 0.0038),
   }
 }
 
-const labelShellStyle = (widthPx: number): React.CSSProperties => ({
-  width: '100%',
-  maxWidth: widthPx,
-  boxSizing: 'border-box',
-})
-
 function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
+  const [measuredWidth, setMeasuredWidth] = useState(widthPx)
+  const [barcodeOk, setBarcodeOk] = useState<boolean | null>(null)
+
   const trimmed = labelCode.trim()
   const displayCode = trimmed.toUpperCase()
-  const m = useMemo(() => labelMetrics(widthPx, displayCode.length), [widthPx, displayCode.length])
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+    const update = () => {
+      const w = el.clientWidth
+      if (w > 0) setMeasuredWidth(w)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  useEffect(() => {
+    setMeasuredWidth(widthPx)
+  }, [widthPx])
+
+  const m = useMemo(
+    () => labelMetrics(measuredWidth, displayCode),
+    [displayCode, measuredWidth],
+  )
 
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
     svg.innerHTML = ''
+    setBarcodeOk(null)
     if (!trimmed || formatError) return
     try {
       JsBarcode(svg, displayCode, {
@@ -170,16 +461,24 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
         background: '#ffffff',
         lineColor: '#000000',
       })
+      setBarcodeOk(svg.childElementCount > 0)
     } catch {
-      // invalid barcode payload
+      setBarcodeOk(false)
     }
   }, [displayCode, formatError, m.barWidth, m.barcodeHeight, trimmed])
+
+  const shellStyle: React.CSSProperties = {
+    width: '100%',
+    maxWidth: widthPx,
+    boxSizing: 'border-box',
+  }
 
   if (!trimmed) {
     return (
       <div
+        ref={cardRef}
         style={{
-          ...labelShellStyle(widthPx),
+          ...shellStyle,
           padding: `${m.pad}px`,
           borderRadius: 6,
           border: '1px solid #e5e7eb',
@@ -200,8 +499,9 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
   if (formatError) {
     return (
       <div
+        ref={cardRef}
         style={{
-          ...labelShellStyle(widthPx),
+          ...shellStyle,
           padding: m.pad,
           borderRadius: 6,
           border: '1px solid #fecaca',
@@ -215,8 +515,9 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
 
   return (
     <div
+      ref={cardRef}
       style={{
-        ...labelShellStyle(widthPx),
+        ...shellStyle,
         background: '#fff',
         border: '1px solid #999',
         borderRadius: 3,
@@ -224,7 +525,8 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
         padding: m.pad,
         display: 'flex',
         flexDirection: 'column',
-        gap: Math.max(4, Math.round(m.pad * 0.5)),
+        gap: Math.max(4, Math.round(m.pad * 0.45)),
+        overflow: 'visible',
       }}
     >
       <div
@@ -232,8 +534,7 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
-          gap: Math.round(m.pad * 0.6),
-          minWidth: 0,
+          gap: m.gap,
         }}
       >
         <EsLogo size={m.logo} />
@@ -244,19 +545,51 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
             fontFamily: LABEL_FONT,
             fontWeight: 700,
             fontSize: m.fontSize,
-            letterSpacing: '0.015em',
+            letterSpacing: '0.005em',
             lineHeight: 1.1,
             whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
             color: '#111',
           }}
-          title={displayCode}
         >
           {displayCode}
         </div>
       </div>
-      <svg ref={svgRef} style={{ width: '100%', height: 'auto', display: 'block' }} aria-hidden />
+      <div
+        style={{
+          width: '100%',
+          minHeight: m.barcodeHeight,
+          position: 'relative',
+          lineHeight: 0,
+        }}
+      >
+        <svg
+          ref={svgRef}
+          style={{
+            width: '100%',
+            height: 'auto',
+            display: barcodeOk ? 'block' : 'none',
+            minHeight: barcodeOk ? m.barcodeHeight : 0,
+          }}
+          aria-hidden
+        />
+        {barcodeOk !== true && (
+          <div
+            style={{
+              height: m.barcodeHeight,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 11,
+              color: barcodeOk === false ? '#b91c1c' : '#999',
+              fontFamily: LABEL_FONT,
+              border: '1px dashed #ddd',
+              borderRadius: 2,
+            }}
+          >
+            {barcodeOk === false ? '條碼無法產生' : '條碼產生中…'}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
