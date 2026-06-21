@@ -55,15 +55,16 @@ const LESSON_TYPES = [
 /** 未回報模式：只查過去 N 天內已結束的預約 */
 const UNREPORTED_LOOKBACK_DAYS = 30
 
-/** coach_reports 戳章寫入失敗時，統一錯誤訊息（繁中） */
+/** coach_reports 戳章寫入失敗：給教練白話提示；技術細節只寫 console */
 function reportStatusSaveError(
   dbMessage: string,
   options?: { participantsAlreadySaved?: boolean }
 ): Error {
-  const hint = options?.participantsAlreadySaved
-    ? '（參與者資料已存檔，請再試一次）'
-    : '請再試一次。'
-  return new Error(`記錄回報狀態失敗：${dbMessage}。${hint}`)
+  console.error('回報完成標記寫入失敗:', dbMessage)
+  const message = options?.participantsAlreadySaved
+    ? '參與者資料已存檔，但這堂尚未標記為「已回報」。請再按「提交」試一次；若仍失敗，請聯絡管理員。'
+    : '無法完成回報，請檢查網路後再按「提交」試一次。若仍失敗，請聯絡管理員。'
+  return new Error(message)
 }
 
 interface CoachReportProps {
@@ -589,7 +590,6 @@ export function CoachReport({
         .maybeSingle()
 
       if (fetchError) {
-        console.error('查詢回報狀態失敗:', fetchError)
         throw reportStatusSaveError(fetchError.message)
       }
       if (existing) return
@@ -607,7 +607,6 @@ export function CoachReport({
       })
 
     if (error) {
-      console.error('記錄回報狀態失敗:', error)
       throw reportStatusSaveError(error.message)
     }
   }
@@ -842,7 +841,6 @@ export function CoachReport({
           })
 
         if (upsertError) {
-          console.error('記錄回報狀態失敗:', upsertError)
           throw reportStatusSaveError(upsertError.message, { participantsAlreadySaved: true })
         }
       }
