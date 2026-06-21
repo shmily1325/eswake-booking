@@ -235,7 +235,7 @@ export function CoachAssignment() {
 
     } catch (err: any) {
       console.error('載入預約失敗:', err)
-      setError('載入預約失敗: ' + (err.message || JSON.stringify(err)))
+      setError('載入排班失敗，請重新整理頁面。')
     } finally {
       setLoading(false)
     }
@@ -1160,7 +1160,7 @@ export function CoachAssignment() {
       }, 500)
     } catch (err: any) {
       console.error('儲存失敗:', err)
-      const msg = '❌ 儲存失敗: ' + (err.message || '未知錯誤')
+      const msg = '儲存失敗，請稍後再試。若仍失敗，請聯絡管理員。'
       setError(msg)
       toast.error(msg)
     } finally {

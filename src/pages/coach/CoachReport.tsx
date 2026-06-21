@@ -25,6 +25,12 @@ import {
 } from '../../utils/bookingDataHelpers'
 import { fetchAllByBookingIds } from '../../utils/supabasePaginate'
 import { getCoachReportStatus, getCoachReportType, isFullyReported } from '../../utils/coachReportStatus'
+import {
+  COACH_REPORT_USER_ERRORS,
+  isUserFacingErrorMessage,
+  reportStampSaveError,
+  userFacingError,
+} from '../../utils/userFacingError'
 import type {
   Coach,
   Booking,
@@ -54,18 +60,6 @@ const LESSON_TYPES = [
 
 /** 未回報模式：只查過去 N 天內已結束的預約 */
 const UNREPORTED_LOOKBACK_DAYS = 30
-
-/** coach_reports 戳章寫入失敗：給教練白話提示；技術細節只寫 console */
-function reportStatusSaveError(
-  dbMessage: string,
-  options?: { participantsAlreadySaved?: boolean }
-): Error {
-  console.error('回報完成標記寫入失敗:', dbMessage)
-  const message = options?.participantsAlreadySaved
-    ? '參與者資料已存檔，但這堂尚未標記為「已回報」。請再按「提交」試一次；若仍失敗，請聯絡管理員。'
-    : '無法完成回報，請檢查網路後再按「提交」試一次。若仍失敗，請聯絡管理員。'
-  return new Error(message)
-}
 
 interface CoachReportProps {
   autoFilterByUser?: boolean // 是否自動根據登入用戶篩選教練
@@ -543,7 +537,10 @@ export function CoachReport({
       if (error instanceof Error) {
         // 用戶主動取消不需要顯示錯誤
         if (error.message !== '用戶取消操作') {
-          toast.error(`提交失敗：${error.message}`)
+          const message = isUserFacingErrorMessage(error.message)
+            ? error.message
+            : COACH_REPORT_USER_ERRORS.genericSubmit
+          toast.error(`提交失敗：${message}`)
         }
       } else {
         toast.error('提交失敗，請重試')
@@ -590,7 +587,7 @@ export function CoachReport({
         .maybeSingle()
 
       if (fetchError) {
-        throw reportStatusSaveError(fetchError.message)
+        throw reportStampSaveError(fetchError.message)
       }
       if (existing) return
     }
@@ -607,7 +604,7 @@ export function CoachReport({
       })
 
     if (error) {
-      throw reportStatusSaveError(error.message)
+      throw reportStampSaveError(error.message)
     }
   }
 
@@ -663,7 +660,11 @@ export function CoachReport({
 
       if (fetchError) {
         console.error('載入現有記錄失敗:', fetchError)
-        throw new Error(`載入現有記錄失敗: ${fetchError.message}`)
+        throw userFacingError(
+          '載入現有參與者失敗',
+          fetchError.message,
+          COACH_REPORT_USER_ERRORS.loadExisting
+        )
       }
 
       // 步驟 2: 硬刪除已移除的參與者（先檢查交易記錄並警告）
@@ -705,7 +706,11 @@ export function CoachReport({
 
         if (deleteError) {
           console.error('刪除記錄失敗:', deleteError)
-          throw new Error(`刪除記錄失敗: ${deleteError.message}`)
+          throw userFacingError(
+            '刪除參與者失敗',
+            deleteError.message,
+            COACH_REPORT_USER_ERRORS.deleteParticipant
+          )
         }
 
       }
@@ -810,7 +815,11 @@ export function CoachReport({
 
           if (updateError) {
             console.error('更新記錄失敗:', updateError)
-            throw new Error(`更新記錄失敗: ${updateError.message}`)
+            throw userFacingError(
+              '更新參與者失敗',
+              updateError.message,
+              COACH_REPORT_USER_ERRORS.updateParticipant
+            )
           }
         }
       }
@@ -823,7 +832,11 @@ export function CoachReport({
 
         if (insertError) {
           console.error('插入新記錄失敗:', insertError)
-          throw new Error(`插入新記錄失敗: ${insertError.message}`)
+          throw userFacingError(
+            '插入參與者失敗',
+            insertError.message,
+            COACH_REPORT_USER_ERRORS.insertParticipant
+          )
         }
       }
 
@@ -841,7 +854,7 @@ export function CoachReport({
           })
 
         if (upsertError) {
-          throw reportStatusSaveError(upsertError.message, { participantsAlreadySaved: true })
+          throw reportStampSaveError(upsertError.message, { participantsAlreadySaved: true })
         }
       }
     } catch (error) {
