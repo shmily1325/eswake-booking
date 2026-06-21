@@ -1,6 +1,17 @@
 /** 標籤代碼：店員自訂英數字串，印在標籤並 encode 為 Code128 條碼 */
 
-export const LABEL_CODE_MAX_LEN = 30
+/** 小標籤好掃的建議字數（僅提示，不強制下限） */
+export const LABEL_CODE_IDEAL_MIN = 10
+export const LABEL_CODE_IDEAL_MAX = 18
+/** 硬上限：小標籤仍可掃的實務上限 */
+export const LABEL_CODE_MAX_LEN = 20
+
+export const LABEL_CODE_RULE_HINT = `英文＋數字，建議 ${LABEL_CODE_IDEAL_MIN}～${LABEL_CODE_IDEAL_MAX} 字，最多 ${LABEL_CODE_MAX_LEN} 字`
+
+/** 輸入時即時過濾：大寫、去非法字元、截斷至上限 */
+export function sanitizeLabelCodeInput(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, LABEL_CODE_MAX_LEN)
+}
 
 /** 儲存前正規化：去空白、轉大寫；空字串 → null */
 export function normalizeLabelCode(raw: string): string | null {
@@ -34,4 +45,9 @@ export function findDuplicateLabelCodes(
     seen.add(code)
   }
   return null
+}
+
+/** 標籤代碼是否與 DB 已存值不同 */
+export function isLabelCodeDirty(current: string, saved: string): boolean {
+  return (normalizeLabelCode(current) ?? '') !== (normalizeLabelCode(saved) ?? '')
 }

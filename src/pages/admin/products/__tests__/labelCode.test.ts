@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   findDuplicateLabelCodes,
+  isLabelCodeDirty,
+  LABEL_CODE_MAX_LEN,
   normalizeLabelCode,
+  sanitizeLabelCodeInput,
   validateLabelCodeFormat,
 } from '../labelCode'
 
@@ -27,6 +30,26 @@ describe('validateLabelCodeFormat', () => {
 
   it('allows empty', () => {
     expect(validateLabelCodeFormat('')).toBeNull()
+  })
+
+  it('rejects over max length', () => {
+    expect(validateLabelCodeFormat('A'.repeat(LABEL_CODE_MAX_LEN + 1))).toMatch(/最多/)
+  })
+})
+
+describe('sanitizeLabelCodeInput', () => {
+  it('uppercases, strips invalid chars, and caps length', () => {
+    expect(sanitizeLabelCodeInput('  es-follow-2026  ')).toBe('ESFOLLOW2026')
+    expect(sanitizeLabelCodeInput('ABCDEFGHIJKLMNOPQRST')).toHaveLength(LABEL_CODE_MAX_LEN)
+  })
+})
+
+describe('isLabelCodeDirty', () => {
+  it('detects changes vs saved value', () => {
+    expect(isLabelCodeDirty('abc', 'abc')).toBe(false)
+    expect(isLabelCodeDirty('ABC', 'abc')).toBe(false)
+    expect(isLabelCodeDirty('NEW', 'OLD')).toBe(true)
+    expect(isLabelCodeDirty('', 'OLD')).toBe(true)
   })
 })
 

@@ -33,7 +33,11 @@ import { collectZeroStockWarnings } from './productSaveWarnings'
 import { ProductLabelPreview } from './ProductLabelPreview'
 import {
   findDuplicateLabelCodes,
+  isLabelCodeDirty,
+  LABEL_CODE_MAX_LEN,
+  LABEL_CODE_RULE_HINT,
   normalizeLabelCode,
+  sanitizeLabelCodeInput,
   validateLabelCodeFormat,
 } from './labelCode'
 import { removeProductImage } from '../../../utils/imageUpload'
@@ -59,6 +63,8 @@ interface DraftVariant {
   /** 已存在於 DB 的 SKU id；新加的尚未儲存則為 null */
   id: string | null
   label_code: string
+  /** DB 已儲存的標籤代碼（「儲存標籤」dirty 判斷用） */
+  savedLabelCode: string
   vendor_code: string
   attributes: Record<string, string>
   price: string
@@ -94,6 +100,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
   return {
     id: v.id,
     label_code: v.label_code ?? '',
+    savedLabelCode: v.label_code ?? '',
     vendor_code: v.vendor_code ?? '',
     attributes: attrs,
     // price 為 null 時保留空字串（UI 顯示「待補」），不要強制變成 "0"
@@ -114,6 +121,7 @@ function emptyDraft(): DraftVariant {
   return {
     id: null,
     label_code: '',
+    savedLabelCode: '',
     vendor_code: '',
     attributes: {},
     price: '',
@@ -144,6 +152,7 @@ export function ProductEditView({
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
+  const [labelCodeSavingId, setLabelCodeSavingId] = useState<string | null>(null)
   const [original, setOriginal] = useState<ProductWithVariants | null>(null)
 
   const [category, setCategory] = useState<string>(defaultCategory ?? Object.keys(CATEGORY_SCHEMAS)[0] ?? 'lifejacket')
@@ -255,6 +264,7 @@ export function ProductEditView({
       {
         id: null,
         label_code: '',
+        savedLabelCode: '',
         vendor_code: lastActive.vendor_code,
         attributes: { ...lastActive.attributes },
         price: lastActive.price,
@@ -341,6 +351,52 @@ export function ProductEditView({
     const dup = findDuplicateLabelCodes(active)
     if (dup) return `標籤代碼「${dup}」在此商品內重複，請改成唯一代碼`
     return null
+  }
+
+  const handleSaveLabelCode = async (idx: number) => {
+    const d = drafts[idx]
+    if (!d?.id) {
+      toast.error('請先儲存商品，再存標籤代碼')
+      return
+    }
+    const formatErr = validateLabelCodeFormat(d.label_code)
+    if (formatErr) {
+      toast.error(formatErr)
+      return
+    }
+    const normalized = normalizeLabelCode(d.label_code)
+    if (normalized) {
+      const clash = drafts.some(
+        (row, i) =>
+          i !== idx &&
+          !row.pendingDelete &&
+          normalizeLabelCode(row.label_code) === normalized,
+      )
+      if (clash) {
+        toast.error(`標籤代碼「${normalized}」在此商品內重複`)
+        return
+      }
+    }
+    setLabelCodeSavingId(d.id)
+    try {
+      await updateVariant(d.id, { label_code: normalized })
+      setDrafts((prev) =>
+        prev.map((row, i) =>
+          i === idx ? { ...row, savedLabelCode: normalized ?? '' } : row,
+        ),
+      )
+      toast.success('標籤代碼已儲存')
+    } catch (e: unknown) {
+      console.error('[ProductEditView] save label_code failed', e)
+      const code = (e as { code?: string })?.code
+      if (code === '23505') {
+        toast.error('此標籤代碼已被其他 SKU 使用')
+      } else {
+        toast.error('標籤代碼儲存失敗')
+      }
+    } finally {
+      setLabelCodeSavingId(null)
+    }
   }
 
   const performSave = async () => {
@@ -753,6 +809,8 @@ export function ProductEditView({
             onRemove={() => handleRemoveVariant(idx)}
             onRestore={() => handleRestoreVariant(idx)}
             onImageUpload={trackUpload}
+            labelCodeSaving={d.id != null && labelCodeSavingId === d.id}
+            onSaveLabelCode={() => void handleSaveLabelCode(idx)}
           />
         ))}
 
@@ -874,6 +932,8 @@ interface VariantBlockProps {
   onRemove: () => void
   onRestore: () => void
   onImageUpload: (path: string) => void
+  labelCodeSaving?: boolean
+  onSaveLabelCode?: () => void
 }
 
 function VariantBlock({
@@ -891,6 +951,8 @@ function VariantBlock({
   onRemove,
   onRestore,
   onImageUpload,
+  labelCodeSaving = false,
+  onSaveLabelCode,
 }: VariantBlockProps) {
   const blockRef = useRef<HTMLDivElement>(null)
   // 折疊：手機上已有 SKU 預設收合；從列表點進來的目標 SKU 強制展開
@@ -1029,26 +1091,6 @@ function VariantBlock({
           disabled={disabled || draft.pendingDelete}
         />
       </div>
-      <div style={{ gridColumn: '1 / -1' }}>
-        <label style={labelStyle}>
-          標籤代碼
-          <span style={{ color: '#999', fontWeight: 400, marginLeft: 4 }}>
-            (印標籤＋條碼，英數)
-          </span>
-        </label>
-        <input
-          style={{ ...inputStyle, fontFamily: 'monospace', letterSpacing: '0.03em' }}
-          value={draft.label_code}
-          onChange={(e) => onChange({ label_code: e.target.value })}
-          placeholder="例如：ESFOLLOWVEST2026"
-          disabled={disabled || draft.pendingDelete}
-          spellCheck={false}
-          autoCapitalize="characters"
-        />
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start', width: '100%' }}>
-          <ProductLabelPreview labelCode={draft.label_code} isMobile={isMobile} />
-        </div>
-      </div>
       {schemaFields.map((f) => (
         <div key={f.key}>
           <label style={labelStyle}>
@@ -1116,6 +1158,85 @@ function VariantBlock({
         size={isMobile ? 80 : 96}
         emptyLabel="相簿／拍照"
       />
+    </div>
+  )
+
+  const labelCodeSection = (
+    <div
+      style={{
+        marginTop: 16,
+        paddingTop: 16,
+        borderTop: '1px solid #eee',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 8,
+          marginBottom: 4,
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>標籤代碼</div>
+        <div
+          style={{
+            fontSize: 12,
+            color: draft.label_code.length >= LABEL_CODE_MAX_LEN ? '#c62828' : '#aaa',
+            flexShrink: 0,
+          }}
+        >
+          {draft.label_code.length}/{LABEL_CODE_MAX_LEN}
+        </div>
+      </div>
+      <div style={{ fontSize: 11, color: '#999', marginBottom: 10, lineHeight: 1.4 }}>
+        {LABEL_CODE_RULE_HINT}
+      </div>
+      <input
+        style={inputStyle}
+        value={draft.label_code}
+        onChange={(e) => onChange({ label_code: sanitizeLabelCodeInput(e.target.value) })}
+        placeholder="ESFOLLOWVEST2026"
+        disabled={disabled || draft.pendingDelete}
+        spellCheck={false}
+        autoCapitalize="characters"
+        autoCorrect="off"
+        enterKeyHint="done"
+        maxLength={LABEL_CODE_MAX_LEN}
+      />
+      <div style={{ marginTop: 10 }}>
+        <ProductLabelPreview labelCode={draft.label_code} isMobile={isMobile} />
+      </div>
+      {!readOnly && (
+        <div style={{ marginTop: 12 }}>
+          <Button
+            variant="primary"
+            size={isMobile ? 'medium' : 'small'}
+            fullWidth={isMobile}
+            data-track="product_label_code_save"
+            disabled={
+              disabled ||
+              draft.pendingDelete ||
+              !draft.id ||
+              !isLabelCodeDirty(draft.label_code, draft.savedLabelCode) ||
+              labelCodeSaving
+            }
+            onClick={() => onSaveLabelCode?.()}
+          >
+            {labelCodeSaving ? '儲存中…' : '儲存標籤'}
+          </Button>
+          {!draft.id && (
+            <p style={{ fontSize: 12, color: '#888', margin: '8px 0 0', textAlign: isMobile ? 'center' : 'left' }}>
+              新建 SKU 請先儲存商品
+            </p>
+          )}
+          {draft.id && isLabelCodeDirty(draft.label_code, draft.savedLabelCode) && (
+            <p style={{ fontSize: 12, color: '#2563eb', margin: '6px 0 0', textAlign: isMobile ? 'center' : 'left' }}>
+              標籤代碼尚未儲存
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 
@@ -1299,6 +1420,7 @@ function VariantBlock({
         <>
           {fieldsGrid}
           {productPhotoSection}
+          {labelCodeSection}
           {collapsibleCoverSection}
         </>
       )}

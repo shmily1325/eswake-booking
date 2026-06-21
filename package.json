@@ -21,6 +21,7 @@
     "@types/react-window": "^1.8.8",
     "@vercel/functions": "^3.6.2",
     "googleapis": "^144.0.0",
+    "html5-qrcode": "^2.3.8",
     "jsbarcode": "^3.12.3",
     "papaparse": "^5.5.3",
     "react": "^19.1.2",

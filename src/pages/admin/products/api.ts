@@ -333,3 +333,34 @@ export async function adjustStock(variantId: string, newStock: number): Promise<
   const { error } = await supabase.from('product_variants').update({ stock }).eq('id', variantId)
   if (error) throw error
 }
+
+/** 掃描找貨：用 label_code 查 SKU + 商品主檔 */
+export async function fetchVariantItemByLabelCode(
+  labelCode: string,
+): Promise<VariantListItem | null> {
+  const normalized = labelCode.trim().toUpperCase()
+  if (!normalized) return null
+
+  const { data: variant, error: ve } = await supabase
+    .from('product_variants')
+    .select('*')
+    .eq('label_code', normalized)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (ve) throw ve
+  if (!variant) return null
+
+  const { data: product, error: pe } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', variant.product_id)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (pe) throw pe
+  if (!product) return null
+
+  return {
+    variant: variant as unknown as ProductVariantRow,
+    product: product as unknown as ProductRow,
+  }
+}
