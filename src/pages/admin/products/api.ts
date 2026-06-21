@@ -167,6 +167,7 @@ export async function deleteProduct(productId: string): Promise<void> {
 
 export interface CreateVariantInput {
   product_id: string
+  label_code?: string | null
   vendor_code?: string | null
   attributes: Record<string, AttributeValue>
   /** null = 售價待補（前端顯示「缺」）；0 = 真的免費贈品 */
@@ -245,6 +246,7 @@ export async function createVariant(input: CreateVariantInput): Promise<ProductV
   })
   const payload: VariantInsert = {
     product_id: input.product_id,
+    label_code: input.label_code?.trim() || null,
     vendor_code: input.vendor_code?.trim() || null,
     attributes: input.attributes,
     price: normalizePrice(input.price),
@@ -264,6 +266,7 @@ export async function createVariant(input: CreateVariantInput): Promise<ProductV
 }
 
 export interface UpdateVariantInput {
+  label_code?: string | null
   vendor_code?: string | null
   attributes?: Record<string, AttributeValue>
   price?: number | null
@@ -282,6 +285,7 @@ export interface UpdateVariantInput {
 
 export async function updateVariant(variantId: string, input: UpdateVariantInput): Promise<void> {
   const patch: VariantUpdate = {}
+  if (input.label_code !== undefined) patch.label_code = input.label_code?.trim() || null
   if (input.vendor_code !== undefined) patch.vendor_code = input.vendor_code?.trim() || null
   if (input.attributes !== undefined) patch.attributes = input.attributes
   if (input.price !== undefined) patch.price = normalizePrice(input.price)

@@ -8,7 +8,7 @@ import { ImageUploader } from './ImageUploader'
 import {
   CATEGORY_SCHEMAS,
   formatAttributes,
-  getCategory,
+  getSkuFields,
   normalizeGenderValue,
   normalizeVariantAttributes,
   validateAttributes,
@@ -30,6 +30,12 @@ import {
 } from './availabilityHelpers'
 import { ShopStatusPill, ShopVisibilityPill } from './ShopStatusPill'
 import { collectZeroStockWarnings } from './productSaveWarnings'
+import { ProductLabelPreview } from './ProductLabelPreview'
+import {
+  findDuplicateLabelCodes,
+  normalizeLabelCode,
+  validateLabelCodeFormat,
+} from './labelCode'
 import { removeProductImage } from '../../../utils/imageUpload'
 import { trackClick } from '../../../utils/trackClick'
 import { formatDateTime } from '../../../utils/formatters'
@@ -52,6 +58,7 @@ interface ProductEditViewProps {
 interface DraftVariant {
   /** 已存在於 DB 的 SKU id；新加的尚未儲存則為 null */
   id: string | null
+  label_code: string
   vendor_code: string
   attributes: Record<string, string>
   price: string
@@ -86,6 +93,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
   }
   return {
     id: v.id,
+    label_code: v.label_code ?? '',
     vendor_code: v.vendor_code ?? '',
     attributes: attrs,
     // price 為 null 時保留空字串（UI 顯示「待補」），不要強制變成 "0"
@@ -105,6 +113,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
 function emptyDraft(): DraftVariant {
   return {
     id: null,
+    label_code: '',
     vendor_code: '',
     attributes: {},
     price: '',
@@ -161,8 +170,6 @@ export function ProductEditView({
   const trackUpload = (path: string) => {
     sessionUploadsRef.current.add(path)
   }
-
-  const cat = useMemo(() => getCategory(category), [category])
 
   /** 同類別下已出現過的品牌（autocomplete 用） */
   const brandSuggestions = useMemo(() => {
@@ -247,6 +254,7 @@ export function ProductEditView({
       ...prev,
       {
         id: null,
+        label_code: '',
         vendor_code: lastActive.vendor_code,
         attributes: { ...lastActive.attributes },
         price: lastActive.price,
@@ -327,7 +335,11 @@ export function ProductEditView({
       if (d.stock.trim() === '') return `規格 #${i + 1}：庫存為必填`
       const stockNum = Number(d.stock)
       if (!Number.isFinite(stockNum) || stockNum < 0) return `規格 #${i + 1}：庫存需為非負整數`
+      const labelErr = validateLabelCodeFormat(d.label_code)
+      if (labelErr) return `規格 #${i + 1}：${labelErr}`
     }
+    const dup = findDuplicateLabelCodes(active)
+    if (dup) return `標籤代碼「${dup}」在此商品內重複，請改成唯一代碼`
     return null
   }
 
@@ -368,6 +380,7 @@ export function ProductEditView({
         const stockNum = Number(d.stock)
         const availability = deriveVariantAvailability(stockNum, d.acceptPreOrder)
         const payload = {
+          label_code: normalizeLabelCode(d.label_code),
           vendor_code: d.vendor_code,
           attributes: normalizeVariantAttributes(d.attributes),
           price: d.price.trim() === '' ? null : Number(d.price),
@@ -730,7 +743,7 @@ export function ProductEditView({
             draft={d}
             brand={brand}
             model={model}
-            schemaFields={cat?.fields ?? []}
+            schemaFields={getSkuFields(category)}
             isMobile={isMobile}
             focused={focusVariantId != null && d.id === focusVariantId}
             disabled={saving || readOnly}
@@ -1015,6 +1028,26 @@ function VariantBlock({
           placeholder="例如：F12303-CE"
           disabled={disabled || draft.pendingDelete}
         />
+      </div>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <label style={labelStyle}>
+          標籤代碼
+          <span style={{ color: '#999', fontWeight: 400, marginLeft: 4 }}>
+            (印標籤＋條碼，英數)
+          </span>
+        </label>
+        <input
+          style={{ ...inputStyle, fontFamily: 'monospace', letterSpacing: '0.03em' }}
+          value={draft.label_code}
+          onChange={(e) => onChange({ label_code: e.target.value })}
+          placeholder="例如：ESFOLLOWVEST2026"
+          disabled={disabled || draft.pendingDelete}
+          spellCheck={false}
+          autoCapitalize="characters"
+        />
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start', width: '100%' }}>
+          <ProductLabelPreview labelCode={draft.label_code} isMobile={isMobile} />
+        </div>
       </div>
       {schemaFields.map((f) => (
         <div key={f.key}>

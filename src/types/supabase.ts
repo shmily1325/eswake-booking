@@ -1110,6 +1110,7 @@ export type Database = {
         Row: {
           id: string
           product_id: string
+          label_code: string | null
           vendor_code: string | null
           attributes: Json
           price: number | null
@@ -1132,6 +1133,7 @@ export type Database = {
         Insert: {
           id?: string
           product_id: string
+          label_code?: string | null
           vendor_code?: string | null
           attributes?: Json
           price?: number | null
@@ -1154,6 +1156,7 @@ export type Database = {
         Update: {
           id?: string
           product_id?: string
+          label_code?: string | null
           vendor_code?: string | null
           attributes?: Json
           price?: number | null

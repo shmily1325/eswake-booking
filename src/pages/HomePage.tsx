@@ -214,12 +214,11 @@ export function HomePage() {
     }
   ]
 
-  /** 橫線下方：區間時數合計（小標與先前「已燒毀」同樣用 subtitle） */
+  /** 橫線下方：區間時數合計 */
   const menuItemsBelowDivider: HomeMenuItem[] = [
     {
       title: '區間時數合計',
       icon: '⏱️',
-      subtitle: '跟 21 連動式營業',
       link: '/boat-usage-hours',
       alwaysShow: true
     }
