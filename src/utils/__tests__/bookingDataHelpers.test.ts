@@ -397,6 +397,88 @@ describe('bookingDataHelpers.ts - 預約資料輔助函數', () => {
       expect(result).toHaveLength(1)
     })
 
+    it('coachId = "all" 時 both 類型需兩項都完成才不列入', () => {
+      const bookings: Booking[] = [
+        {
+          id: 1,
+          coaches: [{ id: 'coach-1', name: 'Jerry' }],
+          drivers: []
+        } as any
+      ]
+
+      mockGetReportType.mockReturnValue('both')
+      mockGetReportStatus.mockReturnValue({
+        hasCoachReport: true,
+        hasDriverReport: false
+      })
+
+      const result = filterUnreportedBookings(
+        bookings,
+        'all',
+        mockGetReportType,
+        mockGetReportStatus
+      )
+
+      expect(result).toHaveLength(1)
+    })
+
+    it('coachId = "all" 時純駕駛班依 coach_reports 而非 participants', () => {
+      const bookings: Booking[] = [
+        {
+          id: 1,
+          coaches: [],
+          drivers: [{ id: 'driver-1', name: 'Kevin' }],
+          participants: [{ id: 99 }]
+        } as any
+      ]
+
+      mockGetReportType.mockImplementation((_b, id) =>
+        id === 'driver-1' ? 'both' : null
+      )
+      mockGetReportStatus.mockReturnValue({
+        hasCoachReport: false,
+        hasDriverReport: false
+      })
+
+      const result = filterUnreportedBookings(
+        bookings,
+        'all',
+        mockGetReportType,
+        mockGetReportStatus
+      )
+
+      expect(result).toHaveLength(1)
+    })
+
+    it('coachId = "all" 時教練已報、駕駛未報仍應列入', () => {
+      const bookings: Booking[] = [
+        {
+          id: 1,
+          coaches: [{ id: 'coach-1', name: 'Jerry' }],
+          drivers: [{ id: 'driver-1', name: 'Kevin' }]
+        } as any
+      ]
+
+      mockGetReportType.mockImplementation((_b, id) => {
+        if (id === 'coach-1') return 'coach'
+        if (id === 'driver-1') return 'driver'
+        return null
+      })
+      mockGetReportStatus.mockImplementation((_b, id) => {
+        if (id === 'coach-1') return { hasCoachReport: true, hasDriverReport: false }
+        return { hasCoachReport: false, hasDriverReport: false }
+      })
+
+      const result = filterUnreportedBookings(
+        bookings,
+        'all',
+        mockGetReportType,
+        mockGetReportStatus
+      )
+
+      expect(result).toHaveLength(1)
+    })
+
     it('bookings 不是陣列時應該拋出錯誤', () => {
       expect(() => {
         filterUnreportedBookings(

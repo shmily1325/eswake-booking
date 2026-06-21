@@ -4,6 +4,7 @@
  */
 
 import { fetchAllByBookingIds } from './supabasePaginate'
+import { isFullyReported } from './coachReportStatus'
 import type { Booking, Coach, Participant, CoachReport } from '../types/booking'
 
 interface BookingRelations {
@@ -293,46 +294,28 @@ export function filterUnreportedBookings(
   if (typeof getReportStatus !== 'function') {
     throw new TypeError('getReportStatus 必須是函數')
   }
+  const isFullyReportedForBooking = (booking: Booking, personId: string) =>
+    isFullyReported(booking, personId, getReportType, getReportStatus)
+
   if (coachId !== 'all') {
     return bookings.filter(booking => {
       const type = getReportType(booking, coachId)
       if (!type) return false
-
-      const status = getReportStatus(booking, coachId)
-
-      if (type === 'coach') return !status.hasCoachReport
-      if (type === 'driver') return !status.hasDriverReport
-      if (type === 'both')
-        return !status.hasCoachReport || !status.hasDriverReport
-
-      return false
-    })
-  } else {
-    return bookings.filter(booking => {
-      const allCoachesReported = (booking.coaches || []).every(coach => {
-        const type = getReportType(booking, coach.id)
-        if (!type) return true
-        const status = getReportStatus(booking, coach.id)
-        if (type === 'coach') return status.hasCoachReport
-        if (type === 'driver') return status.hasDriverReport
-        if (type === 'both')
-          return status.hasCoachReport && status.hasDriverReport
-        return true
-      })
-
-      const allDriversReported = (booking.drivers || []).every(driver => {
-        const status = getReportStatus(booking, driver.id)
-        return status.hasDriverReport
-      })
-
-      const hasNoCoach = (booking.coaches || []).length === 0
-      if (hasNoCoach && (booking.drivers || []).length > 0) {
-        return !booking.participants || booking.participants.length === 0
-      }
-
-      return !allCoachesReported || !allDriversReported
+      return !isFullyReportedForBooking(booking, coachId)
     })
   }
+
+  return bookings.filter(booking => {
+    const personIds = new Set([
+      ...(booking.coaches || []).map(c => c.id),
+      ...(booking.drivers || []).map(d => d.id),
+    ])
+    return [...personIds].some(id => {
+      const type = getReportType(booking, id)
+      if (!type) return false
+      return !isFullyReportedForBooking(booking, id)
+    })
+  })
 }
 
 /**

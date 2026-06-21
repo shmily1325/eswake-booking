@@ -49,3 +49,29 @@ export function getCoachReportStatus(booking: Booking, coachId: string) {
 
   return { hasCoachReport, hasDriverReport }
 }
+
+type ReportStatus = { hasCoachReport: boolean; hasDriverReport: boolean }
+
+/** 依回報類型判斷該人員是否已完成回報（列表篩選與 UI ✓ 共用） */
+export function isFullyReported(
+  booking: Booking,
+  coachId: string,
+  getReportType: (booking: Booking, coachId: string) => CoachReportType | string | null = getCoachReportType,
+  getReportStatus: (booking: Booking, coachId: string) => ReportStatus = getCoachReportStatus
+): boolean {
+  const type = getReportType(booking, coachId)
+  if (!type) return true
+
+  const status = getReportStatus(booking, coachId)
+  if (type === 'coach') return status.hasCoachReport
+  if (type === 'driver') return status.hasDriverReport
+  return status.hasCoachReport && status.hasDriverReport
+}
+
+/** 預約上所有需回報人員的 ID（教練 + 駕駛，去重） */
+export function getReportingPersonIds(booking: Booking): string[] {
+  const ids = new Set<string>()
+  for (const coach of booking.coaches || []) ids.add(coach.id)
+  for (const driver of booking.drivers || []) ids.add(driver.id)
+  return [...ids]
+}

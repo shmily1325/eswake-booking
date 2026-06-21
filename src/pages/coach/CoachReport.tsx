@@ -24,7 +24,7 @@ import {
   fetchBookingRelations
 } from '../../utils/bookingDataHelpers'
 import { fetchAllByBookingIds } from '../../utils/supabasePaginate'
-import { getCoachReportStatus, getCoachReportType } from '../../utils/coachReportStatus'
+import { getCoachReportStatus, getCoachReportType, isFullyReported } from '../../utils/coachReportStatus'
 import type {
   Coach,
   Booking,
@@ -1432,9 +1432,7 @@ export function CoachReport({
                     }}>
                       <span style={{ fontSize: '16px', opacity: 0.5 }}>🎓</span>
                       {displayCoaches.map(coach => {
-                        const reportType = getCoachReportType(booking, coach.id)
-                        const reportStatus = getCoachReportStatus(booking, coach.id)
-                        const isReported = reportStatus.hasCoachReport || (reportType === 'both' && reportStatus.hasCoachReport && reportStatus.hasDriverReport)
+                        const isReported = isFullyReported(booking, coach.id)
                         
                         return (
                           <button
@@ -1486,8 +1484,7 @@ export function CoachReport({
                     }}>
                       <span style={{ fontSize: '16px', opacity: 0.5 }}>🚤</span>
                       {displayDrivers.map(driver => {
-                        const reportStatus = getCoachReportStatus(booking, driver.id)
-                        const isReported = reportStatus.hasDriverReport
+                        const isReported = isFullyReported(booking, driver.id)
                         
                         return (
                           <button
