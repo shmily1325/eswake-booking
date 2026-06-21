@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchAllInBatches, fetchAllPaginated } from './supabasePaginate'
 
 /**
  * 已結帳且非教練練習之預約（每筆最多一列）。
@@ -75,9 +76,10 @@ async function loadPaidOperationalRows(
   const startIso = `${startDate}T00:00:00`
   const endIso = `${endDate}T23:59:59`
 
-  const { data: participants, error: partErr } = await supabase
-    .from('booking_participants')
-    .select(`
+  const participants = await fetchAllPaginated<Record<string, unknown>>(async (from, to) => {
+    return supabase
+      .from('booking_participants')
+      .select(`
       id,
       member_id,
       notes,
@@ -92,12 +94,13 @@ async function loadPaidOperationalRows(
         boats(id, name)
       )
     `)
-    .eq('status', 'processed')
-    .eq('is_deleted', false)
-    .gte('bookings.start_at', startIso)
-    .lte('bookings.start_at', endIso)
-
-  if (partErr) throw partErr
+      .eq('status', 'processed')
+      .eq('is_deleted', false)
+      .gte('bookings.start_at', startIso)
+      .lte('bookings.start_at', endIso)
+      .order('id', { ascending: true })
+      .range(from, to)
+  })
 
   const rows: PRow[] = (participants || [])
     .map((raw: Record<string, unknown>) => {
@@ -137,17 +140,17 @@ async function loadPaidOperationalRows(
     .map((r) => r.id)
 
   const consumePid = new Set<number>()
-  const chunk = 500
-  for (let i = 0; i < nonMemberIds.length; i += chunk) {
-    const slice = nonMemberIds.slice(i, i + chunk)
-    if (slice.length === 0) continue
-    const { data: txs, error: txErr } = await supabase
-      .from('transactions')
-      .select('booking_participant_id')
-      .eq('transaction_type', 'consume')
-      .in('booking_participant_id', slice)
-    if (txErr) throw txErr
-    txs?.forEach((t: { booking_participant_id: number | null }) => {
+  if (nonMemberIds.length > 0) {
+    const txs = await fetchAllInBatches<{ booking_participant_id: number | null }, number>(
+      'transactions',
+      'booking_participant_id',
+      'booking_participant_id',
+      nonMemberIds,
+      'id',
+      500,
+      (query) => query.eq('transaction_type', 'consume')
+    )
+    txs.forEach((t) => {
       if (t.booking_participant_id != null) consumePid.add(t.booking_participant_id)
     })
   }

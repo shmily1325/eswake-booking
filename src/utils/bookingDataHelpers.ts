@@ -3,7 +3,7 @@
  * 用於拆分 CoachReport 中的 loadBookings 邏輯
  */
 
-import { supabase } from '../lib/supabase'
+import { fetchAllByBookingIds } from './supabasePaginate'
 import type { Booking, Coach, Participant, CoachReport } from '../types/booking'
 
 interface BookingRelations {
@@ -375,38 +375,59 @@ export async function fetchBookingRelations(
       bookingMembers: []
     }
   }
-  const [coachesRes, driversRes, reportsRes, participantsRes, bookingMembersRes] =
-    await Promise.all([
-      supabase
-        .from('booking_coaches')
-        .select('booking_id, coach_id, coaches(id, name)')
-        .in('booking_id', bookingIds),
-      supabase
-        .from('booking_drivers')
-        .select('booking_id, driver_id, coaches:driver_id(id, name)')
-        .in('booking_id', bookingIds),
-      supabase.from('coach_reports').select('*').in('booking_id', bookingIds),
-      supabase
-        .from('booking_participants')
-        .select(`
+  const [coaches, drivers, reports, participants, bookingMembers] = await Promise.all([
+    fetchAllByBookingIds<BookingRelations['coaches'][number]>(
+      'booking_coaches',
+      'booking_id, coach_id, coaches(id, name)',
+      bookingIds,
+      'booking_id',
+      undefined,
+      'fetchBookingRelations: booking_coaches'
+    ),
+    fetchAllByBookingIds<BookingRelations['drivers'][number]>(
+      'booking_drivers',
+      'booking_id, driver_id, coaches:driver_id(id, name)',
+      bookingIds,
+      'booking_id',
+      undefined,
+      'fetchBookingRelations: booking_drivers'
+    ),
+    fetchAllByBookingIds<CoachReport>(
+      'coach_reports',
+      '*',
+      bookingIds,
+      'id',
+      undefined,
+      'fetchBookingRelations: coach_reports'
+    ),
+    fetchAllByBookingIds<BookingRelations['participants'][number]>(
+      'booking_participants',
+      `
           *,
           members:member_id(name, nickname),
           reporting_coach:coaches!coach_id(id, name)
-        `)
-        .eq('is_deleted', false)
-        .in('booking_id', bookingIds),
-      supabase
-        .from('booking_members')
-        .select('booking_id, member_id, members:member_id(name, nickname)')
-        .in('booking_id', bookingIds)
-    ])
+        `,
+      bookingIds,
+      'id',
+      (query) => query.eq('is_deleted', false),
+      'fetchBookingRelations: booking_participants'
+    ),
+    fetchAllByBookingIds<BookingRelations['bookingMembers'][number]>(
+      'booking_members',
+      'booking_id, member_id, members:member_id(name, nickname)',
+      bookingIds,
+      'booking_id',
+      undefined,
+      'fetchBookingRelations: booking_members'
+    )
+  ])
 
   return {
-    coaches: (coachesRes.data as unknown as BookingRelations['coaches']) || [],
-    drivers: (driversRes.data as unknown as BookingRelations['drivers']) || [],
-    reports: (reportsRes.data as BookingRelations['reports']) || [],
-    participants: (participantsRes.data as unknown as BookingRelations['participants']) || [],
-    bookingMembers: (bookingMembersRes.data as unknown as BookingRelations['bookingMembers']) || []
+    coaches,
+    drivers,
+    reports,
+    participants,
+    bookingMembers
   }
 }
 

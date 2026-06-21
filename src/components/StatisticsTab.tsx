@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { fetchAllPaginated } from '../utils/supabasePaginate'
 import { extractDate, extractTime, getLocalDateString } from '../utils/formatters'
 import { useToast } from './ui'
 import { DateRangePicker } from './DateRangePicker'
@@ -89,9 +90,10 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       }
 
       // 1. 載入教學記錄
-      const { data: teachingData, error: teachingError } = await supabase
-        .from('booking_participants')
-        .select(`
+      const teachingData = await fetchAllPaginated<any>(async (from, to) => {
+        return supabase
+          .from('booking_participants')
+          .select(`
           *,
           bookings!inner(
             id, start_at, duration_min, boat_id, contact_name,
@@ -100,18 +102,20 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           coaches:coach_id(id, name),
           members:member_id(name, nickname)
         `)
-        .eq('status', 'processed')
-        .eq('is_teaching', true)
-        .eq('is_deleted', false)
-        .gte('bookings.start_at', `${startDate}T00:00:00`)
-        .lte('bookings.start_at', `${endDateStr}T23:59:59`)
-
-      if (teachingError) throw teachingError
+          .eq('status', 'processed')
+          .eq('is_teaching', true)
+          .eq('is_deleted', false)
+          .gte('bookings.start_at', `${startDate}T00:00:00`)
+          .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+          .order('id', { ascending: true })
+          .range(from, to)
+      })
 
       // 2. 載入駕駛記錄
-      const { data: drivingData, error: drivingError } = await supabase
-        .from('coach_reports')
-        .select(`
+      const drivingData = await fetchAllPaginated<any>(async (from, to) => {
+        return supabase
+          .from('coach_reports')
+          .select(`
           *,
           bookings!inner(
             id, start_at, duration_min, boat_id, contact_name,
@@ -119,10 +123,11 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           ),
           coaches:coach_id(id, name)
         `)
-        .gte('bookings.start_at', `${startDate}T00:00:00`)
-        .lte('bookings.start_at', `${endDateStr}T23:59:59`)
-
-      if (drivingError) throw drivingError
+          .gte('bookings.start_at', `${startDate}T00:00:00`)
+          .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+          .order('id', { ascending: true })
+          .range(from, to)
+      })
 
       // 3. 整理數據
       const coachMap = new Map<string, CoachStats>()

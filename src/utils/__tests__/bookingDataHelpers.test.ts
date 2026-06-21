@@ -444,16 +444,13 @@ describe('bookingDataHelpers.ts - 預約資料輔助函數', () => {
 
   describe('fetchBookingRelations', () => {
     it('應該查詢所有關聯資料', async () => {
-      // 建立完整的鏈式調用 mock
       const mockChain = {
         select: vi.fn().mockReturnThis(),
         in: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis()
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({ data: [], error: null })
       }
-      
-      // 讓 eq 和 in 都可以繼續鏈式調用，最後返回 Promise
-      mockChain.eq.mockReturnValue(mockChain)
-      mockChain.in.mockResolvedValue({ data: [], error: null })
 
       vi.mocked(supabase.from).mockReturnValue(mockChain as any)
 
@@ -464,9 +461,45 @@ describe('bookingDataHelpers.ts - 預約資料輔助函數', () => {
       expect(result).toHaveProperty('reports')
       expect(result).toHaveProperty('participants')
       expect(result).toHaveProperty('bookingMembers')
-      
-      // 驗證已經調用 Supabase
-      expect(supabase.from).toHaveBeenCalledTimes(5) // 5 個表
+
+      expect(supabase.from).toHaveBeenCalledTimes(5)
+      expect(mockChain.range).toHaveBeenCalled()
+    })
+
+    it('超過一頁時應該繼續分頁查詢', async () => {
+      const page1 = Array.from({ length: 1000 }, (_, i) => ({ id: i, booking_id: 1 }))
+      const page2 = [{ id: 1000, booking_id: 1 }]
+
+      const emptyChain = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({ data: [], error: null })
+      }
+
+      const pagedChain = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi
+          .fn()
+          .mockResolvedValueOnce({ data: page1, error: null })
+          .mockResolvedValueOnce({ data: page2, error: null })
+          .mockResolvedValue({ data: [], error: null })
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'coach_reports') return pagedChain as any
+        return emptyChain as any
+      })
+
+      const result = await fetchBookingRelations([1])
+
+      expect(result.reports).toHaveLength(1001)
+      expect(pagedChain.range).toHaveBeenCalledWith(0, 999)
+      expect(pagedChain.range).toHaveBeenCalledWith(1000, 1999)
     })
 
     it('空陣列應該返回空結果', async () => {

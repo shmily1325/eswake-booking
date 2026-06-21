@@ -23,6 +23,7 @@ import {
   filterUnreportedBookings,
   fetchBookingRelations
 } from '../../utils/bookingDataHelpers'
+import { fetchAllByBookingIds } from '../../utils/supabasePaginate'
 import { getCoachReportStatus, getCoachReportType } from '../../utils/coachReportStatus'
 import type {
   Coach,
@@ -50,6 +51,9 @@ const LESSON_TYPES = [
   { value: 'designated_paid', label: '指定（需收費）' },
   { value: 'designated_free', label: '指定（不需收費）' }
 ]
+
+/** 未回報模式：只查過去 N 天內已結束的預約 */
+const UNREPORTED_LOOKBACK_DAYS = 30
 
 interface CoachReportProps {
   autoFilterByUser?: boolean // 是否自動根據登入用戶篩選教練
@@ -208,11 +212,11 @@ export function CoachReport({
           .gte('start_at', startOfDay)
           .lte('start_at', endOfDay)
       } else {
-        // 待回報模式：顯示過去 90 天內未回報的預約
-        const ninetyDaysAgo = new Date()
-        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
-        const ninetyDaysAgoStr = getLocalDateString(ninetyDaysAgo) + 'T00:00:00'
-        bookingsQuery = bookingsQuery.gte('start_at', ninetyDaysAgoStr)
+        // 待回報模式：顯示過去 30 天內未回報的預約
+        const lookbackStart = new Date()
+        lookbackStart.setDate(lookbackStart.getDate() - UNREPORTED_LOOKBACK_DAYS)
+        const lookbackStartStr = getLocalDateString(lookbackStart) + 'T00:00:00'
+        bookingsQuery = bookingsQuery.gte('start_at', lookbackStartStr)
       }
 
       const { data: bookingsData, error: bookingsError } = await bookingsQuery
@@ -929,15 +933,22 @@ export function CoachReport({
 
     // 查詢所有預約的駕駛回報記錄
     const bookingIds = allBookings.map(b => b.id)
-    const { data: allCoachReports } = await supabase
-      .from('coach_reports')
-      .select('booking_id, coach_id, driver_duration_min, coaches:coach_id(name)')
-      .in('booking_id', bookingIds)
+    const allCoachReports = await fetchAllByBookingIds<{
+      booking_id: number
+      coach_id: string
+      driver_duration_min: number | null
+      coaches: { name: string } | null
+    }>(
+      'coach_reports',
+      'booking_id, coach_id, driver_duration_min, coaches:coach_id(name)',
+      bookingIds,
+      'id'
+    )
 
     // 🔍 調試：顯示所有駕駛回報記錄
     // 建立駕駛回報查找映射
     const driverReportsMap = new Map<number, Map<string, number>>()
-    allCoachReports?.forEach(report => {
+    allCoachReports.forEach(report => {
       if (!driverReportsMap.has(report.booking_id)) {
         driverReportsMap.set(report.booking_id, new Map())
       }
@@ -1176,7 +1187,7 @@ export function CoachReport({
             marginBottom: isMobile ? '0' : '12px',
             alignItems: 'center'
           }}>
-            {/* 全部未回報按鈕 */}
+            {/* 近30天未回報 */}
             <button
               data-track="coach_report_view_unreported"
               onClick={() => setViewMode('unreported')}
@@ -1192,7 +1203,7 @@ export function CoachReport({
                 transition: 'all 0.2s'
               }}
             >
-              ⚠️ 全部未回報
+              ⚠️ 近30天未回報
             </button>
 
             {/* 日期按鈕 - 只在桌面版顯示 */}

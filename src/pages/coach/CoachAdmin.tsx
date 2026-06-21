@@ -13,6 +13,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
+import { fetchAllInBatches, fetchAllPaginated } from '../../utils/supabasePaginate'
 import { extractDate, extractTime } from '../../utils/formatters'
 import { useToast } from '../../components/ui'
 
@@ -262,9 +263,10 @@ export function CoachAdmin() {
   const loadPendingReports = async () => {
     setLoading(true)
     try {
-      let query = supabase
-        .from('booking_participants')
-        .select(`
+      const data = await fetchAllPaginated<any>(async (from, to) => {
+        let query = supabase
+          .from('booking_participants')
+          .select(`
           *,
           bookings!inner(
             id, start_at, duration_min, contact_name, boat_id,
@@ -274,24 +276,21 @@ export function CoachAdmin() {
           members:member_id(id, name, nickname),
           old_participant:replaces_id(*)
         `)
-        .eq('status', 'pending')
-        .eq('is_deleted', false)
+          .eq('status', 'pending')
+          .eq('is_deleted', false)
 
-      // 根據查看模式決定是否過濾日期
-      if (pendingViewMode === 'date') {
-        const startOfDay = `${selectedDate}T00:00:00`
-        const endOfDay = `${selectedDate}T23:59:59`
-        query = query
-          .gte('bookings.start_at', startOfDay)
-          .lte('bookings.start_at', endOfDay)
-      }
+        if (pendingViewMode === 'date') {
+          const startOfDay = `${selectedDate}T00:00:00`
+          const endOfDay = `${selectedDate}T23:59:59`
+          query = query
+            .gte('bookings.start_at', startOfDay)
+            .lte('bookings.start_at', endOfDay)
+        }
 
-      query = query.order('bookings(start_at)')
+        return query.order('bookings(start_at)').range(from, to)
+      })
 
-      const { data, error } = await query
-
-      if (error) throw error
-      setPendingReports(data || [])
+      setPendingReports(data)
     } catch (error) {
       console.error('載入待處理記錄失敗:', error)
     } finally {
@@ -303,9 +302,10 @@ export function CoachAdmin() {
   const loadNonMemberReports = async () => {
     setLoading(true)
     try {
-      let query = supabase
-        .from('booking_participants')
-        .select(`
+      const data = await fetchAllPaginated<any>(async (from, to) => {
+        let query = supabase
+          .from('booking_participants')
+          .select(`
           *,
           bookings!inner(
             id, start_at, duration_min, contact_name, boat_id,
@@ -314,24 +314,21 @@ export function CoachAdmin() {
           coaches:coach_id(id, name),
           old_participant:replaces_id(*)
         `)
-        .eq('status', 'not_applicable')
-        .eq('is_deleted', false)
+          .eq('status', 'not_applicable')
+          .eq('is_deleted', false)
 
-      // 根據查看模式決定是否過濾日期
-      if (pendingViewMode === 'date') {
-        const startOfDay = `${selectedDate}T00:00:00`
-        const endOfDay = `${selectedDate}T23:59:59`
-        query = query
-          .gte('bookings.start_at', startOfDay)
-          .lte('bookings.start_at', endOfDay)
-      }
+        if (pendingViewMode === 'date') {
+          const startOfDay = `${selectedDate}T00:00:00`
+          const endOfDay = `${selectedDate}T23:59:59`
+          query = query
+            .gte('bookings.start_at', startOfDay)
+            .lte('bookings.start_at', endOfDay)
+        }
 
-      query = query.order('bookings(start_at)')
+        return query.order('bookings(start_at)').range(from, to)
+      })
 
-      const { data, error } = await query
-
-      if (error) throw error
-      setNonMemberReports(data || [])
+      setNonMemberReports(data)
       
       // 載入這些非會員的代扣關係
       if (data && data.length > 0) {
@@ -350,16 +347,17 @@ export function CoachAdmin() {
   // 載入非會員的代扣關係
   const loadNonMemberBillingRelations = async (participantNames: string[]) => {
     try {
-      const { data, error } = await supabase
-        .from('billing_relations')
-        .select(`
+      const data = await fetchAllInBatches<any, string>(
+        'billing_relations',
+        `
           participant_name,
           billing_member_id,
           members:billing_member_id(id, name, nickname)
-        `)
-        .in('participant_name', participantNames)
-      
-      if (error) throw error
+        `,
+        'participant_name',
+        participantNames,
+        'participant_name'
+      )
       
       const map: Record<string, { memberId: string; memberName: string; memberNickname: string | null }> = {}
       data?.forEach((relation: any) => {
@@ -397,11 +395,11 @@ export function CoachAdmin() {
         endOfDay = `${selectedDate}T23:59:59`
       }
 
-      // 1+2 並行：教學記錄與駕駛記錄互相獨立
-      const [participantsResult, driverResult] = await Promise.all([
-        supabase
-          .from('booking_participants')
-          .select(`
+      const [participantsData, driverData] = await Promise.all([
+        fetchAllPaginated<any>(async (from, to) => {
+          return supabase
+            .from('booking_participants')
+            .select(`
             *,
             bookings!inner(
               id, start_at, duration_min, contact_name, boat_id,
@@ -411,14 +409,17 @@ export function CoachAdmin() {
             coaches:coach_id(id, name),
             members:member_id(id, name, nickname)
           `)
-          .eq('status', 'processed')
-          .eq('is_deleted', false)
-          .gte('bookings.start_at', startOfDay)
-          .lte('bookings.start_at', endOfDay)
-          .order('bookings(start_at)'),
-        supabase
-          .from('coach_reports')
-          .select(`
+            .eq('status', 'processed')
+            .eq('is_deleted', false)
+            .gte('bookings.start_at', startOfDay)
+            .lte('bookings.start_at', endOfDay)
+            .order('bookings(start_at)')
+            .range(from, to)
+        }),
+        fetchAllPaginated<any>(async (from, to) => {
+          return supabase
+            .from('coach_reports')
+            .select(`
             *,
             bookings!inner(
               id, start_at, duration_min, contact_name, boat_id,
@@ -426,38 +427,32 @@ export function CoachAdmin() {
             ),
             coaches:coach_id(id, name)
           `)
-          .gte('bookings.start_at', startOfDay)
-          .lte('bookings.start_at', endOfDay)
-          .order('bookings(start_at)')
+            .gte('bookings.start_at', startOfDay)
+            .lte('bookings.start_at', endOfDay)
+            .order('bookings(start_at)')
+            .range(from, to)
+        })
       ])
-
-      const { data: participantsData, error: participantsError } = participantsResult
-      const { data: driverData, error: driverError } = driverResult
-
-      if (participantsError) throw participantsError
-      if (driverError) throw driverError
 
       // 3. 載入交易記錄（用於顯示扣款詳情）
       if (participantsData && participantsData.length > 0) {
         const participantIds = participantsData.map(p => p.id)
-        const { data: transactionsData, error: transactionsError } = await supabase
-          .from('transactions')
-          .select('*')
-          .in('booking_participant_id', participantIds)
-          .eq('transaction_type', 'consume')
+        const transactionsData = await fetchAllInBatches<any, number>(
+          'transactions',
+          '*',
+          'booking_participant_id',
+          participantIds,
+          'id',
+          500,
+          (query) => query.eq('transaction_type', 'consume')
+        )
 
+        const participantsWithTransactions = participantsData.map(participant => ({
+          ...participant,
+          transactions: transactionsData.filter(t => t.booking_participant_id === participant.id)
+        }))
 
-        if (!transactionsError && transactionsData) {
-          // 將交易記錄附加到對應的參與者記錄上
-          const participantsWithTransactions = participantsData.map(participant => ({
-            ...participant,
-            transactions: transactionsData.filter(t => t.booking_participant_id === participant.id)
-          }))
-          
-          setCompletedReports(participantsWithTransactions)
-        } else {
-          setCompletedReports(participantsData || [])
-        }
+        setCompletedReports(participantsWithTransactions)
       } else {
         setCompletedReports([])
       }

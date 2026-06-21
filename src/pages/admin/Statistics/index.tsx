@@ -14,6 +14,7 @@ import {
   type CoachPracticeSessionRow
 } from '../../../utils/boatUsageRangeStats'
 import { splitMinutesEqually } from '../../../utils/teachingMinutesAllocation'
+import { fetchAllInBatches, fetchAllPaginated } from '../../../utils/supabasePaginate'
 
 import { LoadingSkeleton, LastUpdated } from './components'
 import { TrendTab, MonthlyTab, FutureTab, BoatUptimeTab } from './tabs'
@@ -241,18 +242,22 @@ export function Statistics() {
     // 並行查詢所有月份的 consume 交易
     const consumeResults = await Promise.all(
       ranges.map((r) =>
-        supabase
-          .from('transactions')
-          .select('category, amount, minutes')
-          .eq('transaction_type', 'consume')
-          .not('booking_participant_id', 'is', null)
-          .gte('transaction_date', r.startDate)
-          .lte('transaction_date', r.endDateStr)
+        fetchAllPaginated<any>(async (from, to) => {
+          return supabase
+            .from('transactions')
+            .select('category, amount, minutes')
+            .eq('transaction_type', 'consume')
+            .not('booking_participant_id', 'is', null)
+            .gte('transaction_date', r.startDate)
+            .lte('transaction_date', r.endDateStr)
+            .order('id', { ascending: true })
+            .range(from, to)
+        })
       )
     )
 
     const stats: FinanceStats[] = ranges.map((r, idx) => {
-      const consumeData = consumeResults[idx].data
+      const consumeData = consumeResults[idx]
       let balanceUsed = 0, vipUsed = 0, g23Used = 0, g21Used = 0
       consumeData?.forEach((tx: any) => {
         if (tx.category === 'balance' && tx.amount) {
@@ -286,31 +291,34 @@ export function Statistics() {
     const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
 
     // 兩個查詢都只依賴 [today, endDateStr]，並行送出可節省一輪 RTT
-    const [bookingsResult, reportedBookingsResult] = await Promise.all([
-      supabase
-        .from('bookings')
-        .select(`
+    const [bookingsData, reportedBookings] = await Promise.all([
+      fetchAllPaginated<any>(async (from, to) => {
+        return supabase
+          .from('bookings')
+          .select(`
           id, start_at, duration_min, contact_name,
           booking_coaches(coach_id, coaches(id, name)),
           booking_members(member_id, members(id, name, nickname))
         `)
-        .gte('start_at', `${today}T00:00:00`)
-        .lte('start_at', `${endDateStr}T23:59:59`)
-        .neq('status', 'cancelled')
-        .or('is_coach_practice.is.null,is_coach_practice.eq.false')  // 排除教練練習
-        .order('start_at', { ascending: true }),
-      // 已回報的預約 ID（排除這些）
-      supabase
-        .from('coach_reports')
-        .select('booking_id')
-        .gte('bookings!inner.start_at', `${today}T00:00:00`)
-        .lte('bookings!inner.start_at', `${endDateStr}T23:59:59`)
+          .gte('start_at', `${today}T00:00:00`)
+          .lte('start_at', `${endDateStr}T23:59:59`)
+          .neq('status', 'cancelled')
+          .or('is_coach_practice.is.null,is_coach_practice.eq.false')
+          .order('start_at', { ascending: true })
+          .range(from, to)
+      }),
+      fetchAllPaginated<{ booking_id: number }>(async (from, to) => {
+        return supabase
+          .from('coach_reports')
+          .select('booking_id')
+          .gte('bookings!inner.start_at', `${today}T00:00:00`)
+          .lte('bookings!inner.start_at', `${endDateStr}T23:59:59`)
+          .order('id', { ascending: true })
+          .range(from, to)
+      })
     ])
 
-    const { data: bookingsData } = bookingsResult
-    const { data: reportedBookings } = reportedBookingsResult
-
-    const reportedBookingIds = new Set(reportedBookings?.map(r => r.booking_id) || [])
+    const reportedBookingIds = new Set(reportedBookings.map(r => r.booking_id))
 
     let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
 
@@ -551,36 +559,40 @@ export function Statistics() {
 
     // 月報教練統計：與回報一致——已處理之教學／駕駛紀錄（非「已扣款預約清單」口徑）
     // 兩個查詢條件互相獨立，並行送出可節省一輪 RTT
-    const [teachingResult, drivingResult] = await Promise.all([
-      supabase
-        .from('booking_participants')
-        .select(`
+    const [teachingData, drivingData] = await Promise.all([
+      fetchAllPaginated<any>(async (from, to) => {
+        return supabase
+          .from('booking_participants')
+          .select(`
           coach_id, duration_min, lesson_type, member_id, participant_name,
           coaches:coach_id(id, name),
           members:member_id(id, name, nickname),
           bookings!inner(start_at, boats(id, name))
         `)
-        .eq('status', 'processed')
-        .eq('is_teaching', true)
-        .eq('is_deleted', false)
-        .gte('bookings.start_at', `${startDate}T00:00:00`)
-        .lte('bookings.start_at', `${endDateStr}T23:59:59`),
-      // 載入駕駛記錄
-      supabase
-        .from('coach_reports')
-        .select(`
+          .eq('status', 'processed')
+          .eq('is_teaching', true)
+          .eq('is_deleted', false)
+          .gte('bookings.start_at', `${startDate}T00:00:00`)
+          .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+          .order('id', { ascending: true })
+          .range(from, to)
+      }),
+      fetchAllPaginated<any>(async (from, to) => {
+        return supabase
+          .from('coach_reports')
+          .select(`
           coach_id, driver_duration_min,
           coaches:coach_id(id, name),
           bookings!inner(start_at)
         `)
-        .not('driver_duration_min', 'is', null)
-        .gt('driver_duration_min', 0)
-        .gte('bookings.start_at', `${startDate}T00:00:00`)
-        .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+          .not('driver_duration_min', 'is', null)
+          .gt('driver_duration_min', 0)
+          .gte('bookings.start_at', `${startDate}T00:00:00`)
+          .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+          .order('id', { ascending: true })
+          .range(from, to)
+      })
     ])
-
-    const { data: teachingData } = teachingResult
-    const { data: drivingData } = drivingResult
 
     const statsMap = new Map<string, {
       coachId: string
@@ -681,28 +693,36 @@ export function Statistics() {
     const { startDate, endDateStr } = range
 
     // 1. 所有已處理參與者（含非會員，用於代扣情境）
-    const { data: participantData } = await supabase
-      .from('booking_participants')
-      .select(`
+    const participantData = await fetchAllPaginated<any>(async (from, to) => {
+      return supabase
+        .from('booking_participants')
+        .select(`
         id, member_id, duration_min, coach_id, lesson_type, is_teaching,
         members:member_id(id, name, nickname),
         coaches:coach_id(id, name),
         bookings!inner(start_at, boats(id, name))
       `)
-      .eq('status', 'processed')
-      .eq('is_deleted', false)
-      .gte('bookings.start_at', `${startDate}T00:00:00`)
-      .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+        .eq('status', 'processed')
+        .eq('is_deleted', false)
+        .gte('bookings.start_at', `${startDate}T00:00:00`)
+        .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+        .order('id', { ascending: true })
+        .range(from, to)
+    })
 
     // 2. 非會員參與者：從 consume 交易取得代扣會員（實際扣款人）
-    const nonMemberIds = participantData?.filter((r: any) => !r.member_id).map((r: any) => r.id) || []
+    const nonMemberIds = participantData.filter((r: any) => !r.member_id).map((r: any) => r.id)
     const proxyMemberMap = new Map<number, { memberId: string; memberName: string }>()
     if (nonMemberIds.length > 0) {
-      const { data: proxyTxData } = await supabase
-        .from('transactions')
-        .select('booking_participant_id, member_id, members:member_id(id, name, nickname)')
-        .eq('transaction_type', 'consume')
-        .in('booking_participant_id', nonMemberIds)
+      const proxyTxData = await fetchAllInBatches<any, number>(
+        'transactions',
+        'booking_participant_id, member_id, members:member_id(id, name, nickname)',
+        'booking_participant_id',
+        nonMemberIds,
+        'id',
+        500,
+        (query) => query.eq('transaction_type', 'consume')
+      )
       // 每筆參與可能有多筆 consume（船費+指定課等），member_id 相同，取第一筆即可
       const seen = new Set<number>()
       proxyTxData?.forEach((tx: any) => {
