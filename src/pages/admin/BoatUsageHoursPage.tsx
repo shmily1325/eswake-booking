@@ -18,6 +18,70 @@ function formatHoursOneDecimal(minutes: number): string {
   return String(Math.round((minutes / 60) * 10) / 10)
 }
 
+function BoatUsageMobileCards({
+  rows,
+}: {
+  rows: BoatUsageRangeResult['boats']
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {rows.map((row) => (
+        <div
+          key={row.boatId}
+          style={{
+            background: '#fafafa',
+            border: '1px solid #eee',
+            borderRadius: '10px',
+            padding: '12px 14px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              marginBottom: '10px',
+              gap: '8px',
+            }}
+          >
+            <span style={{ fontSize: '16px', fontWeight: 700, color: '#333' }}>{row.boatName}</span>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#555', flexShrink: 0 }}>
+              {formatHoursOneDecimal(row.totalMinutes)} 小時
+            </span>
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '8px 12px',
+              fontSize: '13px',
+            }}
+          >
+            <div style={{ color: '#888' }}>營運</div>
+            <div style={{ textAlign: 'right', color: row.generalMinutes > 0 ? '#2196f3' : '#999' }}>
+              {formatDuration(row.generalMinutes)}
+            </div>
+            <div style={{ color: '#888' }}>教練練習</div>
+            <div style={{ textAlign: 'right', color: row.practiceMinutes > 0 ? '#7b1fa2' : '#999' }}>
+              {formatDuration(row.practiceMinutes)}
+            </div>
+            <div style={{ color: '#888', fontWeight: 600 }}>總和</div>
+            <div
+              style={{
+                textAlign: 'right',
+                fontWeight: 700,
+                color: row.totalMinutes > 0 ? '#333' : '#999',
+              }}
+            >
+              {formatDuration(row.totalMinutes)}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function BoatUsageHoursPage() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
@@ -80,11 +144,11 @@ export function BoatUsageHoursPage() {
           </p>
           <div
             style={{
-              display: 'flex',
-              flexWrap: 'wrap',
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr 1fr' : 'auto auto auto',
               gap: '12px',
-              alignItems: 'flex-end',
-              marginBottom: '12px'
+              alignItems: 'end',
+              marginBottom: '12px',
             }}
           >
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
@@ -93,7 +157,14 @@ export function BoatUsageHoursPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '15px' }}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  fontSize: '16px',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
@@ -102,7 +173,14 @@ export function BoatUsageHoursPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '15px' }}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  fontSize: '16px',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
               />
             </label>
             <button
@@ -110,14 +188,16 @@ export function BoatUsageHoursPage() {
               onClick={() => void runLoad()}
               disabled={loading}
               style={{
-                padding: '10px 18px',
+                padding: '12px 18px',
                 borderRadius: '10px',
                 border: 'none',
                 background: 'linear-gradient(135deg, #4a90e2 0%, #1976d2 100%)',
                 color: 'white',
                 fontWeight: 600,
                 cursor: loading ? 'wait' : 'pointer',
-                fontSize: '14px'
+                fontSize: '15px',
+                gridColumn: isMobile ? '1 / -1' : undefined,
+                width: isMobile ? '100%' : undefined,
               }}
             >
               {loading ? '載入中…' : '重新計算'}
@@ -154,6 +234,9 @@ export function BoatUsageHoursPage() {
             <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#666' }}>
               {startDate} ~ {endDate}
             </p>
+            {isMobile ? (
+              <BoatUsageMobileCards rows={result.boats} />
+            ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                 <thead>
@@ -218,6 +301,7 @@ export function BoatUsageHoursPage() {
                 </tbody>
               </table>
             </div>
+            )}
           </div>
         )}
 

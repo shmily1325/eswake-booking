@@ -41,6 +41,49 @@ export function CoachPracticeSessionsTable({
     return <p style={{ margin: 0, fontSize: '14px', color: '#999' }}>{emptyText}</p>
   }
 
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {sessions.map((row) => (
+          <div
+            key={row.bookingId}
+            style={{
+              background: '#fafafa',
+              border: '1px solid #eee',
+              borderRadius: '10px',
+              padding: '12px 14px',
+            }}
+          >
+            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
+              {formatPracticeStartAt(row.startAt)}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                gap: '12px',
+              }}
+            >
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#333' }}>{row.boatName}</span>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: '#7b1fa2', textAlign: 'right' }}>
+                {formatDuration(row.durationMin)}
+                <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: '#888' }}>
+                  {formatHoursOneDecimal(row.durationMin)} 小時
+                </span>
+              </span>
+            </div>
+            {showContactPerson && (
+              <div style={{ marginTop: '6px', fontSize: '13px', color: '#555' }}>
+                預約人：{row.contactName}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '13px' : '14px' }}>
