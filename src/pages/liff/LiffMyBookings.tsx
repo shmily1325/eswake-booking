@@ -566,7 +566,7 @@ export function LiffMyBookings() {
           <BookingsList
             bookings={bookings}
             loading={bookingsLoading}
-            viewerMemberName={member?.name ?? ''}
+            viewerMemberName={member?.nickname?.trim() || member?.name?.trim() || ''}
             formatDate={formatDate}
             getArrivalTime={getArrivalTime}
             getStartTime={getStartTime}

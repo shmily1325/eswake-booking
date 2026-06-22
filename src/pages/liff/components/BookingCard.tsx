@@ -7,7 +7,7 @@ import type { Booking } from '../types'
 
 interface BookingCardProps {
   booking: Booking
-  /** 目前 LIFF 綁定會員姓名；供「SH綺綺／ED→Eb」與明日提醒相同規則 */
+  /** 目前 LIFF 綁定會員顯示名（暱稱優先）；供「EHA綺／ED→Eb」與明日提醒相同規則 */
   viewerMemberName: string
   isFirstOfDay: boolean
   formatDate: (dateString: string) => string

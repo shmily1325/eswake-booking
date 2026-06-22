@@ -1,5 +1,5 @@
 /**
- * 僅學員名單上為「SH綺綺」時，將教練 ED 顯示為梗用樣式；其他任何學員皆回傳真實教練名。
+ * 僅學員名單上為「EHA綺」時，將教練 ED 顯示為梗用樣式；其他任何學員皆回傳真實教練名。
  *
  * 兩個 export 用途不同，請依場景挑選：
  *   1) displayCoachNameForTomorrowReminder    → UI 用（LIFF 預約卡），回單行 'Ebdoooopq'。
@@ -8,7 +8,7 @@
  *
  * （offline.html 為離線頁無 bundler，內嵌同規則，改此檔時請一併對齊 offline.html 中的同名函式。）
  */
-const QIQI_TOMORROW_STUDENT_NAME = 'SH綺綺' as const
+const QIQI_TOMORROW_STUDENT_NAME = 'EHA綺' as const
 
 function isQiqiEdCase(studentName: string, coachName: string): boolean {
   return studentName === QIQI_TOMORROW_STUDENT_NAME && coachName.trim().toUpperCase() === 'ED'
