@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { validateLabelCodeFormat } from './labelCode'
-import { downloadLabelPng } from './labelImageExport'
+import { saveLabelPng } from './labelImageExport'
 import {
   DEFAULT_LABEL_HEIGHT_MM,
   DEFAULT_LABEL_WIDTH_MM,
@@ -407,18 +407,30 @@ function LabelDownloadButton({
 }) {
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successHint, setSuccessHint] = useState<string | null>(null)
 
   const handleDownload = async () => {
     setDownloading(true)
     setError(null)
+    setSuccessHint(null)
     try {
-      await downloadLabelPng(labelCode, { widthMm, heightMm })
+      const result = await saveLabelPng(labelCode, { widthMm, heightMm })
+      if (result === 'shared') {
+        setSuccessHint('請在分享選單點「儲存圖片」存入相簿')
+      } else if (result === 'downloaded') {
+        setSuccessHint(isMobile ? '已下載；若未看到檔案，請改點「儲存標籤圖」用分享選單存相簿' : '已下載 PNG')
+      }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : '下載失敗')
+      setError(e instanceof Error ? e.message : '儲存失敗')
     } finally {
       setDownloading(false)
     }
   }
+
+  const buttonLabel = isMobile ? '儲存標籤圖' : '下載標籤圖（PNG）'
+  const hintText = isMobile
+    ? `${widthMm}×${heightMm} mm · 點擊後選「儲存圖片」可存入相簿，再匯入標籤機`
+    : `${widthMm}×${heightMm} mm · 203 DPI，可匯入標籤機或列印軟體`
 
   return (
     <div style={{ marginTop: fullWidth ? 12 : 8 }}>
@@ -441,13 +453,16 @@ function LabelDownloadButton({
           minHeight: isMobile ? 44 : undefined,
         }}
       >
-        {downloading ? '產生圖片中…' : '下載標籤圖（PNG）'}
+        {downloading ? '產生圖片中…' : buttonLabel}
       </button>
+      {successHint && (
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: '#2e7d32', lineHeight: 1.4 }}>{successHint}</p>
+      )}
       {error && (
         <p style={{ margin: '6px 0 0', fontSize: 12, color: '#c62828', lineHeight: 1.4 }}>{error}</p>
       )}
       <p style={{ ...hintStyle, marginTop: 6, textAlign: fullWidth && isMobile ? 'center' : 'left' }}>
-        {widthMm}×{heightMm} mm · 203 DPI，可匯入標籤機或列印軟體
+        {hintText}
       </p>
     </div>
   )

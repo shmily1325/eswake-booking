@@ -112,16 +112,64 @@ export async function renderLabelPngBlob(
   })
 }
 
+export type SaveLabelPngResult = 'shared' | 'downloaded' | 'cancelled'
+
+export function buildLabelPngFilename(labelCode: string): string {
+  const displayCode = normalizeLabelCode(labelCode) ?? labelCode.trim().toUpperCase()
+  return `ES-label-${displayCode}.png`
+}
+
+export function canSharePngFile(file: File): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return false
+  try {
+    return navigator.canShare?.({ files: [file] }) === true
+  } catch {
+    return false
+  }
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * 手機優先走系統分享（iOS 可選「儲存圖片」到相簿）；桌機則下載 PNG。
+ */
+export async function saveLabelPng(
+  labelCode: string,
+  options: LabelImageExportOptions = {},
+): Promise<SaveLabelPngResult> {
+  const blob = await renderLabelPngBlob(labelCode, options)
+  const filename = buildLabelPngFilename(labelCode)
+  const file = new File([blob], filename, { type: 'image/png' })
+
+  if (canSharePngFile(file)) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: `標籤 ${normalizeLabelCode(labelCode) ?? labelCode.trim().toUpperCase()}`,
+      })
+      return 'shared'
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return 'cancelled'
+      // 分享失敗時改走下載
+    }
+  }
+
+  downloadBlob(blob, filename)
+  return 'downloaded'
+}
+
+/** @deprecated 請改用 saveLabelPng */
 export async function downloadLabelPng(
   labelCode: string,
   options: LabelImageExportOptions = {},
 ): Promise<void> {
-  const displayCode = normalizeLabelCode(labelCode) ?? labelCode.trim().toUpperCase()
-  const blob = await renderLabelPngBlob(labelCode, options)
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `ES-label-${displayCode}.png`
-  anchor.click()
-  URL.revokeObjectURL(url)
+  const result = await saveLabelPng(labelCode, options)
+  if (result === 'cancelled') return
 }
