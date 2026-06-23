@@ -2,6 +2,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { supabase } from '../lib/supabase'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
+import { esBrandOfficialContact } from '../lib/esBrandTokens'
 
 const ES_WAKE_LINE_OFFICIAL_URL =
   'https://line.me/R/ti/p/@ish2050i?oat_content=url&ts=11052148'
@@ -66,7 +67,7 @@ export function LoginAccessDeniedPage() {
             marginBottom: designSystem.spacing.lg
           }}
         >
-          您沒有權限訪問此網頁。若需開通，請聯絡 <strong>ES WAKE 官方</strong>。
+          您沒有權限訪問此網頁。若需開通，請聯絡 <strong>{esBrandOfficialContact()}</strong>。
         </p>
 
         {user?.email && (

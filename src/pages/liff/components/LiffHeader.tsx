@@ -24,7 +24,7 @@ export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: L
       borderBottom: ES_BRAND.headerBorderBottom,
     }}>
       <EsBrandLockup
-        subtitle="會員專區"
+        subtitle={ES_BRAND.memberAreaLabel}
         logoSize={36}
         trailing={(
           <button

@@ -25,6 +25,8 @@ import { LineInquiryModal } from './components/LineInquiryModal'
 import { ImageOrFallback } from './components/ImageOrFallback'
 import { getShopReturnTo } from './lib/shopReturnTo'
 import { shopListPath } from './lib/shopPaths'
+import { ES_BRAND } from '../../lib/esBrandTokens'
+import { ShopFooter } from './components/ShopFooter'
 
 /** Supabase 的 `id` 是 uuid，亂打字串會炸出 22P02 錯誤，先在 client 擋掉 */
 const UUID_REGEX =
@@ -72,11 +74,11 @@ export function ShopDetail() {
 
   useEffect(() => {
     if (!product) {
-      document.title = 'ES Wake Shop'
+      document.title = ES_BRAND.shopTitle
       return
     }
     const name = [product.brand, product.model].filter(Boolean).join(' ').trim()
-    document.title = name ? `${name} | ES Wake Shop` : 'ES Wake Shop'
+    document.title = name ? `${name} | ${ES_BRAND.shopTitle}` : ES_BRAND.shopTitle
   }, [product])
 
   useEffect(() => {
@@ -207,6 +209,8 @@ export function ShopDetail() {
           />
         )}
       </main>
+
+      <ShopFooter />
 
       <LineInquiryModal
         message={fallbackMessage}

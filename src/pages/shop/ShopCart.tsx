@@ -13,6 +13,8 @@ import {
 import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildCartInquiry, launchInquiry } from './lib/lineDeepLink'
 import { shopListPath, shopProductPath } from './lib/shopPaths'
+import { ShopFooter } from './components/ShopFooter'
+import { ES_BRAND } from '../../lib/esBrandTokens'
 
 /**
  * 購物車頁（/shop/cart）。
@@ -39,7 +41,7 @@ export function ShopCart() {
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    document.title = 'Cart | ES Wake Shop'
+    document.title = `Cart | ${ES_BRAND.shopTitle}`
   }, [])
 
   const handleInquiry = () => {
@@ -111,6 +113,8 @@ export function ShopCart() {
           </>
         )}
       </main>
+
+      <ShopFooter />
 
       <LineInquiryModal
         message={fallbackMessage}

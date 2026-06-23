@@ -15,8 +15,8 @@ const SAMPLE_HTML = `<!doctype html>
 
 describe('routeOgMeta', () => {
   it('maps /liff and /liff/book', () => {
-    expect(getRouteOgMeta('/liff')?.title).toBe('ES WAKE 會員專區')
-    expect(getRouteOgMeta('/liff/book')?.title).toBe('ES WAKE 線上預約')
+    expect(getRouteOgMeta('/liff')?.title).toBe('ES Wake 會員專區')
+    expect(getRouteOgMeta('/liff/book')?.title).toBe('ES Wake 線上預約')
     expect(getRouteOgMeta('/liff/book')?.image).toBe('/liff/book/og.webp')
     expect(getRouteOgMeta('/liff/book/')).not.toBeNull()
     expect(getRouteOgMeta('/shop')).toBeNull()
@@ -36,8 +36,8 @@ describe('routeOgMeta', () => {
   it('injects route-specific OG tags', () => {
     const meta = getRouteOgMeta('/liff')!
     const out = injectRouteOgTags(SAMPLE_HTML, meta, 'https://eswake-booking.vercel.app/liff')
-    expect(out).toContain('<title>ES WAKE 會員專區</title>')
-    expect(out).toContain('property="og:title" content="ES WAKE 會員專區"')
+    expect(out).toContain('<title>ES Wake 會員專區</title>')
+    expect(out).toContain('property="og:title" content="ES Wake 會員專區"')
     expect(out).toContain('property="og:url" content="https://eswake-booking.vercel.app/liff"')
     expect(out).toContain('property="og:image" content="https://eswake-booking.vercel.app/logo.png"')
     expect(out).not.toContain('ES Wake Shop')

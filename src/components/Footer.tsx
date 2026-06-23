@@ -1,4 +1,6 @@
 import { useResponsive } from '../hooks/useResponsive'
+import { BrandCopyrightBlock } from './BrandCopyrightBlock'
+import { ES_BRAND } from '../lib/esBrandTokens'
 
 export function Footer() {
   const { isMobile } = useResponsive()
@@ -12,13 +14,11 @@ export function Footer() {
       color: '#666',
       fontSize: isMobile ? '12px' : '14px'
     }}>
-      <p style={{ margin: '0 0 8px 0' }}>
-        © {new Date().getFullYear()} ES Wake. All Rights Reserved.
-      </p>
-      <p style={{ margin: 0, fontSize: isMobile ? '11px' : '12px', opacity: 0.7 }}>
-        滑水預約管理系統
-      </p>
+      <BrandCopyrightBlock
+        subtitle={ES_BRAND.adminSystemLabel}
+        subtitleOpacity={0.7}
+        style={{ fontSize: 'inherit' }}
+      />
     </div>
   )
 }
-

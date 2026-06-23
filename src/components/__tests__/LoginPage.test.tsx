@@ -23,7 +23,7 @@ describe('LoginPage', () => {
   it('應該渲染登入頁面的基本元素', () => {
     render(<LoginPage />)
 
-    expect(screen.getByText('ESWake Booking System')).toBeInTheDocument()
+    expect(screen.getByText('ES Wake Booking System')).toBeInTheDocument()
     expect(screen.getByText('請使用 Google 帳號登入')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /使用 Google 登入/i })).toBeInTheDocument()
   })

@@ -15,6 +15,8 @@ import {
   visitMapUrl,
 } from './liffBookingGuide'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
+import { ES_BRAND } from '../../../lib/esBrandTokens'
+import { BookCopyrightFooter } from './BookCopyrightFooter'
 
 function GuideBullets({ items }: { items: readonly string[] }) {
   return (
@@ -109,6 +111,8 @@ export function BookGuidePage() {
       <p style={{ ...bookSectionSub, marginBottom: 16 }}>{g.intro}</p>
 
       <BookGuideAccordion sections={sections} defaultOpenId="after-booking" />
+
+      <BookCopyrightFooter subtitle={ES_BRAND.guideAreaLabel} />
     </main>
   )
 }

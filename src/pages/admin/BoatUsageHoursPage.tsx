@@ -127,7 +127,15 @@ export function BoatUsageHoursPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
-      <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '16px' : '24px' }}>
+      <div
+        style={{
+          maxWidth: '960px',
+          margin: '0 auto',
+          padding: isMobile ? '16px' : '24px',
+          boxSizing: 'border-box',
+          width: '100%',
+        }}
+      >
         <PageHeader
           title="⏱️ 區間時數合計"
           user={user}
@@ -145,13 +153,21 @@ export function BoatUsageHoursPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr 1fr' : 'auto auto auto',
+              gridTemplateColumns: isMobile ? '1fr' : 'auto auto auto',
               gap: '12px',
               alignItems: 'end',
               marginBottom: '12px',
             }}
           >
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+            <label
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                fontSize: '13px',
+                minWidth: 0,
+              }}
+            >
               起始日
               <input
                 type="date"
@@ -163,11 +179,21 @@ export function BoatUsageHoursPage() {
                   border: '1px solid #ddd',
                   fontSize: '16px',
                   width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
                   boxSizing: 'border-box',
                 }}
               />
             </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+            <label
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                fontSize: '13px',
+                minWidth: 0,
+              }}
+            >
               結束日
               <input
                 type="date"
@@ -179,6 +205,8 @@ export function BoatUsageHoursPage() {
                   border: '1px solid #ddd',
                   fontSize: '16px',
                   width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
                   boxSizing: 'border-box',
                 }}
               />
@@ -196,8 +224,8 @@ export function BoatUsageHoursPage() {
                 fontWeight: 600,
                 cursor: loading ? 'wait' : 'pointer',
                 fontSize: '15px',
-                gridColumn: isMobile ? '1 / -1' : undefined,
-                width: isMobile ? '100%' : undefined,
+                width: '100%',
+                boxSizing: 'border-box',
               }}
             >
               {loading ? '載入中…' : '重新計算'}

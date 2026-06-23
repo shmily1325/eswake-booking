@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { ES_BRAND } from '../lib/esBrandTokens'
 
 export function LoginPage() {
   const [loading, setLoading] = useState(false)
@@ -51,7 +52,7 @@ export function LoginPage() {
           <img
             key={i}
             src="/logo black.png"
-            alt="ESWake"
+            alt={ES_BRAND.name}
             className="w-[200px] h-auto -rotate-[25deg]"
           />
         ))}
@@ -59,7 +60,7 @@ export function LoginPage() {
       
       <div className="bg-white p-10 rounded-xl shadow-md max-w-md w-full text-center relative z-10">
         <h1 className="mt-0 mb-2.5 text-black text-[28px] font-bold">
-          ESWake Booking System
+          {ES_BRAND.bookingSystemTitle}
         </h1>
         <p className="text-gray-600 mb-8 text-sm">
           請使用 Google 帳號登入

@@ -3,6 +3,8 @@
  * 目的：讓客人在表單內閱讀，不必再點 reurl 連結
  */
 
+import { ES_BRAND } from '../../../lib/esBrandTokens'
+
 export interface FaqItem {
   id: string
   question: string
@@ -78,7 +80,7 @@ export const TRANSPORT_INFO = {
     {
       heading: '停車',
       lines: [
-        '汽車：停畫有 ES WAKE 1～15 的車格',
+        `汽車：停畫有 ${ES_BRAND.name} 1～15 的車格`,
         '機車：可直接騎至廠房內停車',
       ],
     },

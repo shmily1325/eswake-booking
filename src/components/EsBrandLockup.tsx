@@ -17,7 +17,7 @@ interface EsBrandLockupProps {
   style?: CSSProperties
 }
 
-/** [logo] ES WAKE + 可選副標；LIFF 預約／會員專區／Shop 共用 */
+/** [logo] ES Wake + 可選副標；LIFF 預約／會員專區／Shop 共用 */
 export function EsBrandLockup({
   brand = ES_BRAND.name,
   subtitle,

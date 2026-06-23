@@ -1,4 +1,5 @@
 import type { ActivityChoice, ActivityCode } from './types'
+import { ES_BRAND } from '../../../lib/esBrandTokens'
 
 export type BookLocale = 'zh' | 'en'
 
@@ -297,7 +298,7 @@ export interface BookI18nStrings {
 
 export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
   zh: {
-    header: { brand: 'ES WAKE', title: '線上預約', memberRateHint: '會員價估算' },
+    header: { brand: ES_BRAND.name, title: ES_BRAND.bookingAreaLabel, memberRateHint: '會員價估算' },
     localeToggle: { zh: '中文', en: 'EN' },
     common: { priceIncludes: '已含裝備、教練、船、保險' },
     steps: [
@@ -457,7 +458,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       memberPrefill: '已帶入會員資料，可修改',
     },
     binding: {
-      title: 'ES WAKE 預約',
+      title: `${ES_BRAND.name} 預約`,
       subtitle: '綁定會員可自動帶入姓名與電話；也可略過以訪客身份填寫',
       phone: '手機號碼',
       phonePh: '請輸入您的手機號碼',
@@ -572,7 +573,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       close: '關閉',
     },
     guide: {
-      headerTitle: '行前須知',
+      headerTitle: ES_BRAND.guideAreaLabel,
       pageTitle: '預約完成注意事項',
       intro: '出發前請先看這裡：穿著、交通、改期規則與當日提醒。',
       afterBooking: {
@@ -622,7 +623,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         },
         parking: {
           heading: '停車',
-          car: '汽車：請停畫有 ES WAKE 1～15 的車格',
+          car: `汽車：請停畫有 ${ES_BRAND.name} 1～15 的車格`,
           scooter: '機車：請直接騎至廠房內停車',
         },
         transit: {
@@ -634,7 +635,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
   },
   en: {
-    header: { brand: 'ES WAKE', title: 'Book Online', memberRateHint: 'Member rate estimate' },
+    header: { brand: ES_BRAND.name, title: 'Book Online', memberRateHint: 'Member rate estimate' },
     localeToggle: { zh: '中文', en: 'EN' },
     common: { priceIncludes: 'Gear, coach, boat & insurance included' },
     steps: [
@@ -794,7 +795,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       memberPrefill: 'Member info pre-filled — you can edit',
     },
     binding: {
-      title: 'ES WAKE Booking',
+      title: `${ES_BRAND.name} Booking`,
       subtitle: 'Link your membership to auto-fill name & phone, or skip as guest',
       phone: 'Mobile number',
       phonePh: 'Your mobile number',
@@ -959,7 +960,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         },
         parking: {
           heading: 'Parking',
-          car: 'Cars: spaces marked ES WAKE 1–15',
+          car: `Cars: spaces marked ${ES_BRAND.name} 1–15`,
           scooter: 'Scooters: ride into the facility to park',
         },
         transit: {

@@ -14,6 +14,7 @@ import { BookStep2Summary } from './BookStep2Summary'
 import { BookConfirmSummary } from './BookConfirmSummary'
 import { BookFollowBoatPanel } from './BookFollowBoatPanel'
 import { BookStepHeader, BookStepIntro, BookWizardBrandBar } from './BookStepHeader'
+import { BookCopyrightFooter } from './BookCopyrightFooter'
 import { BookContextTips } from './BookContextTips'
 import { BookBoatPicker } from './BookBoatPicker'
 import { BookStaffHint } from './BookStaffHint'
@@ -674,6 +675,8 @@ export function BookWizardCore({
           </>
         )}
       </main>
+
+      <BookCopyrightFooter />
 
       <footer style={{ ...stickyFooter, flexDirection: 'column', alignItems: 'stretch' }}>
         {blockReason ? (

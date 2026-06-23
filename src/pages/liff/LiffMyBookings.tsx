@@ -31,6 +31,7 @@ import { liffTrack, liffTrackFlushQueueNow } from './track'
 import { fetchLiffShopOrders, type LiffShopOrder } from './liffShopOrders'
 import { useRouteDocumentMeta } from '../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../lib/routeOgMeta'
+import { BrandCopyrightBlock } from '../../components/BrandCopyrightBlock'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { LiffBootScreen } from './LiffBootScreen'
 import {
@@ -608,15 +609,16 @@ export function LiffMyBookings() {
       />
 
       {/* Footer */}
-      <div style={{
-        padding: '20px',
-        paddingBottom: 'calc(20px + var(--safe-area-inset-bottom, 0px))',
-        textAlign: 'center',
-        color: '#999',
-        fontSize: '12px'
-      }}>
-        ES Wake 預約系統 © {new Date().getFullYear()}
-      </div>
+      <BrandCopyrightBlock
+        subtitle={ES_BRAND.memberAreaLabel}
+        style={{
+          padding: '20px',
+          paddingBottom: 'calc(20px + var(--safe-area-inset-bottom, 0px))',
+          textAlign: 'center',
+          color: '#999',
+          fontSize: '12px',
+        }}
+      />
 
       <LiffStyles />
     </div>

@@ -21,6 +21,8 @@ import { getShopHeroForFilters } from './lib/shopHeroImages'
 import { useShopHeroPreload } from './hooks/useShopHeroPreload'
 import { SHOP_COPY, SHOP_LABEL } from './lib/shopCopy'
 import { shopListPath } from './lib/shopPaths'
+import { ES_BRAND } from '../../lib/esBrandTokens'
+import { ShopFooter } from './components/ShopFooter'
 
 /**
  * 商城列表（單一 /shop 頁；預購用 ?preorder=1 篩選）。
@@ -48,7 +50,7 @@ export function ShopList() {
   } = useShopFilters(products)
 
   useEffect(() => {
-    document.title = 'ES Wake Shop'
+    document.title = ES_BRAND.shopTitle
   }, [])
 
   useEffect(() => {
@@ -226,30 +228,6 @@ function ToolbarSort({ sortBy, onSortChange, className = '' }: ToolbarSortProps)
       <option value="price-asc">{SHOP_LABEL.priceAsc}</option>
       <option value="price-desc">{SHOP_LABEL.priceDesc}</option>
     </select>
-  )
-}
-
-function ShopFooter() {
-  return (
-    <footer className="mt-8 border-t border-gray-200 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-col items-center text-center gap-3">
-        <div className="flex items-center gap-3">
-          <img
-            src="/logo_circle (black).png"
-            alt=""
-            className="w-9 h-9 select-none"
-            draggable={false}
-            aria-hidden
-          />
-          <span className="font-black italic uppercase tracking-wider text-zinc-900 leading-none">
-            ES Wake
-          </span>
-        </div>
-        <div className="text-[11px] text-gray-400">
-          © {new Date().getFullYear()} ES Wake School
-        </div>
-      </div>
-    </footer>
   )
 }
 

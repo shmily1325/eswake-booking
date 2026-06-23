@@ -50,7 +50,7 @@ https://developers.line.biz/console/
 - 點擊 "Add" 按鈕
 
 ### 2. 填寫 LIFF 設定
-- **LIFF app name**: ES WAKE 會員專區
+- **LIFF app name**: ES Wake 會員專區
 - **Size**: Full
 - **Endpoint URL**: 
   ```
@@ -195,7 +195,7 @@ Vercel 會自動執行以下 Cron Jobs：
 
 ### 方式一：透過 LIFF 會員專區
 1. 打開 LINE Bot 聊天室
-2. 點擊下方選單的「ES WAKE 會員專區」按鈕（需在 LINE Bot 設定 Rich Menu）
+2. 點擊下方選單的「ES Wake 會員專區」按鈕（需在 LINE Bot 設定 Rich Menu）
 3. 首次使用需要綁定手機號碼
 4. 綁定後即可查看所有預約
 
@@ -211,7 +211,7 @@ Vercel 會自動執行以下 Cron Jobs：
 在 LINE Developers Console 可以設定 Rich Menu：
 
 **建議設定**：
-- **按鈕 1**: ES WAKE 會員專區（連結到 LIFF URL）
+- **按鈕 1**: ES Wake 會員專區（連結到 LIFF URL）
 - **按鈕 2**: 查詢綁定狀態（發送文字：`說明`）
 - **按鈕 3**: 取消綁定（發送文字：`取消綁定`）
 

@@ -13,6 +13,8 @@ import {
 } from '../utils/auth'
 import { supabase } from '../lib/supabase'
 import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
+import { ES_BRAND } from '../lib/esBrandTokens'
+import { Footer } from '../components/Footer'
 import { ExternalNavLink } from '../components/ExternalNavLink'
 import { useState, useEffect, type CSSProperties } from 'react'
 
@@ -271,7 +273,7 @@ export function HomePage() {
         }}>
           <img 
             src="/logo_circle (black).png" 
-            alt="ES Wake Logo"
+            alt={`${ES_BRAND.name} Logo`}
             style={{
               width: '140px',
               height: '140px',
@@ -294,7 +296,7 @@ export function HomePage() {
             letterSpacing: '2px',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
           }}>
-            ES WAKE
+            {ES_BRAND.name}
           </h1>
           <div style={{
             display: 'flex',
@@ -584,22 +586,7 @@ export function HomePage() {
           )}
         </div>
 
-        {/* Footer with Copyright */}
-        <div style={{
-          textAlign: 'center',
-          marginTop: '40px',
-          paddingTop: '30px',
-          borderTop: '1px solid rgba(0, 0, 0, 0.1)',
-          color: '#666',
-          fontSize: isMobile ? '12px' : '14px'
-        }}>
-          <p style={{ margin: '0 0 8px 0' }}>
-            © {new Date().getFullYear()} ES Wake. All Rights Reserved.
-          </p>
-          <p style={{ margin: 0, fontSize: isMobile ? '11px' : '12px', opacity: 0.7 }}>
-            滑水預約管理系統
-          </p>
-        </div>
+        <Footer />
       </div>
 
       {/* Version indicator */}

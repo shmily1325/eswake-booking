@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { EsBrandLockup } from '../../../components/EsBrandLockup'
+import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { useShopCart } from '../hooks/useShopCart'
 import { getShopReturnTo } from '../lib/shopReturnTo'
 import { SHOP_COPY } from '../lib/shopCopy'
@@ -74,7 +75,7 @@ export function ShopHeader({
             </Link>
           )}
           <EsBrandLockup
-            subtitle="Shop"
+            subtitle={ES_BRAND.shopAreaLabel}
             logoSize={28}
             brandTo={shopListPath()}
             subtitleClassName={showBack ? 'hidden min-[380px]:block' : undefined}

@@ -36,7 +36,7 @@ export function LiffBootScreen({ label = '載入中…', onRetry, liffOpenUrl }:
     }}>
       <EsBrandLockup
         variant="onLight"
-        subtitle="會員專區"
+        subtitle={ES_BRAND.memberAreaLabel}
         align="center"
         logoSize={48}
         style={{ marginBottom: 20, justifyContent: 'center' }}

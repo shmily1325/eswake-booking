@@ -1,6 +1,7 @@
 // 會員專區首次綁定（新 LINE 用戶進專區時；預約流程較少走到）
 
 import { EsBrandLockup } from '../../../components/EsBrandLockup'
+import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { liffTrack } from '../track'
 import {
   liffBindingCard,
@@ -65,7 +66,7 @@ export function BindingForm({
       <div style={liffBindingCard}>
         <EsBrandLockup
           variant="onLight"
-          subtitle="會員專區"
+          subtitle={ES_BRAND.memberAreaLabel}
           align="center"
           logoSize={48}
           style={{ marginBottom: 8, justifyContent: 'center' }}
