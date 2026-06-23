@@ -13,6 +13,9 @@ export function buildVariantSearchHaystack(item: VariantListItem): string {
     if (plain !== code) parts.push(plain)
   }
 
+  const labelCode = variant.label_code?.trim()
+  if (labelCode) parts.push(labelCode)
+
   if (product.category) {
     parts.push(formatAttributes(product.category, variant.attributes))
   }

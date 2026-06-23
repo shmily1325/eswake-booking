@@ -3,16 +3,18 @@ import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { validateLabelCodeFormat } from './labelCode'
-
-/** 預設標籤紙尺寸（mm）；實際紙張確認後可改設定 */
-export const DEFAULT_LABEL_WIDTH_MM = 40
-export const DEFAULT_LABEL_HEIGHT_MM = 30
-
-const LABEL_FONT =
-  'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+import { downloadLabelPng } from './labelImageExport'
+import {
+  DEFAULT_LABEL_HEIGHT_MM,
+  DEFAULT_LABEL_WIDTH_MM,
+  LABEL_FONT,
+  labelMetrics,
+} from './labelLayout'
 
 const MM_TO_PX = 3.7795275591
 const MODAL_Z_INDEX = 99999
+
+export { DEFAULT_LABEL_HEIGHT_MM, DEFAULT_LABEL_WIDTH_MM } from './labelLayout'
 
 interface ProductLabelPreviewProps {
   labelCode: string
@@ -69,6 +71,7 @@ export function ProductLabelPreview({
             labelCode={labelCode}
             formatError={formatError}
             widthMm={widthMm}
+            heightMm={heightMm}
             isMobile={isMobile}
             onClose={() => setExpanded(false)}
           />,
@@ -116,10 +119,13 @@ export function ProductLabelPreview({
           />
         )}
         {hasPreview && (
-          <p style={{ ...hintStyle, textAlign: isMobile ? 'center' : 'left' }}>
-            標籤約 {widthMm}×{heightMm} mm
-            {isMobile && <span style={{ marginLeft: 6, color: '#2563eb' }}>· 點預覽放大</span>}
-          </p>
+          <>
+            <p style={{ ...hintStyle, textAlign: isMobile ? 'center' : 'left' }}>
+              標籤約 {widthMm}×{heightMm} mm
+              {isMobile && <span style={{ marginLeft: 6, color: '#2563eb' }}>· 點預覽放大</span>}
+            </p>
+            <LabelDownloadButton labelCode={labelCode} widthMm={widthMm} heightMm={heightMm} isMobile={isMobile} />
+          </>
         )}
       </div>
       {expandOverlay}
@@ -131,6 +137,7 @@ interface LabelExpandModalProps {
   labelCode: string
   formatError: string | null
   widthMm: number
+  heightMm: number
   isMobile: boolean
   onClose: () => void
 }
@@ -139,6 +146,7 @@ function LabelExpandModal({
   labelCode,
   formatError,
   widthMm,
+  heightMm,
   isMobile,
   onClose,
 }: LabelExpandModalProps) {
@@ -284,6 +292,13 @@ function LabelExpandModal({
             widthPx={expandWidthPx || Math.round(widthMm * MM_TO_PX * 2.8)}
             formatError={formatError}
           />
+          <LabelDownloadButton
+            labelCode={labelCode}
+            widthMm={widthMm}
+            heightMm={heightMm}
+            isMobile
+            fullWidth
+          />
           <button
             type="button"
             onClick={onClose}
@@ -340,6 +355,13 @@ function LabelExpandModal({
         style={{ width: '100%', maxWidth: expandWidthPx }}
       >
         <LabelCard labelCode={labelCode} widthPx={expandWidthPx} formatError={formatError} />
+        <LabelDownloadButton
+          labelCode={labelCode}
+          widthMm={widthMm}
+          heightMm={heightMm}
+          isMobile={false}
+          fullWidth
+        />
         <button
           type="button"
           onClick={onClose}
@@ -370,48 +392,65 @@ interface LabelCardProps {
   formatError: string | null
 }
 
-let measureCanvas: HTMLCanvasElement | null = null
+function LabelDownloadButton({
+  labelCode,
+  widthMm,
+  heightMm,
+  isMobile,
+  fullWidth = false,
+}: {
+  labelCode: string
+  widthMm: number
+  heightMm: number
+  isMobile: boolean
+  fullWidth?: boolean
+}) {
+  const [downloading, setDownloading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-function measureTextWidth(text: string, fontSize: number): number {
-  if (typeof document === 'undefined') return text.length * fontSize * 0.58
-  measureCanvas ??= document.createElement('canvas')
-  const ctx = measureCanvas.getContext('2d')
-  if (!ctx) return text.length * fontSize * 0.58
-  ctx.font = `700 ${fontSize}px ${LABEL_FONT}`
-  return ctx.measureText(text).width
-}
-
-function fitFontSize(displayCode: string, maxWidth: number, preferred: number): number {
-  const max = Math.max(preferred, 7)
-  for (let size = max; size >= 7; size--) {
-    if (measureTextWidth(displayCode, size) <= maxWidth) return size
+  const handleDownload = async () => {
+    setDownloading(true)
+    setError(null)
+    try {
+      await downloadLabelPng(labelCode, { widthMm, heightMm })
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '下載失敗')
+    } finally {
+      setDownloading(false)
+    }
   }
-  return 7
-}
 
-/** 依實際渲染寬度算各元素尺寸；代碼自動縮字，不截斷 */
-function labelMetrics(widthPx: number, displayCode: string) {
-  const w = Math.max(widthPx, 120)
-  const codeLen = displayCode.length
-  const pad = Math.max(6, Math.round(w * 0.04))
-  const gap = Math.max(4, Math.round(pad * 0.55))
-  const logo = Math.max(18, Math.round(w * (codeLen > 14 ? 0.14 : 0.16)))
-
-  const textAreaWidth = Math.max(40, w - pad * 2 - logo - gap)
-  let preferredFont = Math.max(9, Math.round(w * 0.065))
-  if (codeLen > 16) preferredFont = Math.round(preferredFont * 0.78)
-  else if (codeLen > 12) preferredFont = Math.round(preferredFont * 0.88)
-
-  const fontSize = fitFontSize(displayCode, textAreaWidth, preferredFont)
-
-  return {
-    pad,
-    gap,
-    logo,
-    fontSize,
-    barcodeHeight: Math.max(28, Math.round(w * 0.16)),
-    barWidth: Math.max(0.9, w * 0.0038),
-  }
+  return (
+    <div style={{ marginTop: fullWidth ? 12 : 8 }}>
+      <button
+        type="button"
+        data-track="product_label_download"
+        onClick={() => void handleDownload()}
+        disabled={downloading}
+        style={{
+          display: fullWidth ? 'block' : 'inline-block',
+          width: fullWidth ? '100%' : undefined,
+          padding: isMobile ? '10px 14px' : '8px 12px',
+          borderRadius: 8,
+          border: '1px solid #333',
+          background: '#fff',
+          color: '#111',
+          fontSize: isMobile ? 14 : 13,
+          fontWeight: 600,
+          cursor: downloading ? 'wait' : 'pointer',
+          minHeight: isMobile ? 44 : undefined,
+        }}
+      >
+        {downloading ? '產生圖片中…' : '下載標籤圖（PNG）'}
+      </button>
+      {error && (
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: '#c62828', lineHeight: 1.4 }}>{error}</p>
+      )}
+      <p style={{ ...hintStyle, marginTop: 6, textAlign: fullWidth && isMobile ? 'center' : 'left' }}>
+        {widthMm}×{heightMm} mm · 203 DPI，可匯入標籤機或列印軟體
+      </p>
+    </div>
+  )
 }
 
 function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {

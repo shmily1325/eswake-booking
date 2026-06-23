@@ -40,7 +40,7 @@ import {
   sanitizeLabelCodeInput,
   validateLabelCodeFormat,
 } from './labelCode'
-import { removeProductImage } from '../../../utils/imageUpload'
+import { copyProductImage, removeProductImage } from '../../../utils/imageUpload'
 import { trackClick } from '../../../utils/trackClick'
 import { formatDateTime } from '../../../utils/formatters'
 
@@ -152,6 +152,7 @@ export function ProductEditView({
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
   const [labelCodeSavingId, setLabelCodeSavingId] = useState<string | null>(null)
   const [original, setOriginal] = useState<ProductWithVariants | null>(null)
 
@@ -250,35 +251,68 @@ export function ProductEditView({
   }
 
   /**
-   * 複製最後一筆有效（非 pendingDelete）SKU 當新規格的範本，
-   * 圖片不複製（避免兩個 variant 引用同一張，造成刪檔複雜化）。
+   * 複製最後一筆有效（非 pendingDelete）SKU 當新規格的範本。
+   * 封面與實品照會複製成 Storage 新檔，避免多個 variant 共用同一 path。
    */
-  const handleDuplicateLast = () => {
+  const handleDuplicateLast = async () => {
     const lastActive = [...drafts].reverse().find((d) => !d.pendingDelete)
     if (!lastActive) {
       handleAddVariant()
       return
     }
-    setDrafts((prev) => [
-      ...prev,
-      {
-        id: null,
-        label_code: '',
-        savedLabelCode: '',
-        vendor_code: lastActive.vendor_code,
-        attributes: { ...lastActive.attributes },
-        price: lastActive.price,
-        stock: '',
-        acceptPreOrder: lastActive.acceptPreOrder,
-        last_stock_in_at: null,
-        cover_image_url: null,
-        cover_image_path: null,
-        originalCoverImagePath: null,
-        image_url: null,
-        image_path: null,
-        originalImagePath: null,
-      },
-    ])
+
+    const copyOne = async (
+      sourcePath: string | null,
+      storageFolder: 'variants' | 'covers',
+    ): Promise<{ url: string; path: string } | null> => {
+      if (!sourcePath) return null
+      try {
+        const copied = await copyProductImage(sourcePath, { storageFolder })
+        trackUpload(copied.path)
+        return { url: copied.publicUrl, path: copied.path }
+      } catch (e) {
+        console.error('[ProductEditView] duplicate image copy failed', sourcePath, e)
+        return null
+      }
+    }
+
+    setDuplicating(true)
+    try {
+      const [cover, photo] = await Promise.all([
+        copyOne(lastActive.cover_image_path, 'covers'),
+        copyOne(lastActive.image_path, 'variants'),
+      ])
+
+      if (
+        (lastActive.cover_image_path && !cover) ||
+        (lastActive.image_path && !photo)
+      ) {
+        toast.error('部分圖片複製失敗，其餘欄位已帶入')
+      }
+
+      setDrafts((prev) => [
+        ...prev,
+        {
+          id: null,
+          label_code: '',
+          savedLabelCode: '',
+          vendor_code: lastActive.vendor_code,
+          attributes: { ...lastActive.attributes },
+          price: lastActive.price,
+          stock: '',
+          acceptPreOrder: lastActive.acceptPreOrder,
+          last_stock_in_at: null,
+          cover_image_url: cover?.url ?? null,
+          cover_image_path: cover?.path ?? null,
+          originalCoverImagePath: null,
+          image_url: photo?.url ?? null,
+          image_path: photo?.path ?? null,
+          originalImagePath: null,
+        },
+      ])
+    } finally {
+      setDuplicating(false)
+    }
   }
 
   const handleRemoveVariant = (idx: number) => {
@@ -820,9 +854,15 @@ export function ProductEditView({
               + 新增規格 (SKU)
             </Button>
             {drafts.some((d) => !d.pendingDelete) && (
-              <span title="以最後一筆有效規格為範本（不複製圖、庫存歸 0）">
-                <Button variant="outline" size="small" data-track="product_sku_duplicate" onClick={handleDuplicateLast} disabled={saving}>
-                  ⎘ 複製上一筆
+              <span title="以最後一筆有效規格為範本（含封面與實品照，庫存歸 0）">
+                <Button
+                  variant="outline"
+                  size="small"
+                  data-track="product_sku_duplicate"
+                  onClick={() => void handleDuplicateLast()}
+                  disabled={saving || duplicating}
+                >
+                  {duplicating ? '複製中…' : '⎘ 複製上一筆'}
                 </Button>
               </span>
             )}

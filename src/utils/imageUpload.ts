@@ -119,6 +119,43 @@ export async function uploadProductImage(
 }
 
 /**
+ * 複製 Storage 內既有商品圖到新路徑（SKU 複製時用，避免多個 variant 共用同一 path）。
+ */
+export async function copyProductImage(
+  sourcePath: string,
+  opts: {
+    storageFolder?: 'variants' | 'covers'
+    entityId?: string | null
+  } = {},
+): Promise<UploadProductImageResult> {
+  const { data, error } = await supabase.storage.from(BUCKET).download(sourcePath)
+  if (error) throw error
+  if (!data) throw new Error('下載圖片失敗')
+
+  const folder =
+    opts.storageFolder ?? (sourcePath.startsWith('covers/') ? 'covers' : 'variants')
+  const entity = opts.entityId ?? 'new'
+  const extMatch = sourcePath.match(/\.([a-zA-Z0-9]+)$/)
+  const ext = extMatch?.[1]?.toLowerCase() ?? 'jpg'
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const path = `${folder}/${entity}/${filename}`
+
+  const contentType =
+    data.type ||
+    (ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg')
+
+  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, data, {
+    cacheControl: '3600',
+    upsert: false,
+    contentType,
+  })
+  if (uploadError) throw uploadError
+
+  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path)
+  return { path, publicUrl: urlData.publicUrl }
+}
+
+/**
  * 刪除商品圖片（換圖或刪除商品時呼叫）。
  * 失敗時印 warning 但不 throw，避免阻擋主流程（圖片殘留可由清理腳本處理）。
  */

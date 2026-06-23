@@ -40,4 +40,10 @@ describe('buildVariantSearchHaystack', () => {
   it('matches plain vendor code', () => {
     expect(variantMatchesSearchTokens(mockItem('XYZ'), 'xyz')).toBe(true)
   })
+
+  it('matches label code', () => {
+    const item = mockItem(null)
+    item.variant.label_code = 'ESWAKE001'
+    expect(variantMatchesSearchTokens(item, 'eswake001')).toBe(true)
+  })
 })

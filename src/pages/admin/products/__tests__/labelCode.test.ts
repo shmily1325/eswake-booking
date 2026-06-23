@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   findDuplicateLabelCodes,
   isLabelCodeDirty,
+  isMissingLabelCode,
   LABEL_CODE_MAX_LEN,
   normalizeLabelCode,
   sanitizeLabelCodeInput,
@@ -50,6 +51,20 @@ describe('isLabelCodeDirty', () => {
     expect(isLabelCodeDirty('ABC', 'abc')).toBe(false)
     expect(isLabelCodeDirty('NEW', 'OLD')).toBe(true)
     expect(isLabelCodeDirty('', 'OLD')).toBe(true)
+  })
+})
+
+describe('isMissingLabelCode', () => {
+  it('treats null, empty, and whitespace as missing', () => {
+    expect(isMissingLabelCode(null)).toBe(true)
+    expect(isMissingLabelCode(undefined)).toBe(true)
+    expect(isMissingLabelCode('')).toBe(true)
+    expect(isMissingLabelCode('   ')).toBe(true)
+  })
+
+  it('treats saved codes as present', () => {
+    expect(isMissingLabelCode('ESWB001')).toBe(false)
+    expect(isMissingLabelCode('  eswb001  ')).toBe(false)
   })
 })
 

@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { MoneyInput, PrimaryNumericInput } from '../../../components/ui/numericInputs'
 import { toast as globalToast } from '../../../utils/toast'
-import { fetchAllProductsWithVariants, flattenToVariantItems } from '../products/api'
+import {
+  fetchAllProductsWithVariants,
+  fetchVariantItemByLabelCode,
+  flattenToVariantItems,
+} from '../products/api'
+import { LabelCodeCameraScanner } from '../products/LabelCodeCameraScanner'
 import { formatAttributes } from '../products/schema'
 import { buildVariantSearchHaystack } from '../products/productSearchHaystack'
 import type { VariantListItem } from '../products/types'
@@ -108,6 +113,9 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   const [variants, setVariants] = useState<VariantListItem[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [scanOpen, setScanOpen] = useState(false)
+  const [scanBusy, setScanBusy] = useState(false)
+  const [scanStatus, setScanStatus] = useState<string | null>(null)
 
   const isVoided = Boolean(order?.cancelled_at)
 
@@ -242,6 +250,64 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       .filter((v) => buildVariantSearchHaystack(v).includes(q))
       .slice(0, 12)
   }, [variants, variantSearch])
+
+  const addOrIncrementVariant = useCallback(
+    (item: VariantListItem) => {
+      if (locked) return false
+      const label = lineLabel(item.product, item.variant)
+      let incremented = false
+      setLines((prev) => {
+        const existing = prev.find((line) => line.variant_id === item.variant.id)
+        if (existing) {
+          incremented = true
+          return prev.map((line) =>
+            line.variant_id === item.variant.id ? { ...line, qty: line.qty + 1 } : line,
+          )
+        }
+        return [
+          ...prev,
+          {
+            key: `new-${item.variant.id}-${Date.now()}`,
+            variant_id: item.variant.id,
+            unit_price: item.variant.price ?? 0,
+            qty: 1,
+            label,
+          },
+        ]
+      })
+      setVariantSearch('')
+      return incremented
+    },
+    [locked],
+  )
+
+  const handleLabelCodeScan = useCallback(
+    async (labelCode: string) => {
+      if (locked || scanBusy) return
+      setScanBusy(true)
+      setScanStatus(`查詢 ${labelCode}…`)
+      try {
+        const item = await fetchVariantItemByLabelCode(labelCode)
+        if (!item) {
+          setScanStatus(`找不到標籤代碼：${labelCode}`)
+          globalToast.error(`找不到標籤代碼：${labelCode}`)
+          return
+        }
+        const incremented = addOrIncrementVariant(item)
+        const name = lineLabel(item.product, item.variant)
+        const message = incremented ? `已加 1 件：${name}` : `已加入：${name}`
+        setScanStatus(message)
+        globalToast.success(message)
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : '查詢失敗'
+        setScanStatus(msg)
+        globalToast.error(msg)
+      } finally {
+        setScanBusy(false)
+      }
+    },
+    [addOrIncrementVariant, locked, scanBusy],
+  )
 
   if (!open) return null
 
@@ -509,12 +575,41 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         {!locked && (
           <>
             <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>加入商品</label>
-            <input
-              value={variantSearch}
-              onChange={(e) => setVariantSearch(e.target.value)}
-              placeholder="搜尋品牌、型號、規格、貨號"
-              style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #ccc', marginBottom: 8, boxSizing: 'border-box' }}
-            />
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <input
+                value={variantSearch}
+                onChange={(e) => setVariantSearch(e.target.value)}
+                placeholder="搜尋品牌、型號、規格、貨號、標籤代碼"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: 10,
+                  borderRadius: 8,
+                  border: '1px solid #ccc',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <button
+                type="button"
+                data-track="product_order_scan_open"
+                onClick={() => {
+                  setScanStatus(null)
+                  setScanOpen(true)
+                }}
+                style={{
+                  flexShrink: 0,
+                  padding: isMobile ? '10px 14px' : '10px 16px',
+                  borderRadius: 8,
+                  border: '1px solid #333',
+                  background: '#fff',
+                  fontWeight: 600,
+                  minHeight: isMobile ? 44 : undefined,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                掃碼
+              </button>
+            </div>
             {filteredVariants.length > 0 && (
               <div style={{ border: '1px solid #eee', borderRadius: 8, marginBottom: 12, maxHeight: 200, overflow: 'auto' }}>
                 {filteredVariants.map((v) => {
@@ -755,6 +850,14 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           )}
         </div>
       </div>
+
+      <LabelCodeCameraScanner
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onScan={handleLabelCodeScan}
+        busy={scanBusy}
+        statusMessage={scanStatus}
+      />
     </div>
   )
 }

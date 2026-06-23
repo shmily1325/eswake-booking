@@ -23,6 +23,7 @@ import type { ProductWithVariants, ProductVariantRow, VariantListItem } from './
 import { getVariantAvailability } from '../../shop/lib/productAvailability'
 import { ProductEditView } from './ProductEditView'
 import { variantMatchesSearchTokens } from './productSearchHaystack'
+import { isMissingLabelCode } from './labelCode'
 
 type ViewMode =
   | { kind: 'list' }
@@ -63,10 +64,11 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>({ kind: 'list' })
 
-  // 篩選狀態：缺價 / 沒實拍 / 沒封面（從頂部儀表板點擊切換）
+  // 篩選狀態：缺價 / 沒實拍 / 沒封面 / 缺標籤（從頂部儀表板點擊切換）
   const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
   const [onlyMissingImage, setOnlyMissingImage] = useState(false)
   const [onlyMissingCover, setOnlyMissingCover] = useState(false)
+  const [onlyMissingLabel, setOnlyMissingLabel] = useState(false)
   /** 已售完 archive：active 時只顯示 sold_out；預設隱藏已售完（搜尋時仍會找到） */
   const [onlySoldOut, setOnlySoldOut] = useState(false)
 
@@ -85,6 +87,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     setOnlyMissingPrice(false)
     setOnlyMissingImage(false)
     setOnlyMissingCover(false)
+    setOnlyMissingLabel(false)
     setOnlySoldOut(false)
     setSearch('')
   }
@@ -92,6 +95,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     onlyMissingPrice ||
     onlyMissingImage ||
     onlyMissingCover ||
+    onlyMissingLabel ||
     onlySoldOut ||
     search.trim() !== ''
 
@@ -116,6 +120,13 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
       return next
     })
   }
+  const toggleMissingLabel = () => {
+    setOnlyMissingLabel((v) => {
+      const next = !v
+      if (next) setOnlySoldOut(false)
+      return next
+    })
+  }
   const toggleSoldOut = () => {
     setOnlySoldOut((v) => {
       const next = !v
@@ -123,6 +134,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
         setOnlyMissingPrice(false)
         setOnlyMissingImage(false)
         setOnlyMissingCover(false)
+        setOnlyMissingLabel(false)
       }
       return next
     })
@@ -243,6 +255,9 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     if (onlyMissingCover) {
       items = items.filter((it) => !it.variant.cover_image_url)
     }
+    if (onlyMissingLabel) {
+      items = items.filter(isVariantMissingLabel)
+    }
 
     // 搜尋：多關鍵字（空白分隔）AND
     if (hasSearch) {
@@ -257,6 +272,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     onlyMissingPrice,
     onlyMissingImage,
     onlyMissingCover,
+    onlyMissingLabel,
     onlySoldOut,
     sortBy,
   ])
@@ -386,7 +402,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         {!embedded && <PageHeader user={user} title="📦 商品管理" showBaoLink={isAdmin(user)} />}
 
-        {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面 / 已售完（皆為 SKU 種數，隨搜尋變動） */}
+        {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面 / 缺標籤 / 已售完（皆為 SKU 種數，隨搜尋變動） */}
         <InventoryDashboard
           base={onlySoldOut ? baseForCounts.filter(isVariantSoldOut) : activeBaseForCounts}
           filtered={filteredItems}
@@ -395,11 +411,13 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           onlyMissingPrice={onlyMissingPrice}
           onlyMissingImage={onlyMissingImage}
           onlyMissingCover={onlyMissingCover}
+          onlyMissingLabel={onlyMissingLabel}
           onlySoldOut={onlySoldOut}
           soldOutCount={soldOutCount}
           onToggleMissingPrice={toggleMissingPrice}
           onToggleMissingImage={toggleMissingImage}
           onToggleMissingCover={toggleMissingCover}
+          onToggleMissingLabel={toggleMissingLabel}
           onToggleSoldOut={toggleSoldOut}
           onClearAll={clearAllFilters}
           isMobile={isMobile}
@@ -781,14 +799,18 @@ function SortMenu({ value, onChange, isMobile }: SortMenuProps) {
 }
 
 // ============================================================
-//  庫存儀表板：種數／件數／缺價／沒實拍／沒封面／已售完
+//  庫存儀表板：種數／件數／缺價／沒實拍／沒封面／缺標籤／已售完
 //  - 沒篩選：顯示 tab 可售 SKU 總數（不含已售完）
 //  - 有篩選：顯示「目前 X 種 / 全 Y 種」
-//  - 缺價／沒實拍／沒封面：皆算 SKU（種），不含已售完
+//  - 缺價／沒實拍／沒封面／缺標籤：皆算 SKU（種），不含已售完
 //  - 已售完 chip：永遠顯示 hidden 數量；點擊進 archive 視圖
 // ============================================================
 function isVariantSoldOut(it: VariantListItem): boolean {
   return getVariantAvailability(it.variant) === 'sold_out'
+}
+
+function isVariantMissingLabel(it: VariantListItem): boolean {
+  return isMissingLabelCode(it.variant.label_code)
 }
 
 interface InventoryDashboardProps {
@@ -799,11 +821,13 @@ interface InventoryDashboardProps {
   onlyMissingPrice: boolean
   onlyMissingImage: boolean
   onlyMissingCover: boolean
+  onlyMissingLabel: boolean
   onlySoldOut: boolean
   soldOutCount: number
   onToggleMissingPrice: () => void
   onToggleMissingImage: () => void
   onToggleMissingCover: () => void
+  onToggleMissingLabel: () => void
   onToggleSoldOut: () => void
   onClearAll: () => void
   isMobile: boolean
@@ -816,11 +840,13 @@ function InventoryDashboard({
   onlyMissingPrice,
   onlyMissingImage,
   onlyMissingCover,
+  onlyMissingLabel,
   onlySoldOut,
   soldOutCount,
   onToggleMissingPrice,
   onToggleMissingImage,
   onToggleMissingCover,
+  onToggleMissingLabel,
   onToggleSoldOut,
   onClearAll,
   isMobile,
@@ -830,6 +856,7 @@ function InventoryDashboard({
   const missingPriceCount = base.filter((it) => it.variant.price == null).length
   const missingImageCount = base.filter((it) => !it.variant.image_url).length
   const missingCoverCount = base.filter((it) => !it.variant.cover_image_url).length
+  const missingLabelCount = base.filter(isVariantMissingLabel).length
 
   const filteredSkuCount = filtered.length
   const filteredStockTotal = filtered.reduce((s, it) => s + (it.variant.stock || 0), 0)
@@ -880,7 +907,7 @@ function InventoryDashboard({
         }}
       />
 
-      {/* 待補：缺價 / 沒實拍 / 沒封面（可點擊 toggle） */}
+      {/* 待補：缺價 / 沒實拍 / 沒封面 / 缺標籤（可點擊 toggle） */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <DashboardStatChip
           label="缺價"
@@ -908,6 +935,15 @@ function InventoryDashboard({
           color="#6a1b9a"
           bgActive="#f3e5f5"
           trackId="product_filter_missing_cover"
+        />
+        <DashboardStatChip
+          label="缺標籤"
+          count={missingLabelCount}
+          active={onlyMissingLabel}
+          onClick={onToggleMissingLabel}
+          color="#2e7d32"
+          bgActive="#e8f5e9"
+          trackId="product_filter_missing_label"
         />
       </div>
 

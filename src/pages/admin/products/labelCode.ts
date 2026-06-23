@@ -51,3 +51,8 @@ export function findDuplicateLabelCodes(
 export function isLabelCodeDirty(current: string, saved: string): boolean {
   return (normalizeLabelCode(current) ?? '') !== (normalizeLabelCode(saved) ?? '')
 }
+
+/** SKU 是否尚未設定標籤代碼（庫存列表「缺標籤」篩選用） */
+export function isMissingLabelCode(labelCode: string | null | undefined): boolean {
+  return normalizeLabelCode(labelCode ?? '') === null
+}
