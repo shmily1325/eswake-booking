@@ -1,11 +1,6 @@
-import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { PublicBootScreen } from './components/PublicBootScreen'
-
-const PublicBook = lazy(() =>
-  import('./pages/liff/book/PublicBook').then(m => ({ default: m.PublicBook })),
-)
+import { PublicBook } from './pages/liff/book/PublicBook'
 
 /** 公開預約專用入口：不載入 Admin / Shop / LIFF SDK */
 export default function AppPublicBook() {
@@ -13,14 +8,7 @@ export default function AppPublicBook() {
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
-          <Route
-            path="/*"
-            element={
-              <Suspense fallback={<PublicBootScreen label="載入預約表單…" />}>
-                <PublicBook />
-              </Suspense>
-            }
-          />
+          <Route path="/*" element={<PublicBook />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

@@ -51,6 +51,9 @@
       var isPublicBook = host === 'book.eswakeschool.com' || path === '/book' || path === '/book/'
       var isPublicGuide = host === 'guide.eswakeschool.com' || path === '/book/guide' || path.indexOf('/book/guide/') === 0
       var isPublic = isPublicBook || isPublicGuide
+      var boot = document.getElementById('app-boot')
+      if (boot && isPublicBook) boot.textContent = '載入預約表單…'
+      if (boot && isPublicGuide) boot.textContent = '載入行前須知…'
       if (!isLiff && !isPublic) {
         var g1 = document.createElement('link')
         g1.rel = 'preconnect'

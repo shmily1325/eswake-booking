@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../../../lib/supabase'
 import { buildAllDayBlockedDates } from './liffBookingDates'
 import { triggerHaptic } from '../../../utils/haptic'
 import { LiffStyles } from '../components/LiffStyles'
@@ -202,6 +201,7 @@ export function BookWizardCore({
     let cancelled = false
     const load = async () => {
       try {
+        const { supabase } = await import('../../../lib/supabase')
         const [coachRes, restrictRes] = await Promise.all([
           supabase.from('coaches').select('id, name, designated_lesson_price_30min').eq('status', 'active').order('name'),
           supabase.from('reservation_restrictions').select('start_date, end_date, start_time, end_time, is_active').eq('is_active', true),

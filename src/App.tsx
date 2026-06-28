@@ -6,6 +6,10 @@ import { isBookSubdomain, isGuideSubdomain } from './pages/liff/book/bookPaths'
 import { isShopSubdomain } from './pages/shop/lib/shopPaths'
 
 const AdminApp = lazy(() => import('./AdminApp'))
+const LiffShopOrdersPreview = lazy(() =>
+  import('./pages/liff/dev/LiffShopOrdersPreview').then(m => ({ default: m.LiffShopOrdersPreview })),
+)
+
 const LiffMyBookings = lazy(() =>
   import('./pages/LiffMyBookings').then(m => ({ default: m.LiffMyBookings })),
 )
@@ -105,6 +109,16 @@ function App() {
                 </Suspense>
               }
             />
+            {import.meta.env.DEV && (
+              <Route
+                path="/dev/liff-shop-preview"
+                element={
+                  <Suspense fallback={<LiffBootScreen label="載入預覽…" />}>
+                    <LiffShopOrdersPreview />
+                  </Suspense>
+                }
+              />
+            )}
             <Route
               path="/shop/*"
               element={

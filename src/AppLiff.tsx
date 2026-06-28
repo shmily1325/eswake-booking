@@ -9,6 +9,9 @@ const LiffMyBookings = lazy(() =>
 const LiffBook = lazy(() =>
   import('./pages/liff/book/LiffBook').then(m => ({ default: m.LiffBook })),
 )
+const LiffShopOrdersPreview = lazy(() =>
+  import('./pages/liff/dev/LiffShopOrdersPreview').then(m => ({ default: m.LiffShopOrdersPreview })),
+)
 
 /** LIFF 專用入口：不載入 Admin / Shop 路由表 */
 export default function AppLiff() {
@@ -32,6 +35,16 @@ export default function AppLiff() {
               </Suspense>
             }
           />
+          {import.meta.env.DEV && (
+            <Route
+              path="/dev/liff-shop-preview"
+              element={
+                <Suspense fallback={<LiffBootScreen label="載入預覽…" />}>
+                  <LiffShopOrdersPreview />
+                </Suspense>
+              }
+            />
+          )}
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

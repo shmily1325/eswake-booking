@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { usePullToRefresh } from '../../../hooks/usePullToRefresh'
-import { liffContentPanel } from '../liffUiStyles'
+import { liffContentPanel, liffCard, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 import type { LiffShopOrder } from '../liffShopOrders'
 import {
   LIFF_ORDER_STATUS,
@@ -8,6 +8,10 @@ import {
   liffDeliveryLabel,
   liffOrderStatus,
 } from '../liffShopOrders'
+import { LiffPageHint } from './LiffPageHint'
+import { ShopOrdersListSkeleton } from './ShopOrdersListSkeleton'
+
+const ORDERS_PAGE_HINT = '商品問題請私訊官方'
 
 function formatOrderDate(createdAt: string): string {
   const d = createdAt.split('T')[0]
@@ -22,15 +26,14 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
   const [expanded, setExpanded] = useState(false)
   const visibleItems = collapsible && !expanded ? order.items.slice(0, 1) : order.items
   const hiddenCount = collapsible && !expanded ? order.items.length - 1 : 0
-  const showDetails = !collapsible || expanded
+  const showMeta = !collapsible || expanded
 
   return (
     <div
       style={{
-        border: '1px solid #e8e8e8',
-        borderRadius: '10px',
-        padding: '14px',
-        background: '#fafafa',
+        ...liffCard,
+        padding: '16px',
+        borderLeft: `4px solid ${status.color}`,
       }}
     >
       <button
@@ -54,19 +57,19 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
             justifyContent: 'space-between',
             alignItems: 'center',
             gap: 10,
-            marginBottom: 8,
+            marginBottom: showMeta ? 8 : 0,
           }}
         >
-          <div style={{ fontSize: '14px', fontWeight: 600, color: '#333' }}>
-            {formatOrderDate(order.created_at)}
+          <div style={{ fontSize: LIFF_TYPE.body, fontWeight: 600, color: LIFF_THEME.inkSoft }}>
+            📦 {formatOrderDate(order.created_at)}
           </div>
           <span
             style={{
               flexShrink: 0,
-              fontSize: '12px',
+              fontSize: LIFF_TYPE.caption,
               fontWeight: 600,
               padding: '4px 10px',
-              borderRadius: '6px',
+              borderRadius: '12px',
               color: status.color,
               background: status.bg,
             }}
@@ -75,40 +78,41 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
           </span>
         </div>
 
-        {showDetails && (
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: hiddenCount > 0 ? 6 : 8 }}>
+        {showMeta && (
+          <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.muted, marginBottom: hiddenCount > 0 ? 6 : 8 }}>
             {liffDeliveryLabel(order.delivery_method)}
+            <span style={{ color: LIFF_THEME.mutedLight }}> · {order.order_no}</span>
             {order.shipping_info ? (
-              <span style={{ color: '#aaa' }}> · {order.shipping_info}</span>
+              <span style={{ display: 'block', marginTop: 4, color: LIFF_THEME.mutedLight }}>
+                {order.shipping_info}
+              </span>
             ) : null}
-            {expanded && (
-              <span style={{ display: 'block', marginTop: 4, color: '#bbb' }}>{order.order_no}</span>
-            )}
           </div>
         )}
 
         {hiddenCount > 0 && (
-          <div style={{ fontSize: '12px', color: '#1565c0', marginBottom: 8, fontWeight: 500 }}>
+          <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.tabActive, marginBottom: 8, fontWeight: 500 }}>
             +{hiddenCount} 項 · 點開
           </div>
         )}
         {collapsible && expanded && (
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: 8 }}>收合</div>
+          <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.muted, marginBottom: 8 }}>收合</div>
         )}
       </button>
 
-      {showDetails && order.customer_note?.trim() && (
+      {showMeta && order.customer_note?.trim() && (
         <div
           style={{
-            fontSize: '12px',
-            color: '#0369a1',
-            background: '#f0f9ff',
-            borderRadius: '6px',
-            padding: '8px 10px',
-            marginBottom: 8,
-            lineHeight: 1.4,
+            marginBottom: 12,
+            padding: '12px',
+            background: LIFF_THEME.surfaceInset,
+            borderRadius: '12px',
+            fontSize: 13,
+            color: LIFF_THEME.inkSoft,
+            lineHeight: 1.5,
           }}
         >
+          <div style={{ fontWeight: 600, marginBottom: 4, color: LIFF_THEME.muted }}>備註</div>
           {order.customer_note.trim()}
         </div>
       )}
@@ -120,26 +124,25 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
             <div
               key={item.id}
               style={{
-                background: '#fff',
-                borderRadius: '8px',
-                padding: '10px 12px',
-                border: '1px solid #eee',
+                padding: '12px',
+                background: LIFF_THEME.surfaceInset,
+                borderRadius: '12px',
               }}
             >
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#222' }}>{title}</div>
+              <div style={{ fontSize: LIFF_TYPE.body, fontWeight: 600, color: LIFF_THEME.inkSoft }}>{title}</div>
               {subtitle && (
-                <div style={{ fontSize: '12px', color: '#888', marginTop: 2 }}>{subtitle}</div>
+                <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.muted, marginTop: 2 }}>{subtitle}</div>
               )}
               {chips.length > 0 ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                   {chips.map((chip) => (
                     <span
                       key={chip.label}
                       style={{
-                        fontSize: 11,
+                        fontSize: LIFF_TYPE.caption,
                         fontWeight: 600,
-                        padding: '3px 8px',
-                        borderRadius: 6,
+                        padding: '4px 10px',
+                        borderRadius: 12,
                         color: chip.color,
                         background: chip.bg,
                       }}
@@ -149,7 +152,7 @@ function ShopOrderCard({ order }: { order: LiffShopOrder }) {
                   ))}
                 </div>
               ) : (
-                <div style={{ fontSize: '12px', color: '#888', marginTop: 6 }}>×{item.qty}</div>
+                <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.muted, marginTop: 8 }}>×{item.qty}</div>
               )}
             </div>
           )
@@ -175,8 +178,8 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
     <div
       style={{
         textAlign: 'center',
-        fontSize: '12px',
-        color: pullReady || refreshing ? '#1565c0' : '#999',
+        fontSize: LIFF_TYPE.caption,
+        color: pullReady || refreshing ? LIFF_THEME.tabActive : LIFF_THEME.mutedLight,
         paddingBottom: pullDistance > 8 ? 8 : 0,
         height: refreshing ? 28 : Math.max(0, pullDistance - 8),
         lineHeight: '28px',
@@ -188,11 +191,7 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
   )
 
   if (loading) {
-    return (
-      <div style={{ ...liffContentPanel, textAlign: 'center', color: '#999', padding: '40px 20px' }}>
-        載入中…
-      </div>
-    )
+    return <ShopOrdersListSkeleton />
   }
 
   if (orders.length === 0) {
@@ -202,11 +201,18 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
         <div
           style={{
             ...liffContentPanel,
-            padding: '48px 20px',
+            padding: '20px 20px 60px',
             textAlign: 'center',
           }}
         >
-          <div style={{ fontSize: '16px', fontWeight: 600, color: '#666' }}>目前沒有商品訂單</div>
+          <LiffPageHint>{ORDERS_PAGE_HINT}</LiffPageHint>
+          <div style={{ fontSize: '64px', marginBottom: '16px' }}>📦</div>
+          <div style={{ fontSize: LIFF_TYPE.display - 2, fontWeight: 600, color: LIFF_THEME.inkSoft, marginBottom: 8 }}>
+            目前沒有商品訂單
+          </div>
+          <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.mutedLight }}>
+            店內開單後會顯示在這裡
+          </div>
         </div>
       </div>
     )
@@ -216,6 +222,7 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
     <div {...(onRefresh ? pullHandlers : {})}>
       {pullIndicator}
       <div style={liffContentPanel}>
+        <LiffPageHint>{ORDERS_PAGE_HINT}</LiffPageHint>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {orders.map((order) => (
             <ShopOrderCard key={order.id} order={order} />
