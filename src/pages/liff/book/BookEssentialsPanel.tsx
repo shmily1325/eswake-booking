@@ -93,12 +93,6 @@ export function BookEssentialsPanel({
   const showSelectedVideo = value === 'WS' || value === 'WB'
   const act = showSelectedVideo ? s.step1.activities[value] : null
   const bothSelected = value === 'BOTH'
-  const bothDualIcons = (
-    <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
-      <BookActivityIcon code="WS" size={22} />
-      <BookActivityIcon code="WB" size={22} />
-    </div>
-  )
 
   return (
     <>
@@ -137,16 +131,13 @@ export function BookEssentialsPanel({
         aria-pressed={bothSelected}
       >
         {bothSelected ? <BookSegmentCheck /> : null}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          {bothDualIcons}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...segmentZh, textAlign: 'left' }}>{s.step1.bothCardTitle}</div>
-            <div style={{ ...segmentMeta, textAlign: 'left', marginTop: 2 }}>{s.step1.bothSub}</div>
-            <div style={{ ...segmentPrice, textAlign: 'left', marginTop: 4 }}>
-              {s.step1.cardPriceBoth(priceBoth)}
-            </div>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 6 }}>
+          <BookActivityIcon code="WS" size={22} />
+          <BookActivityIcon code="WB" size={22} />
         </div>
+        <div style={segmentZh}>{s.step1.bothCardTitle}</div>
+        <div style={segmentMeta}>{s.step1.bothSub}</div>
+        <div style={segmentPrice}>{s.step1.cardPriceBoth(priceBoth)}</div>
       </button>
 
       {bothSelected ? (

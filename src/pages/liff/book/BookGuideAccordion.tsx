@@ -17,7 +17,7 @@ interface BookGuideAccordionProps {
 }
 
 export function BookGuideAccordion({ sections, defaultOpenId }: BookGuideAccordionProps) {
-  const [openId, setOpenId] = useState<string | null>(defaultOpenId ?? sections[0]?.id ?? null)
+  const [openId, setOpenId] = useState<string | null>(defaultOpenId ?? null)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

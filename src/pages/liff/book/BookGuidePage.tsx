@@ -17,6 +17,7 @@ import {
   visitMapUrl,
 } from './liffBookingGuide'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
+import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { BookCopyrightFooter } from './BookCopyrightFooter'
 
 function GuideBullets({ items }: { items: readonly string[] }) {
@@ -83,6 +84,33 @@ export function BookGuidePage() {
 
   const sections = [
     {
+      id: 'after-booking',
+      title: g.afterBooking.title,
+      content: <GuideBullets items={g.afterBooking.items} />,
+    },
+    {
+      id: 'cancel-policy',
+      title: g.cancelPolicy.title,
+      content: <GuideBullets items={g.cancelPolicy.items} />,
+    },
+    {
+      id: 'what-to-bring',
+      title: g.whatToBring.title,
+      content: (
+        <>
+          <div style={guideGroupHeading}>{g.whatToBring.clothing.heading}</div>
+          <GuideBullets items={g.whatToBring.clothing.items} />
+          <div style={{ ...guideNoteBox, marginTop: 10 }}>{g.whatToBring.clothing.avoid}</div>
+          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.wetsuit.heading}</div>
+          <p style={{ margin: 0 }}>{g.whatToBring.wetsuit.text}</p>
+          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.personal.heading}</div>
+          <GuideBullets items={g.whatToBring.personal.items} />
+          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.facilities.heading}</div>
+          <GuideBullets items={g.whatToBring.facilities.items} />
+        </>
+      ),
+    },
+    {
       id: 'directions',
       title: g.directions.title,
       content: (
@@ -123,53 +151,18 @@ export function BookGuidePage() {
         </>
       ),
     },
-    {
-      id: 'what-to-bring',
-      title: g.whatToBring.title,
-      content: (
-        <>
-          <div style={guideGroupHeading}>{g.whatToBring.clothing.heading}</div>
-          <GuideBullets items={g.whatToBring.clothing.items} />
-          <div style={{ ...guideNoteBox, marginTop: 10 }}>{g.whatToBring.clothing.avoid}</div>
-          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.wetsuit.heading}</div>
-          <p style={{ margin: 0 }}>{g.whatToBring.wetsuit.text}</p>
-          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.personal.heading}</div>
-          <GuideBullets items={g.whatToBring.personal.items} />
-          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.facilities.heading}</div>
-          <GuideBullets items={g.whatToBring.facilities.items} />
-        </>
-      ),
-    },
-    {
-      id: 'cancel-policy',
-      title: g.cancelPolicy.title,
-      content: <GuideBullets items={g.cancelPolicy.items} />,
-    },
-    {
-      id: 'after-booking',
-      title: g.afterBooking.title,
-      content: <GuideBullets items={g.afterBooking.items} />,
-    },
   ]
 
   return (
     <main style={{ ...bookPage, padding: '16px 16px 24px' }}>
       <p style={{ ...bookSectionSub, marginTop: 0, marginBottom: 16 }}>{g.intro}</p>
 
-      <BookGuideAccordion sections={sections} defaultOpenId="directions" />
+      <BookGuideAccordion sections={sections} />
 
-      <p style={{ textAlign: 'center', margin: '20px 0 8px', fontSize: ty.caption }}>
-        <a
-          href={buildOaHomeUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: T.estimateAccent, fontWeight: 600, textDecoration: 'none' }}
-        >
-          {g.lineContact}
-        </a>
-      </p>
-
-      <BookCopyrightFooter />
+      <BookCopyrightFooter
+        subtitle={ES_BRAND.guideAreaLabel}
+        link={{ href: buildOaHomeUrl(), label: g.lineContact }}
+      />
     </main>
   )
 }
