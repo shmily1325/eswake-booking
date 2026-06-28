@@ -3,7 +3,7 @@ import { reminderBox, warnBox } from './bookStyles'
 import type { LiffBookingFormState, TimePreference } from './types'
 import { BOAT_BIG_DUAL_MIN, BOAT_SMALL_DUAL_MIN, onBoatTotal, usesBigBoat } from './liffBookingBoats'
 import type { BookI18nStrings } from './liffBookingI18n'
-import { BOOK_TYPE as ty } from './bookTheme'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookContextTipsProps {
   step: 2 | 3 | 4
@@ -19,6 +19,31 @@ export function BookContextTips({ step, form, pickTimePref }: BookContextTipsPro
   if (!tips.length) return null
 
   const hasWarn = tips.some(t => t.tone === 'warn')
+
+  if (step === 2) {
+    return (
+      <div
+        style={{
+          fontSize: ty.caption,
+          color: hasWarn ? '#b45309' : T.muted,
+          textAlign: 'center',
+          lineHeight: 1.55,
+          marginTop: 12,
+        }}
+      >
+        {tips.length === 1 ? (
+          <div>{tips[0].text}</div>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: 18, textAlign: 'left', display: 'inline-block' }}>
+            {tips.map(tip => (
+              <li key={tip.text} style={{ marginBottom: 4 }}>{tip.text}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+
   const boxStyle = hasWarn ? warnBox : reminderBox
 
   return (

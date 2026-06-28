@@ -14,19 +14,18 @@ const wrap: CSSProperties = {
   lineHeight: 1.65,
 }
 
-const pillBtn: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginTop: 8,
-  padding: '8px 18px',
-  borderRadius: 999,
-  border: '1px solid rgba(0,185,0,0.35)',
-  background: 'rgba(0,185,0,0.08)',
+const textLinkBtn: CSSProperties = {
+  display: 'inline',
+  padding: 0,
+  margin: 0,
+  border: 'none',
+  background: 'none',
   color: '#009900',
-  fontSize: ty.body,
+  fontSize: 'inherit',
   fontWeight: 600,
   cursor: 'pointer',
+  textDecoration: 'underline',
+  textUnderlineOffset: 2,
 }
 
 interface BookStaffHintProps {
@@ -79,7 +78,7 @@ export function BookStaffHint({
         <div style={{ fontSize: ty.caption, color: '#aaa' }}>
           {s.staff.splitActivity}
         </div>
-        <button type="button" onClick={handleAsk} style={pillBtn}>
+        <button type="button" onClick={handleAsk} style={textLinkBtn}>
           {s.staff.askStaff}
         </button>
       </div>
@@ -88,9 +87,9 @@ export function BookStaffHint({
 
   if (step === 2 || step === 3) {
     return (
-      <div style={wrap}>
-        <div>{s.staff.needHelp}</div>
-        <button type="button" onClick={handleAsk} style={pillBtn}>
+      <div style={{ ...wrap, marginTop: 16 }}>
+        <span>{s.staff.needHelp} </span>
+        <button type="button" onClick={handleAsk} style={textLinkBtn}>
           {s.staff.askStaff}
         </button>
       </div>

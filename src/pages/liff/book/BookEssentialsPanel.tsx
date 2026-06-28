@@ -2,12 +2,10 @@ import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { activitySegmentLabels } from './liffBookingI18n'
-import { resolveVisitGuideUrl } from './liffBookingGuide'
 import { BookActivityIcon } from './BookActivityIcon'
 import { BookSegmentCheck } from './BookSegmentCheck'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import {
-  bookFieldGroup,
   bothSegmentBtn,
   includesTrustLine,
   selectionDetail,
@@ -103,11 +101,10 @@ export function BookEssentialsPanel({
   )
 
   return (
-    <div style={bookFieldGroup}>
+    <>
       <div style={{ ...segmentRow, marginBottom: 0 }}>
         {CHOICES.map(code => {
-          const highlighted = value === code || bothSelected
-          const showCheck = value === code
+          const selected = value === code
           const { primary, secondary } = activitySegmentLabels(code, locale)
           const diff = code === 'WS' ? s.step1.diffWS : s.step1.diffWB
           return (
@@ -115,11 +112,11 @@ export function BookEssentialsPanel({
               key={code}
               type="button"
               className="book-segment-btn"
-              style={segmentBtn(highlighted)}
+              style={segmentBtn(selected)}
               onClick={() => pickSingle(code)}
-              aria-pressed={highlighted}
+              aria-pressed={selected}
             >
-              {showCheck ? <BookSegmentCheck /> : null}
+              {selected ? <BookSegmentCheck /> : null}
               {segmentIcon(code)}
               <div style={segmentZh}>{primary}</div>
               <div style={segmentEn}>{secondary}</div>
@@ -212,20 +209,9 @@ export function BookEssentialsPanel({
         {s.common.priceIncludes}
       </div>
 
-      <p style={{ margin: '10px 0 0', textAlign: 'center' }}>
-        <a
-          href={resolveVisitGuideUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontSize: ty.caption, color: T.muted, textDecoration: 'underline' }}
-        >
-          {s.step1.compareLink}
-        </a>
-      </p>
-
       {validationHint ? (
         <div style={stepInlineHint} role="status">{validationHint}</div>
       ) : null}
-    </div>
+    </>
   )
 }

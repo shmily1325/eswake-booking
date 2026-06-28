@@ -1,10 +1,12 @@
+import { useState } from 'react'
+
+import { buildOaHomeUrl } from '../../shop/lib/lineDeepLink'
 import { useBookLocale } from './BookLocaleContext'
 import { BookGuideAccordion } from './BookGuideAccordion'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import {
   bookPage,
   bookSectionSub,
-  bookSectionTitle,
   guideBulletList,
   guideGroupHeading,
   guideNoteBox,
@@ -15,7 +17,6 @@ import {
   visitMapUrl,
 } from './liffBookingGuide'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
-import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { BookCopyrightFooter } from './BookCopyrightFooter'
 
 function GuideBullets({ items }: { items: readonly string[] }) {
@@ -28,52 +29,71 @@ function GuideBullets({ items }: { items: readonly string[] }) {
   )
 }
 
+function GuideAddressRow({ address, mapQuery, copyLabel, copiedLabel }: {
+  address: string
+  mapQuery: string
+  copyLabel: string
+  copiedLabel: string
+}) {
+  const [copied, setCopied] = useState(false)
+
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(address)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 12px' }}>
+      <a
+        href={visitMapUrl(mapQuery)}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: T.estimateAccent, fontWeight: 600, textDecoration: 'underline' }}
+      >
+        {address}
+      </a>
+      <button
+        type="button"
+        onClick={() => void copyAddress()}
+        style={{
+          border: `1px solid ${T.borderSubtle}`,
+          borderRadius: 999,
+          background: 'white',
+          color: copied ? T.estimateAccent : T.muted,
+          fontSize: ty.caption,
+          fontWeight: 500,
+          padding: '4px 10px',
+          cursor: 'pointer',
+        }}
+      >
+        {copied ? copiedLabel : copyLabel}
+      </button>
+    </div>
+  )
+}
+
 export function BookGuidePage() {
   const { s } = useBookLocale()
   const g = s.guide
 
   const sections = [
     {
-      id: 'after-booking',
-      title: g.afterBooking.title,
-      content: <GuideBullets items={g.afterBooking.items} />,
-    },
-    {
-      id: 'cancel-policy',
-      title: g.cancelPolicy.title,
-      content: <GuideBullets items={g.cancelPolicy.items} />,
-    },
-    {
-      id: 'what-to-bring',
-      title: g.whatToBring.title,
-      content: (
-        <>
-          <div style={guideGroupHeading}>{g.whatToBring.clothing.heading}</div>
-          <GuideBullets items={g.whatToBring.clothing.items} />
-          <div style={{ ...guideNoteBox, marginTop: 10 }}>{g.whatToBring.clothing.avoid}</div>
-          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.wetsuit.heading}</div>
-          <p style={{ margin: 0 }}>{g.whatToBring.wetsuit.text}</p>
-          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.personal.heading}</div>
-          <GuideBullets items={g.whatToBring.personal.items} />
-          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.facilities.heading}</div>
-          <GuideBullets items={g.whatToBring.facilities.items} />
-        </>
-      ),
-    },
-    {
       id: 'directions',
       title: g.directions.title,
       content: (
         <>
           <div style={{ fontWeight: 600, color: T.ink, marginBottom: 6 }}>{g.directions.addressLabel}</div>
-          <a
-            href={visitMapUrl(g.directions.mapQuery)}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: T.estimateAccent, fontWeight: 600, textDecoration: 'underline' }}
-          >
-            {g.directions.address}
-          </a>
+          <GuideAddressRow
+            address={g.directions.address}
+            mapQuery={g.directions.mapQuery}
+            copyLabel={g.copyAddress}
+            copiedLabel={g.copyAddressDone}
+          />
           <div style={{ ...guideNoteBox, marginTop: 12 }}>{g.directions.gateNote}</div>
           <p style={{ margin: '10px 0 0', color: T.muted, fontSize: ty.caption, lineHeight: 1.55 }}>
             {g.directions.landmark}
@@ -103,16 +123,53 @@ export function BookGuidePage() {
         </>
       ),
     },
+    {
+      id: 'what-to-bring',
+      title: g.whatToBring.title,
+      content: (
+        <>
+          <div style={guideGroupHeading}>{g.whatToBring.clothing.heading}</div>
+          <GuideBullets items={g.whatToBring.clothing.items} />
+          <div style={{ ...guideNoteBox, marginTop: 10 }}>{g.whatToBring.clothing.avoid}</div>
+          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.wetsuit.heading}</div>
+          <p style={{ margin: 0 }}>{g.whatToBring.wetsuit.text}</p>
+          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.personal.heading}</div>
+          <GuideBullets items={g.whatToBring.personal.items} />
+          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.facilities.heading}</div>
+          <GuideBullets items={g.whatToBring.facilities.items} />
+        </>
+      ),
+    },
+    {
+      id: 'cancel-policy',
+      title: g.cancelPolicy.title,
+      content: <GuideBullets items={g.cancelPolicy.items} />,
+    },
+    {
+      id: 'after-booking',
+      title: g.afterBooking.title,
+      content: <GuideBullets items={g.afterBooking.items} />,
+    },
   ]
 
   return (
     <main style={{ ...bookPage, padding: '16px 16px 24px' }}>
-      <h1 style={{ ...bookSectionTitle, fontSize: ty.display, marginBottom: 6 }}>{g.pageTitle}</h1>
-      <p style={{ ...bookSectionSub, marginBottom: 16 }}>{g.intro}</p>
+      <p style={{ ...bookSectionSub, marginTop: 0, marginBottom: 16 }}>{g.intro}</p>
 
-      <BookGuideAccordion sections={sections} defaultOpenId="after-booking" />
+      <BookGuideAccordion sections={sections} defaultOpenId="directions" />
 
-      <BookCopyrightFooter subtitle={ES_BRAND.guideAreaLabel} />
+      <p style={{ textAlign: 'center', margin: '20px 0 8px', fontSize: ty.caption }}>
+        <a
+          href={buildOaHomeUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: T.estimateAccent, fontWeight: 600, textDecoration: 'none' }}
+        >
+          {g.lineContact}
+        </a>
+      </p>
+
+      <BookCopyrightFooter />
     </main>
   )
 }

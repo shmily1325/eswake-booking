@@ -1,8 +1,8 @@
 import { getOaId, isMobileDevice } from '../../shop/lib/lineDeepLink'
-import { renderBookingLineMessage } from './bookingLineContext'
+import { renderBookingSubmitMessage } from './bookingLineContext'
 import type { CoachOption, LiffBookingFormState } from './types'
 import type { Member } from '../types'
-import { BOOK_I18N, type BookLocale } from './liffBookingI18n'
+import type { BookLocale } from './liffBookingI18n'
 import {
   computePriceEstimate,
   type PriceEstimate,
@@ -27,17 +27,7 @@ export function renderBookingInquiryMessage(
   estimate: PriceEstimate | null,
   locale: BookLocale = 'zh',
 ): string {
-  const m = BOOK_I18N[locale].lineMessage
-  return renderBookingLineMessage(state, coaches, locale, {
-    opener: m.submitTitle,
-    includeParty: true,
-    includeDates: true,
-    includeCoach: true,
-    includeContact: true,
-    includeEstimate: Boolean(estimate),
-    includeNotes: true,
-    estimate,
-  })
+  return renderBookingSubmitMessage(state, coaches, locale, estimate)
 }
 
 export function buildBookingInquiry(

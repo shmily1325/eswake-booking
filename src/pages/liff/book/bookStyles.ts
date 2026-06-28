@@ -289,6 +289,36 @@ export const stepFieldPrompt: CSSProperties = {
   lineHeight: 1.35,
 }
 
+/** Step 2 區段分隔（取代嵌套小卡邊框） */
+export const bookSectionDivider: CSSProperties = {
+  border: 'none',
+  borderTop: `1px solid ${T.borderSubtle}`,
+  margin: '20px 0',
+}
+
+/** Step 2 估價 footer（單一底部分隔，無額外底色框） */
+export const bookStep2Estimate: CSSProperties = {
+  marginTop: 20,
+  paddingTop: 16,
+  borderTop: `1px solid ${T.borderSubtle}`,
+}
+
+export const step2EstimateSummary: CSSProperties = {
+  fontSize: ty.caption,
+  fontWeight: 600,
+  color: T.inkSoft,
+  textAlign: 'center',
+  lineHeight: 1.5,
+  marginBottom: 8,
+}
+
+/** Step 2 選填區（跟船等）：無虛線框，僅頂部分隔 */
+export const optionalSectionFlat: CSSProperties = {
+  marginTop: 20,
+  paddingTop: 4,
+  borderTop: `1px solid ${T.borderSubtle}`,
+}
+
 /** 各步必填表單分組 */
 export const bookFieldGroup: CSSProperties = {
   padding: '14px 14px 4px',
@@ -348,6 +378,49 @@ export const footerSoftHint: CSSProperties = {
   marginBottom: 10,
   padding: '6px 8px',
 }
+
+/** Step 4 區塊標題 */
+export const confirmSectionTitle: CSSProperties = {
+  fontSize: ty.title,
+  fontWeight: 700,
+  color: T.ink,
+  marginBottom: 12,
+  lineHeight: 1.35,
+}
+
+/** Step 4 聯絡區標題 */
+export const confirmContactTitle: CSSProperties = {
+  fontSize: ty.body,
+  fontWeight: 700,
+  color: T.inkSoft,
+  marginBottom: 12,
+}
+
+export const bookNotesInput: CSSProperties = {
+  width: '100%',
+  padding: 14,
+  border: `1px solid ${T.borderSubtle}`,
+  borderRadius: 12,
+  fontSize: ty.body,
+  lineHeight: 1.5,
+  boxSizing: 'border-box',
+  background: T.surfaceMuted,
+  outline: 'none',
+  minHeight: 76,
+  resize: 'vertical',
+  fontFamily: 'inherit',
+}
+
+export const submitConfirmBtn = (ready: boolean): CSSProperties => ({
+  ...linePrimaryBtn,
+  flex: 1,
+  minHeight: 52,
+  fontSize: ty.title,
+  fontWeight: 700,
+  letterSpacing: '0.02em',
+  boxShadow: ready ? '0 4px 16px rgba(0,185,0,0.32)' : 'none',
+  transition: 'box-shadow 0.2s ease, opacity 0.2s ease',
+})
 
 export const fieldHint: CSSProperties = {
   fontSize: ty.caption,
@@ -565,6 +638,17 @@ export const step2SummaryLine: CSSProperties = {
   lineHeight: 1.5,
 }
 
+export const flatListRow: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  padding: '10px 0',
+  borderBottom: `1px solid ${T.borderSubtle}`,
+  fontSize: ty.body,
+  color: T.inkSoft,
+}
+
 /** Step 1 選完後的價格＋已含說明 */
 export const step1Summary: CSSProperties = {
   marginTop: 14,
@@ -651,26 +735,29 @@ export const selectedDatePill: CSSProperties = {
   color: T.estimateDetailInk,
 }
 
-export const summaryRow: CSSProperties = {
+export const summaryRow = (isLast = false): CSSProperties => ({
   display: 'flex',
-  gap: 10,
+  gap: 12,
+  alignItems: 'flex-start',
   fontSize: ty.body,
   lineHeight: 1.55,
-  padding: '6px 0',
-  borderBottom: `1px solid ${T.borderSubtle}`,
-}
+  padding: '9px 0',
+  borderBottom: isLast ? 'none' : `1px solid ${T.borderSubtle}`,
+})
 
 export const summaryLabel: CSSProperties = {
-  flex: '0 0 52px',
+  flex: '0 0 56px',
   fontSize: ty.caption,
   fontWeight: 600,
   color: T.muted,
+  paddingTop: 1,
 }
 
 export const summaryValue: CSSProperties = {
   flex: 1,
   color: T.inkSoft,
   minWidth: 0,
+  fontWeight: 500,
 }
 
 export const guideAccordionHeader = (open: boolean): CSSProperties => ({

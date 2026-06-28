@@ -50,7 +50,6 @@ export interface BookI18nStrings {
     cardPriceWS: (amount: string) => string
     cardPriceWB: (small: string, big: string) => string
     cardPriceBoth: (amount: string) => string
-    compareLink: string
     videoMandarinNote: string
     memberRateApplied: string
   }
@@ -68,6 +67,7 @@ export interface BookI18nStrings {
     firstTimeLand: string
     firstTimeWater: string
     firstTimeDetail: string
+    bothPricingNote: string
     experienced: string
     experiencedNote: string
     firstTimeUnitPrice: (amount: string) => string
@@ -146,6 +146,8 @@ export interface BookI18nStrings {
     phonePh: string
     notesPh: string
     notesPhBoth: string
+    messagePreviewExpand: string
+    messagePreviewCollapse: string
     attireLink: string
     desktopCopy: string
     boat: string
@@ -227,6 +229,15 @@ export interface BookI18nStrings {
   }
   lineMessage: {
     submitTitle: string
+    labelHeadcount: string
+    labelActivity: string
+    labelDates: string
+    labelCoach: string
+    labelExperience: string
+    labelContact: string
+    labelEstimate: string
+    labelNotes: string
+    experienceLine: (headcount: number, beginnerCount: number | null) => string
     coachLine: (name: string) => string
     coachNone: string
     coachMissing: string
@@ -274,8 +285,10 @@ export interface BookI18nStrings {
   }
   guide: {
     headerTitle: string
-    pageTitle: string
     intro: string
+    copyAddress: string
+    copyAddressDone: string
+    lineContact: string
     afterBooking: { title: string; items: readonly string[] }
     cancelPolicy: { title: string; items: readonly string[] }
     whatToBring: {
@@ -351,7 +364,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       cardPriceWS: amount => `初次 ${amount}起`,
       cardPriceWB: (small, big) => `初次 ${small}～${big}`,
       cardPriceBoth: amount => `每項 ${amount}起`,
-      compareLink: '不確定差在哪？看項目說明',
       videoMandarinNote: '影片為中文解說',
       memberRateApplied: '已滑過已套用會員價',
     },
@@ -369,6 +381,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       firstTimeLand: '陸上教學 10 分鐘',
       firstTimeWater: '水上每人 20 分鐘',
       firstTimeDetail: '陸上教學 10 分鐘 · 水上每人 20 分鐘',
+      bothPricingNote: '混搭梯次：依各人實際玩的項目計價',
       experienced: '已經滑過',
       experiencedNote: '水上每人 20 分鐘計價',
       firstTimeUnitPrice: amount => `體驗 ${amount}／人`,
@@ -455,7 +468,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       namePh: '姓名',
       phonePh: '電話',
       notesPh: '特殊需求（選填）',
-      notesPhBoth: '各幾人玩什麼（例：2 寬板、3 衝浪）· 特殊需求',
+      notesPhBoth: '各幾人玩什麼（例：2 人寬板滑水、3 人快艇衝浪）· 特殊需求',
+      messagePreviewExpand: '預覽將傳給小編的訊息',
+      messagePreviewCollapse: '收合預覽',
       attireLink: '行前須知（穿著、交通、改期）→',
       desktopCopy: '請複製訊息到 LINE 官方帳號：',
       boat: '船型',
@@ -536,9 +551,27 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     lineMessage: {
       submitTitle: '【預約】',
+      labelHeadcount: '預約人數：',
+      labelActivity: '預約項目：',
+      labelDates: '希望預約的日期及時間：',
+      labelCoach: '是否指定教練：',
+      labelExperience: '是否是第一次滑：',
+      labelContact: '聯絡人：',
+      labelEstimate: '參考價：',
+      labelNotes: '備註：',
+      experienceLine: (headcount, beginnerCount) => {
+        if (beginnerCount == null) return '—'
+        if (beginnerCount >= headcount) {
+          return headcount === 1 ? '是' : '是（全部）'
+        }
+        if (beginnerCount === 0) {
+          return headcount === 1 ? '否（已滑過）' : '否（全部已滑過）'
+        }
+        return `${beginnerCount} 位第一次、${headcount - beginnerCount} 位已滑過`
+      },
       coachLine: name => `教練 ${name}`,
-      coachNone: '教練 不指定',
-      coachMissing: '教練 待指定',
+      coachNone: '不指定',
+      coachMissing: '待指定',
       contactLine: (name, phone) => `${name} · ${phone}`,
       estimateLine: total => `約 ${total}（參考）`,
       notesPrefix: '備註：',
@@ -587,8 +620,10 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     guide: {
       headerTitle: ES_BRAND.guideAreaLabel,
-      pageTitle: '預約完成注意事項',
       intro: '出發前請先看這裡：穿著、交通、改期規則與當日提醒。',
+      copyAddress: '複製地址',
+      copyAddressDone: '已複製',
+      lineContact: '有疑問？官方 LINE 詢問',
       afterBooking: {
         title: '預約完成注意事項',
         items: [
@@ -600,9 +635,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       cancelPolicy: {
         title: '取消與更改預約',
         items: [
-          '出發日前 6 日至前 4 日內（不含出發日）可更改日期，但僅限一次；經改期後的活動恕不接受取消。',
-          '出發日前 3 日至當日內不接受更改日期。',
-          '遇天候狀況不佳時，請來訊詢問確認是否可進行活動。八里地勢臨海，天氣常與市區不同，往往市區下雨但八里沒有。',
+          '出發日 4～6 天前（不含出發日）可改期一次；改期後恕不接受取消。',
+          '出發日 3 天內（含當日）不接受改期。',
+          '遇天候不佳請先來訊確認。八里臨海，天氣常與市區不同，市區下雨但八里可能是晴天。',
         ],
       },
       whatToBring: {
@@ -694,7 +729,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       cardPriceWS: amount => `First-time from ${amount}`,
       cardPriceWB: (small, big) => `First-time ${small}–${big}`,
       cardPriceBoth: amount => `${amount} per activity`,
-      compareLink: 'Not sure? Compare activities',
       videoMandarinNote: 'Video in Mandarin',
       memberRateApplied: 'Member rate applied (returning riders)',
     },
@@ -712,6 +746,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       firstTimeLand: '10 min land lesson',
       firstTimeWater: '20 min water each',
       firstTimeDetail: '10 min land · 20 min water each',
+      bothPricingNote: 'Mixed trip: priced per activity each rider plays',
       experienced: 'Experienced',
       experiencedNote: '20 min water, time-based rate',
       firstTimeUnitPrice: amount => `First-timer ${amount}/person`,
@@ -798,7 +833,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       namePh: 'Name',
       phonePh: 'Phone',
       notesPh: 'Special requests (optional)',
-      notesPhBoth: 'Headcount per activity (e.g. 2 WB, 3 WS) · special requests',
+      notesPhBoth: 'Headcount per activity (e.g. 2 wakeboard, 3 wakesurf) · special requests',
+      messagePreviewExpand: 'Preview LINE message to staff',
+      messagePreviewCollapse: 'Hide preview',
       attireLink: 'Visit guide (attire, directions, changes) →',
       desktopCopy: 'Copy this message to our LINE account:',
       boat: 'Boat',
@@ -879,9 +916,27 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     lineMessage: {
       submitTitle: '[Booking]',
+      labelHeadcount: 'Riders: ',
+      labelActivity: 'Activity: ',
+      labelDates: 'Preferred date & time: ',
+      labelCoach: 'Coach preference: ',
+      labelExperience: 'First time?: ',
+      labelContact: 'Contact: ',
+      labelEstimate: 'Estimate: ',
+      labelNotes: 'Notes: ',
+      experienceLine: (headcount, beginnerCount) => {
+        if (beginnerCount == null) return '—'
+        if (beginnerCount >= headcount) {
+          return headcount === 1 ? 'Yes' : 'Yes (all)'
+        }
+        if (beginnerCount === 0) {
+          return headcount === 1 ? 'No (experienced)' : 'No (all experienced)'
+        }
+        return `${beginnerCount} first-timer${beginnerCount > 1 ? 's' : ''}, ${headcount - beginnerCount} experienced`
+      },
       coachLine: name => `Coach ${name}`,
-      coachNone: 'Coach: no preference',
-      coachMissing: 'Coach: TBD',
+      coachNone: 'No preference',
+      coachMissing: 'TBD',
       contactLine: (name, phone) => `${name} · ${phone}`,
       estimateLine: total => `~${total} (estimate)`,
       notesPrefix: 'Notes: ',
@@ -930,8 +985,10 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     guide: {
       headerTitle: 'Visit guide',
-      pageTitle: 'After you book',
       intro: 'Before you come: what to wear, how to get here, and change/cancel rules.',
+      copyAddress: 'Copy address',
+      copyAddressDone: 'Copied',
+      lineContact: 'Questions? Message us on LINE',
       afterBooking: {
         title: 'After you book',
         items: [
@@ -943,9 +1000,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       cancelPolicy: {
         title: 'Changes & cancellation',
         items: [
-          '6–4 days before your session (not counting the day itself): one date change allowed; after a change, cancellation is not accepted.',
-          '3 days before through the day of: no date changes.',
-          'If weather looks bad, message us to confirm. Bali’s coast often differs from Taipei — it may rain in the city but stay dry here.',
+          '4–6 days before (not counting session day): one date change; no cancellation after a change.',
+          '3 days before through session day: no date changes.',
+          'If weather looks uncertain, message us first. Bali’s coast often differs from Taipei — sunny here while it rains in the city.',
         ],
       },
       whatToBring: {

@@ -123,8 +123,8 @@ export function designatedCoachPriceLabel(
   if (ws != null && wb == null) return formatCoachPrice(ws)
   if (wb === ws) return formatCoachPrice(wb!)
 
-  const wbTag = locale === 'en' ? 'WB' : '寬板'
-  const wsTag = locale === 'en' ? 'WS' : '衝浪'
+  const wbTag = locale === 'en' ? 'WB' : '寬板滑水'
+  const wsTag = locale === 'en' ? 'WS' : '快艇衝浪'
   return `${wbTag} ${formatCoachPrice(wb!)} · ${wsTag} ${formatCoachPrice(ws!)}`
 }
 

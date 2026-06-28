@@ -1,8 +1,7 @@
 import { useBookLocale } from './BookLocaleContext'
 import { activityDisplayName, isBothActivities } from './liffBookingConfig'
 import { boatLayoutLabel } from './liffBookingBoats'
-import { summaryLabel, summaryRow, summaryValue } from './bookStyles'
-import { BOOK_TYPE as ty } from './bookTheme'
+import { confirmSectionTitle, summaryLabel, summaryRow, summaryValue } from './bookStyles'
 import type { CoachOption, LiffBookingFormState, PreferredDate } from './types'
 import type { BookLocale } from './liffBookingI18n'
 
@@ -14,9 +13,9 @@ interface BookConfirmSummaryProps {
   formatDate: (pd: PreferredDate) => string
 }
 
-function SummaryLine({ label, value }: { label: string; value: string }) {
+function SummaryLine({ label, value, isLast }: { label: string; value: string; isLast?: boolean }) {
   return (
-    <div style={summaryRow}>
+    <div style={summaryRow(isLast)}>
       <div style={summaryLabel}>{label}</div>
       <div style={summaryValue}>{value}</div>
     </div>
@@ -50,23 +49,27 @@ export function BookConfirmSummary({
     ? dates.map(formatDate).join(locale === 'zh' ? '、' : ', ')
     : '—'
 
+  const showBoat = form.activity && (
+    !isBothActivities(form.activity) || form.activity === 'BOTH'
+  )
+
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: ty.title, fontWeight: 700, color: '#222', marginBottom: 10 }}>
-        {s.step4.summaryTitle}
-      </div>
+    <div>
+      <div style={confirmSectionTitle}>{s.step4.summaryTitle}</div>
       <SummaryLine label={s.step4.labelActivity} value={activityLabel} />
       <SummaryLine label={s.step4.labelPeople} value={peopleLine} />
-      {form.activity && !isBothActivities(form.activity) ? (
+      {showBoat ? (
         <SummaryLine
           label={s.step4.labelBoat}
-          value={boatLayoutLabel(form.activity, form.headcount, form.boatPreference, locale, form.followBoatCount)}
+          value={
+            form.activity === 'BOTH'
+              ? boatLayoutLabel('BOTH', form.headcount, 'big', locale, form.followBoatCount)
+              : boatLayoutLabel(form.activity!, form.headcount, form.boatPreference, locale, form.followBoatCount)
+          }
         />
-      ) : form.activity === 'BOTH' ? (
-        <SummaryLine label={s.step4.labelBoat} value={boatLayoutLabel('BOTH', form.headcount, 'big', locale, form.followBoatCount)} />
       ) : null}
       <SummaryLine label={s.step4.labelDates} value={datesLine} />
-      <SummaryLine label={s.step4.labelCoach} value={coachName} />
+      <SummaryLine label={s.step4.labelCoach} value={coachName} isLast />
     </div>
   )
 }

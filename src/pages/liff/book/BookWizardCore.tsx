@@ -9,8 +9,8 @@ import { BookEstimateCard } from './BookEstimateCard'
 import { BookExperiencePanel } from './BookExperiencePanel'
 import { BookHeadcountStepper } from './BookHeadcountStepper'
 import { BookPricingLegend } from './BookPricingLegend'
-import { BookStep2PriceSummary } from './BookStep2PriceSummary'
-import { BookStep2Summary } from './BookStep2Summary'
+import { buildStep2SummaryLine } from './BookStep2Summary'
+import { BookLineMessagePreview } from './BookLineMessagePreview'
 import { BookConfirmSummary } from './BookConfirmSummary'
 import { BookFollowBoatPanel } from './BookFollowBoatPanel'
 import { BookStepHeader, BookStepIntro, BookLiffWizardHeader } from './BookStepHeader'
@@ -41,13 +41,17 @@ import {
 } from './liffBookingConfig'
 import { onBoatTotal } from './liffBookingBoats'
 import { computePriceEstimate } from './liffBookingPricing'
+import { step2ShowsFirstTimePrice } from './liffBookingPrices'
 import { designatedCoachPrice20 } from './liffBookingCoaches'
-import { buildBookingInquiry, launchBookingInquiry } from './liffBookingMessage'
+import { buildBookingInquiry, launchBookingInquiry, renderBookingInquiryMessage } from './liffBookingMessage'
 import {
   bookCard,
-  bookFieldGroup,
+  bookSectionDivider,
   bookInput,
-  listItemRow,
+  bookNotesInput,
+  confirmContactTitle,
+  flatListRow,
+  optionalSectionFlat,
   optionalSectionLabel,
   bookPage,
   chipBtn,
@@ -56,10 +60,10 @@ import {
   fieldHint,
   footerBlockHint,
   footerSoftHint,
-  linePrimaryBtn,
   primaryBtn,
   secondaryBtn,
   stickyFooter,
+  submitConfirmBtn,
 } from './bookStyles'
 import { getStepBlockReason } from './liffBookingValidation'
 import { liffTrack } from '../track'
@@ -98,7 +102,7 @@ const INITIAL_STATE: LiffBookingFormState = {
   boatPreference: null,
   skillLevel: 'first_time',
   headcount: 1,
-  beginnerCount: 1,
+  beginnerCount: null,
   coachChoice: 'none',
   coachId: null,
   preferredDates: [],
@@ -160,12 +164,6 @@ export function BookWizardCore({
   const [showAlternateDates, setShowAlternateDates] = useState(false)
   const [pickDate, setPickDate] = useState('')
   const [pickTimePref, setPickTimePref] = useState<TimePreference>('morning')
-
-  useEffect(() => {
-    if (step === 2 && form.beginnerCount == null) {
-      setForm(prev => ({ ...prev, ...syncBookingPeople(prev, {}) }))
-    }
-  }, [step, form.beginnerCount])
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -230,6 +228,11 @@ export function BookWizardCore({
   const estimate = useMemo(
     () => computePriceEstimate(form, coaches, member, locale),
     [form, coaches, member, locale],
+  )
+
+  const linePreviewMessage = useMemo(
+    () => renderBookingInquiryMessage(form, coaches, estimate, locale),
+    [form, coaches, estimate, locale],
   )
 
   const syncPrimarySchedule = (date: string, timePref: TimePreference) => {
@@ -384,6 +387,7 @@ export function BookWizardCore({
     ? null
     : getStepBlockReason(step, form, pickDate, s.validation, lineUserId, { requireLine })
   const showFooterHint = blockReason != null && step !== 1
+  const showSubmitHint = step === 4 && blockReason == null
   const step1InlineHint = step === 1 && !stepReady ? blockReason : null
 
   return (
@@ -412,52 +416,53 @@ export function BookWizardCore({
         {/* Step 2: 誰要滑 */}
         {step === 2 && (
           <div style={bookCard}>
-            <div style={bookFieldGroup}>
-              <div style={{ marginBottom: 16 }}>
-                <div style={stepFieldPrompt}>{s.step2.headcount}</div>
-                <BookHeadcountStepper
-                  value={form.headcount}
-                  onChange={n => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
+            <div style={stepFieldPrompt}>{s.step2.headcount}</div>
+            <BookHeadcountStepper
+              value={form.headcount}
+              onChange={n => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, { headcount: n }) }))}
+            />
+
+            <hr style={bookSectionDivider} aria-hidden />
+
+            <BookExperiencePanel
+              headcount={form.headcount}
+              beginnerCount={form.beginnerCount}
+              activity={form.activity}
+              onSyncPeople={patch => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, patch) }))}
+            />
+            {form.activity && form.activity !== 'WB' && form.beginnerCount == null ? (
+              <BookPricingLegend activity={form.activity} />
+            ) : null}
+
+            {form.activity === 'WB' ? (
+              <>
+                <hr style={bookSectionDivider} aria-hidden />
+                <BookBoatPicker
+                  value={form.boatPreference}
+                  aboard={onBoatTotal(form.headcount, form.followBoatCount)}
+                  onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
                 />
-              </div>
+              </>
+            ) : null}
 
-              <div style={{ marginBottom: 16 }}>
-                <BookExperiencePanel
-                  headcount={form.headcount}
-                  beginnerCount={form.beginnerCount}
-                  onSyncPeople={patch => setForm(prev => ({ ...prev, ...syncBookingPeople(prev, patch) }))}
-                />
-                {form.activity && form.activity !== 'WB' && form.beginnerCount == null ? (
-                  <BookPricingLegend activity={form.activity} />
-                ) : null}
-              </div>
-
-              {form.activity === 'WB' ? (
-                <div style={{ marginBottom: 16 }}>
-                  <BookBoatPicker
-                    value={form.boatPreference}
-                    aboard={onBoatTotal(form.headcount, form.followBoatCount)}
-                    onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
-                  />
-                </div>
-              ) : null}
-
-              <BookStep2PriceSummary form={form} />
-              <BookStep2Summary form={form} estimate={null} />
-            </div>
-
-            <div style={{ marginBottom: 4 }}>
-              <BookFollowBoatPanel
-                riders={form.headcount}
-                value={form.followBoatCount}
-                onChange={count => setForm(prev => ({ ...prev, followBoatCount: count }))}
-              />
-            </div>
+            <BookFollowBoatPanel
+              flat
+              riders={form.headcount}
+              value={form.followBoatCount}
+              onChange={count => setForm(prev => ({ ...prev, followBoatCount: count }))}
+            />
 
             <BookContextTips step={2} form={form} pickTimePref={pickTimePref} />
 
             {estimate ? (
-              <BookEstimateCard key="est-2" estimate={estimate} compact />
+              <BookEstimateCard
+                key="est-2"
+                estimate={estimate}
+                compact
+                flat
+                summaryLine={buildStep2SummaryLine(form, s, null)}
+                footnote={step2ShowsFirstTimePrice(form) ? s.common.priceIncludes : null}
+              />
             ) : null}
 
             <BookStaffHint
@@ -476,143 +481,161 @@ export function BookWizardCore({
         {/* Step 3: 什麼時候 + 教練選填 */}
         {step === 3 && (
           <div style={bookCard}>
-            <div style={bookFieldGroup}>
-              <BookDateCalendar
-                value={pickDate}
-                blockedDates={blockedDates}
-                onChange={handlePickDate}
-              />
+            <BookDateCalendar
+              value={pickDate}
+              blockedDates={blockedDates}
+              onChange={handlePickDate}
+            />
 
-              <div style={{ ...fieldLabel, marginTop: 16 }}>{s.step3.timeSlot}</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {TIME_PREFERENCE_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className="book-chip-btn"
-                    style={{ ...chipBtn(pickTimePref === opt.value), flex: 1, padding: '12px 0' }}
-                    onClick={() => handlePickTimePref(opt.value)}
-                  >
-                    {opt.value === 'morning' ? s.step3.morning : s.step3.afternoon}
-                  </button>
-                ))}
-              </div>
-              {!showAlternateDates ? (
+            <div style={{ ...fieldLabel, marginTop: 16 }}>{s.step3.timeSlot}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {TIME_PREFERENCE_OPTIONS.map(opt => (
                 <button
+                  key={opt.value}
                   type="button"
-                  onClick={() => { triggerHaptic('light'); setShowAlternateDates(true) }}
-                  style={{
-                    marginTop: 12,
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    color: T.muted,
-                    fontSize: ty.caption,
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
+                  className="book-chip-btn"
+                  style={{ ...chipBtn(pickTimePref === opt.value), flex: 1, padding: '12px 0' }}
+                  onClick={() => handlePickTimePref(opt.value)}
                 >
-                  {s.step3.addAlternateDates}
+                  {opt.value === 'morning' ? s.step3.morning : s.step3.afternoon}
                 </button>
-              ) : (
-                <div style={{ marginTop: 16 }}>
-                  {form.preferredDates.length > 0 ? (
-                    <>
-                      <div style={fieldLabel}>{s.step3.preferredDates}</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-                        {form.preferredDates.map(pd => (
-                          <div key={pd.date} style={listItemRow}>
-                            <span>{formatPreferredDateLabel(pd, locale, s.step3.morning, s.step3.afternoon)}</span>
-                            <button
-                              type="button"
-                              onClick={() => removePreferredDate(pd.date)}
-                              style={{
-                                margin: 0,
-                                padding: '4px 8px',
-                                border: 'none',
-                                background: 'none',
-                                color: T.muted,
-                                fontSize: ty.caption,
-                                cursor: 'pointer',
-                                textDecoration: 'underline',
-                              }}
-                            >
-                              {s.step3.removeDate}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-                  {pickDate && form.preferredDates.length < MAX_PREFERRED_DATES && !form.preferredDates.some(p => p.date === pickDate) ? (
-                    <button
-                      type="button"
-                      onClick={addAlternateDate}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px dashed #ccc',
-                        borderRadius: 10,
-                        background: 'white',
-                        color: T.inkSoft,
-                        fontSize: ty.body,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {s.step3.addAlternateDates}
-                    </button>
-                  ) : null}
-                  <div style={{ ...fieldHint, marginTop: 8, marginBottom: 0 }}>{s.step3.maxDates}</div>
-                </div>
-              )}
+              ))}
             </div>
 
-            {!showCoachSection ? (
+            {!showAlternateDates ? (
+              <button
+                type="button"
+                onClick={() => { triggerHaptic('light'); setShowAlternateDates(true) }}
+                style={{
+                  marginTop: 12,
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  color: T.muted,
+                  fontSize: ty.caption,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'center',
+                }}
+              >
+                {s.step3.addAlternateDates}
+              </button>
+            ) : (
               <div style={{ marginTop: 16 }}>
+                {form.preferredDates.length > 0 ? (
+                  <>
+                    <div style={fieldLabel}>{s.step3.preferredDates}</div>
+                    <div style={{ marginBottom: 10 }}>
+                      {form.preferredDates.map((pd, i) => (
+                        <div
+                          key={pd.date}
+                          style={{
+                            ...flatListRow,
+                            ...(i === form.preferredDates.length - 1 ? { borderBottom: 'none' } : {}),
+                          }}
+                        >
+                          <span>{formatPreferredDateLabel(pd, locale, s.step3.morning, s.step3.afternoon)}</span>
+                          <button
+                            type="button"
+                            onClick={() => removePreferredDate(pd.date)}
+                            style={{
+                              margin: 0,
+                              padding: '4px 8px',
+                              border: 'none',
+                              background: 'none',
+                              color: T.muted,
+                              fontSize: ty.caption,
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {s.step3.removeDate}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+                {pickDate && form.preferredDates.length < MAX_PREFERRED_DATES && !form.preferredDates.some(p => p.date === pickDate) ? (
+                  <button
+                    type="button"
+                    onClick={addAlternateDate}
+                    style={{
+                      marginTop: 4,
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
+                      color: T.muted,
+                      fontSize: ty.caption,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {s.step3.addAlternateDates}
+                  </button>
+                ) : null}
+                <div style={{ ...fieldHint, marginTop: 8, marginBottom: 0, textAlign: 'center' }}>{s.step3.maxDates}</div>
+              </div>
+            )}
+
+            <div style={optionalSectionFlat}>
+              {!showCoachSection ? (
                 <button
                   type="button"
                   onClick={() => { triggerHaptic('light'); setShowCoachSection(true) }}
                   style={{
-                    padding: 0, border: 'none', background: 'none',
-                    color: T.muted, fontSize: ty.body, cursor: 'pointer', textDecoration: 'underline',
+                    padding: '12px 0 4px',
+                    border: 'none',
+                    background: 'none',
+                    color: T.muted,
+                    fontSize: ty.body,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    width: '100%',
+                    textAlign: 'left',
                   }}
                 >
                   {pickTimePref === 'morning' ? s.step3.addCoachMorningShort : s.step3.addCoachShort}
                 </button>
-              </div>
-            ) : (
-              <div style={{ marginTop: 16 }}>
-                <div style={optionalSectionLabel}>{s.step3.designateCoach}</div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  <button
-                    type="button"
-                    className="book-chip-btn"
-                    style={{ ...chipBtn(form.coachChoice === 'none'), flex: 1 }}
-                    onClick={() => setForm(prev => ({ ...prev, coachChoice: 'none', coachId: null }))}
-                  >
-                    {s.step3.coachNone}
-                  </button>
-                  <button
-                    type="button"
-                    className="book-chip-btn"
-                    style={{ ...chipBtn(form.coachChoice === 'designated'), flex: 1 }}
-                    onClick={() => setForm(prev => ({ ...prev, coachChoice: 'designated' }))}
-                  >
-                    {s.step3.coachYes}
-                  </button>
-                </div>
-                {form.coachChoice === 'designated' && (
-                  <BookCoachPicker
-                    coaches={coaches}
-                    activity={form.activity}
-                    value={form.coachId}
-                    onChange={coachId => setForm(prev => ({ ...prev, coachId }))}
-                  />
-                )}
-              </div>
-            )}
-
+              ) : (
+                <>
+                  <div style={{ ...optionalSectionLabel, marginTop: 8, fontSize: ty.body, color: T.inkSoft }}>{s.step3.designateCoach}</div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <button
+                      type="button"
+                      className="book-chip-btn"
+                      style={{ ...chipBtn(form.coachChoice === 'none'), flex: 1 }}
+                      onClick={() => setForm(prev => ({ ...prev, coachChoice: 'none', coachId: null }))}
+                    >
+                      {s.step3.coachNone}
+                    </button>
+                    <button
+                      type="button"
+                      className="book-chip-btn"
+                      style={{ ...chipBtn(form.coachChoice === 'designated'), flex: 1 }}
+                      onClick={() => setForm(prev => ({ ...prev, coachChoice: 'designated' }))}
+                    >
+                      {s.step3.coachYes}
+                    </button>
+                  </div>
+                  {form.coachChoice === 'designated' && (
+                    <BookCoachPicker
+                      coaches={coaches}
+                      activity={form.activity}
+                      value={form.coachId}
+                      onChange={coachId => setForm(prev => ({ ...prev, coachId }))}
+                    />
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -629,11 +652,13 @@ export function BookWizardCore({
               />
 
               {estimate ? (
-                <BookEstimateCard key="est-4" estimate={estimate} defaultExpanded />
+                <BookEstimateCard key="est-4" estimate={estimate} confirm />
               ) : null}
 
-              <div style={{ ...bookFieldGroup, marginBottom: 0, marginTop: 16 }}>
-                <div style={fieldLabel}>{s.step4.contact}</div>
+              <hr style={bookSectionDivider} aria-hidden />
+
+              <div>
+                <div style={confirmContactTitle}>{s.step4.contact}</div>
                 {member ? (
                   <div style={{ fontSize: ty.caption, color: T.muted, marginBottom: 10 }}>{s.step4.memberPrefill}</div>
                 ) : null}
@@ -641,21 +666,23 @@ export function BookWizardCore({
                   value={form.contactName}
                   onChange={e => setForm(prev => ({ ...prev, contactName: e.target.value }))}
                   placeholder={s.step4.namePh}
-                  style={{ ...bookInput, marginBottom: 10 }}
+                  style={{ ...bookInput, marginBottom: 10, background: '#fff' }}
                 />
                 <input
                   type="tel"
                   value={form.contactPhone}
                   onChange={e => setForm(prev => ({ ...prev, contactPhone: e.target.value }))}
                   placeholder={s.step4.phonePh}
-                  style={{ ...bookInput, marginBottom: 10 }}
+                  style={{ ...bookInput, marginBottom: 10, background: '#fff' }}
                 />
-                <input
+                <textarea
                   value={form.notes}
                   onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
                   placeholder={form.activity === 'BOTH' ? s.step4.notesPhBoth : s.step4.notesPh}
-                  style={bookInput}
+                  rows={3}
+                  style={bookNotesInput}
                 />
+                <BookLineMessagePreview message={linePreviewMessage} />
               </div>
             </div>
 
@@ -681,6 +708,9 @@ export function BookWizardCore({
       </main>
 
       <footer style={{ ...stickyFooter, flexDirection: 'column', alignItems: 'stretch' }}>
+        {showSubmitHint ? (
+          <div style={footerSoftHint}>{s.step4.submitHint}</div>
+        ) : null}
         {showFooterHint ? (
           <div
             style={step === 4 ? footerBlockHint : footerSoftHint}
@@ -707,7 +737,7 @@ export function BookWizardCore({
             <button
               type="button"
               className="book-primary-btn"
-              style={{ ...linePrimaryBtn, opacity: stepReady ? 1 : 0.4 }}
+              style={{ ...submitConfirmBtn(stepReady), opacity: stepReady ? 1 : 0.4 }}
               disabled={!stepReady}
               onClick={handleSubmit}
             >

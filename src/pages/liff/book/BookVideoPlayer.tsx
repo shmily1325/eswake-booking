@@ -1,7 +1,9 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
+import { isMobileDevice } from '../../shop/lib/lineDeepLink'
 import { useBookLocale } from './BookLocaleContext'
 import { openYoutubeVideo, youtubeEmbedUrl, youtubeThumbnailUrl } from './bookMedia'
+import { BOOK_PUBLIC_COLUMN_MAX_WIDTH } from '../../book/BookLayout'
 
 const overlay: CSSProperties = {
   position: 'fixed',
@@ -20,6 +22,8 @@ const backdrop: CSSProperties = {
 
 const sheet: CSSProperties = {
   position: 'relative',
+  width: '100%',
+  maxWidth: BOOK_PUBLIC_COLUMN_MAX_WIDTH,
   background: '#111',
   borderRadius: '16px 16px 0 0',
   padding: '12px 12px calc(12px + env(safe-area-inset-bottom, 0px))',
@@ -122,8 +126,14 @@ export function BookVideoPlayer({
     }
   }, [open])
 
+  const isMobile = isMobileDevice()
+
   const openSheet = () => {
     triggerHaptic('light')
+    if (!isMobile) {
+      openYoutubeVideo(videoId)
+      return
+    }
     setOpen(true)
   }
 
@@ -159,7 +169,7 @@ export function BookVideoPlayer({
         </button>
       )}
 
-      {open && (
+      {open && isMobile && (
         <div style={overlay} role="dialog" aria-modal="true" aria-label={title}>
           <button type="button" style={backdrop} aria-label={s.video.close} onClick={() => setOpen(false)} />
           <div style={sheet}>

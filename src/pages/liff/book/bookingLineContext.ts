@@ -98,10 +98,56 @@ export function buildBookingCoachLine(
   if (form.coachChoice === 'designated' && form.coachId) {
     const coach = coaches.find(c => c.id === form.coachId)
     if (coach) return m.coachLine(coach.name)
-    return m.coachMissing
+    return locale === 'en' ? `Coach ${m.coachMissing}` : `教練 ${m.coachMissing}`
+  }
+  if (form.coachChoice === 'designated') {
+    return locale === 'en' ? `Coach ${m.coachMissing}` : `教練 ${m.coachMissing}`
+  }
+  return locale === 'en' ? `Coach: ${m.coachNone}` : `教練 ${m.coachNone}`
+}
+
+function buildBookingCoachValue(
+  form: LiffBookingFormState,
+  coaches: CoachOption[],
+  locale: BookLocale,
+): string {
+  const m = BOOK_I18N[locale].lineMessage
+  if (form.coachChoice === 'designated' && form.coachId) {
+    const coach = coaches.find(c => c.id === form.coachId)
+    return coach?.name ?? m.coachMissing
   }
   if (form.coachChoice === 'designated') return m.coachMissing
   return m.coachNone
+}
+
+function buildBookingHeadcountValue(form: LiffBookingFormState, locale: BookLocale): string {
+  const s = BOOK_I18N[locale]
+  let line = locale === 'en'
+    ? `${form.headcount} rider${form.headcount > 1 ? 's' : ''}`
+    : `${form.headcount} 人`
+  if (form.followBoatCount > 0) {
+    line += locale === 'en'
+      ? ` (${form.followBoatCount} non-rider${form.followBoatCount > 1 ? 's' : ''})`
+      : `（${s.step2.followBoat.selected(form.followBoatCount)}）`
+  }
+  return line
+}
+
+function buildBookingActivityValue(form: LiffBookingFormState, locale: BookLocale): string {
+  if (!form.activity) return '—'
+  const s = BOOK_I18N[locale]
+  let label: string
+  if (form.activity === 'BOTH') {
+    label = locale === 'en' ? s.step1.activities.BOTH.labelEn : s.step1.bothShort
+  } else {
+    const act = s.step1.activities[form.activity]
+    label = locale === 'en' ? act.labelEn : act.labelZh
+  }
+  if (form.activity === 'WB' && form.boatPreference) {
+    const boat = form.boatPreference === 'small' ? s.boat.small : s.boat.big
+    label += locale === 'en' ? ` (${boat})` : `（${boat}）`
+  }
+  return label
 }
 
 export interface BookingLineMessageOptions {
@@ -117,6 +163,7 @@ export interface BookingLineMessageOptions {
   estimate?: PriceEstimate | null
 }
 
+/** 問小編等：緊湊 dot 分隔 */
 export function renderBookingLineMessage(
   form: LiffBookingFormState,
   coaches: CoachOption[],
@@ -157,6 +204,37 @@ export function renderBookingLineMessage(
   if (options.closing != null) {
     lines.push('')
     lines.push(options.closing)
+  }
+
+  return lines.join('\n')
+}
+
+/** 送出預約：條列標籤（小編較好掃） */
+export function renderBookingSubmitMessage(
+  form: LiffBookingFormState,
+  coaches: CoachOption[],
+  locale: BookLocale,
+  estimate: PriceEstimate | null,
+): string {
+  const m = BOOK_I18N[locale].lineMessage
+  const lines: string[] = [
+    m.submitTitle,
+    '',
+    `${m.labelHeadcount}${buildBookingHeadcountValue(form, locale)}`,
+    `${m.labelActivity}${buildBookingActivityValue(form, locale)}`,
+    `${m.labelDates}${buildBookingDatesLine(form, locale) ?? '—'}`,
+    `${m.labelCoach}${buildBookingCoachValue(form, coaches, locale)}`,
+    `${m.labelExperience}${m.experienceLine(form.headcount, form.beginnerCount)}`,
+    '',
+    `${m.labelContact}${m.contactLine(form.contactName.trim() || '—', form.contactPhone.trim() || '—')}`,
+  ]
+
+  if (estimate) {
+    lines.push(`${m.labelEstimate}${m.estimateLine(estimate.totalLabel)}`)
+  }
+
+  if (form.notes.trim()) {
+    lines.push(`${m.labelNotes}${form.notes.trim()}`)
   }
 
   return lines.join('\n')

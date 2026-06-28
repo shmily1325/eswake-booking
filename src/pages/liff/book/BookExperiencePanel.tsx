@@ -1,12 +1,15 @@
+import type { CSSProperties } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
 import { BookHeadcountStepper } from './BookHeadcountStepper'
 import { useBookLocale } from './BookLocaleContext'
-import { chipBtn, fieldLabel, selectionDetail } from './bookStyles'
+import { chipBtn, fieldLabel, selectionDetail, stepFieldPrompt } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
+import type { ActivityChoice } from './types'
 
 interface BookExperiencePanelProps {
   headcount: number
   beginnerCount: number | null
+  activity: ActivityChoice | null
   onSyncPeople: (patch: { headcount?: number; beginnerCount?: number }) => void
 }
 
@@ -31,9 +34,18 @@ function experienceDetail(
   return null
 }
 
+const hintLine: CSSProperties = {
+  fontSize: ty.caption,
+  color: T.muted,
+  textAlign: 'center',
+  lineHeight: 1.45,
+  marginTop: 8,
+}
+
 export function BookExperiencePanel({
   headcount,
   beginnerCount,
+  activity,
   onSyncPeople,
 }: BookExperiencePanelProps) {
   const { s } = useBookLocale()
@@ -44,10 +56,14 @@ export function BookExperiencePanel({
   }
 
   const detail = experienceDetail(headcount, beginnerCount, s)
+  const prompt = headcount === 1 ? s.step2.experienceSingle : s.step2.experienceMulti
+  const showFirstTimeDetail = beginnerCount != null && beginnerCount > 0
+  const showBothNote = activity === 'BOTH' && beginnerCount != null && beginnerCount > 0
 
   if (headcount === 1) {
     return (
       <div>
+        <div style={stepFieldPrompt}>{prompt}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             type="button"
@@ -66,6 +82,8 @@ export function BookExperiencePanel({
             {s.step2.experienced}
           </button>
         </div>
+        {showFirstTimeDetail ? <div style={hintLine}>{s.step2.firstTimeDetail}</div> : null}
+        {showBothNote ? <div style={hintLine}>{s.step2.bothPricingNote}</div> : null}
         {detail ? <div style={selectionDetail}>{detail}</div> : null}
       </div>
     )
@@ -76,6 +94,7 @@ export function BookExperiencePanel({
 
   return (
     <div>
+      <div style={stepFieldPrompt}>{prompt}</div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           type="button"
@@ -95,25 +114,22 @@ export function BookExperiencePanel({
         </button>
       </div>
 
-      {mode !== 'partial' ? (
-        <div style={{ textAlign: 'center', marginTop: 10 }}>
-          <button
-            type="button"
-            onClick={() => apply({ beginnerCount: 1 })}
-            style={{
-              padding: 0,
-              border: 'none',
-              background: 'none',
-              color: T.muted,
-              fontSize: ty.caption,
-              cursor: 'pointer',
-              textDecoration: 'underline',
-            }}
-          >
-            {s.step2.mixedExperienceToggle}
-          </button>
-        </div>
-      ) : null}
+      <button
+        type="button"
+        className="book-chip-btn"
+        style={{
+          ...chipBtn(mode === 'partial'),
+          width: '100%',
+          marginTop: 8,
+          padding: '12px 0',
+        }}
+        onClick={() => {
+          if (mode === 'partial') return
+          apply({ beginnerCount: 1 })
+        }}
+      >
+        {s.step2.partialFirstTime}
+      </button>
 
       {mode === 'partial' ? (
         <div style={{ marginTop: 12 }}>
@@ -127,6 +143,8 @@ export function BookExperiencePanel({
         </div>
       ) : null}
 
+      {showFirstTimeDetail ? <div style={hintLine}>{s.step2.firstTimeDetail}</div> : null}
+      {showBothNote ? <div style={hintLine}>{s.step2.bothPricingNote}</div> : null}
       {detail ? <div style={selectionDetail}>{detail}</div> : null}
     </div>
   )

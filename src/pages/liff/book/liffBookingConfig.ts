@@ -86,25 +86,34 @@ export function skillLevelFromBeginners(headcount: number, beginnerCount: number
   return beginnerCount >= headcount ? 'first_time' : 'experienced'
 }
 
-/** 更新人數／初學時同步 skillLevel（預設全部體驗） */
+/** 更新人數／初學時同步 skillLevel（體驗需客人明確選擇，不自動預填） */
 export function syncBookingPeople(
   prev: LiffBookingFormState,
   patch: { headcount?: number; beginnerCount?: number },
 ): Pick<LiffBookingFormState, 'headcount' | 'beginnerCount' | 'skillLevel'> {
   const headcount = patch.headcount ?? prev.headcount
-  let beginnerCount: number
+  let beginnerCount: number | null
+
   if (patch.beginnerCount != null) {
     beginnerCount = patch.beginnerCount
   } else if (patch.headcount != null) {
-    beginnerCount = headcount
+    beginnerCount = prev.beginnerCount != null
+      ? Math.min(prev.beginnerCount, headcount)
+      : null
   } else {
-    beginnerCount = prev.beginnerCount ?? headcount
+    beginnerCount = prev.beginnerCount
   }
-  if (beginnerCount > headcount) beginnerCount = headcount
+
+  if (beginnerCount != null && beginnerCount > headcount) {
+    beginnerCount = headcount
+  }
+
   return {
     headcount,
     beginnerCount,
-    skillLevel: skillLevelFromBeginners(headcount, beginnerCount),
+    skillLevel: beginnerCount != null
+      ? skillLevelFromBeginners(headcount, beginnerCount)
+      : prev.skillLevel,
   }
 }
 

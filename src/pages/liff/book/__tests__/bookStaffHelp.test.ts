@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildStaffHelpMessage } from '../bookStaffHelp'
 import { renderBookingInquiryMessage } from '../liffBookingMessage'
+import { renderBookingSubmitMessage } from '../bookingLineContext'
 import type { LiffBookingFormState } from '../types'
 
 const baseForm: LiffBookingFormState = {
@@ -15,6 +16,18 @@ const baseForm: LiffBookingFormState = {
   contactName: '王小明',
   contactPhone: '0912345678',
   notes: '',
+}
+
+const estimate = {
+  totalLabel: '$5,100',
+  tierLabel: '參考價',
+  durationLabel: '約 60 分鐘',
+  detailLines: [],
+  disclaimer: '',
+  durationMin: 60,
+  totalMin: 5100,
+  totalMax: 5100,
+  coachLine: null,
 }
 
 describe('booking LINE messages share compact format', () => {
@@ -32,25 +45,33 @@ describe('booking LINE messages share compact format', () => {
     expect(msg).toContain('教練 不指定')
   })
 
-  it('submit message uses same party line with contact and estimate', () => {
-    const msg = renderBookingInquiryMessage(baseForm, [], {
-      totalLabel: '$5,100',
-      tierLabel: '參考價',
-      durationLabel: '約 60 分鐘',
-      detailLines: [],
-      disclaimer: '',
-    }, 'zh')
+  it('submit message uses labeled lines for staff readability', () => {
+    const msg = renderBookingInquiryMessage(baseForm, [], estimate, 'zh')
 
     expect(msg).toBe(
       [
         '【預約】',
-        '寬板滑水 · 3 人 · 2 位體驗 · 1 位已滑過 · 小船',
-        '6/15（一） 上午',
-        '教練 不指定',
-        '王小明 · 0912345678',
-        '約 $5,100（參考）',
+        '',
+        '預約人數：3 人',
+        '預約項目：寬板滑水（小船）',
+        '希望預約的日期及時間：6/15（一） 上午',
+        '是否指定教練：不指定',
+        '是否是第一次滑：2 位第一次、1 位已滑過',
+        '',
+        '聯絡人：王小明 · 0912345678',
+        '參考價：約 $5,100（參考）',
       ].join('\n'),
     )
+  })
+
+  it('submit message includes notes when provided', () => {
+    const msg = renderBookingSubmitMessage(
+      { ...baseForm, notes: '希望指定 ED' },
+      [],
+      'zh',
+      estimate,
+    )
+    expect(msg).toContain('備註：希望指定 ED')
   })
 
   it('prefills split-activity question on step 1', () => {

@@ -18,10 +18,17 @@ const base: LiffBookingFormState = {
 }
 
 describe('syncBookingPeople', () => {
-  it('defaults beginner count to all riders when headcount changes', () => {
-    const next = syncBookingPeople({ ...base, beginnerCount: 1 }, { headcount: 3 })
+  it('keeps null beginner count when headcount changes', () => {
+    const next = syncBookingPeople({ ...base, beginnerCount: null }, { headcount: 3 })
     expect(next.headcount).toBe(3)
-    expect(next.beginnerCount).toBe(3)
+    expect(next.beginnerCount).toBeNull()
+    expect(next.skillLevel).toBe('first_time')
+  })
+
+  it('clamps beginner count when headcount shrinks', () => {
+    const next = syncBookingPeople({ ...base, headcount: 3, beginnerCount: 2 }, { headcount: 2 })
+    expect(next.headcount).toBe(2)
+    expect(next.beginnerCount).toBe(2)
     expect(next.skillLevel).toBe('first_time')
   })
 

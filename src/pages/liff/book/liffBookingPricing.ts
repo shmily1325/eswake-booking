@@ -132,6 +132,10 @@ export function computePriceEstimate(
 
     boatTotal += unit * beginners
 
+    if (activity === 'BOTH') {
+      detailLines.push(s.step2.bothPricingNote)
+    }
+
     if (locale === 'zh') {
 
       detailLines.push(`${beginners} 體驗 × $${unit.toLocaleString()}`)
