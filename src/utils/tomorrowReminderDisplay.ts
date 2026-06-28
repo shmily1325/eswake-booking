@@ -2,7 +2,7 @@
  * 僅學員名單上為「EHA綺」時，將教練 ED 顯示為梗用樣式；其他任何學員皆回傳真實教練名。
  *
  * 兩個 export 用途不同，請依場景挑選：
- *   1) displayCoachNameForTomorrowReminder    → UI 用（LIFF 預約卡），回單行 'Ebdoooopq'。
+ *   1) displayCoachNameForTomorrowReminder    → UI 用（LIFF 預約卡），回單行 'Ebdooooooooooooooooooopq'。
  *   2) displayCoachNameForTomorrowMessage     → 純文字 LINE 訊息用，回多行 ASCII 排版，
  *      尾端帶 '\n'，配合既有模板 `${coachNames}教練\n` 可讓「教練」獨立成行。
  *
@@ -19,21 +19,24 @@ export function displayCoachNameForTomorrowReminder(studentName: string, coachNa
   if (!isQiqiEdCase(studentName, coachName)) {
     return coachName
   }
-  return 'Ebdoooopq'
+  return 'Ebdooooooooooooooooooopq'
 }
 
 /**
  * 純文字 LINE 訊息用：回多行 ASCII 排版，並在尾端加上 '\n'，
  * 配合 `${coachNames}教練\n` 模板可讓「教練」自成一行：
  *    E
- *   b d
- *   ooo
- *   p q
- *   教練
+ *  b    d
+ *   oooo
+ *  oooooo
+ *  oooooo
+ *   oooo
+ *  p    q
+ *  教練
  */
 export function displayCoachNameForTomorrowMessage(studentName: string, coachName: string): string {
   if (!isQiqiEdCase(studentName, coachName)) {
     return coachName
   }
-  return ' E\nb d\nooo\np q\n'
+  return '   E\n b    d\n  oooo\n oooooo\n oooooo\n  oooo\n p    q\n'
 }
