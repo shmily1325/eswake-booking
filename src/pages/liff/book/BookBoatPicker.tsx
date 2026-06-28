@@ -1,4 +1,5 @@
 import { BOAT_BIG_DUAL_MIN, BOAT_SMALL_DUAL_MIN } from './liffBookingBoats'
+import { BookSegmentCheck } from './BookSegmentCheck'
 import { useBookLocale } from './BookLocaleContext'
 import { BOAT_INTRO_VIDEO_ID } from './liffBookingReminders'
 import { BookVideoPlayer } from './BookVideoPlayer'
@@ -52,6 +53,7 @@ function BoatSegmentButton({
       onClick={onSelect}
       aria-pressed={selected}
     >
+      {selected ? <BookSegmentCheck /> : null}
       <div style={segmentZh}>{title}</div>
       <div style={segmentMeta}>{seating}</div>
       <div style={segmentPriceBlock}>

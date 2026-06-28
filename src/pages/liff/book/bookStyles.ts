@@ -330,6 +330,25 @@ export const footerBlockHint: CSSProperties = {
   border: '1px solid #fde68a',
 }
 
+/** 步驟內／footer 輕提示（非 error 語意） */
+export const stepInlineHint: CSSProperties = {
+  fontSize: ty.caption,
+  color: T.muted,
+  textAlign: 'center',
+  lineHeight: 1.45,
+  marginTop: 10,
+}
+
+export const footerSoftHint: CSSProperties = {
+  width: '100%',
+  fontSize: ty.caption,
+  color: T.muted,
+  textAlign: 'center',
+  lineHeight: 1.45,
+  marginBottom: 10,
+  padding: '6px 8px',
+}
+
 export const fieldHint: CSSProperties = {
   fontSize: ty.caption,
   color: T.mutedLight,
@@ -395,13 +414,13 @@ export const segmentBtn = (selected: boolean): CSSProperties => ({
   minWidth: 0,
   position: 'relative',
   padding: '14px 10px 12px',
-  border: selected ? `2px solid ${T.accent}` : '1px solid #e8e8e8',
+  border: selected ? `2px solid ${T.ctaBg}` : '1px solid #e8e8e8',
   borderRadius: 14,
-  background: selected ? T.surfaceMuted : '#fff',
+  background: selected ? T.accentSoft : '#fff',
   cursor: 'pointer',
   textAlign: 'center',
   lineHeight: 1.35,
-  boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.03)',
+  boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.1)' : '0 1px 3px rgba(0,0,0,0.03)',
 })
 
 export const segmentCheck: CSSProperties = {
@@ -411,7 +430,7 @@ export const segmentCheck: CSSProperties = {
   width: 18,
   height: 18,
   borderRadius: 999,
-  background: T.accent,
+  background: T.ctaBg,
   color: '#fff',
   fontSize: 11,
   fontWeight: 700,
@@ -607,14 +626,15 @@ export const segmentPriceMemberNote: CSSProperties = {
 export const bothSegmentBtn = (selected: boolean): CSSProperties => ({
   width: '100%',
   marginTop: 8,
+  position: 'relative',
   padding: '12px 14px',
-  border: selected ? `2px solid ${T.accent}` : '1px solid #e8e8e8',
+  border: selected ? `2px solid ${T.ctaBg}` : '1px solid #e8e8e8',
   borderRadius: 14,
-  background: selected ? T.surfaceMuted : '#fff',
+  background: selected ? T.accentSoft : '#fff',
   cursor: 'pointer',
   textAlign: 'left',
   lineHeight: 1.35,
-  boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.03)',
+  boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.1)' : '0 1px 3px rgba(0,0,0,0.03)',
 })
 
 export const selectedDatePill: CSSProperties = {

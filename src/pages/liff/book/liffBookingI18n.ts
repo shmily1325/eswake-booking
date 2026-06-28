@@ -41,11 +41,16 @@ export interface BookI18nStrings {
     priceWBDual: (small: string, big: string) => string
     bothLabel: string
     bothSub: string
+    bothCardTitle: string
     bothPrice: (amount: string) => string
     bothShort: string
     mixedToggle: string
     bothNote: string
     bothNoteAction: string
+    cardPriceWS: (amount: string) => string
+    cardPriceWB: (small: string, big: string) => string
+    cardPriceBoth: (amount: string) => string
+    compareLink: string
     videoMandarinNote: string
     memberRateApplied: string
   }
@@ -176,6 +181,8 @@ export interface BookI18nStrings {
     next: string
     /** Step 1–3 primary CTA: guided label for the next step */
     nextByStep: readonly [string, string, string]
+    /** Step 1–3 when the step is complete */
+    nextByStepReady: readonly [string, string, string]
     confirm: string
     submitLine: string
     submitConfirm: string
@@ -335,11 +342,16 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       priceWBDual: (small, big) => `小船 ${small} · 大船 ${big}／人`,
       bothLabel: '有人快艇衝浪、有人寬板滑水',
       bothSub: '同一趟船 · 大船',
+      bothCardTitle: '混搭兩項',
       bothPrice: amount => `每項 ${amount}／人`,
       bothShort: '快艇衝浪＋寬板滑水',
       mixedToggle: '有人衝浪、有人滑水？',
       bothNote: '同一梯次可混搭 · 自己兩項都玩也行',
-      bothNoteAction: '點項目可改回選單一種',
+      bothNoteAction: '點上方項目可改回選單一種',
+      cardPriceWS: amount => `初次 ${amount}起`,
+      cardPriceWB: (small, big) => `初次 ${small}～${big}`,
+      cardPriceBoth: amount => `每項 ${amount}起`,
+      compareLink: '不確定差在哪？看項目說明',
       videoMandarinNote: '影片為中文解說',
       memberRateApplied: '已滑過已套用會員價',
     },
@@ -478,6 +490,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       back: '返回',
       next: '下一步',
       nextByStep: ['填人數', '選時間', '看摘要'],
+      nextByStepReady: ['下一步：填人數', '下一步：選時間', '下一步：看摘要'],
       confirm: '確認',
       submitLine: '用 LINE 送出',
       submitConfirm: '送出預約需求',
@@ -672,11 +685,16 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       priceWBDual: (small, big) => `Small ${small} · Big ${big}/person`,
       bothLabel: 'Some wakesurf, some wakeboard',
       bothSub: 'Same boat trip · big boat',
+      bothCardTitle: 'Mix both',
       bothPrice: amount => `${amount}/activity/person`,
       bothShort: 'Wakesurf + wakeboard',
       mixedToggle: 'Some wakesurf, some wakeboard?',
       bothNote: 'Mixed group on same trip · Or play both yourself',
-      bothNoteAction: 'Tap an activity to pick just one',
+      bothNoteAction: 'Tap an activity above to pick just one',
+      cardPriceWS: amount => `First-time from ${amount}`,
+      cardPriceWB: (small, big) => `First-time ${small}–${big}`,
+      cardPriceBoth: amount => `${amount} per activity`,
+      compareLink: 'Not sure? Compare activities',
       videoMandarinNote: 'Video in Mandarin',
       memberRateApplied: 'Member rate applied (returning riders)',
     },
@@ -815,6 +833,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       back: 'Back',
       next: 'Next',
       nextByStep: ['Group size', 'Pick dates', 'Review'],
+      nextByStepReady: ['Next: Group size', 'Next: Pick dates', 'Next: Review'],
       confirm: 'Review',
       submitLine: 'Send via LINE',
       submitConfirm: 'Submit request',
@@ -974,8 +993,14 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
 }
 
 /** Footer CTA for steps 1–3: guided label toward the next step (not generic「下一步」). */
-export function getStepNextLabel(step: number, footer: BookI18nStrings['footer']): string {
-  if (step >= 1 && step <= 3) return footer.nextByStep[step - 1]
+export function getStepNextLabel(
+  step: number,
+  footer: BookI18nStrings['footer'],
+  stepReady = false,
+): string {
+  if (step >= 1 && step <= 3) {
+    return stepReady ? footer.nextByStepReady[step - 1] : footer.nextByStep[step - 1]
+  }
   return footer.next
 }
 

@@ -9,7 +9,43 @@ import {
 } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
-/** LIFF：品牌列隨內容捲走，不 sticky */
+function BookStepProgress({ step }: { step: number }) {
+  const { s } = useBookLocale()
+  const total = s.steps.length
+  const progressPct = (step / total) * 100
+  const current = s.steps[step - 1]
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: ty.body, fontWeight: 700, color: 'white' }}>{current.pill}</span>
+        <span style={{ fontSize: ty.caption, fontWeight: 600, color: 'rgba(255,255,255,0.65)' }}>
+          {step}/{total}
+        </span>
+      </div>
+      <div style={progressBar}><div style={progressFill(progressPct)} /></div>
+    </>
+  )
+}
+
+/** LIFF：品牌 + 步驟進度合併為單一 sticky 列 */
+export function BookLiffWizardHeader({ step }: { step: number }) {
+  const { s } = useBookLocale()
+  return (
+    <header style={bookHeader}>
+      <EsBrandLockup
+        brand={s.header.brand}
+        subtitle={s.header.title}
+        logoSize={26}
+        trailing={<BookLocaleToggle surface="header" />}
+        style={{ marginBottom: 10 }}
+      />
+      <BookStepProgress step={step} />
+    </header>
+  )
+}
+
+/** @deprecated 保留給非 LIFF 路徑；公開 /book 用 BookHeader + BookStepHeader */
 export function BookWizardBrandBar() {
   const { s } = useBookLocale()
   return (
@@ -24,43 +60,11 @@ export function BookWizardBrandBar() {
   )
 }
 
-/** Sticky：步驟 pill + progress 細線 */
+/** Sticky：當前步驟 + 進度（公開 /book 在 BookHeader 下方） */
 export function BookStepHeader({ step }: { step: number }) {
-  const { s } = useBookLocale()
-  const total = s.steps.length
-  const progressPct = (step / total) * 100
-
   return (
     <header style={bookHeader}>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-        {s.steps.map(st => {
-          const done = st.id < step
-          const active = st.id === step
-          return (
-            <div
-              key={st.id}
-              style={{
-                flex: 1,
-                textAlign: 'center',
-                fontSize: ty.caption,
-                fontWeight: active ? 700 : 500,
-                padding: '5px 0',
-                borderRadius: 999,
-                background: active
-                  ? 'rgba(255,255,255,0.24)'
-                  : done
-                    ? 'rgba(255,255,255,0.18)'
-                    : 'rgba(255,255,255,0.08)',
-                color: active || done ? 'white' : 'rgba(255,255,255,0.5)',
-                boxShadow: active ? 'inset 0 0 0 1px rgba(255,255,255,0.15)' : 'none',
-              }}
-            >
-              {st.pill}
-            </div>
-          )
-        })}
-      </div>
-      <div style={progressBar}><div style={progressFill(progressPct)} /></div>
+      <BookStepProgress step={step} />
     </header>
   )
 }

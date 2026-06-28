@@ -2,19 +2,24 @@ import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
 import { FIRST_TIME_BIG_BOAT, FIRST_TIME_WB_SMALL } from './liffBookingPrices'
 import { activitySegmentLabels } from './liffBookingI18n'
+import { resolveVisitGuideUrl } from './liffBookingGuide'
 import { BookActivityIcon } from './BookActivityIcon'
+import { BookSegmentCheck } from './BookSegmentCheck'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import {
   bookFieldGroup,
+  bothSegmentBtn,
   includesTrustLine,
   selectionDetail,
-  summaryPriceLine,
   segmentBtn,
   segmentEn,
   segmentMeta,
+  segmentPrice,
   segmentRow,
   segmentZh,
   step1Summary,
+  stepInlineHint,
+  summaryPriceLine,
 } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 import type { ActivityChoice, ActivityCode } from './types'
@@ -22,6 +27,7 @@ import type { ActivityChoice, ActivityCode } from './types'
 interface BookEssentialsPanelProps {
   value: ActivityChoice | null
   onChange: (code: ActivityChoice | null) => void
+  validationHint?: string | null
 }
 
 const CHOICES: ActivityCode[] = ['WS', 'WB']
@@ -54,9 +60,21 @@ function step1PriceLabel(
   return s.step1.bothPrice(priceBoth)
 }
 
+function cardPriceLine(
+  code: ActivityCode,
+  s: ReturnType<typeof useBookLocale>['s'],
+  priceWS: string,
+  priceWBSmall: string,
+  priceWBBig: string,
+): string {
+  if (code === 'WS') return s.step1.cardPriceWS(priceWS)
+  return s.step1.cardPriceWB(priceWBSmall, priceWBBig)
+}
+
 export function BookEssentialsPanel({
   value,
   onChange,
+  validationHint = null,
 }: BookEssentialsPanelProps) {
   const { locale, s } = useBookLocale()
   const priceWS = `$${FIRST_TIME_BIG_BOAT.toLocaleString()}`
@@ -74,14 +92,22 @@ export function BookEssentialsPanel({
     onChange('BOTH')
   }
 
-  const showVideo = value === 'WS' || value === 'WB'
-  const act = showVideo ? s.step1.activities[value] : null
+  const showSelectedVideo = value === 'WS' || value === 'WB'
+  const act = showSelectedVideo ? s.step1.activities[value] : null
+  const bothSelected = value === 'BOTH'
+  const bothDualIcons = (
+    <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+      <BookActivityIcon code="WS" size={22} />
+      <BookActivityIcon code="WB" size={22} />
+    </div>
+  )
 
   return (
     <div style={bookFieldGroup}>
       <div style={{ ...segmentRow, marginBottom: 0 }}>
         {CHOICES.map(code => {
-          const selected = value === code || value === 'BOTH'
+          const highlighted = value === code || bothSelected
+          const showCheck = value === code
           const { primary, secondary } = activitySegmentLabels(code, locale)
           const diff = code === 'WS' ? s.step1.diffWS : s.step1.diffWB
           return (
@@ -89,47 +115,79 @@ export function BookEssentialsPanel({
               key={code}
               type="button"
               className="book-segment-btn"
-              style={segmentBtn(selected)}
+              style={segmentBtn(highlighted)}
               onClick={() => pickSingle(code)}
-              aria-pressed={selected}
+              aria-pressed={highlighted}
             >
+              {showCheck ? <BookSegmentCheck /> : null}
               {segmentIcon(code)}
               <div style={segmentZh}>{primary}</div>
               <div style={segmentEn}>{secondary}</div>
               <div style={segmentMeta}>{diff}</div>
+              <div style={segmentPrice}>
+                {cardPriceLine(code, s, priceWS, priceWBSmall, priceWBBig)}
+              </div>
             </button>
           )
         })}
       </div>
 
-      {value === 'WS' || value === 'WB' ? (
-        <div style={{ textAlign: 'center', marginTop: 10 }}>
-          <button
-            type="button"
-            onClick={pickBoth}
-            style={{
-              padding: 0,
-              border: 'none',
-              background: 'none',
-              color: T.muted,
-              fontSize: ty.caption,
-              cursor: 'pointer',
-              textDecoration: 'underline',
-            }}
-          >
-            {s.step1.mixedToggle}
-          </button>
+      <button
+        type="button"
+        className="book-segment-btn"
+        style={bothSegmentBtn(bothSelected)}
+        onClick={pickBoth}
+        aria-pressed={bothSelected}
+      >
+        {bothSelected ? <BookSegmentCheck /> : null}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          {bothDualIcons}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ ...segmentZh, textAlign: 'left' }}>{s.step1.bothCardTitle}</div>
+            <div style={{ ...segmentMeta, textAlign: 'left', marginTop: 2 }}>{s.step1.bothSub}</div>
+            <div style={{ ...segmentPrice, textAlign: 'left', marginTop: 4 }}>
+              {s.step1.cardPriceBoth(priceBoth)}
+            </div>
+          </div>
         </div>
-      ) : null}
+      </button>
 
-      {value === 'BOTH' ? (
-        <div style={selectionDetail}>
+      {bothSelected ? (
+        <div style={{ ...selectionDetail, marginTop: 10 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>{s.step1.bothShort}</div>
           <div>{s.step1.bothNote}</div>
           <div style={{ marginTop: 4 }}>{s.step1.bothNoteAction}</div>
         </div>
       ) : null}
 
-      {showVideo && act ? (
+      {!value ? (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {CHOICES.map(code => {
+              const labels = activitySegmentLabels(code, locale)
+              return (
+                <div key={code} style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: ty.caption, fontWeight: 600, color: T.inkSoft, marginBottom: 6, textAlign: 'center' }}>
+                    {labels.primary}
+                  </div>
+                  <BookVideoPlayer
+                    variant="compact"
+                    videoId={code === 'WS' ? 'esgwXR0ikOU' : 'oHp8IeOvbdk'}
+                    title={labels.secondary}
+                    posterSrc={videoPoster(code).src}
+                    posterSrcSet={`${videoPoster(code).src} 1x, ${videoPoster(code).src2x} 2x`}
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 6, textAlign: 'center' }}>
+            {s.step1.videoMandarinNote}
+          </div>
+        </div>
+      ) : null}
+
+      {showSelectedVideo && act ? (
         <div style={{ marginTop: 14 }}>
           <BookVideoPlayer
             variant="compact"
@@ -138,7 +196,7 @@ export function BookEssentialsPanel({
             posterSrc={videoPoster(value).src}
             posterSrcSet={`${videoPoster(value).src} 1x, ${videoPoster(value).src2x} 2x`}
           />
-          <div style={{ fontSize: ty.caption, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
+          <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 6, textAlign: 'center' }}>
             {s.step1.videoMandarinNote}
           </div>
         </div>
@@ -147,10 +205,27 @@ export function BookEssentialsPanel({
       {value ? (
         <div style={step1Summary}>
           <div style={summaryPriceLine}>{step1PriceLabel(value, s, priceWS, priceWBSmall, priceWBBig, priceBoth)}</div>
-          <div style={includesTrustLine}>{s.common.priceIncludes}</div>
         </div>
       ) : null}
 
+      <div style={{ ...includesTrustLine, marginTop: value ? 6 : 14 }}>
+        {s.common.priceIncludes}
+      </div>
+
+      <p style={{ margin: '10px 0 0', textAlign: 'center' }}>
+        <a
+          href={resolveVisitGuideUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ fontSize: ty.caption, color: T.muted, textDecoration: 'underline' }}
+        >
+          {s.step1.compareLink}
+        </a>
+      </p>
+
+      {validationHint ? (
+        <div style={stepInlineHint} role="status">{validationHint}</div>
+      ) : null}
     </div>
   )
 }

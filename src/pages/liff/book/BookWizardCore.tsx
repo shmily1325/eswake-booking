@@ -13,7 +13,7 @@ import { BookStep2PriceSummary } from './BookStep2PriceSummary'
 import { BookStep2Summary } from './BookStep2Summary'
 import { BookConfirmSummary } from './BookConfirmSummary'
 import { BookFollowBoatPanel } from './BookFollowBoatPanel'
-import { BookStepHeader, BookStepIntro, BookWizardBrandBar } from './BookStepHeader'
+import { BookStepHeader, BookStepIntro, BookLiffWizardHeader } from './BookStepHeader'
 import { BookCopyrightFooter } from './BookCopyrightFooter'
 import { BookContextTips } from './BookContextTips'
 import { BookBoatPicker } from './BookBoatPicker'
@@ -55,6 +55,7 @@ import {
   stepFieldPrompt,
   fieldHint,
   footerBlockHint,
+  footerSoftHint,
   linePrimaryBtn,
   primaryBtn,
   secondaryBtn,
@@ -377,18 +378,20 @@ export function BookWizardCore({
 
   const confirmDates = form.preferredDates.length ? form.preferredDates : commitSchedule()
 
-  const nextLabel = getStepNextLabel(step, s.footer)
   const stepReady = canNext()
+  const nextLabel = getStepNextLabel(step, s.footer, stepReady)
   const blockReason = stepReady
     ? null
     : getStepBlockReason(step, form, pickDate, s.validation, lineUserId, { requireLine })
+  const showFooterHint = blockReason != null && step !== 1
+  const step1InlineHint = step === 1 && !stepReady ? blockReason : null
 
   return (
     <div style={bookPage}>
       {!usePublicChrome ? <LiffStyles /> : null}
       <BookPageStyles />
-      {!usePublicChrome ? <BookWizardBrandBar /> : null}
-      <BookStepHeader step={step} />
+      {!usePublicChrome ? <BookLiffWizardHeader step={step} /> : null}
+      {usePublicChrome ? <BookStepHeader step={step} /> : null}
 
       <main style={{ padding: 16 }}>
         <BookStepIntro step={step} />
@@ -397,6 +400,7 @@ export function BookWizardCore({
           <div style={bookCard}>
             <BookEssentialsPanel
               value={form.activity}
+              validationHint={step1InlineHint}
               onChange={(code: ActivityChoice | null) => setForm(prev => ({
                 ...prev,
                 ...(code ? syncActivityChoice(code) : clearActivityChoice()),
@@ -676,11 +680,14 @@ export function BookWizardCore({
         )}
       </main>
 
-      <BookCopyrightFooter />
-
       <footer style={{ ...stickyFooter, flexDirection: 'column', alignItems: 'stretch' }}>
-        {blockReason ? (
-          <div style={footerBlockHint} role="status">{blockReason}</div>
+        {showFooterHint ? (
+          <div
+            style={step === 4 ? footerBlockHint : footerSoftHint}
+            role="status"
+          >
+            {blockReason}
+          </div>
         ) : null}
         <div style={{ display: 'flex', gap: 10, width: '100%' }}>
           {step > 1 && (
@@ -709,6 +716,8 @@ export function BookWizardCore({
           )}
         </div>
       </footer>
+
+      <BookCopyrightFooter />
     </div>
   )
 }
