@@ -12,6 +12,7 @@ describe('esBrandTokens', () => {
     expect(ES_BRAND.name).toBe('ES Wake')
     expect(esBrandPageTitle(ES_BRAND.memberAreaLabel)).toBe('ES Wake 會員專區')
     expect(esBrandPageTitle(ES_BRAND.bookingAreaLabel)).toBe('ES Wake 線上預約')
+    expect(esBrandPageTitle(ES_BRAND.shopAreaLabel)).toBe('ES Wake Shop')
   })
 
   it('builds consistent copyright lines', () => {
