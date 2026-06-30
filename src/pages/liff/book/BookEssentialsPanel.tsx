@@ -150,24 +150,21 @@ export function BookEssentialsPanel({
 
       {!value ? (
         <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: ty.body, fontWeight: 600, color: T.inkSoft, marginBottom: 10, textAlign: 'center', lineHeight: 1.4 }}>
+            {s.step1.videoSectionHeading}
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {CHOICES.map(code => {
-              const labels = activitySegmentLabels(code, locale)
-              return (
+            {CHOICES.map(code => (
                 <div key={code} style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: ty.caption, fontWeight: 600, color: T.inkSoft, marginBottom: 6, textAlign: 'center' }}>
-                    {labels.primary}
-                  </div>
                   <BookVideoPlayer
                     variant="compact"
                     videoId={code === 'WS' ? 'esgwXR0ikOU' : 'oHp8IeOvbdk'}
-                    title={labels.secondary}
+                    title={activitySegmentLabels(code, locale).secondary}
                     posterSrc={videoPoster(code).src}
                     posterSrcSet={`${videoPoster(code).src} 1x, ${videoPoster(code).src2x} 2x`}
                   />
                 </div>
-              )
-            })}
+              ))}
           </div>
           <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 6, textAlign: 'center' }}>
             {s.step1.videoMandarinNote}

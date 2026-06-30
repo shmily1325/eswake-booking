@@ -50,6 +50,7 @@ export interface BookI18nStrings {
     cardPriceWS: (amount: string) => string
     cardPriceWB: (small: string, big: string) => string
     cardPriceBoth: (amount: string) => string
+    videoSectionHeading: string
     videoMandarinNote: string
     memberRateApplied: string
   }
@@ -364,7 +365,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       cardPriceWS: amount => `初次 ${amount}`,
       cardPriceWB: (small, big) => `初次 ${small}～${big}`,
       cardPriceBoth: amount => `每項 ${amount}`,
-      videoMandarinNote: '影片為中文解說',
+      videoSectionHeading: '不確定？先看起滑影片',
+      videoMandarinNote: '點擊播放（中文）',
       memberRateApplied: '已滑過已套用會員價',
     },
     step2: {
@@ -654,7 +656,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         },
         facilities: {
           heading: '設施提供',
-          items: ['廠房內有沐浴乳、吹風機、脫水機'],
+          items: ['廠房內有沐浴乳、洗髮精、吹風機、脫水機'],
         },
       },
       directions: {
@@ -729,7 +731,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       cardPriceWS: amount => `First-time ${amount}`,
       cardPriceWB: (small, big) => `First-time ${small}–${big}`,
       cardPriceBoth: amount => `${amount} per activity`,
-      videoMandarinNote: 'Video in Mandarin',
+      videoSectionHeading: 'Not sure? Watch demo videos',
+      videoMandarinNote: 'Tap to play (Mandarin)',
       memberRateApplied: 'Member rate applied (returning riders)',
     },
     step2: {
@@ -1019,7 +1022,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         },
         facilities: {
           heading: 'On site',
-          items: ['Body wash, hair dryers, spin dryer in the facility'],
+          items: ['Body wash, shampoo, hair dryers, spin dryer in the facility'],
         },
       },
       directions: {
