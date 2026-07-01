@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import {
+    type CoachTimeOffRow,
+    coachHasTimeOffOverlap,
+    groupTimeOffByCoach,
+} from '../utils/coachTimeOff'
 import { useBookingConflict } from './useBookingConflict'
 import { filterMembers, composeFinalStudentName, toggleSelection, splitAndDeduplicateNames, stripManualNamesMatchingSelectedMembers } from '../utils/memberUtils'
 import { MEMBER_SEARCH_DEBOUNCE_MS } from '../constants/booking'
@@ -22,7 +27,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const [boats, setBoats] = useState<Pick<Boat, 'id' | 'name' | 'color'>[]>([])
     const [selectedBoatId, setSelectedBoatId] = useState<number>(initialBooking?.boat_id || defaultBoatId || 0)
 
-    const [coaches, setCoaches] = useState<(Pick<Coach, 'id' | 'name'> & { isOnTimeOff?: boolean })[]>([])
+    const [coaches, setCoaches] = useState<(Pick<Coach, 'id' | 'name'> & { isOnTimeOff?: boolean; timeOffRecords?: CoachTimeOffRow[] })[]>([])
     const [selectedCoaches, setSelectedCoaches] = useState<string[]>(
         initialBooking?.coaches?.map(c => c.id) || []
     )
@@ -280,10 +285,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const fetchCoaches = useCallback(async (dateToCheck?: string) => {
         setLoadingCoaches(true)
         try {
-            // 取得要檢查的日期（預設為 startDate）
             const checkDate = dateToCheck || startDate
-            
-            // 並行查詢教練和休假資料
+
             const [coachesResult, timeOffResult] = await Promise.all([
                 supabase
                     .from('coaches')
@@ -292,29 +295,31 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
                     .order('name'),
                 checkDate ? supabase
                     .from('coach_time_off')
-                    .select('coach_id')
+                    .select('coach_id, start_date, end_date, start_time, end_time')
                     .lte('start_date', checkDate)
                     .gte('end_date', checkDate) : Promise.resolve({ data: [] })
             ])
 
             if (coachesResult.error) throw coachesResult.error
-            
-            // 建立休假教練 ID 集合
-            const timeOffCoachIds = new Set((timeOffResult.data || []).map((t: any) => t.coach_id))
-            
-            // 標記休假狀態
-            const coachesWithTimeOff = (coachesResult.data || []).map(coach => ({
-                ...coach,
-                isOnTimeOff: timeOffCoachIds.has(coach.id)
-            }))
-            
+
+            const timeOffByCoach = groupTimeOffByCoach((timeOffResult.data || []) as CoachTimeOffRow[])
+
+            const coachesWithTimeOff = (coachesResult.data || []).map(coach => {
+                const records = timeOffByCoach.get(coach.id) ?? []
+                return {
+                    ...coach,
+                    timeOffRecords: records,
+                    isOnTimeOff: coachHasTimeOffOverlap(records, checkDate, startTime, durationMin),
+                }
+            })
+
             setCoaches(coachesWithTimeOff)
         } catch (error) {
             console.error('Error fetching coaches:', error)
         } finally {
             setLoadingCoaches(false)
         }
-    }, [startDate])
+    }, [startDate, startTime, durationMin])
 
     const fetchMembers = useCallback(async () => {
         const { data, error } = await supabase

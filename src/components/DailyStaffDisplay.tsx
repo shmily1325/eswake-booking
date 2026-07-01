@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import { useDailyStaff } from '../hooks/useDailyStaff'
+import { formatStaffTimeOffBadgeLabel } from '../utils/coachTimeOff'
 import { styles, getResponsiveStyles } from '../styles/designSystem'
 
 interface DailyStaffDisplayProps {
@@ -8,12 +10,17 @@ interface DailyStaffDisplayProps {
 }
 
 /**
- * 顯示指定日期的上班人員
+ * 顯示指定日期的上班／休假人員
  * 使用共用的 useDailyStaff hook
  */
 export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaffDisplayProps) {
-  const { workingStaff, loading } = useDailyStaff(date)
+  const { workingStaff, allStaff, loading } = useDailyStaff(date)
   const rs = getResponsiveStyles(isMobile)
+
+  const timeOffStaff = useMemo(
+    () => allStaff.filter(s => s.timeOffRecords.length > 0),
+    [allStaff]
+  )
 
   if (loading) {
     return (
@@ -28,7 +35,6 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
 
   return (
     <div style={{ ...styles.cardBordered, ...rs.cardPadding, marginBottom: '12px' }}>
-      {/* 未排班警告 */}
       {unassignedCount !== undefined && unassignedCount > 0 && (
         <div style={{ ...styles.warningBox, ...rs.alertPadding, marginBottom: '8px' }}>
           <span style={{ fontSize: isMobile ? '13px' : '14px' }}>⚠️</span>
@@ -37,8 +43,7 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
           </span>
         </div>
       )}
-      
-      {/* 上班人員 */}
+
       <div style={{ ...styles.flexRow, flexWrap: 'wrap' }}>
         <span style={{ ...rs.labelText, ...styles.flexRowTight, whiteSpace: 'nowrap' }}>
           👥 可上班
@@ -54,12 +59,28 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
               </span>
             ))
           ) : (
-            <span style={rs.smallText}>
-              無排班人員
-            </span>
+            <span style={rs.smallText}>無排班人員</span>
           )}
         </div>
       </div>
+
+      {timeOffStaff.length > 0 && (
+        <div style={{ ...styles.flexRow, flexWrap: 'wrap', marginTop: '8px' }}>
+          <span style={{ ...rs.labelText, ...styles.flexRowTight, whiteSpace: 'nowrap' }}>
+            🏖️ 休假
+          </span>
+          <div style={{ ...styles.flexWrap, ...rs.gapSm }}>
+            {timeOffStaff.map(staff => (
+              <span
+                key={staff.id}
+                style={{ ...styles.badgeWarning, ...rs.badgePadding, fontSize: isMobile ? '12px' : '13px' }}
+              >
+                {formatStaffTimeOffBadgeLabel(staff.name, staff.timeOffRecords, date)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

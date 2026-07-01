@@ -719,30 +719,36 @@ export type Database = {
           coach_id: string
           created_at: string | null
           end_date: string
+          end_time: string | null
           id: number
           notes: string | null
           reason: string | null
           start_date: string
+          start_time: string | null
           updated_at: string | null
         }
         Insert: {
           coach_id: string
           created_at?: string | null
           end_date: string
+          end_time?: string | null
           id?: number
           notes?: string | null
           reason?: string | null
           start_date: string
+          start_time?: string | null
           updated_at?: string | null
         }
         Update: {
           coach_id?: string
           created_at?: string | null
           end_date?: string
+          end_time?: string | null
           id?: number
           notes?: string | null
           reason?: string | null
           start_date?: string
+          start_time?: string | null
           updated_at?: string | null
         }
         Relationships: [

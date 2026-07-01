@@ -124,7 +124,7 @@ export function NewBookingDialog({
     if (isOpen && startDate) {
       refreshCoachTimeOff()
     }
-  }, [isOpen, startDate, refreshCoachTimeOff])
+  }, [isOpen, startDate, startTime, durationMin, refreshCoachTimeOff])
 
   // 即時衝突檢查 Effect
   useEffect(() => {
@@ -335,7 +335,10 @@ export function NewBookingDialog({
       setLoading(false)
       onSuccess()
       onClose()
-      scheduleCoachTimeOffReminderToast(selectedCoaches, dateStr, '預約已建立。')
+      scheduleCoachTimeOffReminderToast(selectedCoaches, dateStr, '預約已建立。', {
+        startTime: timeStr,
+        durationMin,
+      })
     } catch (err: any) {
       setError(err.message || '新增失敗')
       setLoading(false)

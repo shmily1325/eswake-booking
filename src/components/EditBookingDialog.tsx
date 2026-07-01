@@ -137,7 +137,7 @@ export function EditBookingDialog({
     if (isOpen && startDate) {
       refreshCoachTimeOff()
     }
-  }, [isOpen, startDate, refreshCoachTimeOff])
+  }, [isOpen, startDate, startTime, durationMin, refreshCoachTimeOff])
 
   // 當選到設施時，自動取消需要駕駛
   useEffect(() => {
@@ -676,7 +676,10 @@ export function EditBookingDialog({
       setLoading(false)
       onSuccess()
       onClose()
-      scheduleCoachTimeOffReminderToast(selectedCoaches, newStartAt.substring(0, 10), '預約已更新。')
+      scheduleCoachTimeOffReminderToast(selectedCoaches, newStartAt.substring(0, 10), '預約已更新。', {
+        startTime: newStartAt.substring(11, 16),
+        durationMin,
+      })
     } catch (err: any) {
       setError(err.message || '更新失敗')
       setLoading(false)
@@ -1014,7 +1017,10 @@ export function EditBookingDialog({
       setCopyConflictStatus(null)
       toast.success(`預約已複製到 ${copyToDate} ${copyToTime}`)
       onSuccess()
-      scheduleCoachTimeOffReminderToast(selectedCoaches, copyToDate, '預約已建立。')
+      scheduleCoachTimeOffReminderToast(selectedCoaches, copyToDate, '預約已建立。', {
+        startTime: copyToTime,
+        durationMin,
+      })
     } catch (err: any) {
       setCopyError(err.message || '複製失敗')
       setCopyLoading(false)

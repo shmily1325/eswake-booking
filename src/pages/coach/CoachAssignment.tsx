@@ -24,6 +24,7 @@ import {
   type AssignmentSnapshot,
   type DbAssignmentMaps,
 } from '../../utils/coachAssignmentSaveUtils'
+import { coachHasTimeOffOverlap } from '../../utils/coachTimeOff'
 
 interface Booking {
   id: number
@@ -2181,7 +2182,14 @@ export function CoachAssignment() {
                                     // 檢查該人在其他預約是否有時間衝突（作為教練或駕駛）
                                     const isAvailable = isCoachAvailable(c.id, booking.id)
                                     // 檢查是否休假
-                                    const isOnTimeOff = c.isOnTimeOff
+                                    const bookingDate = booking.start_at.substring(0, 10)
+                                    const bookingTime = booking.start_at.substring(11, 16)
+                                    const isOnTimeOff = coachHasTimeOffOverlap(
+                                      c.timeOffRecords,
+                                      bookingDate,
+                                      bookingTime,
+                                      booking.duration_min
+                                    )
                                     const isUnavailable = (!isAvailable || isCoachInThisBooking || isOnTimeOff) && !isSelected
                                     return (
                                       <button
@@ -2193,7 +2201,7 @@ export function CoachAssignment() {
                                             return
                                           }
                                           if (isOnTimeOff && !isSelected) {
-                                            toast.warning('該教練今日休假')
+                                            toast.warning('該教練此時段休假')
                                             return
                                           }
                                           if (isUnavailable) {

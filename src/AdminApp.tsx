@@ -32,6 +32,7 @@ import { LineSettings } from './pages/admin/LineSettings'
 import { Statistics } from './pages/admin/Statistics'
 import { BoatUsageHoursPage } from './pages/admin/BoatUsageHoursPage'
 import { CoachDailyView } from './pages/coach/CoachDailyView'
+import { CoachTimeOffPage } from './pages/CoachTimeOffPage'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { LoginAccessDeniedPage } from './pages/LoginAccessDeniedPage'
 import { ClickTrackProvider } from './components/ClickTrackProvider'
@@ -125,6 +126,7 @@ function AdminAppContent() {
           <Route path="/line-binding" element={<LineBindingStatus />} />
           <Route path="/line-settings" element={<LineSettings />} />
           <Route path="/coach-daily" element={<CoachDailyView />} />
+          <Route path="/coach-time-off" element={<CoachTimeOffPage />} />
           <Route path="/boats" element={<BoatManagement />} />
           <Route path="/products/*" element={<ProductHub />} />
           <Route path="/order-settle" element={<OrderSettlePage />} />

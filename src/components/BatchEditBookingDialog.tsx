@@ -593,7 +593,12 @@ export function BatchEditBookingDialog({
         }
 
         timeOffLinesForReminder = await collectCoachTimeOffReminderLines(
-          updatedBookings.map(ub => ({ coachIds: ub.coachIds, dateYmd: ub.dateStr }))
+          updatedBookings.map(ub => ({
+            coachIds: ub.coachIds,
+            dateYmd: ub.dateStr,
+            startTime: ub.startTime,
+            durationMin: ub.duration,
+          }))
         )
       }
       

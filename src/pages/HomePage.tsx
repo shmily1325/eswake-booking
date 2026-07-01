@@ -167,6 +167,12 @@ export function HomePage() {
       requiresViewAccess: true
     },
     {
+      title: '教練休假',
+      icon: '🏖️',
+      link: `/coach-time-off?month=${getLocalDateString().slice(0, 7)}`,
+      requiresViewAccess: true
+    },
+    {
       title: '編輯記錄',
       icon: '📋',
       link: '/audit-log',

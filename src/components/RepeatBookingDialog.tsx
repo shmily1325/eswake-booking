@@ -299,9 +299,15 @@ export function RepeatBookingDialog({
           }))
           insertPromises.push(supabase.from('booking_coaches').insert(bookingCoachesToInsert))
           insertPromises.push(
-            fetchCoachNamesOnTimeOffForDate(selectedCoaches, dateStr).then(offNames => {
+            fetchCoachNamesOnTimeOffForDate(selectedCoaches, dateStr, {
+              startTime: timeStr,
+              durationMin,
+            }).then(offNames => {
               if (offNames.length > 0) {
-                timeOffWarningLines.push(formatCoachTimeOffReminderMessage(offNames, dateStr))
+                timeOffWarningLines.push(formatCoachTimeOffReminderMessage(offNames, dateStr, {
+                  startTime: timeStr,
+                  durationMin,
+                }))
               }
             })
           )

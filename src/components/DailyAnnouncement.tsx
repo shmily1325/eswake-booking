@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, addDaysToDate } from '../utils/date'
 import { groupAnnouncementsForDisplay, getEventDateLabel, formatDateShort } from '../utils/announcement'
+import { formatTimeOffPeriodLabel, type CoachTimeOffRow } from '../utils/coachTimeOff'
 
 interface Announcement {
   id: number
@@ -117,9 +118,9 @@ export function DailyAnnouncement() {
       // 獲取今日休假教練（排除已隱藏的教練）
       supabase
         .from('coach_time_off')
-        .select('coach_id, coaches(name, status)')
+        .select('coach_id, start_date, end_date, start_time, end_time, coaches(name, status)')
         .lte('start_date', today)
-        .or(`end_date.gte.${today},end_date.is.null`),
+        .gte('end_date', today),
       
       // 獲取所有有生日的會員（在客戶端過濾今日生日）
       supabase
@@ -149,13 +150,19 @@ export function DailyAnnouncement() {
     }
 
     if (timeOffResult.data) {
-      // 只顯示啟用中的教練，過濾掉已停用或已隱藏的教練
-      const coachNames = timeOffResult.data
-        .filter((item: any) => item.coaches?.status === 'active')
-        .map((item: any) => item.coaches?.name)
-        .filter(Boolean)
-      const uniqueCoachNames = Array.from(new Set(coachNames))
-      setTimeOffCoaches(uniqueCoachNames)
+      const coachLabels = new Map<string, { name: string; periods: Set<string> }>()
+      for (const item of timeOffResult.data as (CoachTimeOffRow & { coaches?: { name?: string; status?: string } })[]) {
+        if (item.coaches?.status !== 'active' || !item.coaches?.name) continue
+        const period = formatTimeOffPeriodLabel(item, today)
+        const entry = coachLabels.get(item.coach_id) ?? { name: item.coaches.name, periods: new Set<string>() }
+        if (period) entry.periods.add(period)
+        coachLabels.set(item.coach_id, entry)
+      }
+      const displayNames = [...coachLabels.values()].map(({ name, periods }) => {
+        if (periods.size === 0) return name
+        return `${name}（${[...periods].join('、')}）`
+      })
+      setTimeOffCoaches(displayNames)
     }
     
     if (birthdayResult.data) {

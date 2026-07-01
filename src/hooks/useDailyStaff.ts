@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import {
+  type CoachTimeOffRow,
+  isCoachFullyOffOnDate,
+  groupTimeOffByCoach,
+} from '../utils/coachTimeOff'
 
 export interface StaffMember {
   id: string
   name: string
+  /** 整天休假（欄位標題用） */
   isOnTimeOff: boolean
+  /** 當日所有休假列（供時段重疊判斷） */
+  timeOffRecords: CoachTimeOffRow[]
 }
 
 interface UseDailyStaffResult {
   /** 所有啟用中的員工（含休假標記） */
   allStaff: StaffMember[]
-  /** 上班中的員工 */
+  /** 上班中的員工（非整天休假） */
   workingStaff: StaffMember[]
-  /** 休假中的員工 */
+  /** 整天休假的員工 */
   timeOffStaff: StaffMember[]
   /** 載入中 */
   loading: boolean
@@ -22,24 +30,18 @@ interface UseDailyStaffResult {
 
 /**
  * 取得指定日期的上班/休假人員
- * 共用邏輯：所有啟用中的教練 - 當天休假的教練 = 上班人員
+ * 整天休假 → timeOffStaff；部分時段 → 仍列入 allStaff，由排班頁依預約時段判斷
  */
 export function useDailyStaff(date: string): UseDailyStaffResult {
   const [allStaff, setAllStaff] = useState<StaffMember[]>([])
-  // 已成功載入的日期；用來判斷目前 allStaff 是否仍屬於外部傳入的 date
   const [loadedDate, setLoadedDate] = useState<string | null>(null)
-  // 手動 reload 中（與 date 切換的 loading 區分）
   const [isReloading, setIsReloading] = useState(false)
-  // loading 由「外部 date 還未載入完成」或「正在 reload」推導，
-  // 避免 date 一改變到 effect 觸發之間出現一幀舊資料的閃爍。
   const loading = loadedDate !== date || isReloading
 
   const loadStaffData = async () => {
     setIsReloading(true)
-    // 記住這次請求要載入的日期，避免快速切換時，較早的回應誤標較新的 date 為已載入
     const requestedDate = date
     try {
-      // 並行查詢：同時取得教練和當天休假資料
       const [coachesResult, timeOffResult] = await Promise.all([
         supabase
           .from('coaches')
@@ -48,9 +50,9 @@ export function useDailyStaff(date: string): UseDailyStaffResult {
           .order('name'),
         supabase
           .from('coach_time_off')
-          .select('coach_id')
+          .select('coach_id, start_date, end_date, start_time, end_time')
           .lte('start_date', requestedDate)
-          .gte('end_date', requestedDate)
+          .gte('end_date', requestedDate),
       ])
 
       if (coachesResult.error) {
@@ -60,14 +62,16 @@ export function useDailyStaff(date: string): UseDailyStaffResult {
         return
       }
 
-      // 建立休假教練 ID 集合
-      const timeOffCoachIds = new Set((timeOffResult.data || []).map(t => t.coach_id))
+      const timeOffByCoach = groupTimeOffByCoach((timeOffResult.data || []) as CoachTimeOffRow[])
 
-      // 標記休假狀態
-      const coachesWithTimeOff = (coachesResult.data || []).map(coach => ({
-        ...coach,
-        isOnTimeOff: timeOffCoachIds.has(coach.id)
-      }))
+      const coachesWithTimeOff = (coachesResult.data || []).map(coach => {
+        const records = timeOffByCoach.get(coach.id) ?? []
+        return {
+          ...coach,
+          isOnTimeOff: isCoachFullyOffOnDate(records, requestedDate),
+          timeOffRecords: records,
+        }
+      })
 
       setAllStaff(coachesWithTimeOff)
       setLoadedDate(requestedDate)
@@ -84,11 +88,9 @@ export function useDailyStaff(date: string): UseDailyStaffResult {
     if (date) {
       loadStaffData()
     }
-    // 只在 date 改變時重新載入；loadStaffData 內部已使用閉包中的 date
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date])
 
-  // 分離上班和休假人員
   const workingStaff = allStaff.filter(s => !s.isOnTimeOff)
   const timeOffStaff = allStaff.filter(s => s.isOnTimeOff)
 
@@ -97,7 +99,6 @@ export function useDailyStaff(date: string): UseDailyStaffResult {
     workingStaff,
     timeOffStaff,
     loading,
-    reload: loadStaffData
+    reload: loadStaffData,
   }
 }
-

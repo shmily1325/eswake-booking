@@ -1,19 +1,29 @@
 import { supabase } from '../lib/supabase'
 import { toast } from './toast'
+import {
+  type CoachTimeOffRow,
+  isTimeOffOverlappingBooking,
+} from './coachTimeOff'
+
+export type CoachTimeOffCheckOptions = {
+  startTime?: string
+  durationMin?: number
+}
 
 /**
  * 依 coach_time_off 查詢：指定日期有哪些教練在休假（僅限傳入的 coachIds）。
- * 回傳名稱順序與 coachIds 相同（略過不在休假名單者）。
+ * 若提供 startTime + durationMin，僅回傳與預約時段重疊者。
  */
 export async function fetchCoachNamesOnTimeOffForDate(
   coachIds: string[],
-  dateYmd: string
+  dateYmd: string,
+  options?: CoachTimeOffCheckOptions
 ): Promise<string[]> {
   if (!dateYmd || coachIds.length === 0) return []
 
   const { data: rows, error } = await supabase
     .from('coach_time_off')
-    .select('coach_id')
+    .select('coach_id, start_date, end_date, start_time, end_time')
     .in('coach_id', coachIds)
     .lte('start_date', dateYmd)
     .gte('end_date', dateYmd)
@@ -23,7 +33,26 @@ export async function fetchCoachNamesOnTimeOffForDate(
     return []
   }
 
-  const onLeaveIds = new Set((rows || []).map(r => r.coach_id))
+  const onLeaveIds = new Set<string>()
+  const rowsByCoach = new Map<string, CoachTimeOffRow[]>()
+
+  for (const row of (rows || []) as CoachTimeOffRow[]) {
+    const list = rowsByCoach.get(row.coach_id) ?? []
+    list.push(row)
+    rowsByCoach.set(row.coach_id, list)
+  }
+
+  for (const coachId of coachIds) {
+    const coachRows = rowsByCoach.get(coachId) ?? []
+    if (coachRows.length === 0) continue
+
+    const shouldWarn = options?.startTime && options.durationMin != null
+      ? isTimeOffOverlappingBooking(coachRows, dateYmd, options.startTime, options.durationMin)
+      : true
+
+    if (shouldWarn) onLeaveIds.add(coachId)
+  }
+
   if (onLeaveIds.size === 0) return []
 
   const { data: coaches, error: coachesError } = await supabase
@@ -40,9 +69,14 @@ export async function fetchCoachNamesOnTimeOffForDate(
     .filter((n): n is string => Boolean(n))
 }
 
-export function formatCoachTimeOffReminderMessage(names: string[], dateYmd: string): string {
+export function formatCoachTimeOffReminderMessage(
+  names: string[],
+  dateYmd: string,
+  options?: CoachTimeOffCheckOptions
+): string {
   if (names.length === 0) return ''
-  return `${names.join('、')} 於 ${dateYmd} 當日休假，請確認是否可排此預約。`
+  const scope = options?.startTime && options.durationMin != null ? '此時段' : '當日'
+  return `${names.join('、')} 於 ${dateYmd} ${scope}休假，請確認是否可排此預約。`
 }
 
 /**
@@ -52,13 +86,14 @@ export function formatCoachTimeOffReminderMessage(names: string[], dateYmd: stri
 export function scheduleCoachTimeOffReminderToast(
   coachIds: string[],
   dateYmd: string,
-  heading: string = '預約已建立。'
+  heading: string = '預約已建立。',
+  options?: CoachTimeOffCheckOptions
 ): void {
   if (!dateYmd || coachIds.length === 0) return
   void (async () => {
-    const names = await fetchCoachNamesOnTimeOffForDate(coachIds, dateYmd)
+    const names = await fetchCoachNamesOnTimeOffForDate(coachIds, dateYmd, options)
     if (names.length === 0) return
-    toast.warning(`${heading}\n\n${formatCoachTimeOffReminderMessage(names, dateYmd)}`)
+    toast.warning(`${heading}\n\n${formatCoachTimeOffReminderMessage(names, dateYmd, options)}`)
   })()
 }
 
@@ -67,18 +102,18 @@ export function scheduleCoachTimeOffReminderToast(
  * 用於批次修改等情境，避免同一組合重複打 DB。
  */
 export async function collectCoachTimeOffReminderLines(
-  items: { coachIds: string[]; dateYmd: string }[]
+  items: { coachIds: string[]; dateYmd: string; startTime?: string; durationMin?: number }[]
 ): Promise<string[]> {
   const seenKeys = new Set<string>()
   const lines: string[] = []
-  for (const { coachIds, dateYmd } of items) {
+  for (const { coachIds, dateYmd, startTime, durationMin } of items) {
     if (!dateYmd || coachIds.length === 0) continue
-    const key = `${dateYmd}\u0000${[...coachIds].sort().join('\u0000')}`
+    const key = `${dateYmd}\u0000${[...coachIds].sort().join('\u0000')}\u0000${startTime ?? ''}\u0000${durationMin ?? ''}`
     if (seenKeys.has(key)) continue
     seenKeys.add(key)
-    const names = await fetchCoachNamesOnTimeOffForDate(coachIds, dateYmd)
+    const names = await fetchCoachNamesOnTimeOffForDate(coachIds, dateYmd, { startTime, durationMin })
     if (names.length > 0) {
-      lines.push(formatCoachTimeOffReminderMessage(names, dateYmd))
+      lines.push(formatCoachTimeOffReminderMessage(names, dateYmd, { startTime, durationMin }))
     }
   }
   return lines
