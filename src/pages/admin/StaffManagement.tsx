@@ -6,7 +6,19 @@ import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
+import { trackClickDedupedWithin } from '../../utils/trackClick'
 import { Button, Badge, useToast, ToastContainer, ConfirmModal } from '../../components/ui'
+import {
+  AdminModal,
+  AdminModalHeader,
+  adminTextInputStyle,
+  DateRangeFields,
+  FormFieldLabel,
+  HintBox,
+  PreviewBanner,
+  SegmentedControl,
+  TimeSelectField,
+} from '../../components/admin/AdminFormUi'
 import {
   clearPermissionCache,
   isAdmin,
@@ -22,7 +34,10 @@ import {
   timeOffModeToDbFields,
   buildTimeOffPreviewText,
   isCustomTimeOffEmptyOnSingleDay,
+  inferTimeOffModeFromRow,
+  getTimeOffListDisplayParts,
   type TimeOffMode,
+  type TimeOffPeriodKind,
 } from '../../utils/coachTimeOff'
 
 /** 人員權限表上顯示的「小編」欄位：重複預約＋批次合併為一格（寫庫仍為兩欄同值） */
@@ -51,7 +66,13 @@ interface TimeOff {
 }
 
 /** 合併連續休假後的顯示列（刪除時會一併刪除合併範圍內的所有資料列） */
-type TimeOffDisplayRow = TimeOff & { displayText: string; mergedRecordIds: number[] }
+type TimeOffDisplayRow = TimeOff & {
+  displayText: string
+  dateLabel: string
+  periodLabel: string
+  periodKind: TimeOffPeriodKind
+  mergedRecordIds: number[]
+}
 
 /** 功能權限名單（表 editor_users）＋ 各模組布林 */
 interface EditorUser {
@@ -198,6 +219,9 @@ export function StaffManagement() {
   const [timeOffCustomStartTime, setTimeOffCustomStartTime] = useState('')
   const [timeOffCustomEndTime, setTimeOffCustomEndTime] = useState('')
   const [timeOffLoading, setTimeOffLoading] = useState(false)
+  /** 編輯模式：對應 DB 列 id（合併顯示列可能含多 id） */
+  const [editingTimeOffIds, setEditingTimeOffIds] = useState<number[] | null>(null)
+  const [timeOffMultiDay, setTimeOffMultiDay] = useState(false)
   
   // 設定教練帳號
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
@@ -247,17 +271,22 @@ export function StaffManagement() {
   const createMergedTimeOff = (group: TimeOff[]): TimeOffDisplayRow => {
     const first = group[0]
     const last = group[group.length - 1]
-    const displayText = formatTimeOffDisplay({
+    const mergedRow = {
       coach_id: first.coach_id,
       start_date: first.start_date,
       end_date: last.end_date,
       start_time: first.start_time,
       end_time: first.end_time,
-    })
+    }
+    const displayText = formatTimeOffDisplay(mergedRow)
+    const { dateLabel, periodLabel, periodKind } = getTimeOffListDisplayParts(mergedRow)
     return {
       ...first,
       end_date: last.end_date,
       displayText,
+      dateLabel,
+      periodLabel,
+      periodKind,
       mergedRecordIds: group.map(t => t.id),
     }
   }
@@ -480,7 +509,7 @@ export function StaffManagement() {
     }
   }
 
-  const handleAddTimeOff = async () => {
+  const handleSaveTimeOff = async () => {
     if (!selectedCoach) return
     if (!timeOffStartDate || !timeOffEndDate) {
       toast.warning('請選擇日期')
@@ -524,23 +553,51 @@ export function StaffManagement() {
         timeOffCustomStartTime,
         timeOffCustomEndTime
       )
-      const { error } = await supabase.from('coach_time_off').insert([{
-        coach_id: selectedCoach.id,
+      const payload = {
         start_date: timeOffStartDate,
         end_date: timeOffEndDate,
         start_time,
         end_time,
         reason: reasonVal,
-        created_at: getLocalTimestamp(),
-      }])
+      }
 
-      if (error) throw error
+      if (editingTimeOffIds?.length) {
+        if (editingTimeOffIds.length === 1) {
+          const { error } = await supabase
+            .from('coach_time_off')
+            .update(payload)
+            .eq('id', editingTimeOffIds[0])
+          if (error) throw error
+        } else {
+          const { error: deleteError } = await supabase
+            .from('coach_time_off')
+            .delete()
+            .in('id', editingTimeOffIds)
+          if (deleteError) throw deleteError
+          const { error: insertError } = await supabase.from('coach_time_off').insert([{
+            coach_id: selectedCoach.id,
+            ...payload,
+            created_at: getLocalTimestamp(),
+          }])
+          if (insertError) throw insertError
+        }
+        toast.success('休假已更新')
+      } else {
+        const { error } = await supabase.from('coach_time_off').insert([{
+          coach_id: selectedCoach.id,
+          ...payload,
+          created_at: getLocalTimestamp(),
+        }])
+        if (error) throw error
+        toast.success('休假設定成功')
+      }
 
       resetTimeOffDialog()
-      toast.success('休假設定成功')
       loadData()
     } catch (error) {
-      toast.error('設定休假失敗：' + (error as Error).message)
+      toast.error(
+        (editingTimeOffIds?.length ? '更新休假失敗：' : '設定休假失敗：') + (error as Error).message
+      )
     } finally {
       setTimeOffLoading(false)
     }
@@ -565,8 +622,16 @@ export function StaffManagement() {
     }
   }
 
+  const normalizeTimeForSelect = (t: string | null): string => {
+    if (!t) return ''
+    const [h, m] = t.split(':')
+    return `${h.padStart(2, '0')}:${(m ?? '00').padStart(2, '0')}`
+  }
+
   const openTimeOffDialog = (coach: Coach) => {
     setSelectedCoach(coach)
+    setEditingTimeOffIds(null)
+    setTimeOffMultiDay(false)
     const dateStr = getLocalDateString()
     setTimeOffStartDate(dateStr)
     setTimeOffEndDate(dateStr)
@@ -577,9 +642,31 @@ export function StaffManagement() {
     setTimeOffDialogOpen(true)
   }
 
+  const openEditTimeOffDialog = (coach: Coach, row: TimeOffDisplayRow) => {
+    setSelectedCoach(coach)
+    setEditingTimeOffIds(row.mergedRecordIds)
+    setTimeOffMultiDay(row.start_date !== row.end_date)
+    setTimeOffStartDate(row.start_date)
+    setTimeOffEndDate(row.end_date)
+    setTimeOffReason(row.reason || '')
+    const { mode, customStartTime, customEndTime } = inferTimeOffModeFromRow({
+      coach_id: row.coach_id,
+      start_date: row.start_date,
+      end_date: row.end_date,
+      start_time: row.start_time,
+      end_time: row.end_time,
+    })
+    setTimeOffMode(mode)
+    setTimeOffCustomStartTime(normalizeTimeForSelect(customStartTime))
+    setTimeOffCustomEndTime(normalizeTimeForSelect(customEndTime))
+    setTimeOffDialogOpen(true)
+  }
+
   const resetTimeOffDialog = () => {
     setTimeOffDialogOpen(false)
     setSelectedCoach(null)
+    setEditingTimeOffIds(null)
+    setTimeOffMultiDay(false)
     setTimeOffStartDate('')
     setTimeOffEndDate('')
     setTimeOffReason('')
@@ -597,7 +684,30 @@ export function StaffManagement() {
   }
 
   const isTimeOffSingleDay = timeOffStartDate === timeOffEndDate
-  const isTimeOffCrossDay = Boolean(timeOffStartDate && timeOffEndDate && !isTimeOffSingleDay)
+  const isTimeOffCrossDay = timeOffMultiDay && Boolean(timeOffStartDate && timeOffEndDate && !isTimeOffSingleDay)
+
+  const handleTimeOffStartChange = (v: string) => {
+    setTimeOffStartDate(v)
+    const nextEnd = !timeOffMultiDay ? v : (timeOffEndDate < v ? v : timeOffEndDate)
+    if (!timeOffMultiDay) setTimeOffEndDate(v)
+    else if (timeOffEndDate < v) setTimeOffEndDate(v)
+    resetPartialDayModeIfCrossDay(v, nextEnd)
+  }
+
+  const handleTimeOffEndChange = (v: string) => {
+    setTimeOffEndDate(v)
+    resetPartialDayModeIfCrossDay(timeOffStartDate, v)
+  }
+
+  const handleTimeOffMultiDayChange = (v: boolean) => {
+    setTimeOffMultiDay(v)
+    if (!v && timeOffStartDate) {
+      setTimeOffEndDate(timeOffStartDate)
+      resetPartialDayModeIfCrossDay(timeOffStartDate, timeOffStartDate)
+    } else if (v) {
+      resetPartialDayModeIfCrossDay(timeOffStartDate, timeOffEndDate)
+    }
+  }
 
   const timeOffPreviewText = useMemo(() => {
     if (!timeOffStartDate || !timeOffEndDate) return ''
@@ -610,44 +720,22 @@ export function StaffManagement() {
     )
   }, [timeOffMode, timeOffStartDate, timeOffEndDate, timeOffCustomStartTime, timeOffCustomEndTime])
 
-  const renderTimeOffTimeSelect = (
-    value: string,
-    onChange: (v: string) => void,
-    label: string
-  ) => (
-    <div style={{ flex: 1 }}>
-      <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', color: '#666' }}>{label}</label>
-      <div style={{ display: 'flex', gap: '5px' }}>
-        <select
-          value={value ? value.split(':')[0] : ''}
-          onChange={(e) => {
-            const hour = e.target.value
-            if (!hour) onChange('')
-            else onChange(`${hour}:${value ? value.split(':')[1] : '00'}`)
-          }}
-          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '16px' }}
-        >
-          <option value="">--</option>
-          {Array.from({ length: 24 }, (_, i) => {
-            const hour = String(i).padStart(2, '0')
-            return <option key={hour} value={hour}>{hour}</option>
-          })}
-        </select>
-        <select
-          value={value ? value.split(':')[1] : ''}
-          onChange={(e) => {
-            const minute = e.target.value
-            if (!minute) onChange('')
-            else onChange(`${value ? value.split(':')[0] : '08'}:${minute}`)
-          }}
-          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '16px' }}
-        >
-          <option value="">--</option>
-          {['00', '15', '30', '45'].map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </div>
-    </div>
-  )
+  const timeOffPeriodPillStyle = (kind: TimeOffPeriodKind) => {
+    if (kind === 'fullday') {
+      return { background: '#ffecb3', color: '#e65100', border: '1px solid #ffb300' }
+    }
+    if (kind === 'custom') {
+      return { background: '#ede7f6', color: '#5e35b1', border: '1px solid #b39ddb' }
+    }
+    return { background: '#ffe0b2', color: '#e65100', border: '1px solid #ffb74d' }
+  }
+
+  const timeOffModeOptions = useMemo(() => ([
+    { value: 'fullday' as const, label: '整天', hint: '預設', trackId: 'staff_time_off_mode_fullday' },
+    { value: 'morning' as const, label: '上午', hint: '～12:00', disabled: isTimeOffCrossDay, trackId: 'staff_time_off_mode_morning' },
+    { value: 'afternoon' as const, label: '下午', hint: '12:00～', disabled: isTimeOffCrossDay, trackId: 'staff_time_off_mode_afternoon' },
+    { value: 'custom' as const, label: '自訂', hint: '指定時間', trackId: 'staff_time_off_mode_custom' },
+  ]), [isTimeOffCrossDay])
 
   const openAccountDialog = (coach: Coach) => {
     setSelectedAccountCoach(coach)
@@ -1416,7 +1504,14 @@ export function StaffManagement() {
               <input
                 type="month"
                 value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value
+                  if (!next || next === selectedMonth) return
+                  setSelectedMonth(next)
+                  if (user?.email) {
+                    trackClickDedupedWithin(`staff_time_off_month_pick:${next}`, user.email)
+                  }
+                }}
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -1624,7 +1719,7 @@ export function StaffManagement() {
                   </div>
                 </div>
 
-                {/* 不在期間記錄 */}
+                {/* 休假紀錄 */}
                 {!isArchived && coachTimeOffs.length > 0 && (() => {
                   const filteredTimeOffs = filterTimeOffsByMonth(coachTimeOffs, selectedMonth)
                   if (filteredTimeOffs.length === 0) return null
@@ -1645,11 +1740,14 @@ export function StaffManagement() {
                     }}>
                       <div style={{
                         fontSize: '14px',
-                        fontWeight: '600',
+                        fontWeight: '700',
                         marginBottom: '10px',
-                        color: '#f57c00'
+                        color: '#e65100',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
                       }}>
-                        不在期間
+                        🏖️ 休假紀錄
                       </div>
                       {displayTimeOffs.map((timeOff, idx) => (
                         <div
@@ -1667,29 +1765,63 @@ export function StaffManagement() {
                         >
                           <span style={{
                             flex: 1,
-                            color: '#555',
                             lineHeight: '1.4',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
-                            flexWrap: 'wrap'
+                            flexWrap: 'wrap',
                           }}>
-                            <span style={{ fontWeight: '600' }}>{timeOff.displayText}</span>
+                            <span style={{ fontWeight: 700, fontSize: '14px', color: '#333' }}>
+                              {timeOff.dateLabel}
+                            </span>
+                            <span style={{
+                              padding: '3px 10px',
+                              borderRadius: '999px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              letterSpacing: '0.02em',
+                              ...timeOffPeriodPillStyle(timeOff.periodKind),
+                            }}>
+                              {timeOff.periodLabel}
+                            </span>
                             {timeOff.reason && (
                               <span style={{
                                 padding: '3px 10px',
                                 background: '#fff',
                                 borderRadius: '6px',
                                 fontSize: '12px',
-                                color: '#f57c00',
-                                fontWeight: '600',
-                                border: '1px solid #ffe082'
+                                color: '#888',
+                                fontWeight: '500',
+                                border: '1px solid #e0e0e0',
                               }}>
                                 {timeOff.reason}
                               </span>
                             )}
                           </span>
-                          <button
+                          <div style={{
+                            display: 'flex',
+                            gap: '8px',
+                            alignSelf: isMobile ? 'flex-start' : 'center',
+                            flexShrink: 0,
+                          }}>
+                            <button
+                              type="button"
+                              data-track="staff_edit_time_off"
+                              onClick={() => openEditTimeOffDialog(coach, timeOff)}
+                              style={{
+                                padding: '6px 12px',
+                                background: '#fff',
+                                color: '#1565c0',
+                                border: '1px solid #90caf9',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              編輯
+                            </button>
+                            <button
                               type="button"
                               data-track="staff_delete_time_off"
                               onClick={() => handleDeleteTimeOff(timeOff)}
@@ -1704,16 +1836,17 @@ export function StaffManagement() {
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
                                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                alignSelf: isMobile ? 'flex-start' : 'center',
                               }}
                             >
                               刪除
                             </button>
+                          </div>
                         </div>
                       ))}
                       {hasMore && (
                         <button
                           type="button"
+                          data-track="staff_time_off_expand"
                           onClick={() => toggleExpandCoach(coach.id)}
                           style={{
                             width: '100%',
@@ -2620,203 +2753,100 @@ export function StaffManagement() {
         </div>
       )}
 
-      {/* 設定不在期間彈窗 */}
+      {/* 休假設定彈窗 */}
       {timeOffDialogOpen && selectedCoach && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: isMobile ? '20px' : '30px',
-            maxWidth: '440px',
-            width: '100%',
-            overflow: 'hidden'
-          }}>
-            <h2 style={{ marginTop: 0, fontSize: '20px' }}>
-              設定 {selectedCoach.name} 的休假
-            </h2>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                開始日期
-              </label>
-              <div style={{ display: 'flex' }}>
-                <input
-                  type="date"
-                  value={timeOffStartDate}
-                  onChange={(e) => {
-                    const nextStart = e.target.value
-                    setTimeOffStartDate(nextStart)
-                    const nextEnd = timeOffEndDate < nextStart ? nextStart : timeOffEndDate
-                    if (timeOffEndDate < nextStart) {
-                      setTimeOffEndDate(nextStart)
-                    }
-                    resetPartialDayModeIfCrossDay(nextStart, nextEnd)
-                  }}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    padding: '12px',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-            </div>
+        <AdminModal isMobile={isMobile}>
+          <AdminModalHeader
+            title={editingTimeOffIds?.length ? '編輯休假' : '新增休假'}
+            subtitle={selectedCoach.name}
+            accent="amber"
+          />
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                結束日期
-              </label>
-              <div style={{ display: 'flex' }}>
-                <input
-                  type="date"
-                  value={timeOffEndDate}
-                  onChange={(e) => {
-                    const nextEnd = e.target.value
-                    setTimeOffEndDate(nextEnd)
-                    resetPartialDayModeIfCrossDay(timeOffStartDate, nextEnd)
-                  }}
-                  min={timeOffStartDate}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    padding: '12px',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-            </div>
+          {timeOffPreviewText && (
+            <PreviewBanner>
+              <strong>預覽：</strong>{timeOffPreviewText}
+            </PreviewBanner>
+          )}
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                時段
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {([
-                  ['fullday', '整天（預設）'],
-                  ['morning', '上午（00:00–12:00）'],
-                  ['afternoon', '下午（12:00–24:00）'],
-                  ['custom', '自訂時間'],
-                ] as const).map(([mode, label]) => {
-                  const disabled = isTimeOffCrossDay && (mode === 'morning' || mode === 'afternoon')
-                  return (
-                    <label
-                      key={mode}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        opacity: disabled ? 0.45 : 1,
-                        cursor: disabled ? 'not-allowed' : 'pointer',
-                        fontSize: '14px',
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="timeOffMode"
-                        checked={timeOffMode === mode}
-                        disabled={disabled}
-                        onChange={() => setTimeOffMode(mode)}
-                      />
-                      {label}
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
+          <DateRangeFields
+            startDate={timeOffStartDate}
+            endDate={timeOffEndDate}
+            onStartChange={handleTimeOffStartChange}
+            onEndChange={handleTimeOffEndChange}
+            multiDay={timeOffMultiDay}
+            onMultiDayChange={handleTimeOffMultiDayChange}
+            trackPrefix="staff_time_off"
+          />
 
-            {timeOffMode === 'custom' && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  {renderTimeOffTimeSelect(
-                    timeOffCustomStartTime,
-                    setTimeOffCustomStartTime,
-                    isTimeOffSingleDay ? '開始時間' : '第一天時間'
-                  )}
-                  {renderTimeOffTimeSelect(
-                    timeOffCustomEndTime,
-                    setTimeOffCustomEndTime,
-                    isTimeOffSingleDay ? '結束時間' : '最後一天時間'
-                  )}
-                </div>
-                <div style={{ fontSize: '12px', color: '#888', marginTop: '8px', lineHeight: 1.5 }}>
-                  時間留空表示該端為整天。跨日時中間日期視為整天休假。
-                </div>
-              </div>
+          <div style={{ marginBottom: '16px' }}>
+            <FormFieldLabel>時段</FormFieldLabel>
+            <SegmentedControl
+              options={timeOffModeOptions}
+              value={timeOffMode}
+              onChange={setTimeOffMode}
+              accent="amber"
+            />
+            {isTimeOffCrossDay && (
+              <HintBox>跨多日僅支援「整天」或「自訂時間」</HintBox>
             )}
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                原因 / 事項
-              </label>
-              <input
-                type="text"
-                value={timeOffReason}
-                onChange={(e) => setTimeOffReason(e.target.value)}
-                placeholder="例如：去美國、休假..."
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {timeOffPreviewText && (
-              <div style={{
-                marginBottom: '16px',
-                padding: '12px 14px',
-                background: '#e3f2fd',
-                borderRadius: '8px',
-                border: '1px solid #90caf9',
-                fontSize: '14px',
-                color: '#1565c0',
-                lineHeight: 1.5,
-              }}>
-                <strong>將設定：</strong>{timeOffPreviewText}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <Button
-                variant="outline"
-                onClick={resetTimeOffDialog}
-                disabled={timeOffLoading}
-                style={{ flex: 1 }}
-              >
-                取消
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleAddTimeOff}
-                disabled={timeOffLoading}
-                style={{ flex: 1, background: timeOffLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-              >
-                {timeOffLoading ? '設定中...' : '確定'}
-              </Button>
-            </div>
           </div>
-        </div>
+
+          {timeOffMode === 'custom' && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <TimeSelectField
+                  value={timeOffCustomStartTime}
+                  onChange={setTimeOffCustomStartTime}
+                  label={isTimeOffSingleDay ? '開始時間' : '第一天時間'}
+                />
+                <TimeSelectField
+                  value={timeOffCustomEndTime}
+                  onChange={setTimeOffCustomEndTime}
+                  label={isTimeOffSingleDay ? '結束時間' : '最後一天時間'}
+                />
+              </div>
+              <HintBox>
+                時間留空表示該端為整天；跨日時中間日期視為整天休假。
+              </HintBox>
+            </div>
+          )}
+
+          <div style={{ marginBottom: '20px' }}>
+            <FormFieldLabel optional>原因 / 事項</FormFieldLabel>
+            <input
+              type="text"
+              value={timeOffReason}
+              onChange={(e) => setTimeOffReason(e.target.value)}
+              placeholder="例如：出國、個人事假…"
+              style={adminTextInputStyle}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <Button
+              variant="outline"
+              data-track="staff_time_off_cancel"
+              onClick={resetTimeOffDialog}
+              disabled={timeOffLoading}
+              style={{ flex: 1 }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              data-track={editingTimeOffIds?.length
+                ? `staff_time_off_edit_confirm_${timeOffMode}`
+                : `staff_time_off_confirm_${timeOffMode}`}
+              onClick={handleSaveTimeOff}
+              disabled={timeOffLoading}
+              style={{ flex: 1, background: timeOffLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+            >
+              {timeOffLoading
+                ? (editingTimeOffIds?.length ? '儲存中…' : '新增中…')
+                : (editingTimeOffIds?.length ? '儲存' : '新增')}
+            </Button>
+          </div>
+        </AdminModal>
       )}
 
       {/* 設定帳號彈窗 */}

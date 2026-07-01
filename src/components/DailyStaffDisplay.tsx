@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useDailyStaff } from '../hooks/useDailyStaff'
 import { formatStaffTimeOffBadgeLabel } from '../utils/coachTimeOff'
+import { filterTimeOffStaffDisplay, filterWorkingStaffDisplay } from '../utils/dailyStaffDisplay'
 import { styles, getResponsiveStyles } from '../styles/designSystem'
 
 interface DailyStaffDisplayProps {
@@ -17,8 +18,13 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
   const { workingStaff, allStaff, loading } = useDailyStaff(date)
   const rs = getResponsiveStyles(isMobile)
 
+  const visibleWorkingStaff = useMemo(
+    () => filterWorkingStaffDisplay(workingStaff),
+    [workingStaff]
+  )
+
   const timeOffStaff = useMemo(
-    () => allStaff.filter(s => s.timeOffRecords.length > 0),
+    () => filterTimeOffStaffDisplay(allStaff.filter(s => s.timeOffRecords.length > 0)),
     [allStaff]
   )
 
@@ -49,8 +55,8 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
           👥 可上班
         </span>
         <div style={{ ...styles.flexWrap, ...rs.gapSm }}>
-          {workingStaff.length > 0 ? (
-            workingStaff.map(staff => (
+          {visibleWorkingStaff.length > 0 ? (
+            visibleWorkingStaff.map(staff => (
               <span
                 key={staff.id}
                 style={{ ...styles.badgeSuccess, ...rs.badgePadding, fontSize: isMobile ? '12px' : '13px' }}

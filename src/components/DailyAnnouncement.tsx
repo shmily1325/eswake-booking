@@ -4,6 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, addDaysToDate } from '../utils/date'
 import { groupAnnouncementsForDisplay, getEventDateLabel, formatDateShort } from '../utils/announcement'
 import { formatTimeOffPeriodLabel, type CoachTimeOffRow } from '../utils/coachTimeOff'
+import { isHiddenFromTimeOffStaffDisplay } from '../utils/dailyStaffDisplay'
 
 interface Announcement {
   id: number
@@ -153,6 +154,7 @@ export function DailyAnnouncement() {
       const coachLabels = new Map<string, { name: string; periods: Set<string> }>()
       for (const item of timeOffResult.data as (CoachTimeOffRow & { coaches?: { name?: string; status?: string } })[]) {
         if (item.coaches?.status !== 'active' || !item.coaches?.name) continue
+        if (isHiddenFromTimeOffStaffDisplay(item.coaches.name)) continue
         const period = formatTimeOffPeriodLabel(item, today)
         const entry = coachLabels.get(item.coach_id) ?? { name: item.coaches.name, periods: new Set<string>() }
         if (period) entry.periods.add(period)

@@ -12,6 +12,15 @@ import { hasEditorFeatureAsync, isAdmin } from '../../utils/auth'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { isFacility } from '../../utils/facility'
 import { computeBoatsMonthlyUptime } from '../../utils/boatMonthlyUptime'
+import {
+  AdminModal,
+  AdminModalHeader,
+  adminTextInputStyle,
+  DateRangeFields,
+  FormFieldLabel,
+  HintBox,
+  TimeSelectField,
+} from '../../components/admin/AdminFormUi'
 
 export function BoatManagement() {
     const user = useAuthUser()
@@ -35,6 +44,7 @@ export function BoatManagement() {
     const [reason, setReason] = useState('')
     const [unavailableLoading, setUnavailableLoading] = useState(false)
     const [editingUnavailableId, setEditingUnavailableId] = useState<number | null>(null)
+    const [unavailableMultiDay, setUnavailableMultiDay] = useState(false)
     const { isMobile } = useResponsive()
     
     // 月份篩選
@@ -276,6 +286,7 @@ export function BoatManagement() {
     const openUnavailableDialog = (boat: Boat) => {
         setEditingUnavailableId(null)
         setSelectedBoat(boat)
+        setUnavailableMultiDay(false)
         const dateStr = getLocalDateString()
         setStartDate(dateStr)
         setEndDate(dateStr)
@@ -288,6 +299,7 @@ export function BoatManagement() {
     const openEditUnavailableDialog = (boat: Boat, record: BoatUnavailableDate) => {
         setEditingUnavailableId(record.id)
         setSelectedBoat(boat)
+        setUnavailableMultiDay(record.start_date !== record.end_date)
         setStartDate(record.start_date)
         setEndDate(record.end_date)
         setStartTime(unavailableTimeToForm(record.start_time))
@@ -300,11 +312,29 @@ export function BoatManagement() {
         setUnavailableDialogOpen(false)
         setEditingUnavailableId(null)
         setSelectedBoat(null)
+        setUnavailableMultiDay(false)
         setStartDate('')
         setEndDate('')
         setStartTime('')
         setEndTime('')
         setReason('')
+    }
+
+    const isUnavailableSingleDay = startDate === endDate
+
+    const handleUnavailableStartChange = (v: string) => {
+        setStartDate(v)
+        if (!unavailableMultiDay) setEndDate(v)
+        else if (endDate < v) setEndDate(v)
+    }
+
+    const handleUnavailableEndChange = (v: string) => {
+        setEndDate(v)
+    }
+
+    const handleUnavailableMultiDayChange = (v: boolean) => {
+        setUnavailableMultiDay(v)
+        if (!v && startDate) setEndDate(startDate)
     }
 
     // 初始化編輯價格
@@ -1009,168 +1039,72 @@ export function BoatManagement() {
 
             {/* 設定維修彈窗 */}
             {unavailableDialogOpen && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000, padding: '20px'
-                }}>
-                    <div style={{
-                        background: 'white', borderRadius: '12px', padding: '30px',
-                        maxWidth: '400px', width: '100%', overflow: 'hidden'
-                    }}>
-                        <h2 style={{ marginTop: 0 }}>
-                            {editingUnavailableId != null ? '編輯維修/停用' : '設定維修/停用'}
-                        </h2>
-                        {selectedBoat && (
-                            <p style={{ margin: '-6px 0 14px', fontSize: '14px', color: '#666' }}>{selectedBoat.name}</p>
-                        )}
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px' }}>開始日期</label>
-                            <div style={{ display: 'flex' }}>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    style={{ flex: 1, minWidth: 0, padding: '10px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '16px', boxSizing: 'border-box' }}
-                                />
-                            </div>
-                        </div>
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px' }}>結束日期</label>
-                            <div style={{ display: 'flex' }}>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    style={{ flex: 1, minWidth: 0, padding: '10px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '16px', boxSizing: 'border-box' }}
-                                />
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', marginBottom: '5px' }}>
-                                    {startDate === endDate ? '開始時間' : '第一天時間'} (選填)
-                                </label>
-                                <div style={{ display: 'flex', gap: '5px' }}>
-                                    <select
-                                        value={startTime ? startTime.split(':')[0] : ''}
-                                        onChange={(e) => {
-                                            const hour = e.target.value
-                                            if (!hour) {
-                                                setStartTime('')
-                                            } else {
-                                                const minute = startTime ? startTime.split(':')[1] : '00'
-                                                setStartTime(`${hour}:${minute}`)
-                                            }
-                                        }}
-                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
-                                    >
-                                        <option value="">--</option>
-                                        {Array.from({ length: 24 }, (_, i) => {
-                                            const hour = String(i).padStart(2, '0')
-                                            return <option key={hour} value={hour}>{hour}</option>
-                                        })}
-                                    </select>
-                                    <select
-                                        value={startTime ? startTime.split(':')[1] : ''}
-                                        onChange={(e) => {
-                                            const minute = e.target.value
-                                            if (!minute) {
-                                                setStartTime('')
-                                            } else {
-                                                const hour = startTime ? startTime.split(':')[0] : '08'
-                                                setStartTime(`${hour}:${minute}`)
-                                            }
-                                        }}
-                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
-                                    >
-                                        <option value="">--</option>
-                                        <option value="00">00</option>
-                                        <option value="15">15</option>
-                                        <option value="30">30</option>
-                                        <option value="45">45</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', marginBottom: '5px' }}>
-                                    {startDate === endDate ? '結束時間' : '最後一天時間'} (選填)
-                                </label>
-                                <div style={{ display: 'flex', gap: '5px' }}>
-                                    <select
-                                        value={endTime ? endTime.split(':')[0] : ''}
-                                        onChange={(e) => {
-                                            const hour = e.target.value
-                                            if (!hour) {
-                                                setEndTime('')
-                                            } else {
-                                                const minute = endTime ? endTime.split(':')[1] : '00'
-                                                setEndTime(`${hour}:${minute}`)
-                                            }
-                                        }}
-                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
-                                    >
-                                        <option value="">--</option>
-                                        {Array.from({ length: 24 }, (_, i) => {
-                                            const hour = String(i).padStart(2, '0')
-                                            return <option key={hour} value={hour}>{hour}</option>
-                                        })}
-                                    </select>
-                                    <select
-                                        value={endTime ? endTime.split(':')[1] : ''}
-                                        onChange={(e) => {
-                                            const minute = e.target.value
-                                            if (!minute) {
-                                                setEndTime('')
-                                            } else {
-                                                const hour = endTime ? endTime.split(':')[0] : '08'
-                                                setEndTime(`${hour}:${minute}`)
-                                            }
-                                        }}
-                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
-                                    >
-                                        <option value="">--</option>
-                                        <option value="00">00</option>
-                                        <option value="15">15</option>
-                                        <option value="30">30</option>
-                                        <option value="45">45</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '15px', lineHeight: '1.5' }}>
-                            {startDate === endDate ? (
-                                <>
-                                    💡 <strong>單日維修：</strong>時間留空表示全天停用<br/>
-                                    例如：13:30-15:00 表示當天 13:30 到 15:00 不可用
-                                </>
-                            ) : (
-                                <>
-                                    💡 <strong>跨日維修：</strong>時間留空表示這幾天全天停用<br/>
-                                    例如：第一天 13:30、最後一天 15:00<br/>
-                                    表示從第一天 13:30 開始到最後一天 15:00 結束
-                                </>
-                            )}
-                        </div>
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px' }}>原因</label>
-                            <input
-                                type="text"
-                                value={reason}
-                                onChange={(e) => setReason(e.target.value)}
-                                placeholder="例如：引擎保養"
-                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
+                <AdminModal isMobile={isMobile} maxWidth={420}>
+                    <AdminModalHeader
+                        title={editingUnavailableId != null ? '編輯維修/停用' : '新增維修/停用'}
+                        subtitle={selectedBoat?.name}
+                        accent="orange"
+                    />
+
+                    <DateRangeFields
+                        startDate={startDate}
+                        endDate={endDate}
+                        onStartChange={handleUnavailableStartChange}
+                        onEndChange={handleUnavailableEndChange}
+                        multiDay={unavailableMultiDay}
+                        onMultiDayChange={handleUnavailableMultiDayChange}
+                        trackPrefix="boat_unavailable"
+                    />
+
+                    <div style={{ marginBottom: '16px' }}>
+                        <FormFieldLabel>時段（留空＝整天停用）</FormFieldLabel>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <TimeSelectField
+                                value={startTime}
+                                onChange={setStartTime}
+                                label={isUnavailableSingleDay ? '開始時間' : '第一天時間'}
+                            />
+                            <TimeSelectField
+                                value={endTime}
+                                onChange={setEndTime}
+                                label={isUnavailableSingleDay ? '結束時間' : '最後一天時間'}
                             />
                         </div>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <Button variant="outline" onClick={closeUnavailableDialog} style={{ flex: 1 }}>取消</Button>
-                            <Button variant="warning" data-track="boat_unavailable_confirm" onClick={handleAddUnavailable} disabled={unavailableLoading} style={{ flex: 1, background: '#e65100' }}>
-                                {editingUnavailableId != null ? '儲存' : '確定'}
-                            </Button>
-                        </div>
+                        <HintBox>
+                            {isUnavailableSingleDay ? (
+                                <>單日：時間留空表示全天停用；例如 13:30–15:00 表示當天該時段不可用。</>
+                            ) : (
+                                <>跨日：時間留空表示這幾天全天停用；中間日期亦視為全天。</>
+                            )}
+                        </HintBox>
                     </div>
-                </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <FormFieldLabel optional>原因</FormFieldLabel>
+                        <input
+                            type="text"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="例如：引擎保養"
+                            style={adminTextInputStyle}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <Button variant="outline" onClick={closeUnavailableDialog} style={{ flex: 1 }}>取消</Button>
+                        <Button
+                            variant="warning"
+                            data-track="boat_unavailable_confirm"
+                            onClick={handleAddUnavailable}
+                            disabled={unavailableLoading}
+                            style={{ flex: 1, background: '#e65100' }}
+                        >
+                            {unavailableLoading
+                                ? (editingUnavailableId != null ? '儲存中…' : '新增中…')
+                                : (editingUnavailableId != null ? '儲存' : '新增')}
+                        </Button>
+                    </div>
+                </AdminModal>
             )}
             
             <ToastContainer messages={toast.messages} onClose={toast.closeToast} />

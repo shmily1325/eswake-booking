@@ -4,6 +4,7 @@ import {
   formatTimeOffPeriodLabel,
   formatStaffTimeOffBadgeLabel,
   getTimeOffCellLabel,
+  getTimeOffListDisplayParts,
   getTimeOffDayDisplayLabel,
   getTimeOffDayBlock,
   inferTimeOffModeFromRow,
@@ -215,6 +216,28 @@ describe('coachTimeOff', () => {
         start_time: '12:00',
         end_time: null,
       }], '2025-07-01')).toBe('下')
+    })
+  })
+
+  describe('getTimeOffListDisplayParts', () => {
+    it('上午分開日期與時段', () => {
+      expect(getTimeOffListDisplayParts({
+        coach_id: 'c1',
+        start_date: '2025-07-10',
+        end_date: '2025-07-10',
+        start_time: '00:00',
+        end_time: '12:00',
+      })).toEqual({ dateLabel: '7/10', periodLabel: '上午', periodKind: 'morning' })
+    })
+
+    it('整天跨日', () => {
+      expect(getTimeOffListDisplayParts({
+        coach_id: 'c1',
+        start_date: '2025-07-01',
+        end_date: '2025-07-03',
+        start_time: null,
+        end_time: null,
+      })).toEqual({ dateLabel: '7/1 – 7/3', periodLabel: '整天', periodKind: 'fullday' })
     })
   })
 

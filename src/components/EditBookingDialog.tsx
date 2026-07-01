@@ -1522,7 +1522,6 @@ export function EditBookingDialog({
                 {/* 教練列表 */}
                 {coaches.map((coach) => {
                   const isSelected = selectedCoachesSet.has(coach.id)
-                  const isOnTimeOff = (coach as any).isOnTimeOff
                   return (
                     <button
                       key={coach.id}
@@ -1555,9 +1554,6 @@ export function EditBookingDialog({
                     >
                       {isSelected && <span style={{ fontSize: '16px' }}>✓</span>}
                       {coach.name}
-                                      {isOnTimeOff && (
-                                        <span style={{ marginLeft: '2px', opacity: 0.4 }}>🏖️</span>
-                                      )}
                     </button>
                   )
                 })}

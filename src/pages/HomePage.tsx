@@ -18,6 +18,12 @@ import { Footer } from '../components/Footer'
 import { ExternalNavLink } from '../components/ExternalNavLink'
 import { useState, useEffect, type CSSProperties } from 'react'
 
+/** 首頁導航 track id（去掉 query，避免 nav_coach-time-off?month=… 每次月份不同） */
+function homeNavTrackId(link: string): string {
+  const path = link.replace(/^https?:\/\//, '').replace(/^\//, '').split('?')[0] || 'home'
+  return `nav_${path}`
+}
+
 // 菜單按鈕 Skeleton 組件
 function MenuButtonSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
@@ -407,7 +413,7 @@ export function HomePage() {
                     )}
                   </>
                 )
-                const track = `nav_${item.link.replace(/^https?:\/\//, '').replace(/^\//, '') || 'home'}`
+                const track = homeNavTrackId(item.link)
 
                 if (isExternalNavLink(item.link)) {
                   return (
@@ -557,7 +563,7 @@ export function HomePage() {
                       <Link
                         key={`below-${item.link}-${item.title}`}
                         to={item.link}
-                        data-track={`nav_${item.link.replace(/^\//, '') || 'home'}`}
+                        data-track={homeNavTrackId(item.link)}
                         style={{ ...cardBaseStyle, ...disabledExtra }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = 'translateY(-5px)'

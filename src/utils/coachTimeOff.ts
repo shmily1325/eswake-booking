@@ -175,6 +175,56 @@ export function formatTimeOffDisplay(row: CoachTimeOffRow): string {
   return `${left} – ${right}`
 }
 
+export type TimeOffPeriodKind = 'fullday' | 'morning' | 'afternoon' | 'custom'
+
+/** 人員管理列表：日期與時段分開顯示 */
+export function getTimeOffListDisplayParts(row: CoachTimeOffRow): {
+  dateLabel: string
+  periodLabel: string
+  periodKind: TimeOffPeriodKind
+} {
+  const startYear = row.start_date.split('-')[0]
+  const endYear = row.end_date.split('-')[0]
+  const showYear = startYear !== endYear
+  const startStr = formatShortDate(row.start_date, showYear)
+  const endStr = formatShortDate(row.end_date, showYear)
+  const dateRange = startStr === endStr ? startStr : `${startStr} – ${endStr}`
+
+  if (isFullDayTimeOff(row)) {
+    return { dateLabel: dateRange, periodLabel: '整天', periodKind: 'fullday' }
+  }
+  if (isMorningPreset(row)) {
+    return { dateLabel: startStr, periodLabel: '上午', periodKind: 'morning' }
+  }
+  if (isAfternoonPreset(row)) {
+    return { dateLabel: startStr, periodLabel: '下午', periodKind: 'afternoon' }
+  }
+
+  const startTimeStr = row.start_time ? formatTimeHm(row.start_time) : null
+  const endTimeStr = row.end_time ? formatTimeHm(row.end_time) : null
+
+  if (row.start_date === row.end_date) {
+    if (startTimeStr && endTimeStr) {
+      return { dateLabel: startStr, periodLabel: `${startTimeStr}–${endTimeStr}`, periodKind: 'custom' }
+    }
+    if (startTimeStr) {
+      return { dateLabel: startStr, periodLabel: `${startTimeStr}起`, periodKind: 'custom' }
+    }
+    if (endTimeStr) {
+      return { dateLabel: startStr, periodLabel: `–${endTimeStr}`, periodKind: 'custom' }
+    }
+    return { dateLabel: startStr, periodLabel: '自訂', periodKind: 'custom' }
+  }
+
+  const left = startTimeStr ? `${startTimeStr}起` : '整天'
+  const right = endTimeStr ? `–${endTimeStr}` : '整天'
+  return {
+    dateLabel: dateRange,
+    periodLabel: `${left} ${right}`.trim(),
+    periodKind: 'custom',
+  }
+}
+
 /** 每日公告用：整天只回傳空字串，部分時段回傳「下午」等 */
 export function formatTimeOffPeriodLabel(row: CoachTimeOffRow, targetDate: string): string {
   const block = getTimeOffDayBlock(row, targetDate)
