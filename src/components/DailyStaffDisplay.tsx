@@ -28,6 +28,10 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
     [allStaff]
   )
 
+  const staffRowStyle = isMobile
+    ? { display: 'flex' as const, flexDirection: 'column' as const, alignItems: 'flex-start' as const, gap: '6px' }
+    : { ...styles.flexRow, flexWrap: 'wrap' as const }
+
   if (loading) {
     return (
       <div style={{ ...styles.card, ...rs.cardPadding, marginBottom: '12px' }}>
@@ -50,7 +54,7 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
         </div>
       )}
 
-      <div style={{ ...styles.flexRow, flexWrap: 'wrap' }}>
+      <div style={staffRowStyle}>
         <span style={{ ...rs.labelText, ...styles.flexRowTight, whiteSpace: 'nowrap' }}>
           👥 可上班
         </span>
@@ -71,7 +75,7 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
       </div>
 
       {timeOffStaff.length > 0 && (
-        <div style={{ ...styles.flexRow, flexWrap: 'wrap', marginTop: '8px' }}>
+        <div style={{ ...staffRowStyle, marginTop: '8px' }}>
           <span style={{ ...rs.labelText, ...styles.flexRowTight, whiteSpace: 'nowrap' }}>
             🏖️ 休假
           </span>
