@@ -1,4 +1,4 @@
-/** 教練休假列（coach_time_off） */
+/** 教練休假列（coach_time_off）；offline.html 內嵌同邏輯，改此檔時請一併對齊 */
 export type CoachTimeOffRow = {
   coach_id: string
   start_date: string

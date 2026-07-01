@@ -313,7 +313,7 @@
         // 全域變數 - 使用 IndexedDB 作為資料庫
         let db = null;
         const DB_NAME = 'eswake-offline';
-        const DB_VERSION = 1;
+        const DB_VERSION = 2;
         
         // 選單項目配置
         const menuItems = [
@@ -438,6 +438,7 @@
                                 'booking_drivers': { keyPath: 'id', autoIncrement: true },
                                 'booking_members': { keyPath: 'id', autoIncrement: true },
                                 'daily_announcements': { keyPath: 'id', autoIncrement: true },
+                                'coach_time_off': { keyPath: 'id', autoIncrement: true },
                                 'audit_log': { keyPath: 'id', autoIncrement: true },
                                 'transactions': { keyPath: 'id', autoIncrement: true },
                                 'board_storage': { keyPath: 'id', autoIncrement: true },
@@ -540,6 +541,9 @@
                         if (!database.objectStoreNames.contains('daily_announcements')) {
                             database.createObjectStore('daily_announcements', { keyPath: 'id', autoIncrement: true });
                         }
+                        if (!database.objectStoreNames.contains('coach_time_off')) {
+                            database.createObjectStore('coach_time_off', { keyPath: 'id', autoIncrement: true });
+                        }
                         if (!database.objectStoreNames.contains('audit_log')) {
                             database.createObjectStore('audit_log', { keyPath: 'id', autoIncrement: true });
                         }
@@ -619,7 +623,7 @@
         async function clearDatabase() {
             if (!db) await initDatabase();
             
-            const storeNames = ['members', 'boats', 'coaches', 'bookings', 'booking_coaches', 'booking_drivers', 'booking_members', 'daily_announcements', 'audit_log', 'transactions', 'board_storage', 'member_notes'];
+            const storeNames = ['members', 'boats', 'coaches', 'bookings', 'booking_coaches', 'booking_drivers', 'booking_members', 'daily_announcements', 'coach_time_off', 'audit_log', 'transactions', 'board_storage', 'member_notes'];
             
             for (const storeName of storeNames) {
                 try {
@@ -1444,6 +1448,7 @@
                         font-weight: 600;
                     ">🔄 重新載入資料庫</button>
                 </div>
+                <div id="home-announcement" style="display: none; background: white; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e0e0e0;"></div>
                 <div class="menu-grid" id="menu-grid"></div>
                 <div class="footer">
                     <p>© 2025 ES Wake. All Rights Reserved.</p>
@@ -1451,6 +1456,7 @@
                 </div>
             `;
             renderMenu();
+            loadHomeAnnouncement();
         }
         
         // 顯示 BAO Hub 頁面
@@ -1626,6 +1632,9 @@
                 
                 // 過濾時間槽（顯示有預約的時間範圍）
                 const filteredTimeSlots = filterTimeSlots(timeSlots, bookingsWithDetails);
+
+                const timeOffRows = await getCoachTimeOffForDate(selectedDate);
+                const staffData = buildDailyStaffForDate(activeCoaches, selectedDate, timeOffRows);
                 
                 // 渲染頁面
                 renderCoachDailyView({
@@ -1633,7 +1642,8 @@
                     coaches: activeCoaches,
                     bookings: bookingsWithDetails,
                     timeSlots: filteredTimeSlots,
-                    date: selectedDate
+                    date: selectedDate,
+                    staffData: staffData,
                 });
                 
             } catch (error) {
@@ -1693,6 +1703,242 @@
             loadAndDisplayBookings(getVenueDateString());
         }
         
+        // ==================== 教練休假 / 每日人員顯示（對齊 src/utils/coachTimeOff.ts、dailyStaffDisplay.ts） ====================
+
+        var COACH_TIME_OFF_MINUTES_PER_DAY = 24 * 60;
+        var WORKING_DISPLAY_HIDDEN_NAME_PARTS = ['火隆', '侑曄'];
+        var TIMEOFF_DISPLAY_HIDDEN_NAME_PARTS = ['義揚', '許書源'];
+
+        function dailyStaff_nameMatchesAny(name, parts) {
+            return parts.some(function(part) { return name.indexOf(part) !== -1; });
+        }
+
+        function isHiddenFromWorkingStaffDisplay(name) {
+            return dailyStaff_nameMatchesAny(name, WORKING_DISPLAY_HIDDEN_NAME_PARTS);
+        }
+
+        function isHiddenFromTimeOffStaffDisplay(name) {
+            return dailyStaff_nameMatchesAny(name, TIMEOFF_DISPLAY_HIDDEN_NAME_PARTS);
+        }
+
+        function coachTimeOff_isFullDay(row) {
+            return !row.start_time && !row.end_time;
+        }
+
+        function coachTimeOff_parseTimeToMinutes(time) {
+            if (!time) return null;
+            var p = String(time).split(':').map(Number);
+            if (isNaN(p[0]) || isNaN(p[1])) return null;
+            return p[0] * 60 + p[1];
+        }
+
+        function coachTimeOff_getDayBlock(row, targetDate) {
+            if (targetDate < row.start_date || targetDate > row.end_date) return null;
+            if (coachTimeOff_isFullDay(row)) {
+                return { startMin: 0, endMin: COACH_TIME_OFF_MINUTES_PER_DAY };
+            }
+            var startMin = 0;
+            var endMin = COACH_TIME_OFF_MINUTES_PER_DAY;
+            if (row.start_date === targetDate && row.start_time) {
+                startMin = coachTimeOff_parseTimeToMinutes(row.start_time) || 0;
+            }
+            if (row.end_date === targetDate && row.end_time) {
+                endMin = coachTimeOff_parseTimeToMinutes(row.end_time) || COACH_TIME_OFF_MINUTES_PER_DAY;
+            }
+            if (startMin >= endMin) return null;
+            return { startMin: startMin, endMin: endMin };
+        }
+
+        function coachTimeOff_isMorningPreset(row) {
+            return row.start_date === row.end_date
+                && (!row.start_time || row.start_time === '00:00')
+                && row.end_time === '12:00';
+        }
+
+        function coachTimeOff_isAfternoonPreset(row) {
+            return row.start_date === row.end_date
+                && row.start_time === '12:00'
+                && !row.end_time;
+        }
+
+        function coachTimeOff_isCoachFullyOffOnDate(rows, targetDate) {
+            var blocks = rows.map(function(r) { return coachTimeOff_getDayBlock(r, targetDate); })
+                .filter(function(b) { return b !== null; });
+            if (blocks.length === 0) return false;
+            return blocks.some(function(b) { return b.startMin === 0 && b.endMin === COACH_TIME_OFF_MINUTES_PER_DAY; });
+        }
+
+        function coachTimeOff_hasAnyTimeOffOnDate(rows, targetDate) {
+            return rows.some(function(r) { return coachTimeOff_getDayBlock(r, targetDate) !== null; });
+        }
+
+        function coachTimeOff_formatTimeHm(time) {
+            if (!time) return '';
+            var p = time.split(':');
+            return parseInt(p[0], 10) + ':' + p[1];
+        }
+
+        function coachTimeOff_formatPeriodLabel(row, targetDate) {
+            var block = coachTimeOff_getDayBlock(row, targetDate);
+            if (!block) return '';
+            if (block.startMin === 0 && block.endMin === COACH_TIME_OFF_MINUTES_PER_DAY) return '';
+            if (coachTimeOff_isMorningPreset(row) && row.start_date === targetDate) return '上午';
+            if (coachTimeOff_isAfternoonPreset(row) && row.start_date === targetDate) return '下午';
+            var startLabel = block.startMin === 0 ? '' : coachTimeOff_formatTimeHm(row.start_time);
+            var endLabel = block.endMin === COACH_TIME_OFF_MINUTES_PER_DAY ? '' : coachTimeOff_formatTimeHm(row.end_time);
+            if (startLabel && endLabel) return startLabel + '–' + endLabel;
+            if (startLabel) return startLabel + '起';
+            if (endLabel) return '–' + endLabel;
+            return '';
+        }
+
+        function coachTimeOff_formatStaffBadgeLabel(name, records, targetDate) {
+            var periods = {};
+            records.forEach(function(row) {
+                var period = coachTimeOff_formatPeriodLabel(row, targetDate);
+                if (period) periods[period] = true;
+            });
+            var keys = Object.keys(periods);
+            if (keys.length === 0) return name;
+            return name + '（' + keys.join('、') + '）';
+        }
+
+        function coachTimeOff_groupByCoach(rows) {
+            var map = {};
+            rows.forEach(function(row) {
+                if (!map[row.coach_id]) map[row.coach_id] = [];
+                map[row.coach_id].push(row);
+            });
+            return map;
+        }
+
+        async function getCoachTimeOffForDate(dateStr) {
+            try {
+                var all = await getAllFromStore('coach_time_off');
+                return all.filter(function(r) {
+                    return r.start_date <= dateStr && r.end_date >= dateStr;
+                });
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function buildDailyStaffForDate(activeCoaches, dateStr, timeOffRows) {
+            var byCoach = coachTimeOff_groupByCoach(timeOffRows);
+            var allStaff = activeCoaches.map(function(coach) {
+                var records = byCoach[coach.id] || [];
+                return {
+                    id: coach.id,
+                    name: coach.name,
+                    isOnTimeOff: coachTimeOff_isCoachFullyOffOnDate(records, dateStr),
+                    timeOffRecords: records,
+                };
+            });
+            var workingStaff = allStaff.filter(function(s) {
+                return !s.isOnTimeOff && !isHiddenFromWorkingStaffDisplay(s.name);
+            });
+            var timeOffStaff = allStaff.filter(function(s) {
+                return s.timeOffRecords.length > 0
+                    && coachTimeOff_hasAnyTimeOffOnDate(s.timeOffRecords, dateStr)
+                    && !isHiddenFromTimeOffStaffDisplay(s.name);
+            });
+            return { workingStaff: workingStaff, timeOffStaff: timeOffStaff };
+        }
+
+        function renderDailyStaffStripHtml(staffData, dateStr) {
+            if (!staffData) return '';
+            var workingBadges = staffData.workingStaff.map(function(s) {
+                return '<span style="display: inline-block; padding: 3px 10px; background: #e8f5e9; color: #2e7d32; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid #c8e6c9;">'
+                    + escapeHtml(s.name) + '</span>';
+            }).join('');
+            var timeOffBadges = staffData.timeOffStaff.map(function(s) {
+                var label = coachTimeOff_formatStaffBadgeLabel(s.name, s.timeOffRecords, dateStr);
+                return '<span style="display: inline-block; padding: 3px 10px; background: #fff3e0; color: #e65100; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid #ffe0b2;">'
+                    + escapeHtml(label) + '</span>';
+            }).join('');
+            var html = '<div style="background: white; border: 1px solid #e0e0e0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">';
+            html += '<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: '
+                + (timeOffBadges ? '8px' : '0') + ';">';
+            html += '<span style="font-size: 14px; font-weight: 600; color: #333; white-space: nowrap;">👥 可上班</span>';
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">'
+                + (workingBadges || '<span style="font-size: 13px; color: #888;">無排班人員</span>') + '</div></div>';
+            if (timeOffBadges) {
+                html += '<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">';
+                html += '<span style="font-size: 14px; font-weight: 600; color: #333; white-space: nowrap;">🏖️ 休假</span>';
+                html += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">' + timeOffBadges + '</div></div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        async function buildTimeOffAnnouncementLine(dateStr) {
+            var coaches = await getAllFromStore('coaches');
+            var activeCoaches = coaches.filter(function(c) { return c.status === 'active'; });
+            var timeOffRows = await getCoachTimeOffForDate(dateStr);
+            var byCoach = coachTimeOff_groupByCoach(timeOffRows);
+            var labels = [];
+            activeCoaches.forEach(function(coach) {
+                if (isHiddenFromTimeOffStaffDisplay(coach.name)) return;
+                var records = byCoach[coach.id] || [];
+                if (!coachTimeOff_hasAnyTimeOffOnDate(records, dateStr)) return;
+                var periods = {};
+                records.forEach(function(row) {
+                    var period = coachTimeOff_formatPeriodLabel(row, dateStr);
+                    if (period) periods[period] = true;
+                });
+                var periodKeys = Object.keys(periods);
+                labels.push(periodKeys.length ? coach.name + '（' + periodKeys.join('、') + '）' : coach.name);
+            });
+            return labels.length ? '🏖️ 休假：' + labels.join('、') : '';
+        }
+
+        async function loadHomeAnnouncement() {
+            var container = document.getElementById('home-announcement');
+            if (!container || !db) return;
+            var today = getVenueDateString();
+            try {
+                var announcements = await getAllFromStore('daily_announcements');
+                var todayAnnouncements = announcements.filter(function(a) {
+                    if (!a.display_date || a.display_date > today) return false;
+                    if (a.end_date && a.end_date < today) return false;
+                    return true;
+                }).sort(function(a, b) {
+                    return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+                });
+                var timeOffLine = await buildTimeOffAnnouncementLine(today);
+                if (todayAnnouncements.length === 0 && !timeOffLine) {
+                    container.style.display = 'none';
+                    return;
+                }
+                var html = '<div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px;">📢 今日公告</div>';
+                html += '<div style="font-size: 14px; color: #555; line-height: 1.7;">';
+                if (todayAnnouncements.length > 0) {
+                    html += '<div style="margin-bottom: 6px; color: #667eea; font-weight: 500;">📋 交辦事項</div>';
+                    todayAnnouncements.forEach(function(a) {
+                        html += '<div style="padding-left: 1.5em; margin-bottom: 4px; color: #667eea; font-weight: 500; white-space: pre-wrap;">'
+                            + ' - ' + escapeHtml(a.content || '') + '</div>';
+                    });
+                }
+                if (timeOffLine) {
+                    html += '<div style="margin-bottom: 6px;">' + escapeHtml(timeOffLine) + '</div>';
+                }
+                html += '</div>';
+                container.innerHTML = html;
+                container.style.display = 'block';
+            } catch (e) {
+                console.warn('載入今日公告失敗:', e);
+                container.style.display = 'none';
+            }
+        }
+
         // 格式化日期顯示
         function formatDisplayDate(dateStr) {
             const parts = dateStr.split('-').map(Number);
@@ -1888,12 +2134,13 @@
         }
         
         // 渲染今日預約頁面（時間軸表格視圖，與線上版電腦版一致）
-        function renderCoachDailyView({ boats, coaches, bookings, timeSlots, date }) {
+        function renderCoachDailyView({ boats, coaches, bookings, timeSlots, date, staffData }) {
             const content = document.getElementById('coach-daily-content');
             // 固定使用桌面版樣式（與網頁版一致）
             const isMobile = false;
             const today = getVenueDateString();
             const dateDisplay = formatDisplayDate(date);
+            const staffStripHtml = renderDailyStaffStripHtml(staffData, date);
             
             // 獲取某個時間點的預約
             const getBookingForCell = (boatId, timeSlot) => {
@@ -1991,6 +2238,7 @@
             });
             
             content.innerHTML = `
+                ${staffStripHtml}
                 <!-- 日期和教練篩選 -->
                 <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <!-- 日期切換 -->

@@ -1738,17 +1738,6 @@ export function StaffManagement() {
                       borderRadius: '10px',
                       border: '1px solid #ffecb3'
                     }}>
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: '700',
-                        marginBottom: '10px',
-                        color: '#e65100',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}>
-                        🏖️ 休假紀錄
-                      </div>
                       {displayTimeOffs.map((timeOff, idx) => (
                         <div
                           key={timeOff.mergedRecordIds.join('-')}

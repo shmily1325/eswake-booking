@@ -24,7 +24,7 @@ import {
   type AssignmentSnapshot,
   type DbAssignmentMaps,
 } from '../../utils/coachAssignmentSaveUtils'
-import { coachHasTimeOffOverlap } from '../../utils/coachTimeOff'
+import { coachHasTimeOffOverlap, getTimeOffDayDisplayLabel } from '../../utils/coachTimeOff'
 
 interface Booking {
   id: number
@@ -1877,7 +1877,9 @@ export function CoachAssignment() {
               }}>
               {coaches.map(coach => {
                 const coachBookings = coachGroups[coach.id] || []
-                // 顯示所有上班的教練（不管有沒有預約）
+                const partialOffLabel = !coach.isOnTimeOff && coach.timeOffRecords.length > 0
+                  ? getTimeOffDayDisplayLabel(coach.timeOffRecords, selectedDate)
+                  : null
                 
                 return (
                   <div key={coach.id} style={{
@@ -1893,16 +1895,19 @@ export function CoachAssignment() {
                   }}>
                     {/* 教練名稱標題 */}
                               <div style={{
+                      flexShrink: 0,
+                    }}>
+                      <div style={{
                       fontSize: isMobile ? '16px' : '18px',
                       fontWeight: '600',
                       color: designSystem.colors.text.primary,
-                      borderBottom: `2px solid ${coach.isOnTimeOff ? '#bdbdbd' : designSystem.colors.primary[500]}`,
-                      paddingBottom: '8px',
+                      borderBottom: partialOffLabel ? 'none' : `2px solid ${coach.isOnTimeOff ? '#bdbdbd' : designSystem.colors.primary[500]}`,
+                      paddingBottom: partialOffLabel ? '4px' : '8px',
                       padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
-                      flexShrink: 0,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px'
+                      gap: '8px',
+                      flexWrap: 'wrap',
                     }}>
                       🎓 {coach.name} {coachBookings.length > 0 && `(${coachBookings.length})`}
                       {coach.isOnTimeOff && (
@@ -1914,8 +1919,20 @@ export function CoachAssignment() {
                           color: 'white',
                           fontWeight: '500'
                         }}>
-                          今日休假
+                          整天休假
                         </span>
+                      )}
+                    </div>
+                      {partialOffLabel && (
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#f57c00',
+                          fontWeight: '600',
+                          padding: isMobile ? '0 16px 8px' : '0 20px 10px',
+                          borderBottom: `2px solid ${designSystem.colors.primary[500]}`,
+                        }}>
+                          {partialOffLabel}休假
+                        </div>
                       )}
                     </div>
                     

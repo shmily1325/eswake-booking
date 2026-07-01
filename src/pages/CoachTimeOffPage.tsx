@@ -640,9 +640,18 @@ export function CoachTimeOffPage() {
 
   const setMonth = (ym: string) => {
     const next: Record<string, string> = { month: ym }
-    if (mobileTab !== 'week') next.view = mobileTab
+    if (isMobile && mobileTab === 'week') next.view = 'week'
+    else if (mobileTab !== 'week') next.view = mobileTab
     setSearchParams(next)
   }
+
+  const syncMonthParamToWeekAnchor = useCallback((anchorYmd: string) => {
+    const ym = anchorYmd.slice(0, 7)
+    if (ym !== monthParam) {
+      const next: Record<string, string> = { month: ym, view: 'week' }
+      setSearchParams(next)
+    }
+  }, [monthParam, setSearchParams])
 
   const setMobileTab = (tab: 'week' | 'month') => {
     const next: Record<string, string> = { month: monthParam, view: tab }
@@ -650,15 +659,31 @@ export function CoachTimeOffPage() {
     if (tab === 'month' && !selectedDay && monthParam === today.slice(0, 7)) {
       setSelectedDay(today)
     }
+    if (tab === 'week') {
+      setWeekAnchor(prev => (prev.slice(0, 7) === monthParam ? prev : (
+        monthParam === today.slice(0, 7) ? today : `${monthParam}-01`
+      )))
+    }
   }
 
-  const handlePrevWeek = () => setWeekAnchor(prev => addDaysToDate(prev, -7))
-  const handleNextWeek = () => setWeekAnchor(prev => addDaysToDate(prev, 7))
+  const handlePrevWeek = () => {
+    const nextAnchor = addDaysToDate(weekAnchor, -7)
+    setWeekAnchor(nextAnchor)
+    if (isMobile) syncMonthParamToWeekAnchor(nextAnchor)
+  }
+  const handleNextWeek = () => {
+    const nextAnchor = addDaysToDate(weekAnchor, 7)
+    setWeekAnchor(nextAnchor)
+    if (isMobile) syncMonthParamToWeekAnchor(nextAnchor)
+  }
 
   const handleMonthInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const next = e.target.value
     if (!next || next === monthParam) return
     setMonth(next)
+    if (isMobile && mobileTab === 'month') {
+      setSelectedDay(next === today.slice(0, 7) ? today : `${next}-01`)
+    }
     if (user?.email) {
       trackClickDedupedWithin(`coach_time_off_month_pick:${next}`, user.email)
     }
@@ -675,6 +700,7 @@ export function CoachTimeOffPage() {
       <div style={{ maxWidth: isMobile ? '100%' : '100%', margin: '0 auto' }}>
         <PageHeader title="🏖️ 教練休假" user={user} />
 
+        {(!isMobile || mobileTab === 'month') && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -726,6 +752,7 @@ export function CoachTimeOffPage() {
             本月
           </button>
         </div>
+        )}
 
         {!isMobile && (
           <div style={{
