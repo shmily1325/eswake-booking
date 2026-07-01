@@ -87,6 +87,7 @@ vi.mock('../../hooks/useBookingForm', () => ({
     toggleActivityType: vi.fn(),
     handleMemberSearch: vi.fn(),
     resetForm: vi.fn(),
+    refreshCoachTimeOff: vi.fn(),
   }),
 }))
 

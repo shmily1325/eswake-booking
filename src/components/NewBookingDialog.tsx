@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingCreation } from '../utils/auditLog'
@@ -113,11 +113,15 @@ export function NewBookingDialog({
   const [conflictStatus, setConflictStatus] = useState<'checking' | 'available' | 'conflict' | null>(null)
   const [conflictMessage, setConflictMessage] = useState('')
 
+  // 只在對話框開啟時抓一次資料；用 ref 取得最新的 fetchAllData，
+  // 避免 fetchAllData 隨 startTime/durationMin 變動而換 identity 造成重覆抓取
+  const fetchAllDataRef = useRef(fetchAllData)
+  fetchAllDataRef.current = fetchAllData
   useEffect(() => {
     if (isOpen) {
-      fetchAllData()
+      fetchAllDataRef.current()
     }
-  }, [isOpen, fetchAllData])
+  }, [isOpen])
 
   // 日期變化時刷新教練休假狀態
   useEffect(() => {

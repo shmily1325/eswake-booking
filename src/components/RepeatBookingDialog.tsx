@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react'
+import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logAction } from '../utils/auditLog'
@@ -76,6 +76,7 @@ export function RepeatBookingDialog({
     showMemberDropdown,
     manualStudentName,
     manualNames,
+    startDate,
     startTime,
     durationMin,
     activityTypes,
@@ -117,21 +118,40 @@ export function RepeatBookingDialog({
     toggleCoach,
     toggleActivityType,
     handleMemberSearch,
-    resetForm
+    resetForm,
+    refreshCoachTimeOff
   } = useBookingForm({
     defaultBoatId,
     defaultDate: defaultStartTime,
     userEmail: user.email || undefined
   })
 
+  // 重開 dialog 時清掉上次的自選日期，避免殘留
+  // 只依賴 isOpen：避免因 fetchAllData（隨 startTime 等變動而換 identity）
+  // 造成選完時間後日期被清空
+  // （表單其他欄位由 useBookingForm 的 fetchAllData / defaultBoatId 重置）
   useEffect(() => {
     if (isOpen) {
-      // 重開 dialog 時清掉上次的自選日期，避免殘留
-      // （表單其他欄位由 useBookingForm 的 fetchAllData / defaultBoatId 重置）
       setCustomDates([])
-      fetchAllData()
     }
-  }, [isOpen, fetchAllData])
+  }, [isOpen])
+
+  // 只在對話框開啟時抓一次資料；用 ref 取得最新的 fetchAllData，
+  // 避免 fetchAllData 隨 startTime/durationMin 變動而換 identity 造成重覆抓取
+  const fetchAllDataRef = useRef(fetchAllData)
+  fetchAllDataRef.current = fetchAllData
+  useEffect(() => {
+    if (isOpen) {
+      fetchAllDataRef.current()
+    }
+  }, [isOpen])
+
+  // 時間／時長改變時刷新教練休假狀態（取代先前靠 fetchAllData 重跑的副作用）
+  useEffect(() => {
+    if (isOpen && startDate) {
+      refreshCoachTimeOff()
+    }
+  }, [isOpen, startDate, startTime, durationMin, refreshCoachTimeOff])
 
   // 生成重複日期列表 - 僅依自選日期
   const generateRepeatDates = useCallback((): Date[] => {
