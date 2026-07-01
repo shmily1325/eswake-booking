@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react'
+import React from 'react'
 import type { Booking, Boat } from '../types/booking'
-import { getDisplayContactName, formatBookingForCopy } from '../utils/bookingFormat'
+import { getDisplayContactName } from '../utils/bookingFormat'
 import { validateBoats, validateBookings } from '../utils/safetyHelpers'
 import type { BoatUnavailableBlock } from '../utils/boatUnavailableDay'
 import type { RestrictionDayBlock } from '../utils/restrictionDayBlocks'
@@ -27,25 +27,6 @@ export function VirtualizedBookingList({
     boatUnavailableBlocks = [],
     restrictionDayBlocks = [],
 }: VirtualizedBookingListProps) {
-    // 複製成功的預約 ID
-    const [copiedBookingId, setCopiedBookingId] = useState<number | null>(null)
-
-    // 複製預約資訊
-    const handleCopyBooking = useCallback(async (e: React.MouseEvent, booking: Booking) => {
-        e.stopPropagation() // 防止觸發 onBookingClick
-        
-        const text = formatBookingForCopy(booking)
-        
-        try {
-            await navigator.clipboard.writeText(text)
-            setCopiedBookingId(booking.id)
-            // 1.5 秒後重置
-            setTimeout(() => setCopiedBookingId(null), 1500)
-        } catch (err) {
-            console.error('複製失敗:', err)
-        }
-    }, [])
-
     // 驗證並過濾資料，確保沒有 null/undefined
     const validBoats = React.useMemo(() => {
         return validateBoats(boats)
@@ -373,42 +354,6 @@ export function VirtualizedBookingList({
                                                         </div>
                                                     )}
                                                 </div>
-
-                                                {/* 複製按鈕 - 靠右 */}
-                                                <button
-                                                    data-track="day_copy_booking"
-                                                    onClick={(e) => handleCopyBooking(e, booking)}
-                                                    title="複製預約資訊"
-                                                    style={{
-                                                        width: isMobile ? '32px' : '36px',
-                                                        height: isMobile ? '32px' : '36px',
-                                                        borderRadius: '6px',
-                                                        border: copiedBookingId === booking.id ? '1px solid #22c55e' : '1px solid #e9ecef',
-                                                        background: copiedBookingId === booking.id ? '#dcfce7' : '#f8f9fa',
-                                                        color: copiedBookingId === booking.id ? '#16a34a' : '#6b7280',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        fontSize: isMobile ? '14px' : '16px',
-                                                        flexShrink: 0,
-                                                        transition: 'all 0.2s',
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        if (copiedBookingId !== booking.id) {
-                                                            e.currentTarget.style.background = '#e5e7eb'
-                                                            e.currentTarget.style.borderColor = '#d1d5db'
-                                                        }
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        if (copiedBookingId !== booking.id) {
-                                                            e.currentTarget.style.background = '#f8f9fa'
-                                                            e.currentTarget.style.borderColor = '#e9ecef'
-                                                        }
-                                                    }}
-                                                >
-                                                    {copiedBookingId === booking.id ? '✓' : '📋'}
-                                                </button>
                                             </div>
                                         )
                                     })}
