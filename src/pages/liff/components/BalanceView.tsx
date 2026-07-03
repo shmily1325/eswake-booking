@@ -1,6 +1,6 @@
 // 儲值餘額視圖組件
 
-import { liffContentPanel } from '../liffUiStyles'
+import { liffContentPanel, liffHintBox } from '../liffUiStyles'
 import type { Member } from '../types'
 import { BalanceCard } from './BalanceCard'
 
@@ -12,6 +12,12 @@ interface BalanceViewProps {
 export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
   return (
     <div style={liffContentPanel}>
+      <div style={{ ...liffHintBox, display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+        <span style={{ fontSize: '16px', lineHeight: 1.2 }}>👆</span>
+        <span>
+          點擊下方任一張卡片，即可查看該項目的<strong style={{ color: '#333' }}>儲值與扣款明細</strong>（含滑水／用船時間等歷史紀錄）。
+        </span>
+      </div>
       <div
         style={{
           display: 'grid',
