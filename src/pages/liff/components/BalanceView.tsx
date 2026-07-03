@@ -12,11 +12,8 @@ interface BalanceViewProps {
 export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
   return (
     <div style={liffContentPanel}>
-      <div style={{ ...liffHintBox, display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-        <span style={{ fontSize: '16px', lineHeight: 1.2 }}>👆</span>
-        <span>
-          點擊下方任一張卡片，即可查看該項目的<strong style={{ color: '#333' }}>扣款明細</strong>。
-        </span>
+      <div style={liffHintBox}>
+        點擊下方任一張卡片，即可查看該項目的<strong style={{ color: '#333' }}>扣款明細</strong>。
       </div>
       <div
         style={{
