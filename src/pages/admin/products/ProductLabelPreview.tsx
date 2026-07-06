@@ -629,26 +629,11 @@ function LabelCard({ labelCode, productName, price, widthPx, formatError }: Labe
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: m.gap,
         }}
       >
         <EsLogo size={m.logo} />
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            fontFamily: LABEL_FONT,
-            fontWeight: 700,
-            fontSize: m.nameFont,
-            lineHeight: 1.15,
-            color: '#111',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {nameText || '（未命名商品）'}
-        </div>
         {priceText && (
           <div
             style={{
@@ -664,6 +649,22 @@ function LabelCard({ labelCode, productName, price, widthPx, formatError }: Labe
             {priceText}
           </div>
         )}
+      </div>
+      <div
+        style={{
+          fontFamily: LABEL_FONT,
+          fontWeight: 700,
+          fontSize: m.nameFont,
+          lineHeight: 1.2,
+          color: '#111',
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical',
+          WebkitLineClamp: 2,
+          overflow: 'hidden',
+          wordBreak: 'break-word',
+        }}
+      >
+        {nameText || '（未命名商品）'}
       </div>
       <div
         style={{
@@ -704,11 +705,11 @@ function LabelCard({ labelCode, productName, price, widthPx, formatError }: Labe
       <div
         style={{
           fontFamily: LABEL_FONT,
-          fontWeight: 700,
+          fontWeight: 600,
           fontSize: m.codeFont,
-          letterSpacing: '0.08em',
+          letterSpacing: '0.06em',
           lineHeight: 1,
-          color: '#111',
+          color: '#333',
           textAlign: 'center',
         }}
       >

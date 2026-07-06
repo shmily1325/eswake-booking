@@ -5,9 +5,7 @@ import {
   DEFAULT_LABEL_HEIGHT_MM,
   DEFAULT_LABEL_WIDTH_MM,
   LABEL_FONT,
-  fitTextFontSize,
   formatLabelPrice,
-  measureTextWidth,
   mmToPx,
   retailLabelMetrics,
 } from './labelLayout'
@@ -67,6 +65,72 @@ function truncateToWidth(
   return out + ellipsis
 }
 
+/**
+ * 依目前 ctx 字型把文字換行：優先在空白斷行（保留英文單字），
+ * 單一 token 過長時改逐字斷（支援中文）。
+ */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean)
+  const lines: string[] = []
+  let cur = ''
+  const flush = () => {
+    if (cur) {
+      lines.push(cur)
+      cur = ''
+    }
+  }
+  for (const word of words) {
+    if (ctx.measureText(word).width > maxWidth) {
+      flush()
+      let chunk = ''
+      for (const ch of word) {
+        if (chunk && ctx.measureText(chunk + ch).width > maxWidth) {
+          lines.push(chunk)
+          chunk = ch
+        } else {
+          chunk += ch
+        }
+      }
+      cur = chunk
+      continue
+    }
+    const trial = cur ? `${cur} ${word}` : word
+    if (ctx.measureText(trial).width <= maxWidth) cur = trial
+    else {
+      flush()
+      cur = word
+    }
+  }
+  flush()
+  return lines
+}
+
+/**
+ * 商品名版面：從 preferred 字級往下縮，找出能在 maxLines 行內放完整的字級。
+ * 都放不下時用最小字級並把最後一行截斷補「…」。
+ */
+function layoutNameLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  preferredFont: number,
+  minFont: number,
+  maxLines: number,
+): { font: number; lines: string[] } {
+  for (let font = preferredFont; font >= minFont; font--) {
+    ctx.font = `700 ${font}px ${LABEL_FONT}`
+    const lines = wrapText(ctx, text, maxWidth)
+    if (lines.length <= maxLines) return { font, lines }
+  }
+  ctx.font = `700 ${minFont}px ${LABEL_FONT}`
+  const all = wrapText(ctx, text, maxWidth)
+  const kept = all.slice(0, maxLines)
+  if (all.length > maxLines && kept.length > 0) {
+    kept[kept.length - 1] = truncateToWidth(ctx, `${kept[kept.length - 1]}…`, maxWidth)
+  }
+  return { font: minFont, lines: kept }
+}
+
 /** 依標籤紙尺寸輸出 PNG（白底、適合熱感標籤機） */
 export async function renderLabelPngBlob(
   labelCode: string,
@@ -101,53 +165,64 @@ export async function renderLabelPngBlob(
 
   const innerW = widthPx - m.pad * 2
   const rowGap = Math.max(4, Math.round(m.pad * 0.5))
-  const headerHeight = Math.max(m.logo, m.priceFont * 1.15, m.nameFont * 1.2)
+  const headerHeight = Math.round(Math.max(m.logo, m.priceFont * 1.15))
   const codeLineHeight = Math.round(m.codeFont * 1.25)
-  // 版面：header（logo + 名稱｜價格）→ 條碼 → 代碼文字
-  const contentHeight = headerHeight + rowGap + barcodeCanvas.height + rowGap + codeLineHeight
+
+  // 商品名獨佔整行（最多兩行、自動縮字），避免與價格擠在同一行被截斷
+  const nameDisplay = (nameText || '（未命名商品）').trim()
+  const nameLineHeight = Math.round(m.nameFont * 1.22)
+  const { font: nameFont, lines: nameLines } = layoutNameLines(
+    ctx,
+    nameDisplay,
+    innerW,
+    m.nameFont,
+    Math.max(9, Math.round(m.nameFont * 0.62)),
+    2,
+  )
+  const nameBlockHeight = nameLines.length * nameLineHeight
+
+  // 版面：header（logo｜價格）→ 商品名 → 條碼 → 代碼文字
+  const contentHeight =
+    headerHeight + rowGap + nameBlockHeight + rowGap + barcodeCanvas.height + rowGap + codeLineHeight
   let y = Math.max(m.pad, Math.round((heightPx - contentHeight) / 2))
   if (contentHeight + m.pad > heightPx) y = m.pad
 
-  // 價格（右上，先量寬度好保留給名稱的空間）
-  let priceWidth = 0
+  // 價格（右上）
   if (priceText) {
-    const priceX = widthPx - m.pad
-    priceWidth = measureTextWidth(priceText, m.priceFont, 800)
     ctx.fillStyle = '#111111'
     ctx.font = `800 ${m.priceFont}px ${LABEL_FONT}`
     ctx.textAlign = 'right'
     ctx.textBaseline = 'middle'
-    ctx.fillText(priceText, priceX, y + headerHeight / 2)
+    ctx.fillText(priceText, widthPx - m.pad, y + headerHeight / 2)
   }
 
   // logo（左上）
   const logoY = y + Math.round((headerHeight - m.logo) / 2)
   ctx.drawImage(logoImg, m.pad, logoY, m.logo, m.logo)
 
-  // 商品名（logo 右側；縮字或截斷以塞入剩餘寬度）
-  const nameX = m.pad + m.logo + m.gap
-  const nameMaxW = Math.max(20, innerW - m.logo - m.gap - (priceWidth ? priceWidth + m.gap : 0))
-  const nameDisplay = nameText || '（未命名商品）'
-  const nameFont = fitTextFontSize(nameDisplay, nameMaxW, m.nameFont, 9, 700)
+  // 商品名（整行，左對齊）
   ctx.fillStyle = '#111111'
   ctx.font = `700 ${nameFont}px ${LABEL_FONT}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
-  ctx.fillText(truncateToWidth(ctx, nameDisplay, nameMaxW), nameX, y + headerHeight / 2)
+  const nameTop = y + headerHeight + rowGap
+  nameLines.forEach((line, i) => {
+    ctx.fillText(line, m.pad, nameTop + nameLineHeight * i + nameLineHeight / 2)
+  })
 
   // 條碼撐滿內容寬度、左緣對齊 logo
-  const barcodeY = y + headerHeight + rowGap
+  const barcodeY = nameTop + nameBlockHeight + rowGap
   ctx.drawImage(barcodeCanvas, m.pad, barcodeY, innerW, barcodeCanvas.height)
 
   // 代碼文字（條碼下方置中）
   const codeY = barcodeY + barcodeCanvas.height + rowGap + codeLineHeight / 2
-  ctx.fillStyle = '#111111'
-  ctx.font = `700 ${m.codeFont}px ${LABEL_FONT}`
+  ctx.fillStyle = '#333333'
+  ctx.font = `600 ${m.codeFont}px ${LABEL_FONT}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   const prevSpacing = (ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing
   try {
-    ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${Math.round(m.codeFont * 0.08)}px`
+    ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${Math.round(m.codeFont * 0.06)}px`
   } catch {
     // 部分瀏覽器不支援 canvas letterSpacing，忽略
   }
