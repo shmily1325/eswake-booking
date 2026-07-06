@@ -8,7 +8,8 @@ import {
   DEFAULT_LABEL_HEIGHT_MM,
   DEFAULT_LABEL_WIDTH_MM,
   LABEL_FONT,
-  labelMetrics,
+  formatLabelPrice,
+  retailLabelMetrics,
 } from './labelLayout'
 
 const MM_TO_PX = 3.7795275591
@@ -18,6 +19,10 @@ export { DEFAULT_LABEL_HEIGHT_MM, DEFAULT_LABEL_WIDTH_MM } from './labelLayout'
 
 interface ProductLabelPreviewProps {
   labelCode: string
+  /** 商品名（品牌 + 型號），顯示在標籤左上 */
+  productName?: string
+  /** 價格（字串或數字），顯示在標籤右上；空值則不顯示 */
+  price?: string | number | null
   scale?: number
   widthMm?: number
   heightMm?: number
@@ -26,6 +31,8 @@ interface ProductLabelPreviewProps {
 
 export function ProductLabelPreview({
   labelCode,
+  productName,
+  price,
   scale,
   widthMm = DEFAULT_LABEL_WIDTH_MM,
   heightMm = DEFAULT_LABEL_HEIGHT_MM,
@@ -69,6 +76,8 @@ export function ProductLabelPreview({
       ? createPortal(
           <LabelExpandModal
             labelCode={labelCode}
+            productName={productName}
+            price={price}
             formatError={formatError}
             widthMm={widthMm}
             heightMm={heightMm}
@@ -107,6 +116,8 @@ export function ProductLabelPreview({
           >
             <LabelCard
               labelCode={labelCode}
+              productName={productName}
+              price={price}
               widthPx={inlineWidthPx}
               formatError={formatError}
             />
@@ -114,6 +125,8 @@ export function ProductLabelPreview({
         ) : (
           <LabelCard
             labelCode={labelCode}
+            productName={productName}
+            price={price}
             widthPx={inlineWidthPx}
             formatError={formatError}
           />
@@ -124,7 +137,14 @@ export function ProductLabelPreview({
               標籤約 {widthMm}×{heightMm} mm
               {isMobile && <span style={{ marginLeft: 6, color: '#2563eb' }}>· 點預覽放大</span>}
             </p>
-            <LabelDownloadButton labelCode={labelCode} widthMm={widthMm} heightMm={heightMm} isMobile={isMobile} />
+            <LabelDownloadButton
+              labelCode={labelCode}
+              productName={productName}
+              price={price}
+              widthMm={widthMm}
+              heightMm={heightMm}
+              isMobile={isMobile}
+            />
           </>
         )}
       </div>
@@ -135,6 +155,8 @@ export function ProductLabelPreview({
 
 interface LabelExpandModalProps {
   labelCode: string
+  productName?: string
+  price?: string | number | null
   formatError: string | null
   widthMm: number
   heightMm: number
@@ -144,6 +166,8 @@ interface LabelExpandModalProps {
 
 function LabelExpandModal({
   labelCode,
+  productName,
+  price,
   formatError,
   widthMm,
   heightMm,
@@ -289,11 +313,15 @@ function LabelExpandModal({
           </div>
           <LabelCard
             labelCode={labelCode}
+            productName={productName}
+            price={price}
             widthPx={expandWidthPx || Math.round(widthMm * MM_TO_PX * 2.8)}
             formatError={formatError}
           />
           <LabelDownloadButton
             labelCode={labelCode}
+            productName={productName}
+            price={price}
             widthMm={widthMm}
             heightMm={heightMm}
             isMobile
@@ -354,9 +382,17 @@ function LabelExpandModal({
         onClick={(e) => e.stopPropagation()}
         style={{ width: '100%', maxWidth: expandWidthPx }}
       >
-        <LabelCard labelCode={labelCode} widthPx={expandWidthPx} formatError={formatError} />
+        <LabelCard
+          labelCode={labelCode}
+          productName={productName}
+          price={price}
+          widthPx={expandWidthPx}
+          formatError={formatError}
+        />
         <LabelDownloadButton
           labelCode={labelCode}
+          productName={productName}
+          price={price}
           widthMm={widthMm}
           heightMm={heightMm}
           isMobile={false}
@@ -388,18 +424,24 @@ function LabelExpandModal({
 
 interface LabelCardProps {
   labelCode: string
+  productName?: string
+  price?: string | number | null
   widthPx: number
   formatError: string | null
 }
 
 function LabelDownloadButton({
   labelCode,
+  productName,
+  price,
   widthMm,
   heightMm,
   isMobile,
   fullWidth = false,
 }: {
   labelCode: string
+  productName?: string
+  price?: string | number | null
   widthMm: number
   heightMm: number
   isMobile: boolean
@@ -414,7 +456,7 @@ function LabelDownloadButton({
     setError(null)
     setSuccessHint(null)
     try {
-      const result = await saveLabelPng(labelCode, { widthMm, heightMm })
+      const result = await saveLabelPng(labelCode, { widthMm, heightMm, productName, price })
       if (result === 'shared') {
         setSuccessHint('請在分享選單點「儲存圖片」存入相簿')
       } else if (result === 'downloaded') {
@@ -468,7 +510,7 @@ function LabelDownloadButton({
   )
 }
 
-function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
+function LabelCard({ labelCode, productName, price, widthPx, formatError }: LabelCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const [measuredWidth, setMeasuredWidth] = useState(widthPx)
@@ -476,6 +518,8 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
 
   const trimmed = labelCode.trim()
   const displayCode = trimmed.toUpperCase()
+  const nameText = (productName ?? '').trim()
+  const priceText = formatLabelPrice(price)
 
   useEffect(() => {
     const el = cardRef.current
@@ -494,10 +538,7 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
     setMeasuredWidth(widthPx)
   }, [widthPx])
 
-  const m = useMemo(
-    () => labelMetrics(measuredWidth, displayCode),
-    [displayCode, measuredWidth],
-  )
+  const m = useMemo(() => retailLabelMetrics(measuredWidth), [measuredWidth])
 
   useEffect(() => {
     const svg = svgRef.current
@@ -579,7 +620,7 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
         padding: m.pad,
         display: 'flex',
         flexDirection: 'column',
-        gap: Math.max(4, Math.round(m.pad * 0.45)),
+        gap: Math.max(4, Math.round(m.pad * 0.5)),
         overflow: 'visible',
       }}
     >
@@ -598,15 +639,31 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
             minWidth: 0,
             fontFamily: LABEL_FONT,
             fontWeight: 700,
-            fontSize: m.fontSize,
-            letterSpacing: '0.005em',
-            lineHeight: 1.1,
-            whiteSpace: 'nowrap',
+            fontSize: m.nameFont,
+            lineHeight: 1.15,
             color: '#111',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
         >
-          {displayCode}
+          {nameText || '（未命名商品）'}
         </div>
+        {priceText && (
+          <div
+            style={{
+              flexShrink: 0,
+              fontFamily: LABEL_FONT,
+              fontWeight: 800,
+              fontSize: m.priceFont,
+              lineHeight: 1,
+              color: '#111',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {priceText}
+          </div>
+        )}
       </div>
       <div
         style={{
@@ -643,6 +700,19 @@ function LabelCard({ labelCode, widthPx, formatError }: LabelCardProps) {
             {barcodeOk === false ? '條碼無法產生' : '條碼產生中…'}
           </div>
         )}
+      </div>
+      <div
+        style={{
+          fontFamily: LABEL_FONT,
+          fontWeight: 700,
+          fontSize: m.codeFont,
+          letterSpacing: '0.08em',
+          lineHeight: 1,
+          color: '#111',
+          textAlign: 'center',
+        }}
+      >
+        {displayCode}
       </div>
     </div>
   )

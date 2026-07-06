@@ -5,17 +5,24 @@ import {
   DEFAULT_LABEL_HEIGHT_MM,
   DEFAULT_LABEL_WIDTH_MM,
   LABEL_FONT,
-  labelMetrics,
+  fitTextFontSize,
+  formatLabelPrice,
+  measureTextWidth,
   mmToPx,
+  retailLabelMetrics,
 } from './labelLayout'
 
-/** 常見熱感標籤機解析度（Brother / 芯燁等） */
+/** 熱感標籤機解析度；Niimbot 精臣 K3 為 203 DPI（標籤寬 20–82mm、高 15–300mm） */
 export const LABEL_PRINT_DPI = 203
 
 export interface LabelImageExportOptions {
   widthMm?: number
   heightMm?: number
   dpi?: number
+  /** 商品名（品牌 + 型號） */
+  productName?: string
+  /** 價格（字串或數字） */
+  price?: string | number | null
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -45,6 +52,21 @@ function renderBarcodeCanvas(
   return canvas
 }
 
+/** 依目前 ctx 字型，把文字截斷到指定寬度內（超過補「…」） */
+function truncateToWidth(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string {
+  if (ctx.measureText(text).width <= maxWidth) return text
+  const ellipsis = '…'
+  let out = text
+  while (out.length > 1 && ctx.measureText(out + ellipsis).width > maxWidth) {
+    out = out.slice(0, -1)
+  }
+  return out + ellipsis
+}
+
 /** 依標籤紙尺寸輸出 PNG（白底、適合熱感標籤機） */
 export async function renderLabelPngBlob(
   labelCode: string,
@@ -58,10 +80,12 @@ export async function renderLabelPngBlob(
   const widthMm = options.widthMm ?? DEFAULT_LABEL_WIDTH_MM
   const heightMm = options.heightMm ?? DEFAULT_LABEL_HEIGHT_MM
   const dpi = options.dpi ?? LABEL_PRINT_DPI
+  const nameText = (options.productName ?? '').trim()
+  const priceText = formatLabelPrice(options.price)
 
   const widthPx = mmToPx(widthMm, dpi)
   const heightPx = mmToPx(heightMm, dpi)
-  const m = labelMetrics(widthPx, displayCode)
+  const m = retailLabelMetrics(widthPx)
 
   const canvas = document.createElement('canvas')
   canvas.width = widthPx
@@ -75,30 +99,66 @@ export async function renderLabelPngBlob(
   const logoImg = await loadImage(ES_BRAND.logoBlack)
   const barcodeCanvas = renderBarcodeCanvas(displayCode, m.barcodeHeight, m.barWidth)
 
-  const rowGap = Math.max(4, Math.round(m.pad * 0.45))
-  const headerHeight = Math.max(m.logo, m.fontSize * 1.15)
-  const contentHeight = headerHeight + rowGap + barcodeCanvas.height
-  let y = m.pad
-  if (contentHeight + m.pad * 2 > heightPx) {
-    y = Math.max(0, Math.round((heightPx - contentHeight) / 2))
+  const innerW = widthPx - m.pad * 2
+  const rowGap = Math.max(4, Math.round(m.pad * 0.5))
+  const headerHeight = Math.max(m.logo, m.priceFont * 1.15, m.nameFont * 1.2)
+  const codeLineHeight = Math.round(m.codeFont * 1.25)
+  // 版面：header（logo + 名稱｜價格）→ 條碼 → 代碼文字
+  const contentHeight = headerHeight + rowGap + barcodeCanvas.height + rowGap + codeLineHeight
+  let y = Math.max(m.pad, Math.round((heightPx - contentHeight) / 2))
+  if (contentHeight + m.pad > heightPx) y = m.pad
+
+  // 價格（右上，先量寬度好保留給名稱的空間）
+  let priceWidth = 0
+  if (priceText) {
+    const priceX = widthPx - m.pad
+    priceWidth = measureTextWidth(priceText, m.priceFont, 800)
+    ctx.fillStyle = '#111111'
+    ctx.font = `800 ${m.priceFont}px ${LABEL_FONT}`
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(priceText, priceX, y + headerHeight / 2)
   }
 
+  // logo（左上）
   const logoY = y + Math.round((headerHeight - m.logo) / 2)
   ctx.drawImage(logoImg, m.pad, logoY, m.logo, m.logo)
 
+  // 商品名（logo 右側；縮字或截斷以塞入剩餘寬度）
+  const nameX = m.pad + m.logo + m.gap
+  const nameMaxW = Math.max(20, innerW - m.logo - m.gap - (priceWidth ? priceWidth + m.gap : 0))
+  const nameDisplay = nameText || '（未命名商品）'
+  const nameFont = fitTextFontSize(nameDisplay, nameMaxW, m.nameFont, 9, 700)
   ctx.fillStyle = '#111111'
-  ctx.font = `700 ${m.fontSize}px ${LABEL_FONT}`
+  ctx.font = `700 ${nameFont}px ${LABEL_FONT}`
+  ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
-  const textX = m.pad + m.logo + m.gap
-  const textY = y + headerHeight / 2
-  ctx.fillText(displayCode, textX, textY)
+  ctx.fillText(truncateToWidth(ctx, nameDisplay, nameMaxW), nameX, y + headerHeight / 2)
 
+  // 條碼撐滿內容寬度、左緣對齊 logo
   const barcodeY = y + headerHeight + rowGap
-  const scale = Math.min(1, (widthPx - m.pad * 2) / barcodeCanvas.width)
-  const drawW = Math.round(barcodeCanvas.width * scale)
-  const drawH = Math.round(barcodeCanvas.height * scale)
-  const barcodeX = m.pad + Math.round((widthPx - m.pad * 2 - drawW) / 2)
-  ctx.drawImage(barcodeCanvas, barcodeX, barcodeY, drawW, drawH)
+  ctx.drawImage(barcodeCanvas, m.pad, barcodeY, innerW, barcodeCanvas.height)
+
+  // 代碼文字（條碼下方置中）
+  const codeY = barcodeY + barcodeCanvas.height + rowGap + codeLineHeight / 2
+  ctx.fillStyle = '#111111'
+  ctx.font = `700 ${m.codeFont}px ${LABEL_FONT}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  const prevSpacing = (ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing
+  try {
+    ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${Math.round(m.codeFont * 0.08)}px`
+  } catch {
+    // 部分瀏覽器不支援 canvas letterSpacing，忽略
+  }
+  ctx.fillText(displayCode, widthPx / 2, codeY)
+  if (prevSpacing !== undefined) {
+    try {
+      ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = prevSpacing
+    } catch {
+      // 略
+    }
+  }
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

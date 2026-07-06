@@ -1245,7 +1245,12 @@ function VariantBlock({
         maxLength={LABEL_CODE_MAX_LEN}
       />
       <div style={{ marginTop: 10 }}>
-        <ProductLabelPreview labelCode={draft.label_code} isMobile={isMobile} />
+        <ProductLabelPreview
+          labelCode={draft.label_code}
+          productName={[brand, model].map((s) => s.trim()).filter(Boolean).join(' ')}
+          price={draft.price}
+          isMobile={isMobile}
+        />
       </div>
       {!readOnly && (
         <div style={{ marginTop: 12 }}>
