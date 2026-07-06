@@ -3,7 +3,10 @@ import { createPortal } from 'react-dom'
 import { useResponsive } from '../../../hooks/useResponsive'
 
 const SCANNER_Z_INDEX = 2100
-const DUPLICATE_SCAN_MS = 2000
+/** 同一組代碼在此時間內重複讀到不再觸發，避免手持不動時狂加 */
+const DUPLICATE_SCAN_MS = 3000
+/** 需連續讀到同一碼的幀數才確認，過濾單幀誤讀（提升準確度） */
+const SCAN_CONFIRM_COUNT = 2
 
 interface LabelCodeCameraScannerProps {
   open: boolean
@@ -25,6 +28,7 @@ export function LabelCodeCameraScanner({
   const scannerRef = useRef<import('html5-qrcode').Html5Qrcode | null>(null)
   const startingRef = useRef(false)
   const lastScanRef = useRef<{ code: string; at: number } | null>(null)
+  const pendingRef = useRef<{ code: string; count: number } | null>(null)
   const onScanRef = useRef(onScan)
   const busyRef = useRef(busy)
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -54,6 +58,7 @@ export function LabelCodeCameraScanner({
       setCameraError(null)
       setCameraReady(false)
       lastScanRef.current = null
+      pendingRef.current = null
       void stopCamera()
       return
     }
@@ -72,6 +77,8 @@ export function LabelCodeCameraScanner({
 
         const scanner = new Html5Qrcode(regionId, {
           formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
+          // 支援的裝置改用瀏覽器原生 BarcodeDetector，解碼比 JS ZXing 準且快
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
           verbose: false,
         })
         scannerRef.current = scanner
@@ -79,10 +86,10 @@ export function LabelCodeCameraScanner({
         await scanner.start(
           { facingMode: 'environment' },
           {
-            fps: 10,
+            fps: 15,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
               const width = Math.floor(Math.min(viewfinderWidth * 0.92, viewfinderWidth))
-              const height = Math.floor(Math.min(viewfinderHeight * 0.38, 140))
+              const height = Math.floor(Math.min(viewfinderHeight * 0.45, 180))
               return { width, height }
             },
             disableFlip: false,
@@ -91,10 +98,21 @@ export function LabelCodeCameraScanner({
             const code = decodedText.trim().toUpperCase()
             if (!code || busyRef.current) return
 
+            // 需連續讀到同一碼 SCAN_CONFIRM_COUNT 幀才確認，過濾單幀誤讀
+            const pending = pendingRef.current
+            if (pending && pending.code === code) {
+              pending.count += 1
+            } else {
+              pendingRef.current = { code, count: 1 }
+              return
+            }
+            if (pending.count < SCAN_CONFIRM_COUNT) return
+
             const now = Date.now()
             const last = lastScanRef.current
             if (last && last.code === code && now - last.at < DUPLICATE_SCAN_MS) return
             lastScanRef.current = { code, at: now }
+            pendingRef.current = null
 
             void onScanRef.current(code)
           },
