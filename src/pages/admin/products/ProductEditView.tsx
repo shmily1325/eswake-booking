@@ -1376,11 +1376,10 @@ function VariantBlock({
         />
       </div>
       {!readOnly && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 10 }}>
           <Button
             variant="primary"
-            size={isMobile ? 'medium' : 'small'}
-            fullWidth={isMobile}
+            size="small"
             data-track="product_label_code_save"
             disabled={
               disabled ||
