@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom'
 import { useResponsive } from '../../../hooks/useResponsive'
 
 const SCANNER_Z_INDEX = 2100
-/** 同一組代碼在此時間內重複讀到不再觸發，避免手持不動時狂加 */
-const DUPLICATE_SCAN_MS = 3000
+/** 同一組代碼重新觸發的最短間隔；搭配解鎖狀態避免手持不動時狂加 */
+const SAME_CODE_COOLDOWN_MS = 900
+/** 同一碼離開視野一小段時間才解鎖，讓「移開再掃」成為可預期節奏 */
+const SAME_CODE_RELEASE_GAP_MS = 350
 /** 需連續讀到同一碼的幀數才確認，過濾單幀誤讀（提升準確度） */
 const SCAN_CONFIRM_COUNT = 2
 
@@ -27,7 +29,8 @@ export function LabelCodeCameraScanner({
   const regionId = useId().replace(/:/g, '')
   const scannerRef = useRef<import('html5-qrcode').Html5Qrcode | null>(null)
   const startingRef = useRef(false)
-  const lastScanRef = useRef<{ code: string; at: number } | null>(null)
+  const lastScanRef = useRef<{ code: string; at: number; released: boolean } | null>(null)
+  const lastDecodedAtRef = useRef(0)
   const pendingRef = useRef<{ code: string; count: number } | null>(null)
   const onScanRef = useRef(onScan)
   const busyRef = useRef(busy)
@@ -58,6 +61,7 @@ export function LabelCodeCameraScanner({
       setCameraError(null)
       setCameraReady(false)
       lastScanRef.current = null
+      lastDecodedAtRef.current = 0
       pendingRef.current = null
       void stopCamera()
       return
@@ -97,6 +101,11 @@ export function LabelCodeCameraScanner({
           (decodedText) => {
             const code = decodedText.trim().toUpperCase()
             if (!code || busyRef.current) return
+            const now = Date.now()
+            lastDecodedAtRef.current = now
+
+            const last = lastScanRef.current
+            if (last && last.code === code && !last.released) return
 
             // 需連續讀到同一碼 SCAN_CONFIRM_COUNT 幀才確認，過濾單幀誤讀
             const pending = pendingRef.current
@@ -108,16 +117,19 @@ export function LabelCodeCameraScanner({
             }
             if (pending.count < SCAN_CONFIRM_COUNT) return
 
-            const now = Date.now()
-            const last = lastScanRef.current
-            if (last && last.code === code && now - last.at < DUPLICATE_SCAN_MS) return
-            lastScanRef.current = { code, at: now }
+            if (last && last.code === code && now - last.at < SAME_CODE_COOLDOWN_MS) return
+            lastScanRef.current = { code, at: now, released: false }
             pendingRef.current = null
 
             void onScanRef.current(code)
           },
           () => {
-            // per-frame decode miss; ignore
+            const last = lastScanRef.current
+            if (!last || last.released) return
+            if (Date.now() - lastDecodedAtRef.current >= SAME_CODE_RELEASE_GAP_MS) {
+              lastScanRef.current = { ...last, released: true }
+              pendingRef.current = null
+            }
           },
         )
 

@@ -251,6 +251,15 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       .slice(0, 12)
   }, [variants, variantSearch])
 
+  const labelCodeVariantMap = useMemo(() => {
+    const map = new Map<string, VariantListItem>()
+    for (const item of variants) {
+      const code = item.variant.label_code?.trim().toUpperCase()
+      if (code) map.set(code, item)
+    }
+    return map
+  }, [variants])
+
   const addOrIncrementVariant = useCallback(
     (item: VariantListItem) => {
       if (locked) return false
@@ -284,13 +293,24 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   const handleLabelCodeScan = useCallback(
     async (labelCode: string) => {
       if (locked || scanBusy) return
+      const normalized = labelCode.trim().toUpperCase()
+      const localItem = labelCodeVariantMap.get(normalized)
+      if (localItem) {
+        const incremented = addOrIncrementVariant(localItem)
+        const name = lineLabel(localItem.product, localItem.variant)
+        const message = incremented ? `已加 1 件：${name}` : `已加入：${name}`
+        setScanStatus(message)
+        globalToast.success(message)
+        return
+      }
+
       setScanBusy(true)
-      setScanStatus(`查詢 ${labelCode}…`)
+      setScanStatus(`查詢 ${normalized}…`)
       try {
-        const item = await fetchVariantItemByLabelCode(labelCode)
+        const item = await fetchVariantItemByLabelCode(normalized)
         if (!item) {
-          setScanStatus(`找不到標籤代碼：${labelCode}`)
-          globalToast.error(`找不到標籤代碼：${labelCode}`)
+          setScanStatus(`找不到標籤代碼：${normalized}`)
+          globalToast.error(`找不到標籤代碼：${normalized}`)
           return
         }
         const incremented = addOrIncrementVariant(item)
@@ -306,7 +326,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         setScanBusy(false)
       }
     },
-    [addOrIncrementVariant, locked, scanBusy],
+    [addOrIncrementVariant, labelCodeVariantMap, locked, scanBusy],
   )
 
   if (!open) return null
