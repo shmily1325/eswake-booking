@@ -9,6 +9,8 @@ import { supabase } from '../../../lib/supabase'
 import type { Database } from '../../../types/supabase'
 import type { AttributeValue, ProductRow, ProductVariantRow, ProductWithVariants, VariantListItem } from './types'
 import { deriveVariantAvailability } from './availabilityHelpers'
+import { getCategoryLabelCode } from './schema'
+import { buildLabelPrefix, composeLabelCode, maxLabelSeq } from './labelCode'
 
 type VariantInsert = Database['public']['Tables']['product_variants']['Insert']
 type VariantUpdate = Database['public']['Tables']['product_variants']['Update']
@@ -332,6 +334,67 @@ export async function adjustStock(variantId: string, newStock: number): Promise<
   const stock = Math.max(0, Math.round(newStock))
   const { error } = await supabase.from('product_variants').update({ stock }).eq('id', variantId)
   if (error) throw error
+}
+
+/**
+ * 依商品自動產生標籤代碼：ES + 品牌 + 類別碼 + 流水號（如 ESFOLLOWVEST001）。
+ * 每個前綴各自從 001 起算；查同前綴的最大號 +1。
+ * 唯一性最終由 DB unique index 保證（極少數併發撞號時可再按一次）。
+ */
+export async function generateLabelCode(
+  brand: string,
+  categoryId: string | null | undefined,
+  /** 尚未存進 DB 的代碼（同一次編輯的其他 SKU），一併避開避免撞號 */
+  extraCodes: ReadonlyArray<string | null | undefined> = [],
+): Promise<string> {
+  const categoryCode = getCategoryLabelCode(categoryId)
+  if (!categoryCode) {
+    throw new Error('此類別尚未設定標籤代碼規則，請改用手動輸入')
+  }
+  const prefix = buildLabelPrefix(brand, categoryCode)
+
+  const { data, error } = await supabase
+    .from('product_variants')
+    .select('label_code')
+    .like('label_code', `${prefix}%`)
+  if (error) throw error
+
+  const dbCodes = (data ?? []).map((r) => (r as { label_code: string | null }).label_code)
+  const seq = maxLabelSeq([...dbCodes, ...extraCodes], prefix) + 1
+  return composeLabelCode(prefix, seq)
+}
+
+/**
+ * 查標籤代碼是否已被「其他 SKU」使用（跨商品）。
+ * 前端存檔前的防呆；最終唯一性仍由 DB unique index 保證。
+ * 回傳衝突 SKU 的商品資訊（給友善訊息用）；沒衝突回 null。
+ */
+export async function findLabelCodeConflict(
+  labelCode: string,
+  excludeVariantId: string | null,
+): Promise<{ brand: string; model: string } | null> {
+  const normalized = labelCode.trim().toUpperCase()
+  if (!normalized) return null
+
+  let query = supabase
+    .from('product_variants')
+    .select('id, product_id')
+    .eq('label_code', normalized)
+    .eq('is_active', true)
+  if (excludeVariantId) query = query.neq('id', excludeVariantId)
+
+  const { data, error } = await query.limit(1)
+  if (error) throw error
+  const conflict = (data ?? [])[0] as { product_id: string } | undefined
+  if (!conflict) return null
+
+  const { data: product } = await supabase
+    .from('products')
+    .select('brand, model')
+    .eq('id', conflict.product_id)
+    .maybeSingle()
+  const p = product as { brand?: string; model?: string } | null
+  return { brand: p?.brand ?? '', model: p?.model ?? '' }
 }
 
 /** 掃描找貨：用 label_code 查 SKU + 商品主檔 */

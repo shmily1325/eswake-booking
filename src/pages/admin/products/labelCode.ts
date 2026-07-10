@@ -6,7 +6,8 @@ export const LABEL_CODE_IDEAL_MAX = 18
 /** 硬上限：小標籤仍可掃的實務上限 */
 export const LABEL_CODE_MAX_LEN = 20
 
-export const LABEL_CODE_RULE_HINT = `英文＋數字，建議 ${LABEL_CODE_IDEAL_MIN}～${LABEL_CODE_IDEAL_MAX} 字，最多 ${LABEL_CODE_MAX_LEN} 字`
+export const LABEL_CODE_RULE_HINT =
+  `可點「自動產生」或手動輸入；產生後仍可修改。英文＋數字，建議 ${LABEL_CODE_IDEAL_MIN}～${LABEL_CODE_IDEAL_MAX} 字，最多 ${LABEL_CODE_MAX_LEN} 字`
 
 /** 輸入時即時過濾：大寫、去非法字元、截斷至上限 */
 export function sanitizeLabelCodeInput(raw: string): string {
@@ -30,6 +31,50 @@ export function validateLabelCodeFormat(raw: string): string | null {
     return '標籤代碼只能使用英文與數字'
   }
   return null
+}
+
+/** 自動產生標籤代碼：固定開頭 + 流水號位數 */
+export const LABEL_CODE_ES_PREFIX = 'ES'
+export const LABEL_CODE_SEQ_DIGITS = 3
+
+/** 品牌正規化為標籤用片段：大寫、僅保留英數 */
+export function sanitizeBrandForLabel(brand: string): string {
+  return brand.toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
+/**
+ * 組出標籤前綴（ES + 品牌 + 類別碼）。
+ * 品牌會被截短，確保「前綴 + 至少 LABEL_CODE_SEQ_DIGITS 位流水號」不超過上限。
+ */
+export function buildLabelPrefix(brand: string, categoryCode: string): string {
+  const cat = categoryCode.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const brandClean = sanitizeBrandForLabel(brand)
+  const budget =
+    LABEL_CODE_MAX_LEN - LABEL_CODE_ES_PREFIX.length - cat.length - LABEL_CODE_SEQ_DIGITS
+  const brandMax = Math.max(0, budget)
+  return `${LABEL_CODE_ES_PREFIX}${brandClean.slice(0, brandMax)}${cat}`
+}
+
+/** 從既有代碼中，找出符合 prefix 的最大純數字流水號；沒有則回 0 */
+export function maxLabelSeq(
+  existingCodes: Iterable<string | null | undefined>,
+  prefix: string,
+): number {
+  let max = 0
+  for (const raw of existingCodes) {
+    const code = normalizeLabelCode(raw ?? '')
+    if (!code || !code.startsWith(prefix)) continue
+    const suffix = code.slice(prefix.length)
+    if (!/^\d+$/.test(suffix)) continue
+    const n = parseInt(suffix, 10)
+    if (n > max) max = n
+  }
+  return max
+}
+
+/** 組出完整標籤代碼（prefix + 補零流水號） */
+export function composeLabelCode(prefix: string, seq: number): string {
+  return `${prefix}${String(seq).padStart(LABEL_CODE_SEQ_DIGITS, '0')}`
 }
 
 /** 同一商品內不可重複（比對正規化後的值） */

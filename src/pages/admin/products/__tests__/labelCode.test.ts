@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildLabelPrefix,
+  composeLabelCode,
   findDuplicateLabelCodes,
   isLabelCodeDirty,
   isMissingLabelCode,
   LABEL_CODE_MAX_LEN,
+  maxLabelSeq,
   normalizeLabelCode,
+  sanitizeBrandForLabel,
   sanitizeLabelCodeInput,
   validateLabelCodeFormat,
 } from '../labelCode'
@@ -65,6 +69,49 @@ describe('isMissingLabelCode', () => {
   it('treats saved codes as present', () => {
     expect(isMissingLabelCode('ESWB001')).toBe(false)
     expect(isMissingLabelCode('  eswb001  ')).toBe(false)
+  })
+})
+
+describe('sanitizeBrandForLabel', () => {
+  it('uppercases and strips non-alphanumeric', () => {
+    expect(sanitizeBrandForLabel('Follow')).toBe('FOLLOW')
+    expect(sanitizeBrandForLabel("O'Brien")).toBe('OBRIEN')
+    expect(sanitizeBrandForLabel('Liquid Force')).toBe('LIQUIDFORCE')
+  })
+})
+
+describe('buildLabelPrefix', () => {
+  it('composes ES + brand + category', () => {
+    expect(buildLabelPrefix('Follow', 'VEST')).toBe('ESFOLLOWVEST')
+  })
+
+  it('truncates long brand so prefix + 3-digit seq fits max length', () => {
+    const prefix = buildLabelPrefix('Hyperlite', 'WSBOARD')
+    // ES(2) + brand + WSBOARD(7) + 001(3) <= 20 → brand capped at 8
+    expect(prefix).toBe('ESHYPERLITWSBOARD')
+    expect(composeLabelCode(prefix, 1)).toHaveLength(LABEL_CODE_MAX_LEN)
+  })
+})
+
+describe('maxLabelSeq / composeLabelCode', () => {
+  it('finds the max numeric suffix for the prefix', () => {
+    const codes = ['ESFOLLOWVEST001', 'ESFOLLOWVEST007', 'ESFOLLOWVEST003', null]
+    expect(maxLabelSeq(codes, 'ESFOLLOWVEST')).toBe(7)
+  })
+
+  it('ignores other prefixes and non-numeric suffixes', () => {
+    const codes = ['ESRONIXWBBOARD010', 'ESFOLLOWVESTX', 'ESFOLLOWVEST2026']
+    expect(maxLabelSeq(codes, 'ESFOLLOWVEST')).toBe(2026)
+  })
+
+  it('returns 0 when nothing matches', () => {
+    expect(maxLabelSeq([], 'ESFOLLOWVEST')).toBe(0)
+    expect(maxLabelSeq(['ESRONIXWBFIN001'], 'ESFOLLOWVEST')).toBe(0)
+  })
+
+  it('pads sequence to 3 digits', () => {
+    expect(composeLabelCode('ESFOLLOWVEST', 1)).toBe('ESFOLLOWVEST001')
+    expect(composeLabelCode('ESFOLLOWVEST', 42)).toBe('ESFOLLOWVEST042')
   })
 })
 

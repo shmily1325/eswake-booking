@@ -384,6 +384,35 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
   },
 }
 
+/**
+ * 標籤代碼的類別縮寫（自動產生 label_code 用）。
+ * 格式：ES + 品牌 + 這裡的類別碼 + 流水號，例如 ESFOLLOWVEST001。
+ * 每個 key 必須對應 CATEGORY_SCHEMAS；新增類別時記得補這裡。
+ */
+export const CATEGORY_LABEL_CODES: Record<string, string> = {
+  lifejacket: 'VEST',
+  wetsuit: 'WETSUIT',
+  apparel: 'APPAREL',
+  wb_board: 'WBBOARD',
+  wb_boots: 'WBBOOTS',
+  wb_fin: 'WBFIN',
+  wb_handle: 'WBHANDLE',
+  wb_helmet: 'WBHELMET',
+  wb_accessories: 'WBACC',
+  ws_board: 'WSBOARD',
+  ws_fin: 'WSFIN',
+  ws_pad: 'WSPAD',
+  ws_handle: 'WSHANDLE',
+  ws_wax: 'WSWAX',
+  ws_accessories: 'WSACC',
+}
+
+/** 取分類的標籤縮寫碼（自動產生 label_code 用）；未設定回 null */
+export function getCategoryLabelCode(id: string | null | undefined): string | null {
+  if (!id) return null
+  return CATEGORY_LABEL_CODES[id] ?? null
+}
+
 /** 取得所有類別，依 sortOrder 排序 */
 export function getAllCategories(): CategoryDef[] {
   return Object.values(CATEGORY_SCHEMAS).sort((a, b) => a.sortOrder - b.sortOrder)

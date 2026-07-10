@@ -20,6 +20,8 @@ import {
   deleteProduct,
   deleteVariant,
   fetchProductWithVariants,
+  findLabelCodeConflict,
+  generateLabelCode,
   updateProduct,
   updateVariant,
 } from './api'
@@ -158,6 +160,7 @@ export function ProductEditView({
   const [saving, setSaving] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
   const [labelCodeSavingId, setLabelCodeSavingId] = useState<string | null>(null)
+  const [labelCodeGeneratingIdx, setLabelCodeGeneratingIdx] = useState<number | null>(null)
   const [original, setOriginal] = useState<ProductWithVariants | null>(null)
 
   const [category, setCategory] = useState<string>(defaultCategory ?? Object.keys(CATEGORY_SCHEMAS)[0] ?? 'lifejacket')
@@ -395,6 +398,31 @@ export function ProductEditView({
     return null
   }
 
+  const handleGenerateLabelCode = async (idx: number) => {
+    if (!brand.trim()) {
+      toast.error('請先填品牌，才能自動產生標籤代碼')
+      return
+    }
+    if (!category) {
+      toast.error('請先選類別，才能自動產生標籤代碼')
+      return
+    }
+    setLabelCodeGeneratingIdx(idx)
+    try {
+      const extraCodes = drafts
+        .filter((row, i) => i !== idx && !row.pendingDelete)
+        .map((row) => normalizeLabelCode(row.label_code))
+      const code = await generateLabelCode(brand, category, extraCodes)
+      updateDraft(idx, { label_code: code })
+      toast.success('已產生標籤代碼，可直接修改後再儲存')
+    } catch (e) {
+      console.error('[ProductEditView] generate label_code failed', e)
+      toast.error(e instanceof Error ? e.message : '自動產生失敗')
+    } finally {
+      setLabelCodeGeneratingIdx(null)
+    }
+  }
+
   const handleSaveLabelCode = async (idx: number) => {
     const d = drafts[idx]
     if (!d?.id) {
@@ -416,6 +444,16 @@ export function ProductEditView({
       )
       if (clash) {
         toast.error(`標籤代碼「${normalized}」在此商品內重複`)
+        return
+      }
+      const conflict = await findLabelCodeConflict(normalized, d.id)
+      if (conflict) {
+        const who = [conflict.brand, conflict.model].filter(Boolean).join(' ')
+        toast.error(
+          who
+            ? `標籤代碼「${normalized}」已被「${who}」使用`
+            : `標籤代碼「${normalized}」已被其他商品使用`,
+        )
         return
       }
     }
@@ -464,6 +502,22 @@ export function ProductEditView({
           is_public: isPublic,
           updated_by: currentUserEmail ?? null,
         })
+      }
+
+      // 標籤代碼：跨商品唯一（DB index + 存檔前查詢）
+      for (const d of drafts) {
+        if (d.pendingDelete) continue
+        const normalized = normalizeLabelCode(d.label_code)
+        if (!normalized) continue
+        const conflict = await findLabelCodeConflict(normalized, d.id)
+        if (conflict) {
+          const who = [conflict.brand, conflict.model].filter(Boolean).join(' ')
+          throw new Error(
+            who
+              ? `標籤代碼「${normalized}」已被「${who}」使用`
+              : `標籤代碼「${normalized}」已被其他商品使用`,
+          )
+        }
       }
 
       // SKU：依狀態 dispatch
@@ -841,6 +895,7 @@ export function ProductEditView({
             draft={d}
             brand={brand}
             model={model}
+            categoryId={category}
             schemaFields={getSkuFields(category)}
             isMobile={isMobile}
             focused={focusVariantId != null && d.id === focusVariantId}
@@ -853,6 +908,8 @@ export function ProductEditView({
             onImageUpload={trackUpload}
             labelCodeSaving={d.id != null && labelCodeSavingId === d.id}
             onSaveLabelCode={() => void handleSaveLabelCode(idx)}
+            labelCodeGenerating={labelCodeGeneratingIdx === idx}
+            onGenerateLabelCode={() => void handleGenerateLabelCode(idx)}
           />
         ))}
 
@@ -968,6 +1025,7 @@ interface VariantBlockProps {
   draft: DraftVariant
   brand: string
   model: string
+  categoryId: string
   schemaFields: FieldDef[]
   isMobile: boolean
   /** 從列表點進來的目標 SKU：展開、封面可編、捲動對準 */
@@ -982,6 +1040,8 @@ interface VariantBlockProps {
   onImageUpload: (path: string) => void
   labelCodeSaving?: boolean
   onSaveLabelCode?: () => void
+  labelCodeGenerating?: boolean
+  onGenerateLabelCode?: () => void
 }
 
 function VariantBlock({
@@ -989,6 +1049,7 @@ function VariantBlock({
   draft,
   brand,
   model,
+  categoryId,
   schemaFields,
   isMobile,
   focused = false,
@@ -1001,6 +1062,8 @@ function VariantBlock({
   onImageUpload,
   labelCodeSaving = false,
   onSaveLabelCode,
+  labelCodeGenerating = false,
+  onGenerateLabelCode,
 }: VariantBlockProps) {
   const blockRef = useRef<HTMLDivElement>(null)
   // 折疊：手機上已有 SKU 預設收合；從列表點進來的目標 SKU 強制展開
@@ -1254,18 +1317,55 @@ function VariantBlock({
       <div style={{ fontSize: 11, color: '#999', marginBottom: 10, lineHeight: 1.4 }}>
         {LABEL_CODE_RULE_HINT}
       </div>
-      <input
-        style={inputStyle}
-        value={draft.label_code}
-        onChange={(e) => onChange({ label_code: sanitizeLabelCodeInput(e.target.value) })}
-        placeholder="ESFOLLOWVEST2026"
-        disabled={disabled || draft.pendingDelete}
-        spellCheck={false}
-        autoCapitalize="characters"
-        autoCorrect="off"
-        enterKeyHint="done"
-        maxLength={LABEL_CODE_MAX_LEN}
-      />
+      <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+        <input
+          style={{ ...inputStyle, flex: 1 }}
+          value={draft.label_code}
+          onChange={(e) => onChange({ label_code: sanitizeLabelCodeInput(e.target.value) })}
+          placeholder="ESFOLLOWVEST001"
+          disabled={disabled || draft.pendingDelete}
+          spellCheck={false}
+          autoCapitalize="characters"
+          autoCorrect="off"
+          enterKeyHint="done"
+          maxLength={LABEL_CODE_MAX_LEN}
+        />
+        {!readOnly && (
+          <button
+            type="button"
+            data-track="product_label_code_generate"
+            onClick={() => onGenerateLabelCode?.()}
+            disabled={
+              disabled ||
+              draft.pendingDelete ||
+              labelCodeGenerating ||
+              !categoryId
+            }
+            title="依 ES + 品牌 + 類別 自動產生流水號代碼"
+            style={{
+              flexShrink: 0,
+              padding: '0 14px',
+              borderRadius: 8,
+              border: '1px solid #333',
+              background: '#fff',
+              color: '#333',
+              fontSize: 13,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              cursor:
+                disabled || draft.pendingDelete || labelCodeGenerating || !categoryId
+                  ? 'not-allowed'
+                  : 'pointer',
+              opacity:
+                disabled || draft.pendingDelete || labelCodeGenerating || !categoryId
+                  ? 0.5
+                  : 1,
+            }}
+          >
+            {labelCodeGenerating ? '產生中…' : '自動產生'}
+          </button>
+        )}
+      </div>
       <div style={{ marginTop: 10 }}>
         <ProductLabelPreview
           labelCode={draft.label_code}
@@ -1295,7 +1395,7 @@ function VariantBlock({
           </Button>
           {!draft.id && (
             <p style={{ fontSize: 12, color: '#888', margin: '8px 0 0', textAlign: isMobile ? 'center' : 'left' }}>
-              新建 SKU 請先儲存商品
+              新建 SKU：可修改代碼後，與商品一起按「儲存」
             </p>
           )}
           {draft.id && isLabelCodeDirty(draft.label_code, draft.savedLabelCode) && (
