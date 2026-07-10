@@ -651,43 +651,19 @@ function LabelCard({ labelCode, productName, price, size, widthPx, formatError }
         }}
       >
         <EsLogo size={m.logo} />
-        {(sizeText || priceText) && (
+        {priceText && (
           <div
             style={{
               flexShrink: 0,
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: m.gap,
+              fontFamily: LABEL_FONT,
+              fontWeight: 800,
+              fontSize: m.priceFont,
+              lineHeight: 1,
+              color: '#111',
+              whiteSpace: 'nowrap',
             }}
           >
-            {sizeText && (
-              <span
-                style={{
-                  fontFamily: LABEL_FONT,
-                  fontWeight: 700,
-                  fontSize: m.sizeFont,
-                  lineHeight: 1,
-                  color: '#111',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {sizeText}
-              </span>
-            )}
-            {priceText && (
-              <span
-                style={{
-                  fontFamily: LABEL_FONT,
-                  fontWeight: 800,
-                  fontSize: m.priceFont,
-                  lineHeight: 1,
-                  color: '#111',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {priceText}
-              </span>
-            )}
+            {priceText}
           </div>
         )}
       </div>
@@ -706,6 +682,9 @@ function LabelCard({ labelCode, productName, price, size, widthPx, formatError }
         }}
       >
         {nameText || '（未命名商品）'}
+        {sizeText && (
+          <span style={{ fontWeight: 800, marginLeft: m.gap }}>{sizeText}</span>
+        )}
       </div>
       <div
         style={{

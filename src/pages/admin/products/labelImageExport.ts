@@ -183,31 +183,33 @@ export async function renderLabelPngBlob(
     Math.max(9, Math.round(m.nameFont * 0.62)),
     2,
   )
-  const nameBlockHeight = nameLines.length * nameLineHeight
 
-  // 版面：header（logo｜價格）→ 商品名 → 條碼 → 代碼文字
+  // 尺寸接在商品名後面：同一行放得下就接著，放不下就換下一行
+  let sizeInline = false
+  let sizeNewLine = false
+  if (sizeText) {
+    const lastLine = nameLines[nameLines.length - 1] ?? ''
+    const lastLineW = measureTextWidth(lastLine, nameFont, 700)
+    const sizeW = measureTextWidth(sizeText, nameFont, 800)
+    if (lastLineW + m.gap + sizeW <= innerW) sizeInline = true
+    else sizeNewLine = true
+  }
+  const nameBlockLines = nameLines.length + (sizeNewLine ? 1 : 0)
+  const nameBlockHeight = nameBlockLines * nameLineHeight
+
+  // 版面：header（logo｜價格）→ 商品名(+尺寸) → 條碼 → 代碼文字
   const contentHeight =
     headerHeight + rowGap + nameBlockHeight + rowGap + barcodeCanvas.height + rowGap + codeLineHeight
   let y = Math.max(m.pad, Math.round((heightPx - contentHeight) / 2))
   if (contentHeight + m.pad > heightPx) y = m.pad
 
-  // 上排右側：尺寸 + 價格（尺寸在價格左邊）
-  const headerMidY = y + headerHeight / 2
-  let rightX = widthPx - m.pad
+  // 價格（右上）
   if (priceText) {
     ctx.fillStyle = '#111111'
     ctx.font = `800 ${m.priceFont}px ${LABEL_FONT}`
     ctx.textAlign = 'right'
     ctx.textBaseline = 'middle'
-    ctx.fillText(priceText, rightX, headerMidY)
-    rightX -= Math.round(measureTextWidth(priceText, m.priceFont, 800)) + m.gap * 2
-  }
-  if (sizeText) {
-    ctx.fillStyle = '#111111'
-    ctx.font = `700 ${m.sizeFont}px ${LABEL_FONT}`
-    ctx.textAlign = 'right'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(sizeText, rightX, headerMidY)
+    ctx.fillText(priceText, widthPx - m.pad, y + headerHeight / 2)
   }
 
   // logo（左上）
@@ -216,13 +218,28 @@ export async function renderLabelPngBlob(
 
   // 商品名（整行，左對齊）
   ctx.fillStyle = '#111111'
-  ctx.font = `700 ${nameFont}px ${LABEL_FONT}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
   const nameTop = y + headerHeight + rowGap
+  ctx.font = `700 ${nameFont}px ${LABEL_FONT}`
   nameLines.forEach((line, i) => {
     ctx.fillText(line, m.pad, nameTop + nameLineHeight * i + nameLineHeight / 2)
   })
+
+  // 尺寸（商品名後面，稍加粗）
+  if (sizeText) {
+    ctx.font = `800 ${nameFont}px ${LABEL_FONT}`
+    if (sizeInline) {
+      const lastIdx = nameLines.length - 1
+      const lastLine = nameLines[lastIdx] ?? ''
+      const lastLineW = measureTextWidth(lastLine, nameFont, 700)
+      const sizeMidY = nameTop + nameLineHeight * lastIdx + nameLineHeight / 2
+      ctx.fillText(sizeText, m.pad + lastLineW + m.gap, sizeMidY)
+    } else if (sizeNewLine) {
+      const sizeMidY = nameTop + nameLineHeight * nameLines.length + nameLineHeight / 2
+      ctx.fillText(sizeText, m.pad, sizeMidY)
+    }
+  }
 
   // 條碼撐滿內容寬度、左緣對齊 logo
   const barcodeY = nameTop + nameBlockHeight + rowGap
