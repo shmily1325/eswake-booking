@@ -35,10 +35,11 @@ export function retailLabelMetrics(widthPx: number) {
   const logo = Math.max(16, Math.round(w * 0.1))
   const nameFont = Math.max(10, Math.round(w * 0.052))
   const priceFont = Math.max(12, Math.round(w * 0.08))
+  const sizeFont = Math.max(11, Math.round(w * 0.055))
   const codeFont = Math.max(8, Math.round(w * 0.036))
   const barcodeHeight = Math.max(30, Math.round(w * 0.2))
   const barWidth = Math.max(1, w * 0.004)
-  return { w, pad, gap, logo, nameFont, priceFont, codeFont, barcodeHeight, barWidth }
+  return { w, pad, gap, logo, nameFont, priceFont, sizeFont, codeFont, barcodeHeight, barWidth }
 }
 
 /**

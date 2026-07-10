@@ -1201,6 +1201,15 @@ function VariantBlock({
     </div>
   )
 
+  // 標籤上的尺寸（含 schema 設定的單位後綴，如 cm/mm）
+  const labelSizeField = schemaFields.find((f) => f.key === 'size')
+  const labelSizeRaw = (draft.attributes.size ?? '').trim()
+  const labelSizeDisplay = labelSizeRaw
+    ? labelSizeField?.displaySuffix
+      ? `${labelSizeRaw}${labelSizeField.displaySuffix}`
+      : labelSizeRaw
+    : ''
+
   const labelCodeSection = (
     <div
       style={{
@@ -1249,6 +1258,7 @@ function VariantBlock({
           labelCode={draft.label_code}
           productName={[brand, model].map((s) => s.trim()).filter(Boolean).join(' ')}
           price={draft.price}
+          size={labelSizeDisplay}
           isMobile={isMobile}
         />
       </div>

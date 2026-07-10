@@ -6,6 +6,7 @@ import {
   DEFAULT_LABEL_WIDTH_MM,
   LABEL_FONT,
   formatLabelPrice,
+  measureTextWidth,
   mmToPx,
   retailLabelMetrics,
 } from './labelLayout'
@@ -21,6 +22,8 @@ export interface LabelImageExportOptions {
   productName?: string
   /** 價格（字串或數字） */
   price?: string | number | null
+  /** 尺寸（已含單位後綴，如 M、26cm） */
+  size?: string
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -146,6 +149,7 @@ export async function renderLabelPngBlob(
   const dpi = options.dpi ?? LABEL_PRINT_DPI
   const nameText = (options.productName ?? '').trim()
   const priceText = formatLabelPrice(options.price)
+  const sizeText = (options.size ?? '').trim()
 
   const widthPx = mmToPx(widthMm, dpi)
   const heightPx = mmToPx(heightMm, dpi)
@@ -187,13 +191,23 @@ export async function renderLabelPngBlob(
   let y = Math.max(m.pad, Math.round((heightPx - contentHeight) / 2))
   if (contentHeight + m.pad > heightPx) y = m.pad
 
-  // 價格（右上）
+  // 上排右側：尺寸 + 價格（尺寸在價格左邊）
+  const headerMidY = y + headerHeight / 2
+  let rightX = widthPx - m.pad
   if (priceText) {
     ctx.fillStyle = '#111111'
     ctx.font = `800 ${m.priceFont}px ${LABEL_FONT}`
     ctx.textAlign = 'right'
     ctx.textBaseline = 'middle'
-    ctx.fillText(priceText, widthPx - m.pad, y + headerHeight / 2)
+    ctx.fillText(priceText, rightX, headerMidY)
+    rightX -= Math.round(measureTextWidth(priceText, m.priceFont, 800)) + m.gap * 2
+  }
+  if (sizeText) {
+    ctx.fillStyle = '#111111'
+    ctx.font = `700 ${m.sizeFont}px ${LABEL_FONT}`
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(sizeText, rightX, headerMidY)
   }
 
   // logo（左上）

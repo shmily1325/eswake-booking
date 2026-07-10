@@ -23,6 +23,8 @@ interface ProductLabelPreviewProps {
   productName?: string
   /** 價格（字串或數字），顯示在標籤右上；空值則不顯示 */
   price?: string | number | null
+  /** 尺寸（已含單位後綴，如 M、26cm），顯示在價格左邊；空值則不顯示 */
+  size?: string
   scale?: number
   widthMm?: number
   heightMm?: number
@@ -33,6 +35,7 @@ export function ProductLabelPreview({
   labelCode,
   productName,
   price,
+  size,
   scale,
   widthMm = DEFAULT_LABEL_WIDTH_MM,
   heightMm = DEFAULT_LABEL_HEIGHT_MM,
@@ -78,6 +81,7 @@ export function ProductLabelPreview({
             labelCode={labelCode}
             productName={productName}
             price={price}
+            size={size}
             formatError={formatError}
             widthMm={widthMm}
             heightMm={heightMm}
@@ -118,6 +122,7 @@ export function ProductLabelPreview({
               labelCode={labelCode}
               productName={productName}
               price={price}
+              size={size}
               widthPx={inlineWidthPx}
               formatError={formatError}
             />
@@ -127,6 +132,7 @@ export function ProductLabelPreview({
             labelCode={labelCode}
             productName={productName}
             price={price}
+            size={size}
             widthPx={inlineWidthPx}
             formatError={formatError}
           />
@@ -141,6 +147,7 @@ export function ProductLabelPreview({
               labelCode={labelCode}
               productName={productName}
               price={price}
+              size={size}
               widthMm={widthMm}
               heightMm={heightMm}
               isMobile={isMobile}
@@ -157,6 +164,7 @@ interface LabelExpandModalProps {
   labelCode: string
   productName?: string
   price?: string | number | null
+  size?: string
   formatError: string | null
   widthMm: number
   heightMm: number
@@ -168,6 +176,7 @@ function LabelExpandModal({
   labelCode,
   productName,
   price,
+  size,
   formatError,
   widthMm,
   heightMm,
@@ -315,6 +324,7 @@ function LabelExpandModal({
             labelCode={labelCode}
             productName={productName}
             price={price}
+            size={size}
             widthPx={expandWidthPx || Math.round(widthMm * MM_TO_PX * 2.8)}
             formatError={formatError}
           />
@@ -322,6 +332,7 @@ function LabelExpandModal({
             labelCode={labelCode}
             productName={productName}
             price={price}
+            size={size}
             widthMm={widthMm}
             heightMm={heightMm}
             isMobile
@@ -386,6 +397,7 @@ function LabelExpandModal({
           labelCode={labelCode}
           productName={productName}
           price={price}
+          size={size}
           widthPx={expandWidthPx}
           formatError={formatError}
         />
@@ -393,6 +405,7 @@ function LabelExpandModal({
           labelCode={labelCode}
           productName={productName}
           price={price}
+          size={size}
           widthMm={widthMm}
           heightMm={heightMm}
           isMobile={false}
@@ -426,6 +439,7 @@ interface LabelCardProps {
   labelCode: string
   productName?: string
   price?: string | number | null
+  size?: string
   widthPx: number
   formatError: string | null
 }
@@ -434,6 +448,7 @@ function LabelDownloadButton({
   labelCode,
   productName,
   price,
+  size,
   widthMm,
   heightMm,
   isMobile,
@@ -442,6 +457,7 @@ function LabelDownloadButton({
   labelCode: string
   productName?: string
   price?: string | number | null
+  size?: string
   widthMm: number
   heightMm: number
   isMobile: boolean
@@ -456,7 +472,7 @@ function LabelDownloadButton({
     setError(null)
     setSuccessHint(null)
     try {
-      const result = await saveLabelPng(labelCode, { widthMm, heightMm, productName, price })
+      const result = await saveLabelPng(labelCode, { widthMm, heightMm, productName, price, size })
       if (result === 'shared') {
         setSuccessHint('請在分享選單點「儲存圖片」存入相簿')
       } else if (result === 'downloaded') {
@@ -510,7 +526,7 @@ function LabelDownloadButton({
   )
 }
 
-function LabelCard({ labelCode, productName, price, widthPx, formatError }: LabelCardProps) {
+function LabelCard({ labelCode, productName, price, size, widthPx, formatError }: LabelCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const [measuredWidth, setMeasuredWidth] = useState(widthPx)
@@ -520,6 +536,7 @@ function LabelCard({ labelCode, productName, price, widthPx, formatError }: Labe
   const displayCode = trimmed.toUpperCase()
   const nameText = (productName ?? '').trim()
   const priceText = formatLabelPrice(price)
+  const sizeText = (size ?? '').trim()
 
   useEffect(() => {
     const el = cardRef.current
@@ -634,19 +651,43 @@ function LabelCard({ labelCode, productName, price, widthPx, formatError }: Labe
         }}
       >
         <EsLogo size={m.logo} />
-        {priceText && (
+        {(sizeText || priceText) && (
           <div
             style={{
               flexShrink: 0,
-              fontFamily: LABEL_FONT,
-              fontWeight: 800,
-              fontSize: m.priceFont,
-              lineHeight: 1,
-              color: '#111',
-              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: m.gap,
             }}
           >
-            {priceText}
+            {sizeText && (
+              <span
+                style={{
+                  fontFamily: LABEL_FONT,
+                  fontWeight: 700,
+                  fontSize: m.sizeFont,
+                  lineHeight: 1,
+                  color: '#111',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {sizeText}
+              </span>
+            )}
+            {priceText && (
+              <span
+                style={{
+                  fontFamily: LABEL_FONT,
+                  fontWeight: 800,
+                  fontSize: m.priceFont,
+                  lineHeight: 1,
+                  color: '#111',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {priceText}
+              </span>
+            )}
           </div>
         )}
       </div>
