@@ -24,6 +24,13 @@ export function formatLabelPrice(price: string | number | null | undefined): str
   return `NT$ ${Math.round(n).toLocaleString('en-US')}`
 }
 
+/** 標籤上的尺寸顯示，如 (S)、(26cm) */
+export function formatLabelSize(size: string | null | undefined): string | null {
+  const trimmed = (size ?? '').trim()
+  if (!trimmed) return null
+  return `(${trimmed})`
+}
+
 /**
  * 橫式零售吊牌版型尺寸（依實際渲染寬度計算）。
  * 版面：上排 logo + 商品名（左）／價格（右）→ 條碼滿版 → 代碼文字置中。

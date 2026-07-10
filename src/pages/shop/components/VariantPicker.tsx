@@ -1,6 +1,7 @@
 import type { ProductVariantRow } from '../../admin/products/types'
 import { formatVariantAttributes } from '../lib/shopFormat'
 import {
+  getShopVisibleVariants,
   getVariantAvailability,
   isVariantPurchasable,
 } from '../lib/productAvailability'
@@ -19,7 +20,8 @@ export function VariantPicker({
   categoryId,
   onSelect,
 }: VariantPickerProps) {
-  const visible = variants.filter((v) => getVariantAvailability(v) !== 'sold_out')
+  // 與商城可見邏輯一致：現貨被留光（stock 全數送結帳保留）的規格視同缺貨不顯示
+  const visible = getShopVisibleVariants(variants)
 
   if (visible.length === 0) {
     return <p className="text-sm text-gray-500">{SHOP_DETAIL.noVariants}</p>

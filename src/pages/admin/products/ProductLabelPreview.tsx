@@ -9,6 +9,7 @@ import {
   DEFAULT_LABEL_WIDTH_MM,
   LABEL_FONT,
   formatLabelPrice,
+  formatLabelSize,
   retailLabelMetrics,
 } from './labelLayout'
 
@@ -536,7 +537,7 @@ function LabelCard({ labelCode, productName, price, size, widthPx, formatError }
   const displayCode = trimmed.toUpperCase()
   const nameText = (productName ?? '').trim()
   const priceText = formatLabelPrice(price)
-  const sizeText = (size ?? '').trim()
+  const sizeText = formatLabelSize(size)
 
   useEffect(() => {
     const el = cardRef.current

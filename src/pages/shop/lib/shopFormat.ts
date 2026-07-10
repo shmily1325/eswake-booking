@@ -13,6 +13,7 @@ import {
   getCategory,
   getCategoryShopName as getCategoryShopNameFromSchema,
 } from '../../admin/products/schema'
+import { getVariantSellableStock } from './productAvailability'
 
 /** 把整數金額格式化成「NT$ 18,000」 */
 export function formatPrice(amount: number): string {
@@ -69,7 +70,7 @@ export function formatProductPriceRange(variants: ProductVariantRow[]): string {
 /** 是否所有變體都缺貨（用來在卡片上掛「缺貨」標籤） */
 export function isProductOutOfStock(variants: ProductVariantRow[]): boolean {
   if (variants.length === 0) return true
-  return variants.every((v) => (v.stock ?? 0) <= 0)
+  return variants.every((v) => getVariantSellableStock(v) <= 0)
 }
 
 /** SKU 商城主圖：封面優先，沒有封面才用實品照 */

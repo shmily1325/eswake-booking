@@ -6,6 +6,7 @@ import {
   DEFAULT_LABEL_WIDTH_MM,
   LABEL_FONT,
   formatLabelPrice,
+  formatLabelSize,
   measureTextWidth,
   mmToPx,
   retailLabelMetrics,
@@ -149,7 +150,7 @@ export async function renderLabelPngBlob(
   const dpi = options.dpi ?? LABEL_PRINT_DPI
   const nameText = (options.productName ?? '').trim()
   const priceText = formatLabelPrice(options.price)
-  const sizeText = (options.size ?? '').trim()
+  const sizeText = formatLabelSize(options.size)
 
   const widthPx = mmToPx(widthMm, dpi)
   const heightPx = mmToPx(heightMm, dpi)

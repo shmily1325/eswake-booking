@@ -876,11 +876,12 @@ function lineLabel(
   return code ? `${base} · #${code}` : base
 }
 
-/** 選貨下拉第二行：貨號、牌價、現貨（與商品管理列表一致） */
+/** 選貨下拉第二行：貨號、牌價、可售（扣掉已送結帳保留量，與商品管理列表一致） */
 function variantMetaLine(variant: {
   vendor_code?: string | null
   price?: number | null
   stock?: number
+  reserved_qty?: number
 }): string {
   const parts: string[] = []
   const code = variant.vendor_code?.trim()
@@ -888,6 +889,10 @@ function variantMetaLine(variant: {
   if (variant.price != null && variant.price > 0) {
     parts.push(`$${variant.price.toLocaleString()}`)
   }
-  if (typeof variant.stock === 'number') parts.push(`現貨 ${variant.stock}`)
+  if (typeof variant.stock === 'number') {
+    const reserved = variant.reserved_qty ?? 0
+    const sellable = Math.max(0, variant.stock - reserved)
+    parts.push(reserved > 0 ? `可售 ${sellable} · 留 ${reserved}` : `可售 ${sellable}`)
+  }
   return parts.join(' · ')
 }

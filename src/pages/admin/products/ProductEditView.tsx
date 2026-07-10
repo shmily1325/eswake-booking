@@ -69,6 +69,8 @@ interface DraftVariant {
   attributes: Record<string, string>
   price: string
   stock: string
+  /** 已送結帳、待結帳的保留量（唯讀提示用；不可在此頁編輯） */
+  reserved_qty: number
   /** 無庫存時是否開放預購（有庫存時忽略，自動為現貨） */
   acceptPreOrder: boolean
   last_stock_in_at: string | null
@@ -106,6 +108,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     // price 為 null 時保留空字串（UI 顯示「待補」），不要強制變成 "0"
     price: v.price == null ? '' : String(v.price),
     stock: String(v.stock ?? 0),
+    reserved_qty: v.reserved_qty ?? 0,
     acceptPreOrder: acceptPreOrderFromVariant(v),
     last_stock_in_at: v.last_stock_in_at ?? null,
     cover_image_url: v.cover_image_url ?? null,
@@ -126,6 +129,7 @@ function emptyDraft(): DraftVariant {
     attributes: {},
     price: '',
     stock: '',
+    reserved_qty: 0,
     acceptPreOrder: false,
     last_stock_in_at: null,
     cover_image_url: null,
@@ -300,6 +304,7 @@ export function ProductEditView({
           attributes: { ...lastActive.attributes },
           price: lastActive.price,
           stock: '',
+          reserved_qty: 0,
           acceptPreOrder: lastActive.acceptPreOrder,
           last_stock_in_at: null,
           cover_image_url: cover?.url ?? null,
@@ -379,6 +384,9 @@ export function ProductEditView({
       if (d.stock.trim() === '') return `規格 #${i + 1}：庫存為必填`
       const stockNum = Number(d.stock)
       if (!Number.isFinite(stockNum) || stockNum < 0) return `規格 #${i + 1}：庫存需為非負整數`
+      if (d.reserved_qty > 0 && stockNum < d.reserved_qty) {
+        return `規格 #${i + 1}：庫存不可少於已送結帳保留量（保留 ${d.reserved_qty} 件），請先撤回送結帳或作廢訂單`
+      }
       const labelErr = validateLabelCodeFormat(d.label_code)
       if (labelErr) return `規格 #${i + 1}：${labelErr}`
     }
@@ -1068,6 +1076,11 @@ function VariantBlock({
         />
         <span style={{ fontSize: 14, color: '#666', flexShrink: 0 }}>件</span>
       </div>
+      {draft.reserved_qty > 0 && (
+        <p style={{ fontSize: 12, color: '#6a1b9a', margin: '4px 0 0' }}>
+          其中 {draft.reserved_qty} 件已送結帳保留 · 可售 {Math.max(0, (Number(draft.stock) || 0) - draft.reserved_qty)} 件
+        </p>
+      )}
       {draft.last_stock_in_at && (
         <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>
           最近入庫：{formatDateTime(draft.last_stock_in_at)}

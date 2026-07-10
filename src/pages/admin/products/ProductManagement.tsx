@@ -20,7 +20,7 @@ import {
 } from './schema'
 import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
 import type { ProductWithVariants, ProductVariantRow, VariantListItem } from './types'
-import { getVariantAvailability } from '../../shop/lib/productAvailability'
+import { getVariantAvailability, getVariantSellableStock } from '../../shop/lib/productAvailability'
 import { ProductEditView } from './ProductEditView'
 import { variantMatchesSearchTokens } from './productSearchHaystack'
 import { isMissingLabelCode } from './labelCode'
@@ -742,7 +742,7 @@ function CategoryRow({ children }: { children: ReactNode }) {
 // ============================================================
 type SortMode = 'stock-asc' | 'price-asc' | 'updated-desc'
 const SORT_MODES: { id: SortMode; label: string }[] = [
-  { id: 'stock-asc', label: '庫存少 → 多' },
+  { id: 'stock-asc', label: '可售少 → 多' },
   { id: 'price-asc', label: '價格低 → 高' },
   { id: 'updated-desc', label: '最近更新' },
 ]
@@ -750,7 +750,7 @@ function sortItems(items: VariantListItem[], mode: SortMode): VariantListItem[] 
   const arr = [...items]
   switch (mode) {
     case 'stock-asc':
-      return arr.sort((a, b) => (a.variant.stock || 0) - (b.variant.stock || 0))
+      return arr.sort((a, b) => getVariantSellableStock(a.variant) - getVariantSellableStock(b.variant))
     case 'price-asc':
       return arr.sort((a, b) => priceForSort(a.variant.price) - priceForSort(b.variant.price))
     case 'updated-desc':
@@ -852,18 +852,21 @@ function InventoryDashboard({
   isMobile,
 }: InventoryDashboardProps) {
   const baseSkuCount = base.length
-  const baseStockTotal = base.reduce((s, it) => s + (it.variant.stock || 0), 0)
+  const baseStockTotal = base.reduce((s, it) => s + getVariantSellableStock(it.variant), 0)
+  const baseReservedTotal = base.reduce((s, it) => s + (it.variant.reserved_qty || 0), 0)
   const missingPriceCount = base.filter((it) => it.variant.price == null).length
   const missingImageCount = base.filter((it) => !it.variant.image_url).length
   const missingCoverCount = base.filter((it) => !it.variant.cover_image_url).length
   const missingLabelCount = base.filter(isVariantMissingLabel).length
 
   const filteredSkuCount = filtered.length
-  const filteredStockTotal = filtered.reduce((s, it) => s + (it.variant.stock || 0), 0)
+  const filteredStockTotal = filtered.reduce((s, it) => s + getVariantSellableStock(it.variant), 0)
+  const filteredReservedTotal = filtered.reduce((s, it) => s + (it.variant.reserved_qty || 0), 0)
 
   // 主要顯示數字：有篩選就顯示已篩，沒篩就顯示總計
   const mainSku = isFiltered ? filteredSkuCount : baseSkuCount
   const mainStock = isFiltered ? filteredStockTotal : baseStockTotal
+  const mainReserved = isFiltered ? filteredReservedTotal : baseReservedTotal
 
   return (
     <div
@@ -888,8 +891,17 @@ function InventoryDashboard({
         <span style={{ color: '#ddd' }}>·</span>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
           <span style={{ fontSize: 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>{mainStock}</span>
-          <span style={{ fontSize: 12, color: '#888' }}>件</span>
+          <span style={{ fontSize: 12, color: '#888' }}>可售件</span>
         </div>
+        {mainReserved > 0 && (
+          <>
+            <span style={{ color: '#ddd' }}>·</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: '#6a1b9a', lineHeight: 1 }}>{mainReserved}</span>
+              <span style={{ fontSize: 12, color: '#6a1b9a' }}>保留中</span>
+            </div>
+          </>
+        )}
         {isFiltered && (
           <span style={{ fontSize: 11, color: '#aaa', marginLeft: 4 }}>
             / {tabName} {baseSkuCount}種
@@ -1041,10 +1053,14 @@ function shopStatusBadge(
     return { bg: '#eeeeee', color: '#616161', label: '未公開' }
   }
   const avail = getVariantAvailability(variant)
-  const stock = variant.stock ?? 0
+  const sellableStock = getVariantSellableStock(variant)
+  const reservedStock = variant.reserved_qty ?? 0
   if (avail === 'in_stock') {
-    if (stock <= 2) return { bg: '#fff4e0', color: '#ef6c00', label: `現貨 ${stock}` }
-    return { bg: '#e8f5e9', color: '#2e7d32', label: `現貨 ${stock}` }
+    const label = reservedStock > 0
+      ? `可售 ${sellableStock} · 留 ${reservedStock}`
+      : `可售 ${sellableStock}`
+    if (sellableStock <= 2) return { bg: '#fff4e0', color: '#ef6c00', label }
+    return { bg: '#e8f5e9', color: '#2e7d32', label }
   }
   if (avail === 'pre_order') return { bg: '#fff8e1', color: '#f57f17', label: '預購' }
   return { bg: '#f5f5f5', color: '#9e9e9e', label: '已售完' }
@@ -1054,7 +1070,7 @@ function variantCardBorder(variant: ProductVariantRow, isPublic: boolean): strin
   if (!isPublic) return '#ececec'
   const avail = getVariantAvailability(variant)
   if (avail === 'pre_order') return '#ffe082'
-  if (avail === 'in_stock' && variant.stock <= 2) return '#f5dbb6'
+  if (avail === 'in_stock' && getVariantSellableStock(variant) <= 2) return '#f5dbb6'
   if (avail === 'sold_out') return '#eeeeee'
   return '#ececec'
 }
@@ -1745,7 +1761,7 @@ function DesktopTable({ items, showCategoryColumn, imageMode, onRowClick, onStar
               <th style={thStyle('auto')}>規格</th>
               <th style={thStyle('120px')}>貨號</th>
               <th style={thStyle('90px', 'right')}>售價</th>
-              <th style={thStyle('80px', 'center')}>狀態</th>
+              <th style={thStyle('120px', 'center')}>狀態</th>
               <th style={thStyle('130px')}>入庫</th>
               {onStartOrder && <th style={thStyle('72px', 'center')}>開單</th>}
             </tr>

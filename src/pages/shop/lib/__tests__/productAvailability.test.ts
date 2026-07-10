@@ -3,6 +3,7 @@ import type { ProductVariantRow } from '../../admin/products/types'
 import {
   getShopVisibleVariants,
   getVariantAvailability,
+  getVariantSellableStock,
   isProductVisibleInShop,
   isVariantPurchasable,
 } from '../productAvailability'
@@ -41,6 +42,11 @@ describe('getVariantAvailability', () => {
   it('coerces pre_order with stock to in_stock', () => {
     expect(getVariantAvailability(v({ availability: 'pre_order', stock: 2 }))).toBe('in_stock')
   })
+
+  it('computes sellable stock after reservations', () => {
+    expect(getVariantSellableStock(v({ stock: 5, reserved_qty: 2 }))).toBe(3)
+    expect(getVariantSellableStock(v({ stock: 2, reserved_qty: 5 }))).toBe(0)
+  })
 })
 
 describe('shop visibility', () => {
@@ -60,5 +66,13 @@ describe('shop visibility', () => {
       v({ availability: 'in_stock', stock: 3 }),
     ])
     expect(list).toHaveLength(2)
+  })
+
+  it('treats fully reserved in-stock variants as unavailable in shop', () => {
+    const reserved = v({ availability: 'in_stock', stock: 3, reserved_qty: 3 })
+
+    expect(isVariantPurchasable(reserved)).toBe(false)
+    expect(isProductVisibleInShop([reserved])).toBe(false)
+    expect(getShopVisibleVariants([reserved])).toEqual([])
   })
 })

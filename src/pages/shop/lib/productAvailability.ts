@@ -23,11 +23,16 @@ export function getVariantAvailability(v: ProductVariantRow): VariantAvailabilit
   return stock > 0 ? 'in_stock' : 'sold_out'
 }
 
+/** 現貨可售數：實體庫存扣掉已送結帳、尚未結帳的保留量。 */
+export function getVariantSellableStock(v: ProductVariantRow): number {
+  return Math.max(0, (v.stock ?? 0) - (v.reserved_qty ?? 0))
+}
+
 /** SKU 是否可加入購物車 / LINE 詢問 */
 export function isVariantPurchasable(v: ProductVariantRow): boolean {
   const avail = getVariantAvailability(v)
   if (avail === 'pre_order') return true
-  if (avail === 'in_stock') return (v.stock ?? 0) > 0
+  if (avail === 'in_stock') return getVariantSellableStock(v) > 0
   return false
 }
 
@@ -61,7 +66,7 @@ export function summarizeProductAvailability(
 
   for (const v of variants) {
     const avail = getVariantAvailability(v)
-    if (avail === 'in_stock' && (v.stock ?? 0) > 0) hasInStock = true
+    if (avail === 'in_stock' && getVariantSellableStock(v) > 0) hasInStock = true
     if (avail === 'pre_order') {
       hasPreOrder = true
       if (!preOrderEta && v.pre_order_eta?.trim()) {
@@ -106,7 +111,7 @@ export function getShopVisibleVariants(
   return variants.filter((v) => {
     const avail = getVariantAvailability(v)
     if (avail === 'pre_order') return true
-    if (avail === 'in_stock') return (v.stock ?? 0) > 0
+    if (avail === 'in_stock') return getVariantSellableStock(v) > 0
     return false
   })
 }
