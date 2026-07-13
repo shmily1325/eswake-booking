@@ -10,12 +10,12 @@ import {
   addMinutesToTime,
   getVenueDateString,
   getVenueTimeParts,
-  getWeekdayText,
   isSlotInBookingRange,
   parseDbTimestamp,
   timeToMinutes,
 } from '../../utils/date'
-import { getBookingCardStyle, bookingCardContentStyles } from '../../styles/designSystem'
+import { getBookingCardStyle, bookingCardContentStyles, designSystem } from '../../styles/designSystem'
+import { BookingDateNav } from '../../components/BookingDateNav'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { trackClick } from '../../utils/trackClick'
@@ -87,7 +87,7 @@ const generateTimeSlots = () => {
 const TIME_SLOTS = generateTimeSlots()
 
 const UNAVAILABLE_SLOT_BG =
-  'repeating-linear-gradient(-45deg, #ede7f6, #ede7f6 5px, #e1d5f7 5px, #e1d5f7 10px)'
+  `repeating-linear-gradient(-45deg, ${designSystem.colors.secondary[100]}, ${designSystem.colors.secondary[100]} 5px, ${designSystem.colors.secondary[200]} 5px, ${designSystem.colors.secondary[200]} 10px)`
 
 export function CoachDailyView() {
   const user = useAuthUser()
@@ -528,7 +528,7 @@ export function CoachDailyView() {
           ...getBookingCardStyle(boat.color, true, false),
           marginBottom: index < total - 1 ? '12px' : '0',
           padding: '12px 14px',
-          border: isConflict ? '2px solid #e53935' : undefined
+          border: isConflict ? `2px solid ${designSystem.colors.danger[500]}` : undefined
         }}
       >
         {/* 第一行：船隻 + 角色 + 教練練習標識 */}
@@ -542,18 +542,18 @@ export function CoachDailyView() {
           <div style={{
             fontSize: '14px',
             fontWeight: '700',
-            color: boat.color,
+            color: designSystem.colors.text.primary,
             display: 'flex',
             alignItems: 'center',
             gap: '4px'
           }}>
-            🚤 {boat.name}
+            {boat.name}
             <span style={{
               fontSize: '12px',
               fontWeight: '600',
-              color: '#666',
+              color: designSystem.colors.text.secondary,
             }}>
-              · {roleLabel || '🎓 教練'}
+              · {roleLabel || '教練'}
             </span>
           </div>
           {/* 教練練習標識 */}
@@ -566,10 +566,10 @@ export function CoachDailyView() {
               fontSize: '11px',
               fontWeight: '600',
               padding: '4px 10px',
-              background: '#fff3e0',
-              color: '#e65100',
-              borderRadius: '6px',
-              border: '1px solid #ff9800',
+              background: designSystem.colors.warning[50],
+              color: designSystem.colors.warning[700],
+              borderRadius: designSystem.borderRadius.md,
+              border: `1px solid ${designSystem.colors.warning[500]}33`,
               lineHeight: '1.4',
               minWidth: '42px',
             }}>
@@ -589,7 +589,7 @@ export function CoachDailyView() {
           <div style={{
             fontSize: '14px',
             fontWeight: '700',
-            color: isConflict ? '#e53935' : '#333',
+            color: isConflict ? designSystem.colors.danger[700] : designSystem.colors.text.primary,
             whiteSpace: 'nowrap',
           }}>
             {isConflict ? '💣 ' : ''}{startTime} - {endTimeStr}
@@ -597,7 +597,7 @@ export function CoachDailyView() {
           <div style={{
             fontSize: '14px',
             fontWeight: '600',
-            color: '#1976d2',
+            color: designSystem.colors.text.primary,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -610,7 +610,7 @@ export function CoachDailyView() {
         {booking.notes && (
           <div style={{
             fontSize: '12px',
-            color: '#666',
+            color: designSystem.colors.text.secondary,
             fontStyle: 'italic',
             marginBottom: booking.schedule_notes ? '4px' : '0',
             lineHeight: '1.4'
@@ -623,7 +623,7 @@ export function CoachDailyView() {
         {booking.schedule_notes && (
           <div style={{
             fontSize: '12px',
-            color: '#e65100',
+            color: designSystem.colors.warning[700],
             fontWeight: '500',
             lineHeight: '1.4'
           }}>
@@ -654,7 +654,7 @@ export function CoachDailyView() {
         rowSpan={slots}
         style={{
           ...getBookingCardStyle(boat.color, isMobile, false),
-          border: isConflict ? '2px solid #e53935' : undefined
+          border: isConflict ? `2px solid ${designSystem.colors.danger[500]}` : undefined
         }}
 		title={!isMobile ? (conflictReasons.get(booking.id) || undefined) : undefined}
       >
@@ -668,11 +668,11 @@ export function CoachDailyView() {
             fontSize: isMobile ? '11px' : '12px',
             fontWeight: '600',
             padding: isMobile ? '4px 10px' : '3px 8px',
-            background: '#fff3e0',
-            color: '#e65100',
-            borderRadius: '6px',
+            background: designSystem.colors.warning[50],
+            color: designSystem.colors.warning[700],
+            borderRadius: designSystem.borderRadius.md,
             marginBottom: '6px',
-            border: '1px solid #ff9800',
+            border: `1px solid ${designSystem.colors.warning[500]}33`,
             lineHeight: '1.4',
             minWidth: isMobile ? '42px' : undefined,
           }}>
@@ -697,7 +697,7 @@ export function CoachDailyView() {
 		{isConflict && conflictReasons.get(booking.id) && (
 		  <div style={{
 			fontSize: '12px',
-			color: '#e53935',
+			color: designSystem.colors.danger[700],
 			fontWeight: 600,
 			lineHeight: 1.3,
 			marginBottom: '6px',
@@ -757,13 +757,13 @@ export function CoachDailyView() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+      <div style={{ minHeight: '100vh', background: designSystem.colors.background.main }}>
         <div style={{ 
           maxWidth: '1400px', 
           margin: '0 auto',
           padding: isMobile ? '16px' : '20px' 
         }}>
-          <PageHeader user={user} title="📋 今日預約" />
+          <PageHeader user={user} title="今日預約" />
           {/* 日期選擇器骨架屏 */}
           <div style={{
             background: 'white',
@@ -802,149 +802,48 @@ export function CoachDailyView() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, paddingBottom: '80px' }}>
       <div style={{
         maxWidth: '1400px',
         margin: '0 auto',
         padding: isMobile ? '16px' : '20px'
       }}>
-        <PageHeader user={user} title="📋 今日預約" />
-        {/* 日期和教練篩選 */}
+        <PageHeader user={user} title="今日預約" />
+
+        <BookingDateNav
+          date={dateParam}
+          onDateChange={(e) => setSearchParams({ date: e.target.value })}
+          onPrevDate={() => handleDateChange(-1)}
+          onNextDate={() => handleDateChange(1)}
+          onGoToToday={goToToday}
+          isMobile={isMobile}
+          todayDisabled={dateParam === getVenueDateString()}
+          prevTrackId="coach_daily_prev"
+          nextTrackId="coach_daily_next"
+          todayTrackId="coach_daily_today"
+        />
+
         <div style={{
-          background: 'white',
-          padding: isMobile ? '16px' : '20px',
-          borderRadius: '12px',
-          marginBottom: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          background: designSystem.colors.background.card,
+          padding: isMobile ? '14px' : '16px 18px',
+          borderRadius: designSystem.borderRadius.xl,
+          marginBottom: designSystem.spacing.lg,
+          boxShadow: designSystem.shadows.sm,
+          border: `1px solid ${designSystem.colors.border.light}`,
         }}>
-          {/* 日期切換 - 參考 DayView 設計 */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: isMobile ? '8px' : '10px',
-            marginBottom: '16px',
-            backgroundColor: 'white',
-            padding: isMobile ? '8px' : '12px',
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-          }}>
-            <button
-              data-track="coach_daily_prev"
-              onClick={() => handleDateChange(-1)}
-              style={{
-                background: 'transparent',
-                border: '1px solid #dee2e6',
-                borderRadius: '8px',
-                width: '44px',
-                height: '44px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                color: '#333',
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-              aria-label="前一天"
-            >
-              ←
-            </button>
-
-            <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-              <input
-                type="date"
-                value={dateParam}
-                onChange={(e) => setSearchParams({ date: e.target.value })}
-                style={{
-                  width: '100%',
-                  height: '44px',
-                  padding: '0 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #dee2e6',
-                  fontSize: '16px',
-                  textAlign: 'center',
-                  backgroundColor: '#f8f9fa',
-                  color: '#333',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-              {/* 星期幾徽章 */}
-              <div style={{
-                position: 'absolute',
-                top: '-8px',
-                right: '8px',
-                fontSize: '11px',
-                color: 'white',
-                fontWeight: '600',
-                background: '#5a5a5a',
-                padding: '2px 8px',
-                borderRadius: '10px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                pointerEvents: 'none',
-              }}>
-                {getWeekdayText(dateParam)}
-              </div>
-            </div>
-
-            <button
-              data-track="coach_daily_next"
-              onClick={() => handleDateChange(1)}
-              style={{
-                background: 'transparent',
-                border: '1px solid #dee2e6',
-                borderRadius: '8px',
-                width: '44px',
-                height: '44px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                color: '#333',
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-              aria-label="後一天"
-            >
-              →
-            </button>
-
-            <button
-              data-track="coach_daily_today"
-              onClick={goToToday}
-              style={{
-                background: dateParam === getVenueDateString() ? '#e8e8e8' : '#f0f7ff',
-                border: dateParam === getVenueDateString() ? '1px solid #ccc' : '1px solid #b3d4fc',
-                borderRadius: '8px',
-                height: '44px',
-                padding: '0 12px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: dateParam === getVenueDateString() ? '#999' : '#1976d2',
-                whiteSpace: 'nowrap',
-                cursor: dateParam === getVenueDateString() ? 'default' : 'pointer',
-                flexShrink: 0,
-              }}
-              disabled={dateParam === getVenueDateString()}
-            >
-              今天
-            </button>
-          </div>
-
           {/* 教練篩選 */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
-            paddingTop: '16px',
-            borderTop: '1px solid #e0e0e0'
           }}>
             <label style={{ 
               fontSize: '14px', 
-              color: '#666',
-              fontWeight: '600'
+              color: designSystem.colors.text.secondary,
+              fontWeight: '600',
+              whiteSpace: 'nowrap',
             }}>
-              篩選教練：
+              篩選教練
             </label>
             <select
               data-track="coach_daily_filter_coach"
@@ -952,12 +851,14 @@ export function CoachDailyView() {
               onChange={(e) => handleCoachFilterChange(e.target.value)}
               style={{
                 flex: 1,
-                padding: '8px 12px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
+                padding: '10px 12px',
+                border: `1px solid ${designSystem.colors.border.main}`,
+                borderRadius: designSystem.borderRadius.lg,
                 fontSize: '14px',
-                background: 'white',
-                cursor: 'pointer'
+                background: designSystem.colors.background.card,
+                color: designSystem.colors.text.primary,
+                cursor: 'pointer',
+                boxShadow: designSystem.shadows.xs,
               }}
             >
               <option value="">所有教練</option>
@@ -969,12 +870,11 @@ export function CoachDailyView() {
             </select>
           </div>
 
-          {/* 最後更新時間 */}
           <div style={{
             paddingTop: '12px',
             fontSize: '12px',
-            color: '#999',
-            textAlign: 'right'
+            color: designSystem.colors.text.disabled,
+            textAlign: 'right',
           }}>
             最後更新：{(() => {
               const { hours, minutes } = getVenueTimeParts(lastUpdate)
@@ -999,9 +899,10 @@ export function CoachDailyView() {
         <div style={{
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
-          background: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          background: designSystem.colors.background.card,
+          borderRadius: designSystem.borderRadius.xl,
+          boxShadow: designSystem.shadows.sm,
+          border: `1px solid ${designSystem.colors.border.light}`,
         }}>
           <table style={{
             width: (isMobile && selectedCoachId) ? '100%' : (isMobile ? 'auto' : '100%'),
@@ -1017,8 +918,8 @@ export function CoachDailyView() {
                   left: 0,
                   zIndex: 12,
                   padding: isMobile ? '8px 6px' : '12px',
-                  borderBottom: '2px solid #dee2e6',
-                  backgroundColor: '#5a5a5a',
+                  borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                  backgroundColor: designSystem.colors.primary[500],
                   color: 'white',
                   fontSize: isMobile ? '11px' : '14px',
                   fontWeight: '600',
@@ -1036,8 +937,8 @@ export function CoachDailyView() {
                       zIndex: 11,
                       padding: '10px 12px',
                       textAlign: 'left',
-                      borderBottom: '2px solid #dee2e6',
-                      backgroundColor: '#5a5a5a',
+                      borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                      backgroundColor: designSystem.colors.primary[500],
                       color: 'white',
                       fontSize: '14px',
                       fontWeight: '600',
@@ -1074,8 +975,8 @@ export function CoachDailyView() {
                         zIndex: 11,
                         padding: isMobile ? '8px 4px' : '12px',
                         textAlign: 'center',
-                        borderBottom: '2px solid #dee2e6',
-                        backgroundColor: '#5a5a5a',
+                        borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                        backgroundColor: designSystem.colors.primary[500],
                         color: 'white',
                         fontSize: isMobile ? '11px' : '14px',
                         fontWeight: '600',
@@ -1117,10 +1018,10 @@ export function CoachDailyView() {
                       left: 0,
                       right: 0,
                       height: '2px',
-                      background: '#ff4444',
+                      background: designSystem.colors.danger[500],
                       zIndex: 5,
                       pointerEvents: 'none',
-                      boxShadow: '0 0 4px rgba(255, 68, 68, 0.5)'
+                      boxShadow: `0 0 4px ${designSystem.colors.danger[500]}80`
                     }}>
                       <div style={{
                         position: 'absolute',
@@ -1129,7 +1030,7 @@ export function CoachDailyView() {
                         width: '8px',
                         height: '8px',
                         borderRadius: '50%',
-                        background: '#ff4444',
+                        background: designSystem.colors.danger[500],
                       }} />
                     </div>
                   )
@@ -1144,13 +1045,13 @@ export function CoachDailyView() {
                       position: 'sticky',
                       left: 0,
                       zIndex: 10,
-                      backgroundColor: 'white',
+                      backgroundColor: designSystem.colors.background.card,
                       padding: isMobile ? '4px 2px' : '6px 8px',
-                      borderBottom: '1px solid #e9ecef',
+                      borderBottom: `1px solid ${designSystem.colors.border.light}`,
                       fontSize: isMobile ? '10px' : '13px',
                       fontWeight: '500',
                       textAlign: 'center',
-                      color: '#666',
+                      color: designSystem.colors.text.secondary,
                       lineHeight: isMobile ? '1.2' : '1.5',
                       ...(isMobile && selectedCoachId
                         ? {
@@ -1176,8 +1077,8 @@ export function CoachDailyView() {
                               key="single-column"
                               style={{
                                 padding: 0,
-                                borderBottom: '1px solid #e9ecef',
-                                backgroundColor: 'white',
+                                borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                                backgroundColor: designSystem.colors.background.card,
                                 minHeight: MOBILE_COACH_SLOT_ROW_PX,
                                 height: MOBILE_COACH_SLOT_ROW_PX,
                                 boxSizing: 'border-box' as const,
@@ -1195,8 +1096,8 @@ export function CoachDailyView() {
                             rowSpan={maxSlots}
                             style={{
                               padding: '6px 8px',
-                              borderBottom: '1px solid #e9ecef',
-                              backgroundColor: 'white',
+                              borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                              backgroundColor: designSystem.colors.background.card,
                               verticalAlign: 'top',
                               boxSizing: 'border-box' as const,
                               minHeight: maxSlots * MOBILE_COACH_SLOT_ROW_PX,
@@ -1236,9 +1137,9 @@ export function CoachDailyView() {
                               title={unavailTitle}
                               style={{
                                 padding: isMobile ? '8px 4px' : '10px 8px',
-                                borderBottom: '1px solid #e9ecef',
-                                borderRight: '1px solid #e9ecef',
-                                background: unavailBlock ? UNAVAILABLE_SLOT_BG : 'white',
+                                borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                                borderRight: `1px solid ${designSystem.colors.border.light}`,
+                                background: unavailBlock ? UNAVAILABLE_SLOT_BG : designSystem.colors.background.card,
                                 verticalAlign: 'middle',
                                 textAlign: 'center',
                               }}
@@ -1248,7 +1149,7 @@ export function CoachDailyView() {
                                   style={{
                                     fontSize: '10px',
                                     fontWeight: 600,
-                                    color: '#5e35b1',
+                                    color: designSystem.colors.text.secondary,
                                     lineHeight: 1.2,
                                   }}
                                 >

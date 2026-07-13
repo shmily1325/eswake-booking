@@ -5,6 +5,7 @@ import { getLocalDateString, addDaysToDate } from '../utils/date'
 import { groupAnnouncementsForDisplay, getEventDateLabel, formatDateShort } from '../utils/announcement'
 import { formatTimeOffPeriodLabel, type CoachTimeOffRow } from '../utils/coachTimeOff'
 import { isHiddenFromTimeOffStaffDisplay } from '../utils/dailyStaffDisplay'
+import { designSystem } from '../styles/designSystem'
 
 interface Announcement {
   id: number
@@ -234,12 +235,12 @@ export function DailyAnnouncement() {
 
   return (
     <div style={{
-      background: 'white',
-      borderRadius: '8px',
+      background: designSystem.colors.background.card,
+      borderRadius: designSystem.borderRadius.lg,
       padding: isMobile ? '14px' : '18px',
       marginBottom: '20px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-      border: '1px solid #e0e0e0'
+      boxShadow: designSystem.shadows.xs,
+      border: `1px solid ${designSystem.colors.border.light}`,
     }}>
       <div 
         style={{
@@ -254,12 +255,12 @@ export function DailyAnnouncement() {
         <div style={{
           fontSize: isMobile ? '14px' : '15px',
           fontWeight: '600',
-          color: '#333'
+          color: designSystem.colors.text.primary,
         }}>
           📢 今日公告
         </div>
         <span style={{
-          color: '#999',
+          color: designSystem.colors.text.secondary,
           fontSize: '11px',
           fontWeight: '500'
         }}>
@@ -270,7 +271,7 @@ export function DailyAnnouncement() {
       {isExpanded && (
         <div style={{
           fontSize: isMobile ? '13px' : '14px',
-          color: '#555',
+          color: designSystem.colors.text.secondary,
           lineHeight: '1.7'
         }}>
           {announcements.length > 0 && (() => {
@@ -295,7 +296,7 @@ export function DailyAnnouncement() {
             }
 
             const itemStyle = {
-              color: '#667eea' as const,
+              color: designSystem.colors.text.primary,
               fontWeight: '500' as const,
               wordBreak: 'break-word' as const,
               whiteSpace: 'pre-wrap' as const,
@@ -318,7 +319,7 @@ export function DailyAnnouncement() {
                     flexDirection: 'row',
                     alignItems: 'flex-start',
                     gap: 0,
-                    color: '#667eea',
+                    color: designSystem.colors.text.primary,
                     fontWeight: '500',
                     wordBreak: 'break-word',
                     paddingLeft: '1.5em',
@@ -335,7 +336,7 @@ export function DailyAnnouncement() {
                   >
                     {content}
                     {r ? (
-                      <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
+                      <span style={{ marginLeft: 8, fontSize: '12px', color: designSystem.colors.text.disabled }}>
                         {formatRestrictionNote(today, r)}
                       </span>
                     ) : null}
@@ -371,7 +372,7 @@ export function DailyAnnouncement() {
                       <div key={a.id} style={itemStyle}>
                         [{label}] {a.content}
                         {r ? (
-                          <span style={{ marginLeft: 8, fontSize: '12px', color: '#888' }}>
+                          <span style={{ marginLeft: 8, fontSize: '12px', color: designSystem.colors.text.disabled }}>
                             {formatRestrictionNote(today, r)}
                           </span>
                         ) : null}
@@ -395,7 +396,7 @@ export function DailyAnnouncement() {
             return (
             <div style={{ marginBottom: '6px' }}>
               <div style={{ 
-                color: '#667eea', 
+                color: designSystem.colors.text.primary, 
                 fontWeight: '500',
                 marginBottom: '4px'
               }}>
@@ -409,7 +410,7 @@ export function DailyAnnouncement() {
               {tomorrowEls.length > 0 && (
                 <>
                   <div style={{ 
-                    color: '#667eea', 
+                    color: designSystem.colors.text.primary, 
                     fontWeight: '500',
                     marginBottom: '4px',
                     marginTop: todayEls.length > 0 ? '12px' : '0'

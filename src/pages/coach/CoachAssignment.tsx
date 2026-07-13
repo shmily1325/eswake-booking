@@ -1,19 +1,21 @@
-import { useState, useEffect, useMemo } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { DailyStaffDisplay } from '../../components/DailyStaffDisplay'
 import { Footer } from '../../components/Footer'
+import { BookingDateNav } from '../../components/BookingDateNav'
+import { TodayOverview } from '../../components/TodayOverview'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useDailyStaff } from '../../hooks/useDailyStaff'
 import { designSystem, getButtonStyle } from '../../styles/designSystem'
 import { isAdmin, hasEditorFeatureAsync } from '../../utils/auth'
-import { isFacility } from '../../utils/facility'
 import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { useToast, ToastContainer } from '../../components/ui'
-import { addDaysToDate, getVenueDateString, getWeekdayText } from '../../utils/date'
+import { computeAssignmentOverviewStats } from '../../utils/todayOverviewStats'
+import { addDaysToDate, getVenueDateString } from '../../utils/date'
 import {
   assignmentSnapshotKey,
   computeAssignmentChanges,
@@ -150,6 +152,18 @@ export function CoachAssignment() {
       return false
     }).length
   }, [bookings, assignments])
+
+  const assignmentOverviewStats = useMemo(
+    () => computeAssignmentOverviewStats(bookings, assignments, coaches),
+    [bookings, assignments, coaches],
+  )
+
+  const handleAssignmentDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = e.target.value
+    if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      setSelectedDate(newDate)
+    }
+  }
 
   const loadBookings = async () => {
     setLoading(true)
@@ -1213,217 +1227,46 @@ export function CoachAssignment() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
       <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl, maxWidth: '100%', margin: '0 auto', width: '100%' }}>
-        <PageHeader user={user} title="📅 排班" showBaoLink={isAdmin(user)} />
-        
-        {/* 日期選擇和保存 - 手機版使用卡片包裹 */}
-        {isMobile ? (
-          <div style={{
-            backgroundColor: 'white',
-            padding: designSystem.spacing.sm,
-            borderRadius: designSystem.borderRadius.lg,
-            boxShadow: designSystem.shadows.sm,
-            marginBottom: designSystem.spacing.md
-          }}>
-            {/* 箭頭 + 日期 + 星期 + 今天按鈕 */}
-            <div style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              gap: designSystem.spacing.sm
-            }}>
-              {/* 向前箭頭 */}
-              <button
-                onClick={() => setSelectedDate(addDaysToDate(selectedDate, -1))}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${designSystem.colors.border.main}`,
-                  borderRadius: designSystem.borderRadius.md,
-                  width: '44px',
-                  height: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  color: designSystem.colors.text.primary,
-                  cursor: 'pointer',
-                }}
-              >
-                ←
-              </button>
-              
-              {/* 日期選擇器 */}
-              <div style={{ flex: 1, position: 'relative' }}>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => {
-                    const newDate = e.target.value
-                    if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                      setSelectedDate(newDate)
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    height: '44px',
-                    padding: '0 12px',
-                    borderRadius: designSystem.borderRadius.md,
-                    border: `1px solid ${designSystem.colors.border.main}`,
-                    fontSize: '16px',
-                    textAlign: 'center',
-                    backgroundColor: '#f8f9fa',
-                    color: designSystem.colors.text.primary,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                {/* 星期幾徽章 - 右上角 */}
-                <div style={{
-                  position: 'absolute',
-                  top: '-8px',
-                  right: '8px',
-                  fontSize: '11px',
-                  color: 'white',
-                  fontWeight: '600',
-                  background: '#5a5a5a',
-                  padding: '2px 8px',
-                  borderRadius: '10px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  pointerEvents: 'none',
-                }}>
-                  {getWeekdayText(selectedDate)}
-                </div>
-              </div>
-              
-              {/* 向後箭頭 */}
-              <button
-                onClick={() => setSelectedDate(addDaysToDate(selectedDate, 1))}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${designSystem.colors.border.main}`,
-                  borderRadius: designSystem.borderRadius.md,
-                  width: '44px',
-                  height: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  color: designSystem.colors.text.primary,
-                  cursor: 'pointer',
-                }}
-              >
-                →
-              </button>
+        <PageHeader user={user} title="排班" showBaoLink={isAdmin(user)} />
 
-              {/* 今天按鈕 - 與預約列表一致 */}
+        <BookingDateNav
+          date={selectedDate}
+          onDateChange={handleAssignmentDateChange}
+          onPrevDate={() => setSelectedDate(addDaysToDate(selectedDate, -1))}
+          onNextDate={() => setSelectedDate(addDaysToDate(selectedDate, 1))}
+          onGoToToday={() => setSelectedDate(getVenueDateString())}
+          isMobile={isMobile}
+          prevTrackId="coach_assignment_prev"
+          nextTrackId="coach_assignment_next"
+          todayTrackId="coach_assignment_today"
+          trailing={!isMobile ? (
+            <>
               <button
-                onClick={() => setSelectedDate(getVenueDateString())}
+                data-track="coach_assignment_save"
+                onClick={handleSaveAll}
+                disabled={saving || loading}
                 style={{
-                  background: designSystem.colors.secondary[100],
-                  border: `1px solid ${designSystem.colors.secondary[300]}`,
-                  borderRadius: designSystem.borderRadius.md,
-                  height: '44px',
-                  padding: '0 12px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: designSystem.colors.text.secondary,
-                  whiteSpace: 'nowrap',
-                  cursor: 'pointer',
+                  ...getButtonStyle('primary', 'medium', saving || loading),
+                  minWidth: '100px',
+                  opacity: (saving || loading) ? 0.5 : 1,
+                  cursor: (saving || loading) ? 'not-allowed' : 'pointer',
                 }}
               >
-                今天
+                {saving ? '儲存中...' : '儲存'}
               </button>
-            </div>
-          </div>
-        ) : (
-          // 電腦版：箭頭 + 日期 + 星期 + 箭頭 + 儲存 + 回預約表（全部同一行）
-          <div style={{ 
-            display: 'flex', 
-            gap: '10px', 
-            alignItems: 'center',
-            marginBottom: designSystem.spacing.md
-          }}>
-            {/* 向前箭頭 */}
-            <button
-              onClick={() => setSelectedDate(addDaysToDate(selectedDate, -1))}
-              style={{
-                ...getButtonStyle('outline', 'medium', false),
-                padding: '8px 12px',
-                fontSize: '14px',
-              }}
-            >
-              ←
-            </button>
-            
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => {
-                const newDate = e.target.value
-                if (newDate && newDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                  setSelectedDate(newDate)
-                }
-              }}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #dee2e6',
-                fontSize: '16px',
-              }}
-            />
-            
-            {/* 星期幾徽章 */}
-            <span style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              background: '#f8f9fa',
-              color: '#495057',
-              fontSize: '14px',
-              fontWeight: '600',
-              border: '1px solid #dee2e6',
-              whiteSpace: 'nowrap',
-            }}>
-              {getWeekdayText(selectedDate)}
-            </span>
-            
-            {/* 向後箭頭 */}
-            <button
-              onClick={() => setSelectedDate(addDaysToDate(selectedDate, 1))}
-              style={{
-                ...getButtonStyle('outline', 'medium', false),
-                padding: '8px 12px',
-                fontSize: '14px',
-              }}
-            >
-              →
-            </button>
-            
-            {/* 儲存按鈕 */}
-            <button
-              data-track="coach_assignment_save"
-              onClick={handleSaveAll}
-              disabled={saving || loading}
-              style={{
-                ...getButtonStyle('secondary', 'medium', false),
-                minWidth: '100px',
-                opacity: (saving || loading) ? 0.5 : 1,
-                cursor: (saving || loading) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {saving ? '儲存中...' : '💾'}
-            </button>
-            
-            {/* 回預約表 */}
-            <button
-              data-track="coach_assignment_day_link"
-              onClick={() => navigate(`/day?date=${selectedDate}`)}
-              style={{
-                ...getButtonStyle('secondary', 'medium', false),
-                minWidth: '100px',
-              }}
-            >
-              預約表
-            </button>
-          </div>
-        )}
+              <button
+                data-track="coach_assignment_day_link"
+                onClick={() => navigate(`/day?date=${selectedDate}`)}
+                style={{
+                  ...getButtonStyle('secondary', 'medium', false),
+                  minWidth: '100px',
+                }}
+              >
+                預約表
+              </button>
+            </>
+          ) : undefined}
+        />
 
         {/* 手機版：儲存和回預約表按鈕 - 各占一半寬度 */}
         {isMobile && (
@@ -1518,274 +1361,13 @@ export function CoachAssignment() {
           </div>
         )}
 
-        {/* 今日總覽卡片 */}
-        {!loading && bookings.length > 0 && (() => {
-          // 統計數據
-          const totalBookings = bookings.length
-          const totalMinutes = bookings.reduce((t, b) => t + (b.duration_min || 0), 0)
-          
-          // 教練使用統計（筆數 + 總時長）
-          const coachStats = new Map<string, { count: number, totalMinutes: number }>()
-          bookings.forEach(booking => {
-            const assignment = assignments[booking.id]
-            if (assignment?.coachIds) {
-              assignment.coachIds.forEach(coachId => {
-                const coach = coaches.find(c => c.id === coachId)
-                if (coach) {
-                  const current = coachStats.get(coach.name) || { count: 0, totalMinutes: 0 }
-                  coachStats.set(coach.name, {
-                    count: current.count + 1,
-                    totalMinutes: current.totalMinutes + booking.duration_min
-                  })
-                }
-              })
-            }
-          })
-          const sortedCoaches = Array.from(coachStats.entries())
-            .sort((a, b) => b[1].totalMinutes - a[1].totalMinutes || a[0].localeCompare(b[0], 'zh-Hant'))
-          
-          // 駕駛使用統計（筆數 + 總時長）- 排除彈簧床
-          const driverStats = new Map<string, { count: number, totalMinutes: number }>()
-          bookings.forEach(booking => {
-            // 彈簧床不需要駕駛，不計入駕駛統計
-            if (isFacility(booking.boats?.name)) return
-            
-            const assignment = assignments[booking.id]
-            if (assignment?.driverIds) {
-              assignment.driverIds.forEach(driverId => {
-                const driver = coaches.find(c => c.id === driverId)
-                if (driver) {
-                  const current = driverStats.get(driver.name) || { count: 0, totalMinutes: 0 }
-                  driverStats.set(driver.name, {
-                    count: current.count + 1,
-                    totalMinutes: current.totalMinutes + booking.duration_min
-                  })
-                }
-              })
-            }
-          })
-          const sortedDrivers = Array.from(driverStats.entries())
-            .sort((a, b) => b[1].totalMinutes - a[1].totalMinutes || a[0].localeCompare(b[0], 'zh-Hant'))
-
-          // 合併：教練 + 駕駛（同一人同一筆只算一次）
-          const combinedStats = new Map<string, { count: number, totalMinutes: number }>()
-          bookings.forEach(booking => {
-            const assignment = assignments[booking.id] || { coachIds: [], driverIds: [] }
-            const uniquePeople = new Set<string>([...assignment.coachIds])
-            if (!isFacility(booking.boats?.name)) {
-              assignment.driverIds.forEach(id => uniquePeople.add(id))
-            }
-            for (const id of uniquePeople) {
-              const person = coaches.find(c => c.id === id)
-              if (!person) continue
-              const current = combinedStats.get(person.name) || { count: 0, totalMinutes: 0 }
-              combinedStats.set(person.name, {
-                count: current.count + 1,
-                totalMinutes: current.totalMinutes + booking.duration_min
-              })
-            }
-          })
-          const sortedCombined = Array.from(combinedStats.entries())
-            .sort((a, b) => b[1].totalMinutes - a[1].totalMinutes || a[0].localeCompare(b[0], 'zh-Hant'))
-          
-          // 船隻使用統計（筆數 + 總時長）
-          const boatStats = new Map<string, { count: number, totalMinutes: number }>()
-          bookings.forEach(booking => {
-            if (booking.boats?.name) {
-              const current = boatStats.get(booking.boats.name) || { count: 0, totalMinutes: 0 }
-              boatStats.set(booking.boats.name, {
-                count: current.count + 1,
-                totalMinutes: current.totalMinutes + booking.duration_min
-              })
-            }
-          })
-          const sortedBoats = Array.from(boatStats.entries())
-            .sort((a, b) => b[1].totalMinutes - a[1].totalMinutes || a[0].localeCompare(b[0], 'zh-Hant'))
-          
-          // 未排班統計
-          // 規則：
-          // 1. 預約標記「需要駕駛」但沒有指定駕駛
-          // 2. 既沒有教練也沒有駕駛
-          const unassignedCount = bookings.filter(booking => {
-            const assignment = assignments[booking.id]
-            
-            if (!assignment) {
-              return true
-            }
-            
-            const hasCoach = assignment.coachIds.length > 0
-            const hasDriver = assignment.driverIds.length > 0
-            const requiresDriver = booking.requires_driver === true
-            
-            // 未排班條件：
-            // 1. 標記需要駕駛但沒有駕駛
-            if (requiresDriver && !hasDriver) {
-              return true
-            }
-            
-            // 2. 既沒有教練也沒有駕駛
-            if (!hasCoach && !hasDriver) {
-              return true
-            }
-            
-            return false
-          }).length
-          
-          return (
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: isMobile ? '12px' : '16px 20px',
-              marginBottom: designSystem.spacing.md,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            }}>
-              <div style={{
-                fontSize: isMobile ? '14px' : '16px',
-                fontWeight: '700',
-                color: '#2c3e50',
-                marginBottom: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}>
-                📊 今日總覽
-              </div>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: isMobile ? '10px' : '12px',
-              }}>
-                {/* 總預約數 */}
-                <div style={{
-                  padding: isMobile ? '10px' : '12px',
-                  backgroundColor: '#f0f9ff',
-                  borderRadius: '8px',
-                  border: '1px solid #bae6fd',
-                  gridColumn: isMobile ? 'span 2' : 'auto',
-                }}>
-                  <div style={{ fontSize: '11px', color: '#0369a1', marginBottom: '4px' }}>總預約數</div>
-                  <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#0c4a6e' }}>
-                    {totalBookings} 筆
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#0c4a6e', marginTop: '2px' }}>合計 {totalMinutes} 分</div>
-                </div>
-                
-                {/* 未排班 */}
-                {unassignedCount > 0 && (
-                  <div style={{
-                    padding: isMobile ? '10px' : '12px',
-                    backgroundColor: '#fef2f2',
-                    borderRadius: '8px',
-                    border: '1px solid #fecaca',
-                    gridColumn: isMobile ? 'span 2' : 'auto',
-                  }}>
-                    <div style={{ fontSize: '11px', color: '#991b1b', marginBottom: '4px' }}>⚠️ 未排班</div>
-                    <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#7f1d1d' }}>
-                      {unassignedCount} 筆
-                    </div>
-                  </div>
-                )}
-                
-                {/* 總時長（教練＋駕駛） */}
-                <div style={{
-                  padding: isMobile ? '10px' : '12px',
-                  backgroundColor: '#F1F5F9',
-                  borderRadius: '8px',
-                  border: '1px solid #CBD5E1',
-                  gridColumn: isMobile ? 'span 2' : 'auto',
-                }}>
-                  <div style={{ fontSize: '11px', color: '#334155', marginBottom: '4px' }}>總時長（教練＋駕駛）</div>
-                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#334155', lineHeight: '1.8' }}>
-                    {sortedCombined.length > 0 ? (
-                      <>
-                        {sortedCombined.map(([name, s], idx) => (
-                          <span key={`combined-${name}`}>
-                            <span>{name}</span>
-                            <span style={{ marginLeft: '2px', color: '#64748b' }}>×{s.count}</span>
-                            <span style={{ marginLeft: '6px', color: '#0f172a', fontWeight: 700 }}>{s.totalMinutes}分</span>
-                            {idx < sortedCombined.length - 1 && <span style={{ margin: '0 6px', color: '#94a3b8' }}>·</span>}
-                          </span>
-                        ))}
-                      </>
-                    ) : '—'}
-                  </div>
-                </div>
-                
-                {/* 教練使用 */}
-                <div style={{
-                  padding: isMobile ? '10px' : '12px',
-                  backgroundColor: '#f0fdf4',
-                  borderRadius: '8px',
-                  border: '1px solid #bbf7d0',
-                  gridColumn: isMobile ? 'span 2' : 'auto',
-                }}>
-                  <div style={{ fontSize: '11px', color: '#15803d', marginBottom: '4px' }}>教練</div>
-                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#166534', lineHeight: '1.8' }}>
-                    {sortedCoaches.length > 0 ? (
-                      <>
-                        {sortedCoaches.map(([name, s], idx) => (
-                          <span key={`coach-${name}`}>
-                            <span>{name}</span>
-                            <span style={{ marginLeft: '2px', color: '#65a30d' }}>×{s.count}</span>
-                            <span style={{ marginLeft: '6px', color: '#14532d', fontWeight: 700 }}>{s.totalMinutes}分</span>
-                            {idx < sortedCoaches.length - 1 && <span style={{ margin: '0 6px', color: '#86efac' }}>·</span>}
-                          </span>
-                        ))}
-                      </>
-                    ) : '—'}
-                  </div>
-                </div>
-                
-                {/* 駕駛使用 */}
-                <div style={{
-                  padding: isMobile ? '10px' : '12px',
-                  backgroundColor: '#eff6ff',
-                  borderRadius: '8px',
-                  border: '1px solid #bfdbfe',
-                  gridColumn: isMobile ? 'span 2' : 'auto',
-                }}>
-                  <div style={{ fontSize: '11px', color: '#1e40af', marginBottom: '4px' }}>駕駛</div>
-                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#1e3a8a', lineHeight: '1.8' }}>
-                    {sortedDrivers.length > 0 ? (
-                      <>
-                        {sortedDrivers.map(([name, s], idx) => (
-                          <span key={`driver-${name}`}>
-                            <span>{name}</span>
-                            <span style={{ marginLeft: '2px', color: '#60a5fa' }}>×{s.count}</span>
-                            <span style={{ marginLeft: '6px', color: '#1e3a8a', fontWeight: 700 }}>{s.totalMinutes}分</span>
-                            {idx < sortedDrivers.length - 1 && <span style={{ margin: '0 6px', color: '#93c5fd' }}>·</span>}
-                          </span>
-                        ))}
-                      </>
-                    ) : '—'}
-                  </div>
-                </div>
-                
-                {/* 船隻使用 */}
-                <div style={{
-                  padding: isMobile ? '10px' : '12px',
-                  backgroundColor: '#fef3c7',
-                  borderRadius: '8px',
-                  border: '1px solid #fde68a',
-                  gridColumn: isMobile ? 'span 2' : 'auto',
-                }}>
-                  <div style={{ fontSize: '11px', color: '#92400e', marginBottom: '4px' }}>船</div>
-                  <div style={{ fontSize: isMobile ? '10px' : '11px', color: '#78350f', lineHeight: '1.8' }}>
-                    {sortedBoats.map(([name, s], idx) => (
-                      <span key={`boat-${name}`}>
-                        <span>{name}</span>
-                        <span style={{ marginLeft: '2px', color: '#f59e0b' }}>×{s.count}</span>
-                        <span style={{ marginLeft: '6px', color: '#92400e', fontWeight: 700 }}>{s.totalMinutes}分</span>
-                        {idx < sortedBoats.length - 1 && <span style={{ margin: '0 6px', color: '#facc15' }}>·</span>}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })()}
+        {!loading && bookings.length > 0 && (
+          <TodayOverview
+            stats={assignmentOverviewStats}
+            isMobile={isMobile}
+            unassignedCount={unassignedCount}
+          />
+        )}
 
         {/* 當天可上班人員 - 在今日總覽下方 */}
         {!loading && (

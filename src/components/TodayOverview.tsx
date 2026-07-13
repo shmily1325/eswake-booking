@@ -1,250 +1,161 @@
 import { useMemo } from 'react'
 import type { Booking } from '../types/booking'
-import { isFacility } from '../utils/facility'
+import { designSystem } from '../styles/designSystem'
+import {
+  computeTodayOverviewStats,
+  type TodayOverviewStats,
+  type UsageStatEntry,
+} from '../utils/todayOverviewStats'
 
 interface TodayOverviewProps {
-    bookings: Booking[]
-    isMobile: boolean
+  bookings?: Booking[]
+  stats?: TodayOverviewStats
+  isMobile: boolean
+  unassignedCount?: number
 }
 
-export function TodayOverview({ bookings, isMobile }: TodayOverviewProps) {
-    const stats = useMemo(() => {
-        const safeBookings = bookings || []
-        // 統計數據
-        const totalBookings = safeBookings.length
-        const totalDurationMinutes = safeBookings.reduce((sum, b) => sum + (b.duration_min || 0), 0)
+function StatRow({
+  label,
+  entries,
+  isMobile,
+}: {
+  label: string
+  entries: UsageStatEntry[]
+  isMobile: boolean
+}) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: isMobile ? '8px' : '12px',
+      padding: isMobile ? '6px 0' : '5px 0',
+      borderTop: `1px solid ${designSystem.colors.border.light}`,
+    }}>
+      <div style={{
+        minWidth: isMobile ? '52px' : '72px',
+        fontSize: isMobile ? '11px' : '12px',
+        fontWeight: 600,
+        color: designSystem.colors.text.secondary,
+        lineHeight: 1.5,
+        flexShrink: 0,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        flex: 1,
+        fontSize: isMobile ? '11px' : '12px',
+        color: designSystem.colors.text.primary,
+        lineHeight: 1.6,
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: isMobile ? '4px 10px' : '4px 12px',
+      }}>
+        {entries.length > 0 ? entries.map(([name, s], idx) => (
+          <span key={name}>
+            <span>{name}</span>
+            <span style={{ color: designSystem.colors.text.secondary, marginLeft: '2px' }}>×{s.count}</span>
+            <span style={{ fontWeight: 700, marginLeft: '4px' }}>{s.totalMinutes}分</span>
+            {idx < entries.length - 1 && !isMobile && (
+              <span style={{ color: designSystem.colors.text.disabled, marginLeft: '8px' }}>·</span>
+            )}
+          </span>
+        )) : (
+          <span style={{ color: designSystem.colors.text.disabled }}>—</span>
+        )}
+      </div>
+    </div>
+  )
+}
 
-        // 教練使用統計（筆數 + 總時長）
-        const coachStats = new Map<string, { count: number, totalMinutes: number }>()
-        safeBookings.forEach((booking) => {
-            booking.coaches?.forEach((coach) => {
-                // 安全檢查：確保 coach 不是 null 且有 name
-                if (!coach || !coach.name) {
-                    return
-                }
-                
-                const current = coachStats.get(coach.name) || { count: 0, totalMinutes: 0 }
-                coachStats.set(coach.name, {
-                    count: current.count + 1,
-                    totalMinutes: current.totalMinutes + booking.duration_min
-                })
-            })
-        })
-        const sortedCoaches = Array.from(coachStats.entries())
-            .sort((a, b) =>
-                b[1].totalMinutes - a[1].totalMinutes ||
-                a[0].localeCompare(b[0], 'zh-Hant')
-            )
+/** 今日總覽：單一 grouped 區塊，內部層級區分主指標與次要統計 */
+export function TodayOverview({ bookings, stats: statsProp, isMobile, unassignedCount }: TodayOverviewProps) {
+  const stats = useMemo(() => {
+    if (statsProp) return statsProp
+    return computeTodayOverviewStats(bookings || [])
+  }, [bookings, statsProp])
 
-        // 駕駛使用統計（筆數 + 總時長）- 排除彈簧床
-        const driverStats = new Map<string, { count: number, totalMinutes: number }>()
-        safeBookings.forEach(booking => {
-            // 設施不需要駕駛，不計入駕駛統計
-            if (isFacility(booking.boats?.name)) return
+  const {
+    totalBookings,
+    totalDurationMinutes,
+    sortedCoaches,
+    sortedDrivers,
+    sortedCombined,
+    sortedBoats,
+  } = stats
 
-            booking.drivers?.forEach(driver => {
-                // 安全檢查：確保 driver 不是 null 且有 name
-                if (!driver || !driver.name) return
-                
-                const current = driverStats.get(driver.name) || { count: 0, totalMinutes: 0 }
-                driverStats.set(driver.name, {
-                    count: current.count + 1,
-                    totalMinutes: current.totalMinutes + booking.duration_min
-                })
-            })
-        })
-        const sortedDrivers = Array.from(driverStats.entries())
-            .sort((a, b) =>
-                b[1].totalMinutes - a[1].totalMinutes ||
-                a[0].localeCompare(b[0], 'zh-Hant')
-            )
-
-        // 教練 + 駕駛 合併統計（同一人同一筆只計一次）
-        const combinedStats = new Map<string, { count: number, totalMinutes: number }>()
-        for (const booking of safeBookings) {
-            const uniquePeople = new Set<string>()
-            booking.coaches?.forEach(c => { if (c?.name) uniquePeople.add(c.name) })
-            if (!isFacility(booking.boats?.name)) {
-                booking.drivers?.forEach(d => { if (d?.name) uniquePeople.add(d.name) })
-            }
-            for (const name of uniquePeople) {
-                const current = combinedStats.get(name) || { count: 0, totalMinutes: 0 }
-                combinedStats.set(name, {
-                    count: current.count + 1,
-                    totalMinutes: current.totalMinutes + booking.duration_min
-                })
-            }
-        }
-        const sortedCombined = Array.from(combinedStats.entries())
-            .sort((a, b) =>
-                b[1].totalMinutes - a[1].totalMinutes ||
-                a[0].localeCompare(b[0], 'zh-Hant')
-            )
-
-        // 船隻使用統計（筆數 + 總時長）
-        const boatStats = new Map<string, { count: number, totalMinutes: number }>()
-        safeBookings.forEach(booking => {
-            if (booking.boats?.name) {
-                const current = boatStats.get(booking.boats.name) || { count: 0, totalMinutes: 0 }
-                boatStats.set(booking.boats.name, {
-                    count: current.count + 1,
-                    totalMinutes: current.totalMinutes + booking.duration_min
-                })
-            }
-        })
-        const sortedBoats = Array.from(boatStats.entries())
-            .sort((a, b) =>
-                b[1].totalMinutes - a[1].totalMinutes ||
-                a[0].localeCompare(b[0], 'zh-Hant')
-            )
-
-        return {
-            totalBookings,
-            totalDurationMinutes,
-            sortedCoaches,
-            sortedDrivers,
-            sortedCombined,
-            sortedBoats
-        }
-    }, [bookings])
-
-    const { totalBookings, totalDurationMinutes, sortedCoaches, sortedDrivers, sortedCombined, sortedBoats } = stats
-
-    return (
-        <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: isMobile ? '12px' : '16px 20px',
-            marginBottom: '16px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        }}>
-            <div style={{
-                fontSize: isMobile ? '14px' : '16px',
-                fontWeight: '700',
-                color: '#2c3e50',
-                marginBottom: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
+  return (
+    <div
+      style={{
+        backgroundColor: designSystem.colors.background.card,
+        borderRadius: designSystem.borderRadius.xl,
+        padding: isMobile ? '10px 12px' : '12px 16px',
+        marginBottom: designSystem.spacing.md,
+        boxShadow: designSystem.shadows.xs,
+        border: `1px solid ${designSystem.colors.border.light}`,
+      }}
+    >
+      {/* 主指標列：總預約 + 未排班（若有） */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: isMobile ? '16px' : '24px',
+        flexWrap: 'wrap',
+      }}>
+        <div>
+          <div style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            color: designSystem.colors.text.secondary,
+            marginBottom: '2px',
+          }}>
+            總預約
+          </div>
+          <div style={{
+            fontSize: isMobile ? '20px' : '22px',
+            fontWeight: 700,
+            color: designSystem.colors.text.primary,
+            lineHeight: 1.1,
+            letterSpacing: '-0.02em',
+          }}>
+            {totalBookings} 筆
+            <span style={{
+              fontSize: isMobile ? '12px' : '13px',
+              fontWeight: 500,
+              color: designSystem.colors.text.secondary,
+              marginLeft: '8px',
             }}>
-                📊 今日總覽
-            </div>
-
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: isMobile ? '12px' : '16px',
-            }}>
-                {/* 總預約數 */}
-                <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f0f9ff',
-                    borderRadius: '8px',
-                    border: '1px solid #bae6fd',
-                }}>
-                    <div style={{ fontSize: '12px', color: '#0369a1', marginBottom: '4px' }}>總預約數</div>
-                    <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '700', color: '#0c4a6e' }}>
-                        {totalBookings} 筆
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#0c4a6e', marginTop: '2px' }}>合計 {totalDurationMinutes} 分</div>
-                </div>
-
-                {/* 總時長（教練＋駕駛） */}
-                <div style={{
-                    padding: '12px',
-                    backgroundColor: '#F1F5F9',
-                    borderRadius: '8px',
-                    border: '1px solid #CBD5E1',
-                }}>
-                    <div style={{ fontSize: '12px', color: '#334155', marginBottom: '8px' }}>總時長（教練＋駕駛）</div>
-                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#334155', lineHeight: '1.8' }}>
-                        {sortedCombined.length > 0 ? (
-                            <>
-                                {sortedCombined.map(([name, s], idx) => (
-                                    <span key={`combined-${name}`}>
-                                        <span>{name}</span>
-                                        <span style={{ marginLeft: '2px', color: '#64748b' }}>×{s.count}</span>
-                                        <span style={{ marginLeft: '6px', color: '#0f172a', fontWeight: 700 }}>{s.totalMinutes}分</span>
-                                        {idx < sortedCombined.length - 1 && <span style={{ margin: '0 6px', color: '#94a3b8' }}>·</span>}
-                                    </span>
-                                ))}
-                            </>
-                        ) : '—'}
-                    </div>
-                </div>
-
-                {/* 教練使用 */}
-                <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f0fdf4',
-                    borderRadius: '8px',
-                    border: '1px solid #bbf7d0',
-                }}>
-                    <div style={{ fontSize: '12px', color: '#15803d', marginBottom: '8px' }}>教練</div>
-                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#166534', lineHeight: '1.8' }}>
-                        {sortedCoaches.length > 0 ? (
-                            <>
-                                {sortedCoaches.map(([name, s], idx) => (
-                                    <span key={`coach-${name}`}>
-                                        <span>{name}</span>
-                                        <span style={{ marginLeft: '2px', color: '#65a30d' }}>×{s.count}</span>
-                                        <span style={{ marginLeft: '6px', color: '#14532d', fontWeight: 700 }}>{s.totalMinutes}分</span>
-                                        {idx < sortedCoaches.length - 1 && <span style={{ margin: '0 6px', color: '#86efac' }}>·</span>}
-                                    </span>
-                                ))}
-                            </>
-                        ) : '—'}
-                    </div>
-                </div>
-
-                {/* 駕駛使用 */}
-                <div style={{
-                    padding: '12px',
-                    backgroundColor: '#eff6ff',
-                    borderRadius: '8px',
-                    border: '1px solid #bfdbfe',
-                }}>
-                    <div style={{ fontSize: '12px', color: '#1e40af', marginBottom: '8px' }}>駕駛</div>
-                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#1e3a8a', lineHeight: '1.8' }}>
-                        {sortedDrivers.length > 0 ? (
-                            <>
-                                {sortedDrivers.map(([name, s], idx) => (
-                                    <span key={`driver-${name}`}>
-                                        <span>{name}</span>
-                                        <span style={{ marginLeft: '2px', color: '#60a5fa' }}>×{s.count}</span>
-                                        <span style={{ marginLeft: '6px', color: '#1e3a8a', fontWeight: 700 }}>{s.totalMinutes}分</span>
-                                        {idx < sortedDrivers.length - 1 && <span style={{ margin: '0 6px', color: '#93c5fd' }}>·</span>}
-                                    </span>
-                                ))}
-                            </>
-                        ) : '—'}
-                    </div>
-                </div>
-
-                {/* 船隻使用 */}
-                <div style={{
-                    padding: '12px',
-                    backgroundColor: '#fef3c7',
-                    borderRadius: '8px',
-                    border: '1px solid #fde68a',
-                }}>
-                    <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '8px' }}>船</div>
-                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#78350f', lineHeight: '1.8' }}>
-                        {sortedBoats.length > 0 ? (
-                            <>
-                                {sortedBoats.map(([name, s], idx) => (
-                                    <span key={`boat-${name}`}>
-                                        <span>{name}</span>
-                                        <span style={{ marginLeft: '2px', color: '#f59e0b' }}>×{s.count}</span>
-                                        <span style={{ marginLeft: '6px', color: '#92400e', fontWeight: 700 }}>{s.totalMinutes}分</span>
-                                        {idx < sortedBoats.length - 1 && <span style={{ margin: '0 6px', color: '#facc15' }}>·</span>}
-                                    </span>
-                                ))}
-                            </>
-                        ) : '—'}
-                    </div>
-                </div>
-            </div>
+              合計 {totalDurationMinutes} 分
+            </span>
+          </div>
         </div>
-    )
+
+        {unassignedCount !== undefined && unassignedCount > 0 && (
+          <div>
+            <div style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: designSystem.colors.warning[700],
+              marginBottom: '2px',
+            }}>
+              未排班
+            </div>
+            <div style={{
+              fontSize: isMobile ? '20px' : '22px',
+              fontWeight: 700,
+              color: designSystem.colors.warning[700],
+              lineHeight: 1.1,
+            }}>
+              {unassignedCount} 筆
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 次要統計：緊湊文字列 */}
+      <StatRow label="教練+駕駛" entries={sortedCombined} isMobile={isMobile} />
+      <StatRow label="教練" entries={sortedCoaches} isMobile={isMobile} />
+      <StatRow label="駕駛" entries={sortedDrivers} isMobile={isMobile} />
+      <StatRow label="船" entries={sortedBoats} isMobile={isMobile} />
+    </div>
+  )
 }

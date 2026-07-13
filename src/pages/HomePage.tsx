@@ -16,6 +16,7 @@ import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
 import { ES_BRAND } from '../lib/esBrandTokens'
 import { Footer } from '../components/Footer'
 import { ExternalNavLink } from '../components/ExternalNavLink'
+import { designSystem } from '../styles/designSystem'
 import { useState, useEffect, type CSSProperties } from 'react'
 
 /** 首頁導航 track id（去掉 query，避免 nav_coach-time-off?month=… 每次月份不同） */
@@ -29,17 +30,16 @@ function MenuButtonSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <div
       style={{
-        background: 'rgba(255, 255, 255, 0.7)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '16px',
-        padding: '35px 20px',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+        background: designSystem.colors.background.card,
+        borderRadius: designSystem.borderRadius.xl,
+        padding: isMobile ? '28px 14px' : '35px 20px',
+        boxShadow: designSystem.shadows.xs,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
         gap: '12px',
-        border: '1px solid rgba(224, 224, 224, 0.5)'
+        border: `1px solid ${designSystem.colors.border.light}`,
       }}
     >
       {/* Icon skeleton */}
@@ -263,11 +263,39 @@ export function HomePage() {
   const visibleMainMenu = filterVisibleMenuItems(menuItemsMain)
   const visibleBelowDivider = filterVisibleMenuItems(menuItemsBelowDivider)
 
+  const menuCardStyle: CSSProperties = {
+    textDecoration: 'none',
+    background: designSystem.colors.background.card,
+    borderRadius: designSystem.borderRadius.xl,
+    padding: isMobile ? '28px 14px' : '35px 20px',
+    boxShadow: designSystem.shadows.xs,
+    transition: 'transform 0.15s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    gap: '12px',
+    cursor: 'pointer',
+    border: `1px solid ${designSystem.colors.border.light}`,
+  }
+
+  const menuCardTouchHandlers = {
+    onTouchStart: (e: React.TouchEvent<HTMLElement>) => {
+      e.currentTarget.style.transform = 'scale(0.97)'
+    },
+    onTouchEnd: (e: React.TouchEvent<HTMLElement>) => {
+      e.currentTarget.style.transform = 'scale(1)'
+    },
+    onTouchCancel: (e: React.TouchEvent<HTMLElement>) => {
+      e.currentTarget.style.transform = 'scale(1)'
+    },
+  }
+
   return (
     <div style={{ 
       minHeight: '100vh',
-      background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)',
-      padding: '40px 20px',
+      background: designSystem.colors.background.main,
+      padding: isMobile ? '24px 16px' : '40px 20px',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -281,31 +309,29 @@ export function HomePage() {
         {/* Header with Logo */}
         <div style={{
           textAlign: 'center',
-          marginBottom: '50px'
+          marginBottom: isMobile ? '28px' : '50px',
         }}>
           <img 
             src="/logo_circle (black).png" 
             alt={`${ES_BRAND.name} Logo`}
             style={{
-              width: '140px',
-              height: '140px',
+              width: isMobile ? '100px' : '140px',
+              height: isMobile ? '100px' : '140px',
               objectFit: 'contain',
-              marginBottom: '20px',
+              marginBottom: isMobile ? '12px' : '20px',
               borderRadius: '50%',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              // Tailwind v4 preflight 把 <img> 設為 display:block，
-              // 父層的 text-align:center 對 block 不生效，所以這裡用 margin auto 自己置中
+              boxShadow: designSystem.shadows.sm,
               display: 'block',
               marginLeft: 'auto',
-              marginRight: 'auto'
+              marginRight: 'auto',
             }}
           />
           <h1 style={{ 
-            margin: '0 0 20px 0',
-            fontSize: isMobile ? '32px' : '42px',
+            margin: isMobile ? '0 0 12px 0' : '0 0 20px 0',
+            fontSize: isMobile ? '28px' : '42px',
             fontWeight: '800',
-            color: '#000',
-            letterSpacing: '2px',
+            color: designSystem.colors.text.primary,
+            letterSpacing: isMobile ? '1px' : '2px',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
           }}>
             {ES_BRAND.name}
@@ -313,7 +339,7 @@ export function HomePage() {
           <div style={{
             display: 'flex',
             justifyContent: 'center',
-            marginTop: '15px'
+            marginTop: isMobile ? '8px' : '15px',
           }}>
             <UserMenu user={user} />
           </div>
@@ -347,56 +373,18 @@ export function HomePage() {
           ) : (
             <>
               {visibleMainMenu.map((item) => {
-                const cardStyle: CSSProperties = {
-                  textDecoration: 'none',
-                  background: 'rgba(255, 255, 255, 0.7)',
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: '16px',
-                  padding: '35px 20px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                  transition: 'all 0.3s ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  textAlign: 'center',
-                  gap: '12px',
-                  cursor: 'pointer',
-                  border: '1px solid rgba(224, 224, 224, 0.5)'
-                }
-                const cardHandlers = {
-                  onMouseEnter: (e: React.MouseEvent<HTMLAnchorElement>) => {
-                    e.currentTarget.style.transform = 'translateY(-5px)'
-                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
-                    e.currentTarget.style.borderColor = '#000'
-                  },
-                  onMouseLeave: (e: React.MouseEvent<HTMLAnchorElement>) => {
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                    e.currentTarget.style.borderColor = '#e0e0e0'
-                  },
-                  onTouchStart: (e: React.TouchEvent<HTMLAnchorElement>) => {
-                    e.currentTarget.style.transform = 'scale(0.97)'
-                    e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.1)'
-                  },
-                  onTouchEnd: (e: React.TouchEvent<HTMLAnchorElement>) => {
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                  },
-                  onTouchCancel: (e: React.TouchEvent<HTMLAnchorElement>) => {
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0.08)'
-                  },
-                }
+                const cardStyle: CSSProperties = menuCardStyle
+                const cardHandlers = menuCardTouchHandlers
                 const inner = (
                   <>
                     <div style={{ marginBottom: '5px' }}>
-                      <span style={{ fontSize: '42px' }}>{item.icon}</span>
+                      <span style={{ fontSize: isMobile ? '36px' : '42px' }}>{item.icon}</span>
                     </div>
                     <h2 style={{
                       margin: 0,
                       fontSize: isMobile ? '16px' : '18px',
                       fontWeight: '600',
-                      color: '#000',
+                      color: designSystem.colors.text.primary,
                       letterSpacing: '0.5px',
                     }}>
                       {item.title}
@@ -405,7 +393,7 @@ export function HomePage() {
                       <p style={{
                         margin: 0,
                         fontSize: isMobile ? '12px' : '13px',
-                        color: '#999',
+                        color: designSystem.colors.text.secondary,
                         fontStyle: 'italic'
                       }}>
                         {item.subtitle}
@@ -482,19 +470,7 @@ export function HomePage() {
                   </div>
                   {visibleBelowDivider.map((item) => {
                     const cardBaseStyle: CSSProperties = {
-                      textDecoration: 'none',
-                      background: 'rgba(255, 255, 255, 0.7)',
-                      backdropFilter: 'blur(10px)',
-                      borderRadius: '16px',
-                      padding: '35px 20px',
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                      transition: 'all 0.3s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      gap: '12px',
-                      border: '1px solid rgba(224, 224, 224, 0.5)'
+                      ...menuCardStyle,
                     }
                     const disabledExtra: CSSProperties = item.disabled
                       ? {
@@ -508,7 +484,7 @@ export function HomePage() {
                       <>
                         <div
                           style={{
-                            fontSize: '42px',
+                            fontSize: isMobile ? '36px' : '42px',
                             marginBottom: '5px'
                           }}
                         >
@@ -520,7 +496,7 @@ export function HomePage() {
                             margin: 0,
                             fontSize: isMobile ? '16px' : '18px',
                             fontWeight: '600',
-                            color: item.disabled ? '#444' : '#000',
+                            color: item.disabled ? designSystem.colors.text.secondary : designSystem.colors.text.primary,
                             letterSpacing: '0.5px'
                           }}
                         >
@@ -533,7 +509,7 @@ export function HomePage() {
                               margin: 0,
                               marginTop: '2px',
                               fontSize: isMobile ? '12px' : '13px',
-                              color: item.disabled ? '#6a4c93' : '#999',
+                              color: item.disabled ? designSystem.colors.info[700] : designSystem.colors.text.secondary,
                               fontStyle: item.disabled ? 'normal' : 'italic',
                               fontWeight: item.disabled ? 600 : 400,
                               letterSpacing: '0.02em'
@@ -565,28 +541,7 @@ export function HomePage() {
                         to={item.link}
                         data-track={homeNavTrackId(item.link)}
                         style={{ ...cardBaseStyle, ...disabledExtra }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-5px)'
-                          e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
-                          e.currentTarget.style.borderColor = '#000'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)'
-                          e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                          e.currentTarget.style.borderColor = '#e0e0e0'
-                        }}
-                        onTouchStart={(e) => {
-                          e.currentTarget.style.transform = 'scale(0.97)'
-                          e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.1)'
-                        }}
-                        onTouchEnd={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)'
-                          e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                        }}
-                        onTouchCancel={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)'
-                          e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                        }}
+                        {...menuCardTouchHandlers}
                       >
                         {inner}
                       </Link>

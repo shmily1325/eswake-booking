@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { NewBookingDialog } from '../components/NewBookingDialog'
@@ -7,13 +7,14 @@ import { RepeatBookingDialog } from '../components/RepeatBookingDialog'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString, getWeekdayText } from '../utils/date'
+import { getLocalDateString } from '../utils/date'
 import { Footer } from '../components/Footer'
-import { getButtonStyle } from '../styles/designSystem'
+import { getButtonStyle, designSystem } from '../styles/designSystem'
 import { useToast, ToastContainer, BookingListSkeleton } from '../components/ui'
 import { TodayOverview } from '../components/TodayOverview'
 import { DailyStaffDisplay } from '../components/DailyStaffDisplay'
 import { DayViewMobileHeader } from '../components/DayViewMobileHeader'
+import { BookingDateNav } from '../components/BookingDateNav'
 import { VirtualizedBookingList } from '../components/VirtualizedBookingList'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { injectAnimationStyles } from '../utils/animations'
@@ -528,12 +529,12 @@ export function DayView() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+      <div style={{ minHeight: '100vh', background: designSystem.colors.background.main }}>
         {/* 頭部骨架屏 */}
         <div style={{ 
-          background: 'white', 
+          background: designSystem.colors.background.card, 
           padding: isMobile ? '16px' : '20px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          boxShadow: designSystem.shadows.sm,
         }}>
           <div style={{ 
             maxWidth: '1400px', 
@@ -563,7 +564,7 @@ export function DayView() {
           padding: isMobile ? '12px' : '20px',
           height: 'auto',
           minHeight: isMobile ? '100vh' : 'auto',
-          backgroundColor: '#f8f9fa',
+          backgroundColor: designSystem.colors.background.main,
           position: 'relative',
           overflow: 'visible',
           display: isMobile ? 'block' : 'flex',
@@ -571,12 +572,12 @@ export function DayView() {
         }}
       >
         <PageHeader 
-          title="📅 預約列表" 
+          title="預約表" 
           user={user} 
         />
 
 
-        {/* 手機版：兩行佈局 */}
+        {/* 日期導覽 */}
         {isMobile ? (
           <DayViewMobileHeader
             date={dateParam}
@@ -587,91 +588,18 @@ export function DayView() {
             showCoachAssignment={canUseSchedule}
           />
         ) : (
-          /* 桌面版：單行佈局 */
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            marginBottom: '16px',
-            flexWrap: 'wrap',
-          }}>
-            <button
-            data-track="day_prev"
-              onClick={() => changeDate(-1)}
-              style={{
-                ...getButtonStyle('outline', 'medium', false),
-                padding: '8px 12px',
-                fontSize: '14px',
-              }}
-            >
-              ←
-            </button>
-            <input
-              type="date"
-              value={dateParam}
-              onChange={handleDateInputChange}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #dee2e6',
-                fontSize: '16px', // 16px 防止 iOS 縮放
-              }}
-            />
-            {/* 星期幾顯示 - 獨立顯示 */}
-            <span style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              background: '#f8f9fa',
-              color: '#495057',
-              fontSize: '14px',
-              fontWeight: '600',
-              border: '1px solid #dee2e6',
-              whiteSpace: 'nowrap',
-            }}>
-              {getWeekdayText(dateParam)}
-            </span>
-            <button
-              data-track="day_next"
-              onClick={() => changeDate(1)}
-              style={{
-                ...getButtonStyle('outline', 'medium', false),
-                padding: '8px 12px',
-                fontSize: '14px',
-              }}
-            >
-              →
-            </button>
-            <button
-              data-track="day_today"
-              onClick={goToToday}
-              style={{
-                ...getButtonStyle('secondary', 'medium', false),
-                minWidth: '100px',
-                boxSizing: 'border-box'
-              }}
-            >
-              今天
-            </button>
-
-            {/* 排班按鈕 - 功能權限：排班 */}
-            {canUseSchedule && (
-              <Link
-                data-track="day_to_assignment"
-                to={`/coach-assignment?date=${dateParam}`}
-                style={{
-                  ...getButtonStyle('secondary', 'medium', false),
-                  textDecoration: 'none',
-                  minWidth: '100px',
-                  boxSizing: 'border-box'
-                }}
-              >
-                排班
-              </Link>
-            )}
-          </div>
+          <BookingDateNav
+            date={dateParam}
+            onDateChange={handleDateInputChange}
+            onPrevDate={() => changeDate(-1)}
+            onNextDate={() => changeDate(1)}
+            onGoToToday={goToToday}
+            showScheduleLink={canUseSchedule}
+            scheduleLinkTo={`/coach-assignment?date=${dateParam}`}
+          />
         )}
 
-        {/* 今日總覽卡片 - 僅電腦版顯示 */}
+        {/* 今日總覽 - 僅電腦版顯示 */}
         {!isMobile && !loading && bookings.length > 0 && (
           <TodayOverview bookings={bookings} isMobile={isMobile} />
         )}
@@ -704,15 +632,15 @@ export function DayView() {
               </>
             )}
             <div style={{
-              backgroundColor: 'white',
-              borderRadius: '8px',
+              backgroundColor: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.xl,
               overflow: 'hidden',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              marginBottom: '16px'
+              boxShadow: designSystem.shadows.sm,
+              border: `1px solid ${designSystem.colors.border.light}`,
+              marginBottom: designSystem.spacing.md,
             }}>
               <div style={{
-                padding: '16px',
-                borderBottom: '1px solid #e9ecef',
+                padding: isMobile ? '12px' : '14px 16px',
                 display: 'flex',
                 gap: '8px',
               }}>
@@ -727,30 +655,12 @@ export function DayView() {
                     setDialogOpen(true)
                   }}
                   style={{
+                    ...getButtonStyle('primary', 'medium', false),
                     flex: 1,
-                    padding: '14px 20px',
-                    borderTop: '2px dashed #ddd',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    color: '#007bff',
-                    fontSize: '15px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'background 0.2s',
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  onTouchStart={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
-                  onTouchEnd={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  onTouchCancel={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  + 新增預約
+                  新增預約
                 </button>
-                {/* 重複預約按鈕 - 功能權限：重複預約 */}
                 {canUseRepeatBooking && (
                   <button
                     data-track="day_repeat_booking"
@@ -763,28 +673,11 @@ export function DayView() {
                       setRepeatDialogOpen(true)
                     }}
                     style={{
+                      ...getButtonStyle('outline', 'medium', false),
                       flex: 1,
-                      padding: '14px 20px',
-                      borderTop: '2px dashed #ffc107',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      color: '#f57c00',
-                      fontSize: '15px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      transition: 'background 0.2s',
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fff3cd'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    onTouchStart={(e) => e.currentTarget.style.backgroundColor = '#ffe082'}
-                    onTouchEnd={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    onTouchCancel={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    🔁 重複預約
+                    重複預約
                   </button>
                 )}
               </div>

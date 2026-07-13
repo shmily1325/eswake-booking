@@ -5,6 +5,7 @@ import { validateBoats, validateBookings } from '../utils/safetyHelpers'
 import type { BoatUnavailableBlock } from '../utils/boatUnavailableDay'
 import type { RestrictionDayBlock } from '../utils/restrictionDayBlocks'
 import { getBoatSidebarDayAlert } from '../utils/dayViewBoatSidebarAlert'
+import { designSystem } from '../styles/designSystem'
 
 interface VirtualizedBookingListProps {
     boats: Boat[]
@@ -56,7 +57,7 @@ export function VirtualizedBookingList({
                 alignItems: 'center',
                 justifyContent: 'center',
                 height: '200px',
-                color: '#999',
+                color: designSystem.colors.text.disabled,
                 fontSize: '14px'
             }}>
                 沒有可用的船隻
@@ -67,10 +68,11 @@ export function VirtualizedBookingList({
     return (
         <div style={{
             width: '100%',
-            background: '#f8f9fa',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e9ecef'
+            background: designSystem.colors.background.card,
+            borderRadius: designSystem.borderRadius.xl,
+            boxShadow: designSystem.shadows.sm,
+            border: `1px solid ${designSystem.colors.border.light}`,
+            overflow: 'hidden',
         }}>
             {validBoats.map((boat, boatIndex) => {
                 const boatBookings = boatBookingsMap.get(boat.id) || []
@@ -86,7 +88,7 @@ export function VirtualizedBookingList({
                         style={{
                             display: 'flex',
                             /* 分隔畫在本列上緣（非上一列下緣），線在 sticky 側欄「上方」，較不易被蓋掉；#dee2e6 比 #e9ecef 稍深，深灰／白底都較清楚 */
-                            borderTop: boatIndex > 0 ? '2px solid #dee2e6' : undefined,
+                            borderTop: boatIndex > 0 ? `1px solid ${designSystem.colors.border.light}` : undefined,
                             // minHeight: isMobile ? '140px' : '160px' // 移除固定最小高度，讓內容自然撐開
                         }}
                     >
@@ -94,14 +96,14 @@ export function VirtualizedBookingList({
                         <div style={{
                             minWidth: isMobile ? '80px' : '120px',
                             maxWidth: isMobile ? '80px' : '120px',
-                            background: '#5a5a5a',
+                            background: designSystem.colors.primary[500],
                             color: 'white',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
                             padding: isMobile ? '12px 8px' : '16px 12px',
-                            borderRight: '2px solid #e9ecef',
+                            borderRight: `1px solid ${designSystem.colors.border.light}`,
                             position: 'sticky',
                             left: 0,
                             zIndex: 2,
@@ -151,8 +153,8 @@ export function VirtualizedBookingList({
                         {/* 右側預約列表 - 垂直排列 */}
                         <div style={{
                             flex: 1,
-                            backgroundColor: 'white',
-                            minHeight: boatBookings.length === 0 ? (isMobile ? '80px' : '100px') : 'auto', // 只有沒預約時才設最小高度
+                            backgroundColor: designSystem.colors.background.card,
+                            minHeight: boatBookings.length === 0 ? (isMobile ? '80px' : '100px') : 'auto',
                         }}>
                             {boatBookings.length === 0 ? (
                                 <div style={{
@@ -160,7 +162,7 @@ export function VirtualizedBookingList({
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     height: '100%',
-                                    color: '#999',
+                                    color: designSystem.colors.text.disabled,
                                     fontSize: isMobile ? '13px' : '14px',
                                     fontStyle: 'italic',
                                 }}>
@@ -187,37 +189,36 @@ export function VirtualizedBookingList({
                                                 data-track="day_edit_booking"
                                                 style={{
                                                     padding: isMobile ? '12px' : '14px 16px',
-                                                    borderBottom: bookingIndex < boatBookings.length - 1 ? '1px solid #f0f0f0' : 'none',
+                                                    borderBottom: bookingIndex < boatBookings.length - 1 ? `1px solid ${designSystem.colors.border.light}` : 'none',
                                                     cursor: 'pointer',
-                                                    transition: 'all 0.2s',
+                                                    transition: 'background 0.2s',
                                                     display: 'flex',
                                                     gap: isMobile ? '10px' : '14px',
                                                     alignItems: 'center',
-                                                    backgroundColor: 'white',
-                                                    border: conflictedBookingIds?.has(booking.id) ? '2px solid #e53935' : '1px solid transparent',
-                                                    borderRadius: '8px',
+                                                    backgroundColor: designSystem.colors.background.card,
+                                                    border: conflictedBookingIds?.has(booking.id) ? `2px solid ${designSystem.colors.danger[500]}` : '1px solid transparent',
+                                                    borderRadius: designSystem.borderRadius.lg,
                                                     boxShadow: conflictedBookingIds?.has(booking.id)
-                                                        ? '0 0 0 1px rgba(229,57,53,0.15) inset'
+                                                        ? `0 0 0 1px ${designSystem.colors.danger[500]}22 inset`
                                                         : undefined,
                                                 }}
 												title={!isMobile ? (conflictReasons?.get(booking.id) || undefined) : undefined}
                                                 onClick={() => onBookingClick(booking.boat_id, booking.start_at.substring(11, 16), booking)}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.backgroundColor = '#f8f9fa'
-                                                    e.currentTarget.style.transform = 'translateX(4px)'
+                                                    e.currentTarget.style.backgroundColor = designSystem.colors.background.hover
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.backgroundColor = 'white'
-                                                    e.currentTarget.style.transform = 'translateX(0)'
+                                                    e.currentTarget.style.backgroundColor = designSystem.colors.background.card
                                                 }}
                                             >
                                                 {/* 時間區塊 */}
                                                 <div style={{
                                                     minWidth: isMobile ? '70px' : '85px',
                                                     padding: isMobile ? '6px 8px' : '8px 10px',
-                                                    backgroundColor: '#5a5a5a',
-                                                    color: 'white',
-                                                    borderRadius: '6px',
+                                                    backgroundColor: designSystem.colors.secondary[100],
+                                                    color: designSystem.colors.text.primary,
+                                                    borderRadius: designSystem.borderRadius.md,
+                                                    borderLeft: `3px solid ${boat.color}`,
                                                     fontSize: isMobile ? '12px' : '13px',
                                                     fontWeight: '600',
                                                     textAlign: 'center',
@@ -230,9 +231,9 @@ export function VirtualizedBookingList({
                                                     <div style={{
                                                         fontSize: '10px',
                                                         marginTop: '3px',
-                                                        opacity: 0.7,
-                                                        backgroundColor: 'rgba(255,255,255,0.15)',
-                                                        borderRadius: '4px',
+                                                        color: designSystem.colors.text.secondary,
+                                                        backgroundColor: designSystem.colors.background.hover,
+                                                        borderRadius: designSystem.borderRadius.sm,
                                                         padding: '2px',
                                                     }}>
                                                         {booking.duration_min}分
@@ -248,13 +249,13 @@ export function VirtualizedBookingList({
                                                             fontSize: '11px',
                                                             fontWeight: '600',
                                                             padding: '3px 8px',
-                                                            background: '#fff3e0',
-                                                            color: '#e65100',
-                                                            borderRadius: '4px',
+                                                            background: designSystem.colors.warning[50],
+                                                            color: designSystem.colors.warning[700],
+                                                            borderRadius: designSystem.borderRadius.full,
                                                             marginBottom: '6px',
-                                                            border: '1px solid #ff9800',
+                                                            border: `1px solid ${designSystem.colors.warning[500]}33`,
                                                         }}>
-                                                            🏄 教練練習
+                                                            教練練習
                                                         </div>
                                                     )}
                                                     
@@ -262,7 +263,7 @@ export function VirtualizedBookingList({
 												<div style={{
 													fontSize: isMobile ? '14px' : '16px',
 													fontWeight: '700',
-													color: '#2c3e50',
+													color: designSystem.colors.text.primary,
 													marginBottom: '4px',
 													display: 'flex',
 													alignItems: 'center',
@@ -290,7 +291,7 @@ export function VirtualizedBookingList({
 													{conflictedBookingIds?.has(booking.id) && conflictReasons?.get(booking.id) && (
 														<div style={{
 															fontSize: '12px',
-															color: '#e53935',
+															color: designSystem.colors.danger[700],
 															marginBottom: '4px',
 															fontWeight: 600,
 															lineHeight: 1.3,
@@ -302,7 +303,7 @@ export function VirtualizedBookingList({
                                                     {/* 第二行：教練 + 駕駛 + 活動類型 */}
                                                     <div style={{
                                                         fontSize: isMobile ? '12px' : '13px',
-                                                        color: '#7f8c8d',
+                                                        color: designSystem.colors.text.secondary,
                                                         lineHeight: '1.4',
                                                     }}>
                                                         {booking.coaches && booking.coaches.length > 0 && (
@@ -317,19 +318,20 @@ export function VirtualizedBookingList({
                                                         {booking.requires_driver && (!booking.drivers || booking.drivers.length === 0) && (
                                                             <>
                                                                 {booking.coaches && booking.coaches.length > 0 && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
-                                                                <span style={{ color: '#f59e0b' }}>🚤 需要駕駛</span>
+                                                                <span style={{ color: designSystem.colors.warning[700] }}>需要駕駛</span>
                                                             </>
                                                         )}
                                                         {booking.activity_types && booking.activity_types.length > 0 && (
                                                             <>
                                                                 {((booking.coaches && booking.coaches.length > 0) || (booking.drivers && booking.drivers.length > 0) || booking.requires_driver) && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
                                                                 <span style={{ 
-                                                                    backgroundColor: '#dbeafe', 
-                                                                    color: '#1e40af',
+                                                                    backgroundColor: designSystem.colors.secondary[100], 
+                                                                    color: designSystem.colors.text.primary,
                                                                     padding: '2px 6px',
-                                                                    borderRadius: '4px',
+                                                                    borderRadius: designSystem.borderRadius.full,
                                                                     fontSize: isMobile ? '11px' : '12px',
                                                                     fontWeight: '600',
+                                                                    border: `1px solid ${designSystem.colors.border.light}`,
                                                                 }}>
                                                                     {booking.activity_types.join('+')}
                                                                 </span>
@@ -341,15 +343,15 @@ export function VirtualizedBookingList({
                                                     {(booking.notes || booking.schedule_notes) && (
                                                         <div style={{
                                                             fontSize: isMobile ? '11px' : '12px',
-                                                            color: '#999',
+                                                            color: designSystem.colors.text.disabled,
                                                             lineHeight: '1.4',
                                                         }}>
                                                             {booking.notes && (
-                                                                <span style={{ fontStyle: 'italic' }}>💬 {booking.notes}</span>
+                                                                <span style={{ fontStyle: 'italic' }}>{booking.notes}</span>
                                                             )}
-                                                            {booking.notes && booking.schedule_notes && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
+                                                            {booking.notes && booking.schedule_notes && <span style={{ margin: '0 4px', opacity: 0.5 }}>·</span>}
                                                             {booking.schedule_notes && (
-                                                                <span>📝 {booking.schedule_notes}</span>
+                                                                <span>{booking.schedule_notes}</span>
                                                             )}
                                                         </div>
                                                     )}

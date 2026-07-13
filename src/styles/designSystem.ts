@@ -512,12 +512,13 @@ export const getBookingCardStyle = (
   isClickable: boolean = false
 ): React.CSSProperties => ({
   padding: isMobile ? '10px 8px' : '14px 12px',
-  background: `linear-gradient(135deg, ${boatColor}08 0%, ${boatColor}15 100%)`,
-  border: `2px solid ${boatColor}`,
+  background: '#ffffff',
+  border: `1px solid ${designSystem.colors.border.light}`,
+  borderLeft: `3px solid ${boatColor}`,
   verticalAlign: 'top',
   position: 'relative',
-  borderRadius: isMobile ? '8px' : '10px',
-  boxShadow: designSystem.shadows.elevation[2],
+  borderRadius: isMobile ? designSystem.borderRadius.lg : designSystem.borderRadius.lg,
+  boxShadow: designSystem.shadows.xs,
   cursor: isClickable ? 'pointer' : 'default',
   transition: isClickable ? designSystem.transitions.normal : 'none',
 })
@@ -562,7 +563,7 @@ export const bookingCardContentStyles = {
   
   duration: (isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '11px' : '12px',
-    color: '#666',
+    color: designSystem.colors.text.secondary,
     marginBottom: '8px',
     textAlign: 'center',
   }),
@@ -572,12 +573,12 @@ export const bookingCardContentStyles = {
     fontWeight: '700',
     marginBottom: '6px',
     textAlign: 'center',
-    color: '#1a1a1a',
+    color: designSystem.colors.text.primary,
   }),
   
   notes: (isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '11px' : '12px',
-    color: '#666',
+    color: designSystem.colors.text.secondary,
     marginBottom: '4px',
     textAlign: 'center',
     fontStyle: 'italic',
@@ -585,15 +586,16 @@ export const bookingCardContentStyles = {
   
   scheduleNotes: (isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '11px' : '12px',
-    color: '#e65100',
+    color: designSystem.colors.warning[700],
     marginBottom: '4px',
     textAlign: 'center',
     fontWeight: '500',
   }),
   
-  coachName: (boatColor: string, isMobile: boolean): React.CSSProperties => ({
+  // 教練名稱：船色僅用於卡片左緣，這裡維持中性字色（避免船色重複出現）
+  coachName: (_boatColor: string, isMobile: boolean): React.CSSProperties => ({
     fontSize: isMobile ? '11px' : '12px',
-    color: boatColor,
+    color: designSystem.colors.text.primary,
     fontWeight: '600',
     textAlign: 'center',
   }),
