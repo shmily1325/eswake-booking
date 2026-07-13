@@ -7,7 +7,7 @@ import { designSystem, styles, getResponsiveStyles } from '../styles/designSyste
 interface DailyStaffDisplayProps {
   date: string  // YYYY-MM-DD 格式
   isMobile: boolean
-  unassignedCount?: number  // 未排班預約數量
+  unassignedCount?: number
 }
 
 /**
@@ -31,10 +31,16 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
   const staffRowStyle = isMobile
     ? { display: 'flex' as const, flexDirection: 'column' as const, alignItems: 'flex-start' as const, gap: '6px' }
     : { ...styles.flexRow, flexWrap: 'wrap' as const }
+  const cardSurfaceStyle = {
+    backgroundColor: designSystem.colors.background.card,
+    border: `1px solid ${designSystem.colors.border.light}`,
+    borderRadius: designSystem.borderRadius.lg,
+    boxShadow: designSystem.shadows.xs,
+  }
 
   if (loading) {
     return (
-      <div style={{ ...styles.card, ...rs.cardPadding, marginBottom: '12px' }}>
+      <div style={{ ...styles.card, ...cardSurfaceStyle, ...rs.cardPadding, marginBottom: '12px' }}>
         <div style={styles.flexRow}>
           <span style={rs.iconSize}>👥</span>
           <div style={{ ...styles.shimmer, width: '150px', height: '16px' }} />
@@ -44,7 +50,7 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
   }
 
   return (
-    <div style={{ ...styles.cardBordered, ...rs.cardPadding, marginBottom: '12px' }}>
+    <div style={{ ...styles.cardBordered, ...cardSurfaceStyle, ...rs.cardPadding, marginBottom: '12px' }}>
       {unassignedCount !== undefined && unassignedCount > 0 && (
         <div style={{
           ...styles.warningBox,

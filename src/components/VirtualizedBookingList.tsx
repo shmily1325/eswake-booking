@@ -69,7 +69,7 @@ export function VirtualizedBookingList({
         <div style={{
             width: '100%',
             background: designSystem.colors.background.card,
-            borderRadius: designSystem.borderRadius.xl,
+            borderRadius: designSystem.borderRadius.lg,
             boxShadow: designSystem.shadows.sm,
             border: `1px solid ${designSystem.colors.border.light}`,
             overflow: 'hidden',
@@ -111,30 +111,39 @@ export function VirtualizedBookingList({
                         }}
                             title={sidebarAlert.show ? sidebarAlert.title : undefined}
                         >
-                            <span
-                                aria-hidden
-                                style={{
-                                    width: isMobile ? '8px' : '10px',
-                                    height: isMobile ? '8px' : '10px',
-                                    borderRadius: '50%',
-                                    background: boat.color || designSystem.colors.border.dark,
-                                    border: '1px solid rgba(255,255,255,0.45)',
-                                    marginBottom: '6px',
-                                    flexShrink: 0,
-                                }}
-                            />
                             <div style={{
-                                fontSize: isMobile ? '14px' : '16px',
-                                fontWeight: '700',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '5px',
+                                width: '100%',
+                                minWidth: 0,
                                 marginBottom: '4px',
-                                textAlign: 'center',
-                                wordBreak: 'keep-all',
-                                maxWidth: '100%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
                             }}>
-                                {boat.name}
+                                <span
+                                    aria-hidden
+                                    style={{
+                                        width: isMobile ? '7px' : '8px',
+                                        height: isMobile ? '7px' : '8px',
+                                        borderRadius: '50%',
+                                        background: boat.color || designSystem.colors.border.dark,
+                                        border: '1px solid rgba(255,255,255,0.45)',
+                                        flexShrink: 0,
+                                    }}
+                                />
+                                <span style={{
+                                    minWidth: 0,
+                                    maxWidth: '100%',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    wordBreak: 'keep-all',
+                                    fontSize: isMobile ? '14px' : '16px',
+                                    fontWeight: '700',
+                                    textAlign: 'center',
+                                }}>
+                                    {boat.name}
+                                </span>
                             </div>
                             {sidebarAlert.show && (
                                 <div style={{
@@ -210,7 +219,7 @@ export function VirtualizedBookingList({
                                                     alignItems: 'center',
                                                     backgroundColor: designSystem.colors.background.card,
                                                     border: conflictedBookingIds?.has(booking.id) ? `2px solid ${designSystem.colors.danger[500]}` : '1px solid transparent',
-                                                    borderRadius: designSystem.borderRadius.lg,
+                                                    borderRadius: designSystem.borderRadius.md,
                                                     boxShadow: conflictedBookingIds?.has(booking.id)
                                                         ? `0 0 0 1px ${designSystem.colors.danger[500]}22 inset`
                                                         : undefined,

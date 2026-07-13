@@ -104,7 +104,7 @@ export function TodayOverview({ bookings, stats: statsProp, isMobile, unassigned
       marginBottom: designSystem.spacing.md,
       background: designSystem.colors.background.card,
       border: `1px solid ${designSystem.colors.border.light}`,
-      borderRadius: designSystem.borderRadius.xl,
+      borderRadius: designSystem.borderRadius.lg,
       overflow: 'hidden',
     }}>
       {/* 主指標：同一總覽卡內的三欄數字 */}

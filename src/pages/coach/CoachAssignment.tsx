@@ -1243,6 +1243,7 @@ export function CoachAssignment() {
             <>
               <button
                 data-track="coach_assignment_save"
+                aria-label="儲存排班"
                 onClick={handleSaveAll}
                 disabled={saving || loading}
                 style={{
@@ -1278,6 +1279,8 @@ export function CoachAssignment() {
             {/* 儲存按鈕 */}
             <button
               data-track="coach_assignment_save"
+              aria-label="儲存排班"
+              title="儲存排班"
               onClick={handleSaveAll}
               disabled={saving || loading}
               style={{
@@ -1285,7 +1288,7 @@ export function CoachAssignment() {
                 textDecoration: 'none',
                 height: '48px',
                 padding: '0 16px',
-                backgroundColor: 'white',
+                backgroundColor: designSystem.colors.background.card,
                 border: `1px solid ${designSystem.colors.border.main}`,
                 borderRadius: designSystem.borderRadius.lg,
                 display: 'flex',
@@ -1312,7 +1315,7 @@ export function CoachAssignment() {
                 textDecoration: 'none',
                 height: '48px',
                 padding: '0 16px',
-                backgroundColor: 'white',
+                backgroundColor: designSystem.colors.background.card,
                 border: `1px solid ${designSystem.colors.border.main}`,
                 borderRadius: designSystem.borderRadius.lg,
                 display: 'flex',
@@ -1336,8 +1339,8 @@ export function CoachAssignment() {
             marginTop: designSystem.spacing.sm,
             marginBottom: designSystem.spacing.md,
             padding: designSystem.spacing.md,
-            background: '#e8f5e9',
-            color: designSystem.colors.success[500],
+            background: designSystem.colors.success[50],
+            color: designSystem.colors.success[700],
             borderRadius: designSystem.borderRadius.sm,
             fontWeight: '600',
             fontSize: isMobile ? '14px' : '15px'
@@ -1351,8 +1354,8 @@ export function CoachAssignment() {
             marginTop: designSystem.spacing.sm,
             marginBottom: designSystem.spacing.md,
             padding: designSystem.spacing.md,
-            background: '#ffebee',
-            color: designSystem.colors.danger[500],
+            background: designSystem.colors.danger[50],
+            color: designSystem.colors.danger[700],
             borderRadius: designSystem.borderRadius.sm,
             fontWeight: '600',
             fontSize: isMobile ? '14px' : '15px'
@@ -1371,7 +1374,7 @@ export function CoachAssignment() {
 
         {/* 當天可上班人員 - 在今日總覽下方 */}
         {!loading && (
-          <DailyStaffDisplay date={selectedDate} isMobile={isMobile} unassignedCount={unassignedCount} />
+          <DailyStaffDisplay date={selectedDate} isMobile={isMobile} />
         )}
 
         {/* 載入中 */}
@@ -1383,7 +1386,7 @@ export function CoachAssignment() {
         
         {/* 無預約 */}
         {!loading && bookings.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled, background: 'white', borderRadius: designSystem.borderRadius.md }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled, background: designSystem.colors.background.card, borderRadius: designSystem.borderRadius.md }}>
             所選日期暫無預約
           </div>
         )}
@@ -1465,10 +1468,12 @@ export function CoachAssignment() {
                 
                 return (
                   <div key={coach.id} style={{
-                    background: coach.isOnTimeOff ? '#f5f5f5' : 'white',
-                    borderRadius: '12px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    border: coach.isOnTimeOff ? '1px solid #e0e0e0' : '1px solid #f0f0f0',
+                    background: coach.isOnTimeOff
+                      ? designSystem.colors.background.hover
+                      : designSystem.colors.background.card,
+                    borderRadius: designSystem.borderRadius.lg,
+                    boxShadow: designSystem.shadows.xs,
+                    border: `1px solid ${coach.isOnTimeOff ? designSystem.colors.border.main : designSystem.colors.border.light}`,
                     display: 'flex',
                     flexDirection: 'column',
                     maxHeight: isMobile ? 'none' : '650px',
@@ -1483,7 +1488,7 @@ export function CoachAssignment() {
                       fontSize: isMobile ? '16px' : '18px',
                       fontWeight: '600',
                       color: designSystem.colors.text.primary,
-                      borderBottom: partialOffLabel ? 'none' : `2px solid ${coach.isOnTimeOff ? '#bdbdbd' : designSystem.colors.primary[500]}`,
+                      borderBottom: partialOffLabel ? 'none' : `2px solid ${coach.isOnTimeOff ? designSystem.colors.border.dark : designSystem.colors.primary[500]}`,
                       paddingBottom: partialOffLabel ? '4px' : '8px',
                       padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
                       display: 'flex',
@@ -1496,8 +1501,8 @@ export function CoachAssignment() {
                         <span style={{
                           fontSize: '12px',
                           padding: '2px 8px',
-                          borderRadius: '4px',
-                          background: '#9e9e9e',
+                          borderRadius: designSystem.borderRadius.sm,
+                          background: designSystem.colors.secondary[500],
                           color: 'white',
                           fontWeight: '500'
                         }}>
@@ -1508,7 +1513,7 @@ export function CoachAssignment() {
                       {partialOffLabel && (
                         <div style={{
                           fontSize: '12px',
-                          color: '#f57c00',
+                          color: designSystem.colors.info[700],
                           fontWeight: '600',
                           padding: isMobile ? '0 16px 8px' : '0 20px 10px',
                           borderBottom: `2px solid ${designSystem.colors.primary[500]}`,
@@ -1530,7 +1535,7 @@ export function CoachAssignment() {
                       {coachBookings.length === 0 ? (
                         <div style={{
                           textAlign: 'center',
-                          color: '#999',
+                          color: designSystem.colors.text.disabled,
                           padding: '20px',
                           fontSize: '14px'
                         }}>
@@ -1546,12 +1551,16 @@ export function CoachAssignment() {
                         return (
                           <div key={booking.id} style={{
                             padding: isMobile ? '8px 10px' : '10px 12px',
-                            background: isCoachPractice ? '#fff3e0' : '#f8f9fa',
-                            borderRadius: '6px',
-                            borderLeft: `3px solid ${isCoachPractice ? '#ff9800' : (booking.boats?.color || '#ccc')}`,
+                            background: isCoachPractice
+                              ? designSystem.colors.info[50]
+                              : designSystem.colors.background.hover,
+                            borderRadius: designSystem.borderRadius.md,
                             fontSize: isMobile ? '13px' : '14px',
                             position: 'relative',
-                            border: isCoachPractice ? '1px solid #ff9800' : 'none'
+                            border: isCoachPractice
+                              ? `1px solid ${designSystem.colors.info[500]}55`
+                              : 'none',
+                            borderLeft: `3px solid ${isCoachPractice ? designSystem.colors.info[500] : (booking.boats?.color || designSystem.colors.border.dark)}`,
                           }}>
                             {/* 教練練習標識 */}
                             {isCoachPractice && (
@@ -1562,9 +1571,9 @@ export function CoachAssignment() {
                                 fontSize: '11px',
                                 fontWeight: '600',
                                 padding: '3px 8px',
-                                background: '#ff9800',
+                                background: designSystem.colors.info[500],
                                 color: 'white',
-                                borderRadius: '4px',
+                                borderRadius: designSystem.borderRadius.sm,
                                 zIndex: 10,
                               }}>
                                 🏄 教練練習
@@ -1579,23 +1588,23 @@ export function CoachAssignment() {
                                     toggleDriver(booking.id, coach.id)
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#ffebee'
-                                e.currentTarget.style.color = '#d32f2f'
+                                e.currentTarget.style.background = designSystem.colors.danger[50]
+                                e.currentTarget.style.color = designSystem.colors.danger[700]
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.background = '#f5f5f5'
-                                e.currentTarget.style.color = '#999'
+                                e.currentTarget.style.background = designSystem.colors.background.hover
+                                e.currentTarget.style.color = designSystem.colors.text.disabled
                                   }}
                                   style={{
                                 position: 'absolute',
                                 top: '8px',
                                 right: isCoachPractice ? '90px' : '8px',
-                                background: '#f5f5f5',
+                                background: designSystem.colors.background.hover,
                                     border: 'none',
-                                    borderRadius: '4px',
+                                    borderRadius: designSystem.borderRadius.sm,
                                     cursor: 'pointer',
                                 fontSize: '16px',
-                                color: '#999',
+                                color: designSystem.colors.text.disabled,
                                 padding: '2px 6px',
                                 transition: 'all 0.2s ease',
                                 lineHeight: 1,
@@ -1610,14 +1619,14 @@ export function CoachAssignment() {
                             
                             {/* 預約資訊 */}
                             <div style={{ paddingRight: '24px' }}>
-                              <div style={{ fontWeight: '600', color: '#2c3e50', fontSize: isMobile ? '13px' : '14px' }}>
+                              <div style={{ fontWeight: '600', color: designSystem.colors.text.primary, fontSize: isMobile ? '13px' : '14px' }}>
                                 {formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}
                                 {isDriver && !isCoach && <span style={{ 
                                   marginLeft: '6px',
                                   fontSize: '14px'
                                 }}>🚤</span>}
                               </div>
-                              <div style={{ color: '#666', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
+                              <div style={{ color: designSystem.colors.text.secondary, fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
                                 {getDisplayContactName(booking)}
                                 {booking.requires_driver && (
                                   <span style={{ marginLeft: '8px', fontSize: '14px' }}>
@@ -1625,24 +1634,16 @@ export function CoachAssignment() {
                                   </span>
                                 )}
                               </div>
-                              {assignment.notes && (
-                                <div style={{ 
-                                  marginTop: '6px',
-                                  color: '#856404',
-                                  fontSize: '12px'
-                                }}>
-                                  {assignment.notes}
-                                </div>
-                              )}
                               {/* 衝突警告 */}
                               {assignment.conflicts.length > 0 && (
                                 <div style={{ 
                                   marginTop: '6px',
                                   padding: '6px 8px',
-                                  background: '#ffebee',
-                                  borderRadius: '4px',
+                                  background: designSystem.colors.danger[50],
+                                  border: `1px solid ${designSystem.colors.danger[500]}33`,
+                                  borderRadius: designSystem.borderRadius.sm,
                                   fontSize: '11px',
-                                  color: '#c62828',
+                                  color: designSystem.colors.danger[700],
                                   lineHeight: '1.4'
                                 }}>
                                   ⚠️ {assignment.conflicts.join(' / ')}
@@ -1670,10 +1671,10 @@ export function CoachAssignment() {
               {needsDriverBookings.length > 0 && (
                 <div style={{
                   background: designSystem.colors.background.card,
-                  borderRadius: designSystem.borderRadius.xl,
+                  borderRadius: designSystem.borderRadius.lg,
                   boxShadow: designSystem.shadows.xs,
                   border: `1px solid ${designSystem.colors.border.light}`,
-                  borderLeft: `4px solid ${designSystem.colors.danger[500]}`,
+                  borderLeft: `3px solid ${designSystem.colors.danger[500]}`,
                   display: 'flex',
                   flexDirection: 'column',
                   maxHeight: isMobile ? 'none' : '650px',
@@ -1718,14 +1719,9 @@ export function CoachAssignment() {
                       return (
                         <div key={booking.id} style={{
                           padding: isMobile ? '12px 14px' : '14px 18px',
-                          background: isEditing
-                            ? designSystem.colors.background.hover
-                            : designSystem.colors.background.card,
+                          background: designSystem.colors.background.card,
                           borderBottom: bookingIndex < needsDriverBookings.length - 1
                             ? `1px solid ${designSystem.colors.border.light}`
-                            : undefined,
-                          boxShadow: isEditing
-                            ? `inset 3px 0 0 ${designSystem.colors.primary[500]}`
                             : undefined,
                           fontSize: isMobile ? '13px' : '14px',
                           cursor: 'pointer'
@@ -1763,21 +1759,11 @@ export function CoachAssignment() {
                               </span>
                             )}
                           </div>
-                          {assignment.notes && !isEditing && (
-                            <div style={{ 
-                              marginTop: '6px',
-                              color: designSystem.colors.text.secondary,
-                              fontSize: '12px'
-                            }}>
-                              {assignment.notes}
-                            </div>
-                          )}
-                          
                           {/* 顯示已指定的教練 */}
                           {assignment.coachIds.length > 0 && !isEditing && (
                             <div style={{ 
                               marginTop: '6px',
-                              color: '#555',
+                              color: designSystem.colors.text.secondary,
                               fontSize: '12px',
                                     fontWeight: '500'
                             }}>
@@ -1891,34 +1877,6 @@ export function CoachAssignment() {
                                     {currentAssignment.skipped ? '偷懶中 ✋' : '偷懶 😏'}
                                   </button>
                               </div>
-                              </div>
-                              
-                              {/* 排班註解 */}
-                              <div style={{ marginBottom: '12px' }}>
-                                <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: designSystem.colors.text.secondary }}>
-                                  排班註解：
-                                </div>
-                                <textarea
-                                  value={currentAssignment.notes}
-                                  onChange={(e) => {
-                                    e.stopPropagation()
-                                    updateAssignment(booking.id, 'notes', e.target.value)
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  placeholder="輸入排班註解..."
-                                  style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    border: `1px solid ${designSystem.colors.border.main}`,
-                                    borderRadius: designSystem.borderRadius.md,
-                                    fontSize: '13px',
-                                    resize: 'vertical',
-                                    minHeight: '60px',
-                                    fontFamily: 'inherit',
-                                    color: designSystem.colors.text.primary,
-                                    background: designSystem.colors.background.card,
-                                  }}
-                                />
                               </div>
                               
                               {/* 衝突提示 */}

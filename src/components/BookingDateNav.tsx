@@ -106,7 +106,7 @@ export function BookingDateNav({
         flexWrap: isMobile ? undefined : 'wrap',
         backgroundColor: isMobile ? designSystem.colors.background.card : undefined,
         padding: isMobile ? designSystem.spacing.sm : undefined,
-        borderRadius: isMobile ? designSystem.borderRadius.xl : undefined,
+        borderRadius: isMobile ? designSystem.borderRadius.lg : undefined,
         boxShadow: isMobile ? designSystem.shadows.sm : undefined,
       }}
     >
