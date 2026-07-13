@@ -28,6 +28,8 @@ interface CreateBookingLogParams {
   filledBy?: string
   activityTypes?: string[]  // 活動類型
   notes?: string           // 備註
+  isCoachPractice?: boolean // 教練練習
+  requiresDriver?: boolean  // 需要駕駛
 }
 
 interface UpdateBookingLogParams {
@@ -49,6 +51,8 @@ interface DeleteBookingLogParams {
   coachNames?: string[]    // 教練
   driverNames?: string[]   // 駕駛
   activityTypes?: string[] // 活動類型
+  isCoachPractice?: boolean // 教練練習
+  requiresDriver?: boolean  // 需要駕駛
 }
 
 /**
@@ -64,12 +68,14 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
     coachNames,
     filledBy,
     activityTypes,
-    notes
+    notes,
+    isCoachPractice,
+    requiresDriver,
   } = params
 
   const formattedTime = formatBookingTime(startTime)
 
-  // 格式：2025/11/20 14:45 60分 G23 小楊 | 小胖教練、Ivan教練 [活動: SUP] [備註: xxx] (填表人: xxx)
+  // 格式：2025/11/20 14:45 60分 G23 小楊 | 小胖教練、Ivan教練 [活動: SUP] [教練練習] [需要駕駛] [備註: xxx] (填表人: xxx)
   // 使用 | 分隔會員和教練，避免解析混亂
   let details = `${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
   
@@ -80,6 +86,14 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
   // 加上活動類型
   if (activityTypes && activityTypes.length > 0) {
     details += ` [${activityTypes.join('+')}]`
+  }
+
+  if (isCoachPractice) {
+    details += ' [教練練習]'
+  }
+
+  if (requiresDriver) {
+    details += ' [需要駕駛]'
   }
   
   // 加上備註
@@ -148,11 +162,24 @@ export async function logBookingUpdate(params: UpdateBookingLogParams) {
  * 記錄刪除預約
  */
 export async function logBookingDeletion(params: DeleteBookingLogParams) {
-  const { userEmail, studentName, boatName, startTime, durationMin, filledBy, notes, coachNames, driverNames, activityTypes } = params
+  const {
+    userEmail,
+    studentName,
+    boatName,
+    startTime,
+    durationMin,
+    filledBy,
+    notes,
+    coachNames,
+    driverNames,
+    activityTypes,
+    isCoachPractice,
+    requiresDriver,
+  } = params
 
   const formattedTime = formatBookingTime(startTime)
   
-  // 格式：2025/11/20 14:45 60分 G23 小楊 | 教練 | 駕駛 [活動: SUP] [備註: xxx] (填表人: xxx)
+  // 格式：2025/11/20 14:45 60分 G23 小楊 | 教練 | 駕駛 [活動: SUP] [教練練習] [需要駕駛] [備註: xxx] (填表人: xxx)
   let details = `刪除預約：${formattedTime} ${durationMin}分 ${boatName} ${studentName}`
   
   // 加上教練資訊
@@ -174,6 +201,14 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
   // 加上活動類型
   if (activityTypes && activityTypes.length > 0) {
     details += ` [${activityTypes.join('+')}]`
+  }
+
+  if (isCoachPractice) {
+    details += ' [教練練習]'
+  }
+
+  if (requiresDriver) {
+    details += ' [需要駕駛]'
   }
   
   // 如果有原始備註，加入記錄中

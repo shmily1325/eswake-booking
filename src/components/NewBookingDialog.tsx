@@ -331,7 +331,9 @@ export function NewBookingDialog({
           coachNames,
           filledBy,
           activityTypes: activityTypes.length > 0 ? activityTypes : undefined,  // 活動類型
-          notes: notes || undefined  // 備註
+          notes: notes || undefined,  // 備註
+          isCoachPractice,
+          requiresDriver,
         })
 
       // Success（先關閉，再以 toast 提示休假，避免 alert 阻塞手機體驗）

@@ -42,6 +42,8 @@ interface ParsedDetails {
   totalCount?: number     // 批次操作的真實總筆數（從 "8 筆" 中提取）
   notes?: string          // 預約的原始備註
   activityTypes?: string  // 活動類型
+  isCoachPractice?: boolean // 教練練習
+  requiresDriver?: boolean  // 需要駕駛
   rawText: string
 }
 
@@ -163,10 +165,11 @@ function parseDetails(details: string): ParsedDetails {
         // 解析每筆預約：Ming (04/03 08:30), John (04/03 09:00) 或 04/03 10:00, 04/04 10:00
         info.bookingList = listStr.split(/,\s*/).map(s => s.trim()).filter(Boolean)
         
-        // 提取所有日期用於搜尋
+        // 提取所有日期用於搜尋（取第一個作為代表日期）
         const dateMatches = listStr.match(/\d{1,2}\/\d{1,2}/g)
         if (dateMatches && dateMatches.length > 0) {
-          info.bookingDate = dateMatches[0] // 使用第一個日期作為代表
+          const [m, d] = dateMatches[0].split('/')
+          info.bookingDate = `${m.padStart(2, '0')}/${d.padStart(2, '0')}`
         }
       }
     }
@@ -183,11 +186,17 @@ function parseDetails(details: string): ParsedDetails {
     // 如果是完整日期格式 (YYYY/MM/DD)，提取後面的 MM/DD
     if (/^\d{4}\//.test(timeMatch[1])) {
       const dateOnlyMatch = timeMatch[1].match(/\/(\d{1,2}\/\d{1,2})/)
-      if (dateOnlyMatch) info.bookingDate = dateOnlyMatch[1]
+      if (dateOnlyMatch) {
+        const [m, d] = dateOnlyMatch[1].split('/')
+        info.bookingDate = `${m.padStart(2, '0')}/${d.padStart(2, '0')}`
+      }
     } else {
       // 短日期格式 (MM/DD)，直接提取
       const dateOnlyMatch = timeMatch[1].match(/(\d{1,2}\/\d{1,2})/)
-      if (dateOnlyMatch) info.bookingDate = dateOnlyMatch[1]
+      if (dateOnlyMatch) {
+        const [m, d] = dateOnlyMatch[1].split('/')
+        info.bookingDate = `${m.padStart(2, '0')}/${d.padStart(2, '0')}`
+      }
     }
   }
   
@@ -207,6 +216,10 @@ function parseDetails(details: string): ParsedDetails {
         info.activityTypes = content.replace(/^活動[:：]\s*/, '').trim()
       } else if (content.startsWith('備註:') || content.startsWith('備註：')) {
         info.notes = content.replace(/^備註[:：]\s*/, '').trim()
+      } else if (content === '教練練習') {
+        info.isCoachPractice = true
+      } else if (content === '需要駕駛') {
+        info.requiresDriver = true
       } else {
         // 新格式：按順序判斷
         // 活動類型通常包含 + 號（如 WB+WS）或是 WB/WS
@@ -292,8 +305,8 @@ function parseDetails(details: string): ParsedDetails {
       if (changesText.includes('時間:') || changesText.includes('時間：')) {
         changeItems.push('時間')
       }
-      // 船隻變更
-      const boatChange = changesText.match(/船隻[:：]\s*([^→]+)\s*→\s*([^，、]+)/)
+      // 船隻變更（相容「船:」與「船隻:」）
+      const boatChange = changesText.match(/船隻?[:：]\s*([^→]+)\s*→\s*([^，、]+)/)
       if (boatChange) {
         info.boat = boatChange[2].trim()
         changeItems.push(`船 ${boatChange[1].trim()}→${boatChange[2].trim()}`)
@@ -306,11 +319,11 @@ function parseDetails(details: string): ParsedDetails {
       if (changesText.includes('駕駛:') || changesText.includes('駕駛：')) {
         changeItems.push('駕駛')
       }
-      // 聯絡人變更
-      const contactChange = changesText.match(/聯絡[:：]\s*([^→]+)\s*→\s*([^，、]+)/)
+      // 預約人／聯絡人變更
+      const contactChange = changesText.match(/(?:預約人|聯絡)[:：]\s*([^→]+)\s*→\s*([^，、]+)/)
       if (contactChange) {
         info.member = contactChange[2].trim()
-        changeItems.push('聯絡人')
+        changeItems.push('預約人')
       }
       // 備註變更
       if (changesText.includes('備註:') || changesText.includes('備註：')) {
@@ -321,8 +334,16 @@ function parseDetails(details: string): ParsedDetails {
         changeItems.push('時長')
       }
       // 活動變更
-      if (changesText.includes('活動:') || changesText.includes('活動：')) {
+      if (changesText.includes('活動:') || changesText.includes('活動：') || changesText.includes('活動類型')) {
         changeItems.push('活動')
+      }
+      // 教練練習變更
+      if (changesText.includes('教練練習')) {
+        changeItems.push('教練練習')
+      }
+      // 填表人變更
+      if (changesText.includes('填表人:') || changesText.includes('填表人：')) {
+        changeItems.push('填表人')
       }
       
       if (changeItems.length > 0) {
@@ -448,20 +469,20 @@ function formatDateHeader(dateStr: string): string {
 const OPERATION_CONFIG = {
   create: { 
     label: '新增', 
-    color: designSystem.colors.success[700], 
-    bgColor: designSystem.colors.success[50],
+    color: '#ffffff', 
+    bgColor: designSystem.colors.success[500],
     dotColor: designSystem.colors.success[500]
   },
   update: { 
     label: '修改', 
-    color: designSystem.colors.info[700], 
-    bgColor: designSystem.colors.info[50],
+    color: '#ffffff', 
+    bgColor: designSystem.colors.info[500],
     dotColor: designSystem.colors.info[500]
   },
   delete: { 
     label: '刪除', 
-    color: designSystem.colors.danger[700], 
-    bgColor: designSystem.colors.danger[50],
+    color: '#ffffff', 
+    bgColor: designSystem.colors.danger[500],
     dotColor: designSystem.colors.danger[500]
   },
 } as const
@@ -613,17 +634,21 @@ export function AuditLog() {
         if (!log.details) return false
         
         const parsed = parseDetails(log.details)
+        const padMd = (raw: string) => {
+          const [m, d] = raw.split('/')
+          return `${m.padStart(2, '0')}/${d.padStart(2, '0')}`
+        }
+        const textHasDate = (text: string) =>
+          (text.match(/\d{1,2}\/\d{1,2}/g) || []).some(d => padMd(d) === normalizedDate)
         
         // 檢查主要日期
-        if (parsed.bookingDate && parsed.bookingDate.includes(normalizedDate)) return true
+        if (parsed.bookingDate && padMd(parsed.bookingDate) === normalizedDate) return true
         
-        // 檢查批次操作中的預約列表
-        if (parsed.bookingList) {
-          return parsed.bookingList.some(item => item.includes(normalizedDate))
-        }
+        // 檢查批次／重複預約中的完整列表
+        if (parsed.bookingList?.some(item => textHasDate(item))) return true
         
-        // 直接在原始內容搜尋（也包含原始輸入格式）
-        return log.details.includes(normalizedDate) || log.details.includes(input)
+        // 直接在原始內容搜尋（相容未補零日期與原始輸入）
+        return textHasDate(log.details) || log.details.includes(normalizedDate) || log.details.includes(input)
       })
     }
     
@@ -766,8 +791,8 @@ export function AuditLog() {
     if (tableName === 'coach_assignment') return '排班'
     if (details?.startsWith('批次修改')) return '批次修改'
     if (details?.startsWith('批次刪除')) return '批次刪除'
-    if (details?.startsWith('重複預約')) return '重複預約'
-    return getOperationConfig(action).label + '預約'
+    if (details?.startsWith('重複預約')) return '重複'
+    return getOperationConfig(action).label
   }
 
   const toggleExpand = (id: number) => {
@@ -1137,17 +1162,22 @@ export function AuditLog() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '8px 4px',
+                  padding: '6px 12px',
+                  background: designSystem.colors.secondary[100],
+                  borderRadius: designSystem.borderRadius.full,
+                  border: `1px solid ${designSystem.colors.border.main}`,
                 }}>
                   <span style={{ 
                     color: designSystem.colors.text.primary, 
-                    fontWeight: '600',
+                    fontWeight: '700',
                     fontSize: '14px',
                   }}>
                     {formatDateHeader(date)}
                   </span>
                   <span style={{
                     ...getBadgeStyle('default', 'small'),
+                    background: designSystem.colors.secondary[500],
+                    color: '#ffffff',
                   }}>
                     {logsInDate.length}
                   </span>
@@ -1190,6 +1220,8 @@ export function AuditLog() {
                         if (parsed.boat) parts.push(parsed.boat)
                         if (parsed.member) parts.push(parsed.member)
                         if (parsed.coach) parts.push(parsed.coach + '教練')
+                        if (parsed.isCoachPractice) parts.push('教練練習')
+                        if (parsed.requiresDriver) parts.push('需要駕駛')
                       } else {
                         // 批次修改/刪除
                         if (parsed.member) parts.push(parsed.member)  // 筆數
@@ -1230,6 +1262,8 @@ export function AuditLog() {
                     if (parsed.boat) parts.push(parsed.boat)
                     if (parsed.member) parts.push(parsed.member)
                     if (parsed.coach) parts.push(parsed.coach + '教練')
+                    if (parsed.isCoachPractice) parts.push('教練練習')
+                    if (parsed.requiresDriver) parts.push('需要駕駛')
                     // 如果是刪除操作且有備註，在摘要中顯示備註預覽
                     if (log.action === 'delete' && parsed.notes) {
                       const notePreview = parsed.notes.length > 15 ? parsed.notes.substring(0, 15) + '...' : parsed.notes
@@ -1262,6 +1296,11 @@ export function AuditLog() {
                           cursor: 'pointer',
                           transition: 'box-shadow 0.2s',
                           border: `1px solid ${designSystem.colors.border.light}`,
+                          borderLeft: `3px solid ${
+                            log.table_name === 'coach_assignment'
+                              ? designSystem.colors.secondary[700]
+                              : config.dotColor
+                          }`,
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.boxShadow = designSystem.shadows.sm
@@ -1292,9 +1331,11 @@ export function AuditLog() {
                             padding: '3px 8px',
                             fontSize: '12px',
                             fontWeight: '600',
-                            borderRadius: '4px',
-                            background: config.bgColor,
-                            color: config.color,
+                            borderRadius: designSystem.borderRadius.sm,
+                            background: log.table_name === 'coach_assignment'
+                              ? designSystem.colors.secondary[700]
+                              : config.bgColor,
+                            color: '#ffffff',
                             whiteSpace: 'nowrap',
                           }}>
                             {getOperationText(log.action, log.table_name || '', log.details || '')}
@@ -1350,7 +1391,7 @@ export function AuditLog() {
                             borderTop: `1px solid ${designSystem.colors.border.light}`,
                           }}>
                             {/* 標籤區 */}
-                            {(parsed.member || parsed.boat || parsed.coach || parsed.driver || parsed.time || parsed.duration || parsed.activityTypes || parsed.notes) && (
+                            {(parsed.member || parsed.boat || parsed.coach || parsed.driver || parsed.time || parsed.duration || parsed.activityTypes || parsed.notes || parsed.isCoachPractice || parsed.requiresDriver) && (
                               <div style={{ 
                                 display: 'flex', 
                                 gap: '6px', 
@@ -1362,7 +1403,7 @@ export function AuditLog() {
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.boat!) }}
                                     style={{
-                                      ...getBadgeStyle('default'),
+                                      ...getBadgeStyle('info'),
                                       border: 'none',
                                       cursor: 'pointer',
                                     }}
@@ -1374,7 +1415,7 @@ export function AuditLog() {
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.member!) }}
                                     style={{
-                                      ...getBadgeStyle('default'),
+                                      ...getBadgeStyle('info'),
                                       border: 'none',
                                       cursor: 'pointer',
                                     }}
@@ -1386,7 +1427,7 @@ export function AuditLog() {
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.coach!) }}
                                     style={{
-                                      ...getBadgeStyle('default'),
+                                      ...getBadgeStyle('warning'),
                                       border: 'none',
                                       cursor: 'pointer',
                                     }}
@@ -1398,7 +1439,7 @@ export function AuditLog() {
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.driver!) }}
                                     style={{
-                                      ...getBadgeStyle('default'),
+                                      ...getBadgeStyle('info'),
                                       border: 'none',
                                       cursor: 'pointer',
                                     }}
@@ -1413,7 +1454,7 @@ export function AuditLog() {
                                       if (parsed.bookingDate) setBookingDateFilter(parsed.bookingDate)
                                     }}
                                     style={{
-                                      ...getBadgeStyle('default'),
+                                      ...getBadgeStyle('success'),
                                       border: 'none',
                                       cursor: parsed.bookingDate ? 'pointer' : 'default',
                                     }}
@@ -1429,16 +1470,30 @@ export function AuditLog() {
                                     {parsed.duration}
                                   </span>
                                 )}
+                                {parsed.isCoachPractice && (
+                                  <span style={{
+                                    ...getBadgeStyle('warning'),
+                                  }}>
+                                    教練練習
+                                  </span>
+                                )}
+                                {parsed.requiresDriver && (
+                                  <span style={{
+                                    ...getBadgeStyle('info'),
+                                  }}>
+                                    需要駕駛
+                                  </span>
+                                )}
                                 {parsed.activityTypes && (
                                   <span style={{
-                                    ...getBadgeStyle('default'),
+                                    ...getBadgeStyle('info'),
                                   }}>
                                     {parsed.activityTypes}
                                   </span>
                                 )}
                                 {parsed.notes && (
                                   <span style={{
-                                    ...getBadgeStyle('default'),
+                                    ...getBadgeStyle('warning'),
                                     maxWidth: '300px',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',

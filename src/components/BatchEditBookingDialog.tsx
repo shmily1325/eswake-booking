@@ -552,9 +552,8 @@ export function BatchEditBookingDialog({
       if (successCount > 0) {
         if (user?.email) {
           // 格式：批次修改 3 筆：時長→90分鐘 [Ming (04/03 08:30 · G23 · 60分), John (04/03 09:00 · G21 · 90分)] (填表人: xxx)
-          const bookingList = successfulLabels.length <= 5 
-            ? successfulLabels.join(', ')
-            : `${successfulLabels.slice(0, 5).join(', ')} 等${successfulLabels.length}筆`
+          // 寫入全部成功預約標籤，方便之後用預約日期搜尋
+          const bookingList = successfulLabels.join(', ')
           let details = `批次修改 ${successCount} 筆：${changes.join('、')} [${bookingList}]`
           
           // 如果有修改備註字段，或者預約有特殊資訊，補充說明

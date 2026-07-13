@@ -664,6 +664,13 @@ export function EditBookingDialog({
         changes.push(`備註: ${oldDisplay} → ${newDisplay}`)
       }
 
+      // 檢查填表人變更
+      const oldFilledBy = (booking.filled_by || '').trim()
+      const newFilledBy = normalizeFilledByForSave(filledBy).trim()
+      if (oldFilledBy !== newFilledBy) {
+        changes.push(`填表人: ${oldFilledBy || '無'} → ${newFilledBy || '無'}`)
+      }
+
       // 只在有變更時才記錄
       if (changes.length > 0) {
         await logBookingUpdate({
@@ -854,7 +861,9 @@ export function EditBookingDialog({
         notes: completeBooking?.notes || undefined,  // 保留預約的原始備註
         coachNames: coachesData.data?.map((c: any) => c.coaches?.name).filter(Boolean) || undefined,  // 教練
         driverNames: driversData.data?.map((d: any) => d.coaches?.name).filter(Boolean) || undefined,  // 駕駛
-        activityTypes: completeBooking?.activity_types || undefined  // 活動類型
+        activityTypes: completeBooking?.activity_types || undefined,  // 活動類型
+        isCoachPractice: completeBooking?.is_coach_practice === true,
+        requiresDriver: completeBooking?.requires_driver === true,
       })
 
       // Success
@@ -954,6 +963,7 @@ export function EditBookingDialog({
         activity_types: activityTypes.length > 0 ? activityTypes : null,
         notes: notes || null,
         requires_driver: requiresDriver,
+        is_coach_practice: isCoachPractice,
         filled_by: normalizeFilledByForSave(copyFilledBy),
         status: 'confirmed',
         created_by: user.id,
@@ -1008,7 +1018,9 @@ export function EditBookingDialog({
           : [],
         filledBy: copyFilledBy,
         activityTypes: activityTypes.length > 0 ? activityTypes : undefined,  // 活動類型
-        notes: notes || undefined  // 備註
+        notes: notes || undefined,  // 備註
+        isCoachPractice,
+        requiresDriver,
       })
 
       // Success（先關流程再以 toast 提示休假）

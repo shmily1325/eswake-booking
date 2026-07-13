@@ -634,7 +634,7 @@ export function DayView() {
             <div style={{
               display: 'flex',
               gap: '8px',
-              flexWrap: 'wrap',
+              width: '100%',
               marginBottom: designSystem.spacing.md,
             }}>
                 <button
@@ -647,7 +647,11 @@ export function DayView() {
                     setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
                     setDialogOpen(true)
                   }}
-                  style={getButtonStyle('primary', 'medium', false)}
+                  style={{
+                    ...getButtonStyle('primary', 'medium', isMobile),
+                    flex: 1,
+                    minWidth: 0,
+                  }}
                 >
                   新增預約
                 </button>
@@ -662,12 +666,16 @@ export function DayView() {
                       setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
                       setRepeatDialogOpen(true)
                     }}
-                    style={getButtonStyle('secondary', 'medium', false)}
+                    style={{
+                      ...getButtonStyle('secondary', 'medium', isMobile),
+                      flex: 1,
+                      minWidth: 0,
+                    }}
                   >
                     重複預約
                   </button>
                 )}
-            </div>
+              </div>
 
             <div style={{
               opacity: dateChanging ? 0.45 : 1,

@@ -629,7 +629,7 @@ export function TomorrowReminder() {
             <span>
               {templateSaveStatus === 'loading' && '正在載入共用文字模板…'}
               {templateSaveStatus === 'saving' && '正在儲存共用文字模板…'}
-              {templateSaveStatus === 'saved' && '修改會自動儲存，所有管理員將共用此文字模板'}
+              {templateSaveStatus === 'saved' && '修改會自動儲存'}
               {templateSaveStatus === 'error' && '文字模板未能儲存，請重新整理後再試'}
             </span>
           </div>

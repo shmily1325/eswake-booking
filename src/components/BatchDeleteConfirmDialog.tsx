@@ -64,6 +64,8 @@ export function BatchDeleteConfirmDialog({
           duration_min,
           notes,
           activity_types,
+          is_coach_practice,
+          requires_driver,
           boats:boat_id(name),
           members!inner(name, nickname)
         `)
@@ -150,9 +152,8 @@ export function BatchDeleteConfirmDialog({
       if (successCount > 0) {
         if (user?.email) {
           // 格式：批次刪除 3 筆 [Ming (04/03 08:30 · G23 · 60分), John (04/03 09:00 · G21 · 90分)] (填表人: xxx)
-          const bookingList = successfulLabels.length <= 5 
-            ? successfulLabels.join(', ')
-            : `${successfulLabels.slice(0, 5).join(', ')} 等${successfulLabels.length}筆`
+          // 寫入全部成功預約標籤，方便之後用預約日期搜尋
+          const bookingList = successfulLabels.join(', ')
           let details = `批次刪除 ${successCount} 筆 [${bookingList}]`
           
           // 如果有任何預約有教練、駕駛、活動或備註，在後面補充說明
@@ -160,7 +161,9 @@ export function BatchDeleteConfirmDialog({
             coachesMap.get(b.id)?.length || 
             driversMap.get(b.id)?.length || 
             b.activity_types?.length || 
-            b.notes
+            b.notes ||
+            b.is_coach_practice ||
+            b.requires_driver
           )
           
           if (hasAdditionalInfo) {
@@ -169,11 +172,15 @@ export function BatchDeleteConfirmDialog({
             const totalDrivers = new Set<string>()
             const totalActivities = new Set<string>()
             const allNotes: string[] = []
+            let practiceCount = 0
+            let requiresDriverCount = 0
             
             bookingsData?.forEach((b: any) => {
               coachesMap.get(b.id)?.forEach(c => totalCoaches.add(c))
               driversMap.get(b.id)?.forEach(d => totalDrivers.add(d))
               b.activity_types?.forEach((a: string) => totalActivities.add(a))
+              if (b.is_coach_practice) practiceCount += 1
+              if (b.requires_driver) requiresDriverCount += 1
               if (b.notes && b.notes.trim()) {
                 // 記錄每筆預約的備註（帶上預約標識）
                 const member = b.members as any
@@ -186,6 +193,8 @@ export function BatchDeleteConfirmDialog({
             if (totalCoaches.size > 0) infoItems.push(`教練:${Array.from(totalCoaches).join('、')}`)
             if (totalDrivers.size > 0) infoItems.push(`駕駛:${Array.from(totalDrivers).join('、')}`)
             if (totalActivities.size > 0) infoItems.push(`活動:${Array.from(totalActivities).join('+')}`)
+            if (practiceCount > 0) infoItems.push(`教練練習:${practiceCount}筆`)
+            if (requiresDriverCount > 0) infoItems.push(`需要駕駛:${requiresDriverCount}筆`)
             if (allNotes.length > 0) {
               // 如果備註太多，只顯示前3筆
               const notesDisplay = allNotes.length <= 3 

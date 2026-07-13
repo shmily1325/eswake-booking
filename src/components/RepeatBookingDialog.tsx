@@ -368,17 +368,22 @@ export function RepeatBookingDialog({
         if (activityTypes.length > 0) {
           details += ` [${activityTypes.join('+')}]`
         }
+
+        if (isCoachPractice) {
+          details += ' [教練練習]'
+        }
+
+        if (requiresDriver) {
+          details += ' [需要駕駛]'
+        }
         
         // 加上備註
         if (notes && notes.trim()) {
           details += ` [${notes.trim()}]`
         }
         
-        // 加上時間列表
-        const timeList = successTimes.length <= 5 
-          ? successTimes.join(', ')
-          : `${successTimes.slice(0, 5).join(', ')} 等${successTimes.length}筆`
-        details += ` [${timeList}]`
+        // 寫入全部成功時段，方便之後用預約日期搜尋（不再截斷成前 5 筆）
+        details += ` [${successTimes.join(', ')}]`
         
         // 加上填表人
         details += ` (填表人: ${filledBy})`
