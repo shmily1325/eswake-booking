@@ -128,7 +128,7 @@ export function BoatUnavailableDaySummary({
   const sectionTitleStyle = {
     fontWeight: 700 as const,
     fontSize: isMobile ? '13px' : '14px',
-    color: designSystem.colors.warning[700],
+    color: designSystem.colors.danger[700],
     marginBottom: '8px',
   }
 
@@ -138,8 +138,9 @@ export function BoatUnavailableDaySummary({
         marginBottom: isMobile ? '12px' : '16px',
         padding: isMobile ? '12px 14px' : '14px 18px',
         borderRadius: designSystem.borderRadius.lg,
-        background: designSystem.colors.warning[50],
-        border: `1px solid ${designSystem.colors.warning[500]}33`,
+        background: designSystem.colors.danger[50],
+        border: `1px solid ${designSystem.colors.danger[500]}33`,
+        borderLeft: `4px solid ${designSystem.colors.danger[500]}`,
         boxShadow: designSystem.shadows.xs,
       }}
     >
@@ -166,7 +167,7 @@ export function BoatUnavailableDaySummary({
           </div>
           <div style={bodyStyle}>
             {lines.map((line) => (
-              <MarkerLine key={line.key} color={designSystem.colors.warning[500]}>
+              <MarkerLine key={line.key} color={designSystem.colors.danger[500]}>
                 <strong>{line.boatName}</strong>：{line.range}
                 {line.reason ? `（${line.reason}）` : ''}
               </MarkerLine>
@@ -187,7 +188,7 @@ export function BoatUnavailableDaySummary({
           </div>
           <div style={bodyStyle}>
             {restrictionLines.map((row) => (
-              <MarkerLine key={row.key} color={designSystem.colors.warning[500]}>
+              <MarkerLine key={row.key} color={designSystem.colors.danger[500]}>
                 {row.range}：{row.detail}
               </MarkerLine>
             ))}

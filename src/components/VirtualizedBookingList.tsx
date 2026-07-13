@@ -96,14 +96,15 @@ export function VirtualizedBookingList({
                         <div style={{
                             minWidth: isMobile ? '80px' : '120px',
                             maxWidth: isMobile ? '80px' : '120px',
-                            background: designSystem.colors.background.hover,
-                            color: designSystem.colors.text.primary,
+                            background: designSystem.colors.secondary[800],
+                            color: '#ffffff',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
                             padding: isMobile ? '12px 8px' : '16px 12px',
-                            borderRight: `1px solid ${designSystem.colors.border.light}`,
+                            borderRight: '1px solid rgba(255,255,255,0.1)',
+                            boxShadow: boatIndex > 0 ? 'inset 0 1px 0 rgba(255,255,255,0.1)' : undefined,
                             position: 'sticky',
                             left: 0,
                             zIndex: 2,
@@ -117,7 +118,7 @@ export function VirtualizedBookingList({
                                     height: isMobile ? '8px' : '10px',
                                     borderRadius: '50%',
                                     background: boat.color || designSystem.colors.border.dark,
-                                    border: '1px solid rgba(0,0,0,0.12)',
+                                    border: '1px solid rgba(255,255,255,0.45)',
                                     marginBottom: '6px',
                                     flexShrink: 0,
                                 }}
@@ -155,7 +156,7 @@ export function VirtualizedBookingList({
                             )}
                             <div style={{
                                 fontSize: isMobile ? '11px' : '12px',
-                                color: designSystem.colors.text.secondary,
+                                color: 'rgba(255,255,255,0.65)',
                                 textAlign: 'center',
                             }}>
                                 {boatBookings.length} 筆

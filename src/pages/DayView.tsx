@@ -662,7 +662,7 @@ export function DayView() {
                       setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
                       setRepeatDialogOpen(true)
                     }}
-                    style={getButtonStyle('outline', 'medium', false)}
+                    style={getButtonStyle('secondary', 'medium', false)}
                   >
                     重複預約
                   </button>

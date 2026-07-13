@@ -1361,7 +1361,7 @@ export function CoachAssignment() {
           </div>
         )}
 
-        {!isMobile && !loading && bookings.length > 0 && (
+        {!loading && bookings.length > 0 && (
           <TodayOverview
             stats={assignmentOverviewStats}
             isMobile={isMobile}
