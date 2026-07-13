@@ -1,5 +1,6 @@
 import type { Boat } from '../../types/booking'
 import { isFacility } from '../../utils/facility'
+import { designSystem, getLabelStyle } from '../../styles/designSystem'
 
 interface BoatSelectorProps {
     boats: Pick<Boat, 'id' | 'name' | 'color'>[]
@@ -11,20 +12,14 @@ export function BoatSelector({ boats, selectedBoatId, onSelect }: BoatSelectorPr
     const safeBoats = boats || []
     
     return (
-        <div style={{ marginBottom: '18px' }}>
-            <label style={{
-                display: 'block',
-                marginBottom: '10px',
-                color: '#000',
-                fontSize: '15px',
-                fontWeight: '600',
-            }}>
+        <div style={{ marginBottom: designSystem.spacing.lg }}>
+            <label style={{ ...getLabelStyle(true), fontWeight: '600' }}>
                 船隻
             </label>
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '10px',
+                gap: designSystem.spacing.sm,
             }}>
                 {safeBoats.map((boat, index) => {
                     const isSelected = selectedBoatId === boat.id
@@ -36,21 +31,18 @@ export function BoatSelector({ boats, selectedBoatId, onSelect }: BoatSelectorPr
                             onClick={() => onSelect(boat.id)}
                             style={{
                                 padding: '14px 8px',
-                                border: isSelected ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                                borderRadius: '8px',
-                                background: isSelected ? '#dbeafe' : 'white',
-                                color: '#333',
+                                border: isSelected
+                                    ? `1.5px solid ${designSystem.colors.primary[500]}`
+                                    : `1px solid ${designSystem.colors.border.light}`,
+                                borderRadius: designSystem.borderRadius.lg,
+                                background: isSelected ? designSystem.colors.primary[50] : '#ffffff',
+                                color: designSystem.colors.text.primary,
                                 fontSize: '15px',
                                 fontWeight: isSelected ? '600' : '500',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s',
+                                minHeight: '48px',
+                                touchAction: 'manipulation',
                                 gridColumn: isFirstFacility ? '1 / span 1' : undefined,
-                            }}
-                            onTouchStart={(e) => {
-                                e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'
-                            }}
-                            onTouchEnd={(e) => {
-                                e.currentTarget.style.background = isSelected ? '#dbeafe' : 'white'
                             }}
                         >
                             {boat.name}

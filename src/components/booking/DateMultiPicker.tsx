@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { designSystem } from '../../styles/designSystem'
 
 interface DateMultiPickerProps {
   selectedDates: string[]  // 格式: 'YYYY-MM-DD'
@@ -109,13 +110,13 @@ export function DateMultiPicker({
     (currentMonth.year === today.getFullYear() && currentMonth.month > today.getMonth())
 
   return (
-    <div style={{ marginTop: '8px' }}>
+    <div style={{ marginTop: designSystem.spacing.sm }}>
       {/* 月份切換 - 加大按鈕 */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '12px',
+        marginBottom: designSystem.spacing.md,
         padding: '0 2px',
       }}>
         <button
@@ -125,10 +126,10 @@ export function DateMultiPicker({
           style={{
             width: '44px',
             height: '44px',
-            borderRadius: '8px',
-            border: '1px solid #ccc',
-            background: canGoPrev ? '#fff' : '#f5f5f5',
-            color: canGoPrev ? '#333' : '#ccc',
+            borderRadius: designSystem.borderRadius.md,
+            border: `1px solid ${designSystem.colors.border.main}`,
+            background: canGoPrev ? '#ffffff' : designSystem.colors.background.main,
+            color: canGoPrev ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
             fontSize: '20px',
             fontWeight: 'bold',
             cursor: canGoPrev ? 'pointer' : 'not-allowed',
@@ -141,9 +142,9 @@ export function DateMultiPicker({
           ‹
         </button>
         <span style={{
-          fontSize: '16px',
+          fontSize: designSystem.fontSize.bodyLarge.mobile,
           fontWeight: '600',
-          color: '#333',
+          color: designSystem.colors.text.primary,
         }}>
           {monthTitle}
         </span>
@@ -153,10 +154,10 @@ export function DateMultiPicker({
           style={{
             width: '44px',
             height: '44px',
-            borderRadius: '8px',
-            border: '1px solid #ccc',
-            background: '#fff',
-            color: '#333',
+            borderRadius: designSystem.borderRadius.md,
+            border: `1px solid ${designSystem.colors.border.main}`,
+            background: '#ffffff',
+            color: designSystem.colors.text.primary,
             fontSize: '20px',
             fontWeight: 'bold',
             cursor: 'pointer',
@@ -182,9 +183,13 @@ export function DateMultiPicker({
             key={label}
             style={{
               textAlign: 'center',
-              fontSize: '13px',
+              fontSize: designSystem.fontSize.bodySmall.mobile,
               fontWeight: '600',
-              color: i === 0 ? '#dc3545' : i === 6 ? '#007bff' : '#666',
+              color: i === 0
+                ? designSystem.colors.danger[700]
+                : i === 6
+                  ? designSystem.colors.info[700]
+                  : designSystem.colors.text.secondary,
               padding: '4px 0',
             }}
           >
@@ -211,24 +216,26 @@ export function DateMultiPicker({
               disabled={dayInfo.isDisabled}
               style={{
                 height: '42px',
-                borderRadius: '6px',
-                border: isSelected ? '2px solid #007bff' : '1px solid #e0e0e0',
+                borderRadius: designSystem.borderRadius.sm,
+                border: isSelected
+                  ? `1.5px solid ${designSystem.colors.primary[500]}`
+                  : `1px solid ${designSystem.colors.border.light}`,
                 background: isSelected
-                  ? '#007bff'
+                  ? designSystem.colors.primary[500]
                   : dayInfo.isDisabled
-                    ? '#f8f8f8'
-                    : '#fff',
+                    ? designSystem.colors.background.main
+                    : '#ffffff',
                 color: isSelected
                   ? 'white'
                   : dayInfo.isDisabled
-                    ? '#ccc'
+                    ? designSystem.colors.text.disabled
                     : !dayInfo.isCurrentMonth
-                      ? '#ccc'
+                      ? designSystem.colors.text.disabled
                       : weekday === 0
-                        ? '#dc3545'
+                        ? designSystem.colors.danger[700]
                         : weekday === 6
-                          ? '#007bff'
-                          : '#333',
+                          ? designSystem.colors.info[700]
+                          : designSystem.colors.text.primary,
                 fontSize: '15px',
                 fontWeight: isSelected ? '700' : '500',
                 cursor: dayInfo.isDisabled ? 'not-allowed' : 'pointer',
@@ -237,7 +244,6 @@ export function DateMultiPicker({
                 justifyContent: 'center',
                 padding: 0,
                 touchAction: 'manipulation',
-                transition: 'transform 0.1s',
               }}
             >
               {dayInfo.day}
@@ -249,17 +255,17 @@ export function DateMultiPicker({
       {/* 已選日期列表 - 加大標籤 */}
       {selectedDates.length > 0 && (
         <div style={{
-          marginTop: '12px',
-          padding: '10px 12px',
-          background: '#f8f9fa',
-          border: '1px solid #dee2e6',
-          borderRadius: '8px',
+          marginTop: designSystem.spacing.md,
+          padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+          background: designSystem.colors.background.main,
+          border: `1px solid ${designSystem.colors.border.light}`,
+          borderRadius: designSystem.borderRadius.lg,
         }}>
           <div style={{
             fontWeight: '600',
-            color: '#495057',
-            marginBottom: '8px',
-            fontSize: '13px',
+            color: designSystem.colors.text.secondary,
+            marginBottom: designSystem.spacing.sm,
+            fontSize: designSystem.fontSize.bodySmall.mobile,
           }}>
             已選 {selectedDates.length} 個日期（點擊可移除）
           </div>
@@ -279,10 +285,10 @@ export function DateMultiPicker({
                   onClick={() => toggleDate(dateStr)}
                   style={{
                     padding: '8px 12px',
-                    background: '#007bff',
+                    background: designSystem.colors.primary[500],
                     color: 'white',
-                    borderRadius: '16px',
-                    fontSize: '13px',
+                    borderRadius: designSystem.borderRadius.md,
+                    fontSize: designSystem.fontSize.bodySmall.mobile,
                     fontWeight: '500',
                     cursor: 'pointer',
                     display: 'inline-flex',

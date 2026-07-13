@@ -1,5 +1,6 @@
 import React from 'react'
 import type { Coach } from '../../types/booking'
+import { designSystem, getLabelStyle } from '../../styles/designSystem'
 
 interface CoachSelectorProps {
     coaches: (Pick<Coach, 'id' | 'name'> & { isOnTimeOff?: boolean })[]
@@ -31,44 +32,43 @@ export function CoachSelector({
     
     return (
         <>
-            <div style={{ marginBottom: '18px' }}>
-                <label style={{
-                    display: 'block',
-                    marginBottom: '10px',
-                    color: '#000',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                }}>
+            <div style={{ marginBottom: designSystem.spacing.lg }}>
+                <label style={{ ...getLabelStyle(true), fontWeight: '600' }}>
                     教練（可複選）
                 </label>
 
                 {/* 已選教練顯示 */}
                 {safeSelectedCoaches.length > 0 && (
                     <div style={{
-                        marginBottom: '12px',
-                        padding: '12px 14px',
-                        background: '#dbeafe',
-                        borderRadius: '8px',
-                        border: '2px solid #3b82f6',
+                        marginBottom: designSystem.spacing.md,
+                        padding: `${designSystem.spacing.md} ${designSystem.spacing.md}`,
+                        background: designSystem.colors.primary[50],
+                        borderRadius: designSystem.borderRadius.lg,
+                        border: `1px solid ${designSystem.colors.border.main}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: '8px',
+                        gap: designSystem.spacing.sm,
                     }}>
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '8px',
+                            gap: designSystem.spacing.sm,
                             flex: 1,
                             minWidth: 0,
                         }}>
-                            <span style={{ color: '#1e40af', fontSize: '15px', fontWeight: '600', flexShrink: 0 }}>
+                            <span style={{
+                                color: designSystem.colors.text.secondary,
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                flexShrink: 0,
+                            }}>
                                 已選：
                             </span>
                             <div style={{
                                 display: 'flex',
                                 flexWrap: 'wrap',
-                                gap: '8px',
+                                gap: designSystem.spacing.sm,
                                 flex: 1,
                             }}>
                                 {safeSelectedCoaches.map(coachId => {
@@ -78,10 +78,10 @@ export function CoachSelector({
                                             key={coachId}
                                             style={{
                                                 padding: '6px 12px',
-                                                background: 'white',
-                                                borderRadius: '6px',
-                                                border: '1px solid #3b82f6',
-                                                color: '#1e40af',
+                                                background: '#ffffff',
+                                                borderRadius: designSystem.borderRadius.md,
+                                                border: `1px solid ${designSystem.colors.border.main}`,
+                                                color: designSystem.colors.text.primary,
                                                 fontSize: '15px',
                                                 fontWeight: '600',
                                             }}
@@ -97,14 +97,16 @@ export function CoachSelector({
                             onClick={() => setSelectedCoaches([])}
                             style={{
                                 padding: '6px 12px',
-                                background: 'white',
-                                border: '1px solid #3b82f6',
-                                borderRadius: '6px',
-                                color: '#1e40af',
+                                background: '#ffffff',
+                                border: `1px solid ${designSystem.colors.border.main}`,
+                                borderRadius: designSystem.borderRadius.md,
+                                color: designSystem.colors.text.primary,
                                 fontSize: '13px',
                                 cursor: 'pointer',
                                 fontWeight: '600',
                                 flexShrink: 0,
+                                minHeight: '36px',
+                                touchAction: 'manipulation',
                             }}
                         >
                             清除
@@ -113,14 +115,18 @@ export function CoachSelector({
                 )}
 
                 {loadingCoaches ? (
-                    <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
+                    <div style={{
+                        padding: designSystem.spacing.md,
+                        color: designSystem.colors.text.secondary,
+                        fontSize: designSystem.fontSize.body.mobile,
+                    }}>
                         載入教練列表中...
                     </div>
                 ) : (
                     <div style={{
                         display: 'grid',
                         gridTemplateColumns: 'repeat(2, 1fr)',
-                        gap: '10px',
+                        gap: designSystem.spacing.sm,
                     }}>
                         {/* 不指定教練 */}
                         <button
@@ -128,20 +134,20 @@ export function CoachSelector({
                             onClick={() => setSelectedCoaches([])}
                             style={{
                                 padding: '14px 10px',
-                                border: safeSelectedCoaches.length === 0 ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                                borderRadius: '8px',
-                                background: safeSelectedCoaches.length === 0 ? '#dbeafe' : 'white',
-                                color: '#333',
+                                border: safeSelectedCoaches.length === 0
+                                    ? `1.5px solid ${designSystem.colors.primary[500]}`
+                                    : `1px solid ${designSystem.colors.border.light}`,
+                                borderRadius: designSystem.borderRadius.lg,
+                                background: safeSelectedCoaches.length === 0
+                                    ? designSystem.colors.primary[50]
+                                    : '#ffffff',
+                                color: designSystem.colors.text.primary,
                                 fontSize: '15px',
                                 fontWeight: safeSelectedCoaches.length === 0 ? '600' : '500',
                                 cursor: 'pointer',
+                                minHeight: '48px',
+                                touchAction: 'manipulation',
                                 gridColumn: '1 / -1',
-                            }}
-                            onTouchStart={(e) => {
-                                e.currentTarget.style.background = safeSelectedCoaches.length === 0 ? '#dbeafe' : '#fafafa'
-                            }}
-                            onTouchEnd={(e) => {
-                                e.currentTarget.style.background = safeSelectedCoaches.length === 0 ? '#dbeafe' : 'white'
                             }}
                         >
                             不指定教練
@@ -157,19 +163,19 @@ export function CoachSelector({
                                     onClick={() => toggleCoach(coach.id)}
                                     style={{
                                         padding: '14px 10px',
-                                        border: isSelected ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                                        borderRadius: '8px',
-                                        background: isSelected ? '#dbeafe' : 'white',
-                                        color: '#333',
+                                        border: isSelected
+                                            ? `1.5px solid ${designSystem.colors.primary[500]}`
+                                            : `1px solid ${designSystem.colors.border.light}`,
+                                        borderRadius: designSystem.borderRadius.lg,
+                                        background: isSelected
+                                            ? designSystem.colors.primary[50]
+                                            : '#ffffff',
+                                        color: designSystem.colors.text.primary,
                                         fontSize: '15px',
                                         fontWeight: isSelected ? '600' : '500',
                                         cursor: 'pointer',
-                                    }}
-                                    onTouchStart={(e) => {
-                                        e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'
-                                    }}
-                                    onTouchEnd={(e) => {
-                                        e.currentTarget.style.background = isSelected ? '#dbeafe' : 'white'
+                                        minHeight: '48px',
+                                        touchAction: 'manipulation',
                                     }}
                                 >
                                     {coach.name}
@@ -181,17 +187,18 @@ export function CoachSelector({
             </div>
 
             {/* 需要駕駛勾選框 */}
-            <div style={{ marginBottom: '18px' }}>
+            <div style={{
+                marginBottom: designSystem.spacing.lg,
+                padding: `${designSystem.spacing.md} 0`,
+                borderBottom: `1px solid ${designSystem.colors.border.light}`,
+            }}>
                 <label style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
+                    gap: designSystem.spacing.md,
                     cursor: canRequireDriver ? 'pointer' : 'not-allowed',
-                    padding: '12px',
-                    backgroundColor: requiresDriver ? '#dbeafe' : (canRequireDriver ? '#f8f9fa' : '#f5f5f5'),
-                    borderRadius: '8px',
-                    border: requiresDriver ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                    transition: 'all 0.2s',
                     opacity: canRequireDriver ? 1 : 0.6,
+                    userSelect: 'none',
                 }}>
                     <input
                         type="checkbox"
@@ -199,23 +206,40 @@ export function CoachSelector({
                         onChange={(e) => setRequiresDriver(e.target.checked)}
                         disabled={!canRequireDriver}
                         style={{
-                            marginRight: '10px',
-                            width: '18px',
-                            height: '18px',
+                            width: '20px',
+                            height: '20px',
+                            marginTop: '2px',
+                            flexShrink: 0,
                             cursor: canRequireDriver ? 'pointer' : 'not-allowed',
+                            accentColor: designSystem.colors.primary[500],
                         }}
                     />
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                         <span style={{
-                            fontSize: '15px',
-                            fontWeight: '500',
-                            color: requiresDriver ? '#3b82f6' : (canRequireDriver ? '#333' : '#999'),
+                            display: 'block',
+                            fontSize: designSystem.fontSize.bodyLarge.mobile,
+                            fontWeight: '600',
+                            color: canRequireDriver
+                                ? designSystem.colors.text.primary
+                                : designSystem.colors.text.disabled,
                         }}>
-                            需要駕駛（勾選後在排班時必須指定駕駛）
+                            需要駕駛
                         </span>
+                        <div style={{
+                            fontSize: designSystem.fontSize.bodySmall.mobile,
+                            color: designSystem.colors.text.secondary,
+                            marginTop: '4px',
+                            lineHeight: 1.5,
+                        }}>
+                            勾選後在排班時必須指定駕駛
+                        </div>
                         {!canRequireDriver && (
-                            <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '4px' }}>
-                                {isSelectedBoatFacility ? '⚠️ 設施不需要駕駛' : '⚠️ 未指定教練不能選駕駛'}
+                            <div style={{
+                                fontSize: designSystem.fontSize.bodySmall.mobile,
+                                color: designSystem.colors.warning[700],
+                                marginTop: '6px',
+                            }}>
+                                {isSelectedBoatFacility ? '設施不需要駕駛' : '未指定教練不能選駕駛'}
                             </div>
                         )}
                     </div>

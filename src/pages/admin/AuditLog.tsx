@@ -341,10 +341,6 @@ function parseDetails(details: string): ParsedDetails {
       if (changesText.includes('教練練習')) {
         changeItems.push('教練練習')
       }
-      // 填表人變更
-      if (changesText.includes('填表人:') || changesText.includes('填表人：')) {
-        changeItems.push('填表人')
-      }
       
       if (changeItems.length > 0) {
         info.changeSummary = changeItems.join('、')
@@ -507,7 +503,6 @@ export function AuditLog() {
   
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'add' | 'edit' | 'delete' | 'schedule'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   
@@ -529,7 +524,7 @@ export function AuditLog() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   
   // 是否有設定進階篩選
-  const hasAdvancedFilters = filter !== 'all' || selectedFilledBy !== 'all'
+  const hasAdvancedFilters = selectedFilledBy !== 'all'
 
   /** 與人員管理「權限管理」名稱欄同資料來源：view + editor + allowed(notes) */
   const [permissionDisplayByEmail, setPermissionDisplayByEmail] = useState<Record<string, string>>({})
@@ -564,7 +559,7 @@ export function AuditLog() {
     // 換條件時先清空，避免新資料載入前畫面殘留前條件的 logs
     setLogs([])
     fetchLogs()
-  }, [filter, startDate, endDate])
+  }, [startDate, endDate])
 
   // 計算所有填表人
   const filledByList = useMemo(() => {
@@ -719,25 +714,14 @@ export function AuditLog() {
       const startDateStr = `${startDate}T00:00:00`
       const endDateStr = `${endDate}T23:59:59`
 
-      const buildQuery = () => {
-        let q = supabase
+      const buildQuery = () =>
+        supabase
           .from('audit_log')
           .select('id, user_email, action, table_name, details, created_at')
           .in('table_name', ['bookings', 'coach_assignment'])
           .gte('created_at', startDateStr)
           .lte('created_at', endDateStr)
           .order('created_at', { ascending: false })
-
-        if (filter !== 'all') {
-          if (filter === 'schedule') {
-            q = q.eq('table_name', 'coach_assignment')
-          } else {
-            const actionMap = { 'add': 'create', 'edit': 'update', 'delete': 'delete' } as const
-            q = q.eq('action', actionMap[filter]).eq('table_name', 'bookings')
-          }
-        }
-        return q
-      }
 
       const merged: AuditLogEntry[] = []
       let offset = 0
@@ -908,10 +892,7 @@ export function AuditLog() {
             <span style={{
               ...getBadgeStyle('default', 'small'),
             }}>
-              {[
-                filter !== 'all' ? 1 : 0,
-                selectedFilledBy !== 'all' ? 1 : 0,
-              ].reduce((a, b) => a + b, 0)}
+              1
             </span>
           )}
           <span style={{ 
@@ -933,37 +914,6 @@ export function AuditLog() {
             flexDirection: 'column',
             gap: '16px',
           }}>
-            {/* 操作類型篩選 */}
-            <div>
-              <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
-                操作類型
-              </label>
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                flexWrap: 'wrap',
-              }}>
-                {[
-                  { key: 'all', label: '全部' },
-                  { key: 'add', label: '新增' },
-                  { key: 'edit', label: '修改' },
-                  { key: 'delete', label: '刪除' },
-                  { key: 'schedule', label: '排班' },
-                ].map(({ key, label }) => (
-                  <button
-                    key={key}
-                    data-track={`audit_filter_${key}`}
-                    onClick={() => setFilter(key as any)}
-                    style={{
-                      ...getButtonStyle(filter === key ? 'secondary' : 'outline', 'small', isMobile),
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* 記錄時間 */}
             <div>
               <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
@@ -1073,7 +1023,6 @@ export function AuditLog() {
             {hasAdvancedFilters && (
               <button
                 onClick={() => {
-                  setFilter('all')
                   setSelectedFilledBy('all')
                 }}
                 style={{
@@ -1096,7 +1045,7 @@ export function AuditLog() {
           color: designSystem.colors.text.secondary,
           padding: '0 4px',
         }}>
-          {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' || bookingDateFilter ? (
+          {searchQuery || selectedFilledBy !== 'all' || bookingDateFilter ? (
             <>
               找到 <strong style={{ color: designSystem.colors.text.primary }}>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）
               {bookingDateFilter && (
@@ -1129,7 +1078,7 @@ export function AuditLog() {
           background: designSystem.colors.background.card,
           borderRadius: designSystem.borderRadius.lg,
         }}>
-          {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' || bookingDateFilter ? (
+          {searchQuery || selectedFilledBy !== 'all' || bookingDateFilter ? (
             <div>
               <div style={{ marginBottom: '8px' }}>沒有符合的記錄</div>
               {bookingDateFilter && (

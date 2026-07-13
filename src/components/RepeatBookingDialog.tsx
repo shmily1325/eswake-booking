@@ -13,6 +13,7 @@ import { BoatSelector } from './booking/BoatSelector'
 import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
+import { designSystem, getButtonStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { getLocalTimestamp } from '../utils/date'
 import { BatchResultDialog } from './BatchResultDialog'
 import { DateMultiPicker } from './booking/DateMultiPicker'
@@ -571,14 +572,8 @@ export function RepeatBookingDialog({
           {/* 自選日期與時間（與新增預約邏輯對齊：先日期後時間） */}
           <>
             {/* 自選日期（取代開始日期概念） */}
-            <div style={{ marginBottom: isMobile ? '14px' : '18px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '6px',
-                color: '#000',
-                fontSize: '15px',
-                fontWeight: '600',
-              }}>
+            <div style={{ marginBottom: isMobile ? '14px' : designSystem.spacing.lg }}>
+              <label style={{ ...getLabelStyle(true), fontWeight: '600' }}>
                 日期（可多選）
               </label>
               <DateMultiPicker
@@ -588,17 +583,11 @@ export function RepeatBookingDialog({
             </div>
 
             {/* 開始時間 */}
-            <div style={{ marginBottom: isMobile ? '14px' : '18px' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  color: '#000',
-                  fontSize: '15px',
-                  fontWeight: '500',
-                }}>
+            <div style={{ marginBottom: isMobile ? '14px' : designSystem.spacing.lg }}>
+                <label style={getLabelStyle(true)}>
                   開始時間
                 </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: designSystem.spacing.sm }}>
                   <select
                     value={startTime.split(':')[0]}
                     onChange={(e) => {
@@ -608,14 +597,10 @@ export function RepeatBookingDialog({
                     }}
                     required
                     style={{
+                      ...getInputStyle(true),
                       flex: 1,
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #ccc',
                       boxSizing: 'border-box',
-                      fontSize: '16px',
                       touchAction: 'manipulation',
-                      backgroundColor: 'white',
                       cursor: 'pointer',
                     }}
                   >
@@ -633,14 +618,10 @@ export function RepeatBookingDialog({
                     }}
                     required
                     style={{
+                      ...getInputStyle(true),
                       flex: 1,
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #ccc',
                       boxSizing: 'border-box',
-                      fontSize: '16px',
                       touchAction: 'manipulation',
-                      backgroundColor: 'white',
                       cursor: 'pointer',
                     }}
                   >
@@ -653,21 +634,15 @@ export function RepeatBookingDialog({
             </div>
 
             {/* 時長 */}
-            <div style={{ marginBottom: isMobile ? '14px' : '18px' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '10px',
-                  color: '#000',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                }}>
+            <div style={{ marginBottom: isMobile ? '14px' : designSystem.spacing.lg }}>
+                <label style={{ ...getLabelStyle(true), fontWeight: '600' }}>
                   時長（分鐘）
                 </label>
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: '8px',
-                  marginBottom: '12px',
+                  gap: designSystem.spacing.sm,
+                  marginBottom: designSystem.spacing.md,
                 }}>
                   {[30, 40, 60, 90, 120, 150, 180, 210].map(minutes => {
                     const isSelected = durationMin === minutes
@@ -678,15 +653,19 @@ export function RepeatBookingDialog({
                         onClick={() => setDurationMin(minutes)}
                         style={{
                           padding: '12px 8px',
-                          border: isSelected ? '3px solid #1976d2' : '2px solid #e0e0e0',
-                          borderRadius: '8px',
-                          background: isSelected ? '#e3f2fd' : 'white',
-                          color: isSelected ? '#1976d2' : '#333',
+                          border: isSelected
+                            ? `1.5px solid ${designSystem.colors.primary[500]}`
+                            : `1px solid ${designSystem.colors.border.light}`,
+                          borderRadius: designSystem.borderRadius.lg,
+                          background: isSelected
+                            ? designSystem.colors.primary[50]
+                            : '#ffffff',
+                          color: designSystem.colors.text.primary,
                           fontSize: '14px',
                           fontWeight: isSelected ? '700' : '500',
                           cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          boxShadow: isSelected ? '0 2px 8px rgba(25,118,210,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
+                          minHeight: '44px',
+                          touchAction: 'manipulation',
                         }}
                       >
                         {minutes}
@@ -694,8 +673,14 @@ export function RepeatBookingDialog({
                     )
                   })}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>自訂：</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: designSystem.spacing.sm }}>
+                  <span style={{
+                    fontSize: designSystem.fontSize.body.mobile,
+                    color: designSystem.colors.text.secondary,
+                    flexShrink: 0,
+                  }}>
+                    自訂：
+                  </span>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -710,19 +695,21 @@ export function RepeatBookingDialog({
                       }
                     }}
                     style={{
+                      ...getInputStyle(true),
                       flex: 1,
-                      padding: '10px 12px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '16px',
                       textAlign: 'center',
                       fontWeight: '600',
-                      color: '#333',
                       boxSizing: 'border-box',
                     }}
                     placeholder="輸入分鐘數"
                   />
-                  <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>分</span>
+                  <span style={{
+                    fontSize: designSystem.fontSize.body.mobile,
+                    color: designSystem.colors.text.secondary,
+                    flexShrink: 0,
+                  }}>
+                    分
+                  </span>
                 </div>
             </div>
           </>
@@ -730,10 +717,10 @@ export function RepeatBookingDialog({
           {/* 預覽區塊移至按鈕列上方（僅顯示前 5 個） */}
           {previewDates.length > 0 && (
             <div style={{ 
-              marginTop: '8px', 
-              marginBottom: '8px', 
-              fontSize: '13px', 
-              color: '#666' 
+              marginTop: designSystem.spacing.sm, 
+              marginBottom: designSystem.spacing.sm, 
+              fontSize: designSystem.fontSize.bodySmall.mobile, 
+              color: designSystem.colors.text.secondary,
             }}>
               <div style={{ fontWeight: '600', marginBottom: '6px' }}>預覽（前5個）：</div>
               {previewDates.map((date, i) => (
@@ -783,14 +770,16 @@ export function RepeatBookingDialog({
           </div>
         )}
 
-        {/* 按鈕欄 - 固定底部 */}
+        {/* 按鈕欄 - 固定底部（Safari 底部工具列／Home 指示條額外留白） */}
         <div style={{
           padding: isMobile ? '12px 18px' : '20px 30px',
-          borderTop: '1px solid #e0e0e0',
+          borderTop: `1px solid ${designSystem.colors.border.light}`,
           background: 'white',
           display: 'flex',
           gap: isMobile ? '8px' : '12px',
-          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
+          paddingBottom: isMobile
+            ? 'max(40px, calc(env(safe-area-inset-bottom, 0px) + 24px))'
+            : '20px',
           flexShrink: 0,
         }}>
           <button
@@ -798,18 +787,13 @@ export function RepeatBookingDialog({
             onClick={handleClose}
             disabled={loading}
             style={{
+              ...getButtonStyle('secondary', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '12px' : '12px 24px',
-              borderRadius: '8px',
-              border: '1px solid #ccc',
-              background: 'white',
-              color: '#333',
               fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '500',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.5 : 1,
               touchAction: 'manipulation',
-              minHeight: isMobile ? '44px' : '44px',
+              minHeight: isMobile ? '48px' : '44px',
               minWidth: isMobile ? 'auto' : '120px',
             }}
           >
@@ -820,22 +804,15 @@ export function RepeatBookingDialog({
             form="repeat-booking-form"
             disabled={loading}
             style={{
+              ...getButtonStyle('primary', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '12px' : '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-              color: 'white',
               fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '600',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              ...(loading
+                ? { background: '#ccc', boxShadow: 'none', cursor: 'not-allowed' }
+                : {}),
               touchAction: 'manipulation',
-              minHeight: isMobile ? '44px' : '44px',
+              minHeight: isMobile ? '48px' : '44px',
               minWidth: isMobile ? 'auto' : '120px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
             }}
           >
             {loading ? (
@@ -850,7 +827,7 @@ export function RepeatBookingDialog({
                 }} />
                 建立中...
               </>
-            ) : `✅ 確認建立 ${totalDatesCount} 個預約`}
+            ) : `確認建立 ${totalDatesCount} 個預約`}
           </button>
         </div>
       </div>

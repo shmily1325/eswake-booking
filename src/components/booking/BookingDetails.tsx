@@ -1,3 +1,5 @@
+import { designSystem, getInputStyle, getLabelStyle } from '../../styles/designSystem'
+
 interface BookingDetailsProps {
     activityTypesSet: Set<string>
     toggleActivityType: (type: string) => void
@@ -22,16 +24,15 @@ export function BookingDetails({
     return (
         <>
             {/* 教練練習 */}
-            <div style={{ 
-                marginBottom: '18px',
-                padding: '12px',
-                background: isCoachPractice ? '#fff3e0' : '#f5f5f5',
-                borderRadius: '8px',
-                border: isCoachPractice ? '2px solid #ff9800' : '1px solid #e0e0e0'
+            <div style={{
+                marginBottom: designSystem.spacing.lg,
+                padding: `${designSystem.spacing.md} 0`,
+                borderBottom: `1px solid ${designSystem.colors.border.light}`,
             }}>
                 <label style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
+                    gap: designSystem.spacing.md,
                     cursor: 'pointer',
                     userSelect: 'none',
                 }}>
@@ -42,24 +43,26 @@ export function BookingDetails({
                         style={{
                             width: '20px',
                             height: '20px',
-                            marginRight: '10px',
+                            marginTop: '2px',
+                            flexShrink: 0,
                             cursor: 'pointer',
-                            accentColor: '#ff9800',
+                            accentColor: designSystem.colors.primary[500],
                         }}
                     />
                     <div>
                         <span style={{
-                            color: '#000',
-                            fontSize: '15px',
+                            display: 'block',
+                            color: designSystem.colors.text.primary,
+                            fontSize: designSystem.fontSize.bodyLarge.mobile,
                             fontWeight: '600',
                         }}>
-                            🏄 教練練習
+                            教練練習
                         </span>
                         <div style={{
-                            fontSize: '13px',
-                            color: '#666',
+                            fontSize: designSystem.fontSize.bodySmall.mobile,
+                            color: designSystem.colors.text.secondary,
                             marginTop: '4px',
-                            lineHeight: '1.5',
+                            lineHeight: 1.5,
                         }}>
                             教練練習會顯示在時間表上，需要排班，但不需要回報
                         </div>
@@ -68,15 +71,9 @@ export function BookingDetails({
             </div>
 
             {/* 填表人 */}
-            <div style={{ marginBottom: '18px' }}>
-                <label style={{
-                    display: 'block',
-                    marginBottom: '6px',
-                    color: '#000',
-                    fontSize: '15px',
-                    fontWeight: '500',
-                }}>
-                    填表人 <span style={{ color: '#f44336' }}>*</span>
+            <div style={{ marginBottom: designSystem.spacing.lg }}>
+                <label style={getLabelStyle(true)}>
+                    填表人 <span style={{ color: designSystem.colors.danger[500] }}>*</span>
                 </label>
                 <input
                     type="text"
@@ -84,89 +81,58 @@ export function BookingDetails({
                     onChange={(e) => setFilledBy(e.target.value)}
                     placeholder="請輸入您的姓名"
                     style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: '1px solid #ccc',
-                        fontSize: '16px', // 16px 防止 iOS 縮放
+                        ...getInputStyle(true),
                         fontFamily: 'inherit',
                         touchAction: 'manipulation',
+                        boxSizing: 'border-box',
                     }}
                 />
             </div>
 
             {/* 活動類型選擇 */}
-            <div style={{ marginBottom: '18px' }}>
-                <label style={{
-                    display: 'block',
-                    marginBottom: '10px',
-                    color: '#000',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                }}>
+            <div style={{ marginBottom: designSystem.spacing.lg }}>
+                <label style={{ ...getLabelStyle(true), fontWeight: '600' }}>
                     活動類型（可複選）
                 </label>
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '10px',
+                    gap: designSystem.spacing.sm,
                 }}>
-                    <button
-                        type="button"
-                        onClick={() => toggleActivityType('WB')}
-                        style={{
-                            padding: '14px 10px',
-                            border: activityTypesSet.has('WB') ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            background: activityTypesSet.has('WB') ? '#dbeafe' : 'white',
-                            color: '#333',
-                            fontSize: '15px',
-                            fontWeight: activityTypesSet.has('WB') ? '600' : '500',
-                            cursor: 'pointer',
-                        }}
-                        onTouchStart={(e) => {
-                            e.currentTarget.style.background = activityTypesSet.has('WB') ? '#dbeafe' : '#fafafa'
-                        }}
-                        onTouchEnd={(e) => {
-                            e.currentTarget.style.background = activityTypesSet.has('WB') ? '#dbeafe' : 'white'
-                        }}
-                    >
-                        WB
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => toggleActivityType('WS')}
-                        style={{
-                            padding: '14px 10px',
-                            border: activityTypesSet.has('WS') ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            background: activityTypesSet.has('WS') ? '#dbeafe' : 'white',
-                            color: '#333',
-                            fontSize: '15px',
-                            fontWeight: activityTypesSet.has('WS') ? '600' : '500',
-                            cursor: 'pointer',
-                        }}
-                        onTouchStart={(e) => {
-                            e.currentTarget.style.background = activityTypesSet.has('WS') ? '#dbeafe' : '#fafafa'
-                        }}
-                        onTouchEnd={(e) => {
-                            e.currentTarget.style.background = activityTypesSet.has('WS') ? '#dbeafe' : 'white'
-                        }}
-                    >
-                        WS
-                    </button>
+                    {(['WB', 'WS'] as const).map((type) => {
+                        const selected = activityTypesSet.has(type)
+                        return (
+                            <button
+                                key={type}
+                                type="button"
+                                onClick={() => toggleActivityType(type)}
+                                style={{
+                                    padding: '14px 10px',
+                                    border: selected
+                                        ? `1.5px solid ${designSystem.colors.primary[500]}`
+                                        : `1px solid ${designSystem.colors.border.light}`,
+                                    borderRadius: designSystem.borderRadius.lg,
+                                    background: selected
+                                        ? designSystem.colors.primary[50]
+                                        : '#ffffff',
+                                    color: designSystem.colors.text.primary,
+                                    fontSize: '15px',
+                                    fontWeight: selected ? '600' : '500',
+                                    cursor: 'pointer',
+                                    minHeight: '48px',
+                                    touchAction: 'manipulation',
+                                }}
+                            >
+                                {type}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
 
             {/* 註解 */}
-            <div style={{ marginBottom: '18px' }}>
-                <label style={{
-                    display: 'block',
-                    marginBottom: '6px',
-                    color: '#000',
-                    fontSize: '15px',
-                    fontWeight: '500',
-                }}>
+            <div style={{ marginBottom: designSystem.spacing.lg }}>
+                <label style={getLabelStyle(true)}>
                     註解（選填）
                 </label>
                 <textarea
@@ -175,14 +141,11 @@ export function BookingDetails({
                     rows={3}
                     placeholder="例如：初學者、特殊需求..."
                     style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: '1px solid #ccc',
-                        fontSize: '16px', // 16px 防止 iOS 縮放
+                        ...getInputStyle(true),
                         fontFamily: 'inherit',
                         resize: 'vertical',
                         touchAction: 'manipulation',
+                        boxSizing: 'border-box',
                     }}
                 />
             </div>

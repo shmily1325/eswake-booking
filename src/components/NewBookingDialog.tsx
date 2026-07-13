@@ -13,6 +13,7 @@ import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
 import { scheduleCoachTimeOffReminderToast } from '../utils/coachTimeOffWarning'
+import { designSystem, getButtonStyle } from '../styles/designSystem'
 
 interface NewBookingDialogProps {
   isOpen: boolean
@@ -538,14 +539,16 @@ export function NewBookingDialog({
           </div>
         )}
 
-        {/* 按鈕欄 - 固定底部 */}
+        {/* 按鈕欄 - 固定底部（Safari 底部工具列／Home 指示條額外留白） */}
         <div style={{
           padding: isMobile ? '12px 20px' : '20px 24px',
-          borderTop: '1px solid #e0e0e0',
+          borderTop: `1px solid ${designSystem.colors.border.light}`,
           background: 'white',
           display: 'flex',
           gap: isMobile ? '8px' : '12px',
-          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
+          paddingBottom: isMobile
+            ? 'max(40px, calc(env(safe-area-inset-bottom, 0px) + 24px))'
+            : '20px',
           flexShrink: 0,
         }}>
           <button
@@ -553,14 +556,9 @@ export function NewBookingDialog({
             onClick={handleClose}
             disabled={loading}
             style={{
+              ...getButtonStyle('secondary', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
-              borderRadius: '8px',
-              border: '1px solid #ccc',
-              backgroundColor: 'white',
-              color: '#333',
               fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '500',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.5 : 1,
               touchAction: 'manipulation',
@@ -576,22 +574,15 @@ export function NewBookingDialog({
             data-track="booking_new_confirm"
             disabled={loading || conflictStatus === 'conflict'}
             style={{
+              ...getButtonStyle('primary', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              background: (loading || conflictStatus === 'conflict') ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-              color: 'white',
               fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '600',
-              cursor: (loading || conflictStatus === 'conflict') ? 'not-allowed' : 'pointer',
+              ...(loading || conflictStatus === 'conflict'
+                ? { background: '#ccc', boxShadow: 'none', cursor: 'not-allowed' }
+                : {}),
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',
               minWidth: isMobile ? 'auto' : '120px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
             }}
           >
             {loading ? (
@@ -606,7 +597,7 @@ export function NewBookingDialog({
                 }} />
                 處理中...
               </>
-            ) : '✅ 確認新增'}
+            ) : '確認新增'}
           </button>
         </div>
       </div>
