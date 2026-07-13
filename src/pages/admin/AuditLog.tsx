@@ -515,16 +515,11 @@ export function AuditLog() {
     return getLocalDateString()
   })
   
-  const [selectedFilledBy, setSelectedFilledBy] = useState<string>('all')
-  
   // 預約日期篩選（MM/DD 格式，如 "04/03"）
   const [bookingDateFilter, setBookingDateFilter] = useState<string>('')
   
-  // 進階篩選展開狀態
+  // 進階篩選展開狀態（紀錄時間範圍）
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
-  
-  // 是否有設定進階篩選
-  const hasAdvancedFilters = selectedFilledBy !== 'all'
 
   /** 與人員管理「權限管理」名稱欄同資料來源：view + editor + allowed(notes) */
   const [permissionDisplayByEmail, setPermissionDisplayByEmail] = useState<Record<string, string>>({})
@@ -560,33 +555,6 @@ export function AuditLog() {
     setLogs([])
     fetchLogs()
   }, [startDate, endDate])
-
-  // 計算所有填表人
-  const filledByList = useMemo(() => {
-    const filledBySet = new Set<string>()
-    let hasEmptyFilledBy = false
-    
-    logs.forEach(log => {
-      if (log.table_name === 'coach_assignment') return
-      
-      if (!log.details) {
-        hasEmptyFilledBy = true
-        return
-      }
-      const parsed = parseDetails(log.details)
-      if (parsed.filledBy) {
-        filledBySet.add(parsed.filledBy)
-      } else {
-        hasEmptyFilledBy = true
-      }
-    })
-    
-    const list = Array.from(filledBySet).sort()
-    if (hasEmptyFilledBy) {
-      list.unshift('（無填表人）')
-    }
-    return list
-  }, [logs])
 
   // 篩選邏輯
   const displayedLogs = useMemo(() => {
@@ -647,22 +615,6 @@ export function AuditLog() {
       })
     }
     
-    if (selectedFilledBy !== 'all') {
-      filtered = filtered.filter(log => {
-        // 排班記錄沒有填表人，選擇特定填表人時應過濾掉
-        if (log.table_name === 'coach_assignment') return false
-        
-        if (!log.details) {
-          return selectedFilledBy === '（無填表人）'
-        }
-        const parsed = parseDetails(log.details)
-        if (selectedFilledBy === '（無填表人）') {
-          return !parsed.filledBy
-        }
-        return parsed.filledBy === selectedFilledBy
-      })
-    }
-    
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(log => {
@@ -691,7 +643,7 @@ export function AuditLog() {
     }
     
     return filtered
-  }, [logs, selectedFilledBy, searchQuery, bookingDateFilter, permissionDisplayByEmail])
+  }, [logs, searchQuery, bookingDateFilter, permissionDisplayByEmail])
 
   // 按日期分組
   const groupedLogs = useMemo(() => {
@@ -888,13 +840,6 @@ export function AuditLog() {
           }}
         >
           {showAdvancedFilters ? '收起篩選' : '更多篩選'}
-          {hasAdvancedFilters && (
-            <span style={{
-              ...getBadgeStyle('default', 'small'),
-            }}>
-              1
-            </span>
-          )}
           <span style={{ 
             fontSize: '10px',
             transform: showAdvancedFilters ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -997,42 +942,6 @@ export function AuditLog() {
                 />
               </div>
             </div>
-
-            {/* 填表人篩選 */}
-            <div>
-              <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
-                填表人
-              </label>
-              <select
-                value={selectedFilledBy}
-                onChange={(e) => setSelectedFilledBy(e.target.value)}
-                style={{
-                  ...getInputStyle(isMobile),
-                  cursor: 'pointer',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <option value="all">全部填表人</option>
-                {filledByList.map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 清除所有進階篩選 */}
-            {hasAdvancedFilters && (
-              <button
-                onClick={() => {
-                  setSelectedFilledBy('all')
-                }}
-                style={{
-                  ...getButtonStyle('outline', 'medium', isMobile),
-                  width: '100%',
-                }}
-              >
-                清除所有篩選
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -1045,7 +954,7 @@ export function AuditLog() {
           color: designSystem.colors.text.secondary,
           padding: '0 4px',
         }}>
-          {searchQuery || selectedFilledBy !== 'all' || bookingDateFilter ? (
+          {searchQuery || bookingDateFilter ? (
             <>
               找到 <strong style={{ color: designSystem.colors.text.primary }}>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）
               {bookingDateFilter && (
@@ -1078,7 +987,7 @@ export function AuditLog() {
           background: designSystem.colors.background.card,
           borderRadius: designSystem.borderRadius.lg,
         }}>
-          {searchQuery || selectedFilledBy !== 'all' || bookingDateFilter ? (
+          {searchQuery || bookingDateFilter ? (
             <div>
               <div style={{ marginBottom: '8px' }}>沒有符合的記錄</div>
               {bookingDateFilter && (
@@ -1540,16 +1449,7 @@ export function AuditLog() {
                               ) : parsed.filledBy ? (
                                 <>
                                   <span style={{ color: designSystem.colors.text.disabled }}>填表人：</span>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setSelectedFilledBy(parsed.filledBy!) }}
-                                    style={{
-                                      ...getBadgeStyle('default', 'small'),
-                                      border: 'none',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    {parsed.filledBy}
-                                  </button>
+                                  <span>{parsed.filledBy}</span>
                                 </>
                               ) : (
                                 <>
@@ -1557,16 +1457,6 @@ export function AuditLog() {
                                   <span title={log.user_email || undefined}>
                                     {actorLabelFromPermissionTables(log.user_email, permissionDisplayByEmail)}
                                   </span>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setSelectedFilledBy('（無填表人）') }}
-                                    style={{
-                                      ...getBadgeStyle('default', 'small'),
-                                      border: 'none',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    舊資料
-                                  </button>
                                 </>
                               )}
                             </div>
