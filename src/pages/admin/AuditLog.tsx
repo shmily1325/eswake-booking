@@ -6,6 +6,14 @@ import { PageHeader } from '../../components/PageHeader'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
 import { hasViewAccess, SUPER_ADMIN_DISPLAY_LABELS } from '../../utils/auth'
+import {
+  designSystem,
+  getBadgeStyle,
+  getButtonStyle,
+  getEmptyStateStyle,
+  getInputStyle,
+  getLabelStyle,
+} from '../../styles/designSystem'
 
 interface AuditLogEntry {
   id: number
@@ -405,7 +413,7 @@ function highlightText(text: string, query: string): React.ReactNode {
   
   return parts.map((part, i) => 
     part.toLowerCase() === query.toLowerCase() 
-      ? <mark key={i} style={{ background: '#ffeb3b', padding: '0 2px', borderRadius: '2px' }}>{part}</mark>
+      ? <mark key={i} style={{ background: designSystem.colors.secondary[100], color: 'inherit', padding: '0 2px', borderRadius: designSystem.borderRadius.sm }}>{part}</mark>
       : part
   )
 }
@@ -439,25 +447,22 @@ function formatDateHeader(dateStr: string): string {
 // 操作類型配置
 const OPERATION_CONFIG = {
   create: { 
-    icon: '➕', 
     label: '新增', 
-    color: '#28a745', 
-    bgColor: '#d4edda',
-    dotColor: '#28a745'
+    color: designSystem.colors.success[700], 
+    bgColor: designSystem.colors.success[50],
+    dotColor: designSystem.colors.success[500]
   },
   update: { 
-    icon: '✏️', 
     label: '修改', 
-    color: '#007bff', 
-    bgColor: '#d1ecf1',
-    dotColor: '#007bff'
+    color: designSystem.colors.info[700], 
+    bgColor: designSystem.colors.info[50],
+    dotColor: designSystem.colors.info[500]
   },
   delete: { 
-    icon: '🗑️', 
     label: '刪除', 
-    color: '#dc3545', 
-    bgColor: '#f8d7da',
-    dotColor: '#dc3545'
+    color: designSystem.colors.danger[700], 
+    bgColor: designSystem.colors.danger[50],
+    dotColor: designSystem.colors.danger[500]
   },
 } as const
 
@@ -807,37 +812,32 @@ export function AuditLog() {
       maxWidth: '900px',
       margin: '0 auto',
       minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
+      backgroundColor: designSystem.colors.background.main,
     }}>
-      <PageHeader title="📝 編輯記錄" user={user} />
+      <PageHeader title="編輯記錄" user={user} />
 
       {/* 篩選區 */}
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
+        background: designSystem.colors.background.card,
+        borderRadius: designSystem.borderRadius.lg,
         padding: isMobile ? '16px' : '24px',
         marginBottom: '15px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        boxShadow: designSystem.shadows.elevation[2],
+        border: `1px solid ${designSystem.colors.border.light}`,
       }}>
         {/* 搜尋框 */}
         <div style={{ marginBottom: '12px' }}>
           <input
             type="text"
-            placeholder="🔍 搜尋會員、船隻、填表人..."
+            placeholder="搜尋會員、船隻、填表人..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
-              width: '100%',
-              padding: '14px 16px',
-              fontSize: isMobile ? '16px' : '15px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              outline: 'none',
+              ...getInputStyle(isMobile),
               boxSizing: 'border-box',
-              transition: 'border-color 0.2s',
             }}
-            onFocus={(e) => e.currentTarget.style.borderColor = '#5a5a5a'}
-            onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+            onFocus={(e) => e.currentTarget.style.borderColor = designSystem.colors.primary[500]}
+            onBlur={(e) => e.currentTarget.style.borderColor = designSystem.colors.border.main}
           />
         </div>
 
@@ -846,33 +846,21 @@ export function AuditLog() {
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
               type="text"
-              placeholder="📅 預約日期（如 12/18 或 1218）"
+              placeholder="預約日期（如 12/18 或 1218）"
               value={bookingDateFilter}
               onChange={(e) => setBookingDateFilter(e.target.value)}
               style={{
+                ...getInputStyle(isMobile),
                 flex: 1,
-                padding: '14px 16px',
-                fontSize: isMobile ? '16px' : '15px',
-                border: bookingDateFilter ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
-                borderRadius: '8px',
-                outline: 'none',
-                background: bookingDateFilter ? '#f8f9fa' : 'white',
                 boxSizing: 'border-box',
-                transition: 'all 0.2s',
               }}
             />
             {bookingDateFilter && (
               <button
                 onClick={() => setBookingDateFilter('')}
                 style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
                   padding: '14px 16px',
-                  fontSize: '14px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: '#5a5a5a',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontWeight: '600',
                 }}
               >
                 ✕
@@ -886,30 +874,14 @@ export function AuditLog() {
           data-track="audit_advanced_filters"
           onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
           style={{
+            ...getButtonStyle('secondary', 'medium', isMobile),
             width: '100%',
-            padding: '12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            border: hasAdvancedFilters ? '2px solid #5a5a5a' : '1px solid #e0e0e0',
-            borderRadius: '8px',
-            background: hasAdvancedFilters ? '#f0f0f0' : 'white',
-            color: '#666',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            transition: 'all 0.2s',
           }}
         >
           {showAdvancedFilters ? '收起篩選' : '更多篩選'}
           {hasAdvancedFilters && (
             <span style={{
-              padding: '2px 8px',
-              background: '#5a5a5a',
-              color: 'white',
-              borderRadius: '10px',
-              fontSize: '12px',
+              ...getBadgeStyle('default', 'small'),
             }}>
               {[
                 filter !== 'all' ? 1 : 0,
@@ -938,13 +910,7 @@ export function AuditLog() {
           }}>
             {/* 操作類型篩選 */}
             <div>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '13px',
-                color: '#868e96',
-                fontWeight: '500'
-              }}>
+              <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
                 操作類型
               </label>
               <div style={{
@@ -954,25 +920,17 @@ export function AuditLog() {
               }}>
                 {[
                   { key: 'all', label: '全部' },
-                  { key: 'add', label: '➕ 新增' },
-                  { key: 'edit', label: '✏️ 修改' },
-                  { key: 'delete', label: '🗑️ 刪除' },
-                  { key: 'schedule', label: '📅 排班' },
+                  { key: 'add', label: '新增' },
+                  { key: 'edit', label: '修改' },
+                  { key: 'delete', label: '刪除' },
+                  { key: 'schedule', label: '排班' },
                 ].map(({ key, label }) => (
                   <button
                     key={key}
                     data-track={`audit_filter_${key}`}
                     onClick={() => setFilter(key as any)}
                     style={{
-                      padding: '10px 16px',
-                      fontSize: '14px',
-                      fontWeight: filter === key ? '600' : '500',
-                      border: filter === key ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
-                      borderRadius: '20px',
-                      background: filter === key ? '#f0f0f0' : 'white',
-                      color: filter === key ? '#5a5a5a' : '#333',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      ...getButtonStyle(filter === key ? 'secondary' : 'outline', 'small', isMobile),
                     }}
                   >
                     {label}
@@ -983,13 +941,7 @@ export function AuditLog() {
 
             {/* 記錄時間 */}
             <div>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '13px',
-                color: '#868e96',
-                fontWeight: '500'
-              }}>
+              <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
                 記錄時間範圍
               </label>
               {/* 快選按鈕 */}
@@ -1030,15 +982,7 @@ export function AuditLog() {
                       data-track={`audit_quick_${key}`}
                       onClick={() => setQuickDateRange(key as any)}
                       style={{
-                        padding: '10px 16px',
-                        fontSize: '14px',
-                        fontWeight: isActive ? '600' : '500',
-                        border: isActive ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
-                        borderRadius: '20px',
-                        background: isActive ? '#f0f0f0' : 'white',
-                        color: isActive ? '#5a5a5a' : '#333',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
+                        ...getButtonStyle(isActive ? 'secondary' : 'outline', 'small', isMobile),
                       }}
                     >
                       {label}
@@ -1058,27 +1002,21 @@ export function AuditLog() {
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   style={{
+                    ...getInputStyle(isMobile),
                     flex: 1,
                     minWidth: 0,
-                    padding: '12px 10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
                     boxSizing: 'border-box',
                   }}
                 />
-                <span style={{ fontSize: '14px', color: '#999', flexShrink: 0 }}>→</span>
+                <span style={{ fontSize: '14px', color: designSystem.colors.text.disabled, flexShrink: 0 }}>→</span>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   style={{
+                    ...getInputStyle(isMobile),
                     flex: 1,
                     minWidth: 0,
-                    padding: '12px 10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
                     boxSizing: 'border-box',
                   }}
                 />
@@ -1087,27 +1025,15 @@ export function AuditLog() {
 
             {/* 填表人篩選 */}
             <div>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '13px',
-                color: '#868e96',
-                fontWeight: '500'
-              }}>
+              <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
                 填表人
               </label>
               <select
                 value={selectedFilledBy}
                 onChange={(e) => setSelectedFilledBy(e.target.value)}
                 style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  fontSize: isMobile ? '16px' : '15px',
-                  border: selectedFilledBy !== 'all' ? '2px solid #5a5a5a' : '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  outline: 'none',
+                  ...getInputStyle(isMobile),
                   cursor: 'pointer',
-                  background: 'white',
                   boxSizing: 'border-box',
                 }}
               >
@@ -1126,15 +1052,8 @@ export function AuditLog() {
                   setSelectedFilledBy('all')
                 }}
                 style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
                   width: '100%',
-                  padding: '12px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: '#dc3545',
-                  color: 'white',
-                  cursor: 'pointer',
                 }}
               >
                 清除所有篩選
@@ -1149,28 +1068,23 @@ export function AuditLog() {
         <div style={{
           marginBottom: '12px',
           fontSize: '14px',
-          color: '#666',
+          color: designSystem.colors.text.secondary,
           padding: '0 4px',
         }}>
           {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' || bookingDateFilter ? (
             <>
-              找到 <strong style={{ color: '#5a5a5a' }}>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）
+              找到 <strong style={{ color: designSystem.colors.text.primary }}>{displayedLogs.length}</strong> 筆記錄（共 {logs.length} 筆）
               {bookingDateFilter && (
                 <span style={{ 
                   marginLeft: '8px',
-                  padding: '3px 10px',
-                  background: '#fff3e0',
-                  borderRadius: '12px',
-                  fontSize: '13px',
-                  color: '#e65100',
-                  fontWeight: '500',
+                  ...getBadgeStyle('default'),
                 }}>
-                  📅 預約 {bookingDateFilter}
+                  預約 {bookingDateFilter}
                 </span>
               )}
             </>
           ) : (
-            <>共 <strong style={{ color: '#5a5a5a' }}>{logs.length}</strong> 筆記錄</>
+            <>共 <strong style={{ color: designSystem.colors.text.primary }}>{logs.length}</strong> 筆記錄</>
           )}
         </div>
       )}
@@ -1178,31 +1092,27 @@ export function AuditLog() {
       {/* 記錄列表 */}
       {loading ? (
         <div style={{
-          padding: '40px',
-          textAlign: 'center',
-          background: 'white',
-          borderRadius: '12px',
-          color: '#666',
+          ...getEmptyStateStyle(isMobile),
+          background: designSystem.colors.background.card,
+          borderRadius: designSystem.borderRadius.lg,
         }}>
           載入中...
         </div>
       ) : displayedLogs.length === 0 ? (
         <div style={{
-          padding: '40px',
-          textAlign: 'center',
-          background: 'white',
-          borderRadius: '12px',
-          color: '#999',
+          ...getEmptyStateStyle(isMobile),
+          background: designSystem.colors.background.card,
+          borderRadius: designSystem.borderRadius.lg,
         }}>
           {searchQuery || selectedFilledBy !== 'all' || filter !== 'all' || bookingDateFilter ? (
             <div>
               <div style={{ marginBottom: '8px' }}>沒有符合的記錄</div>
               {bookingDateFilter && (
-                <div style={{ fontSize: '13px', color: '#666' }}>
+                <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary }}>
                   找不到 <strong>{bookingDateFilter}</strong> 的預約變更記錄
                   <br />
-                  <span style={{ fontSize: '12px', color: '#999' }}>
-                    💡 提示：請確認記錄時間範圍足夠長（可選 30 或 90 天）
+                  <span style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>
+                    提示：請確認記錄時間範圍足夠長（可選 30 或 90 天）
                   </span>
                 </div>
               )}
@@ -1219,7 +1129,7 @@ export function AuditLog() {
                 position: 'sticky',
                 top: isMobile ? '0' : '0',
                 zIndex: 10,
-                background: '#f5f5f5',
+                background: designSystem.colors.background.main,
                 paddingTop: '4px',
                 paddingBottom: '8px',
               }}>
@@ -1227,25 +1137,17 @@ export function AuditLog() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '8px 16px',
-                  background: '#e8f4fd',
-                  border: '2px solid #4a90d9',
-                  borderRadius: '20px',
+                  padding: '8px 4px',
                 }}>
-                  <span style={{ fontSize: '14px' }}>📅</span>
                   <span style={{ 
-                    color: '#2171b5', 
+                    color: designSystem.colors.text.primary, 
                     fontWeight: '600',
                     fontSize: '14px',
                   }}>
                     {formatDateHeader(date)}
                   </span>
                   <span style={{
-                    background: 'rgba(255,255,255,0.2)',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    fontSize: '12px',
-                    color: 'white',
+                    ...getBadgeStyle('default', 'small'),
                   }}>
                     {logsInDate.length}
                   </span>
@@ -1255,17 +1157,11 @@ export function AuditLog() {
               {/* 時間軸 */}
               <div style={{ 
                 position: 'relative',
-                paddingLeft: '28px',
+                paddingLeft: 0,
               }}>
                 {/* 垂直線 */}
                 <div style={{
-                  position: 'absolute',
-                  left: '9px',
-                  top: '20px',
-                  bottom: '20px',
-                  width: '2px',
-                  background: 'linear-gradient(180deg, #dee2e6, #f0f0f0)',
-                  borderRadius: '1px',
+                  display: 'none',
                 }} />
 
                 {/* 記錄卡片 */}
@@ -1352,35 +1248,26 @@ export function AuditLog() {
                     >
                       {/* 時間軸圓點 */}
                       <div style={{
-                        position: 'absolute',
-                        left: '-23px',
-                        top: '16px',
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        background: config.dotColor,
-                        border: '2px solid white',
-                        boxShadow: '0 0 0 2px #f5f5f5',
-                        zIndex: 1,
+                        display: 'none',
                       }} />
 
                       {/* 卡片 */}
                       <div
                         onClick={() => toggleExpand(log.id)}
                         style={{
-                          background: 'white',
-                          borderRadius: '10px',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                          background: designSystem.colors.background.card,
+                          borderRadius: designSystem.borderRadius.lg,
+                          boxShadow: designSystem.shadows.xs,
                           overflow: 'hidden',
                           cursor: 'pointer',
                           transition: 'box-shadow 0.2s',
-                          border: '1px solid #f0f0f0',
+                          border: `1px solid ${designSystem.colors.border.light}`,
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)'
+                          e.currentTarget.style.boxShadow = designSystem.shadows.sm
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'
+                          e.currentTarget.style.boxShadow = designSystem.shadows.xs
                         }}
                       >
                         {/* 摘要行 */}
@@ -1394,7 +1281,7 @@ export function AuditLog() {
                           <span style={{
                             fontSize: '13px',
                             fontFamily: 'ui-monospace, monospace',
-                            color: '#999',
+                            color: designSystem.colors.text.disabled,
                             minWidth: '42px',
                           }}>
                             {getTimeOnly(log.created_at || '')}
@@ -1410,14 +1297,14 @@ export function AuditLog() {
                             color: config.color,
                             whiteSpace: 'nowrap',
                           }}>
-                            {config.icon} {getOperationText(log.action, log.table_name || '', log.details || '')}
+                            {getOperationText(log.action, log.table_name || '', log.details || '')}
                           </span>
 
                           {/* 摘要內容 */}
                           <span style={{
                             flex: 1,
                             fontSize: '14px',
-                            color: '#333',
+                            color: designSystem.colors.text.primary,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -1429,10 +1316,10 @@ export function AuditLog() {
                           {(parsed.filledBy || log.table_name === 'coach_assignment') && (
                             <span style={{
                               fontSize: '12px',
-                              color: '#999',
+                              color: designSystem.colors.text.disabled,
                               padding: '2px 8px',
-                              background: '#f5f5f5',
-                              borderRadius: '4px',
+                              background: designSystem.colors.background.hover,
+                              borderRadius: designSystem.borderRadius.sm,
                               whiteSpace: 'nowrap',
                               flexShrink: 0,
                             }}>
@@ -1444,7 +1331,7 @@ export function AuditLog() {
                           {/* 展開指示器 */}
                           <span style={{
                             fontSize: '10px',
-                            color: '#ccc',
+                            color: designSystem.colors.text.disabled,
                             transition: 'transform 0.2s',
                             transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                           }}>
@@ -1460,7 +1347,7 @@ export function AuditLog() {
                         }}>
                           <div style={{
                             padding: '0 14px 14px',
-                            borderTop: '1px solid #f0f0f0',
+                            borderTop: `1px solid ${designSystem.colors.border.light}`,
                           }}>
                             {/* 標籤區 */}
                             {(parsed.member || parsed.boat || parsed.coach || parsed.driver || parsed.time || parsed.duration || parsed.activityTypes || parsed.notes) && (
@@ -1475,64 +1362,48 @@ export function AuditLog() {
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.boat!) }}
                                     style={{
-                                      padding: '5px 10px',
-                                      fontSize: '12px',
+                                      ...getBadgeStyle('default'),
                                       border: 'none',
-                                      borderRadius: '4px',
-                                      background: '#f3e5f5',
-                                      color: '#7b1fa2',
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    🚤 {parsed.boat}
+                                    {parsed.boat}
                                   </button>
                                 )}
                                 {parsed.member && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.member!) }}
                                     style={{
-                                      padding: '5px 10px',
-                                      fontSize: '12px',
+                                      ...getBadgeStyle('default'),
                                       border: 'none',
-                                      borderRadius: '4px',
-                                      background: '#e3f2fd',
-                                      color: '#1976d2',
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    👤 {parsed.member}
+                                    {parsed.member}
                                   </button>
                                 )}
                                 {parsed.coach && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.coach!) }}
                                     style={{
-                                      padding: '5px 10px',
-                                      fontSize: '12px',
+                                      ...getBadgeStyle('default'),
                                       border: 'none',
-                                      borderRadius: '4px',
-                                      background: '#fff3e0',
-                                      color: '#e65100',
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    🎓 {parsed.coach}
+                                    {parsed.coach}
                                   </button>
                                 )}
                                 {parsed.driver && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.driver!) }}
                                     style={{
-                                      padding: '5px 10px',
-                                      fontSize: '12px',
+                                      ...getBadgeStyle('default'),
                                       border: 'none',
-                                      borderRadius: '4px',
-                                      background: '#e1f5fe',
-                                      color: '#0277bd',
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    🚤 {parsed.driver}
+                                    {parsed.driver}
                                   </button>
                                 )}
                                 {parsed.time && (
@@ -1542,50 +1413,32 @@ export function AuditLog() {
                                       if (parsed.bookingDate) setBookingDateFilter(parsed.bookingDate)
                                     }}
                                     style={{
-                                      padding: '5px 10px',
-                                      fontSize: '12px',
-                                      borderRadius: '4px',
-                                      background: '#e8f5e9',
-                                      color: '#2e7d32',
+                                      ...getBadgeStyle('default'),
                                       border: 'none',
                                       cursor: parsed.bookingDate ? 'pointer' : 'default',
                                     }}
                                     title={parsed.bookingDate ? `點擊篩選 ${parsed.bookingDate} 的預約` : undefined}
                                   >
-                                    🕐 {parsed.time}
+                                    {parsed.time}
                                   </button>
                                 )}
                                 {parsed.duration && (
                                   <span style={{
-                                    padding: '5px 10px',
-                                    fontSize: '12px',
-                                    borderRadius: '4px',
-                                    background: '#fce4ec',
-                                    color: '#c2185b',
+                                    ...getBadgeStyle('default'),
                                   }}>
-                                    ⏱️ {parsed.duration}
+                                    {parsed.duration}
                                   </span>
                                 )}
                                 {parsed.activityTypes && (
                                   <span style={{
-                                    padding: '5px 10px',
-                                    fontSize: '12px',
-                                    borderRadius: '4px',
-                                    background: '#f3e5f5',
-                                    color: '#8e24aa',
-                                    fontWeight: '600',
+                                    ...getBadgeStyle('default'),
                                   }}>
-                                    🏄 {parsed.activityTypes}
+                                    {parsed.activityTypes}
                                   </span>
                                 )}
                                 {parsed.notes && (
                                   <span style={{
-                                    padding: '5px 10px',
-                                    fontSize: '12px',
-                                    borderRadius: '4px',
-                                    background: '#fff9e6',
-                                    color: '#d97706',
-                                    border: '1px solid #fcd34d',
+                                    ...getBadgeStyle('default'),
                                     maxWidth: '300px',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
@@ -1593,7 +1446,7 @@ export function AuditLog() {
                                   }}
                                   title={parsed.notes}
                                   >
-                                    📝 {parsed.notes}
+                                    {parsed.notes}
                                   </span>
                                 )}
                               </div>
@@ -1604,22 +1457,21 @@ export function AuditLog() {
                               <div style={{
                                 marginTop: '12px',
                                 marginBottom: '12px',
-                                padding: '12px',
-                                background: '#f8f9fa',
-                                borderRadius: '8px',
-                                border: '1px solid #e0e0e0',
+                                padding: '12px 0',
+                                borderTop: `1px solid ${designSystem.colors.border.light}`,
+                                borderBottom: `1px solid ${designSystem.colors.border.light}`,
                               }}>
                                 <div style={{ 
                                   fontSize: '12px', 
-                                  color: '#666', 
+                                  color: designSystem.colors.text.secondary, 
                                   marginBottom: '8px',
                                   fontWeight: '600',
                                 }}>
                                   {/* ✅ 如果有真實總筆數且與顯示筆數不同，則標註 */}
                                   {parsed.totalCount && parsed.totalCount > parsed.bookingList.length ? (
-                                    <>📋 涉及的預約（顯示 {parsed.bookingList.length} 筆，共 {parsed.totalCount} 筆）：</>
+                                    <>涉及的預約（顯示 {parsed.bookingList.length} 筆，共 {parsed.totalCount} 筆）：</>
                                   ) : (
-                                    <>📋 涉及的預約（{parsed.bookingList.length} 筆）：</>
+                                    <>涉及的預約（{parsed.bookingList.length} 筆）：</>
                                   )}
                                 </div>
                                 <div style={{ 
@@ -1642,12 +1494,8 @@ export function AuditLog() {
                                           if (date) setBookingDateFilter(date)
                                         }}
                                         style={{
-                                          padding: '4px 10px',
-                                          fontSize: '12px',
+                                          ...getBadgeStyle('default'),
                                           border: 'none',
-                                          borderRadius: '4px',
-                                          background: '#fff3e0',
-                                          color: '#e65100',
                                           cursor: date ? 'pointer' : 'default',
                                           display: 'flex',
                                           gap: '4px',
@@ -1657,7 +1505,7 @@ export function AuditLog() {
                                       >
                                         <span style={{ fontWeight: '500' }}>{name}</span>
                                         {date && (
-                                          <span style={{ color: '#ff9800', fontSize: '11px' }}>
+                                          <span style={{ color: designSystem.colors.text.disabled, fontSize: '11px' }}>
                                             {date} {time}
                                           </span>
                                         )}
@@ -1671,7 +1519,7 @@ export function AuditLog() {
                             {/* 填表人/操作者資訊 */}
                             <div style={{ 
                               fontSize: '13px', 
-                              color: '#666',
+                              color: designSystem.colors.text.secondary,
                               marginBottom: '10px',
                               display: 'flex',
                               alignItems: 'center',
@@ -1680,44 +1528,36 @@ export function AuditLog() {
                             }}>
                               {log.table_name === 'coach_assignment' ? (
                                 <>
-                                  <span style={{ color: '#999' }}>操作者：</span>
+                                  <span style={{ color: designSystem.colors.text.disabled }}>操作者：</span>
                                   <span title={log.user_email || undefined}>
                                     {actorLabelFromPermissionTables(log.user_email, permissionDisplayByEmail)}
                                   </span>
                                 </>
                               ) : parsed.filledBy ? (
                                 <>
-                                  <span style={{ color: '#999' }}>填表人：</span>
+                                  <span style={{ color: designSystem.colors.text.disabled }}>填表人：</span>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSelectedFilledBy(parsed.filledBy!) }}
                                     style={{
-                                      padding: '3px 8px',
-                                      fontSize: '12px',
+                                      ...getBadgeStyle('default', 'small'),
                                       border: 'none',
-                                      borderRadius: '4px',
-                                      background: '#e3f2fd',
-                                      color: '#1565c0',
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    📝 {parsed.filledBy}
+                                    {parsed.filledBy}
                                   </button>
                                 </>
                               ) : (
                                 <>
-                                  <span style={{ color: '#999' }}>操作者：</span>
+                                  <span style={{ color: designSystem.colors.text.disabled }}>操作者：</span>
                                   <span title={log.user_email || undefined}>
                                     {actorLabelFromPermissionTables(log.user_email, permissionDisplayByEmail)}
                                   </span>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setSelectedFilledBy('（無填表人）') }}
                                     style={{
-                                      padding: '2px 6px',
-                                      fontSize: '11px',
-                                      border: '1px solid #e0e0e0',
-                                      borderRadius: '4px',
-                                      background: 'white',
-                                      color: '#999',
+                                      ...getBadgeStyle('default', 'small'),
+                                      border: 'none',
                                       cursor: 'pointer',
                                     }}
                                   >
@@ -1730,10 +1570,10 @@ export function AuditLog() {
                             {/* 完整記錄 */}
                             <div style={{
                               padding: '10px 12px',
-                              background: '#f8f9fa',
-                              borderRadius: '6px',
+                              background: designSystem.colors.background.hover,
+                              borderRadius: designSystem.borderRadius.md,
                               fontSize: '13px',
-                              color: '#333',
+                              color: designSystem.colors.text.primary,
                               whiteSpace: 'pre-wrap',
                               lineHeight: '1.6',
                             }}>

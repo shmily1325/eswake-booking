@@ -1,5 +1,6 @@
 import type { CoachPracticeSessionRow } from '../utils/boatUsageRangeStats'
 import { formatDuration } from '../pages/admin/Statistics/utils'
+import { designSystem, getEmptyStateStyle } from '../styles/designSystem'
 
 function formatHoursOneDecimal(minutes: number): string {
   return String(Math.round((minutes / 60) * 10) / 10)
@@ -34,11 +35,11 @@ export function CoachPracticeSessionsTable({
   emptyText = '無紀錄',
   isMobile = false
 }: CoachPracticeSessionsTableProps) {
-  const cell = { padding: isMobile ? '10px' : '12px', borderBottom: '1px solid #eee' } as const
-  const th = { ...cell, textAlign: 'left' as const, borderBottom: '2px solid #e0e0e0' }
+  const cell = { padding: isMobile ? '10px' : '12px', borderBottom: `1px solid ${designSystem.colors.border.light}` } as const
+  const th = { ...cell, textAlign: 'left' as const, borderBottom: `1px solid ${designSystem.colors.border.main}` }
 
   if (sessions.length === 0) {
-    return <p style={{ margin: 0, fontSize: '14px', color: '#999' }}>{emptyText}</p>
+    return <p style={{ ...getEmptyStateStyle(isMobile), margin: 0 }}>{emptyText}</p>
   }
 
   if (isMobile) {
@@ -48,13 +49,11 @@ export function CoachPracticeSessionsTable({
           <div
             key={row.bookingId}
             style={{
-              background: '#fafafa',
-              border: '1px solid #eee',
-              borderRadius: '10px',
-              padding: '12px 14px',
+              padding: '14px 0',
+              borderBottom: `1px solid ${designSystem.colors.border.light}`,
             }}
           >
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
+            <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary, marginBottom: '6px' }}>
               {formatPracticeStartAt(row.startAt)}
             </div>
             <div
@@ -65,16 +64,16 @@ export function CoachPracticeSessionsTable({
                 gap: '12px',
               }}
             >
-              <span style={{ fontSize: '15px', fontWeight: 700, color: '#333' }}>{row.boatName}</span>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: '#7b1fa2', textAlign: 'right' }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: designSystem.colors.text.primary }}>{row.boatName}</span>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: designSystem.colors.text.primary, textAlign: 'right' }}>
                 {formatDuration(row.durationMin)}
-                <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: '#888' }}>
+                <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: designSystem.colors.text.disabled }}>
                   {formatHoursOneDecimal(row.durationMin)} 小時
                 </span>
               </span>
             </div>
             {showContactPerson && (
-              <div style={{ marginTop: '6px', fontSize: '13px', color: '#555' }}>
+              <div style={{ marginTop: '6px', fontSize: '13px', color: designSystem.colors.text.secondary }}>
                 預約人：{row.contactName}
               </div>
             )}
@@ -88,7 +87,7 @@ export function CoachPracticeSessionsTable({
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '13px' : '14px' }}>
         <thead>
-          <tr style={{ background: '#f3e5f5' }}>
+          <tr style={{ background: designSystem.colors.background.hover, color: designSystem.colors.text.secondary }}>
             <th style={th}>開始時間</th>
             <th style={th}>船隻</th>
             {showContactPerson && <th style={th}>預約人</th>}
@@ -96,23 +95,23 @@ export function CoachPracticeSessionsTable({
           </tr>
         </thead>
         <tbody>
-          {sessions.map((row, idx) => (
-            <tr key={row.bookingId} style={{ background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
+          {sessions.map((row) => (
+            <tr key={row.bookingId} style={{ background: designSystem.colors.background.card }}>
               <td style={{ ...cell, whiteSpace: 'nowrap' }}>{formatPracticeStartAt(row.startAt)}</td>
               <td style={cell}>{row.boatName}</td>
               {showContactPerson && (
-                <td style={{ ...cell, color: '#555' }}>{row.contactName}</td>
+                <td style={{ ...cell, color: designSystem.colors.text.secondary }}>{row.contactName}</td>
               )}
               <td
                 style={{
                   ...cell,
                   textAlign: 'right',
                   fontWeight: 600,
-                  color: '#7b1fa2'
+                  color: designSystem.colors.text.primary
                 }}
               >
                 {formatDuration(row.durationMin)}
-                <span style={{ fontWeight: 400, color: '#888', marginLeft: '6px' }}>
+                <span style={{ fontWeight: 400, color: designSystem.colors.text.disabled, marginLeft: '6px' }}>
                   （{formatHoursOneDecimal(row.durationMin)} 小時）
                 </span>
               </td>

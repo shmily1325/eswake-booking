@@ -8,12 +8,13 @@ import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
 import { hasViewAccess } from '../utils/auth'
-import { getFacilityMessageLabel, isFacility } from '../utils/facility'
+import { getFacilityMessageLabel } from '../utils/facility'
 import { displayCoachNameForTomorrowMessage } from '../utils/tomorrowReminderDisplay'
 import {
   getCoachTomorrowReminderLines,
   TOMORROW_COACH_REMINDER_TARGET_COACHES
 } from '../utils/coachTomorrowReminderLines'
+import { useTomorrowReminderTemplates } from '../hooks/useTomorrowReminderTemplates'
 
 interface Booking {
   id: number
@@ -67,36 +68,15 @@ export function TomorrowReminder() {
   const [copiedCoachReminder, setCopiedCoachReminder] = useState<string | null>(null)
   const [selectedCoachReminder, setSelectedCoachReminder] = useState<string | null>(null)
   
-  const [includeWeatherWarning, setIncludeWeatherWarning] = useState(() => {
-    const saved = localStorage.getItem('includeWeatherWarning')
-    return saved !== null ? JSON.parse(saved) : true
-  })
-  
-  const [weatherWarning, setWeatherWarning] = useState(() => {
-    return localStorage.getItem('weatherWarning') || `由於近期天氣變化較大，請務必在『啟程前』
-透過官方訊息與我們確認最新天氣狀況
-別忘了在出發前查收最新訊息哦！`
-  })
-  
-  const [footerText, setFooterText] = useState(() => {
-    return localStorage.getItem('footerText') || `再麻煩幫我們準時抵達哦！謝謝！
-明天見哦😊
-抵達時 再麻煩幫我按開門鍵提醒教練們幫你開啟停車場鐵閘門 
-進來後再麻煩幫我停黃色停車格 
-白色的不能停 煩請配合🙏`
-  })
-  
-  useEffect(() => {
-    localStorage.setItem('includeWeatherWarning', JSON.stringify(includeWeatherWarning))
-  }, [includeWeatherWarning])
-  
-  useEffect(() => {
-    localStorage.setItem('weatherWarning', weatherWarning)
-  }, [weatherWarning])
-  
-  useEffect(() => {
-    localStorage.setItem('footerText', footerText)
-  }, [footerText])
+  const {
+    includeWeatherWarning,
+    setIncludeWeatherWarning,
+    weatherWarning,
+    setWeatherWarning,
+    footerText,
+    setFooterText,
+    saveStatus: templateSaveStatus,
+  } = useTomorrowReminderTemplates(user?.id)
   
   useEffect(() => {
     setSelectedStudent(null)
@@ -267,7 +247,7 @@ export function TomorrowReminder() {
     return `${raw.slice(0, 2)}:${raw.slice(2, 4)}`
   }
   
-  /** 不產生「預約人提醒訊息」條目（當日預約明細仍會顯示） */
+  /** 不產生「預約人提醒訊息」條目 */
   const EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS = new Set(['Ming'])
 
   // ✅ 改為以單一會員為主軸
@@ -645,8 +625,13 @@ export function TomorrowReminder() {
             alignItems: 'center',
             gap: '8px'
           }}>
-            <span>✓</span>
-            <span>您的修改會自動保存，下次打開時繼續使用</span>
+            <span>{templateSaveStatus === 'error' ? '!' : '✓'}</span>
+            <span>
+              {templateSaveStatus === 'loading' && '正在載入共用文字模板…'}
+              {templateSaveStatus === 'saving' && '正在儲存共用文字模板…'}
+              {templateSaveStatus === 'saved' && '修改會自動儲存，所有管理員將共用此文字模板'}
+              {templateSaveStatus === 'error' && '文字模板未能儲存，請重新整理後再試'}
+            </span>
           </div>
         </div>
 
@@ -905,90 +890,6 @@ export function TomorrowReminder() {
           )}
           </>
         )}
-
-        {/* Booking List */}
-        {bookings.length > 0 && (() => {
-          return (
-            <div style={{
-              ...pageCardStyle,
-              marginBottom: '20px',
-            }}>
-              <h2 style={{
-                fontSize: isMobile ? '15px' : '16px',
-                fontWeight: '600',
-                color: designSystem.colors.text.primary,
-                marginBottom: isMobile ? '12px' : '15px'
-              }}>
-                當日預約明細 ({bookings.length} 筆)
-              </h2>
-              
-              <div style={{
-                display: 'grid',
-                gap: isMobile ? '8px' : '10px'
-              }}>
-                {bookings.map((booking) => {
-                  const startTime = formatTimeNoColon(booking.start_at)
-                  const arrivalTime = getArrivalTimeNoColon(booking.start_at)
-                  const isFacilityBooking = isFacility(booking.boats?.name)
-                  
-                  // 直接使用 booking.coaches 數組（如果沒有教練就不顯示）
-                  const allCoaches = booking.coaches && booking.coaches.length > 0
-                    ? booking.coaches.map(c => c.name).join(' / ')
-                    : ''
-                  
-                  return (
-                    <div
-                      key={booking.id}
-                      style={{
-                        padding: isMobile ? '10px' : '12px',
-                        border: `1px solid ${designSystem.colors.border.light}`,
-                        borderRadius: designSystem.borderRadius.md,
-                        display: isMobile ? 'flex' : 'grid',
-                        flexDirection: isMobile ? 'column' : undefined,
-                        gridTemplateColumns: isMobile ? undefined : 'auto 1fr auto',
-                        gap: isMobile ? '8px' : '12px',
-                        alignItems: isMobile ? 'flex-start' : 'center',
-                        fontSize: isMobile ? '13px' : '14px'
-                      }}
-                    >
-                      <div style={{ color: designSystem.colors.text.secondary }}>
-                        <div style={{ fontWeight: '600', color: designSystem.colors.text.primary, fontSize: isMobile ? '14px' : undefined }}>
-                          {arrivalTime} 抵達
-                        </div>
-                        <div style={{ fontSize: isMobile ? '12px' : '12px', marginTop: '2px' }}>
-                          {startTime} {isFacilityBooking ? '開始' : '下水'}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div style={{ fontWeight: '600', color: designSystem.colors.text.primary, fontSize: isMobile ? '14px' : undefined }}>
-                          {booking.contact_name}
-                        </div>
-                        <div style={{ fontSize: isMobile ? '12px' : '12px', color: designSystem.colors.text.secondary, marginTop: '2px' }}>
-                          {allCoaches ? `${allCoaches} · ` : ''}{booking.boats?.name} · {booking.duration_min}分
-                        </div>
-                      </div>
-                      
-                      {booking.activity_types && booking.activity_types.length > 0 && (
-                        <div style={{
-                          fontSize: isMobile ? '11px' : '11px',
-                          padding: '3px 8px',
-                          background: designSystem.colors.background.hover,
-                          borderRadius: designSystem.borderRadius.sm,
-                          color: designSystem.colors.text.secondary,
-                          fontWeight: '600',
-                          alignSelf: isMobile ? 'flex-start' : undefined
-                        }}>
-                          {booking.activity_types.join(' + ')}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })()}
 
         <Footer />
       </div>

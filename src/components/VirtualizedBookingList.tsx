@@ -218,7 +218,9 @@ export function VirtualizedBookingList({
                                                     gap: isMobile ? '10px' : '14px',
                                                     alignItems: 'center',
                                                     backgroundColor: designSystem.colors.background.card,
-                                                    border: conflictedBookingIds?.has(booking.id) ? `2px solid ${designSystem.colors.danger[500]}` : '1px solid transparent',
+                                                    border: conflictedBookingIds?.has(booking.id)
+                                                        ? `2px solid ${designSystem.colors.danger[500]}`
+                                                        : `1px solid ${designSystem.colors.border.light}`,
                                                     borderRadius: designSystem.borderRadius.md,
                                                     boxShadow: conflictedBookingIds?.has(booking.id)
                                                         ? `0 0 0 1px ${designSystem.colors.danger[500]}22 inset`

@@ -8,6 +8,13 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
 import { isMemberPhoneOnlyEditor } from '../../utils/auth'
 import { normalizeDate } from '../../utils/date'
+import {
+  designSystem,
+  getBadgeStyle,
+  getButtonStyle,
+  getEmptyStateStyle,
+  getInputStyle,
+} from '../../styles/designSystem'
 
 interface MemberRow {
   id: string
@@ -222,16 +229,16 @@ export function MemberPhoneEditPage() {
       style={{
         padding: isMobile ? '12px 16px' : '20px',
         minHeight: '100dvh',
-        background: '#f5f5f5',
+        background: designSystem.colors.background.main,
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
       }}
     >
-      <PageHeader title="📱 會員電話" user={user} showBaoLink={false} />
+      <PageHeader title="會員電話" user={user} showBaoLink={false} />
 
       <p
         style={{
           fontSize: '14px',
-          color: '#666',
+          color: designSystem.colors.text.secondary,
           marginBottom: '14px',
           lineHeight: 1.5,
         }}
@@ -250,20 +257,13 @@ export function MemberPhoneEditPage() {
       >
         <input
           type="text"
-          placeholder="🔍 搜尋（姓名、暱稱、手機）"
+          placeholder="搜尋（姓名、暱稱、手機）"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
+            ...getInputStyle(isMobile),
             flex: 1,
             minWidth: 0,
-            width: '100%',
-            padding: isMobile ? '12px 14px' : '12px 16px',
-            border: '1px solid #dee2e6',
-            borderRadius: '8px',
-            fontSize: isMobile ? '16px' : '15px',
-            outline: 'none',
-            background: 'white',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
             boxSizing: 'border-box',
           }}
         />
@@ -281,16 +281,9 @@ export function MemberPhoneEditPage() {
             type="button"
             onClick={() => setLineBindingFilter('all')}
             style={{
+              ...getButtonStyle(lineBindingFilter === 'all' ? 'secondary' : 'outline', 'small', isMobile),
               minHeight: 44,
               padding: '8px 10px',
-              borderRadius: '8px',
-              fontSize: isMobile ? '14px' : '13px',
-              cursor: 'pointer',
-              fontWeight: lineBindingFilter === 'all' ? 600 : 'normal',
-              border: `1px solid ${lineBindingFilter === 'all' ? '#5a5a5a' : '#dee2e6'}`,
-              background: lineBindingFilter === 'all' ? '#5a5a5a' : 'white',
-              color: lineBindingFilter === 'all' ? 'white' : '#333',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             }}
           >
             全部 ({members.length})
@@ -299,16 +292,9 @@ export function MemberPhoneEditPage() {
             type="button"
             onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
             style={{
+              ...getButtonStyle(lineBindingFilter === 'bound' ? 'secondary' : 'outline', 'small', isMobile),
               minHeight: 44,
               padding: '8px 10px',
-              borderRadius: '8px',
-              fontSize: isMobile ? '14px' : '13px',
-              cursor: 'pointer',
-              fontWeight: lineBindingFilter === 'bound' ? 600 : 'normal',
-              border: `1px solid ${lineBindingFilter === 'bound' ? '#06C755' : '#06C755'}`,
-              background: lineBindingFilter === 'bound' ? '#06C755' : 'white',
-              color: lineBindingFilter === 'bound' ? 'white' : '#06C755',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             }}
           >
             已綁定 ({lineBoundCount})
@@ -317,16 +303,9 @@ export function MemberPhoneEditPage() {
             type="button"
             onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
             style={{
+              ...getButtonStyle(lineBindingFilter === 'unbound' ? 'secondary' : 'outline', 'small', isMobile),
               minHeight: 44,
               padding: '8px 10px',
-              borderRadius: '8px',
-              fontSize: isMobile ? '14px' : '13px',
-              cursor: 'pointer',
-              fontWeight: lineBindingFilter === 'unbound' ? 600 : 'normal',
-              border: `1px solid ${lineBindingFilter === 'unbound' ? '#888' : '#ddd'}`,
-              background: lineBindingFilter === 'unbound' ? '#888' : 'white',
-              color: lineBindingFilter === 'unbound' ? 'white' : '#666',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             }}
           >
             未綁定 ({lineUnboundCount})
@@ -335,7 +314,7 @@ export function MemberPhoneEditPage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>載入中…</div>
+        <div style={getEmptyStateStyle(isMobile)}>載入中…</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map((m) => {
@@ -353,11 +332,11 @@ export function MemberPhoneEditPage() {
               <div
                 key={m.id}
                 style={{
-                  background: 'white',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  border: '1px solid #e8e8e8',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  background: designSystem.colors.background.card,
+                  borderRadius: designSystem.borderRadius.lg,
+                  padding: isMobile ? '16px' : '18px 20px',
+                  border: `1px solid ${designSystem.colors.border.light}`,
+                  boxShadow: designSystem.shadows.xs,
                 }}
               >
                 <div
@@ -370,19 +349,19 @@ export function MemberPhoneEditPage() {
                   }}
                 >
                   <div>
-                    <span style={{ color: '#888' }}>姓名：</span>
+                    <span style={{ color: designSystem.colors.text.secondary }}>姓名：</span>
                     {m.name}
                   </div>
                   <div>
-                    <span style={{ color: '#888' }}>暱稱：</span>
+                    <span style={{ color: designSystem.colors.text.secondary }}>暱稱：</span>
                     {m.nickname?.trim() || '—'}
                   </div>
                   <div>
-                    <span style={{ color: '#888' }}>生日：</span>
+                    <span style={{ color: designSystem.colors.text.secondary }}>生日：</span>
                     {normalizeDate(m.birthday) || '—'}
                   </div>
                   <div>
-                    <span style={{ color: '#888' }}>會員類型：</span>
+                    <span style={{ color: designSystem.colors.text.secondary }}>會員類型：</span>
                     {membershipLabel(m.membership_type)}
                     {partnerLine ? `（配對：${partnerLine}）` : ''}
                   </div>
@@ -395,7 +374,7 @@ export function MemberPhoneEditPage() {
                     flexWrap: isMobile ? 'nowrap' : 'wrap',
                     gap: isMobile ? '10px' : '10px',
                     alignItems: isMobile ? 'stretch' : 'center',
-                    borderTop: '1px solid #eee',
+                    borderTop: `1px solid ${designSystem.colors.border.light}`,
                     paddingTop: '12px',
                   }}
                 >
@@ -409,7 +388,7 @@ export function MemberPhoneEditPage() {
                   >
                     <span
                       style={{
-                        color: '#666',
+                        color: designSystem.colors.text.secondary,
                         fontSize: isMobile ? '15px' : '14px',
                         fontWeight: 600,
                       }}
@@ -419,15 +398,7 @@ export function MemberPhoneEditPage() {
                     <span
                       title={m.is_line_bound ? 'LINE 已綁定' : 'LINE 未綁定'}
                       style={{
-                        display: 'inline-block',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        lineHeight: 1.2,
-                        padding: '3px 8px',
-                        borderRadius: '999px',
-                        background: m.is_line_bound ? '#e8f5e9' : '#f5f5f5',
-                        color: m.is_line_bound ? '#2e7d32' : '#9e9e9e',
-                        border: `1px solid ${m.is_line_bound ? '#a5d6a7' : '#e0e0e0'}`,
+                        ...getBadgeStyle(m.is_line_bound ? 'success' : 'default', 'small'),
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -436,8 +407,8 @@ export function MemberPhoneEditPage() {
                           ? '已綁定'
                           : '未綁定'
                         : m.is_line_bound
-                          ? '✅ LINE 已綁定'
-                          : '❌ LINE 未綁定'}
+                          ? 'LINE 已綁定'
+                          : 'LINE 未綁定'}
                     </span>
                   </div>
                   {isMobile ? (
@@ -466,12 +437,8 @@ export function MemberPhoneEditPage() {
                           }}
                           placeholder="0912345678 或貼上 +886…"
                           style={{
-                            width: '100%',
+                            ...getInputStyle(true, draftInvalid),
                             minHeight: 52,
-                            padding: '14px 16px',
-                            border: '1px solid #5a5a5a',
-                            borderRadius: '8px',
-                            fontSize: '16px',
                             boxSizing: 'border-box',
                             WebkitTapHighlightColor: 'transparent',
                           }}
@@ -489,14 +456,8 @@ export function MemberPhoneEditPage() {
                             onClick={() => savePhone(m.id)}
                             disabled={saveDisabled}
                             style={{
+                              ...getButtonStyle('primary', 'large', true),
                               minHeight: 50,
-                              padding: '12px 16px',
-                              background: '#5a5a5a',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              fontSize: '16px',
-                              fontWeight: 600,
                               cursor: savingId === m.id ? 'wait' : 'pointer',
                               opacity: saveDisabled && savingId !== m.id ? 0.45 : 1,
                             }}
@@ -515,14 +476,8 @@ export function MemberPhoneEditPage() {
                               })
                             }}
                             style={{
+                              ...getButtonStyle('outline', 'large', true),
                               minHeight: 50,
-                              padding: '12px 16px',
-                              background: 'white',
-                              color: '#555',
-                              border: '1px solid #ccc',
-                              borderRadius: '8px',
-                              fontSize: '16px',
-                              fontWeight: 600,
                               cursor: savingId === m.id ? 'not-allowed' : 'pointer',
                             }}
                           >
@@ -555,16 +510,13 @@ export function MemberPhoneEditPage() {
                           }}
                           title="點一下可編輯手機"
                           style={{
+                            ...getInputStyle(true),
                             flex: 1,
                             minWidth: 0,
                             minHeight: 50,
-                            padding: '14px 16px',
-                            border: '1px solid #e8e8e8',
-                            borderRadius: '8px',
-                            fontSize: '16px',
                             boxSizing: 'border-box',
-                            background: '#fafafa',
-                            color: m.phone ? '#222' : '#999',
+                            background: designSystem.colors.background.hover,
+                            color: m.phone ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
                             display: 'flex',
                             alignItems: 'center',
                             cursor: 'pointer',
@@ -580,17 +532,10 @@ export function MemberPhoneEditPage() {
                             setEditingMemberIds((prev) => new Set(prev).add(m.id))
                           }}
                           style={{
+                            ...getButtonStyle('outline', 'large', true),
                             flexShrink: 0,
                             minWidth: 88,
                             minHeight: 50,
-                            padding: '12px 16px',
-                            background: 'white',
-                            color: '#333',
-                            border: '1px solid #888',
-                            borderRadius: '8px',
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
                             WebkitTapHighlightColor: 'transparent',
                           }}
                         >
@@ -624,13 +569,10 @@ export function MemberPhoneEditPage() {
                           }}
                           placeholder="0912345678 或貼上 +886…"
                           style={{
+                            ...getInputStyle(false, draftInvalid),
                             flex: '1 1 200px',
                             minWidth: '160px',
                             minHeight: 44,
-                            padding: '12px 14px',
-                            border: '1px solid #bbb',
-                            borderRadius: '8px',
-                            fontSize: '16px',
                             boxSizing: 'border-box',
                           }}
                         />
@@ -651,16 +593,13 @@ export function MemberPhoneEditPage() {
                           }}
                           title="點一下可編輯手機"
                           style={{
+                            ...getInputStyle(false),
                             flex: '1 1 200px',
                             minWidth: '160px',
                             minHeight: 44,
-                            padding: '12px 14px',
-                            border: '1px solid #e8e8e8',
-                            borderRadius: '8px',
-                            fontSize: '16px',
                             boxSizing: 'border-box',
-                            background: '#fafafa',
-                            color: m.phone ? '#222' : '#999',
+                            background: designSystem.colors.background.hover,
+                            color: m.phone ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
                             display: 'flex',
                             alignItems: 'center',
                             cursor: 'pointer',
@@ -676,14 +615,8 @@ export function MemberPhoneEditPage() {
                             onClick={() => savePhone(m.id)}
                             disabled={saveDisabled}
                             style={{
-                              padding: '12px 22px',
+                              ...getButtonStyle('primary', 'medium', false),
                               minHeight: 44,
-                              background: '#5a5a5a',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              fontSize: '15px',
-                              fontWeight: 600,
                               cursor: savingId === m.id ? 'wait' : 'pointer',
                               opacity: saveDisabled && savingId !== m.id ? 0.45 : 1,
                               flexShrink: 0,
@@ -703,14 +636,8 @@ export function MemberPhoneEditPage() {
                               })
                             }}
                             style={{
-                              padding: '12px 22px',
+                              ...getButtonStyle('outline', 'medium', false),
                               minHeight: 44,
-                              background: 'white',
-                              color: '#555',
-                              border: '1px solid #ccc',
-                              borderRadius: '8px',
-                              fontSize: '15px',
-                              fontWeight: 600,
                               cursor: savingId === m.id ? 'not-allowed' : 'pointer',
                               flexShrink: 0,
                             }}
@@ -726,15 +653,8 @@ export function MemberPhoneEditPage() {
                             setEditingMemberIds((prev) => new Set(prev).add(m.id))
                           }}
                           style={{
-                            padding: '12px 22px',
+                            ...getButtonStyle('outline', 'medium', false),
                             minHeight: 44,
-                            background: 'white',
-                            color: '#333',
-                            border: '1px solid #888',
-                            borderRadius: '8px',
-                            fontSize: '15px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
                             flexShrink: 0,
                           }}
                         >
@@ -751,7 +671,7 @@ export function MemberPhoneEditPage() {
       )}
 
       {!loading && filtered.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '32px', color: '#999' }}>沒有符合的會員</div>
+        <div style={getEmptyStateStyle(isMobile)}>沒有符合的會員</div>
       )}
 
       <Footer />

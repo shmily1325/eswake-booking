@@ -11,6 +11,7 @@ import { designSystem, getCardStyle } from '../../styles/designSystem'
 import { isAdmin } from '../../utils/auth'
 import { getFacilityMessageLabel } from '../../utils/facility'
 import { displayCoachNameForTomorrowMessage } from '../../utils/tomorrowReminderDisplay'
+import { useTomorrowReminderTemplates } from '../../hooks/useTomorrowReminderTemplates'
 
 interface Booking {
   id: number
@@ -70,25 +71,15 @@ export function LineSettings() {
   const [unboundMembers, setUnboundMembers] = useState<any[]>([])
   const [showBindingList, setShowBindingList] = useState<'bound' | 'unbound' | null>(null)
   
-  // 文字模板 - 參照 TomorrowReminder
-  const [includeWeatherWarning, setIncludeWeatherWarning] = useState(() => {
-    const saved = localStorage.getItem('includeWeatherWarning')
-    return saved !== null ? JSON.parse(saved) : true
-  })
-  
-  const [weatherWarning, setWeatherWarning] = useState(() => {
-    return localStorage.getItem('weatherWarning') || `由於近期天氣變化較大，請務必在『啟程前』
-透過官方訊息與我們確認最新天氣狀況
-別忘了在出發前查收最新訊息哦！`
-  })
-  
-  const [footerText, setFooterText] = useState(() => {
-    return localStorage.getItem('footerText') || `再麻煩幫我們準時抵達哦！謝謝！
-明天見哦😊
-抵達時 再麻煩幫我按開門鍵提醒教練們幫你開啟停車場鐵閘門 
-進來後再麻煩幫我停黃色停車格 
-白色的不能停 煩請配合🙏`
-  })
+  // 與明日提醒頁共用同一份資料庫文字模板
+  const {
+    includeWeatherWarning,
+    setIncludeWeatherWarning,
+    weatherWarning,
+    setWeatherWarning,
+    footerText,
+    setFooterText,
+  } = useTomorrowReminderTemplates(user?.id)
   
   const [showSettings, setShowSettings] = useState(false)
 
@@ -98,18 +89,6 @@ export function LineSettings() {
   const [reminderTime, setReminderTime] = useState('19:00')
   const [saving, setSaving] = useState(false)
   const [showToken, setShowToken] = useState(false)
-  
-  useEffect(() => {
-    localStorage.setItem('includeWeatherWarning', JSON.stringify(includeWeatherWarning))
-  }, [includeWeatherWarning])
-  
-  useEffect(() => {
-    localStorage.setItem('weatherWarning', weatherWarning)
-  }, [weatherWarning])
-  
-  useEffect(() => {
-    localStorage.setItem('footerText', footerText)
-  }, [footerText])
   
   useEffect(() => {
     // 換日時立刻清空舊清單，避免使用者在新資料載入前對「舊日期的學員」按下發送 LINE
