@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase'
 import { hasViewAccess } from '../utils/auth'
 import { addDaysToDate, getLocalDateString } from '../utils/date'
 import { trackClickDedupedWithin } from '../utils/trackClick'
-import { getButtonStyle, styles } from '../styles/designSystem'
+import { designSystem, getButtonStyle, styles } from '../styles/designSystem'
 import {
   getTimeOffCellLabel,
   getTimeOffCellTooltip,
@@ -71,15 +71,15 @@ function formatDayHeader(ymd: string): string {
 function timeOffLabelPillStyle(label: string): CSSProperties {
   if (label === '整天') {
     return {
-      backgroundColor: '#ffecb3',
-      color: '#e65100',
-      border: '1px solid #ffcc80',
+      backgroundColor: designSystem.colors.warning[50],
+      color: designSystem.colors.warning[700],
+      border: `1px solid ${designSystem.colors.warning[500]}28`,
     }
   }
   return {
-    backgroundColor: '#fff3e0',
-    color: '#f57c00',
-    border: '1px solid #ffe0b2',
+    backgroundColor: '#f8f1e7',
+    color: designSystem.colors.warning[700],
+    border: `1px solid ${designSystem.colors.warning[500]}20`,
   }
 }
 
@@ -89,8 +89,8 @@ function cellStyle(label: string, isWeekend: boolean, isToday: boolean): CSSProp
     padding: '6px 2px',
     fontSize: '12px',
     fontWeight: 600,
-    borderBottom: '1px solid #e8e8e8',
-    borderRight: '1px solid #e8e8e8',
+    borderBottom: `1px solid ${designSystem.colors.border.light}`,
+    borderRight: `1px solid ${designSystem.colors.border.light}`,
     minWidth: '28px',
     lineHeight: 1.2,
   }
@@ -98,17 +98,17 @@ function cellStyle(label: string, isWeekend: boolean, isToday: boolean): CSSProp
   if (!label) {
     return {
       ...base,
-      background: isToday ? '#f0f7ff' : isWeekend ? '#fafafa' : '#fff',
-      color: '#ddd',
+      background: isToday ? designSystem.colors.secondary[100] : isWeekend ? designSystem.colors.secondary[50] : '#fff',
+      color: designSystem.colors.border.dark,
     }
   }
 
   const isFull = label === '全'
   return {
     ...base,
-    background: isFull ? '#ffecb3' : '#fff3e0',
-    color: isFull ? '#e65100' : '#f57c00',
-    boxShadow: isToday ? 'inset 0 0 0 2px #90caf9' : undefined,
+    background: isFull ? designSystem.colors.warning[50] : '#f8f1e7',
+    color: designSystem.colors.warning[700],
+    boxShadow: isToday ? `inset 0 0 0 2px ${designSystem.colors.primary[200]}` : undefined,
   }
 }
 
@@ -174,13 +174,13 @@ function TimeOffLegend({ compact }: { compact?: boolean }) {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '4px 10px',
+    padding: '5px 11px',
     background: '#fff',
-    border: '1px solid #eef1f4',
+    border: `1px solid ${designSystem.colors.border.light}`,
     borderRadius: '999px',
     fontSize: compact ? '12px' : '13px',
-    color: '#555',
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+    color: designSystem.colors.text.secondary,
+    boxShadow: designSystem.shadows.xs,
   }
   const badge = (bg: string, color: string): CSSProperties => ({
     display: 'inline-flex',
@@ -188,7 +188,7 @@ function TimeOffLegend({ compact }: { compact?: boolean }) {
     justifyContent: 'center',
     width: '20px',
     height: '20px',
-    borderRadius: '6px',
+    borderRadius: designSystem.borderRadius.full,
     fontSize: '12px',
     fontWeight: 700,
     background: bg,
@@ -202,9 +202,9 @@ function TimeOffLegend({ compact }: { compact?: boolean }) {
       marginBottom: compact ? '8px' : '12px',
       padding: compact ? '0 4px' : 0,
     }}>
-      <span style={chip}><span style={badge('#ffecb3', '#e65100')}>全</span> 整天</span>
-      <span style={chip}><span style={badge('#fff3e0', '#f57c00')}>上</span> 上午</span>
-      <span style={chip}><span style={badge('#fff3e0', '#f57c00')}>下</span> 下午</span>
+      <span style={chip}><span style={badge(designSystem.colors.warning[50], designSystem.colors.warning[700])}>全</span> 整天</span>
+      <span style={chip}><span style={badge('#f8f1e7', designSystem.colors.warning[700])}>上</span> 上午</span>
+      <span style={chip}><span style={badge('#f8f1e7', designSystem.colors.warning[700])}>下</span> 下午</span>
       {!compact && (
         <span style={{ ...chip, color: '#94a3b8' }}>其他為自訂時段 · 空白為可上班</span>
       )}
@@ -226,16 +226,17 @@ function CoachTimeOffDayDetail({
 
   return (
     <div style={{
-      ...styles.cardBordered,
-      padding: '14px 16px',
-      borderColor: isToday ? '#90caf9' : '#e8e8e8',
-      boxShadow: isToday ? '0 2px 8px rgba(33, 150, 243, 0.12)' : styles.cardBordered.boxShadow,
+      background: '#ffffff',
+      borderRadius: designSystem.borderRadius.lg,
+      padding: '16px 18px',
+      border: `1px solid ${isToday ? designSystem.colors.primary[200] : designSystem.colors.border.light}`,
+      boxShadow: isToday ? designSystem.shadows.sm : designSystem.shadows.xs,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: entries.length > 0 ? '10px' : 0 }}>
         <span style={{
           fontSize: '16px',
           fontWeight: 700,
-          color: isToday ? '#1565c0' : isWeekend ? '#999' : '#333',
+          color: isToday ? designSystem.colors.text.primary : isWeekend ? designSystem.colors.text.disabled : designSystem.colors.text.primary,
         }}>
           {formatDayHeader(ymd)}
         </span>
@@ -244,21 +245,21 @@ function CoachTimeOffDayDetail({
             ...styles.badgeDefault,
             padding: '2px 8px',
             fontSize: '11px',
-            backgroundColor: '#e3f2fd',
-            color: '#1565c0',
-            border: '1px solid #90caf9',
+            backgroundColor: designSystem.colors.secondary[100],
+            color: designSystem.colors.text.primary,
+            border: `1px solid ${designSystem.colors.border.light}`,
           }}>
             今天
           </span>
         )}
       </div>
       {entries.length === 0 ? (
-        <div style={{ color: '#2e7d32', fontSize: '14px' }}>✓ 全員可上班</div>
+        <div style={{ color: designSystem.colors.success[700], fontSize: '14px' }}>全員可上班</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {entries.map(entry => (
             <div key={entry.coachId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-              <span style={{ fontSize: '15px', fontWeight: 600, color: '#333' }}>{entry.name}</span>
+              <span style={{ fontSize: '15px', fontWeight: 600, color: designSystem.colors.text.primary }}>{entry.name}</span>
               <span style={{
                 ...styles.badgeWarning,
                 ...timeOffLabelPillStyle(entry.label),
@@ -310,7 +311,7 @@ function CoachTimeOffWeekGrid({
         >
           ←
         </button>
-        <span style={{ fontWeight: 700, fontSize: '15px', color: '#333' }}>
+        <span style={{ fontWeight: 750, fontSize: '15px', color: designSystem.colors.text.primary, letterSpacing: '-0.02em' }}>
           {formatWeekRange(weekDays)}
         </span>
         <button
@@ -331,12 +332,13 @@ function CoachTimeOffWeekGrid({
                 position: 'sticky',
                 left: 0,
                 zIndex: 2,
-                background: '#f5f5f5',
-                padding: '6px 8px',
+                background: designSystem.colors.secondary[50],
+                padding: '8px 10px',
                 textAlign: 'left',
                 fontSize: '12px',
-                borderBottom: '2px solid #ddd',
-                borderRight: '2px solid #ddd',
+                color: designSystem.colors.text.secondary,
+                borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                borderRight: `1px solid ${designSystem.colors.border.main}`,
                 minWidth: '52px',
               }}>
                 教練
@@ -351,10 +353,10 @@ function CoachTimeOffWeekGrid({
                       padding: '4px 2px',
                       fontSize: '11px',
                       fontWeight: 600,
-                      borderBottom: '2px solid #ddd',
-                      borderRight: '1px solid #e8e8e8',
-                      background: isToday ? '#e3f2fd' : wd === 0 || wd === 6 ? '#f5f5f5' : '#fafafa',
-                      color: wd === 0 || wd === 6 ? '#999' : '#555',
+                      borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                      borderRight: `1px solid ${designSystem.colors.border.light}`,
+                      background: isToday ? designSystem.colors.secondary[100] : wd === 0 || wd === 6 ? designSystem.colors.secondary[50] : '#fbfaf8',
+                      color: wd === 0 || wd === 6 ? designSystem.colors.text.disabled : designSystem.colors.text.secondary,
                       minWidth: '36px',
                     }}
                   >
@@ -375,11 +377,12 @@ function CoachTimeOffWeekGrid({
                     left: 0,
                     zIndex: 1,
                     background: '#fff',
-                    padding: '6px 8px',
+                    padding: '8px 10px',
                     fontWeight: 600,
                     fontSize: '12px',
-                    borderRight: '2px solid #ddd',
-                    borderBottom: '1px solid #e8e8e8',
+                    color: designSystem.colors.text.primary,
+                    borderRight: `1px solid ${designSystem.colors.border.main}`,
+                    borderBottom: `1px solid ${designSystem.colors.border.light}`,
                     whiteSpace: 'nowrap',
                   }}>
                     {coach.name}
@@ -430,15 +433,15 @@ function CoachTimeOffMonthCalendar({
     : []
 
   return (
-    <div style={{ padding: '12px' }}>
+    <div style={{ padding: '14px' }}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(7, 1fr)',
-        gap: '4px',
-        marginBottom: '12px',
+        gap: '6px',
+        marginBottom: '14px',
       }}>
         {WEEKDAY_ZH.map(wd => (
-          <div key={wd} style={{ textAlign: 'center', fontSize: '11px', color: '#999', fontWeight: 600, padding: '4px 0' }}>
+          <div key={wd} style={{ textAlign: 'center', fontSize: '11px', color: designSystem.colors.text.disabled, fontWeight: 650, padding: '4px 0' }}>
             {wd}
           </div>
         ))}
@@ -458,9 +461,9 @@ function CoachTimeOffMonthCalendar({
               onClick={() => onSelectDay(ymd)}
               style={{
                 aspectRatio: '1',
-                border: isSelected ? '2px solid #1976d2' : isToday ? '2px solid #90caf9' : '1px solid #eee',
-                borderRadius: '10px',
-                background: isSelected ? '#e3f2fd' : '#fff',
+                border: isSelected ? `1px solid ${designSystem.colors.primary[400]}` : isToday ? `1px solid ${designSystem.colors.primary[200]}` : `1px solid ${designSystem.colors.border.light}`,
+                borderRadius: designSystem.borderRadius.lg,
+                background: isSelected ? designSystem.colors.secondary[100] : '#fff',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
@@ -468,12 +471,13 @@ function CoachTimeOffMonthCalendar({
                 justifyContent: 'center',
                 gap: '2px',
                 padding: 0,
+                boxShadow: isSelected ? designSystem.shadows.xs : 'none',
               }}
             >
               <span style={{
                 fontSize: '14px',
                 fontWeight: isToday || isSelected ? 700 : 500,
-                color: wd === 0 || wd === 6 ? '#999' : '#333',
+                color: wd === 0 || wd === 6 ? designSystem.colors.text.disabled : designSystem.colors.text.primary,
               }}>
                 {dayOfMonth(ymd)}
               </span>
@@ -482,7 +486,7 @@ function CoachTimeOffMonthCalendar({
                   width: '6px',
                   height: '6px',
                   borderRadius: '50%',
-                  background: '#f57c00',
+                  background: designSystem.colors.warning[500],
                 }} />
               )}
             </button>
@@ -531,21 +535,21 @@ function CoachTimeOffMobileViews({
     flex: 1,
     padding: '10px 12px',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: designSystem.borderRadius.full,
     fontSize: '14px',
-    fontWeight: active ? 700 : 500,
+    fontWeight: active ? 700 : 600,
     cursor: 'pointer',
     background: active ? '#fff' : 'transparent',
-    color: active ? '#1565c0' : '#666',
-    boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+    color: active ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
+    boxShadow: active ? designSystem.shadows.xs : 'none',
   })
 
   if (loading) {
-    return <div style={{ padding: '32px', color: '#888', textAlign: 'center' }}>載入中...</div>
+    return <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>載入中...</div>
   }
 
   if (coaches.length === 0) {
-    return <div style={{ padding: '32px', color: '#888', textAlign: 'center' }}>無啟用中的教練</div>
+    return <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>無啟用中的教練</div>
   }
 
   return (
@@ -553,10 +557,10 @@ function CoachTimeOffMobileViews({
       <div style={{
         display: 'flex',
         gap: '6px',
-        padding: '10px 12px 0',
-        background: '#f0f0f0',
-        margin: '0 0 0',
-        borderRadius: '10px 10px 0 0',
+        padding: '12px 12px 0',
+        background: designSystem.colors.secondary[50],
+        margin: 0,
+        borderRadius: `${designSystem.borderRadius.xl} ${designSystem.borderRadius.xl} 0 0`,
       }}>
         <button
           type="button"
@@ -739,7 +743,7 @@ export function CoachTimeOffPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f9fa', padding: isMobile ? '12px' : '20px' }}>
+    <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, padding: isMobile ? '18px' : '28px' }}>
       <div style={{ maxWidth: isMobile ? '100%' : '100%', margin: '0 auto' }}>
         <PageHeader title="🏖️ 教練休假" user={user} />
 
@@ -749,7 +753,7 @@ export function CoachTimeOffPage() {
           alignItems: 'center',
           justifyContent: isMobile ? 'center' : 'flex-start',
           gap: isMobile ? '8px' : '10px',
-          marginBottom: '12px',
+          marginBottom: '18px',
           flexWrap: 'wrap',
         }}>
           <button
@@ -766,16 +770,17 @@ export function CoachTimeOffPage() {
             value={monthParam}
             onChange={handleMonthInputChange}
             style={{
-              padding: isMobile ? '10px 12px' : '8px 10px',
-              borderRadius: '8px',
-              border: '1px solid #dee2e6',
+              padding: isMobile ? '11px 14px' : '10px 14px',
+              borderRadius: designSystem.borderRadius.lg,
+              border: `1px solid ${designSystem.colors.border.light}`,
               fontSize: '16px',
               fontWeight: 600,
               background: '#fff',
+              boxShadow: designSystem.shadows.xs,
             }}
           />
           {!isMobile && (
-            <span style={{ fontWeight: 700, fontSize: '16px', color: '#333' }}>{monthTitle}</span>
+            <span style={{ fontWeight: 750, fontSize: '17px', color: designSystem.colors.text.primary, letterSpacing: '-0.02em' }}>{monthTitle}</span>
           )}
           <button
             type="button"
@@ -803,9 +808,9 @@ export function CoachTimeOffPage() {
 
         <div style={{
           background: '#fff',
-          borderRadius: '14px',
-          border: '1px solid #eef1f4',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+          borderRadius: designSystem.borderRadius.xl,
+          border: `1px solid ${designSystem.colors.border.light}`,
+          boxShadow: designSystem.shadows.elevation[2],
           overflow: isMobile ? 'visible' : 'auto',
           marginBottom: '24px',
         }}>
@@ -825,9 +830,9 @@ export function CoachTimeOffPage() {
               loading={loading}
             />
           ) : loading ? (
-            <div style={{ padding: '24px', color: '#888', textAlign: 'center' }}>載入中...</div>
+            <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>載入中...</div>
           ) : coaches.length === 0 ? (
-            <div style={{ padding: '24px', color: '#888', textAlign: 'center' }}>無啟用中的教練</div>
+            <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>無啟用中的教練</div>
           ) : (
             <table style={{
               borderCollapse: 'collapse',
@@ -839,12 +844,13 @@ export function CoachTimeOffPage() {
                     position: 'sticky',
                     left: 0,
                     zIndex: 2,
-                    background: '#f5f5f5',
-                    padding: '8px 10px',
+                    background: designSystem.colors.secondary[50],
+                    padding: '10px 12px',
                     textAlign: 'left',
                     fontSize: '13px',
-                    borderBottom: '2px solid #ddd',
-                    borderRight: '2px solid #ddd',
+                    color: designSystem.colors.text.secondary,
+                    borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                    borderRight: `1px solid ${designSystem.colors.border.main}`,
                     minWidth: '88px',
                   }}>
                     教練
@@ -860,10 +866,10 @@ export function CoachTimeOffPage() {
                           padding: '4px 2px',
                           fontSize: '11px',
                           fontWeight: 600,
-                          borderBottom: '2px solid #ddd',
-                          borderRight: '1px solid #e8e8e8',
-                          background: isToday ? '#e3f2fd' : isWeekend ? '#f5f5f5' : '#fafafa',
-                          color: isWeekend ? '#999' : '#555',
+                          borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                          borderRight: `1px solid ${designSystem.colors.border.light}`,
+                          background: isToday ? designSystem.colors.secondary[100] : isWeekend ? designSystem.colors.secondary[50] : '#fbfaf8',
+                          color: isWeekend ? designSystem.colors.text.disabled : designSystem.colors.text.secondary,
                           minWidth: '28px',
                         }}
                       >
@@ -884,11 +890,12 @@ export function CoachTimeOffPage() {
                         left: 0,
                         zIndex: 1,
                         background: '#fff',
-                        padding: '8px 10px',
+                        padding: '10px 12px',
                         fontWeight: 600,
                         fontSize: '14px',
-                        borderRight: '2px solid #ddd',
-                        borderBottom: '1px solid #e8e8e8',
+                        color: designSystem.colors.text.primary,
+                        borderRight: `1px solid ${designSystem.colors.border.main}`,
+                        borderBottom: `1px solid ${designSystem.colors.border.light}`,
                         whiteSpace: 'nowrap',
                       }}>
                         {coach.name}

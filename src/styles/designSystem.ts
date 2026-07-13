@@ -147,12 +147,12 @@ interface DesignSystem {
 
 export const designSystem: DesignSystem = {
   fontSize: {
-    display: { mobile: '32px', desktop: '42px' },
-    h1: { mobile: '18px', desktop: '20px' },
-    h2: { mobile: '16px', desktop: '18px' },
-    h3: { mobile: '14px', desktop: '16px' },
+    display: { mobile: '34px', desktop: '48px' },
+    h1: { mobile: '24px', desktop: '32px' },
+    h2: { mobile: '19px', desktop: '24px' },
+    h3: { mobile: '16px', desktop: '18px' },
     body: { mobile: '14px', desktop: '15px' },
-    bodyLarge: { mobile: '16px', desktop: '18px' },
+    bodyLarge: { mobile: '16px', desktop: '17px' },
     bodySmall: { mobile: '12px', desktop: '13px' },
     caption: { mobile: '11px', desktop: '12px' },
     button: { mobile: '13px', desktop: '14px' },
@@ -161,114 +161,114 @@ export const designSystem: DesignSystem = {
     xs: '4px',
     sm: '8px',
     md: '12px',
-    lg: '16px',
-    xl: '20px',
-    xxl: '24px',
+    lg: '18px',
+    xl: '24px',
+    xxl: '32px',
   },
   borderRadius: {
-    sm: '4px',
-    md: '6px',
-    lg: '8px',
-    xl: '12px',
+    sm: '10px',
+    md: '12px',
+    lg: '16px',
+    xl: '22px',
     full: '9999px',
   },
   colors: {
     // 色階系統 - 提供更豐富的顏色變化
     primary: {
-      50: '#e3f2fd',
-      100: '#bbdefb',
-      200: '#90caf9',
-      300: '#64b5f6',
-      400: '#42a5f5',
-      500: '#4a90e2',  // 主色 (原本的 primary)
-      600: '#1e88e5',
-      700: '#1976d2',
-      800: '#1565c0',
-      900: '#0d47a1',
+      50: '#f6f5f2',
+      100: '#eeece6',
+      200: '#ddd8ce',
+      300: '#c5bcac',
+      400: '#9f9483',
+      500: '#2f3430',  // 主色：低調石墨
+      600: '#252a27',
+      700: '#1f2321',
+      800: '#171a18',
+      900: '#0f1110',
     },
     secondary: {
-      50: '#fafafa',
-      100: '#f5f5f5',
-      200: '#eeeeee',
-      300: '#e0e0e0',
-      400: '#bdbdbd',
-      500: '#5a5a5a',  // 主色 (原本的 secondary)
-      600: '#757575',
-      700: '#616161',
-      800: '#424242',
-      900: '#212121',
+      50: '#fbfaf8',
+      100: '#f5f2ec',
+      200: '#ebe6dc',
+      300: '#d8d0c4',
+      400: '#a69c8d',
+      500: '#6f675c',
+      600: '#595247',
+      700: '#433d35',
+      800: '#2f2a24',
+      900: '#1f1b17',
     },
     success: {
-      50: '#e8f5e9',
-      500: '#4caf50',
-      700: '#2e7d32',
+      50: '#edf7f1',
+      500: '#4f8f68',
+      700: '#2f6847',
     },
     warning: {
-      50: '#fff3e0',
-      500: '#ff9800',
-      700: '#e65100',
+      50: '#fbf3e5',
+      500: '#b8843f',
+      700: '#7d5521',
     },
     danger: {
-      50: '#ffebee',
-      500: '#f44336',
-      700: '#c62828',
+      50: '#fbeeed',
+      500: '#b65a4f',
+      700: '#88382f',
     },
     info: {
-      50: '#e3f2fd',
-      500: '#2196f3',
-      700: '#1565c0',
+      50: '#edf3f5',
+      500: '#5f8791',
+      700: '#365d66',
     },
     text: {
-      primary: '#333',
-      secondary: '#666',
-      disabled: '#999',
+      primary: '#1d1d1f',
+      secondary: '#6e6a63',
+      disabled: '#aaa39a',
     },
     background: {
-      main: '#f5f5f5',
+      main: '#f7f5f0',
       card: '#ffffff',
-      hover: '#f8f9fa',
+      hover: '#f3f0ea',
     },
     border: {
-      light: '#f0f0f0',
-      main: '#e0e0e0',
-      dark: '#d0d0d0',
+      light: '#f0ede7',
+      main: '#e5dfd4',
+      dark: '#d4cabd',
     },
   },
   // 玻璃擬態效果
   glass: {
-    background: 'rgba(255, 255, 255, 0.8)',
-    blur: 'blur(10px)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    shadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+    background: 'rgba(255, 255, 255, 0.92)',
+    blur: 'blur(18px)',
+    border: '1px solid rgba(47, 52, 48, 0.06)',
+    shadow: '0 18px 50px rgba(31, 27, 23, 0.08)',
   },
   // 漸層定義
   gradients: {
-    primary: 'linear-gradient(135deg, #4a90e2 0%, #1976d2 100%)',
-    secondary: 'linear-gradient(135deg, #757575 0%, #424242 100%)',
-    success: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-    subtle: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%)',
+    primary: '#2f3430',
+    secondary: '#f5f2ec',
+    success: '#4f8f68',
+    subtle: 'linear-gradient(180deg, #fbfaf8 0%, #f7f5f0 100%)',
   },
   shadows: {
     none: 'none',
-    xs: '0 1px 2px rgba(0,0,0,0.04)',
-    sm: '0 1px 3px rgba(0,0,0,0.06)',
-    md: '0 2px 6px rgba(0,0,0,0.08)',
-    lg: '0 4px 12px rgba(0,0,0,0.10)',
-    xl: '0 8px 24px rgba(0,0,0,0.12)',
-    xxl: '0 12px 48px rgba(0,0,0,0.16)',
-    hover: '0 8px 24px rgba(0,0,0,0.15)',
+    xs: '0 1px 2px rgba(31,27,23,0.03)',
+    sm: '0 4px 14px rgba(31,27,23,0.05)',
+    md: '0 10px 30px rgba(31,27,23,0.07)',
+    lg: '0 18px 50px rgba(31,27,23,0.09)',
+    xl: '0 26px 70px rgba(31,27,23,0.11)',
+    xxl: '0 34px 90px rgba(31,27,23,0.13)',
+    hover: '0 18px 42px rgba(31,27,23,0.10)',
     // Elevation 系統 (Material Design 風格)
     elevation: {
       0: 'none',
-      1: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
-      2: '0 3px 6px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.12)',
-      3: '0 10px 20px rgba(0,0,0,0.15), 0 3px 6px rgba(0,0,0,0.10)',
-      4: '0 15px 25px rgba(0,0,0,0.15), 0 5px 10px rgba(0,0,0,0.05)',
-      6: '0 20px 25px rgba(0,0,0,0.15), 0 10px 10px rgba(0,0,0,0.04)',
-      8: '0 25px 50px rgba(0,0,0,0.15), 0 12px 18px rgba(0,0,0,0.06)',
-      12: '0 30px 60px rgba(0,0,0,0.15), 0 15px 22px rgba(0,0,0,0.08)',
-      16: '0 35px 70px rgba(0,0,0,0.15), 0 18px 26px rgba(0,0,0,0.10)',
-      24: '0 40px 80px rgba(0,0,0,0.20), 0 20px 30px rgba(0,0,0,0.12)',
+      1: '0 3px 12px rgba(31,27,23,0.04)',
+      2: '0 8px 24px rgba(31,27,23,0.06)',
+      3: '0 14px 38px rgba(31,27,23,0.08)',
+      4: '0 18px 50px rgba(31,27,23,0.09)',
+      6: '0 24px 64px rgba(31,27,23,0.10)',
+      8: '0 28px 76px rgba(31,27,23,0.11)',
+      12: '0 32px 86px rgba(31,27,23,0.12)',
+      16: '0 38px 96px rgba(31,27,23,0.13)',
+      24: '0 44px 110px rgba(31,27,23,0.14)',
     },
   },
   transitions: {
@@ -292,62 +292,64 @@ export const getButtonStyle = (
 ) => {
   const baseStyle: React.CSSProperties = {
     border: 'none',
-    borderRadius: designSystem.borderRadius.md,
+    borderRadius: designSystem.borderRadius.lg,
     cursor: 'pointer',
-    fontWeight: '500',
+    fontWeight: '600',
     transition: designSystem.transitions.normal,
     whiteSpace: 'nowrap',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: designSystem.spacing.sm,
+    letterSpacing: '-0.01em',
   }
 
   const sizeStyles = {
     small: {
-      padding: isMobile ? '6px 10px' : '6px 12px',
+      padding: isMobile ? '7px 12px' : '7px 14px',
       fontSize: designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
     },
     medium: {
-      padding: isMobile ? '8px 14px' : '8px 16px',
+      padding: isMobile ? '10px 16px' : '10px 18px',
       fontSize: designSystem.fontSize.button[isMobile ? 'mobile' : 'desktop'],
     },
     large: {
-      padding: isMobile ? '10px 18px' : '12px 20px',
+      padding: isMobile ? '13px 20px' : '14px 24px',
       fontSize: designSystem.fontSize.body[isMobile ? 'mobile' : 'desktop'],
     },
   }
 
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: {
-      background: designSystem.gradients.primary,  // 使用漸層
+      background: designSystem.colors.primary[500],
       color: 'white',
-      boxShadow: '0 2px 8px rgba(74, 144, 226, 0.3)',
+      boxShadow: '0 10px 24px rgba(31, 27, 23, 0.16)',
     },
     secondary: {
-      background: designSystem.colors.secondary[100],
-      color: designSystem.colors.text.secondary,
-      border: `1px solid ${designSystem.colors.border.main}`,
+      background: '#ffffff',
+      color: designSystem.colors.text.primary,
+      border: `1px solid ${designSystem.colors.border.light}`,
+      boxShadow: designSystem.shadows.xs,
     },
     success: {
-      background: designSystem.gradients.success,  // 使用漸層
+      background: designSystem.colors.success[500],
       color: 'white',
-      boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
+      boxShadow: '0 10px 24px rgba(79, 143, 104, 0.18)',
     },
     warning: {
       background: designSystem.colors.warning[500],
       color: 'white',
-      boxShadow: '0 2px 8px rgba(255, 152, 0, 0.3)',
+      boxShadow: '0 10px 24px rgba(184, 132, 63, 0.16)',
     },
     danger: {
       background: designSystem.colors.danger[500],
       color: 'white',
-      boxShadow: '0 2px 8px rgba(244, 67, 54, 0.3)',
+      boxShadow: '0 10px 24px rgba(182, 90, 79, 0.16)',
     },
     info: {
       background: designSystem.colors.info[500],
       color: 'white',
-      boxShadow: '0 2px 8px rgba(33, 150, 243, 0.3)',
+      boxShadow: '0 10px 24px rgba(95, 135, 145, 0.16)',
     },
     ghost: {
       background: 'transparent',
@@ -357,7 +359,7 @@ export const getButtonStyle = (
     outline: {
       background: 'transparent',
       color: designSystem.colors.text.primary,
-      border: `1px solid ${designSystem.colors.border.main}`,
+      border: `1px solid ${designSystem.colors.border.light}`,
     },
   }
 
@@ -371,10 +373,10 @@ export const getButtonStyle = (
 // 卡片樣式
 export const getCardStyle = (isMobile: boolean = false): React.CSSProperties => ({
   background: designSystem.colors.background.card,
-  borderRadius: designSystem.borderRadius.lg,
-  padding: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl,
+  borderRadius: designSystem.borderRadius.xl,
+  padding: isMobile ? designSystem.spacing.xl : designSystem.spacing.xxl,
   boxShadow: designSystem.shadows.elevation[2],
-  marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+  marginBottom: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl,
   transition: designSystem.transitions.normal,
   overflow: 'hidden', // 防止內容超出卡片邊界
 })
@@ -389,15 +391,15 @@ export const getCardVariant = (
   const variants = {
     default: {},
     highlighted: {
-      border: `2px solid ${designSystem.colors.primary[500]}`,
+      border: `1px solid ${designSystem.colors.primary[200]}`,
       boxShadow: designSystem.shadows.elevation[3],
     },
     warning: {
-      border: `2px solid ${designSystem.colors.warning[500]}`,
+      border: `1px solid ${designSystem.colors.warning[500]}33`,
       background: designSystem.colors.warning[50],
     },
     success: {
-      border: `2px solid ${designSystem.colors.success[500]}`,
+      border: `1px solid ${designSystem.colors.success[500]}33`,
       background: designSystem.colors.success[50],
     },
     glass: {
@@ -431,12 +433,13 @@ export const getInputStyle = (
   
   return {
     width: '100%',
-    padding: isMobile ? '10px 12px' : '12px 14px',
+    padding: isMobile ? '12px 14px' : '13px 16px',
     fontSize: '16px', // 固定 16px 防止 iOS 縮放
-    border: `2px solid ${borderColor}`,
-    borderRadius: designSystem.borderRadius.md,
+    border: `1px solid ${borderColor}`,
+    borderRadius: designSystem.borderRadius.lg,
     outline: 'none',
     transition: designSystem.transitions.normal,
+    backgroundColor: '#ffffff',
     boxShadow,
   }
 }
@@ -479,11 +482,11 @@ export const getBadgeStyle = (
   size: 'small' | 'medium' = 'medium'
 ): React.CSSProperties => {
   const colors = {
-    success: { bg: '#e8f5e9', color: '#2e7d32' },
-    warning: { bg: '#fff3e0', color: '#e65100' },
-    danger: { bg: '#ffebee', color: '#c62828' },
-    info: { bg: '#e3f2fd', color: '#1565c0' },
-    default: { bg: '#f5f5f5', color: '#666' },
+    success: { bg: '#edf7f1', color: '#2f6847' },
+    warning: { bg: '#fbf3e5', color: '#7d5521' },
+    danger: { bg: '#fbeeed', color: '#88382f' },
+    info: { bg: '#edf3f5', color: '#365d66' },
+    default: { bg: '#f5f2ec', color: '#6e6a63' },
   }
   
   const sizes = {
@@ -497,6 +500,7 @@ export const getBadgeStyle = (
     fontWeight: '600',
     background: colors[variant].bg,
     color: colors[variant].color,
+    letterSpacing: '-0.01em',
     ...sizes[size],
   }
 }

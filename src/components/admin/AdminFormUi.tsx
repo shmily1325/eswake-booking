@@ -73,7 +73,7 @@ export function AdminModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(15, 23, 42, 0.45)',
+        background: 'rgba(31, 27, 23, 0.28)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -87,13 +87,13 @@ export function AdminModal({
         style={{
           position: 'relative',
           background: 'white',
-          borderRadius: '16px',
+          borderRadius: '24px',
           padding: isMobile ? '20px' : '28px',
           maxWidth,
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.18)',
+          boxShadow: '0 28px 90px rgba(31, 27, 23, 0.18)',
           animation: 'adminModalCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
@@ -115,9 +115,9 @@ export function AdminModal({
               alignItems: 'center',
               justifyContent: 'center',
               border: 'none',
-              borderRadius: '8px',
-              background: closeHover ? '#f3f4f6' : 'transparent',
-              color: '#9ca3af',
+              borderRadius: '999px',
+              background: closeHover ? '#f5f2ec' : 'transparent',
+              color: '#aaa39a',
               fontSize: '20px',
               lineHeight: 1,
               cursor: 'pointer',
@@ -142,10 +142,10 @@ export function AdminModalHeader({
   subtitle?: string
   accent?: 'blue' | 'amber' | 'orange'
 }) {
-  const colors = { blue: '#1565c0', amber: '#f57c00', orange: '#e65100' }
+  const colors = { blue: '#365d66', amber: '#7d5521', orange: '#7d5521' }
   return (
     <div style={{ marginBottom: '20px' }}>
-      <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#111827' }}>{title}</h2>
+      <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 750, color: '#1d1d1f', letterSpacing: '-0.03em' }}>{title}</h2>
       {subtitle && (
         <p style={{ margin: '6px 0 0', fontSize: '14px', color: colors[accent], fontWeight: 600 }}>
           {subtitle}
@@ -168,11 +168,11 @@ export function FormFieldLabel({
       marginBottom: '8px',
       fontWeight: 600,
       fontSize: '14px',
-      color: '#374151',
+      color: '#1d1d1f',
     }}>
       {children}
       {optional && (
-        <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: '13px', marginLeft: '6px' }}>
+        <span style={{ color: '#aaa39a', fontWeight: 400, fontSize: '13px', marginLeft: '6px' }}>
           （選填）
         </span>
       )}
@@ -182,12 +182,13 @@ export function FormFieldLabel({
 
 export const adminTextInputStyle: CSSProperties = {
   width: '100%',
-  padding: '12px 14px',
-  border: '1px solid #e5e7eb',
-  borderRadius: '10px',
+  padding: '13px 16px',
+  border: '1px solid #f0ede7',
+  borderRadius: '16px',
   fontSize: '16px',
   boxSizing: 'border-box',
-  background: '#fafafa',
+  background: '#ffffff',
+  boxShadow: '0 1px 2px rgba(31, 27, 23, 0.03)',
 }
 
 export function PreviewBanner({ children }: { children: ReactNode }) {
@@ -195,11 +196,11 @@ export function PreviewBanner({ children }: { children: ReactNode }) {
     <div style={{
       marginBottom: '16px',
       padding: '12px 16px',
-      background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-      borderRadius: '10px',
-      border: '1px solid #93c5fd',
+      background: '#edf3f5',
+      borderRadius: '16px',
+      border: '1px solid rgba(95, 135, 145, 0.22)',
       fontSize: '14px',
-      color: '#1e40af',
+      color: '#365d66',
       lineHeight: 1.5,
     }}>
       {children}
@@ -226,7 +227,7 @@ export function CrossDayToggle({
         marginBottom: '12px',
         cursor: 'pointer',
         fontSize: '14px',
-        color: '#4b5563',
+        color: '#6e6a63',
         userSelect: 'none',
       }}
     >
@@ -234,7 +235,7 @@ export function CrossDayToggle({
         type="checkbox"
         checked={checked}
         onChange={e => onChange(e.target.checked)}
-        style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+        style={{ width: '16px', height: '16px', accentColor: '#2f3430' }}
       />
       跨多日
     </label>
@@ -313,9 +314,9 @@ export function SegmentedControl<T extends string>({
   onChange: (v: T) => void
   accent?: 'blue' | 'amber'
 }) {
-  const activeBg = accent === 'amber' ? '#fff8e1' : '#eff6ff'
-  const activeBorder = accent === 'amber' ? '#ffb300' : '#3b82f6'
-  const activeColor = accent === 'amber' ? '#e65100' : '#1565c0'
+  const activeBg = accent === 'amber' ? '#fbf3e5' : '#edf3f5'
+  const activeBorder = accent === 'amber' ? 'rgba(184, 132, 63, 0.28)' : 'rgba(95, 135, 145, 0.28)'
+  const activeColor = accent === 'amber' ? '#7d5521' : '#365d66'
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
@@ -331,17 +332,18 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(opt.value)}
             style={{
               padding: '12px 10px',
-              borderRadius: '10px',
-              border: `2px solid ${selected ? activeBorder : '#e5e7eb'}`,
-              background: selected ? activeBg : disabled ? '#f9fafb' : 'white',
-              color: selected ? activeColor : disabled ? '#9ca3af' : '#374151',
+              borderRadius: '16px',
+              border: `1px solid ${selected ? activeBorder : '#f0ede7'}`,
+              background: selected ? activeBg : disabled ? '#f7f5f0' : 'white',
+              color: selected ? activeColor : disabled ? '#aaa39a' : '#1d1d1f',
               fontWeight: selected ? 700 : 500,
               fontSize: '14px',
               cursor: disabled ? 'not-allowed' : 'pointer',
               opacity: disabled ? 0.5 : 1,
               textAlign: 'center',
               lineHeight: 1.3,
-              transition: 'border-color 0.15s, background 0.15s',
+              boxShadow: selected ? '0 4px 16px rgba(31, 27, 23, 0.05)' : 'none',
+              transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
             }}
           >
             {opt.label}
@@ -408,13 +410,13 @@ export function HintBox({ children }: { children: ReactNode }) {
   return (
     <div style={{
       fontSize: '12px',
-      color: '#6b7280',
+      color: '#6e6a63',
       marginTop: '8px',
       lineHeight: 1.55,
       padding: '10px 12px',
-      background: '#f9fafb',
-      borderRadius: '8px',
-      border: '1px solid #f3f4f6',
+      background: '#fbfaf8',
+      borderRadius: '14px',
+      border: '1px solid #f0ede7',
     }}>
       {children}
     </div>

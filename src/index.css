@@ -16,8 +16,8 @@
   font-feature-settings: 'cv11', 'ss01';
   font-optical-sizing: auto;
 
-  color: #213547;
-  background-color: #ffffff;
+  color: #1d1d1f;
+  background-color: #f7f5f0;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -40,6 +40,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: #f7f5f0;
   overflow-x: clip; /* Use clip instead of hidden to preserve sticky */
 }
 
@@ -57,14 +58,14 @@ h1 {
 
 /* Mobile-optimized button styles */
 button {
-  border-radius: 8px;
+  border-radius: 16px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
@@ -82,7 +83,7 @@ button:active {
 
 button:focus,
 button:focus-visible {
-  outline: 2px solid #007bff;
+  outline: 2px solid rgba(47, 52, 48, 0.28);
   outline-offset: 2px;
 }
 

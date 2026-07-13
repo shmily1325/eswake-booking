@@ -127,19 +127,22 @@ export function PageHeader({
   const displayTitle = stripLeadingEmoji(title)
 
   const navButtonStyle: React.CSSProperties = {
-    padding: useIconOnlyNav ? '6px 8px' : '6px 12px',
-    background: 'rgba(255, 255, 255, 0.15)',
-    color: 'white',
+    padding: useIconOnlyNav ? '8px 10px' : '8px 14px',
+    background: '#ffffff',
+    color: designSystem.colors.text.primary,
     textDecoration: 'none',
-    borderRadius: designSystem.borderRadius.sm,
+    borderRadius: designSystem.borderRadius.full,
     fontSize: designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
-    border: '1px solid rgba(255, 255, 255, 0.2)',
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    border: `1px solid ${designSystem.colors.border.light}`,
+    boxShadow: designSystem.shadows.xs,
     whiteSpace: 'nowrap',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: useIconOnlyNav ? 36 : undefined,
-    minHeight: useIconOnlyNav ? 36 : undefined,
+    minWidth: useIconOnlyNav ? 38 : undefined,
+    minHeight: useIconOnlyNav ? 38 : undefined,
   }
 
   const renderNavLabel = (label: string, link: string) =>
@@ -229,11 +232,9 @@ export function PageHeader({
   return (
     <div
       style={{
-        marginBottom: isMobile ? designSystem.spacing.md : designSystem.spacing.xl,
-        background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-        padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
-        borderRadius: designSystem.borderRadius.lg,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        marginBottom: isMobile ? designSystem.spacing.xl : '36px',
+        background: 'transparent',
+        padding: isMobile ? '8px 2px 0' : '12px 4px 0',
       }}
     >
       <div
@@ -241,15 +242,15 @@ export function PageHeader({
           display: 'flex',
           flexDirection: useTwoRowMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: useTwoRowMobile ? 'stretch' : 'center',
-          gap: 8,
+          alignItems: useTwoRowMobile ? 'stretch' : 'flex-start',
+          gap: isMobile ? 14 : 18,
         }}
       >
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             gap: 8,
             minWidth: 0,
             flex: useTwoRowMobile ? undefined : 1,
@@ -258,13 +259,15 @@ export function PageHeader({
           <h1
             style={{
               ...getTextStyle('h1', isMobile),
-              fontWeight: 'bold',
-              color: 'white',
+              fontWeight: 750,
+              color: designSystem.colors.text.primary,
               margin: 0,
               minWidth: 0,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              letterSpacing: '-0.035em',
+              lineHeight: 1.05,
             }}
           >
             {displayTitle}
@@ -275,10 +278,11 @@ export function PageHeader({
           style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: 6,
+            gap: 8,
             alignItems: 'center',
             justifyContent: 'flex-end',
             flexShrink: 0,
+            paddingTop: isMobile ? 0 : 2,
           }}
         >
           {navLinks}

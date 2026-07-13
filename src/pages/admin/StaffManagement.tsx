@@ -39,6 +39,7 @@ import {
   type TimeOffMode,
   type TimeOffPeriodKind,
 } from '../../utils/coachTimeOff'
+import { designSystem } from '../../styles/designSystem'
 
 /** 人員權限表上顯示的「小編」欄位：重複預約＋批次合併為一格（寫庫仍為兩欄同值） */
 const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats', 'can_products_view', 'can_products'] as const
@@ -722,12 +723,12 @@ export function StaffManagement() {
 
   const timeOffPeriodPillStyle = (kind: TimeOffPeriodKind) => {
     if (kind === 'fullday') {
-      return { background: '#ffecb3', color: '#e65100', border: '1px solid #ffb300' }
+      return { background: designSystem.colors.warning[50], color: designSystem.colors.warning[700], border: `1px solid ${designSystem.colors.warning[500]}28` }
     }
     if (kind === 'custom') {
-      return { background: '#ede7f6', color: '#5e35b1', border: '1px solid #b39ddb' }
+      return { background: designSystem.colors.info[50], color: designSystem.colors.info[700], border: `1px solid ${designSystem.colors.info[500]}28` }
     }
-    return { background: '#ffe0b2', color: '#e65100', border: '1px solid #ffb74d' }
+    return { background: '#f8f1e7', color: designSystem.colors.warning[700], border: `1px solid ${designSystem.colors.warning[500]}20` }
   }
 
   const timeOffModeOptions = useMemo(() => ([
@@ -1268,35 +1269,38 @@ export function StaffManagement() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, paddingBottom: '80px' }}>
       <div style={{
         maxWidth: '1000px',
         margin: '0 auto',
-        padding: isMobile ? '20px 16px' : '40px 20px'
+        padding: isMobile ? '24px 18px' : '48px 28px'
       }}>
         <PageHeader user={user} title="🎓 人員管理" showBaoLink={isAdmin(user)} />
 
         {/* Tab 切換 */}
         <div style={{
           display: 'flex',
-          gap: '8px',
-          marginBottom: '20px',
-          borderBottom: '2px solid #e0e0e0'
+          gap: '4px',
+          marginBottom: '24px',
+          background: designSystem.colors.secondary[100],
+          borderRadius: designSystem.borderRadius.full,
+          padding: '4px',
+          overflowX: 'auto'
         }}>
           <button
             data-track="staff_tab_coaches"
             onClick={() => setActiveTab('coaches')}
             style={{
-              padding: isMobile ? '12px 16px' : '14px 28px',
+              padding: isMobile ? '9px 16px' : '10px 22px',
               background: activeTab === 'coaches' ? 'white' : 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'coaches' ? '3px solid #2196F3' : '3px solid transparent',
-              color: activeTab === 'coaches' ? '#2196F3' : '#666',
-              fontWeight: activeTab === 'coaches' ? 'bold' : 'normal',
-              fontSize: isMobile ? '14px' : '16px',
+              borderRadius: designSystem.borderRadius.full,
+              boxShadow: activeTab === 'coaches' ? designSystem.shadows.xs : 'none',
+              color: activeTab === 'coaches' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
+              fontWeight: activeTab === 'coaches' ? 700 : 600,
+              fontSize: isMobile ? '13px' : '14px',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              marginBottom: '-2px',
               whiteSpace: 'nowrap'
             }}
           >
@@ -1306,16 +1310,16 @@ export function StaffManagement() {
             data-track="staff_tab_accounts"
             onClick={() => setActiveTab('accounts')}
             style={{
-              padding: isMobile ? '12px 16px' : '14px 28px',
+              padding: isMobile ? '9px 16px' : '10px 22px',
               background: activeTab === 'accounts' ? 'white' : 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'accounts' ? '3px solid #2196F3' : '3px solid transparent',
-              color: activeTab === 'accounts' ? '#2196F3' : '#666',
-              fontWeight: activeTab === 'accounts' ? 'bold' : 'normal',
-              fontSize: isMobile ? '14px' : '16px',
+              borderRadius: designSystem.borderRadius.full,
+              boxShadow: activeTab === 'accounts' ? designSystem.shadows.xs : 'none',
+              color: activeTab === 'accounts' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
+              fontWeight: activeTab === 'accounts' ? 700 : 600,
+              fontSize: isMobile ? '13px' : '14px',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              marginBottom: '-2px',
               whiteSpace: 'nowrap'
             }}
           >
@@ -1325,16 +1329,16 @@ export function StaffManagement() {
             data-track="staff_tab_pricing"
             onClick={() => setActiveTab('pricing')}
             style={{
-              padding: isMobile ? '12px 16px' : '14px 28px',
+              padding: isMobile ? '9px 16px' : '10px 22px',
               background: activeTab === 'pricing' ? 'white' : 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'pricing' ? '3px solid #2196F3' : '3px solid transparent',
-              color: activeTab === 'pricing' ? '#2196F3' : '#666',
-              fontWeight: activeTab === 'pricing' ? 'bold' : 'normal',
-              fontSize: isMobile ? '14px' : '16px',
+              borderRadius: designSystem.borderRadius.full,
+              boxShadow: activeTab === 'pricing' ? designSystem.shadows.xs : 'none',
+              color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
+              fontWeight: activeTab === 'pricing' ? 700 : 600,
+              fontSize: isMobile ? '13px' : '14px',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              marginBottom: '-2px',
               whiteSpace: 'nowrap'
             }}
           >
@@ -1344,16 +1348,16 @@ export function StaffManagement() {
             data-track="staff_tab_permissions"
             onClick={() => setActiveTab('permissions')}
             style={{
-              padding: isMobile ? '12px 16px' : '14px 28px',
+              padding: isMobile ? '9px 16px' : '10px 22px',
               background: activeTab === 'permissions' ? 'white' : 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'permissions' ? '3px solid #4CAF50' : '3px solid transparent',
-              color: activeTab === 'permissions' ? '#4CAF50' : '#666',
-              fontWeight: activeTab === 'permissions' ? 'bold' : 'normal',
-              fontSize: isMobile ? '14px' : '16px',
+              borderRadius: designSystem.borderRadius.full,
+              boxShadow: activeTab === 'permissions' ? designSystem.shadows.xs : 'none',
+              color: activeTab === 'permissions' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
+              fontWeight: activeTab === 'permissions' ? 700 : 600,
+              fontSize: isMobile ? '13px' : '14px',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              marginBottom: '-2px',
               whiteSpace: 'nowrap'
             }}
           >
@@ -1364,21 +1368,22 @@ export function StaffManagement() {
         {/* 說明提示 - 可展開收起 */}
         {activeTab === 'coaches' && (
           <div style={{
-            background: showHelp ? '#fff9e6' : '#f8f9fa',
-            padding: '10px 16px',
-            borderRadius: '8px',
-            marginBottom: '16px',
+            background: showHelp ? 'rgba(255,255,255,0.72)' : 'transparent',
+            padding: showHelp ? '16px 18px' : '8px 2px',
+            borderRadius: designSystem.borderRadius.lg,
+            marginBottom: '20px',
             fontSize: '14px',
-            color: showHelp ? '#856404' : '#666',
-            border: showHelp ? '1px solid #ffeaa7' : '1px solid #e9ecef',
+            color: designSystem.colors.text.secondary,
+            border: showHelp ? `1px solid ${designSystem.colors.border.light}` : '1px solid transparent',
+            boxShadow: showHelp ? designSystem.shadows.xs : 'none',
             cursor: 'pointer',
             transition: 'all 0.2s'
           }}
           onClick={() => setShowHelp(!showHelp)}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>💡 {showHelp ? '功能說明' : '點此查看功能說明'}</span>
-              <span style={{ fontSize: '12px', color: '#999' }}>{showHelp ? '▲ 收起' : '▼ 展開'}</span>
+              <span style={{ fontWeight: 650, color: designSystem.colors.text.primary }}>{showHelp ? '功能說明' : '點此查看功能說明'}</span>
+              <span style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>{showHelp ? '收起' : '展開'}</span>
             </div>
             {showHelp && (
               <div style={{ marginTop: '12px', lineHeight: '1.7' }}>
@@ -1406,15 +1411,15 @@ export function StaffManagement() {
             gap: '16px',
             marginBottom: '16px',
             fontSize: '14px',
-            color: '#666'
+            color: designSystem.colors.text.secondary
           }}>
-            <span>共 <strong style={{ color: '#2196F3' }}>{coaches.length}</strong> 位</span>
-            <span>啟用 <strong style={{ color: '#4caf50' }}>{coaches.filter(c => c.status === 'active').length}</strong></span>
+            <span>共 <strong style={{ color: designSystem.colors.text.primary }}>{coaches.length}</strong> 位</span>
+            <span>啟用 <strong style={{ color: designSystem.colors.success[700] }}>{coaches.filter(c => c.status === 'active').length}</strong></span>
             {coaches.filter(c => c.status === 'inactive').length > 0 && (
-              <span>停用 <strong style={{ color: '#ff9800' }}>{coaches.filter(c => c.status === 'inactive').length}</strong></span>
+              <span>停用 <strong style={{ color: designSystem.colors.warning[700] }}>{coaches.filter(c => c.status === 'inactive').length}</strong></span>
             )}
             {coaches.filter(c => c.status === 'archived').length > 0 && (
-              <span>隱藏 <strong style={{ color: '#999' }}>{coaches.filter(c => c.status === 'archived').length}</strong></span>
+              <span>隱藏 <strong style={{ color: designSystem.colors.text.disabled }}>{coaches.filter(c => c.status === 'archived').length}</strong></span>
             )}
           </div>
         )}
@@ -1432,11 +1437,10 @@ export function StaffManagement() {
             }}>
               {/* 新增按鈕 */}
               <Button
-                variant="outline"
+                variant="primary"
                 size="medium"
                 data-track="staff_add_coach"
                 onClick={() => setAddDialogOpen(true)}
-                icon={<span>➕</span>}
               >
                 新增教練
               </Button>
@@ -1447,22 +1451,23 @@ export function StaffManagement() {
               {/* 狀態篩選按鈕組 */}
               <div style={{
                 display: 'flex',
-                background: '#f0f0f0',
-                borderRadius: '6px',
-                padding: '3px'
+                background: designSystem.colors.secondary[100],
+                borderRadius: designSystem.borderRadius.full,
+                padding: '4px',
+                gap: '2px'
               }}>
                 <button
                   onClick={() => setStatusFilter('active')}
                   style={{
                     padding: '6px 12px',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: designSystem.borderRadius.full,
                     background: statusFilter === 'active' ? 'white' : 'transparent',
-                    color: statusFilter === 'active' ? '#4caf50' : '#666',
+                    color: statusFilter === 'active' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                     fontSize: '13px',
                     fontWeight: statusFilter === 'active' ? '600' : '400',
                     cursor: 'pointer',
-                    boxShadow: statusFilter === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                    boxShadow: statusFilter === 'active' ? designSystem.shadows.xs : 'none'
                   }}
                 >
                   啟用中
@@ -1472,13 +1477,13 @@ export function StaffManagement() {
                   style={{
                     padding: '6px 12px',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: designSystem.borderRadius.full,
                     background: statusFilter === 'all' ? 'white' : 'transparent',
-                    color: statusFilter === 'all' ? '#2196F3' : '#666',
+                    color: statusFilter === 'all' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                     fontSize: '13px',
                     fontWeight: statusFilter === 'all' ? '600' : '400',
                     cursor: 'pointer',
-                    boxShadow: statusFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                    boxShadow: statusFilter === 'all' ? designSystem.shadows.xs : 'none'
                   }}
                 >
                   全部
@@ -1488,13 +1493,13 @@ export function StaffManagement() {
                   style={{
                     padding: '6px 12px',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: designSystem.borderRadius.full,
                     background: statusFilter === 'archived' ? 'white' : 'transparent',
-                    color: statusFilter === 'archived' ? '#999' : '#666',
+                    color: statusFilter === 'archived' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                     fontSize: '13px',
                     fontWeight: statusFilter === 'archived' ? '600' : '400',
                     cursor: 'pointer',
-                    boxShadow: statusFilter === 'archived' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                    boxShadow: statusFilter === 'archived' ? designSystem.shadows.xs : 'none'
                   }}
                 >
                   已隱藏
@@ -1515,12 +1520,13 @@ export function StaffManagement() {
                 style={{
                   flex: 1,
                   minWidth: 0,
-                  padding: '10px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  border: `1px solid ${designSystem.colors.border.light}`,
+                  borderRadius: designSystem.borderRadius.lg,
                   fontSize: '16px',
                   cursor: 'pointer',
                   background: 'white',
+                  boxShadow: designSystem.shadows.xs,
                   boxSizing: 'border-box'
                 }}
               />
@@ -1530,7 +1536,7 @@ export function StaffManagement() {
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
-          gap: '15px' 
+          gap: isMobile ? '16px' : '20px' 
         }}>
           {coaches.filter(coach => {
             if (statusFilter === 'active') return coach.status === 'active'
@@ -1544,20 +1550,20 @@ export function StaffManagement() {
             // 狀態顯示
             let statusBg, statusColor, statusText, borderColor
             if (isArchived) {
-              statusBg = '#f5f5f5'
-              statusColor = '#999'
+              statusBg = designSystem.colors.secondary[100]
+              statusColor = designSystem.colors.text.disabled
               statusText = '已歸檔'
-              borderColor = '#e0e0e0'
+              borderColor = designSystem.colors.border.light
             } else if (isActive) {
-              statusBg = '#e8f5e9'
-              statusColor = '#2e7d32'
+              statusBg = designSystem.colors.success[50]
+              statusColor = designSystem.colors.success[700]
               statusText = '啟用中'
-              borderColor = '#a5d6a7'
+              borderColor = `${designSystem.colors.success[500]}28`
             } else {
-              statusBg = '#fff3e0'
-              statusColor = '#e65100'
+              statusBg = designSystem.colors.warning[50]
+              statusColor = designSystem.colors.warning[700]
               statusText = '已停用'
-              borderColor = '#ffcc80'
+              borderColor = `${designSystem.colors.warning[500]}28`
             }
 
             return (
@@ -1565,10 +1571,10 @@ export function StaffManagement() {
                 key={coach.id}
                 style={{
                   background: 'white',
-                  borderRadius: '12px',
-                  padding: isMobile ? '16px' : '20px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                  border: `2px solid ${borderColor}`,
+                  borderRadius: designSystem.borderRadius.xl,
+                  padding: isMobile ? '20px' : '24px',
+                  boxShadow: designSystem.shadows.elevation[2],
+                  border: `1px solid ${borderColor}`,
                   opacity: isArchived ? 0.7 : 1,
                   transition: 'all 0.2s'
                 }}
@@ -1587,8 +1593,8 @@ export function StaffManagement() {
                     <h3 style={{ 
                       margin: 0, 
                       fontSize: isMobile ? '20px' : '22px',
-                      fontWeight: 'bold',
-                      color: '#333',
+                      fontWeight: 750,
+                      color: designSystem.colors.text.primary,
                       display: 'flex',
                       alignItems: 'center',
                       gap: '10px'
@@ -1617,10 +1623,10 @@ export function StaffManagement() {
                           onClick={() => handleRestoreCoach(coach)}
                           style={{
                             padding: '8px 16px',
-                            background: '#4caf50',
+                            background: designSystem.colors.success[500],
                             color: 'white',
                             border: 'none',
-                            borderRadius: '8px',
+                            borderRadius: designSystem.borderRadius.lg,
                             fontSize: '14px',
                             fontWeight: '600',
                             cursor: 'pointer',
@@ -1634,10 +1640,10 @@ export function StaffManagement() {
                           onClick={() => handleDeleteCoach(coach)}
                           style={{
                             padding: '8px 16px',
-                            background: '#f44336',
+                            background: designSystem.colors.danger[500],
                             color: 'white',
                             border: 'none',
-                            borderRadius: '8px',
+                            borderRadius: designSystem.borderRadius.lg,
                             fontSize: '14px',
                             fontWeight: '600',
                             cursor: 'pointer',
@@ -1654,8 +1660,8 @@ export function StaffManagement() {
                         {/* 啟用/停用按鈕組 */}
                         <div style={{
                           display: 'flex',
-                          background: '#f5f5f5',
-                          borderRadius: '8px',
+                          background: designSystem.colors.secondary[100],
+                          borderRadius: designSystem.borderRadius.full,
                           padding: '4px',
                           gap: '4px'
                         }}>
@@ -1664,15 +1670,15 @@ export function StaffManagement() {
                             style={{
                               padding: '6px 14px',
                               background: isActive ? 'white' : 'transparent',
-                              color: isActive ? '#4caf50' : '#999',
+                              color: isActive ? designSystem.colors.success[700] : designSystem.colors.text.disabled,
                               border: 'none',
-                              borderRadius: '6px',
+                              borderRadius: designSystem.borderRadius.full,
                               fontSize: '14px',
                               fontWeight: '600',
                               cursor: isActive ? 'default' : 'pointer',
                               whiteSpace: 'nowrap',
                               transition: 'all 0.2s',
-                              boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                              boxShadow: isActive ? designSystem.shadows.xs : 'none'
                             }}
                           >
                             啟用
@@ -1682,15 +1688,15 @@ export function StaffManagement() {
                             style={{
                               padding: '6px 14px',
                               background: !isActive ? 'white' : 'transparent',
-                              color: !isActive ? '#ff9800' : '#999',
+                              color: !isActive ? designSystem.colors.warning[700] : designSystem.colors.text.disabled,
                               border: 'none',
-                              borderRadius: '6px',
+                              borderRadius: designSystem.borderRadius.full,
                               fontSize: '14px',
                               fontWeight: '600',
                               cursor: !isActive ? 'default' : 'pointer',
                               whiteSpace: 'nowrap',
                               transition: 'all 0.2s',
-                              boxShadow: !isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                              boxShadow: !isActive ? designSystem.shadows.xs : 'none'
                             }}
                           >
                             停用
@@ -1700,10 +1706,10 @@ export function StaffManagement() {
                           onClick={() => handleArchiveCoach(coach)}
                           style={{
                             padding: '8px 16px',
-                            background: '#f5f5f5',
-                            color: '#999',
+                            background: designSystem.colors.secondary[100],
+                            color: designSystem.colors.text.secondary,
                             border: 'none',
-                            borderRadius: '8px',
+                            borderRadius: designSystem.borderRadius.lg,
                             fontSize: '14px',
                             fontWeight: '600',
                             cursor: 'pointer',
@@ -1733,10 +1739,10 @@ export function StaffManagement() {
                   return (
                     <div style={{
                       marginBottom: '14px',
-                      padding: isMobile ? '12px' : '14px',
-                      background: '#fff8e1',
-                      borderRadius: '10px',
-                      border: '1px solid #ffecb3'
+                      padding: isMobile ? '14px' : '16px',
+                      background: designSystem.colors.warning[50],
+                      borderRadius: designSystem.borderRadius.lg,
+                      border: `1px solid ${designSystem.colors.warning[500]}22`
                     }}>
                       {displayTimeOffs.map((timeOff, idx) => (
                         <div
@@ -1749,7 +1755,7 @@ export function StaffManagement() {
                             padding: '8px 0',
                             fontSize: '13px',
                             gap: isMobile ? '8px' : '12px',
-                            borderBottom: idx === displayTimeOffs.length - 1 && !hasMore ? 'none' : '1px solid #ffe082'
+                            borderBottom: idx === displayTimeOffs.length - 1 && !hasMore ? 'none' : `1px solid ${designSystem.colors.warning[500]}18`
                           }}
                         >
                           <span style={{
@@ -1760,7 +1766,7 @@ export function StaffManagement() {
                             gap: '8px',
                             flexWrap: 'wrap',
                           }}>
-                            <span style={{ fontWeight: 700, fontSize: '14px', color: '#333' }}>
+                            <span style={{ fontWeight: 700, fontSize: '14px', color: designSystem.colors.text.primary }}>
                               {timeOff.dateLabel}
                             </span>
                             <span style={{
@@ -1777,11 +1783,11 @@ export function StaffManagement() {
                               <span style={{
                                 padding: '3px 10px',
                                 background: '#fff',
-                                borderRadius: '6px',
+                                borderRadius: designSystem.borderRadius.full,
                                 fontSize: '12px',
-                                color: '#888',
+                                color: designSystem.colors.text.secondary,
                                 fontWeight: '500',
-                                border: '1px solid #e0e0e0',
+                                border: `1px solid ${designSystem.colors.border.light}`,
                               }}>
                                 {timeOff.reason}
                               </span>
@@ -1800,9 +1806,9 @@ export function StaffManagement() {
                               style={{
                                 padding: '6px 12px',
                                 background: '#fff',
-                                color: '#1565c0',
-                                border: '1px solid #90caf9',
-                                borderRadius: '6px',
+                                color: designSystem.colors.text.primary,
+                                border: `1px solid ${designSystem.colors.border.light}`,
+                                borderRadius: designSystem.borderRadius.full,
                                 fontSize: '12px',
                                 fontWeight: '600',
                                 cursor: 'pointer',
@@ -1816,15 +1822,15 @@ export function StaffManagement() {
                               onClick={() => handleDeleteTimeOff(timeOff)}
                               style={{
                                 padding: '6px 12px',
-                                background: '#f44336',
+                                background: designSystem.colors.danger[500],
                                 color: 'white',
                                 border: 'none',
-                                borderRadius: '6px',
+                                borderRadius: designSystem.borderRadius.full,
                                 fontSize: '12px',
                                 fontWeight: '600',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                boxShadow: designSystem.shadows.xs,
                               }}
                             >
                               刪除
@@ -1842,9 +1848,9 @@ export function StaffManagement() {
                             marginTop: '8px',
                             padding: '6px',
                             background: 'transparent',
-                            color: '#f57c00',
-                            border: '1px solid #ffe082',
-                            borderRadius: '6px',
+                            color: designSystem.colors.warning[700],
+                            border: `1px solid ${designSystem.colors.warning[500]}24`,
+                            borderRadius: designSystem.borderRadius.full,
                             fontSize: '12px',
                             fontWeight: '600',
                             cursor: 'pointer',
@@ -1866,21 +1872,21 @@ export function StaffManagement() {
                     style={{
                       width: '100%',
                       padding: isMobile ? '12px' : '14px',
-                      background: '#e3f2fd',
-                      color: '#1565c0',
-                      border: '2px solid #bbdefb',
-                      borderRadius: '10px',
+                      background: '#ffffff',
+                      color: designSystem.colors.text.primary,
+                      border: `1px solid ${designSystem.colors.border.light}`,
+                      borderRadius: designSystem.borderRadius.lg,
                       fontSize: isMobile ? '14px' : '15px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                      boxShadow: designSystem.shadows.xs
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#bbdefb'
+                      e.currentTarget.style.background = designSystem.colors.secondary[50]
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#e3f2fd'
+                      e.currentTarget.style.background = '#ffffff'
                     }}
                   >
                     設定休假
@@ -2733,7 +2739,7 @@ export function StaffManagement() {
                 variant="primary"
                 onClick={handleAddCoach}
                 disabled={addLoading}
-                style={{ flex: 1, background: addLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                style={{ flex: 1 }}
               >
                 {addLoading ? '新增中...' : '確定'}
               </Button>
@@ -2831,7 +2837,7 @@ export function StaffManagement() {
                 : `staff_time_off_confirm_${timeOffMode}`}
               onClick={handleSaveTimeOff}
               disabled={timeOffLoading}
-              style={{ flex: 1, background: timeOffLoading ? '#ccc' : 'linear-gradient(135deg, #ffa726 0%, #f57c00 100%)' }}
+              style={{ flex: 1 }}
             >
               {timeOffLoading
                 ? (editingTimeOffIds?.length ? '儲存中…' : '新增中…')

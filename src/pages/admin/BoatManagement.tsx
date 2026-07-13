@@ -387,23 +387,22 @@ export function BoatManagement() {
     }
 
     return (
-        <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
+        <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, paddingBottom: '80px' }}>
             <div style={{
                 maxWidth: '1000px',
                 margin: '0 auto',
-                padding: isMobile ? '20px 16px' : '40px 20px'
+                padding: isMobile ? '24px 18px' : '48px 28px'
             }}>
                 <PageHeader user={user!} title="🚤 船隻管理" showBaoLink={isAdmin(user)} />
                 
                 {/* 操作按鈕 */}
                 {activeTab === 'boats' && (
-                    <div style={{ marginBottom: '20px' }}>
+                    <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end' }}>
                         <Button
-                            variant="outline"
+                            variant="primary"
                             size="medium"
                             data-track="boat_add"
                             onClick={() => setAddDialogOpen(true)}
-                            icon={<span>➕</span>}
                         >
                             新增船隻
                         </Button>
@@ -413,24 +412,28 @@ export function BoatManagement() {
                 {/* Tab 切換 */}
                 <div style={{
                     display: 'flex',
-                    gap: '8px',
-                    borderBottom: '2px solid #e0e0e0',
-                    marginBottom: '20px'
+                    gap: '4px',
+                    background: designSystem.colors.secondary[100],
+                    borderRadius: designSystem.borderRadius.full,
+                    padding: '4px',
+                    marginBottom: '24px',
+                    width: 'fit-content',
+                    maxWidth: '100%'
                 }}>
                     <button
                         data-track="boat_tab_list"
                         onClick={() => setActiveTab('boats')}
                         style={{
-                            padding: isMobile ? '12px 16px' : '14px 28px',
+                            padding: isMobile ? '9px 16px' : '10px 24px',
                             background: activeTab === 'boats' ? 'white' : 'transparent',
                             border: 'none',
-                            borderBottom: activeTab === 'boats' ? '3px solid #2196F3' : '3px solid transparent',
-                            color: activeTab === 'boats' ? '#2196F3' : '#666',
-                            fontWeight: activeTab === 'boats' ? 'bold' : 'normal',
-                            fontSize: isMobile ? '14px' : '16px',
+                            borderRadius: designSystem.borderRadius.full,
+                            boxShadow: activeTab === 'boats' ? designSystem.shadows.xs : 'none',
+                            color: activeTab === 'boats' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
+                            fontWeight: activeTab === 'boats' ? 700 : 600,
+                            fontSize: isMobile ? '13px' : '14px',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
-                            marginBottom: '-2px',
                             whiteSpace: 'nowrap'
                         }}
                     >
@@ -440,16 +443,16 @@ export function BoatManagement() {
                         data-track="boat_tab_pricing"
                         onClick={() => setActiveTab('pricing')}
                         style={{
-                            padding: isMobile ? '12px 16px' : '14px 28px',
+                            padding: isMobile ? '9px 16px' : '10px 24px',
                             background: activeTab === 'pricing' ? 'white' : 'transparent',
                             border: 'none',
-                            borderBottom: activeTab === 'pricing' ? '3px solid #2196F3' : '3px solid transparent',
-                            color: activeTab === 'pricing' ? '#2196F3' : '#666',
-                            fontWeight: activeTab === 'pricing' ? 'bold' : 'normal',
-                            fontSize: isMobile ? '14px' : '16px',
+                            borderRadius: designSystem.borderRadius.full,
+                            boxShadow: activeTab === 'pricing' ? designSystem.shadows.xs : 'none',
+                            color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
+                            fontWeight: activeTab === 'pricing' ? 700 : 600,
+                            fontSize: isMobile ? '13px' : '14px',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
-                            marginBottom: '-2px',
                             whiteSpace: 'nowrap'
                         }}
                     >
@@ -462,13 +465,14 @@ export function BoatManagement() {
                     <>
                         {/* 可收起的說明 */}
                         <div style={{
-                            background: showHelp ? '#fff9e6' : '#f8f9fa',
-                            padding: '10px 16px',
-                            borderRadius: '8px',
-                            marginBottom: '16px',
+                            background: showHelp ? 'rgba(255,255,255,0.72)' : 'transparent',
+                            padding: showHelp ? '16px 18px' : '8px 2px',
+                            borderRadius: designSystem.borderRadius.lg,
+                            marginBottom: '20px',
                             fontSize: '14px',
-                            color: showHelp ? '#856404' : '#666',
-                            border: showHelp ? '1px solid #ffeaa7' : '1px solid #e9ecef',
+                            color: designSystem.colors.text.secondary,
+                            border: showHelp ? `1px solid ${designSystem.colors.border.light}` : '1px solid transparent',
+                            boxShadow: showHelp ? designSystem.shadows.xs : 'none',
                             cursor: 'pointer',
                             transition: 'all 0.2s'
                         }}
@@ -476,8 +480,8 @@ export function BoatManagement() {
                         onClick={() => setShowHelp(!showHelp)}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span>💡 {showHelp ? '功能說明' : '點此查看功能說明'}</span>
-                                <span style={{ fontSize: '12px', color: '#999' }}>{showHelp ? '▲ 收起' : '▼ 展開'}</span>
+                                <span style={{ fontWeight: 650, color: designSystem.colors.text.primary }}>{showHelp ? '功能說明' : '點此查看功能說明'}</span>
+                                <span style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>{showHelp ? '收起' : '展開'}</span>
                             </div>
                             {showHelp && (
                                 <div style={{ marginTop: '12px', lineHeight: '1.7' }}>
@@ -496,7 +500,7 @@ export function BoatManagement() {
                             alignItems: 'center',
                             gap: '12px'
                         }}>
-                            <span style={{ fontSize: '14px', color: '#666' }}>查看維修記錄</span>
+                            <span style={{ fontSize: '14px', color: designSystem.colors.text.secondary, fontWeight: 600 }}>查看維修記錄</span>
                             <input
                                 type="month"
                                 value={selectedMonth}
@@ -504,12 +508,13 @@ export function BoatManagement() {
                                 style={{
                                     flex: 1,
                                     minWidth: 0,
-                                    padding: '10px',
-                                    border: '1px solid #e0e0e0',
-                                    borderRadius: '8px',
+                                    padding: '12px 14px',
+                                    border: `1px solid ${designSystem.colors.border.light}`,
+                                    borderRadius: designSystem.borderRadius.lg,
                                     fontSize: '16px',
                                     cursor: 'pointer',
                                     background: 'white',
+                                    boxShadow: designSystem.shadows.xs,
                                     boxSizing: 'border-box'
                                 }}
                             />
@@ -522,7 +527,7 @@ export function BoatManagement() {
                     <div style={{
                         display: 'grid',
                         gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-                        gap: '15px'
+                        gap: isMobile ? '16px' : '20px'
                     }}>
                         {boats.map(boat => {
                         // 先過濾該船的維修記錄，再按月份過濾
@@ -536,10 +541,11 @@ export function BoatManagement() {
                                 key={boat.id}
                                 style={{
                                     background: 'white',
-                                    borderRadius: '12px',
-                                    padding: isMobile ? '16px' : '20px',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                                    borderTop: `4px solid ${boat.color}`,
+                                    borderRadius: designSystem.borderRadius.xl,
+                                    padding: isMobile ? '20px' : '24px',
+                                    boxShadow: designSystem.shadows.elevation[2],
+                                    border: `1px solid ${designSystem.colors.border.light}`,
+                                    borderTop: `3px solid ${boat.color}`,
                                     opacity: isActive ? 1 : 0.8,
                                     transition: 'all 0.2s'
                                 }}
@@ -556,8 +562,8 @@ export function BoatManagement() {
                                         <h3 style={{
                                             margin: 0,
                                             fontSize: isMobile ? '20px' : '22px',
-                                            fontWeight: 'bold',
-                                            color: '#333',
+                                            fontWeight: 750,
+                                            color: designSystem.colors.text.primary,
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '10px'
@@ -565,7 +571,7 @@ export function BoatManagement() {
                                             {boat.name}
                                             {!isActive && (
                                                 <Badge variant="danger" size="small">
-                                                    💣已燒毀
+                                                    已燒毀
                                                 </Badge>
                                             )}
                                         </h3>
@@ -578,9 +584,9 @@ export function BoatManagement() {
                                             size="small"
                                             data-track="boat_toggle_status"
                                             onClick={() => handleToggleStatus(boat)}
-                                            style={isActive ? { background: '#fff', color: designSystem.colors.danger[500], border: `1px solid ${designSystem.colors.danger[500]}` } : {}}
+                                            style={isActive ? { background: '#fff', color: designSystem.colors.danger[700], border: `1px solid ${designSystem.colors.danger[500]}55`, boxShadow: 'none' } : {}}
                                         >
-                                            {isActive ? '💣燒毀' : '啟用'}
+                                            {isActive ? '燒毀' : '啟用'}
                                         </Button>
                                     </div>
                                 </div>
@@ -589,16 +595,16 @@ export function BoatManagement() {
                                 {showMaintenance && boatUnavailable.length > 0 && (
                                     <div style={{
                                         marginBottom: '14px',
-                                        padding: isMobile ? '12px' : '14px',
-                                        background: '#fff3e0',
-                                        borderRadius: '10px',
-                                        border: '1px solid #ffe0b2'
+                                        padding: isMobile ? '14px' : '16px',
+                                        background: designSystem.colors.warning[50],
+                                        borderRadius: designSystem.borderRadius.lg,
+                                        border: `1px solid ${designSystem.colors.warning[500]}24`
                                     }}>
                                         <div style={{
                                             fontSize: '14px',
                                             fontWeight: '600',
                                             marginBottom: '10px',
-                                            color: '#e65100'
+                                            color: designSystem.colors.warning[700]
                                         }}>
                                             維修/停用排程
                                         </div>
@@ -613,19 +619,19 @@ export function BoatManagement() {
                                                     padding: '8px 0',
                                                     fontSize: '13px',
                                                     gap: isMobile ? '8px' : '12px',
-                                                    borderBottom: '1px solid rgba(0,0,0,0.05)'
+                                                    borderBottom: `1px solid ${designSystem.colors.warning[500]}18`
                                                 }}
                                             >
                                                 <span style={{
                                                     flex: 1,
-                                                    color: '#555',
+                                                    color: designSystem.colors.text.secondary,
                                                     lineHeight: '1.4'
                                                 }}>
                                                     {/* 顯示日期和時間 */}
                                                     {record.start_date === record.end_date ? (
                                                         // 單日維修
                                                         <>
-                                                            <span style={{ fontWeight: 'bold', color: '#d84315' }}>
+                                                            <span style={{ fontWeight: 700, color: designSystem.colors.warning[700] }}>
                                                                 {record.start_date}
                                                                 {record.start_time && record.end_time && (
                                                                     <> {record.start_time}-{record.end_time}</>
@@ -638,11 +644,11 @@ export function BoatManagement() {
                                                             {record.start_time ? (
                                                                 // 有指定時間：顯示完整的起止日期時間
                                                                 <>
-                                                                    <span style={{ fontWeight: 'bold', color: '#d84315' }}>
+                                                                    <span style={{ fontWeight: 700, color: designSystem.colors.warning[700] }}>
                                                                         {record.start_date} {record.start_time}
                                                                     </span>
                                                                     <span style={{ margin: '0 4px' }}>~</span>
-                                                                    <span style={{ fontWeight: 'bold', color: '#d84315' }}>
+                                                                    <span style={{ fontWeight: 700, color: designSystem.colors.warning[700] }}>
                                                                         {record.end_date} {record.end_time}
                                                                     </span>
                                                                 </>
@@ -654,11 +660,12 @@ export function BoatManagement() {
                                                     )}
                                                     <span style={{
                                                         marginLeft: '8px',
-                                                        padding: '2px 8px',
+                                                        padding: '3px 9px',
                                                         background: '#fff',
-                                                        borderRadius: '6px',
+                                                        borderRadius: designSystem.borderRadius.full,
                                                         fontSize: '12px',
-                                                        color: '#666'
+                                                        color: designSystem.colors.text.secondary,
+                                                        boxShadow: designSystem.shadows.xs
                                                     }}>
                                                         {record.reason}
                                                     </span>
@@ -700,9 +707,10 @@ export function BoatManagement() {
                                         onClick={() => openUnavailableDialog(boat)}
                                         fullWidth
                                         style={{
-                                            background: '#e3f2fd',
-                                            color: '#1565c0',
-                                            border: '2px solid #bbdefb',
+                                            background: '#ffffff',
+                                            color: designSystem.colors.text.primary,
+                                            border: `1px solid ${designSystem.colors.border.light}`,
+                                            boxShadow: designSystem.shadows.xs,
                                         }}
                                     >
                                         設定維修/停用
@@ -719,17 +727,17 @@ export function BoatManagement() {
                     <>
                         {/* 說明提示 */}
                         <div style={{
-                            background: '#fff9e6',
-                            padding: isMobile ? '12px 16px' : '14px 20px',
-                            borderRadius: '8px',
-                            marginBottom: '20px',
+                            background: 'rgba(255,255,255,0.74)',
+                            padding: isMobile ? '16px 18px' : '18px 22px',
+                            borderRadius: designSystem.borderRadius.lg,
+                            marginBottom: '24px',
                             fontSize: '14px',
-                            color: '#8b6914',
-                            border: '1px solid #ffe8a3',
+                            color: designSystem.colors.text.secondary,
+                            border: `1px solid ${designSystem.colors.border.light}`,
+                            boxShadow: designSystem.shadows.xs,
                             lineHeight: '1.6'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                <span style={{ flexShrink: 0 }}>💡</span>
                                 <div>
                                     <div style={{ marginBottom: '4px' }}>
                                         <strong>價格計算公式</strong>：實際金額 = Math.floor(每小時價格 * 分鐘數 / 60)
@@ -749,7 +757,7 @@ export function BoatManagement() {
                         <div style={{
                             display: 'grid',
                             gridTemplateColumns: '1fr',
-                            gap: '15px'
+                            gap: isMobile ? '16px' : '20px'
                         }}>
                             {boats.map(boat => {
                                 initEditingPrice(boat)
@@ -763,18 +771,19 @@ export function BoatManagement() {
                                         key={boat.id}
                                         style={{
                                             background: 'white',
-                                            borderRadius: '12px',
-                                            padding: isMobile ? '16px' : '24px',
-                                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                                            borderTop: `4px solid ${boat.color}`
+                                            borderRadius: designSystem.borderRadius.xl,
+                                            padding: isMobile ? '20px' : '26px',
+                                            boxShadow: designSystem.shadows.elevation[2],
+                                            border: `1px solid ${designSystem.colors.border.light}`,
+                                            borderTop: `3px solid ${boat.color}`
                                         }}
                                     >
                                         {/* 船隻名稱 */}
                                         <h3 style={{
                                             margin: '0 0 20px 0',
                                             fontSize: isMobile ? '20px' : '22px',
-                                            fontWeight: 'bold',
-                                            color: '#333',
+                                            fontWeight: 750,
+                                            color: designSystem.colors.text.primary,
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '10px'
@@ -801,12 +810,12 @@ export function BoatManagement() {
                                                     marginBottom: '8px',
                                                     fontSize: '14px',
                                                     fontWeight: '600',
-                                                    color: '#555'
+                                                    color: designSystem.colors.text.secondary
                                                 }}>
                                                     儲值價格（每小時）
                                                 </label>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <span style={{ fontSize: '16px', color: '#666' }}>$</span>
+                                                    <span style={{ fontSize: '16px', color: designSystem.colors.text.secondary }}>$</span>
                                                     <input
                                                         type="text"
                                                         inputMode="numeric"
@@ -821,15 +830,17 @@ export function BoatManagement() {
                                                         placeholder="未設定"
                                                         style={{
                                                             flex: 1,
-                                                            padding: '10px 12px',
-                                                            borderRadius: '8px',
-                                                            border: '2px solid #e0e0e0',
+                                                            padding: '12px 14px',
+                                                            borderRadius: designSystem.borderRadius.lg,
+                                                            border: `1px solid ${designSystem.colors.border.light}`,
                                                             fontSize: '16px',
                                                             outline: 'none',
-                                                            transition: 'border-color 0.2s'
+                                                            background: '#fff',
+                                                            transition: 'border-color 0.2s, box-shadow 0.2s',
+                                                            boxShadow: designSystem.shadows.xs
                                                         }}
-                                                        onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                                                        onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                                                        onFocus={(e) => e.target.style.borderColor = designSystem.colors.primary[400]}
+                                                        onBlur={(e) => e.target.style.borderColor = designSystem.colors.border.light}
                                                     />
                                                 </div>
                                             </div>
@@ -841,12 +852,12 @@ export function BoatManagement() {
                                                     marginBottom: '8px',
                                                     fontSize: '14px',
                                                     fontWeight: '600',
-                                                    color: '#555'
+                                                    color: designSystem.colors.text.secondary
                                                 }}>
                                                     VIP 票券價格（每小時）
                                                 </label>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <span style={{ fontSize: '16px', color: '#666' }}>$</span>
+                                                    <span style={{ fontSize: '16px', color: designSystem.colors.text.secondary }}>$</span>
                                                     <input
                                                         type="text"
                                                         inputMode="numeric"
@@ -861,15 +872,17 @@ export function BoatManagement() {
                                                         placeholder="未設定"
                                                         style={{
                                                             flex: 1,
-                                                            padding: '10px 12px',
-                                                            borderRadius: '8px',
-                                                            border: '2px solid #e0e0e0',
+                                                            padding: '12px 14px',
+                                                            borderRadius: designSystem.borderRadius.lg,
+                                                            border: `1px solid ${designSystem.colors.border.light}`,
                                                             fontSize: '16px',
                                                             outline: 'none',
-                                                            transition: 'border-color 0.2s'
+                                                            background: '#fff',
+                                                            transition: 'border-color 0.2s, box-shadow 0.2s',
+                                                            boxShadow: designSystem.shadows.xs
                                                         }}
-                                                        onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                                                        onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                                                        onFocus={(e) => e.target.style.borderColor = designSystem.colors.primary[400]}
+                                                        onBlur={(e) => e.target.style.borderColor = designSystem.colors.border.light}
                                                     />
                                                 </div>
                                             </div>
@@ -877,14 +890,14 @@ export function BoatManagement() {
 
                                         {/* 價格預覽 */}
                                         <div style={{
-                                            background: '#f5f5f5',
-                                            padding: '12px 16px',
-                                            borderRadius: '8px',
+                                            background: designSystem.colors.secondary[50],
+                                            padding: isMobile ? '14px 16px' : '16px 18px',
+                                            borderRadius: designSystem.borderRadius.lg,
                                             marginBottom: '16px',
                                             fontSize: '13px',
-                                            color: '#666'
+                                            color: designSystem.colors.text.secondary
                                         }}>
-                                            <div style={{ fontWeight: '600', marginBottom: '8px', color: '#333' }}>
+                                            <div style={{ fontWeight: '700', marginBottom: '8px', color: designSystem.colors.text.primary }}>
                                                 價格預覽
                                             </div>
                                             <div style={{
@@ -920,7 +933,7 @@ export function BoatManagement() {
                                             disabled={saving}
                                             fullWidth
                                         >
-                                            {saving ? '儲存中...' : '💾 儲存價格'}
+                                            {saving ? '儲存中...' : '儲存價格'}
                                         </Button>
                                     </div>
                                 )
@@ -958,9 +971,9 @@ export function BoatManagement() {
                                 width: '100%',
                                 height: '44px',
                                 padding: '4px',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '10px',
-                                background: '#fafafa',
+                                border: `1px solid ${designSystem.colors.border.light}`,
+                                borderRadius: designSystem.borderRadius.lg,
+                                background: designSystem.colors.secondary[50],
                                 cursor: 'pointer',
                                 boxSizing: 'border-box',
                             }}
@@ -1039,7 +1052,7 @@ export function BoatManagement() {
                             data-track="boat_unavailable_confirm"
                             onClick={handleAddUnavailable}
                             disabled={unavailableLoading}
-                            style={{ flex: 1, background: '#e65100' }}
+                            style={{ flex: 1 }}
                         >
                             {unavailableLoading
                                 ? (editingUnavailableId != null ? '儲存中…' : '新增中…')
