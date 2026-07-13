@@ -169,6 +169,49 @@ function buildDayEntries(
     .filter((e): e is DayOffEntry => e !== null)
 }
 
+function TimeOffLegend({ compact }: { compact?: boolean }) {
+  const chip: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '4px 10px',
+    background: '#fff',
+    border: '1px solid #eef1f4',
+    borderRadius: '999px',
+    fontSize: compact ? '12px' : '13px',
+    color: '#555',
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+  }
+  const badge = (bg: string, color: string): CSSProperties => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '20px',
+    height: '20px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: 700,
+    background: bg,
+    color,
+  })
+  return (
+    <div style={{
+      display: 'flex',
+      gap: '8px',
+      flexWrap: 'wrap',
+      marginBottom: compact ? '8px' : '12px',
+      padding: compact ? '0 4px' : 0,
+    }}>
+      <span style={chip}><span style={badge('#ffecb3', '#e65100')}>全</span> 整天</span>
+      <span style={chip}><span style={badge('#fff3e0', '#f57c00')}>上</span> 上午</span>
+      <span style={chip}><span style={badge('#fff3e0', '#f57c00')}>下</span> 下午</span>
+      {!compact && (
+        <span style={{ ...chip, color: '#94a3b8' }}>其他為自訂時段 · 空白為可上班</span>
+      )}
+    </div>
+  )
+}
+
 function CoachTimeOffDayDetail({
   ymd,
   isToday,
@@ -754,42 +797,15 @@ export function CoachTimeOffPage() {
         </div>
         )}
 
-        {!isMobile && (
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            flexWrap: 'wrap',
-            marginBottom: '12px',
-            fontSize: '13px',
-            color: '#666',
-          }}>
-            <span><strong style={{ color: '#e65100' }}>全</strong> 整天</span>
-            <span><strong style={{ color: '#f57c00' }}>上</strong> 上午</span>
-            <span><strong style={{ color: '#f57c00' }}>下</strong> 下午</span>
-            <span>其他為自訂時段 · 空白為可上班</span>
-          </div>
-        )}
+        {!isMobile && <TimeOffLegend />}
 
-        {isMobile && mobileTab === 'week' && (
-          <div style={{
-            display: 'flex',
-            gap: '10px',
-            flexWrap: 'wrap',
-            marginBottom: '8px',
-            padding: '0 4px',
-            fontSize: '12px',
-            color: '#666',
-          }}>
-            <span><strong style={{ color: '#e65100' }}>全</strong> 整天</span>
-            <span><strong style={{ color: '#f57c00' }}>上</strong> 上午</span>
-            <span><strong style={{ color: '#f57c00' }}>下</strong> 下午</span>
-          </div>
-        )}
+        {isMobile && mobileTab === 'week' && <TimeOffLegend compact />}
 
         <div style={{
           background: '#fff',
-          borderRadius: '12px',
-          border: '1px solid #e0e0e0',
+          borderRadius: '14px',
+          border: '1px solid #eef1f4',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
           overflow: isMobile ? 'visible' : 'auto',
           marginBottom: '24px',
         }}>

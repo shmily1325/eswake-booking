@@ -1,35 +1,132 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+
+let modalKeyframesInjected = false
+
+function ensureModalKeyframes() {
+  if (modalKeyframesInjected || typeof document === 'undefined') return
+  const style = document.createElement('style')
+  style.dataset.adminModal = 'true'
+  style.textContent =
+    '@keyframes adminModalOverlayIn{from{opacity:0}to{opacity:1}}' +
+    '@keyframes adminModalCardIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:none}}'
+  document.head.appendChild(style)
+  modalKeyframesInjected = true
+}
 
 export function AdminModal({
   children,
   isMobile,
   maxWidth = 440,
+  onClose,
 }: {
   children: ReactNode
   isMobile?: boolean
   maxWidth?: number
+  /** 提供時才顯示 X、可點遮罩與按 Esc 關閉 */
+  onClose?: () => void
 }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [closeHover, setCloseHover] = useState(false)
+
+  useEffect(() => {
+    ensureModalKeyframes()
+  }, [])
+
+  // 鎖住背景捲動，關閉時還原
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
+
+  // Esc 關閉
+  useEffect(() => {
+    if (!onClose) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  // 桌面自動聚焦第一個欄位（手機不 focus，避免鍵盤彈出）
+  useEffect(() => {
+    if (isMobile) return
+    const first = cardRef.current?.querySelector<HTMLElement>(
+      'input, select, textarea, button:not([data-admin-modal-close])'
+    )
+    first?.focus()
+  }, [isMobile])
+
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(15, 23, 42, 0.45)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: isMobile ? '16px' : '24px',
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: isMobile ? '20px' : '28px',
-        maxWidth,
-        width: '100%',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.18)',
-      }}>
+    <div
+      onMouseDown={
+        onClose
+          ? e => {
+              if (e.target === e.currentTarget) onClose()
+            }
+          : undefined
+      }
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: isMobile ? '16px' : '24px',
+        animation: 'adminModalOverlayIn 0.18s ease',
+      }}
+    >
+      <div
+        ref={cardRef}
+        style={{
+          position: 'relative',
+          background: 'white',
+          borderRadius: '16px',
+          padding: isMobile ? '20px' : '28px',
+          maxWidth,
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.18)',
+          animation: 'adminModalCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
+        {onClose && (
+          <button
+            type="button"
+            data-admin-modal-close
+            aria-label="關閉"
+            onClick={onClose}
+            onMouseEnter={() => setCloseHover(true)}
+            onMouseLeave={() => setCloseHover(false)}
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              borderRadius: '8px',
+              background: closeHover ? '#f3f4f6' : 'transparent',
+              color: '#9ca3af',
+              fontSize: '20px',
+              lineHeight: 1,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            ×
+          </button>
+        )}
         {children}
       </div>
     </div>

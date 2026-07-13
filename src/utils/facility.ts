@@ -21,6 +21,11 @@ export function isFacility(boatName: string | undefined | null): boolean {
   return FACILITIES.includes(boatName)
 }
 
+/** 陸上課程無固定船隻維修概念，不顯示維修/停用設定 */
+export function isLandCourse(boatName: string | undefined | null): boolean {
+  return boatName === '陸上課程'
+}
+
 /**
  * 檢查是否為可重疊預約的設施
  * @param boatName 船隻名稱

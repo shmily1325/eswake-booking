@@ -2744,7 +2744,10 @@ export function StaffManagement() {
 
       {/* 休假設定彈窗 */}
       {timeOffDialogOpen && selectedCoach && (
-        <AdminModal isMobile={isMobile}>
+        <AdminModal
+          isMobile={isMobile}
+          onClose={() => { if (!timeOffLoading) resetTimeOffDialog() }}
+        >
           <AdminModalHeader
             title={editingTimeOffIds?.length ? '編輯休假' : '新增休假'}
             subtitle={selectedCoach.name}
@@ -2828,7 +2831,7 @@ export function StaffManagement() {
                 : `staff_time_off_confirm_${timeOffMode}`}
               onClick={handleSaveTimeOff}
               disabled={timeOffLoading}
-              style={{ flex: 1, background: timeOffLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+              style={{ flex: 1, background: timeOffLoading ? '#ccc' : 'linear-gradient(135deg, #ffa726 0%, #f57c00 100%)' }}
             >
               {timeOffLoading
                 ? (editingTimeOffIds?.length ? '儲存中…' : '新增中…')
@@ -2840,235 +2843,178 @@ export function StaffManagement() {
 
       {/* 設定帳號彈窗 */}
       {accountDialogOpen && selectedAccountCoach && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: isMobile ? '20px' : '30px',
-            maxWidth: '450px',
-            width: '100%'
-          }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: 'bold' }}>
-              設定帳號：{selectedAccountCoach.name}
-            </h3>
+        <AdminModal
+          isMobile={isMobile}
+          maxWidth={450}
+          onClose={() => {
+            if (accountLoading) return
+            setAccountDialogOpen(false)
+            setSelectedAccountCoach(null)
+            setAccountEmail('')
+          }}
+        >
+          <AdminModalHeader title="設定帳號" subtitle={selectedAccountCoach.name} accent="blue" />
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                登入帳號 Email
-              </label>
-              <input
-                type="text"
-                value={accountEmail}
-                onChange={(e) => setAccountEmail(e.target.value)}
-                placeholder="例如：coach@example.com"
+          <div style={{ marginBottom: '20px' }}>
+            <FormFieldLabel>登入帳號 Email</FormFieldLabel>
+            <input
+              type="text"
+              value={accountEmail}
+              onChange={(e) => setAccountEmail(e.target.value)}
+              placeholder="例如：coach@example.com"
+              style={adminTextInputStyle}
+            />
+            <HintBox>設定後，該教練可以使用此帳號登入並查看自己的回報。</HintBox>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAccountDialogOpen(false)
+                setSelectedAccountCoach(null)
+                setAccountEmail('')
+              }}
+              disabled={accountLoading}
+              style={{ flex: 1 }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => handleSetAccount()}
+              disabled={accountLoading}
+              style={{ flex: 1 }}
+            >
+              {accountLoading ? '設定中…' : '確定'}
+            </Button>
+          </div>
+
+          {/* 清除帳號按鈕 */}
+          {selectedAccountCoach.user_email && (
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
+              <button
+                onClick={() => { setAccountClearConfirmOpen(true) }}
+                disabled={accountLoading}
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
+                  padding: '10px',
+                  background: '#ffebee',
+                  color: '#c62828',
+                  border: '1px solid #ef9a9a',
                   borderRadius: '8px',
-                  fontSize: '15px',
-                  boxSizing: 'border-box'
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: accountLoading ? 'not-allowed' : 'pointer',
+                  opacity: accountLoading ? 0.5 : 1
                 }}
-              />
-              <div style={{
-                marginTop: '8px',
-                fontSize: '13px',
-                color: '#666',
-                lineHeight: '1.4'
-              }}>
-                💡 設定後，該教練可以使用此帳號登入並查看自己的回報
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setAccountDialogOpen(false)
-                  setSelectedAccountCoach(null)
-                  setAccountEmail('')
-                }}
-                disabled={accountLoading}
-                style={{ flex: 1 }}
               >
-                取消
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => handleSetAccount()}
-                disabled={accountLoading}
-                style={{ flex: 1, background: accountLoading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-              >
-                {accountLoading ? '設定中...' : '確定'}
-              </Button>
+                清除帳號配對
+              </button>
             </div>
-
-            {/* 清除帳號按鈕 */}
-            {selectedAccountCoach.user_email && (
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
-                <button
-                  onClick={() => { setAccountClearConfirmOpen(true) }}
-                  disabled={accountLoading}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    background: '#ffebee',
-                    color: '#c62828',
-                    border: '1px solid #ef9a9a',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: accountLoading ? 'not-allowed' : 'pointer',
-                    opacity: accountLoading ? 0.5 : 1
-                  }}
-                >
-                  清除帳號配對
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+          )}
+        </AdminModal>
       )}
 
       {/* 設定指定課價格彈窗 */}
       {pricingDialogOpen && selectedPricingCoach && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: isMobile ? '20px' : '30px',
-            maxWidth: '450px',
-            width: '100%'
-          }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: 'bold' }}>
-              設定指定課價格：{selectedPricingCoach.name}
-            </h3>
+        <AdminModal
+          isMobile={isMobile}
+          maxWidth={450}
+          onClose={() => {
+            if (pricingLoading) return
+            setPricingDialogOpen(false)
+            setSelectedPricingCoach(null)
+            setLessonPrice('')
+          }}
+        >
+          <AdminModalHeader title="設定指定課價格" subtitle={selectedPricingCoach.name} accent="blue" />
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                30分鐘指定課價格（元）
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={lessonPrice}
-                onChange={(e) => {
-                  const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
-                  setLessonPrice(numValue)
-                }}
-                placeholder="例如：1000"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  boxSizing: 'border-box'
-                }}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSetPrice()
-                }}
-              />
+          <div style={{ marginBottom: '20px' }}>
+            <FormFieldLabel>30分鐘指定課價格（元）</FormFieldLabel>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={lessonPrice}
+              onChange={(e) => {
+                const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                setLessonPrice(numValue)
+              }}
+              placeholder="例如：1000"
+              style={adminTextInputStyle}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSetPrice()
+              }}
+            />
+            <HintBox>其他時長會自動按比例換算（無條件進位：20分、40分、60分、90分）。</HintBox>
+            {lessonPrice && !isNaN(Number(lessonPrice)) && Number(lessonPrice) > 0 && (
               <div style={{
-                marginTop: '8px',
+                marginTop: '12px',
+                padding: '12px 14px',
+                background: '#fff8e1',
+                borderRadius: '10px',
+                border: '1px solid #ffe0b2',
                 fontSize: '13px',
-                color: '#666',
-                lineHeight: '1.4'
+                color: '#666'
               }}>
-                💡 其他時長會自動按比例換算（無條件進位：20分、40分、60分、90分）
-              </div>
-              {lessonPrice && !isNaN(Number(lessonPrice)) && Number(lessonPrice) > 0 && (
-                <div style={{
-                  marginTop: '12px',
-                  padding: '12px',
-                  background: '#fff8e1',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  color: '#666'
-                }}>
-                  <div style={{ fontWeight: '600', marginBottom: '6px', color: '#f57c00' }}>
-                    換算參考（無條件捨去）：
-                  </div>
-                  <div>20分 = ${Math.floor(Number(lessonPrice) * 20 / 30)}</div>
-                  <div>40分 = ${Math.floor(Number(lessonPrice) * 40 / 30)}</div>
-                  <div>60分 = ${Math.floor(Number(lessonPrice) * 60 / 30)}</div>
-                  <div>90分 = ${Math.floor(Number(lessonPrice) * 90 / 30)}</div>
+                <div style={{ fontWeight: '600', marginBottom: '6px', color: '#f57c00' }}>
+                  換算參考（無條件捨去）：
                 </div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setPricingDialogOpen(false)
-                  setSelectedPricingCoach(null)
-                  setLessonPrice('')
-                }}
-                disabled={pricingLoading}
-                style={{ flex: 1 }}
-              >
-                取消
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleSetPrice}
-                disabled={pricingLoading}
-                style={{ flex: 1, background: pricingLoading ? '#ccc' : 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)' }}
-              >
-                {pricingLoading ? '設定中...' : '確定'}
-              </Button>
-            </div>
-
-            {/* 清除價格按鈕 */}
-            {selectedPricingCoach.designated_lesson_price_30min && (
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
-                <button
-                  onClick={() => { setPriceClearConfirmOpen(true) }}
-                  disabled={pricingLoading}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    background: '#ffebee',
-                    color: '#c62828',
-                    border: '1px solid #ef9a9a',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: pricingLoading ? 'not-allowed' : 'pointer',
-                    opacity: pricingLoading ? 0.5 : 1
-                  }}
-                >
-                  清除價格設定
-                </button>
+                <div>20分 = ${Math.floor(Number(lessonPrice) * 20 / 30)}</div>
+                <div>40分 = ${Math.floor(Number(lessonPrice) * 40 / 30)}</div>
+                <div>60分 = ${Math.floor(Number(lessonPrice) * 60 / 30)}</div>
+                <div>90分 = ${Math.floor(Number(lessonPrice) * 90 / 30)}</div>
               </div>
             )}
           </div>
-        </div>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPricingDialogOpen(false)
+                setSelectedPricingCoach(null)
+                setLessonPrice('')
+              }}
+              disabled={pricingLoading}
+              style={{ flex: 1 }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSetPrice}
+              disabled={pricingLoading}
+              style={{ flex: 1 }}
+            >
+              {pricingLoading ? '設定中…' : '確定'}
+            </Button>
+          </div>
+
+          {/* 清除價格按鈕 */}
+          {selectedPricingCoach.designated_lesson_price_30min && (
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
+              <button
+                onClick={() => { setPriceClearConfirmOpen(true) }}
+                disabled={pricingLoading}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: '#ffebee',
+                  color: '#c62828',
+                  border: '1px solid #ef9a9a',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: pricingLoading ? 'not-allowed' : 'pointer',
+                  opacity: pricingLoading ? 0.5 : 1
+                }}
+              >
+                清除價格設定
+              </button>
+            </div>
+          )}
+        </AdminModal>
       )}
 
       {selectedAccountCoach && (

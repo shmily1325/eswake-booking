@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
@@ -17,7 +17,7 @@ import { splitMinutesEqually } from '../../../utils/teachingMinutesAllocation'
 import { fetchAllInBatches, fetchAllPaginated } from '../../../utils/supabasePaginate'
 
 import { LoadingSkeleton, LastUpdated } from './components'
-import { TrendTab, MonthlyTab, FutureTab, BoatUptimeTab } from './tabs'
+import { TrendTab, MonthlyTab, FutureTab } from './tabs'
 import type {
   MonthlyStats,
   CoachFutureBooking,
@@ -28,18 +28,11 @@ import type {
   BoatData
 } from './types'
 
-type TabType = 'trend' | 'monthly' | 'future' | 'boatUptime'
-
-function initialDashboardTab(): TabType {
-  if (typeof window === 'undefined') return 'trend'
-  const q = new URLSearchParams(window.location.search).get('tab')
-  return q === 'boatUptime' ? 'boatUptime' : 'trend'
-}
+type TabType = 'trend' | 'monthly' | 'future'
 
 export function Statistics() {
   const user = useAuthUser()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -51,7 +44,7 @@ export function Statistics() {
     }
   }, [user, navigate])
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
-  const [activeTab, setActiveTab] = useState<TabType>(initialDashboardTab)
+  const [activeTab, setActiveTab] = useState<TabType>('trend')
 
   // 趨勢數據
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([])
@@ -83,12 +76,7 @@ export function Statistics() {
     { key: 'trend', label: '歷史趨勢', icon: '📈' },
     { key: 'monthly', label: '月報分析', icon: '🎯' },
     { key: 'future', label: '排程預覽', icon: '📅' },
-    { key: 'boatUptime', label: '船隻妥善率', icon: '🔧' },
   ]
-
-  useEffect(() => {
-    if (searchParams.get('tab') === 'boatUptime') setActiveTab('boatUptime')
-  }, [searchParams])
 
   // 載入所有船隻
   const loadAllBoats = async () => {
@@ -980,9 +968,6 @@ export function Statistics() {
               />
             )}
 
-            {activeTab === 'boatUptime' && (
-              <BoatUptimeTab lastUpdatedKey={lastUpdated.getTime()} />
-            )}
           </div>
         )}
 

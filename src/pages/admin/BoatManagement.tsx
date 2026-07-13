@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -10,8 +10,7 @@ import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
 import { designSystem } from '../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../utils/auth'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
-import { isFacility } from '../../utils/facility'
-import { computeBoatsMonthlyUptime } from '../../utils/boatMonthlyUptime'
+import { isFacility, isLandCourse } from '../../utils/facility'
 import {
   AdminModal,
   AdminModalHeader,
@@ -103,22 +102,6 @@ export function BoatManagement() {
             setLoading(false)
         }
     }
-
-    // 過濾該月份的維修記錄
-    const monthUptimeRows = useMemo(
-        () =>
-            computeBoatsMonthlyUptime(
-                selectedMonth,
-                boats.map((b) => ({ id: b.id, name: b.name })),
-                unavailableDates.filter((u) => u.is_active !== false)
-            ),
-        [selectedMonth, boats, unavailableDates]
-    )
-
-    const uptimeByBoatId = useMemo(
-        () => new Map(monthUptimeRows.map((r) => [r.boatId, r])),
-        [monthUptimeRows]
-    )
 
     const filterUnavailableByMonth = (unavailables: BoatUnavailableDate[], month: string): BoatUnavailableDate[] => {
         const [year, monthNum] = month.split('-').map(Number)
@@ -546,7 +529,7 @@ export function BoatManagement() {
                         const boatAllUnavailable = unavailableDates.filter(d => d.boat_id === boat.id)
                         const boatUnavailable = filterUnavailableByMonth(boatAllUnavailable, selectedMonth)
                         const isActive = boat.is_active
-                        const boatUptime = !isFacility(boat.name) ? uptimeByBoatId.get(boat.id) : undefined
+                        const showMaintenance = !isLandCourse(boat.name)
 
                         return (
                             <div
@@ -586,59 +569,6 @@ export function BoatManagement() {
                                                 </Badge>
                                             )}
                                         </h3>
-                                        {boatUptime && (
-                                            <div
-                                                style={{
-                                                    marginTop: '12px',
-                                                    marginBottom: '12px',
-                                                    borderLeft: '4px solid #6a1b9a',
-                                                    paddingLeft: '12px',
-                                                    paddingTop: '2px',
-                                                    paddingBottom: '2px',
-                                                }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexWrap: 'wrap',
-                                                        alignItems: 'center',
-                                                        gap: '8px',
-                                                        marginBottom: '6px',
-                                                    }}
-                                                >
-                                                    {boatUptime.uptimePct < 100 && (
-                                                        <span
-                                                            aria-hidden
-                                                            title="當月有維修／停用"
-                                                            style={{ fontSize: '22px', lineHeight: 1 }}
-                                                        >
-                                                            💣
-                                                        </span>
-                                                    )}
-                                                    <span
-                                                        style={{
-                                                            fontSize: isMobile ? '26px' : '28px',
-                                                            fontWeight: 800,
-                                                            color: '#4a148c',
-                                                            letterSpacing: '-0.02em',
-                                                            lineHeight: 1.1,
-                                                        }}
-                                                    >
-                                                        {boatUptime.uptimePct}%
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        fontSize: '13px',
-                                                        color: '#5e35b1',
-                                                        lineHeight: 1.55,
-                                                    }}
-                                                >
-                                                    維修 <strong>{boatUptime.downtimeDaysDecimal}</strong>天 ·{' '}
-                                                    <strong>{boatUptime.downtimeHours}</strong>小時
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
 
                                     {/* 操作按鈕 */}
@@ -656,7 +586,7 @@ export function BoatManagement() {
                                 </div>
 
                                 {/* 維修/停用記錄 */}
-                                {boatUnavailable.length > 0 && (
+                                {showMaintenance && boatUnavailable.length > 0 && (
                                     <div style={{
                                         marginBottom: '14px',
                                         padding: isMobile ? '12px' : '14px',
@@ -762,20 +692,22 @@ export function BoatManagement() {
                                 )}
 
                                 {/* 設定維修按鈕 */}
-                                <Button
-                                    variant="outline"
-                                    size="medium"
-                                    data-track="boat_unavailable_dialog"
-                                    onClick={() => openUnavailableDialog(boat)}
-                                    fullWidth
-                                    style={{
-                                        background: '#e3f2fd',
-                                        color: '#1565c0',
-                                        border: '2px solid #bbdefb',
-                                    }}
-                                >
-                                    設定維修/停用
-                                </Button>
+                                {showMaintenance && (
+                                    <Button
+                                        variant="outline"
+                                        size="medium"
+                                        data-track="boat_unavailable_dialog"
+                                        onClick={() => openUnavailableDialog(boat)}
+                                        fullWidth
+                                        style={{
+                                            background: '#e3f2fd',
+                                            color: '#1565c0',
+                                            border: '2px solid #bbdefb',
+                                        }}
+                                    >
+                                        設定維修/停用
+                                    </Button>
+                                )}
                             </div>
                         )
                     })}
@@ -1000,46 +932,56 @@ export function BoatManagement() {
 
             {/* 新增船隻彈窗 */}
             {addDialogOpen && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000, padding: '20px'
-                }}>
-                    <div style={{
-                        background: 'white', borderRadius: '12px', padding: '30px',
-                        maxWidth: '400px', width: '100%'
-                    }}>
-                        <h2 style={{ marginTop: 0 }}>新增船隻</h2>
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px' }}>船隻名稱</label>
-                            <input
-                                type="text"
-                                value={newBoatName}
-                                onChange={(e) => setNewBoatName(e.target.value)}
-                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
-                            />
-                        </div>
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px' }}>代表色</label>
-                            <input
-                                type="color"
-                                value={newBoatColor}
-                                onChange={(e) => setNewBoatColor(e.target.value)}
-                                style={{ width: '100%', height: '40px' }}
-                            />
-                        </div>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <Button variant="outline" onClick={() => setAddDialogOpen(false)} style={{ flex: 1 }}>取消</Button>
-                            <Button variant="primary" data-track="boat_add_confirm" onClick={handleAddBoat} disabled={addLoading} style={{ flex: 1 }}>確定</Button>
-                        </div>
+                <AdminModal
+                    isMobile={isMobile}
+                    maxWidth={400}
+                    onClose={() => { if (!addLoading) setAddDialogOpen(false) }}
+                >
+                    <AdminModalHeader title="新增船隻" accent="blue" />
+                    <div style={{ marginBottom: '16px' }}>
+                        <FormFieldLabel>船隻名稱</FormFieldLabel>
+                        <input
+                            type="text"
+                            value={newBoatName}
+                            onChange={(e) => setNewBoatName(e.target.value)}
+                            placeholder="例如：G23"
+                            style={adminTextInputStyle}
+                        />
                     </div>
-                </div>
+                    <div style={{ marginBottom: '20px' }}>
+                        <FormFieldLabel>代表色</FormFieldLabel>
+                        <input
+                            type="color"
+                            value={newBoatColor}
+                            onChange={(e) => setNewBoatColor(e.target.value)}
+                            style={{
+                                width: '100%',
+                                height: '44px',
+                                padding: '4px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '10px',
+                                background: '#fafafa',
+                                cursor: 'pointer',
+                                boxSizing: 'border-box',
+                            }}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <Button variant="outline" onClick={() => setAddDialogOpen(false)} style={{ flex: 1 }}>取消</Button>
+                        <Button variant="primary" data-track="boat_add_confirm" onClick={handleAddBoat} disabled={addLoading} style={{ flex: 1 }}>
+                            {addLoading ? '新增中…' : '確定'}
+                        </Button>
+                    </div>
+                </AdminModal>
             )}
 
             {/* 設定維修彈窗 */}
             {unavailableDialogOpen && (
-                <AdminModal isMobile={isMobile} maxWidth={420}>
+                <AdminModal
+                    isMobile={isMobile}
+                    maxWidth={420}
+                    onClose={() => { if (!unavailableLoading) closeUnavailableDialog() }}
+                >
                     <AdminModalHeader
                         title={editingUnavailableId != null ? '編輯維修/停用' : '新增維修/停用'}
                         subtitle={selectedBoat?.name}
