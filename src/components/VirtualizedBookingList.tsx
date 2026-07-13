@@ -96,8 +96,8 @@ export function VirtualizedBookingList({
                         <div style={{
                             minWidth: isMobile ? '80px' : '120px',
                             maxWidth: isMobile ? '80px' : '120px',
-                            background: designSystem.colors.primary[500],
-                            color: 'white',
+                            background: designSystem.colors.background.hover,
+                            color: designSystem.colors.text.primary,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
@@ -110,40 +110,52 @@ export function VirtualizedBookingList({
                         }}
                             title={sidebarAlert.show ? sidebarAlert.title : undefined}
                         >
+                            <span
+                                aria-hidden
+                                style={{
+                                    width: isMobile ? '8px' : '10px',
+                                    height: isMobile ? '8px' : '10px',
+                                    borderRadius: '50%',
+                                    background: boat.color || designSystem.colors.border.dark,
+                                    border: '1px solid rgba(0,0,0,0.12)',
+                                    marginBottom: '6px',
+                                    flexShrink: 0,
+                                }}
+                            />
                             <div style={{
                                 fontSize: isMobile ? '14px' : '16px',
                                 fontWeight: '700',
                                 marginBottom: '4px',
                                 textAlign: 'center',
                                 wordBreak: 'keep-all',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: isMobile ? '3px' : '5px',
                                 maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
                             }}>
-                                <span
-                                    style={{
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        minWidth: 0,
-                                    }}
-                                >
-                                    {boat.name}
-                                </span>
-                                {sidebarAlert.show && (
-                                    <span
-                                        aria-hidden
-                                        style={{ flexShrink: 0, lineHeight: 1, fontSize: isMobile ? '13px' : '15px' }}
-                                    >
-                                        💣
-                                    </span>
-                                )}
+                                {boat.name}
                             </div>
+                            {sidebarAlert.show && (
+                                <div style={{
+                                    fontSize: isMobile ? '9px' : '10px',
+                                    fontWeight: 600,
+                                    lineHeight: 1.2,
+                                    textAlign: 'center',
+                                    color: designSystem.colors.warning[700],
+                                    background: designSystem.colors.warning[50],
+                                    border: `1px solid ${designSystem.colors.warning[500]}33`,
+                                    borderRadius: designSystem.borderRadius.sm,
+                                    padding: '2px 4px',
+                                    marginBottom: '4px',
+                                    maxWidth: '100%',
+                                    wordBreak: 'break-word',
+                                }}>
+                                    {sidebarAlert.label}
+                                </div>
+                            )}
                             <div style={{
                                 fontSize: isMobile ? '11px' : '12px',
-                                opacity: 0.8,
+                                color: designSystem.colors.text.secondary,
                                 textAlign: 'center',
                             }}>
                                 {boatBookings.length} 筆

@@ -7,6 +7,7 @@ import {
   normalizeAnnouncementContent,
   type DayViewAssignmentAnnouncement,
 } from '../utils/announcement'
+import { designSystem } from '../styles/designSystem'
 
 interface BoatRef {
   id: number
@@ -23,18 +24,26 @@ interface BoatUnavailableDaySummaryProps {
   assignmentAnnouncements?: DayViewAssignmentAnnouncement[]
 }
 
-function BombLine({ children }: { children: ReactNode }) {
+function MarkerLine({ children, color }: { children: ReactNode; color: string }) {
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'flex-start',
-        gap: '6px',
+        gap: '8px',
       }}
     >
-      <span aria-hidden style={{ flexShrink: 0, lineHeight: 1.5 }}>
-        💣
-      </span>
+      <span
+        aria-hidden
+        style={{
+          flexShrink: 0,
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          background: color,
+          marginTop: '7px',
+        }}
+      />
       <span style={{ minWidth: 0 }}>{children}</span>
     </div>
   )
@@ -112,14 +121,14 @@ export function BoatUnavailableDaySummary({
     flexDirection: 'column' as const,
     gap: '4px',
     fontSize: isMobile ? '12px' : '13px',
-    color: '#4a148c',
+    color: designSystem.colors.text.primary,
     lineHeight: 1.65,
   }
 
   const sectionTitleStyle = {
     fontWeight: 700 as const,
     fontSize: isMobile ? '13px' : '14px',
-    color: '#4527a0',
+    color: designSystem.colors.warning[700],
     marginBottom: '8px',
   }
 
@@ -128,10 +137,10 @@ export function BoatUnavailableDaySummary({
       style={{
         marginBottom: isMobile ? '12px' : '16px',
         padding: isMobile ? '12px 14px' : '14px 18px',
-        borderRadius: '10px',
-        background: 'linear-gradient(135deg, #ede7f6 0%, #e8eaf6 100%)',
-        border: '1px solid #b39ddb',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        borderRadius: designSystem.borderRadius.lg,
+        background: designSystem.colors.warning[50],
+        border: `1px solid ${designSystem.colors.warning[500]}33`,
+        boxShadow: designSystem.shadows.xs,
       }}
     >
       {assignmentLines.length > 0 && (
@@ -157,10 +166,10 @@ export function BoatUnavailableDaySummary({
           </div>
           <div style={bodyStyle}>
             {lines.map((line) => (
-              <BombLine key={line.key}>
+              <MarkerLine key={line.key} color={designSystem.colors.warning[500]}>
                 <strong>{line.boatName}</strong>：{line.range}
                 {line.reason ? `（${line.reason}）` : ''}
-              </BombLine>
+              </MarkerLine>
             ))}
           </div>
         </>
@@ -178,9 +187,9 @@ export function BoatUnavailableDaySummary({
           </div>
           <div style={bodyStyle}>
             {restrictionLines.map((row) => (
-              <BombLine key={row.key}>
+              <MarkerLine key={row.key} color={designSystem.colors.warning[500]}>
                 {row.range}：{row.detail}
-              </BombLine>
+              </MarkerLine>
             ))}
           </div>
         </>

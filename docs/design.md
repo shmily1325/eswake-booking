@@ -112,6 +112,8 @@ The whole product shares one brand frame, defined in `src/lib/esBrandTokens.ts` 
 
 - Every top-level header is a **pure black bar** (`ES_BRAND.headerBg` = `#000000`) with a subtle bottom hairline (`rgba(255,255,255,0.1)`).
 - The header always shows the brand lockup: white logo + `ES Wake` + an area/page subtitle. The page name lives in that subtitle, not as a separate large title in the bar.
+- Page subtitles in `PageHeader` are plain text without decorative emoji.
+- Header navigation remains responsive: desktop buttons use text labels, while space-constrained mobile buttons may use recognizable emoji as functional link icons. Keep their accessible text labels (`aria-label` and `title`) intact.
 - Content sits below on the cool page background (`#f4f5f7`), grouped into white 16px-radius blocks with soft shadows.
 - Public surfaces (Shop, Book, LIFF, Guide) and admin all reuse this same frame. Do not hand-roll a new header color or lockup — reuse `EsBrandLockup` + `ES_BRAND`.
 

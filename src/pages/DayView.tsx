@@ -632,18 +632,11 @@ export function DayView() {
               </>
             )}
             <div style={{
-              backgroundColor: designSystem.colors.background.card,
-              borderRadius: designSystem.borderRadius.xl,
-              overflow: 'hidden',
-              boxShadow: designSystem.shadows.sm,
-              border: `1px solid ${designSystem.colors.border.light}`,
+              display: 'flex',
+              gap: '8px',
+              flexWrap: 'wrap',
               marginBottom: designSystem.spacing.md,
             }}>
-              <div style={{
-                padding: isMobile ? '12px' : '14px 16px',
-                display: 'flex',
-                gap: '8px',
-              }}>
                 <button
                   data-track="day_new_booking"
                   onClick={() => {
@@ -654,10 +647,7 @@ export function DayView() {
                     setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
                     setDialogOpen(true)
                   }}
-                  style={{
-                    ...getButtonStyle('primary', 'medium', false),
-                    flex: 1,
-                  }}
+                  style={getButtonStyle('primary', 'medium', false)}
                 >
                   新增預約
                 </button>
@@ -672,15 +662,11 @@ export function DayView() {
                       setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
                       setRepeatDialogOpen(true)
                     }}
-                    style={{
-                      ...getButtonStyle('outline', 'medium', false),
-                      flex: 1,
-                    }}
+                    style={getButtonStyle('outline', 'medium', false)}
                   >
                     重複預約
                   </button>
                 )}
-              </div>
             </div>
 
             <div style={{
@@ -703,25 +689,26 @@ export function DayView() {
             {/* 預約規則說明 */}
             <div style={{
               padding: isMobile ? '16px' : '20px',
-              backgroundColor: '#f8f9fa',
-              borderTop: '1px solid #e9ecef',
-              borderRadius: '0 0 8px 8px',
+              backgroundColor: designSystem.colors.background.card,
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.lg,
+              boxShadow: designSystem.shadows.xs,
               textAlign: 'center',
               marginTop: '16px',
             }}>
               <div style={{
                 fontWeight: '600',
                 marginBottom: '12px',
-                color: '#495057',
+                color: designSystem.colors.text.primary,
                 fontSize: isMobile ? '13px' : '14px'
               }}>
-                📋 預約規則
+                預約規則
               </div>
               <div style={{
                 display: 'inline-block',
                 textAlign: 'left',
                 fontSize: isMobile ? '12px' : '13px',
-                color: '#6c757d',
+                color: designSystem.colors.text.secondary,
                 lineHeight: '1.8',
               }}>
                 <div>• 船跟船間隔至少 15 分鐘；彈簧床場地可接續使用；陸上課程可重疊預約（同一時段可多筆）</div>
@@ -750,25 +737,17 @@ export function DayView() {
                 width: isMobile ? '56px' : '64px',
                 height: isMobile ? '56px' : '64px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                background: designSystem.colors.primary[500],
                 color: 'white',
                 border: 'none',
                 fontSize: isMobile ? '28px' : '32px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                boxShadow: designSystem.shadows.sm,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 1000,
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.1)'
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.5)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)'
+                transition: 'transform 0.15s ease',
               }}
               onTouchStart={(e) => {
                 e.currentTarget.style.transform = 'scale(0.95)'

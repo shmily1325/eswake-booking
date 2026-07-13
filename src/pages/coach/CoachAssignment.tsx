@@ -1361,7 +1361,7 @@ export function CoachAssignment() {
           </div>
         )}
 
-        {!loading && bookings.length > 0 && (
+        {!isMobile && !loading && bookings.length > 0 && (
           <TodayOverview
             stats={assignmentOverviewStats}
             isMobile={isMobile}
@@ -1631,7 +1631,7 @@ export function CoachAssignment() {
                                   color: '#856404',
                                   fontSize: '12px'
                                 }}>
-                                  📝 {assignment.notes}
+                                  {assignment.notes}
                                 </div>
                               )}
                               {/* 衝突警告 */}
@@ -1743,7 +1743,7 @@ export function CoachAssignment() {
                               color: '#856404',
                               fontSize: '12px'
                             }}>
-                              📝 {assignment.notes}
+                              {assignment.notes}
                             </div>
                           )}
                           

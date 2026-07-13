@@ -18,10 +18,12 @@ function StatRow({
   label,
   entries,
   isMobile,
+  first,
 }: {
   label: string
   entries: UsageStatEntry[]
   isMobile: boolean
+  first?: boolean
 }) {
   return (
     <div style={{
@@ -29,7 +31,7 @@ function StatRow({
       alignItems: 'flex-start',
       gap: isMobile ? '8px' : '12px',
       padding: isMobile ? '6px 0' : '5px 0',
-      borderTop: `1px solid ${designSystem.colors.border.light}`,
+      borderTop: first ? undefined : `1px solid ${designSystem.colors.border.light}`,
     }}>
       <div style={{
         minWidth: isMobile ? '52px' : '72px',
@@ -83,79 +85,115 @@ export function TodayOverview({ bookings, stats: statsProp, isMobile, unassigned
     sortedBoats,
   } = stats
 
+  const showUnassigned = unassignedCount !== undefined && unassignedCount > 0
+
+  const metricCardStyle = {
+    flex: '1 1 0',
+    minWidth: isMobile ? '92px' : '130px',
+    background: designSystem.colors.background.card,
+    border: `1px solid ${designSystem.colors.border.light}`,
+    borderRadius: designSystem.borderRadius.lg,
+    padding: isMobile ? '10px 12px' : '14px 16px',
+  } as const
+
+  const metricLabelStyle = {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: designSystem.colors.text.secondary,
+    marginBottom: '4px',
+  } as const
+
   return (
-    <div
-      style={{
-        backgroundColor: designSystem.colors.background.card,
-        borderRadius: designSystem.borderRadius.xl,
-        padding: isMobile ? '10px 12px' : '12px 16px',
-        marginBottom: designSystem.spacing.md,
-        boxShadow: designSystem.shadows.xs,
-        border: `1px solid ${designSystem.colors.border.light}`,
-      }}
-    >
-      {/* 主指標列：總預約 + 未排班（若有） */}
+    <div style={{ marginBottom: designSystem.spacing.md }}>
+      {/* 主指標：牌卡 */}
       <div style={{
         display: 'flex',
-        alignItems: 'baseline',
-        gap: isMobile ? '16px' : '24px',
+        gap: isMobile ? '8px' : '12px',
         flexWrap: 'wrap',
+        marginBottom: isMobile ? '8px' : '12px',
       }}>
-        <div>
+        <div style={metricCardStyle}>
+          <div style={metricLabelStyle}>總預約</div>
           <div style={{
-            fontSize: '11px',
-            fontWeight: 600,
-            color: designSystem.colors.text.secondary,
-            marginBottom: '2px',
-          }}>
-            總預約
-          </div>
-          <div style={{
-            fontSize: isMobile ? '20px' : '22px',
+            fontSize: isMobile ? '22px' : '26px',
             fontWeight: 700,
             color: designSystem.colors.text.primary,
             lineHeight: 1.1,
             letterSpacing: '-0.02em',
           }}>
-            {totalBookings} 筆
+            {totalBookings}
             <span style={{
               fontSize: isMobile ? '12px' : '13px',
               fontWeight: 500,
               color: designSystem.colors.text.secondary,
-              marginLeft: '8px',
+              marginLeft: '3px',
             }}>
-              合計 {totalDurationMinutes} 分
+              筆
             </span>
           </div>
         </div>
 
-        {unassignedCount !== undefined && unassignedCount > 0 && (
-          <div>
-            <div style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              color: designSystem.colors.warning[700],
-              marginBottom: '2px',
+        <div style={metricCardStyle}>
+          <div style={metricLabelStyle}>合計時數</div>
+          <div style={{
+            fontSize: isMobile ? '22px' : '26px',
+            fontWeight: 700,
+            color: designSystem.colors.text.primary,
+            lineHeight: 1.1,
+            letterSpacing: '-0.02em',
+          }}>
+            {totalDurationMinutes}
+            <span style={{
+              fontSize: isMobile ? '12px' : '13px',
+              fontWeight: 500,
+              color: designSystem.colors.text.secondary,
+              marginLeft: '3px',
             }}>
-              未排班
-            </div>
+              分
+            </span>
+          </div>
+        </div>
+
+        {showUnassigned && (
+          <div style={{
+            ...metricCardStyle,
+            borderColor: `${designSystem.colors.warning[500]}55`,
+          }}>
+            <div style={{ ...metricLabelStyle, color: designSystem.colors.warning[700] }}>未排班</div>
             <div style={{
-              fontSize: isMobile ? '20px' : '22px',
+              fontSize: isMobile ? '22px' : '26px',
               fontWeight: 700,
               color: designSystem.colors.warning[700],
               lineHeight: 1.1,
+              letterSpacing: '-0.02em',
             }}>
-              {unassignedCount} 筆
+              {unassignedCount}
+              <span style={{
+                fontSize: isMobile ? '12px' : '13px',
+                fontWeight: 500,
+                color: designSystem.colors.warning[700],
+                marginLeft: '3px',
+                opacity: 0.8,
+              }}>
+                筆
+              </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* 次要統計：緊湊文字列 */}
-      <StatRow label="教練+駕駛" entries={sortedCombined} isMobile={isMobile} />
-      <StatRow label="教練" entries={sortedCoaches} isMobile={isMobile} />
-      <StatRow label="駕駛" entries={sortedDrivers} isMobile={isMobile} />
-      <StatRow label="船" entries={sortedBoats} isMobile={isMobile} />
+      {/* 次要統計：單一分組牌卡 */}
+      <div style={{
+        background: designSystem.colors.background.card,
+        border: `1px solid ${designSystem.colors.border.light}`,
+        borderRadius: designSystem.borderRadius.lg,
+        padding: isMobile ? '4px 12px' : '4px 16px',
+      }}>
+        <StatRow label="教練+駕駛" entries={sortedCombined} isMobile={isMobile} first />
+        <StatRow label="教練" entries={sortedCoaches} isMobile={isMobile} />
+        <StatRow label="駕駛" entries={sortedDrivers} isMobile={isMobile} />
+        <StatRow label="船" entries={sortedBoats} isMobile={isMobile} />
+      </div>
     </div>
   )
 }

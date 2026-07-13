@@ -257,7 +257,7 @@ export function DailyAnnouncement() {
           fontWeight: '600',
           color: designSystem.colors.text.primary,
         }}>
-          📢 今日公告
+          今日公告
         </div>
         <span style={{
           color: designSystem.colors.text.secondary,
@@ -400,7 +400,7 @@ export function DailyAnnouncement() {
                 fontWeight: '500',
                 marginBottom: '4px'
               }}>
-                📋 交辦事項
+                交辦事項
               </div>
               {todayEls.length > 0 && (
                 <div style={{ marginBottom: tomorrowEls.length > 0 ? '10px' : '0' }}>
@@ -415,7 +415,7 @@ export function DailyAnnouncement() {
                     marginBottom: '4px',
                     marginTop: todayEls.length > 0 ? '12px' : '0'
                   }}>
-                    📋 明日提醒
+                    明日提醒
                   </div>
                   {tomorrowEls}
                 </>

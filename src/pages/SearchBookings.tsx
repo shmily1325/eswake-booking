@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
 import { Footer } from '../components/Footer'
+import { designSystem, getButtonStyle, getBookingCardStyle } from '../styles/designSystem'
 import { formatBookingsForLine, getDisplayContactName } from '../utils/bookingFormat'
 import { useToast, ToastContainer } from '../components/ui'
 import { EditBookingDialog } from '../components/EditBookingDialog'
@@ -669,23 +670,24 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
   return (
     <div style={{ 
-      padding: isEmbedded ? '0' : '20px',
+      padding: isEmbedded ? '0' : (isMobile ? '12px' : '20px'),
       maxWidth: '1200px',
       margin: '0 auto',
       minHeight: isEmbedded ? 'auto' : '100vh',
-      backgroundColor: isEmbedded ? 'transparent' : '#f5f5f5',
+      backgroundColor: isEmbedded ? 'transparent' : designSystem.colors.background.main,
     }}>
-      {!isEmbedded && <PageHeader title="🔍 預約查詢" user={user} />}
+      {!isEmbedded && <PageHeader title="預約查詢" user={user} />}
 
       {/* Tab 切換 */}
       <div style={{
         display: 'flex',
         gap: '0',
         marginBottom: '15px',
-        background: 'white',
-        borderRadius: '12px',
+        background: designSystem.colors.background.card,
+        borderRadius: designSystem.borderRadius.lg,
         padding: '4px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        boxShadow: designSystem.shadows.xs,
+        border: `1px solid ${designSystem.colors.border.light}`,
       }}>
         <button
           type="button"
@@ -708,11 +710,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            background: activeTab === 'member' ? '#5a5a5a' : 'transparent',
-            color: activeTab === 'member' ? 'white' : '#666',
+            background: activeTab === 'member' ? designSystem.colors.primary[500] : 'transparent',
+            color: activeTab === 'member' ? 'white' : designSystem.colors.text.secondary,
           }}
         >
-          {isMobile ? '預約人' : '👤 預約人'}
+          預約人
         </button>
         <button
           type="button"
@@ -733,21 +735,22 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            background: activeTab === 'availability' ? '#5a5a5a' : 'transparent',
-            color: activeTab === 'availability' ? 'white' : '#666',
+            background: activeTab === 'availability' ? designSystem.colors.primary[500] : 'transparent',
+            color: activeTab === 'availability' ? 'white' : designSystem.colors.text.secondary,
           }}
         >
-          {isMobile ? '空檔' : '📅 船空檔'}
+          船空檔
         </button>
       </div>
 
       {/* Search Form */}
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '24px',
+        background: designSystem.colors.background.card,
+        borderRadius: designSystem.borderRadius.xl,
+        padding: isMobile ? '16px' : '24px',
         marginBottom: '15px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        boxShadow: designSystem.shadows.xs,
+        border: `1px solid ${designSystem.colors.border.light}`,
       }}>
         {/* 會員搜尋表單 */}
         {activeTab === 'member' && (
@@ -757,7 +760,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               display: 'block',
               marginBottom: '8px',
               fontSize: '13px',
-              color: '#868e96',
+              color: designSystem.colors.text.secondary,
               fontWeight: '500'
             }}>
               預約人
@@ -774,11 +777,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   if (filteredMembers.length > 0) {
                     setShowMemberDropdown(true)
                   }
-                  e.target.style.borderColor = '#5a5a5a'
+                  e.target.style.borderColor = designSystem.colors.primary[500]
                 }}
                 onBlur={(e) => {
                   setTimeout(() => setShowMemberDropdown(false), 200)
-                  e.target.style.borderColor = '#e0e0e0'
+                  e.target.style.borderColor = designSystem.colors.border.light
                 }}
                 placeholder="搜尋會員或直接輸入姓名"
                 required
@@ -897,7 +900,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 fontWeight: '500', 
                 color: '#495057',
               }}>
-                📅 日期區間
+                日期區間
                 {(startDate || endDate) 
                   ? <span style={{ color: '#5a5a5a', marginLeft: '4px' }}>(已設定)</span>
                   : <span style={{ color: '#868e96', marginLeft: '4px', fontSize: '12px' }}>(不設定則顯示未來預約)</span>
@@ -989,22 +992,13 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             data-track="search_submit_member"
             disabled={loading || !searchName.trim()}
             style={{
+              ...getButtonStyle('primary', 'medium', isMobile),
               width: '100%',
-              padding: '12px',
-              fontSize: '16px',
-              fontWeight: '600',
-              background: (!loading && searchName.trim()) ? 'white' : '#f5f5f5',
-              color: (!loading && searchName.trim()) ? '#666' : '#999',
-              border: (!loading && searchName.trim()) ? '2px solid #e0e0e0' : '2px solid #ddd',
-              borderRadius: '8px',
+              opacity: (!loading && searchName.trim()) ? 1 : 0.5,
               cursor: (!loading && searchName.trim()) ? 'pointer' : 'not-allowed',
-              touchAction: 'manipulation',
-              transition: 'transform 0.1s'
             }}
-            onTouchStart={(e) => !loading && searchName.trim() && (e.currentTarget.style.transform = 'scale(0.98)')}
-            onTouchEnd={(e) => !loading && searchName.trim() && (e.currentTarget.style.transform = 'scale(1)')}
           >
-            {loading ? '搜尋中...' : '🔍 搜尋'}
+            {loading ? '搜尋中...' : '搜尋'}
           </button>
         </form>
         )}
@@ -1095,7 +1089,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 fontWeight: '500',
                 color: '#495057',
               }}>
-                {isMobile ? '📅 日期' : '📅 起訖日期'}
+                {isMobile ? '日期' : '起訖日期'}
                 {!slotFromDate && !slotToDate ? (
                   <span style={{ color: '#868e96', marginLeft: '4px', fontSize: isMobile ? '11px' : '12px' }}>{isMobile ? '＊' : '·必填'}</span>
                 ) : isMobile && slotFromDate && slotToDate ? (
@@ -1612,35 +1606,17 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               slotDatesForSearch.length === 0
             }
             style={{
+              ...getButtonStyle('primary', 'medium', isMobile),
               width: '100%',
-              padding: isMobile ? '14px 12px' : '12px',
-              fontSize: isMobile ? '17px' : '16px',
-              fontWeight: '600',
-              background: (
+              minHeight: isMobile ? 48 : undefined,
+              opacity: (
                 !slotSearching &&
                 slotSelectedBoatIds.size > 0 &&
                 slotFromDate &&
                 slotToDate &&
                 slotDurationMin &&
                 slotDatesForSearch.length > 0
-              ) ? 'white' : '#f5f5f5',
-              color: (
-                !slotSearching &&
-                slotSelectedBoatIds.size > 0 &&
-                slotFromDate &&
-                slotToDate &&
-                slotDurationMin &&
-                slotDatesForSearch.length > 0
-              ) ? '#666' : '#999',
-              border: (
-                !slotSearching &&
-                slotSelectedBoatIds.size > 0 &&
-                slotFromDate &&
-                slotToDate &&
-                slotDurationMin &&
-                slotDatesForSearch.length > 0
-              ) ? '2px solid #e0e0e0' : '2px solid #ddd',
-              borderRadius: '8px',
+              ) ? 1 : 0.5,
               cursor: (
                 !slotSearching &&
                 slotSelectedBoatIds.size > 0 &&
@@ -1649,27 +1625,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 slotDurationMin &&
                 slotDatesForSearch.length > 0
               ) ? 'pointer' : 'not-allowed',
-              touchAction: 'manipulation',
-              transition: 'transform 0.1s',
-              minHeight: isMobile ? 48 : undefined,
-            }}
-            onTouchStart={(e) => {
-              if (
-                !slotSearching &&
-                slotSelectedBoatIds.size > 0 &&
-                slotFromDate &&
-                slotToDate &&
-                slotDurationMin &&
-                slotDatesForSearch.length > 0
-              ) {
-                e.currentTarget.style.transform = 'scale(0.98)'
-              }
-            }}
-            onTouchEnd={(e) => {
-              e.currentTarget.style.transform = 'scale(1)'
             }}
           >
-            {slotSearching ? '搜尋中...' : '🔍 搜尋'}
+            {slotSearching ? '搜尋中...' : '搜尋'}
           </button>
         </form>
         )}
@@ -1690,8 +1648,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   gap: '8px',
                   marginBottom: '12px',
                   padding: '10px 12px',
-                  background: '#5a5a5a',
-                  borderRadius: '8px',
+                  background: designSystem.colors.primary[500],
+                  borderRadius: designSystem.borderRadius.md,
                 }}>
                   {/* 左側：已選數量 */}
                   <div style={{
@@ -1796,9 +1754,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   {/* 第一行/左側：結果統計 */}
                   <div style={{
                     fontSize: '14px',
-                    color: '#666',
+                    color: designSystem.colors.text.secondary,
                   }}>
-                    找到 <strong style={{ color: '#5a5a5a' }}>{bookings.length}</strong> 筆預約
+                    找到 <strong style={{ color: designSystem.colors.text.primary }}>{bookings.length}</strong> 筆預約
                   </div>
 
                   {/* 第二行/右側：操作按鈕 */}
@@ -1823,7 +1781,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                           color: '#495057',
                         }}
                       >
-                        {sortOrder === 'asc' ? '⬆️ 近→遠' : '⬇️ 遠→近'}
+                        {sortOrder === 'asc' ? '近→遠' : '遠→近'}
                       </button>
 
                       {/* 過去預約切換 */}
@@ -1881,18 +1839,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                           data-track="search_copy"
                           onClick={handleCopyToClipboard}
                           style={{
-                            padding: isMobile ? '6px 8px' : '6px 10px',
-                            fontSize: isMobile ? '12px' : '13px',
-                            fontWeight: '500',
-                            background: copySuccess ? '#28a745' : '#5a5a5a',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
+                            ...getButtonStyle(copySuccess ? 'success' : 'primary', 'small', isMobile),
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {copySuccess ? '✓ 已複製' : '📋 複製'}
+                          {copySuccess ? '已複製' : '複製'}
                         </button>
                       )}
                     </div>
@@ -1978,13 +1929,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           {!loading && bookings.length === 0 ? (
             <div style={{
               padding: '40px',
-              backgroundColor: 'white',
-              borderRadius: '8px',
+              backgroundColor: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
+              border: `1px solid ${designSystem.colors.border.light}`,
+              boxShadow: designSystem.shadows.xs,
               textAlign: 'center',
-              color: '#999',
+              color: designSystem.colors.text.secondary,
               fontSize: '16px',
             }}>
-              😔 沒有找到相關預約記錄
+              沒有找到相關預約記錄
             </div>
           ) : bookings.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -2012,41 +1965,26 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       }
                     }}
                     style={{
+                      ...getBookingCardStyle(
+                        isSelected ? designSystem.colors.primary[500] : (booking.boats?.color || '#ccc'),
+                        isMobile,
+                        !isLoadingThis && !selectionMode
+                      ),
                       padding: '16px',
-                      backgroundColor: isSelected ? '#f5f5f5' : (isLoadingThis ? '#f8f9fa' : 'white'),
-                      borderRadius: '8px',
-                      boxShadow: isSelected ? '0 2px 8px rgba(90,90,90,0.25)' : '0 2px 4px rgba(0,0,0,0.1)',
-                      borderLeft: `4px solid ${isSelected ? '#5a5a5a' : (booking.boats?.color || '#ccc')}`,
                       opacity: isPast ? 0.7 : 1,
                       cursor: isLoadingThis ? 'wait' : 'pointer',
-                      transition: 'all 0.2s',
                       position: 'relative',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isLoadingThis && !selectionMode) {
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!selectionMode) {
-                        e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = isSelected ? '0 2px 8px rgba(90,90,90,0.25)' : '0 2px 4px rgba(0,0,0,0.1)'
-                      }
                     }}
                     onTouchStart={(e) => {
                       if (!isLoadingThis && !selectionMode) {
                         e.currentTarget.style.transform = 'scale(0.99)'
-                        e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.1)'
                       }
                     }}
                     onTouchEnd={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = isSelected ? '0 2px 8px rgba(90,90,90,0.25)' : '0 2px 4px rgba(0,0,0,0.1)'
+                      e.currentTarget.style.transform = 'scale(1)'
                     }}
                     onTouchCancel={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = isSelected ? '0 2px 8px rgba(90,90,90,0.25)' : '0 2px 4px rgba(0,0,0,0.1)'
+                      e.currentTarget.style.transform = 'scale(1)'
                     }}
                   >
                     <div style={{
@@ -2086,14 +2024,14 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                           <div style={{
                             fontSize: '18px',
                             fontWeight: '600',
-                            color: '#000',
+                            color: designSystem.colors.text.primary,
                             marginBottom: '4px',
                           }}>
                             {getDisplayContactName(booking)}
                           </div>
                           <div style={{
                             fontSize: '14px',
-                            color: '#666',
+                            color: designSystem.colors.text.secondary,
                           }}>
                             {formatDateTime(booking.start_at)}
                           </div>
@@ -2173,7 +2111,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         fontSize: '13px',
                         color: '#666',
                       }}>
-                        📝 {booking.notes}
+                        {booking.notes}
                       </div>
                     )}
                   </div>
@@ -2207,19 +2145,12 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 data-track="search_copy_availability"
                 onClick={handleCopySlotLines}
                 style={{
-                  padding: isMobile ? '6px 8px' : '6px 10px',
-                  fontSize: isMobile ? '12px' : '13px',
-                  fontWeight: '500',
-                  background: slotCopyOk ? '#28a745' : '#5a5a5a',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
+                  ...getButtonStyle(slotCopyOk ? 'success' : 'primary', 'small', isMobile),
                   whiteSpace: 'nowrap',
                   alignSelf: isMobile ? 'stretch' : 'auto',
                 }}
               >
-                {slotCopyOk ? '✓ 已複製' : '📋 複製'}
+                {slotCopyOk ? '已複製' : '複製'}
               </button>
             </div>
           )}
@@ -2289,10 +2220,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             <div
               style={{
                 padding: '16px',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                borderLeft: '4px solid #5a5a5a',
+                backgroundColor: designSystem.colors.background.card,
+                borderRadius: designSystem.borderRadius.lg,
+                boxShadow: designSystem.shadows.xs,
+                border: `1px solid ${designSystem.colors.border.light}`,
+                borderLeft: `3px solid ${designSystem.colors.primary[500]}`,
               }}
             >
               <pre

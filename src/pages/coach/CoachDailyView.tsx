@@ -615,7 +615,7 @@ export function CoachDailyView() {
             marginBottom: booking.schedule_notes ? '4px' : '0',
             lineHeight: '1.4'
           }}>
-            💬 {booking.notes}
+            {booking.notes}
           </div>
         )}
 
@@ -627,7 +627,7 @@ export function CoachDailyView() {
             fontWeight: '500',
             lineHeight: '1.4'
           }}>
-            📝 {booking.schedule_notes}
+            {booking.schedule_notes}
           </div>
         )}
       </div>
@@ -731,7 +731,7 @@ export function CoachDailyView() {
         {/* 排班註解 */}
         {booking.schedule_notes && (
           <div style={bookingCardContentStyles.scheduleNotes(isMobile)}>
-            📝 {booking.schedule_notes}
+            {booking.schedule_notes}
           </div>
         )}
 
@@ -896,6 +896,82 @@ export function CoachDailyView() {
           transition: 'opacity 0.15s ease',
           pointerEvents: dateChanging ? 'none' : 'auto',
         }}>
+        {(isMobile && selectedCoachId) ? (
+          /* 手機 + 選擇教練：改用依時間排序的卡片清單（含空檔分隔），避免 table rowSpan 固定高與內容衝突而跑版 */
+          <div style={{
+            background: designSystem.colors.background.card,
+            borderRadius: designSystem.borderRadius.xl,
+            boxShadow: designSystem.shadows.sm,
+            border: `1px solid ${designSystem.colors.border.light}`,
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 14px',
+              borderBottom: `1px solid ${designSystem.colors.border.light}`,
+              background: designSystem.colors.background.hover,
+            }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: designSystem.colors.text.primary }}>
+                {coaches.find(c => c.id === selectedCoachId)?.name || '教練'}
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: designSystem.colors.text.secondary }}>
+                {filteredBookings.length} 筆
+              </span>
+            </div>
+            <div style={{ padding: '12px 14px' }}>
+              {filteredBookings.length === 0 ? (
+                <div style={{
+                  padding: '32px 0',
+                  textAlign: 'center',
+                  color: designSystem.colors.text.disabled,
+                  fontSize: '14px',
+                }}>
+                  本日無預約
+                </div>
+              ) : (
+                [...filteredBookings]
+                  .sort((a, b) => a.start_at.localeCompare(b.start_at))
+                  .map((booking, index, arr) => {
+                    const startMin = timeToMinutes(parseDbTimestamp(booking.start_at).time)
+                    let gapEl = null
+                    if (index > 0) {
+                      const prev = arr[index - 1]
+                      const prevEndMin = timeToMinutes(parseDbTimestamp(prev.start_at).time) + prev.duration_min
+                      const gap = startMin - prevEndMin
+                      if (gap > 0) {
+                        const gapLabel = gap >= 60
+                          ? `${Math.floor(gap / 60)} 小時${gap % 60 > 0 ? ` ${gap % 60} 分` : ''}`
+                          : `${gap} 分`
+                        gapEl = (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            margin: '0 0 12px',
+                            color: designSystem.colors.text.disabled,
+                            fontSize: '11px',
+                            fontWeight: 600,
+                          }}>
+                            <div style={{ flex: 1, height: '1px', background: designSystem.colors.border.light }} />
+                            <span>空檔 {gapLabel}</span>
+                            <div style={{ flex: 1, height: '1px', background: designSystem.colors.border.light }} />
+                          </div>
+                        )
+                      }
+                    }
+                    return (
+                      <div key={booking.id}>
+                        {gapEl}
+                        {renderMobileCoachBookingCard(booking, index, arr.length)}
+                      </div>
+                    )
+                  })
+              )}
+            </div>
+          </div>
+        ) : (
         <div style={{
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
@@ -1167,6 +1243,7 @@ export function CoachDailyView() {
             </tbody>
           </table>
         </div>
+        )}
         </div>
       </div>
 
