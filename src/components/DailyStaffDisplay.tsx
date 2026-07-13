@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useDailyStaff } from '../hooks/useDailyStaff'
 import { formatStaffTimeOffBadgeLabel } from '../utils/coachTimeOff'
 import { filterTimeOffStaffDisplay, filterWorkingStaffDisplay } from '../utils/dailyStaffDisplay'
-import { styles, getResponsiveStyles } from '../styles/designSystem'
+import { designSystem, styles, getResponsiveStyles } from '../styles/designSystem'
 
 interface DailyStaffDisplayProps {
   date: string  // YYYY-MM-DD 格式
@@ -46,9 +46,20 @@ export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaf
   return (
     <div style={{ ...styles.cardBordered, ...rs.cardPadding, marginBottom: '12px' }}>
       {unassignedCount !== undefined && unassignedCount > 0 && (
-        <div style={{ ...styles.warningBox, ...rs.alertPadding, marginBottom: '8px' }}>
+        <div style={{
+          ...styles.warningBox,
+          ...rs.alertPadding,
+          marginBottom: '8px',
+          background: designSystem.colors.danger[50],
+          border: `1px solid ${designSystem.colors.danger[500]}55`,
+          borderLeft: `3px solid ${designSystem.colors.danger[500]}`,
+        }}>
           <span style={{ fontSize: isMobile ? '13px' : '14px' }}>⚠️</span>
-          <span style={{ ...styles.textWarning, fontSize: isMobile ? '13px' : '14px' }}>
+          <span style={{
+            ...styles.textWarning,
+            color: designSystem.colors.danger[700],
+            fontSize: isMobile ? '13px' : '14px',
+          }}>
             尚有 {unassignedCount} 筆未排班
           </span>
         </div>

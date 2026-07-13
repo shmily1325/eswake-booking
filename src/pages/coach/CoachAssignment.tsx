@@ -1669,70 +1669,96 @@ export function CoachAssignment() {
               {/* 需要駕駛區塊（未指定教練的預約）*/}
               {needsDriverBookings.length > 0 && (
                 <div style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  border: '2px solid #ff9800',
-                                    display: 'flex',
+                  background: designSystem.colors.background.card,
+                  borderRadius: designSystem.borderRadius.xl,
+                  boxShadow: designSystem.shadows.xs,
+                  border: `1px solid ${designSystem.colors.border.light}`,
+                  borderLeft: `4px solid ${designSystem.colors.danger[500]}`,
+                  display: 'flex',
                   flexDirection: 'column',
                   maxHeight: isMobile ? 'none' : '650px',
                   overflow: 'hidden'
                 }}>
                   <div style={{
-                    fontSize: isMobile ? '16px' : '18px',
-                    fontWeight: '600',
-                    color: '#ff9800',
-                    borderBottom: '2px solid #ff9800',
-                    paddingBottom: '8px',
-                    padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
-                    flexShrink: 0
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    fontSize: isMobile ? '15px' : '16px',
+                    fontWeight: '700',
+                    color: designSystem.colors.danger[700],
+                    borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                    padding: isMobile ? '12px 14px' : '14px 18px',
+                    flexShrink: 0,
                   }}>
-                    ⚠️ 未排班 ({needsDriverBookings.length})
+                    <span>未排班</span>
+                    <span style={{
+                      minWidth: '24px',
+                      padding: '2px 8px',
+                      borderRadius: designSystem.borderRadius.full,
+                      background: designSystem.colors.danger[50],
+                      border: `1px solid ${designSystem.colors.danger[500]}55`,
+                      color: designSystem.colors.danger[700],
+                      fontSize: '12px',
+                      textAlign: 'center',
+                    }}>
+                      {needsDriverBookings.length}
+                    </span>
                   </div>
                   
                   <div style={{ 
                     display: 'flex', 
                     flexDirection: 'column', 
-                    gap: '6px',
                     overflowY: 'auto',
-                    padding: isMobile ? '0 16px 16px' : '0 20px 20px'
                   }}>
-                    {needsDriverBookings.map(booking => {
+                    {needsDriverBookings.map((booking, bookingIndex) => {
                       const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false, skipped: false }
                       const isEditing = editingBookingId === booking.id
                       
                       return (
                         <div key={booking.id} style={{
-                          padding: isMobile ? '8px 10px' : '10px 12px',
-                          background: isEditing ? '#fff' : '#fff3e0',
-                          borderRadius: '6px',
-                          borderLeft: `3px solid ${booking.boats?.color || '#ccc'}`,
+                          padding: isMobile ? '12px 14px' : '14px 18px',
+                          background: isEditing
+                            ? designSystem.colors.background.hover
+                            : designSystem.colors.background.card,
+                          borderBottom: bookingIndex < needsDriverBookings.length - 1
+                            ? `1px solid ${designSystem.colors.border.light}`
+                            : undefined,
+                          boxShadow: isEditing
+                            ? `inset 3px 0 0 ${designSystem.colors.primary[500]}`
+                            : undefined,
                           fontSize: isMobile ? '13px' : '14px',
-                          border: isEditing ? '2px solid #ff9800' : 'none',
                           cursor: 'pointer'
                         }}
                         onClick={() => setEditingBookingId(isEditing ? null : booking.id)}
                         >
-                          <div style={{ fontWeight: '600', color: '#2c3e50', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <div style={{ fontWeight: '600', color: designSystem.colors.text.primary, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span aria-hidden style={{
+                              width: '7px',
+                              height: '7px',
+                              borderRadius: '50%',
+                              background: booking.boats?.color || designSystem.colors.border.dark,
+                              flexShrink: 0,
+                            }} />
                             <span>{formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}</span>
                             {assignment.skipped && (
                               <span style={{
                                 fontSize: '11px',
                                 fontWeight: '600',
                                 padding: '2px 8px',
-                                background: '#ff9800',
+                                background: designSystem.colors.secondary[700],
                                 color: 'white',
-                                borderRadius: '4px',
+                                borderRadius: designSystem.borderRadius.sm,
                                 letterSpacing: '0.5px'
                               }}>
                                 ✋ 偷懶中
                               </span>
                             )}
                           </div>
-                          <div style={{ color: '#666', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
+                          <div style={{ color: designSystem.colors.text.secondary, fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
                             {getDisplayContactName(booking)}
                             {booking.requires_driver && !isEditing && (
-                              <span style={{ marginLeft: '8px', color: '#f57c00', fontSize: '12px' }}>
+                              <span style={{ marginLeft: '8px', color: designSystem.colors.danger[700], fontSize: '12px' }}>
                                 • 需要駕駛
                               </span>
                             )}
@@ -1740,7 +1766,7 @@ export function CoachAssignment() {
                           {assignment.notes && !isEditing && (
                             <div style={{ 
                               marginTop: '6px',
-                              color: '#856404',
+                              color: designSystem.colors.text.secondary,
                               fontSize: '12px'
                             }}>
                               {assignment.notes}
@@ -1767,10 +1793,10 @@ export function CoachAssignment() {
                             <div style={{ 
                               marginTop: '12px',
                               paddingTop: '12px',
-                              borderTop: '1px solid #e0e0e0'
+                              borderTop: `1px solid ${designSystem.colors.border.light}`
                             }}>
                               <div style={{ marginBottom: '12px' }}>
-                                <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
+                                <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: designSystem.colors.text.secondary }}>
                                   指定駕駛：
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -1814,13 +1840,23 @@ export function CoachAssignment() {
                                         }}
                                         style={{
                                           padding: '6px 12px',
-                                          borderRadius: '6px',
-                                          border: isSelected ? 'none' : '1px solid #ddd',
-                                          background: isSelected ? '#ff9800' : isUnavailable ? '#f5f5f5' : 'white',
-                                          color: isSelected ? 'white' : isUnavailable ? '#ccc' : '#666',
+                                          borderRadius: designSystem.borderRadius.md,
+                                          border: isSelected
+                                            ? `1px solid ${designSystem.colors.primary[500]}`
+                                            : `1px solid ${designSystem.colors.border.main}`,
+                                          background: isSelected
+                                            ? designSystem.colors.primary[500]
+                                            : isUnavailable
+                                              ? designSystem.colors.background.hover
+                                              : designSystem.colors.background.card,
+                                          color: isSelected
+                                            ? 'white'
+                                            : isUnavailable
+                                              ? designSystem.colors.text.disabled
+                                              : designSystem.colors.text.primary,
                                           fontSize: '12px',
                                           cursor: isUnavailable ? 'not-allowed' : 'pointer',
-                                          opacity: isUnavailable ? 0.5 : 1
+                                          opacity: isUnavailable ? 0.55 : 1
                                         }}
                                         disabled={isUnavailable}
                                       >
@@ -1838,10 +1874,14 @@ export function CoachAssignment() {
                                     }}
                                     style={{
                                       padding: '6px 12px',
-                                      borderRadius: '6px',
-                                      border: currentAssignment.skipped ? 'none' : '1px dashed #bbb',
-                                      background: currentAssignment.skipped ? '#ff9800' : 'white',
-                                      color: currentAssignment.skipped ? 'white' : '#888',
+                                      borderRadius: designSystem.borderRadius.md,
+                                      border: `1px solid ${currentAssignment.skipped ? designSystem.colors.secondary[800] : designSystem.colors.border.main}`,
+                                      background: currentAssignment.skipped
+                                        ? designSystem.colors.secondary[800]
+                                        : designSystem.colors.background.card,
+                                      color: currentAssignment.skipped
+                                        ? 'white'
+                                        : designSystem.colors.text.secondary,
                                       fontSize: '12px',
                                       cursor: 'pointer',
                                       whiteSpace: 'nowrap'
@@ -1855,7 +1895,7 @@ export function CoachAssignment() {
                               
                               {/* 排班註解 */}
                               <div style={{ marginBottom: '12px' }}>
-                                <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
+                                <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: designSystem.colors.text.secondary }}>
                                   排班註解：
                                 </div>
                                 <textarea
@@ -1869,12 +1909,14 @@ export function CoachAssignment() {
                                   style={{
                                     width: '100%',
                                     padding: '8px',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '6px',
+                                    border: `1px solid ${designSystem.colors.border.main}`,
+                                    borderRadius: designSystem.borderRadius.md,
                                     fontSize: '13px',
                                     resize: 'vertical',
                                     minHeight: '60px',
-                                    fontFamily: 'inherit'
+                                    fontFamily: 'inherit',
+                                    color: designSystem.colors.text.primary,
+                                    background: designSystem.colors.background.card,
                                   }}
                                 />
                               </div>
@@ -1884,10 +1926,11 @@ export function CoachAssignment() {
                                 <div style={{ 
                                   marginTop: '8px',
                                   padding: '8px',
-                                  background: '#ffebee',
-                                  borderRadius: '6px',
+                                  background: designSystem.colors.danger[50],
+                                  border: `1px solid ${designSystem.colors.danger[500]}33`,
+                                  borderRadius: designSystem.borderRadius.md,
                                   fontSize: '12px',
-                                  color: '#c62828'
+                                  color: designSystem.colors.danger[700]
                                 }}>
                                   ⚠️ {currentAssignment.conflicts.join(', ')}
                                 </div>

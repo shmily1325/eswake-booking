@@ -87,13 +87,9 @@ export function TodayOverview({ bookings, stats: statsProp, isMobile, unassigned
 
   const showUnassigned = unassignedCount !== undefined && unassignedCount > 0
 
-  const metricCardStyle = {
-    flex: '1 1 0',
-    minWidth: isMobile ? '92px' : '130px',
-    background: designSystem.colors.background.card,
-    border: `1px solid ${designSystem.colors.border.light}`,
-    borderRadius: designSystem.borderRadius.lg,
-    padding: isMobile ? '10px 12px' : '14px 16px',
+  const metricStyle = {
+    minWidth: 0,
+    padding: isMobile ? '12px 10px' : '16px 18px',
   } as const
 
   const metricLabelStyle = {
@@ -104,15 +100,19 @@ export function TodayOverview({ bookings, stats: statsProp, isMobile, unassigned
   } as const
 
   return (
-    <div style={{ marginBottom: designSystem.spacing.md }}>
-      {/* 主指標：牌卡 */}
+    <div style={{
+      marginBottom: designSystem.spacing.md,
+      background: designSystem.colors.background.card,
+      border: `1px solid ${designSystem.colors.border.light}`,
+      borderRadius: designSystem.borderRadius.xl,
+      overflow: 'hidden',
+    }}>
+      {/* 主指標：同一總覽卡內的三欄數字 */}
       <div style={{
-        display: 'flex',
-        gap: isMobile ? '8px' : '12px',
-        flexWrap: 'wrap',
-        marginBottom: isMobile ? '8px' : '12px',
+        display: 'grid',
+        gridTemplateColumns: `repeat(${showUnassigned ? 3 : 2}, minmax(0, 1fr))`,
       }}>
-        <div style={metricCardStyle}>
+        <div style={metricStyle}>
           <div style={metricLabelStyle}>總預約</div>
           <div style={{
             fontSize: isMobile ? '22px' : '26px',
@@ -133,7 +133,10 @@ export function TodayOverview({ bookings, stats: statsProp, isMobile, unassigned
           </div>
         </div>
 
-        <div style={metricCardStyle}>
+        <div style={{
+          ...metricStyle,
+          borderLeft: `1px solid ${designSystem.colors.border.light}`,
+        }}>
           <div style={metricLabelStyle}>合計時數</div>
           <div style={{
             fontSize: isMobile ? '22px' : '26px',
@@ -156,14 +159,14 @@ export function TodayOverview({ bookings, stats: statsProp, isMobile, unassigned
 
         {showUnassigned && (
           <div style={{
-            ...metricCardStyle,
-            borderColor: `${designSystem.colors.warning[500]}55`,
+            ...metricStyle,
+            borderLeft: `1px solid ${designSystem.colors.border.light}`,
           }}>
-            <div style={{ ...metricLabelStyle, color: designSystem.colors.warning[700] }}>未排班</div>
+            <div style={{ ...metricLabelStyle, color: designSystem.colors.danger[700] }}>未排班</div>
             <div style={{
               fontSize: isMobile ? '22px' : '26px',
               fontWeight: 700,
-              color: designSystem.colors.warning[700],
+              color: designSystem.colors.danger[700],
               lineHeight: 1.1,
               letterSpacing: '-0.02em',
             }}>
@@ -171,7 +174,7 @@ export function TodayOverview({ bookings, stats: statsProp, isMobile, unassigned
               <span style={{
                 fontSize: isMobile ? '12px' : '13px',
                 fontWeight: 500,
-                color: designSystem.colors.warning[700],
+                color: designSystem.colors.danger[700],
                 marginLeft: '3px',
                 opacity: 0.8,
               }}>
@@ -182,11 +185,9 @@ export function TodayOverview({ bookings, stats: statsProp, isMobile, unassigned
         )}
       </div>
 
-      {/* 次要統計：單一分組牌卡 */}
+      {/* 次要統計：直接接在主指標下方，避免再包一層卡片 */}
       <div style={{
-        background: designSystem.colors.background.card,
-        border: `1px solid ${designSystem.colors.border.light}`,
-        borderRadius: designSystem.borderRadius.lg,
+        borderTop: `1px solid ${designSystem.colors.border.light}`,
         padding: isMobile ? '4px 12px' : '4px 16px',
       }}>
         <StatRow label="教練+駕駛" entries={sortedCombined} isMobile={isMobile} first />
