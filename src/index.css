@@ -17,7 +17,7 @@
   font-optical-sizing: auto;
 
   color: #1d1d1f;
-  background-color: #f7f5f0;
+  background-color: #f4f5f7;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -40,7 +40,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #f7f5f0;
+  background: #f4f5f7;
   overflow-x: clip; /* Use clip instead of hidden to preserve sticky */
 }
 
@@ -83,7 +83,7 @@ button:active {
 
 button:focus,
 button:focus-visible {
-  outline: 2px solid rgba(47, 52, 48, 0.28);
+  outline: 2px solid rgba(29, 29, 31, 0.28);
   outline-offset: 2px;
 }
 

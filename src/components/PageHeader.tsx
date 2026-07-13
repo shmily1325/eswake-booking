@@ -4,8 +4,10 @@ import { ExternalNavLink } from './ExternalNavLink'
 import { UserMenu } from './UserMenu'
 import type { User } from '@supabase/supabase-js'
 import { useResponsive } from '../hooks/useResponsive'
-import { designSystem, getTextStyle } from '../styles/designSystem'
+import { designSystem } from '../styles/designSystem'
 import { CountBadge } from './CountBadge'
+import { EsBrandLockup } from './EsBrandLockup'
+import { ES_BRAND } from '../lib/esBrandTokens'
 
 /** 商品／訂單相關頁的 Header 快捷連結（不連到當前頁；由呼叫端依權限傳入） */
 export type ProductHubHeaderSection = 'inventory' | 'orders' | 'settle'
@@ -128,15 +130,14 @@ export function PageHeader({
 
   const navButtonStyle: React.CSSProperties = {
     padding: useIconOnlyNav ? '8px 10px' : '8px 14px',
-    background: '#ffffff',
-    color: designSystem.colors.text.primary,
+    background: 'rgba(255, 255, 255, 0.1)',
+    color: 'rgba(255, 255, 255, 0.92)',
     textDecoration: 'none',
     borderRadius: designSystem.borderRadius.full,
     fontSize: designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
     fontWeight: 600,
     letterSpacing: '-0.01em',
-    border: `1px solid ${designSystem.colors.border.light}`,
-    boxShadow: designSystem.shadows.xs,
+    border: '1px solid rgba(255, 255, 255, 0.14)',
     whiteSpace: 'nowrap',
     display: 'inline-flex',
     alignItems: 'center',
@@ -232,9 +233,12 @@ export function PageHeader({
   return (
     <div
       style={{
-        marginBottom: isMobile ? designSystem.spacing.xl : '36px',
-        background: 'transparent',
-        padding: isMobile ? '8px 2px 0' : '12px 4px 0',
+        marginBottom: isMobile ? designSystem.spacing.xl : '32px',
+        background: ES_BRAND.headerBg,
+        padding: isMobile ? '16px 18px' : '18px 24px',
+        borderRadius: designSystem.borderRadius.xl,
+        border: ES_BRAND.headerBorderBottom,
+        boxShadow: designSystem.shadows.sm,
       }}
     >
       <div
@@ -242,7 +246,7 @@ export function PageHeader({
           display: 'flex',
           flexDirection: useTwoRowMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: useTwoRowMobile ? 'stretch' : 'flex-start',
+          alignItems: useTwoRowMobile ? 'stretch' : 'center',
           gap: isMobile ? 14 : 18,
         }}
       >
@@ -250,28 +254,18 @@ export function PageHeader({
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             gap: 8,
             minWidth: 0,
             flex: useTwoRowMobile ? undefined : 1,
           }}
         >
-          <h1
-            style={{
-              ...getTextStyle('h1', isMobile),
-              fontWeight: 750,
-              color: designSystem.colors.text.primary,
-              margin: 0,
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              letterSpacing: '-0.035em',
-              lineHeight: 1.05,
-            }}
-          >
-            {displayTitle}
-          </h1>
+          <EsBrandLockup
+            subtitle={displayTitle}
+            variant="onDark"
+            logoSize={isMobile ? 28 : 34}
+            style={{ minWidth: 0, alignItems: 'center' }}
+          />
           {useTwoRowMobile && user && <UserMenu user={user} />}
         </div>
         <div

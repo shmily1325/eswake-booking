@@ -175,28 +175,28 @@ export const designSystem: DesignSystem = {
   colors: {
     // 色階系統 - 提供更豐富的顏色變化
     primary: {
-      50: '#f6f5f2',
-      100: '#eeece6',
-      200: '#ddd8ce',
-      300: '#c5bcac',
-      400: '#9f9483',
-      500: '#2f3430',  // 主色：低調石墨
-      600: '#252a27',
-      700: '#1f2321',
-      800: '#171a18',
-      900: '#0f1110',
+      50: '#f4f5f7',
+      100: '#e9eaee',
+      200: '#d6d8de',
+      300: '#b4b8c1',
+      400: '#80848f',
+      500: '#1d1d1f',  // 主色：品牌近黑（對齊 ES_BRAND）
+      600: '#161618',
+      700: '#0d0d0f',
+      800: '#080809',
+      900: '#000000',
     },
     secondary: {
-      50: '#fbfaf8',
-      100: '#f5f2ec',
-      200: '#ebe6dc',
-      300: '#d8d0c4',
-      400: '#a69c8d',
-      500: '#6f675c',
-      600: '#595247',
-      700: '#433d35',
-      800: '#2f2a24',
-      900: '#1f1b17',
+      50: '#f7f8fa',
+      100: '#eef0f3',
+      200: '#e3e5ea',
+      300: '#d2d5dc',
+      400: '#a1a5b0',
+      500: '#6b6f7a',
+      600: '#565a63',
+      700: '#41444b',
+      800: '#2c2e33',
+      900: '#1c1d20',
     },
     success: {
       50: '#edf7f1',
@@ -220,33 +220,33 @@ export const designSystem: DesignSystem = {
     },
     text: {
       primary: '#1d1d1f',
-      secondary: '#6e6a63',
-      disabled: '#aaa39a',
+      secondary: '#6b6f7a',
+      disabled: '#a1a5b0',
     },
     background: {
-      main: '#f7f5f0',
+      main: '#f4f5f7',
       card: '#ffffff',
-      hover: '#f3f0ea',
+      hover: '#eef0f3',
     },
     border: {
-      light: '#f0ede7',
-      main: '#e5dfd4',
-      dark: '#d4cabd',
+      light: '#eceef2',
+      main: '#e0e3e8',
+      dark: '#cfd3da',
     },
   },
   // 玻璃擬態效果
   glass: {
     background: 'rgba(255, 255, 255, 0.92)',
     blur: 'blur(18px)',
-    border: '1px solid rgba(47, 52, 48, 0.06)',
-    shadow: '0 18px 50px rgba(31, 27, 23, 0.08)',
+    border: '1px solid rgba(29, 29, 31, 0.06)',
+    shadow: '0 18px 50px rgba(17, 18, 20, 0.08)',
   },
   // 漸層定義
   gradients: {
-    primary: '#2f3430',
-    secondary: '#f5f2ec',
+    primary: '#1d1d1f',
+    secondary: '#eef0f3',
     success: '#4f8f68',
-    subtle: 'linear-gradient(180deg, #fbfaf8 0%, #f7f5f0 100%)',
+    subtle: 'linear-gradient(180deg, #f7f8fa 0%, #f4f5f7 100%)',
   },
   shadows: {
     none: 'none',
@@ -486,7 +486,7 @@ export const getBadgeStyle = (
     warning: { bg: '#fbf3e5', color: '#7d5521' },
     danger: { bg: '#fbeeed', color: '#88382f' },
     info: { bg: '#edf3f5', color: '#365d66' },
-    default: { bg: '#f5f2ec', color: '#6e6a63' },
+    default: { bg: '#eef0f3', color: '#6b6f7a' },
   }
   
   const sizes = {

@@ -18,6 +18,7 @@
 
 ### 開發文檔
 - [**測試指南**](./testing/) - 測試清單和工具
+- [**視覺設計指南**](./design.md) - UI 改版前的產品設計流程、降噪原則和視覺準則
 - [**CoachReport 架構**](./CoachReport-Architecture.md) - 教練回報系統設計
 
 ---

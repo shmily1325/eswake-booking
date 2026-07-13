@@ -116,8 +116,8 @@ export function AdminModal({
               justifyContent: 'center',
               border: 'none',
               borderRadius: '999px',
-              background: closeHover ? '#f5f2ec' : 'transparent',
-              color: '#aaa39a',
+              background: closeHover ? '#eef0f3' : 'transparent',
+              color: '#a1a5b0',
               fontSize: '20px',
               lineHeight: 1,
               cursor: 'pointer',
@@ -172,7 +172,7 @@ export function FormFieldLabel({
     }}>
       {children}
       {optional && (
-        <span style={{ color: '#aaa39a', fontWeight: 400, fontSize: '13px', marginLeft: '6px' }}>
+        <span style={{ color: '#a1a5b0', fontWeight: 400, fontSize: '13px', marginLeft: '6px' }}>
           （選填）
         </span>
       )}
@@ -183,7 +183,7 @@ export function FormFieldLabel({
 export const adminTextInputStyle: CSSProperties = {
   width: '100%',
   padding: '13px 16px',
-  border: '1px solid #f0ede7',
+  border: '1px solid #eceef2',
   borderRadius: '16px',
   fontSize: '16px',
   boxSizing: 'border-box',
@@ -227,7 +227,7 @@ export function CrossDayToggle({
         marginBottom: '12px',
         cursor: 'pointer',
         fontSize: '14px',
-        color: '#6e6a63',
+        color: '#6b6f7a',
         userSelect: 'none',
       }}
     >
@@ -235,7 +235,7 @@ export function CrossDayToggle({
         type="checkbox"
         checked={checked}
         onChange={e => onChange(e.target.checked)}
-        style={{ width: '16px', height: '16px', accentColor: '#2f3430' }}
+        style={{ width: '16px', height: '16px', accentColor: '#1d1d1f' }}
       />
       跨多日
     </label>
@@ -333,9 +333,9 @@ export function SegmentedControl<T extends string>({
             style={{
               padding: '12px 10px',
               borderRadius: '16px',
-              border: `1px solid ${selected ? activeBorder : '#f0ede7'}`,
-              background: selected ? activeBg : disabled ? '#f7f5f0' : 'white',
-              color: selected ? activeColor : disabled ? '#aaa39a' : '#1d1d1f',
+              border: `1px solid ${selected ? activeBorder : '#eceef2'}`,
+              background: selected ? activeBg : disabled ? '#f4f5f7' : 'white',
+              color: selected ? activeColor : disabled ? '#a1a5b0' : '#1d1d1f',
               fontWeight: selected ? 700 : 500,
               fontSize: '14px',
               cursor: disabled ? 'not-allowed' : 'pointer',
@@ -410,13 +410,13 @@ export function HintBox({ children }: { children: ReactNode }) {
   return (
     <div style={{
       fontSize: '12px',
-      color: '#6e6a63',
+      color: '#6b6f7a',
       marginTop: '8px',
       lineHeight: 1.55,
       padding: '10px 12px',
-      background: '#fbfaf8',
+      background: '#f7f8fa',
       borderRadius: '14px',
-      border: '1px solid #f0ede7',
+      border: '1px solid #eceef2',
     }}>
       {children}
     </div>
