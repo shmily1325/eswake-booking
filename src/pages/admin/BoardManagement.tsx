@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -11,12 +11,113 @@ import { useToast, ToastContainer } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
 import {
   designSystem,
+  getButtonStyle,
+  getFontSize,
+  getFormGroupStyle,
+  getInputStyle,
+  getLabelStyle,
   getPageContentShellStyle,
+  getTextStyle,
 } from '../../styles/designSystem'
 
 const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
 const cardShadow = designSystem.shadows.elevation[1]
+
+const dialogOverlayStyle: CSSProperties = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: 'rgba(0,0,0,0.5)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 1000,
+  padding: '20px',
+}
+
+const dialogPanelStyle: CSSProperties = {
+  background: designSystem.colors.background.card,
+  borderRadius: designSystem.borderRadius.lg,
+  maxWidth: '500px',
+  width: '100%',
+  boxShadow: designSystem.shadows.lg,
+  border: `1px solid ${designSystem.colors.border.light}`,
+  maxHeight: '80vh',
+  overflow: 'auto',
+}
+
+const dialogHeaderBarStyle: CSSProperties = {
+  padding: '20px',
+  borderBottom: `1px solid ${designSystem.colors.border.light}`,
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  background: designSystem.colors.background.card,
+  position: 'sticky',
+  top: 0,
+  zIndex: 1,
+}
+
+const dialogCloseButtonStyle: CSSProperties = {
+  border: 'none',
+  background: 'none',
+  fontSize: getFontSize('h1', false),
+  cursor: 'pointer',
+  color: designSystem.colors.text.secondary,
+  padding: '0 8px',
+  lineHeight: 1,
+}
+
+const dialogBodyStyle: CSSProperties = {
+  padding: '20px',
+}
+
+const dialogFooterStyle: CSSProperties = {
+  display: 'flex',
+  gap: '12px',
+  marginTop: '8px',
+  paddingTop: '20px',
+  borderTop: `1px solid ${designSystem.colors.border.light}`,
+  paddingBottom: 'max(0px, env(safe-area-inset-bottom, 0px))',
+}
+
+const getFieldMetaStyle = (isMobile: boolean): CSSProperties => ({
+  fontSize: getFontSize('bodySmall', isMobile),
+  color: designSystem.colors.text.secondary,
+  fontWeight: 400,
+})
+
+const getQuietLabelStyle = (isMobile: boolean): CSSProperties => ({
+  fontSize: getFontSize('caption', isMobile),
+  color: designSystem.colors.text.secondary,
+  marginBottom: designSystem.spacing.sm,
+})
+
+const searchResultsStyle: CSSProperties = {
+  marginTop: designSystem.spacing.sm,
+  maxHeight: '200px',
+  overflowY: 'auto',
+  border: `1px solid ${designSystem.colors.border.light}`,
+  borderRadius: designSystem.borderRadius.lg,
+  background: designSystem.colors.background.card,
+}
+
+const searchResultItemStyle: CSSProperties = {
+  padding: '10px 12px',
+  cursor: 'pointer',
+  borderBottom: `1px solid ${designSystem.colors.border.light}`,
+}
+
+const dangerQuietButtonStyle = (isMobile: boolean): CSSProperties => ({
+  ...getButtonStyle('outline', 'medium', isMobile),
+  color: designSystem.colors.danger[700],
+  borderColor: `${designSystem.colors.danger[500]}66`,
+  background: designSystem.colors.danger[50],
+  flex: 1,
+})
 
 interface BoardSlot {
   id?: number
@@ -654,71 +755,47 @@ export function BoardManagement() {
 
       {/* 格位詳情彈窗 */}
       {selectedSlot && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px',
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            maxHeight: '80vh',
-            overflow: 'auto'
-          }}>
-            {/* 標題 */}
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e0e0e0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+        <div style={dialogOverlayStyle}>
+          <div style={dialogPanelStyle}>
+            <div style={dialogHeaderBarStyle}>
+              <h2 style={{
+                margin: 0,
+                ...getTextStyle('h3', isMobile),
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+              }}>
                 格位 {selectedSlot.slot_number}
               </h2>
               <button
                 onClick={() => {
                   setSelectedSlot(null)
                   setEditing(false)
+                  setIsAddingBoard(false)
                   setNewMemberForChange(null)
                   setChangeMemberSearch('')
                   setChangeMemberResults([])
                   setEditForm({ start_date: '', expires_at: '', notes: '' })
                 }}
-                style={{
-                  border: 'none',
-                  background: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#666',
-                }}
+                style={dialogCloseButtonStyle}
+                aria-label="關閉"
               >
                 &times;
               </button>
             </div>
 
-            {/* 內容 */}
-            <div style={{ padding: '20px' }}>
+            <div style={dialogBodyStyle}>
               {selectedSlot.member_name ? (
                 <>
-                  {/* 編輯模式 */}
                   {editing ? (
                     <>
-                      {/* 會員選擇（編輯模式） */}
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                          會員 {newMemberForChange ? '' : <span style={{ fontSize: '13px', color: '#666' }}>（目前：{selectedSlot.member_nickname || selectedSlot.member_name}）</span>}
+                      <div style={getFormGroupStyle(isMobile)}>
+                        <label style={getLabelStyle(isMobile)}>
+                          會員{' '}
+                          {!newMemberForChange && (
+                            <span style={getFieldMetaStyle(isMobile)}>
+                              （目前：{selectedSlot.member_nickname || selectedSlot.member_name}）
+                            </span>
+                          )}
                         </label>
                         <input
                           type="text"
@@ -728,25 +805,11 @@ export function BoardManagement() {
                             searchMembersForChange(e.target.value)
                           }}
                           placeholder="搜尋會員姓名/暱稱..."
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                          }}
+                          style={getInputStyle(isMobile)}
                         />
 
-                        {/* 搜尋結果 */}
                         {changeMemberResults.length > 0 && !newMemberForChange && (
-                          <div style={{
-                            marginTop: '8px',
-                            maxHeight: '200px',
-                            overflowY: 'auto',
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            background: 'white'
-                          }}>
+                          <div style={searchResultsStyle}>
                             {changeMemberResults.map((member) => (
                               <div
                                 key={member.id}
@@ -755,47 +818,62 @@ export function BoardManagement() {
                                   setChangeMemberSearch('')
                                   setChangeMemberResults([])
                                 }}
-                                style={{
-                                  padding: '10px',
-                                  cursor: 'pointer',
-                                  borderBottom: '1px solid #f0f0f0'
+                                style={searchResultItemStyle}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = designSystem.colors.background.main
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = designSystem.colors.background.card
+                                }}
                               >
-                                <div style={{ fontWeight: '500' }}>{member.name}</div>
+                                <div style={{ fontWeight: 500, color: designSystem.colors.text.primary }}>
+                                  {member.name}
+                                </div>
                                 {member.nickname && (
-                                  <div style={{ fontSize: '13px', color: '#666' }}>
-                                    暱稱：{member.nickname}
-                                  </div>
+                                  <div style={getFieldMetaStyle(isMobile)}>暱稱：{member.nickname}</div>
                                 )}
                               </div>
                             ))}
                           </div>
                         )}
 
-                        {/* 已選擇的新會員（綠色框） */}
                         {newMemberForChange && (
                           <div style={{
-                            marginTop: '8px',
-                            padding: '12px',
-                            background: newMemberForChange.id === selectedSlot.member_id ? '#e3f2fd' : '#e8f5e9',
-                            borderRadius: '8px',
+                            marginTop: designSystem.spacing.sm,
+                            padding: designSystem.spacing.md,
+                            background: newMemberForChange.id === selectedSlot.member_id
+                              ? designSystem.colors.info[50]
+                              : designSystem.colors.success[50],
+                            borderRadius: designSystem.borderRadius.lg,
+                            border: `1px solid ${designSystem.colors.border.light}`,
                             display: 'flex',
                             justifyContent: 'space-between',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            gap: designSystem.spacing.sm,
                           }}>
                             <div>
-                              <div style={{ fontWeight: '500', color: newMemberForChange.id === selectedSlot.member_id ? '#1976d2' : '#2e7d32' }}>
-                                {newMemberForChange.id === selectedSlot.member_id ? '✓ 維持原會員：' : '🔄 更換為：'}{newMemberForChange.name}
+                              <div style={{
+                                fontWeight: 500,
+                                color: newMemberForChange.id === selectedSlot.member_id
+                                  ? designSystem.colors.info[700]
+                                  : designSystem.colors.success[700],
+                                fontSize: getFontSize('body', isMobile),
+                              }}>
+                                {newMemberForChange.id === selectedSlot.member_id
+                                  ? `維持原會員：${newMemberForChange.name}`
+                                  : `更換為：${newMemberForChange.name}`}
                               </div>
                               {newMemberForChange.nickname && (
-                                <div style={{ fontSize: '13px', color: '#666' }}>
+                                <div style={getFieldMetaStyle(isMobile)}>
                                   暱稱：{newMemberForChange.nickname}
                                 </div>
                               )}
                               {newMemberForChange.id !== selectedSlot.member_id && (
-                                <div style={{ fontSize: '12px', color: '#e65100', marginTop: '4px' }}>
+                                <div style={{
+                                  ...getFieldMetaStyle(isMobile),
+                                  color: designSystem.colors.warning[700],
+                                  marginTop: '4px',
+                                }}>
                                   從「{selectedSlot.member_nickname || selectedSlot.member_name}」轉移
                                 </div>
                               )}
@@ -805,60 +883,40 @@ export function BoardManagement() {
                                 setNewMemberForChange(null)
                                 setChangeMemberSearch('')
                               }}
-                              style={{
-                                padding: '4px 8px',
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '18px'
-                              }}
+                              style={dialogCloseButtonStyle}
+                              aria-label="清除選擇"
                             >
-                              ✕
+                              &times;
                             </button>
                           </div>
                         )}
                       </div>
 
-                      {/* 開始日 */}
-                      <div style={{ marginBottom: '16px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                          開始日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                      <div style={getFormGroupStyle(isMobile)}>
+                        <label style={getLabelStyle(isMobile)}>
+                          開始日 <span style={getFieldMetaStyle(isMobile)}>（選填）</span>
                         </label>
-                        <div style={{ display: 'flex' }}>
-                          <input
-                            type="date"
-                            value={editForm.start_date}
-                            onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              padding: '10px',
-                              border: '2px solid #e0e0e0',
-                              borderRadius: '8px',
-                              fontSize: '16px',
-                              boxSizing: 'border-box',
-                            }}
-                          />
-                        </div>
+                        <input
+                          type="date"
+                          value={editForm.start_date}
+                          onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                          style={{ ...getInputStyle(isMobile), boxSizing: 'border-box' }}
+                        />
                       </div>
 
-                      {/* 到期日 */}
-                      <div style={{ marginBottom: '16px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                          到期日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                      <div style={getFormGroupStyle(isMobile)}>
+                        <label style={getLabelStyle(isMobile)}>
+                          到期日 <span style={getFieldMetaStyle(isMobile)}>（選填）</span>
                         </label>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{ display: 'flex', gap: designSystem.spacing.sm }}>
                           <input
                             type="date"
                             value={editForm.expires_at}
                             onChange={(e) => setEditForm({ ...editForm, expires_at: e.target.value })}
                             style={{
+                              ...getInputStyle(isMobile),
                               flex: 1,
                               minWidth: 0,
-                              padding: '10px',
-                              border: '2px solid #e0e0e0',
-                              borderRadius: '8px',
-                              fontSize: '16px',
                               boxSizing: 'border-box',
                             }}
                           />
@@ -866,15 +924,8 @@ export function BoardManagement() {
                             type="button"
                             onClick={handleExtendOneYear}
                             style={{
-                              padding: '10px 16px',
-                              background: '#4caf50',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              fontSize: '14px',
-                              fontWeight: 'bold',
-                              cursor: 'pointer',
-                              whiteSpace: 'nowrap',
+                              ...getButtonStyle('outline', 'medium', isMobile),
+                              flexShrink: 0,
                             }}
                           >
                             +1年
@@ -882,28 +933,20 @@ export function BoardManagement() {
                         </div>
                       </div>
 
-                      {/* 備註 */}
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                          備註 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                      <div style={getFormGroupStyle(isMobile)}>
+                        <label style={getLabelStyle(isMobile)}>
+                          備註 <span style={getFieldMetaStyle(isMobile)}>（選填）</span>
                         </label>
                         <input
                           type="text"
                           value={editForm.notes}
                           onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                           placeholder="例如：有三格"
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                          }}
+                          style={getInputStyle(isMobile)}
                         />
                       </div>
 
-                      {/* 編輯按鈕 */}
-                      <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={dialogFooterStyle}>
                         <button
                           onClick={() => {
                             setEditing(false)
@@ -911,32 +954,13 @@ export function BoardManagement() {
                             setChangeMemberSearch('')
                             setChangeMemberResults([])
                           }}
-                          style={{
-                            flex: 1,
-                            padding: '10px',
-                            background: '#f0f0f0',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                          }}
+                          style={{ ...getButtonStyle('outline', 'medium', isMobile), flex: 1 }}
                         >
                           取消
                         </button>
                         <button
                           onClick={handleSaveEdit}
-                          style={{
-                            flex: 1,
-                            padding: '10px',
-                            background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                          }}
+                          style={{ ...getButtonStyle('primary', 'medium', isMobile), flex: 1 }}
                         >
                           儲存
                         </button>
@@ -944,22 +968,18 @@ export function BoardManagement() {
                     </>
                   ) : (
                     <>
-                      {/* 會員資訊（檢視模式） */}
-                      <div style={{ 
-                        marginBottom: '20px',
-                        padding: '16px',
-                        background: '#f8f9fa',
-                        borderRadius: '8px'
-                      }}>
-                        <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>會員</div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                      <div style={{ marginBottom: designSystem.spacing.lg }}>
+                        <div style={getQuietLabelStyle(isMobile)}>會員</div>
+                        <div style={{
+                          ...getTextStyle('bodyLarge', isMobile),
+                          fontWeight: 650,
+                          letterSpacing: '-0.01em',
+                        }}>
                           {selectedSlot.member_nickname || selectedSlot.member_name}
                           {selectedSlot.member_nickname && selectedSlot.member_name && (
-                            <span style={{ 
-                              fontSize: '14px', 
-                              color: '#666', 
-                              marginLeft: '8px',
-                              fontWeight: 'normal'
+                            <span style={{
+                              ...getFieldMetaStyle(isMobile),
+                              marginLeft: designSystem.spacing.sm,
                             }}>
                               ({selectedSlot.member_name})
                             </span>
@@ -967,99 +987,70 @@ export function BoardManagement() {
                         </div>
                       </div>
 
-                      {/* 檢視模式其他資訊 */}
                       {selectedSlot.expires_at && (
-                        <div style={{ marginBottom: '16px' }}>
-                          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>到期日</div>
-                          <div style={{ fontSize: '16px' }}>{selectedSlot.expires_at}</div>
+                        <div style={{ marginBottom: designSystem.spacing.lg }}>
+                          <div style={getQuietLabelStyle(isMobile)}>到期日</div>
+                          <div style={getTextStyle('body', isMobile)}>
+                            {selectedSlot.expires_at}
+                          </div>
                         </div>
                       )}
 
                       {selectedSlot.notes && (
-                        <div style={{ marginBottom: '16px' }}>
-                          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>備註</div>
-                          <div style={{ fontSize: '14px', fontStyle: 'italic', color: '#999' }}>
+                        <div style={{ marginBottom: designSystem.spacing.lg }}>
+                          <div style={getQuietLabelStyle(isMobile)}>備註</div>
+                          <div style={{
+                            ...getTextStyle('bodySmall', isMobile),
+                            color: designSystem.colors.text.secondary,
+                          }}>
                             {selectedSlot.notes}
                           </div>
                         </div>
                       )}
 
-                      {/* 操作按鈕 */}
-                      <div style={{ 
-                        display: 'flex',
-                        gap: '10px',
-                        marginTop: '20px',
-                        paddingTop: '20px',
-                        borderTop: '1px solid #e0e0e0'
-                      }}>
+                      <div style={dialogFooterStyle}>
                         <button
                           onClick={() => setEditing(true)}
-                          style={{
-                            flex: 1,
-                            padding: '10px 20px',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                          }}
+                          style={{ ...getButtonStyle('primary', 'medium', isMobile), flex: 1 }}
                         >
-                          ✏️ 編輯
+                          編輯
                         </button>
                         <button
                           onClick={handleDeleteBoard}
-                          style={{
-                            flex: 1,
-                            padding: '10px 20px',
-                            background: '#f44336',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                          }}
+                          style={dangerQuietButtonStyle(isMobile)}
                         >
-                          🗑️ 刪除
+                          刪除
                         </button>
                       </div>
                     </>
                   )}
                 </>
               ) : (
-                <div style={{ padding: '20px' }}>
+                <div>
                   {!isAddingBoard ? (
-                    <div style={{ 
-                      padding: '40px 20px',
+                    <div style={{
+                      padding: `${designSystem.spacing.xxl} ${designSystem.spacing.lg}`,
                       textAlign: 'center',
-                      color: '#999'
                     }}>
-                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏄</div>
-                      <div style={{ fontSize: '16px', marginBottom: '20px' }}>此格位尚未使用</div>
+                      <div style={{
+                        ...getTextStyle('body', isMobile),
+                        color: designSystem.colors.text.secondary,
+                        marginBottom: designSystem.spacing.lg,
+                      }}>
+                        此格位尚未使用
+                      </div>
                       <button
                         onClick={() => startAddingBoard(selectedSlot.slot_number)}
-                        style={{
-                          padding: '12px 24px',
-                          background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '15px',
-                          fontWeight: 'bold',
-                          cursor: 'pointer'
-                        }}
+                        style={getButtonStyle('primary', 'medium', isMobile)}
                       >
                         新增置板
                       </button>
                     </div>
                   ) : (
                     <>
-                      {/* 會員搜尋 */}
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                          選擇會員 <span style={{ color: 'red' }}>*</span>
+                      <div style={getFormGroupStyle(isMobile)}>
+                        <label style={getLabelStyle(isMobile)}>
+                          選擇會員 <span style={{ color: designSystem.colors.danger[500] }}>*</span>
                         </label>
                         <input
                           type="text"
@@ -1069,25 +1060,11 @@ export function BoardManagement() {
                             searchMembers(e.target.value)
                           }}
                           placeholder="搜尋會員姓名/暱稱..."
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                          }}
+                          style={getInputStyle(isMobile)}
                         />
-                        
-                        {/* 搜尋結果 */}
+
                         {searchResults.length > 0 && !selectedMember && (
-                          <div style={{
-                            marginTop: '8px',
-                            maxHeight: '200px',
-                            overflowY: 'auto',
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            background: 'white'
-                          }}>
+                          <div style={searchResultsStyle}>
                             {searchResults.map((member) => (
                               <div
                                 key={member.id}
@@ -1096,40 +1073,47 @@ export function BoardManagement() {
                                   setMemberSearch(member.name)
                                   setSearchResults([])
                                 }}
-                                style={{
-                                  padding: '10px',
-                                  cursor: 'pointer',
-                                  borderBottom: '1px solid #f0f0f0'
+                                style={searchResultItemStyle}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = designSystem.colors.background.main
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = designSystem.colors.background.card
+                                }}
                               >
-                                <div style={{ fontWeight: '500' }}>{member.name}</div>
+                                <div style={{ fontWeight: 500, color: designSystem.colors.text.primary }}>
+                                  {member.name}
+                                </div>
                                 {member.nickname && (
-                                  <div style={{ fontSize: '13px', color: '#666' }}>
-                                    暱稱：{member.nickname}
-                                  </div>
+                                  <div style={getFieldMetaStyle(isMobile)}>暱稱：{member.nickname}</div>
                                 )}
                               </div>
                             ))}
                           </div>
                         )}
 
-                        {/* 已選擇的會員 */}
                         {selectedMember && (
                           <div style={{
-                            marginTop: '8px',
-                            padding: '12px',
-                            background: '#e8f5e9',
-                            borderRadius: '8px',
+                            marginTop: designSystem.spacing.sm,
+                            padding: designSystem.spacing.md,
+                            background: designSystem.colors.success[50],
+                            borderRadius: designSystem.borderRadius.lg,
+                            border: `1px solid ${designSystem.colors.border.light}`,
                             display: 'flex',
                             justifyContent: 'space-between',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            gap: designSystem.spacing.sm,
                           }}>
                             <div>
-                              <div style={{ fontWeight: '500' }}>{selectedMember.name}</div>
+                              <div style={{
+                                fontWeight: 500,
+                                color: designSystem.colors.success[700],
+                                fontSize: getFontSize('body', isMobile),
+                              }}>
+                                {selectedMember.name}
+                              </div>
                               {selectedMember.nickname && (
-                                <div style={{ fontSize: '13px', color: '#666' }}>
+                                <div style={getFieldMetaStyle(isMobile)}>
                                   暱稱：{selectedMember.nickname}
                                 </div>
                               )}
@@ -1139,103 +1123,59 @@ export function BoardManagement() {
                                 setSelectedMember(null)
                                 setMemberSearch('')
                               }}
-                              style={{
-                                padding: '4px 8px',
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '18px'
-                              }}
+                              style={dialogCloseButtonStyle}
+                              aria-label="清除選擇"
                             >
-                              ✕
+                              &times;
                             </button>
                           </div>
                         )}
                       </div>
 
-                      {/* 開始日 */}
-                      <div style={{ marginBottom: '16px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                          開始日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                      <div style={getFormGroupStyle(isMobile)}>
+                        <label style={getLabelStyle(isMobile)}>
+                          開始日 <span style={getFieldMetaStyle(isMobile)}>（選填）</span>
                         </label>
-                        <div style={{ display: 'flex' }}>
-                          <input
-                            type="date"
-                            value={newBoardForm.start_date}
-                            onChange={(e) => setNewBoardForm({ ...newBoardForm, start_date: e.target.value })}
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              padding: '10px',
-                              border: '2px solid #e0e0e0',
-                              borderRadius: '8px',
-                              fontSize: '16px',
-                              boxSizing: 'border-box',
-                            }}
-                          />
-                        </div>
+                        <input
+                          type="date"
+                          value={newBoardForm.start_date}
+                          onChange={(e) => setNewBoardForm({ ...newBoardForm, start_date: e.target.value })}
+                          style={{ ...getInputStyle(isMobile), boxSizing: 'border-box' }}
+                        />
                       </div>
 
-                      {/* 到期日 */}
-                      <div style={{ marginBottom: '16px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                          到期日 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                      <div style={getFormGroupStyle(isMobile)}>
+                        <label style={getLabelStyle(isMobile)}>
+                          到期日 <span style={getFieldMetaStyle(isMobile)}>（選填）</span>
                         </label>
-                        <div style={{ display: 'flex' }}>
-                          <input
-                            type="date"
-                            value={newBoardForm.expires_at}
-                            onChange={(e) => setNewBoardForm({ ...newBoardForm, expires_at: e.target.value })}
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              padding: '10px',
-                              border: '2px solid #e0e0e0',
-                              borderRadius: '8px',
-                              fontSize: '16px',
-                              boxSizing: 'border-box',
-                            }}
-                          />
-                        </div>
+                        <input
+                          type="date"
+                          value={newBoardForm.expires_at}
+                          onChange={(e) => setNewBoardForm({ ...newBoardForm, expires_at: e.target.value })}
+                          style={{ ...getInputStyle(isMobile), boxSizing: 'border-box' }}
+                        />
                       </div>
 
-                      {/* 備註 */}
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                          備註 <span style={{ fontSize: '13px', color: '#666' }}>（選填）</span>
+                      <div style={getFormGroupStyle(isMobile)}>
+                        <label style={getLabelStyle(isMobile)}>
+                          備註 <span style={getFieldMetaStyle(isMobile)}>（選填）</span>
                         </label>
                         <input
                           type="text"
                           value={newBoardForm.notes}
                           onChange={(e) => setNewBoardForm({ ...newBoardForm, notes: e.target.value })}
                           placeholder="例如：有三格"
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                          }}
+                          style={getInputStyle(isMobile)}
                         />
                       </div>
 
-                      {/* 按鈕 */}
-                      <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={dialogFooterStyle}>
                         <button
                           onClick={() => {
                             setIsAddingBoard(false)
                             setSelectedSlot(null)
                           }}
-                          style={{
-                            flex: 1,
-                            padding: '12px',
-                            background: '#f0f0f0',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                          }}
+                          style={{ ...getButtonStyle('outline', 'medium', isMobile), flex: 1 }}
                         >
                           取消
                         </button>
@@ -1243,15 +1183,10 @@ export function BoardManagement() {
                           onClick={handleAddBoard}
                           disabled={!selectedMember}
                           style={{
+                            ...getButtonStyle('primary', 'medium', isMobile),
                             flex: 1,
-                            padding: '12px',
-                            background: selectedMember ? 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)' : '#ccc',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            cursor: selectedMember ? 'pointer' : 'not-allowed'
+                            opacity: selectedMember ? 1 : 0.45,
+                            cursor: selectedMember ? 'pointer' : 'not-allowed',
                           }}
                         >
                           確認新增

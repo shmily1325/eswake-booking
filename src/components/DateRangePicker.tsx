@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
 import { getLocalDateString } from '../utils/formatters'
 import { getWeekdayText } from '../utils/date'
+import { designSystem, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 
 interface DateRangePickerProps {
   selectedDate: string
@@ -9,6 +11,35 @@ interface DateRangePickerProps {
   showTodayButton?: boolean
   label?: string
   simplified?: boolean  // 簡化模式：隱藏日期選擇器，用按鈕展開
+}
+
+/** 快捷鈕：選中近黑，未選中白底描邊（不使用亮綠／亮藍） */
+function presetButtonStyle(
+  selected: boolean,
+  isMobile: boolean,
+  extra?: CSSProperties
+): CSSProperties {
+  return {
+    flex: isMobile ? 1 : 'none',
+    padding: isMobile ? '10px 12px' : '10px 20px',
+    background: selected
+      ? designSystem.colors.primary[500]
+      : designSystem.colors.background.card,
+    color: selected ? '#ffffff' : designSystem.colors.text.secondary,
+    border: `1.5px solid ${
+      selected
+        ? designSystem.colors.primary[500]
+        : designSystem.colors.border.main
+    }`,
+    borderRadius: designSystem.borderRadius.md,
+    cursor: 'pointer',
+    fontSize: getFontSize('body', isMobile),
+    fontWeight: '600',
+    transition: 'all 0.2s',
+    boxShadow: selected ? designSystem.shadows.sm : 'none',
+    whiteSpace: 'nowrap',
+    ...extra,
+  }
 }
 
 export function DateRangePicker({
@@ -36,13 +67,7 @@ export function DateRangePicker({
   return (
     <div style={{ width: '100%' }}>
       {label && (
-        <label style={{ 
-          display: 'block', 
-          marginBottom: '8px', 
-          fontWeight: '600', 
-          fontSize: '15px', 
-          color: '#333' 
-        }}>
+        <label style={getLabelStyle(isMobile)}>
           {label}
         </label>
       )}
@@ -51,69 +76,33 @@ export function DateRangePicker({
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: simplified && !showDatePicker ? '0' : '12px' }}>
         {showTodayButton && (
           <button
+            type="button"
             onClick={() => {
               onDateChange(getLocalDateString())
               setShowDatePicker(false)
             }}
-            style={{
-              flex: isMobile ? 1 : 'none',
-              padding: isMobile ? '10px 12px' : '10px 20px',
-              background: isToday ? '#4caf50' : '#e8f5e9',
-              color: isToday ? '#fff' : '#2e7d32',
-              border: `2px solid ${isToday ? '#4caf50' : '#81c784'}`,
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              boxShadow: isToday ? '0 2px 8px rgba(76,175,80,0.3)' : 'none',
-              whiteSpace: 'nowrap'
-            }}
+            style={presetButtonStyle(isToday, isMobile)}
           >
             🗓️ 今天
           </button>
         )}
         <button
+          type="button"
           onClick={() => {
             onDateChange(currentMonth)
             setShowDatePicker(false)
           }}
-          style={{
-            flex: isMobile ? 1 : 'none',
-            padding: isMobile ? '10px 12px' : '10px 20px',
-            background: isCurrentMonth ? '#2196f3' : '#e3f2fd',
-            color: isCurrentMonth ? '#fff' : '#1976d2',
-            border: `2px solid ${isCurrentMonth ? '#2196f3' : '#90caf9'}`,
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s',
-            boxShadow: isCurrentMonth ? '0 2px 8px rgba(33,150,243,0.3)' : 'none',
-            whiteSpace: 'nowrap'
-          }}
+          style={presetButtonStyle(isCurrentMonth, isMobile)}
         >
           📅 本月
         </button>
         <button
+          type="button"
           onClick={() => {
             onDateChange(lastMonthStr)
             setShowDatePicker(false)
           }}
-          style={{
-            flex: isMobile ? 1 : 'none',
-            padding: isMobile ? '10px 12px' : '10px 20px',
-            background: isLastMonth ? '#ff9800' : '#fff3e0',
-            color: isLastMonth ? '#fff' : '#e65100',
-            border: `2px solid ${isLastMonth ? '#ff9800' : '#ffb74d'}`,
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s',
-            boxShadow: isLastMonth ? '0 2px 8px rgba(255,152,0,0.3)' : 'none',
-            whiteSpace: 'nowrap'
-          }}
+          style={presetButtonStyle(isLastMonth, isMobile)}
         >
           📆 上個月
         </button>
@@ -121,21 +110,13 @@ export function DateRangePicker({
         {/* 簡化模式：選擇日期按鈕 */}
         {simplified && (
           <button
+            type="button"
             onClick={() => setShowDatePicker(!showDatePicker)}
-            style={{
-              flex: isMobile ? '1 1 100%' : 'none',  // 手機版獨占一行
-              padding: isMobile ? '10px 12px' : '10px 20px',
-              background: isCustomDate ? '#9c27b0' : showDatePicker ? '#f3e5f5' : '#fafafa',
-              color: isCustomDate ? '#fff' : showDatePicker ? '#7b1fa2' : '#666',
-              border: `2px solid ${isCustomDate ? '#9c27b0' : showDatePicker ? '#ce93d8' : '#e0e0e0'}`,
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              boxShadow: isCustomDate ? '0 2px 8px rgba(156,39,176,0.3)' : 'none',
-              whiteSpace: 'nowrap'
-            }}
+            style={presetButtonStyle(
+              isCustomDate || showDatePicker,
+              isMobile,
+              { flex: isMobile ? '1 1 100%' : 'none' }
+            )}
           >
             📌 {isCustomDate ? (selectedDate.length === 10 ? selectedDate : `${selectedDate.substring(0, 4)}年${selectedDate.substring(5, 7)}月`) : '選擇日期...'}
           </button>
@@ -146,74 +127,45 @@ export function DateRangePicker({
       {(!simplified || showDatePicker) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+            <label style={{
+              ...getLabelStyle(isMobile),
+              fontSize: getFontSize('caption', isMobile),
+              marginBottom: '4px'
+            }}>
               選擇月份
             </label>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '10px 12px',
-              border: '1px solid #dee2e6',
-              borderRadius: '8px',
-              background: '#f8f9fa'
-            }}>
-              <input
-                type="month"
-                value={selectedDate.length === 7 ? selectedDate : ''}
-                onChange={(e) => {
-                  onDateChange(e.target.value)
-                  if (simplified) setShowDatePicker(false)
-                }}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  border: 'none',
-                  background: 'transparent',
-                  fontSize: '16px',
-                  color: '#333',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
+            <input
+              type="month"
+              value={selectedDate.length === 7 ? selectedDate : ''}
+              onChange={(e) => {
+                onDateChange(e.target.value)
+                if (simplified) setShowDatePicker(false)
+              }}
+              style={getInputStyle(isMobile)}
+            />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+            <label style={{
+              ...getLabelStyle(isMobile),
+              fontSize: getFontSize('caption', isMobile),
+              marginBottom: '4px'
+            }}>
               選擇特定日期
             </label>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '10px 12px',
-              border: '1px solid #dee2e6',
-              borderRadius: '8px',
-              background: '#f8f9fa'
-            }}>
-              <input
-                type="date"
-                value={selectedDate.length === 10 ? selectedDate : ''}
-                onChange={(e) => {
-                  onDateChange(e.target.value)
-                  if (simplified) setShowDatePicker(false)
-                }}
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  background: 'transparent',
-                  fontSize: '16px',
-                  color: '#333',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              />
-            </div>
-            {/* 星期幾顯示 - 只在選擇特定日期時顯示 */}
+            <input
+              type="date"
+              value={selectedDate.length === 10 ? selectedDate : ''}
+              onChange={(e) => {
+                onDateChange(e.target.value)
+                if (simplified) setShowDatePicker(false)
+              }}
+              style={getInputStyle(isMobile)}
+            />
             {selectedDate.length === 10 && (
               <div style={{
                 marginTop: '4px',
-                fontSize: '12px',
-                color: '#666',
+                fontSize: getFontSize('caption', isMobile),
+                color: designSystem.colors.text.secondary,
                 fontWeight: '500',
                 textAlign: 'center'
               }}>
@@ -226,4 +178,3 @@ export function DateRangePicker({
     </div>
   )
 }
-

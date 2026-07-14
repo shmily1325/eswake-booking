@@ -73,6 +73,7 @@ function coachShareMinutesForBooking(booking: ScheduleBooking, coachId: string):
 
 export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePreviewTableProps) {
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [bookings, setBookings] = useState<ScheduleBooking[]>([])
   const [monthOptions, setMonthOptions] = useState<MonthOption[]>([])
   const [rangeLabel, setRangeLabel] = useState('未來三個月')
@@ -85,6 +86,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       if (!coachId) return
       // 換 coachId 時先清空舊資料，避免新資料載入前殘留上一位教練的預約
       setBookings([])
+      setLoadError(false)
       setLoading(true)
       try {
         const window = getFutureThreeMonthWindow()
@@ -96,6 +98,8 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           }))
         )
 
+        // 查詢語意刻意維持與原本相同（全量拉取後前端依 coachId 過濾），
+        // 避免 !inner 篩選只回傳部分 booking_coaches，造成多教練堂次分鐘等分偏差。
         const { data, error } = await supabase
           .from('bookings')
           .select(`
@@ -119,6 +123,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       } catch (err) {
         console.error('載入教練排程失敗:', err)
         setBookings([])
+        setLoadError(true)
       } finally {
         setLoading(false)
       }
@@ -131,6 +136,16 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     if (selectedMonth === 'all') return bookings
     return bookings.filter(booking => booking.start_at.startsWith(selectedMonth))
   }, [bookings, selectedMonth])
+
+  const monthFilterOptions = useMemo(
+    () =>
+      monthOptions.map(option => ({
+        value: option.key,
+        label: option.label,
+        count: bookings.filter(b => b.start_at.startsWith(option.key)).length
+      })),
+    [bookings, monthOptions]
+  )
 
   const stats = useMemo(() => {
     return filteredBookings.reduce(
@@ -277,6 +292,21 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
 
   return (
     <div>
+      {loadError && (
+        <div
+          role="alert"
+          style={{
+            ...getCardStyle(isMobile),
+            marginBottom: '16px',
+            color: designSystem.colors.danger[700],
+            background: designSystem.colors.danger[50],
+            border: `1px solid ${designSystem.colors.danger[500]}55`,
+            fontSize: getFontSize('bodySmall', isMobile)
+          }}
+        >
+          載入排程失敗，請重新整理頁面
+        </div>
+      )}
       <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
         <label style={{
           display: 'block',
@@ -288,11 +318,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           篩選月份
         </label>
         <MonthFilter
-          options={monthOptions.map(option => ({
-            value: option.key,
-            label: option.label,
-            count: bookings.filter(b => b.start_at.startsWith(option.key)).length
-          }))}
+          options={monthFilterOptions}
           selected={selectedMonth}
           onSelect={setSelectedMonth}
           allLabel={rangeLabel}
@@ -310,8 +336,14 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           fontWeight: 600,
           fontSize: getFontSize('body', isMobile)
         }}>
-          <span>總堂數：{stats.totalSessions}</span>
-          <span>總分鐘：{stats.totalMinutes}</span>
+          {loading ? (
+            <span style={{ color: designSystem.colors.text.disabled, fontWeight: 500 }}>載入中...</span>
+          ) : (
+            <>
+              <span>總堂數：{stats.totalSessions}</span>
+              <span>總分鐘：{stats.totalMinutes}</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -324,7 +356,9 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
         }}>
           會員時數分布
         </div>
-        {memberDistribution.length === 0 && !loading ? (
+        {loading ? (
+          <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>載入中...</div>
+        ) : memberDistribution.length === 0 ? (
           <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>這個月份沒有資料</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -366,8 +400,11 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
         }}>
           預約列表（依日期時間）
         </div>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }} role="tablist" aria-label="排程檢視方式">
           <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'list'}
             onClick={() => setViewMode('list')}
             style={{
               ...getFilterChipStyle(viewMode === 'list', 'info'),
@@ -378,6 +415,9 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
             列表
           </button>
           <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'calendar'}
             onClick={() => setViewMode('calendar')}
             style={{
               ...getFilterChipStyle(viewMode === 'calendar', 'info'),
@@ -388,14 +428,18 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
             行事曆
           </button>
         </div>
-        {groupedBookings.length === 0 && !loading ? (
+        {loading ? (
+          <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>載入中...</div>
+        ) : groupedBookings.length === 0 ? (
           <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>這個月份沒有預約</div>
         ) : viewMode === 'list' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {groupedBookings.map(group => (
               <div key={group.date}>
                 <button
+                  type="button"
                   onClick={() => toggleDateGroup(group.date)}
+                  aria-expanded={expandedDates.has(group.date)}
                   style={{
                     width: '100%',
                     textAlign: 'left',

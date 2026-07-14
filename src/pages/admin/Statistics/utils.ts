@@ -1,5 +1,82 @@
 // Statistics Dashboard 共用工具函數
 
+import { getLocalDateString } from '../../../utils/date'
+
+export type MonthRangeMeta = {
+  monthStr: string
+  month: number
+  startDate: string
+  endDateStr: string
+}
+
+/**
+ * 單一曆月查詢區間：未來月略過；當月只到昨天；過去月到月底。
+ */
+export function getCalendarMonthRange(
+  year: number,
+  month: number,
+  now: Date = new Date()
+): MonthRangeMeta | null {
+  const monthStr = `${year}-${String(month).padStart(2, '0')}`
+  const startDate = `${monthStr}-01`
+  const lastDayOfMonth = new Date(year, month, 0).getDate()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = getLocalDateString(yesterday)
+
+  const isFutureMonth =
+    year > now.getFullYear() ||
+    (year === now.getFullYear() && month > now.getMonth() + 1)
+  if (isFutureMonth) return null
+
+  const isCurrentMonth =
+    year === now.getFullYear() && month === now.getMonth() + 1
+  if (isCurrentMonth) {
+    if (yesterdayStr < startDate) return null
+    return { monthStr, month, startDate, endDateStr: yesterdayStr }
+  }
+
+  return {
+    monthStr,
+    month,
+    startDate,
+    endDateStr: `${monthStr}-${String(lastDayOfMonth).padStart(2, '0')}`,
+  }
+}
+
+/** 選年的 1～12 月區間（略過尚無資料／未來月） */
+export function getYearMonthRanges(
+  year: number,
+  now: Date = new Date()
+): MonthRangeMeta[] {
+  const ranges: MonthRangeMeta[] = []
+  for (let month = 1; month <= 12; month++) {
+    const range = getCalendarMonthRange(year, month, now)
+    if (range) ranges.push(range)
+  }
+  return ranges
+}
+
+/** 整年單一區間：過去年到 12/31；當年到昨天 */
+export function getYearDateRange(
+  year: number,
+  now: Date = new Date()
+): { startDate: string; endDateStr: string } | null {
+  const startDate = `${year}-01-01`
+  if (year > now.getFullYear()) return null
+
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = getLocalDateString(yesterday)
+
+  if (year === now.getFullYear()) {
+    if (yesterdayStr < startDate) return null
+    return { startDate, endDateStr: yesterdayStr }
+  }
+
+  return { startDate, endDateStr: `${year}-12-31` }
+}
+
 /**
  * 格式化時間顯示 - 統一使用分鐘
  */

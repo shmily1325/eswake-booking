@@ -17,8 +17,12 @@ import { splitMinutesEqually } from '../../../utils/teachingMinutesAllocation'
 import { fetchAllInBatches, fetchAllPaginated } from '../../../utils/supabasePaginate'
 
 import { LoadingSkeleton, LastUpdated } from './components'
-import { TrendTab, MonthlyTab, FutureTab } from './tabs'
+import { TrendTab, MonthlyTab, FutureTab, AnnualTab } from './tabs'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
+import {
+  getYearDateRange,
+  getYearMonthRanges,
+} from './utils'
 import type {
   MonthlyStats,
   CoachFutureBooking,
@@ -29,7 +33,7 @@ import type {
   BoatData
 } from './types'
 
-type TabType = 'trend' | 'monthly' | 'future'
+type TabType = 'trend' | 'monthly' | 'annual' | 'future'
 
 export function Statistics() {
   const user = useAuthUser()
@@ -72,10 +76,22 @@ export function Statistics() {
     CoachPracticeSessionRow[]
   >([])
 
+  // 年報（獨立 state，避免蓋掉月報）
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
+  const [annualLoading, setAnnualLoading] = useState(false)
+  const [annualMonthlyStats, setAnnualMonthlyStats] = useState<MonthlyStats[]>([])
+  const [annualFinanceStats, setAnnualFinanceStats] = useState<FinanceStats[]>([])
+  const [annualCoachStats, setAnnualCoachStats] = useState<CoachStats[]>([])
+  const [annualMemberStats, setAnnualMemberStats] = useState<MemberStats[]>([])
+  const [annualWeekdayStats, setAnnualWeekdayStats] = useState<WeekdayStats>({
+    weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0
+  })
+
   // Tab 配置（重新命名）
   const tabs: { key: TabType; label: string }[] = [
     { key: 'trend', label: '歷史趨勢' },
     { key: 'monthly', label: '月報分析' },
+    { key: 'annual', label: '年報' },
     { key: 'future', label: '排程預覽' },
   ]
 
@@ -504,15 +520,11 @@ export function Statistics() {
     }
   }
 
-  // 載入平日/假日統計（月度）
-  const loadWeekdayStats = async () => {
-    const range = getMonthlyDateRange()
-    if (!range) {
-      setWeekdayStats({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
-      return
-    }
-    const { startDate, endDateStr } = range
-
+  // 載入平日/假日統計（月度／年報共用）
+  const fetchWeekdayStatsForRange = async (
+    startDate: string,
+    endDateStr: string
+  ): Promise<WeekdayStats> => {
     const participants = await loadPaidOperationalParticipantsForRange(supabase, startDate, endDateStr)
 
     const weekdayBookingIds = new Set<number>()
@@ -534,21 +546,28 @@ export function Statistics() {
       }
     })
 
-    const weekdayCount = weekdayBookingIds.size
-    const weekendCount = weekendBookingIds.size
+    return {
+      weekdayCount: weekdayBookingIds.size,
+      weekdayMinutes,
+      weekendCount: weekendBookingIds.size,
+      weekendMinutes,
+    }
+  }
 
-    setWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
+  const loadWeekdayStats = async () => {
+    const range = getMonthlyDateRange()
+    if (!range) {
+      setWeekdayStats({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
+      return
+    }
+    setWeekdayStats(await fetchWeekdayStatsForRange(range.startDate, range.endDateStr))
   }
 
   // 載入教練時數統計
-  const loadCoachStats = async () => {
-    const range = getMonthlyDateRange()
-    if (!range) {
-      setCoachStats([])
-      return
-    }
-    const { startDate, endDateStr } = range
-
+  const fetchCoachStatsForRange = async (
+    startDate: string,
+    endDateStr: string
+  ): Promise<CoachStats[]> => {
     // 月報教練統計：與回報一致——已處理之教學／駕駛紀錄（非「已扣款預約清單」口徑）
     // 兩個查詢條件互相獨立，並行送出可節省一輪 RTT
     const [teachingData, drivingData] = await Promise.all([
@@ -658,7 +677,7 @@ export function Statistics() {
       statsMap.get(coachId)!.drivingMinutes += record.driver_duration_min || 0
     })
 
-    const sorted = Array.from(statsMap.values())
+    return Array.from(statsMap.values())
       .map(stats => ({
         ...stats,
         designatedStudents: Array.from(stats.designatedStudents.values())
@@ -671,19 +690,22 @@ export function Statistics() {
           .sort((a, b) => b.minutes - a.minutes)
       }))
       .sort((a, b) => (b.teachingMinutes + b.drivingMinutes) - (a.teachingMinutes + a.drivingMinutes))
+  }
 
-    setCoachStats(sorted)
+  const loadCoachStats = async () => {
+    const range = getMonthlyDateRange()
+    if (!range) {
+      setCoachStats([])
+      return
+    }
+    setCoachStats(await fetchCoachStatsForRange(range.startDate, range.endDateStr))
   }
 
   // 載入會員統計（含代扣：非會員由會員代扣時，計入代扣會員）
-  const loadMemberStats = async () => {
-    const range = getMonthlyDateRange()
-    if (!range) {
-      setMemberStats([])
-      return
-    }
-    const { startDate, endDateStr } = range
-
+  const fetchMemberStatsForRange = async (
+    startDate: string,
+    endDateStr: string
+  ): Promise<MemberStats[]> => {
     // 1. 所有已處理參與者（含非會員，用於代扣情境）
     const participantData = await fetchAllPaginated<any>(async (from, to) => {
       return supabase
@@ -784,7 +806,7 @@ export function Statistics() {
       }
     })
 
-    const sorted = Array.from(memberMap.values())
+    return Array.from(memberMap.values())
       .map(member => ({
         ...member,
         coaches: Array.from(member.coaches.entries())
@@ -795,8 +817,154 @@ export function Statistics() {
           .sort((a, b) => b.minutes - a.minutes)
       }))
       .sort((a, b) => b.totalMinutes - a.totalMinutes)
+  }
 
-    setMemberStats(sorted)
+  const loadMemberStats = async () => {
+    const range = getMonthlyDateRange()
+    if (!range) {
+      setMemberStats([])
+      return
+    }
+    setMemberStats(await fetchMemberStatsForRange(range.startDate, range.endDateStr))
+  }
+
+  const loadAnnualTrend = async (year: number) => {
+    const ranges = getYearMonthRanges(year)
+    if (ranges.length === 0) {
+      setAnnualMonthlyStats([])
+      return
+    }
+
+    const participantsByMonth = await Promise.all(
+      ranges.map((r) => loadPaidOperationalParticipantsForRange(supabase, r.startDate, r.endDateStr))
+    )
+
+    const months: MonthlyStats[] = ranges.map((r, idx) => {
+      const participants = participantsByMonth[idx]
+      const bookingCount = new Set(participants.map((p) => p.bookingId)).size
+      const totalMinutes = participants.reduce((sum, p) => sum + p.participantMinutes, 0)
+
+      const weekdayBookingIds = new Set<number>()
+      const weekendBookingIds = new Set<number>()
+      let weekdayMinutes = 0, weekendMinutes = 0
+      const boatMap = new Map<number, { boatName: string; minutes: number }>()
+
+      participants.forEach((p) => {
+        const d = new Date(p.start_at)
+        const dayOfWeek = d.getDay()
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+        const minutes = p.participantMinutes
+
+        if (isWeekend) {
+          weekendBookingIds.add(p.bookingId)
+          weekendMinutes += minutes
+        } else {
+          weekdayBookingIds.add(p.bookingId)
+          weekdayMinutes += minutes
+        }
+
+        const existing = boatMap.get(p.boatId)
+        if (existing) existing.minutes += minutes
+        else boatMap.set(p.boatId, { boatName: p.boatName, minutes })
+      })
+
+      const boatMinutes = Array.from(boatMap.entries())
+        .map(([boatId, d]) => ({ boatId, boatName: d.boatName, minutes: d.minutes }))
+        .sort((a, b) => a.boatId - b.boatId)
+
+      return {
+        month: r.monthStr,
+        label: `${r.month}月`,
+        bookingCount,
+        totalMinutes,
+        totalHours: Math.round(totalMinutes / 60 * 10) / 10,
+        boatMinutes,
+        weekdayCount: weekdayBookingIds.size,
+        weekdayMinutes,
+        weekendCount: weekendBookingIds.size,
+        weekendMinutes,
+      }
+    })
+
+    setAnnualMonthlyStats(months)
+  }
+
+  const loadAnnualFinance = async (year: number) => {
+    const ranges = getYearMonthRanges(year)
+    if (ranges.length === 0) {
+      setAnnualFinanceStats([])
+      return
+    }
+
+    const consumeResults = await Promise.all(
+      ranges.map((r) =>
+        fetchAllPaginated<any>(async (from, to) => {
+          return supabase
+            .from('transactions')
+            .select('category, amount, minutes')
+            .eq('transaction_type', 'consume')
+            .not('booking_participant_id', 'is', null)
+            .gte('transaction_date', r.startDate)
+            .lte('transaction_date', r.endDateStr)
+            .order('id', { ascending: true })
+            .range(from, to)
+        })
+      )
+    )
+
+    const stats: FinanceStats[] = ranges.map((r, idx) => {
+      const consumeData = consumeResults[idx]
+      let balanceUsed = 0, vipUsed = 0, g23Used = 0, g21Used = 0
+      consumeData?.forEach((tx: any) => {
+        if (tx.category === 'balance' && tx.amount) {
+          balanceUsed += Math.abs(tx.amount)
+        } else if (tx.category === 'vip_voucher' && tx.amount) {
+          vipUsed += Math.abs(tx.amount)
+        } else if (tx.category === 'boat_voucher_g23' && tx.minutes) {
+          g23Used += Math.abs(tx.minutes)
+        } else if (tx.category === 'boat_voucher_g21_panther' && tx.minutes) {
+          g21Used += Math.abs(tx.minutes)
+        }
+      })
+      return { month: r.monthStr, balanceUsed, vipUsed, g23Used, g21Used }
+    })
+
+    setAnnualFinanceStats(stats)
+  }
+
+  const loadAnnualRankings = async (year: number) => {
+    const range = getYearDateRange(year)
+    if (!range) {
+      setAnnualCoachStats([])
+      setAnnualMemberStats([])
+      setAnnualWeekdayStats({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
+      return
+    }
+
+    const [coach, member, weekday] = await Promise.all([
+      fetchCoachStatsForRange(range.startDate, range.endDateStr),
+      fetchMemberStatsForRange(range.startDate, range.endDateStr),
+      fetchWeekdayStatsForRange(range.startDate, range.endDateStr),
+    ])
+    setAnnualCoachStats(coach)
+    setAnnualMemberStats(member)
+    setAnnualWeekdayStats(weekday)
+  }
+
+  const loadAnnualData = async (year: number) => {
+    setAnnualLoading(true)
+    try {
+      await Promise.all([
+        loadAnnualTrend(year),
+        loadAnnualFinance(year),
+        loadAnnualRankings(year),
+      ])
+      setLastUpdated(new Date())
+    } catch (error) {
+      console.error('載入年報失敗:', error)
+    } finally {
+      setAnnualLoading(false)
+    }
   }
 
   // 初次載入
@@ -849,24 +1017,35 @@ export function Statistics() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPeriod])
 
+  // 年報懶載入：僅在切到年報或換年時載入
+  useEffect(() => {
+    if (activeTab !== 'annual') return
+    loadAnnualData(selectedYear)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedYear])
+
   // 重新整理
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      await Promise.all([
-        loadMonthlyTrend(),
-        loadFinanceStats(),
-        loadCoachStats(),
-        loadMemberStats(),
-        loadWeekdayStats(),
-        loadMonthlyCoachPractice()
-      ])
-      try {
-        await loadFutureBookings()
-      } catch (error) {
-        console.error('載入排程預覽失敗:', error)
+      if (activeTab === 'annual') {
+        await loadAnnualData(selectedYear)
+      } else {
+        await Promise.all([
+          loadMonthlyTrend(),
+          loadFinanceStats(),
+          loadCoachStats(),
+          loadMemberStats(),
+          loadWeekdayStats(),
+          loadMonthlyCoachPractice()
+        ])
+        try {
+          await loadFutureBookings()
+        } catch (error) {
+          console.error('載入排程預覽失敗:', error)
+        }
+        setLastUpdated(new Date())
       }
-      setLastUpdated(new Date())
     } catch (error) {
       console.error('重新整理失敗:', error)
     } finally {
@@ -965,6 +1144,23 @@ export function Statistics() {
                   return `${range.startDate} ~ ${range.endDateStr}；僅實際船隻。與本月其他月報相同：當月僅統計至昨日。`
                 })()}
               />
+            )}
+
+            {activeTab === 'annual' && (
+              annualLoading ? (
+                <LoadingSkeleton />
+              ) : (
+                <AnnualTab
+                  selectedYear={selectedYear}
+                  setSelectedYear={setSelectedYear}
+                  monthlyStats={annualMonthlyStats}
+                  financeStats={annualFinanceStats}
+                  allBoatsData={allBoatsData}
+                  coachStats={annualCoachStats}
+                  memberStats={annualMemberStats}
+                  weekdayStats={annualWeekdayStats}
+                />
+              )
             )}
 
             {activeTab === 'future' && (
