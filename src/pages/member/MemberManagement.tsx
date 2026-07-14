@@ -16,6 +16,7 @@ import {
   EXPIRING_SOON_DAYS
 } from '../../utils/date'
 import { isAdmin } from '../../utils/auth'
+import { chunkArray, fetchAllPaginated, IN_FILTER_BATCH_SIZE } from '../../utils/supabasePaginate'
 
 interface Member {
   id: string
@@ -159,8 +160,8 @@ export function MemberManagement() {
       setLoading(true)
     }
     try {
-      // 並行查詢會員資料、置板資料、備忘錄與 LINE 綁定
-      const [membersResult, boardResult, notesResult, lineBindingsResult] = await Promise.all([
+      // 並行查詢會員資料、置板資料與 LINE 綁定（備忘錄改依會員 ID 分批，避免整表 notes）
+      const [membersResult, boardResult, lineBindingsResult] = await Promise.all([
         supabase
           .from('members')
           .select(`
@@ -179,12 +180,6 @@ export function MemberManagement() {
           .select('member_id, slot_number, start_date, expires_at')
           .eq('status', 'active')
           .order('slot_number', { ascending: true }),
-        
-        // @ts-ignore - member_notes 表
-        supabase
-          .from('member_notes')
-          .select('id, member_id, event_date, event_type, description')
-          .order('event_date', { ascending: true, nullsFirst: true }),
 
         supabase
           .from('line_bindings')
@@ -196,8 +191,29 @@ export function MemberManagement() {
 
       const membersData = membersResult.data || []
       const boardData = boardResult.data || []
-      const notesData = notesResult.data || []
       const lineBindingsData = lineBindingsResult.data || []
+
+      // 依已載入會員 ID 分批 + 分頁抓備忘錄（排序與原先整表查詢相同）
+      const memberIds = membersData.map((m: { id: string }) => m.id)
+      let notesData: Array<{ id: number; member_id: string; event_date: string | null; event_type: string | null; description: string | null }> = []
+      if (memberIds.length > 0) {
+        const idBatches = chunkArray(memberIds, IN_FILTER_BATCH_SIZE)
+        const notesBatches = await Promise.all(
+          idBatches.map((batch) =>
+            fetchAllPaginated(async (from, to) => {
+              // @ts-ignore - member_notes 表
+              const { data, error } = await supabase
+                .from('member_notes')
+                .select('id, member_id, event_date, event_type, description')
+                .in('member_id', batch)
+                .order('event_date', { ascending: true, nullsFirst: true })
+                .range(from, to)
+              return { data, error }
+            })
+          )
+        )
+        notesData = notesBatches.flat()
+      }
 
       // 整理每個會員的置板資料
       const memberBoards: Record<string, Array<{ slot_number: number; start_date: string | null; expires_at: string | null }>> = {}

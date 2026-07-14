@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { vi } from 'vitest'
+import { describe, test, expect, vi } from 'vitest'
 import { EditBookingDialog } from '../../components/EditBookingDialog'
 
 // Mocks

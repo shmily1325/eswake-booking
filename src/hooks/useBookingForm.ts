@@ -6,12 +6,29 @@ import {
     groupTimeOffByCoach,
 } from '../utils/coachTimeOff'
 import { useBookingConflict } from './useBookingConflict'
-import { filterMembers, composeFinalStudentName, toggleSelection, splitAndDeduplicateNames, stripManualNamesMatchingSelectedMembers } from '../utils/memberUtils'
+import { composeFinalStudentName, toggleSelection, splitAndDeduplicateNames, stripManualNamesMatchingSelectedMembers } from '../utils/memberUtils'
 import { MEMBER_SEARCH_DEBOUNCE_MS } from '../constants/booking'
 import type { Booking, Boat, Coach, Member } from '../types/booking'
 import { isFacility } from '../utils/facility'
 import { getFilledByName } from '../utils/filledByHelper'
 import { getLocalDateString } from '../utils/date'
+
+type BookingFormMember = Pick<Member, 'id' | 'name' | 'nickname' | 'phone'>
+
+function mergeMembersById(
+    existing: BookingFormMember[],
+    incoming: BookingFormMember[]
+): BookingFormMember[] {
+    if (incoming.length === 0) return existing
+    const map = new Map(existing.map(m => [m.id, m]))
+    for (const m of incoming) map.set(m.id, m)
+    return [...map.values()]
+}
+
+/** 供 PostgREST ilike 使用，避免 % _ 被當成萬用字元 */
+function escapeIlikePattern(term: string): string {
+    return term.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
 
 interface UseBookingFormProps {
     initialBooking?: Booking
@@ -32,8 +49,9 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         initialBooking?.coaches?.map(c => c.id) || []
     )
 
-    // Members
-    const [members, setMembers] = useState<Pick<Member, 'id' | 'name' | 'nickname' | 'phone'>[]>([])
+    // Members：members = 已選／搜尋命中的目錄（非全表）；memberSearchResults = 下拉候選
+    const [members, setMembers] = useState<BookingFormMember[]>([])
+    const [memberSearchResults, setMemberSearchResults] = useState<BookingFormMember[]>([])
     const [memberSearchTerm, setMemberSearchTerm] = useState('')
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
     const [showMemberDropdown, setShowMemberDropdown] = useState(false)
@@ -77,10 +95,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         [selectedCoaches, isSelectedBoatFacility]
     )
 
-    const filteredMembers = useMemo(() =>
-        filterMembers(members, memberSearchTerm, 10),
-        [members, memberSearchTerm]
-    )
+    const filteredMembers = memberSearchResults
 
     const finalStudentName = useMemo(() => 
         composeFinalStudentName(members, selectedMemberIds, manualNames),
@@ -122,6 +137,22 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             }
             setSelectedMemberIds([...new Set(initialMemberIds)])
 
+            // 有嵌套 members 時先種進目錄，藍標／姓名解析不必等全表
+            const seeded: BookingFormMember[] = []
+            if (initialBooking.booking_members && initialBooking.booking_members.length > 0) {
+                initialBooking.booking_members.forEach((bm: any) => {
+                    if (!bm?.members) return
+                    seeded.push({
+                        id: bm.members.id || bm.member_id,
+                        name: bm.members.name ?? '',
+                        nickname: bm.members.nickname ?? null,
+                        phone: bm.members.phone ?? null,
+                    })
+                })
+            }
+            setMembers(seeded)
+            setMemberSearchResults([])
+
             // Initialize manual names - 從 contact_name 中提取非會員名字
             if (initialBooking.contact_name) {
                 const contactNames = splitAndDeduplicateNames(initialBooking.contact_name)
@@ -150,6 +181,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
             // Create Mode Initialization
             if (defaultBoatId) setSelectedBoatId(defaultBoatId)
+            setMembers([])
+            setMemberSearchResults([])
 
             if (defaultDate) {
                 const datetime = defaultDate.substring(0, 16)
@@ -321,16 +354,30 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         }
     }, [startDate, startTime, durationMin])
 
+    /** 只載已選會員（開窗／編輯），不再全表拉取 */
     const fetchMembers = useCallback(async () => {
-        const { data, error } = await supabase
-            .from('members')
-            .select('id, name, nickname, phone')
-            .eq('status', 'active')
-            .order('name')
+        const fromBooking: string[] = []
+        if (initialBooking?.member_id) fromBooking.push(initialBooking.member_id)
+        if (initialBooking?.booking_members?.length) {
+            initialBooking.booking_members.forEach((bm: { member_id?: string }) => {
+                if (bm.member_id) fromBooking.push(bm.member_id)
+            })
+        }
+        const ids = [...new Set([...selectedMemberIds, ...fromBooking].filter(Boolean))]
+        if (ids.length === 0) return
 
-        if (error) console.error('Error fetching members:', error)
-        else setMembers(data || [])
-    }, [])
+        try {
+            const { data, error } = await supabase
+                .from('members')
+                .select('id, name, nickname, phone')
+                .in('id', ids)
+
+            if (error) throw error
+            setMembers(prev => mergeMembersById(prev, (data || []) as BookingFormMember[]))
+        } catch (error) {
+            console.error('Error fetching members:', error)
+        }
+    }, [selectedMemberIds, initialBooking])
 
     // 用於教練休假的日期：避免彈窗剛打開時 startDate 尚未從 defaultDate/initialBooking 更新，導致用空字串查詢而沒帶入休假資料（手機版較易出現）
     const dateForCoachTimeOff = startDate
@@ -361,8 +408,34 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         setMemberSearchTerm(term)
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
 
-        searchTimeoutRef.current = setTimeout(() => {
-            setShowMemberDropdown(term.trim().length > 0)
+        const trimmed = term.trim()
+        if (!trimmed) {
+            setMemberSearchResults([])
+            setShowMemberDropdown(false)
+            return
+        }
+
+        searchTimeoutRef.current = setTimeout(async () => {
+            const q = escapeIlikePattern(trimmed)
+            try {
+                const { data, error } = await supabase
+                    .from('members')
+                    .select('id, name, nickname, phone')
+                    .eq('status', 'active')
+                    .or(`name.ilike.%${q}%,nickname.ilike.%${q}%,phone.ilike.%${q}%`)
+                    .order('name')
+                    .limit(10)
+
+                if (error) throw error
+                const rows = (data || []) as BookingFormMember[]
+                setMemberSearchResults(rows)
+                setMembers(prev => mergeMembersById(prev, rows))
+                setShowMemberDropdown(true)
+            } catch (error) {
+                console.error('Error searching members:', error)
+                setMemberSearchResults([])
+                setShowMemberDropdown(trimmed.length > 0)
+            }
         }, MEMBER_SEARCH_DEBOUNCE_MS)
     }
 
@@ -387,6 +460,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         setSelectedCoaches([])
         setSelectedMemberIds([])
         setMemberSearchTerm('')
+        setMemberSearchResults([])
         setManualStudentName('')
         setManualNames([])
         setShowMemberDropdown(false)
@@ -400,6 +474,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         // Reset time to defaults if needed, or keep current
         if (!initialBooking) {
             setDurationMin(60)
+            setMembers([])
         }
     }
 

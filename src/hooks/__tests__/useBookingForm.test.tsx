@@ -206,9 +206,7 @@ describe('useBookingForm', () => {
         if (table === 'members') {
           return {
             select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
-              })
+              in: vi.fn().mockResolvedValue({ data: mockMembers, error: null }),
             })
           } as any
         }
@@ -281,7 +279,13 @@ describe('useBookingForm', () => {
         if (table === 'members') {
           return {
             select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: mockMembers, error: null }),
               eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
+                  })
+                }),
                 order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
               })
             })
@@ -388,7 +392,13 @@ describe('useBookingForm', () => {
         if (table === 'members') {
           return {
             select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: mockMembers, error: null }),
               eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
+                  })
+                }),
                 order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
               })
             })
@@ -442,7 +452,13 @@ describe('useBookingForm', () => {
         if (table === 'members') {
           return {
             select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: mockMembers, error: null }),
               eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
+                  })
+                }),
                 order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
               })
             })
@@ -482,14 +498,40 @@ describe('useBookingForm', () => {
       expect(result.current.canRequireDriver).toBe(false)
     })
 
-    it('filteredMembers 應依 memberSearchTerm 過濾', () => {
+    it('filteredMembers 應反映 typeahead 搜尋結果', async () => {
+      vi.useFakeTimers()
+      const searchHits = [{ id: 'm1', name: '張三', nickname: null, phone: null }]
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'members') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: searchHits, error: null })
+                  })
+                })
+              })
+            })
+          } as any
+        }
+        return {} as any
+      })
+
       const { result } = renderHook(() => useBookingForm())
 
       act(() => {
-        result.current.setMemberSearchTerm('張三')
+        result.current.handleMemberSearch('張三')
       })
 
-      expect(memberUtils.filterMembers).toHaveBeenCalled()
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.filteredMembers).toEqual(searchHits)
+      vi.useRealTimers()
     })
 
     it('finalStudentName 應由 composeFinalStudentName 計算', () => {
@@ -577,8 +619,26 @@ describe('useBookingForm', () => {
   })
 
   describe('handleMemberSearch', () => {
-    it('應更新 memberSearchTerm 並在防抖後設置 showMemberDropdown', async () => {
+    it('應更新 memberSearchTerm 並在防抖後查詢並設置 showMemberDropdown', async () => {
       vi.useFakeTimers()
+      const searchHits = [{ id: 'm1', name: '搜尋結果', nickname: null, phone: null }]
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'members') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: searchHits, error: null })
+                  })
+                })
+              })
+            })
+          } as any
+        }
+        return {} as any
+      })
+
       const { result } = renderHook(() => useBookingForm())
 
       act(() => {
@@ -587,10 +647,14 @@ describe('useBookingForm', () => {
       expect(result.current.memberSearchTerm).toBe('搜尋')
       expect(result.current.showMemberDropdown).toBe(false)
 
-      act(() => {
-        vi.advanceTimersByTime(50)
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+        await Promise.resolve()
+        await Promise.resolve()
       })
+
       expect(result.current.showMemberDropdown).toBe(true)
+      expect(result.current.filteredMembers).toEqual(searchHits)
 
       vi.useRealTimers()
     })
@@ -663,7 +727,13 @@ describe('useBookingForm', () => {
         if (table === 'members') {
           return {
             select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: mockMembers, error: null }),
               eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
+                  })
+                }),
                 order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
               })
             })
@@ -740,7 +810,13 @@ describe('useBookingForm', () => {
         if (table === 'members') {
           return {
             select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: mockMembers, error: null }),
               eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
+                  })
+                }),
                 order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
               })
             })
@@ -795,7 +871,13 @@ describe('useBookingForm', () => {
         if (table === 'members') {
           return {
             select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: mockMembers, error: null }),
               eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
+                  })
+                }),
                 order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
               })
             })
@@ -816,10 +898,23 @@ describe('useBookingForm', () => {
       expect(supabase.from).toHaveBeenCalledWith('coach_time_off')
     })
 
-    it('fetchAllData 應查詢 members 並更新 state', async () => {
+    it('fetchAllData 有已選會員時應依 id 查詢 members', async () => {
       const mockBoats: any[] = []
       const mockCoaches: any[] = []
       const mockMembers = [{ id: 'm1', name: '張三', nickname: null, phone: null }]
+      const initial: any = {
+        boat_id: 1,
+        duration_min: 60,
+        notes: '',
+        requires_driver: false,
+        activity_types: [],
+        is_coach_practice: false,
+        start_at: '2026-02-10T10:00:00',
+        coaches: [],
+        member_id: 'm1',
+        booking_members: [],
+        contact_name: '張三',
+      }
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         if (table === 'boats') {
@@ -852,9 +947,67 @@ describe('useBookingForm', () => {
         if (table === 'members') {
           return {
             select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: mockMembers, error: null }),
               eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
+                  })
+                }),
                 order: vi.fn().mockResolvedValue({ data: mockMembers, error: null })
               })
+            })
+          } as any
+        }
+        return {} as any
+      })
+
+      const { result } = renderHook(() => useBookingForm({ initialBooking: initial }))
+
+      await act(async () => {
+        await result.current.fetchAllData()
+      })
+
+      expect(result.current.members).toEqual(mockMembers)
+      expect(supabase.from).toHaveBeenCalledWith('members')
+    })
+
+    it('fetchAllData 無已選會員時不應全表抓 members', async () => {
+      const mockBoats: any[] = []
+      const mockCoaches: any[] = []
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'boats') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: mockBoats, error: null })
+              })
+            })
+          } as any
+        }
+        if (table === 'coaches') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: mockCoaches, error: null })
+              })
+            })
+          } as any
+        }
+        if (table === 'coach_time_off') {
+          return {
+            select: vi.fn().mockReturnValue({
+              lte: vi.fn().mockReturnValue({
+                gte: vi.fn().mockResolvedValue({ data: [], error: null })
+              })
+            })
+          } as any
+        }
+        if (table === 'members') {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: [], error: null }),
             })
           } as any
         }
@@ -867,8 +1020,8 @@ describe('useBookingForm', () => {
         await result.current.fetchAllData()
       })
 
-      expect(result.current.members).toEqual(mockMembers)
-      expect(supabase.from).toHaveBeenCalledWith('members')
+      expect(result.current.members).toEqual([])
+      expect(supabase.from).not.toHaveBeenCalledWith('members')
     })
   })
 

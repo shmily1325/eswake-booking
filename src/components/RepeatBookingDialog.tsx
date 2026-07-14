@@ -5,9 +5,15 @@ import { logAction } from '../utils/auditLog'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import { normalizeFilledByForSave } from '../utils/filledByHelper'
-import { useBookingConflict } from '../hooks/useBookingConflict'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { isFacility } from '../utils/facility'
+import { checkGlobalRestriction } from '../utils/restriction'
+import {
+  prefetchConflictData,
+  checkBoatUnavailableFromCache,
+  checkBoatConflictFromCache,
+  checkCoachConflictFromCache,
+} from '../utils/bookingConflict'
 import { useToast } from './ui'
 import { BoatSelector } from './booking/BoatSelector'
 import { MemberSelector } from './booking/MemberSelector'
@@ -44,7 +50,6 @@ export function RepeatBookingDialog({
 }: RepeatBookingDialogProps) {
   const { isMobile } = useResponsive()
   const toast = useToast()
-  const { checkConflict } = useBookingConflict()
 
   // 防止背景滾動
   useEffect(() => {
@@ -244,6 +249,39 @@ export function RepeatBookingDialog({
         .eq('id', selectedBoatId)
         .single()
       const boatName = boatData?.name || '未知船隻'
+      const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
+      const isBoatFacility = isFacility(boatName)
+      const cleanupMinutes = isBoatFacility ? 0 : 15
+
+      // 一次預查衝突資料（與 BatchEdit 同款）；逐日改記憶體檢查，判定與訊息格式對齊 useBookingConflict
+      const bookingsForPrefetch = datesToCreate.map(dateTime => {
+        const year = dateTime.getFullYear()
+        const month = (dateTime.getMonth() + 1).toString().padStart(2, '0')
+        const day = dateTime.getDate().toString().padStart(2, '0')
+        const hours = dateTime.getHours().toString().padStart(2, '0')
+        const minutes = dateTime.getMinutes().toString().padStart(2, '0')
+        return {
+          id: 0,
+          dateStr: `${year}-${month}-${day}`,
+          startTime: `${hours}:${minutes}`,
+          durationMin,
+          boatId: selectedBoatId,
+          boatName,
+          coachIds: selectedCoaches,
+        }
+      })
+      const conflictData = await prefetchConflictData(bookingsForPrefetch)
+
+      const globalRestrictionCache = new Map<string, Awaited<ReturnType<typeof checkGlobalRestriction>>>()
+      const getCachedGlobalRestriction = async (d: string, t: string, dur: number) => {
+        const key = `${d}\u0000${t}\u0000${dur}`
+        let cached = globalRestrictionCache.get(key)
+        if (!cached) {
+          cached = await checkGlobalRestriction(d, t, undefined, dur)
+          globalRestrictionCache.set(key, cached)
+        }
+        return cached
+      }
 
       // 逐個日期循環建立
       for (const dateTime of datesToCreate) {
@@ -257,27 +295,62 @@ export function RepeatBookingDialog({
         const displayDate = `${dateStr} ${timeStr}`
         const newStartAt = `${dateStr}T${timeStr}:00`
 
-        // 進行完整的衝突檢查（就像普通預約一樣）
-        const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
-        const conflictResult = await checkConflict({
-          boatId: selectedBoatId,
-          boatName,
-          date: dateStr,
-          startTime: timeStr,
-          durationMin,
-          coachIds: selectedCoaches,
-          coachesMap,
-          excludeBookingId: undefined
-        })
-
-        if (conflictResult.hasConflict) {
+        // 0. 全站預約限制（與 useBookingConflict 相同）
+        const restriction = await getCachedGlobalRestriction(dateStr, timeStr, durationMin)
+        if (restriction.isRestricted) {
           results.skipped.push({
             date: displayDate,
-            reason: conflictResult.reason || '時間衝突'
+            reason: restriction.reason?.trim() ? restriction.reason : '此時段暫停受理預約',
           })
           continue
         }
-        
+
+        // 1. 船隻維修／停用
+        const availability = checkBoatUnavailableFromCache(
+          selectedBoatId, dateStr, timeStr, durationMin,
+          conflictData.unavailableRecords
+        )
+        if (availability.isUnavailable) {
+          results.skipped.push({
+            date: displayDate,
+            reason: `${boatName} 不可用：${availability.reason || '維修保養中'}`,
+          })
+          continue
+        }
+
+        // 2. 船隻時間衝突
+        const boatConflict = checkBoatConflictFromCache(
+          selectedBoatId, dateStr, timeStr, durationMin,
+          isBoatFacility, 0, boatName,
+          conflictData.boatBookings
+        )
+        if (boatConflict.hasConflict) {
+          results.skipped.push({
+            date: displayDate,
+            reason: boatConflict.reason || '時間衝突',
+          })
+          continue
+        }
+
+        // 3. 教練衝突
+        if (selectedCoaches.length > 0) {
+          const coachConflict = checkCoachConflictFromCache(
+            selectedCoaches, dateStr, timeStr, durationMin, 0,
+            conflictData.coachBookings, conflictData.driverBookings,
+            coachesMap
+          )
+          if (coachConflict.hasConflict) {
+            const conflictMessages = coachConflict.conflictCoaches
+              .map(c => `${c.coachName}: ${c.reason}`)
+              .join('\n')
+            results.skipped.push({
+              date: displayDate,
+              reason: `教練衝突：\n${conflictMessages}`,
+            })
+            continue
+          }
+        }
+
         // 創建預約
         const bookingToInsert = {
           boat_id: selectedBoatId,
@@ -286,7 +359,7 @@ export function RepeatBookingDialog({
           contact_phone: null,
           start_at: newStartAt,
           duration_min: durationMin,
-          cleanup_minutes: isSelectedBoatFacility ? 0 : 15,     // 設施不需清理時間，船隻需要15分鐘
+          cleanup_minutes: cleanupMinutes,
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           notes: notes || null,
           requires_driver: requiresDriver,
@@ -309,6 +382,27 @@ export function RepeatBookingDialog({
             reason: insertError?.message || '未知錯誤'
           })
           continue
+        }
+
+        // 後續日期記憶體檢查需看到本批已建立的預約（等同原本逐日 checkConflict 會查到 DB 新列）
+        conflictData.boatBookings.push({
+          id: newBooking.id,
+          boat_id: selectedBoatId,
+          start_at: newStartAt,
+          duration_min: durationMin,
+          cleanup_minutes: cleanupMinutes,
+          contact_name: finalStudentName,
+        })
+        for (const coachId of selectedCoaches) {
+          conflictData.coachBookings.push({
+            coach_id: coachId,
+            bookings: {
+              id: newBooking.id,
+              start_at: newStartAt,
+              duration_min: durationMin,
+              contact_name: finalStudentName,
+            },
+          })
         }
 
         // 並行：coaches 寫入、members 寫入、時間表查詢三者互相獨立
