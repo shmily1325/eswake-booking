@@ -1,6 +1,6 @@
-// 儲值餘額卡（低彩度色階；點擊開明細）
+// 儲值餘額卡（低彩度色階；點擊開明細；六卡等重）
 
-import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { LIFF_THEME, LIFF_TYPE, liffMetricUnit } from '../liffUiStyles'
 
 export type BalanceTone = {
   color: string
@@ -26,7 +26,6 @@ export function BalanceCard({
   onClick,
 }: BalanceCardProps) {
   const displayValue = value || 0
-  const formattedValue = unit === '元' ? `$${displayValue}` : `${displayValue}分`
 
   return (
     <button
@@ -69,15 +68,43 @@ export function BalanceCard({
       </div>
       <div
         style={{
-          fontSize: unit === '元' ? LIFF_TYPE.display + 2 : LIFF_TYPE.display,
-          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'baseline',
           color: tone.color,
-          fontVariantNumeric: 'tabular-nums',
-          letterSpacing: '-0.02em',
-          lineHeight: 1.15,
+          lineHeight: 1.1,
         }}
       >
-        {formattedValue}
+        {unit === '元' ? (
+          <>
+            <span style={{ ...liffMetricUnit, marginLeft: 0, marginRight: 2, color: tone.color, opacity: 0.7 }}>
+              $
+            </span>
+            <span
+              style={{
+                fontSize: LIFF_TYPE.display + 2,
+                fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '-0.03em',
+              }}
+            >
+              {displayValue}
+            </span>
+          </>
+        ) : (
+          <>
+            <span
+              style={{
+                fontSize: LIFF_TYPE.display + 2,
+                fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '-0.03em',
+              }}
+            >
+              {displayValue}
+            </span>
+            <span style={{ ...liffMetricUnit, color: tone.color, opacity: 0.65 }}>分</span>
+          </>
+        )}
       </div>
     </button>
   )

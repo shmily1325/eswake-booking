@@ -25,6 +25,7 @@ export function BaoHub() {
     }
   }, [user, userIsAdmin, navigate])
 
+
   const baoFeatures: Array<{
     section: string
     items: Array<{
@@ -59,13 +60,6 @@ export function BaoHub() {
         { title: '船隻管理', icon: '🚤', link: '/boats' },
         { title: '商品管理', icon: '📦', link: '/products' },
         { title: 'ES SHOP', icon: '🛒', link: getPublicShopHomeUrl() },
-      ],
-    },
-    {
-      section: '系統設定',
-      items: [
-        { title: '匯出', icon: '💾', link: '/backup' },
-        { title: 'LINE 綁定狀態', icon: '📱', link: '/line-binding' },
       ],
     },
   ]
@@ -256,6 +250,7 @@ export function BaoHub() {
             </div>
           </div>
         ))}
+
 
         <Footer />
       </div>

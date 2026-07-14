@@ -552,7 +552,7 @@ export function LiffMyBookings() {
       />
 
       {/* Content（順序：預約 → 儲值 → 商品 → 會員） */}
-      <div style={{ padding: '20px 18px 8px' }}>
+      <div style={{ padding: '22px 18px 10px' }}>
         {member && expiryBannerLines.length > 0 && activeTab !== 'profile' && (
           <LiffExpiryBanner
             lines={expiryBannerLines}
@@ -562,39 +562,41 @@ export function LiffMyBookings() {
             }}
           />
         )}
-        {activeTab === 'bookings' && (
-          <BookingsList
-            bookings={bookings}
-            loading={bookingsLoading}
-            viewerMemberName={member?.nickname?.trim() || member?.name?.trim() || ''}
-            formatDate={formatDate}
-            getArrivalTime={getArrivalTime}
-            getStartTime={getStartTime}
-            getEndTime={getEndTime}
-          />
-        )}
+        <div key={activeTab} className="liff-tab-panel">
+          {activeTab === 'bookings' && (
+            <BookingsList
+              bookings={bookings}
+              loading={bookingsLoading}
+              viewerMemberName={member?.nickname?.trim() || member?.name?.trim() || ''}
+              formatDate={formatDate}
+              getArrivalTime={getArrivalTime}
+              getStartTime={getStartTime}
+              getEndTime={getEndTime}
+            />
+          )}
 
-        {activeTab === 'orders' && (
-          <ShopOrdersList
-            orders={shopOrders}
-            loading={loadingShopOrders}
-            onRefresh={member ? refreshShopOrders : undefined}
-          />
-        )}
+          {activeTab === 'orders' && (
+            <ShopOrdersList
+              orders={shopOrders}
+              loading={loadingShopOrders}
+              onRefresh={member ? refreshShopOrders : undefined}
+            />
+          )}
 
-        {activeTab === 'balance' && member && (
-          <BalanceView
-            member={member}
-            onCategoryClick={handleCategoryClick}
-          />
-        )}
+          {activeTab === 'balance' && member && (
+            <BalanceView
+              member={member}
+              onCategoryClick={handleCategoryClick}
+            />
+          )}
 
-        {activeTab === 'profile' && memberEnriching && (
-          <TabPanelSkeleton rows={5} />
-        )}
-        {activeTab === 'profile' && !memberEnriching && member && (
-          <MemberProfileView member={member} />
-        )}
+          {activeTab === 'profile' && memberEnriching && (
+            <TabPanelSkeleton rows={5} />
+          )}
+          {activeTab === 'profile' && !memberEnriching && member && (
+            <MemberProfileView member={member} />
+          )}
+        </div>
       </div>
 
       {/* 交易記錄彈出框 */}

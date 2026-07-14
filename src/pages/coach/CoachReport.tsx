@@ -7,7 +7,7 @@ import { CoachReportFormDialog } from '../../components/CoachReportFormDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getCardStyle } from '../../styles/designSystem'
-import { Button, useToast, ToastContainer } from '../../components/ui'
+import { useToast, ToastContainer } from '../../components/ui'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
 import { getDisplayContactName } from '../../utils/bookingFormat'
@@ -23,7 +23,6 @@ import {
   filterUnreportedBookings,
   fetchBookingRelations
 } from '../../utils/bookingDataHelpers'
-import { fetchAllByBookingIds } from '../../utils/supabasePaginate'
 import { getCoachReportStatus, getCoachReportType, isFullyReported } from '../../utils/coachReportStatus'
 import {
   COACH_REPORT_USER_ERRORS,
@@ -92,7 +91,6 @@ export function CoachReport({
   
   // 預約列表
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [allBookings, setAllBookings] = useState<Booking[]>([]) // 用於統計
   const [loading, setLoading] = useState(true) // 初始為 true 避免閃爍
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null) // 最後刷新時間
   
@@ -138,7 +136,6 @@ export function CoachReport({
     // 換條件時先清空舊清單，避免新資料載入前畫面殘留前條件的列表
     // 注意：靜默刷新（auto-refresh）的 useEffect 不會走到這裡，所以不會閃
     setBookings([])
-    setAllBookings([])
     setAvailableCoaches([])
     loadBookings()
   }, [selectedDate, selectedCoachId, viewMode, autoFilterByUser, userCoachId])
@@ -238,7 +235,6 @@ export function CoachReport({
       const bookingIds = validBookings.map(b => b.id)
       if (bookingIds.length === 0) {
         setBookings([])
-        setAllBookings([])
         setAvailableCoaches([])
         return
       }
@@ -249,18 +245,8 @@ export function CoachReport({
 
       let filteredBookings = bookingsWithRelations
       
-      // 保存所有預約用於統計（按日期模式時）
+      // 按日期模式時更新可用教練列表
       if (viewMode === 'date') {
-        let statsBookings = bookingsWithRelations
-        if (selectedCoachId !== 'all') {
-          statsBookings = statsBookings.filter((booking: any) => {
-            const isCoach = booking.coaches.some((c: any) => c.id === selectedCoachId)
-            const isDriver = booking.drivers.some((d: any) => d.id === selectedCoachId)
-            return isCoach || isDriver
-          })
-        }
-        setAllBookings(statsBookings)
-        
         // 使用輔助函數提取當天有預約的教練
         const availableCoachList = extractAvailableCoaches(bookingsWithRelations)
         setAvailableCoaches(availableCoachList)
@@ -270,7 +256,6 @@ export function CoachReport({
           setSelectedCoachId('all')
         }
       } else {
-        setAllBookings([])
         // 在自動篩選模式下，只顯示當前教練
         if (autoFilterByUser && userCoachId) {
           const currentCoach = coaches.find(c => c.id === userCoachId)
@@ -955,209 +940,6 @@ export function CoachReport({
     setSelectedDate(`${year}-${month}-${day}`)
   }
 
-  // 導出當日回報為 CSV
-  const exportToCSV = async () => {
-    if (allBookings.length === 0) {
-      toast.warning('沒有資料可以匯出')
-      return
-    }
-
-    // 查詢所有預約的駕駛回報記錄
-    const bookingIds = allBookings.map(b => b.id)
-    const allCoachReports = await fetchAllByBookingIds<{
-      booking_id: number
-      coach_id: string
-      driver_duration_min: number | null
-      coaches: { name: string } | null
-    }>(
-      'coach_reports',
-      'booking_id, coach_id, driver_duration_min, coaches:coach_id(name)',
-      bookingIds,
-      'id'
-    )
-
-    // 🔍 調試：顯示所有駕駛回報記錄
-    // 建立駕駛回報查找映射
-    const driverReportsMap = new Map<number, Map<string, number>>()
-    allCoachReports.forEach(report => {
-      if (!driverReportsMap.has(report.booking_id)) {
-        driverReportsMap.set(report.booking_id, new Map())
-      }
-      if (report.driver_duration_min) {
-        driverReportsMap.get(report.booking_id)!.set(report.coach_id, report.driver_duration_min)
-      }
-    })
-
-    // CSV 標題
-    const headers = [
-      '預約時間',
-      '船隻',
-      '預約人',
-      '時長(分)',
-      '教練',
-      '回報教練',
-      '參與者',
-      '駕駛',
-      '駕駛時長',
-      '備註'
-    ]
-
-    // 準備 CSV 資料
-    const rows: string[][] = []
-
-    allBookings.forEach(booking => {
-      const startTime = extractDate(booking.start_at) + ' ' + extractTime(booking.start_at)
-      const boatName = booking.boats?.name || ''
-      const contactName = booking.contact_name || ''
-      const durationMin = booking.duration_min.toString()
-      const coachNames = (booking.coaches || []).map(c => c.name).join('、') || ''
-      const notes = (booking.notes || '').replace(/[\n\r]/g, ' ') // 移除換行符
-      
-      // 獲取所有駕駛的回報時長（只顯示應該回報駕駛的人）
-      const driverReports = driverReportsMap.get(booking.id)
-      let reportedDriverName = ''
-      let reportedDriverDuration = ''
-      
-      if (driverReports && driverReports.size > 0) {
-        // 過濾掉不該有的駕駛回報（例如教練在有明確駕駛員後不該回報駕駛）
-        const validDriverReports = new Map<string, number>()
-        driverReports.forEach((duration, coachId) => {
-          const reportType = getCoachReportType(booking, coachId)
-          const shouldReportDriver = reportType === 'driver' || reportType === 'both'
-          if (shouldReportDriver) {
-            validDriverReports.set(coachId, duration)
-          }
-        })
-        
-        if (validDriverReports.size > 0) {
-          // 如果有多個人回報駕駛時長，顯示每個人的名字和時長
-          if (validDriverReports.size > 1) {
-            const driverNames: string[] = []
-            const durations: string[] = []
-            validDriverReports.forEach((duration, coachId) => {
-              // 從教練或駕駛列表中查找名字
-              const coachName = booking.coaches?.find(c => c.id === coachId)?.name ||
-                              booking.drivers?.find(d => d.id === coachId)?.name ||
-                              '未知'
-              driverNames.push(coachName)
-              durations.push(`${duration}分`)
-            })
-            reportedDriverName = driverNames.join('、')
-            reportedDriverDuration = durations.join('、')
-          } else {
-            // 只有一個人回報，分別顯示名字和時長
-            const firstEntry = Array.from(validDriverReports.entries())[0]
-            const coachId = firstEntry[0]
-            const duration = firstEntry[1]
-            const coachName = booking.coaches?.find(c => c.id === coachId)?.name ||
-                            booking.drivers?.find(d => d.id === coachId)?.name ||
-                            '未知'
-            reportedDriverName = coachName
-            reportedDriverDuration = `${duration}分`
-          }
-        }
-      }
-
-      // 如果有參與者記錄，每個參與者一行
-      if (booking.participants && booking.participants.length > 0) {
-        booking.participants.forEach((p, index) => {
-          const paymentMethodLabel = PAYMENT_METHODS.find(pm => pm.value === p.payment_method)?.label || p.payment_method
-          const lessonTypeLabel = LESSON_TYPES.find(lt => lt.value === p.lesson_type)?.label || p.lesson_type
-          
-          // 組合參與者資訊：姓名(時長、付款方式、課程類型)
-          const participantInfo = `${p.participant_name}(${p.duration_min}分、${paymentMethodLabel}、${lessonTypeLabel})`
-          
-          // 獲取回報教練名字 - 從 booking.coaches 或 booking.drivers 中找
-          let reportCoach = ''
-          if (p.coach_id) {
-            const coach = booking.coaches?.find(c => c.id === p.coach_id) || 
-                         booking.drivers?.find(d => d.id === p.coach_id)
-            reportCoach = coach?.name || ''
-          }
-          
-          // 第一個參與者顯示完整資訊，後續參與者只顯示參與者資訊
-          if (index === 0) {
-            rows.push([
-              startTime,
-              boatName,
-              contactName,
-              durationMin,
-              coachNames,
-              reportCoach,
-              participantInfo,
-              reportedDriverName,
-              reportedDriverDuration,
-              notes
-            ])
-          } else {
-            rows.push([
-              '',  // 空白日期
-              '',  // 空白船隻
-              '',  // 空白預約人
-              '',  // 空白時長
-              '',  // 空白教練
-              reportCoach,  // 回報教練
-              participantInfo,
-              '',  // 空白駕駛
-              '',  // 空白駕駛時長
-              ''   // 空白備註
-            ])
-          }
-        })
-      } else {
-        // 沒有參與者記錄（未回報或只有駕駛回報）
-        // 檢查是否有駕駛回報（包括明確駕駛和隱性駕駛）
-        const hasDriverReport = reportedDriverName !== ''
-        
-        const reportStatus = hasDriverReport ? '已回報駕駛' : '未回報'
-        
-        // 駕駛名稱列表（用於顯示）
-        const driverNames = (booking.drivers || []).map(d => d.name).join('、') || ''
-        
-        rows.push([
-          startTime,
-          boatName,
-          contactName,
-          durationMin,
-          coachNames,
-          reportedDriverName || '',  // 回報人（駕駛）
-          reportStatus,
-          driverNames || reportedDriverName,  // 駕駛欄位
-          reportedDriverDuration,
-          notes
-        ])
-      }
-    })
-
-    // 轉換為 CSV 字符串
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => 
-        row.map(cell => {
-          // 處理包含逗號或引號的內容
-          const cellStr = String(cell)
-          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
-            return `"${cellStr.replace(/"/g, '""')}"`
-          }
-          return cellStr
-        }).join(',')
-      )
-    ].join('\n')
-
-    // 添加 BOM 以支持 Excel 正確顯示中文
-    const BOM = '\uFEFF'
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    
-    link.setAttribute('href', url)
-    link.setAttribute('download', `回報記錄_${selectedDate}_${selectedCoachId === 'all' ? '全部教練' : availableCoaches.find(c => c.id === selectedCoachId)?.name || '未知'}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
   // 統計數據計算已移至需要時再計算（目前 UI 中未顯示）
 
   return (
@@ -1370,26 +1152,6 @@ export function CoachReport({
             </>
           )}
 
-          {/* 匯出按鈕 - 只在日期模式且桌面版顯示 */}
-          {viewMode === 'date' && !isMobile && (
-            <div style={{
-              marginTop: '16px',
-              paddingTop: '16px',
-              borderTop: '1px solid #eee',
-              display: 'flex',
-              justifyContent: 'flex-end'
-            }}>
-              <Button
-                variant="success"
-                size="medium"
-                onClick={exportToCSV}
-                icon={<span>📊</span>}
-                data-track="coach_report_export"
-              >
-                匯出回報記錄
-              </Button>
-            </div>
-          )}
         </div>
 
 

@@ -7,7 +7,6 @@ import { Footer } from '../../components/Footer'
 import { StatisticsTab } from '../../components/StatisticsTab'
 import { PendingDeductionItem } from '../../components/PendingDeductionItem'
 import { DeductionDetails } from '../../components/DeductionDetails'
-import { ExportReportButton } from '../../components/ExportReportButton'
 import { DateRangePicker } from '../../components/DateRangePicker'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
@@ -1109,7 +1108,7 @@ export function CoachAdmin() {
               ...getCardStyle(isMobile),
               marginBottom: '24px'
             }}>
-              {/* 查詢期間 + 匯出按鈕 */}
+              {/* 查詢期間 */}
               <div style={{ 
                 display: 'flex', 
                 alignItems: 'flex-end',
@@ -1127,15 +1126,6 @@ export function CoachAdmin() {
                     simplified={true}
                   />
                 </div>
-                
-                {/* 匯出報表按鈕 - 只在桌面版顯示 */}
-                {!isMobile && (
-                  <ExportReportButton 
-                    records={completedReports}
-                    dateRange={selectedDate.length === 7 ? selectedDate : selectedDate}
-                    isMobile={isMobile}
-                  />
-                )}
               </div>
             </div>
 

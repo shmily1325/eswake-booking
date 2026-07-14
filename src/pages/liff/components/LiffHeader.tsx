@@ -1,4 +1,4 @@
-// LIFF 頁首：品牌 lockup 為主視覺；問候次之；刷新用 emoji 確保可見
+// LIFF 頁首：品牌舞台；名字主、歡迎回來次；刷新用 emoji
 
 import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
@@ -19,15 +19,16 @@ export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: L
     <div
       style={{
         background: ES_BRAND.headerBg,
-        padding: '22px 20px 18px',
-        paddingTop: 'calc(22px + var(--safe-area-inset-top, 0px))',
+        padding: '24px 20px 20px',
+        paddingTop: 'calc(24px + var(--safe-area-inset-top, 0px))',
         color: 'white',
         borderBottom: ES_BRAND.headerBorderBottom,
       }}
     >
       <EsBrandLockup
         subtitle={ES_BRAND.memberAreaLabel}
-        logoSize={40}
+        logoSize={42}
+        brandFontSize={17}
         trailing={(
           <button
             type="button"
@@ -60,17 +61,33 @@ export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: L
             </span>
           </button>
         )}
-        style={{ marginBottom: 10 }}
+        style={{ marginBottom: 14 }}
       />
-      <div
-        style={{
-          fontSize: 15,
-          fontWeight: 500,
-          letterSpacing: '0.01em',
-          color: 'rgba(255,255,255,0.88)',
-        }}
-      >
-        {hiName ? `${hiName} 您好` : '您好'}
+      <div>
+        {hiName ? (
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 500,
+              letterSpacing: '-0.01em',
+              color: 'rgba(255,255,255,0.9)',
+              lineHeight: 1.3,
+            }}
+          >
+            {hiName}
+          </div>
+        ) : null}
+        <div
+          style={{
+            marginTop: hiName ? 4 : 0,
+            fontSize: 13,
+            fontWeight: 400,
+            color: 'rgba(255,255,255,0.62)',
+            lineHeight: 1.35,
+          }}
+        >
+          歡迎回來
+        </div>
       </div>
     </div>
   )

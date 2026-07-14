@@ -20,6 +20,8 @@ import {
 
 const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
+const cardShadow = designSystem.shadows.elevation[1]
+const cardShadowHover = designSystem.shadows.elevation[2]
 
 // 擴展 Member 類型，加入最後交易日期、更新日期與 LINE 綁定（衍生欄位）
 interface MemberWithLastTransaction extends Member {
@@ -257,25 +259,26 @@ export function MemberTransaction() {
 
   return (
     <div style={{
-      padding: isMobile ? '12px' : '20px',
+      padding: isMobile ? '12px 16px' : '20px',
       minHeight: '100dvh',
       background: pageBg,
       paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
     }}>
       <div style={getPageContentShellStyle(isMobile)}>
-      {/* 桌面：整段 sticky；手機：整段隨捲動，僅搜尋列單獨 sticky（見下方搜尋欄） */}
+      {/* 桌面：整段 sticky；手機：僅搜尋列 sticky */}
       <div style={{
         position: isMobile ? 'static' : 'sticky',
         top: 0,
         zIndex: isMobile ? undefined : 100,
         background: pageBg,
-        marginLeft: isMobile ? '-12px' : 0,
-        marginRight: isMobile ? '-12px' : 0,
+        marginLeft: isMobile ? '-16px' : 0,
+        marginRight: isMobile ? '-16px' : 0,
         marginTop: isMobile ? '-12px' : '-20px',
-        paddingLeft: isMobile ? '12px' : 0,
-        paddingRight: isMobile ? '12px' : 0,
+        paddingLeft: isMobile ? '16px' : 0,
+        paddingRight: isMobile ? '16px' : 0,
         paddingTop: isMobile ? '12px' : '20px',
         paddingBottom: '12px',
+        borderBottom: isMobile ? undefined : `1px solid ${designSystem.colors.border.light}`,
       }}>
         <PageHeader 
           title="會員儲值" 
@@ -301,6 +304,7 @@ export function MemberTransaction() {
             paddingBottom: '10px',
             background: pageBg,
             boxShadow: designSystem.shadows.xs,
+            borderBottom: `1px solid ${designSystem.colors.border.light}`,
           } : {}),
         }}>
           <div style={{ flex: 1, position: 'relative' }}>
@@ -381,7 +385,7 @@ export function MemberTransaction() {
           padding: isMobile ? '16px' : '20px',
           marginBottom: '16px',
           border: cardBorder,
-          boxShadow: designSystem.shadows.xs,
+          boxShadow: cardShadow,
         }}>
           <div style={{
             display: 'grid',
@@ -391,25 +395,25 @@ export function MemberTransaction() {
           }}>
             <div>
               <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總儲值</div>
-              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 650, color: designSystem.colors.text.primary }}>
+              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                 ${stats.totalBalance.toLocaleString()}
               </div>
             </div>
             <div>
               <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總VIP票券</div>
-              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 650, color: designSystem.colors.text.primary }}>
+              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                 ${stats.totalVipVoucher.toLocaleString()}
               </div>
             </div>
             <div>
               <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總G23船券</div>
-              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 650, color: designSystem.colors.text.primary }}>
+              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                 {stats.totalG23.toLocaleString()}分
               </div>
             </div>
             <div>
               <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總G21/黑豹</div>
-              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 650, color: designSystem.colors.text.primary }}>
+              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                 {stats.totalG21.toLocaleString()}分
               </div>
             </div>
@@ -446,7 +450,7 @@ export function MemberTransaction() {
             >
               {mobileFiltersExpanded
                 ? '收合篩選與排序'
-                : `篩選與排序（會員類型、LINE、排序）${filtersActive ? ' · 已套用' : ''}`}
+                : `篩選與排序（類型、LINE、排序）${filtersActive ? ' · 已套用' : ''}`}
             </button>
               )
             })()}
@@ -660,27 +664,22 @@ export function MemberTransaction() {
         )}
       </div>
 
-      {/* 篩選／搜尋結果提示（僅桌面：手機於篩選區塊內顯示筆數，避免重複） */}
+      {/* 桌面結果筆數（與手機同句式，較安靜） */}
       {!isMobile && (searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
         <div style={{
           fontSize: '13px',
           color: designSystem.colors.text.secondary,
           marginBottom: '12px',
-          padding: '8px 12px',
-          background: designSystem.colors.background.card,
-          borderRadius: designSystem.borderRadius.md,
-          border: cardBorder,
-          boxShadow: designSystem.shadows.xs,
+          textAlign: 'center',
         }}>
-          {searchTerm ? `搜尋「${searchTerm}」` : '篩選結果'}
-          {' '}找到 <strong>{filteredMembers.length}</strong> 位會員
+          {searchTerm ? `「${searchTerm}」` : ''} 找到 <strong>{filteredMembers.length}</strong> 位會員
         </div>
       )}
 
       {/* 會員列表 */}
       <div style={{ 
         display: 'grid',
-        gap: '16px'
+        gap: '20px'
       }}>
         {loading ? (
           // 骨架屏
@@ -693,7 +692,7 @@ export function MemberTransaction() {
                   borderRadius: designSystem.borderRadius.lg,
                   padding: isMobile ? '14px 16px' : '18px 20px',
                   border: cardBorder,
-                  boxShadow: designSystem.shadows.xs,
+                  boxShadow: cardShadow,
                 }}
               >
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '12px' }}>
@@ -720,8 +719,8 @@ export function MemberTransaction() {
           <div style={{ ...getEmptyStateStyle(isMobile), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
             <div>
               {(searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all')
-                ? '沒有找到符合條件的會員'
-                : '暫無會員資料'}
+                ? '找不到符合的會員'
+                : '尚無會員資料'}
             </div>
             {(searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
               <button
@@ -745,19 +744,19 @@ export function MemberTransaction() {
                 style={{
                   background: designSystem.colors.background.card,
                   borderRadius: designSystem.borderRadius.lg,
-                  padding: isMobile ? '14px 16px' : '18px 20px',
-                  boxShadow: designSystem.shadows.xs,
+                  padding: isMobile ? '16px 16px' : '20px 22px',
+                  boxShadow: cardShadow,
                   cursor: 'pointer',
                   transition: designSystem.transitions.normal,
                   border: cardBorder,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = designSystem.colors.text.secondary
-                  e.currentTarget.style.boxShadow = designSystem.shadows.sm
+                  e.currentTarget.style.boxShadow = cardShadowHover
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = designSystem.colors.border.light
-                  e.currentTarget.style.boxShadow = designSystem.shadows.xs
+                  e.currentTarget.style.boxShadow = cardShadow
                 }}
                 onTouchStart={(e) => {
                   e.currentTarget.style.background = designSystem.colors.background.main
@@ -770,7 +769,7 @@ export function MemberTransaction() {
                 }}
               >
                 {/* 會員基本資訊 */}
-                <div style={{ marginBottom: '12px' }}>
+                <div style={{ marginBottom: '14px' }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -780,17 +779,17 @@ export function MemberTransaction() {
                   }}>
                     <h3 style={{
                       margin: 0,
-                      fontSize: isMobile ? '17px' : '19px',
-                      fontWeight: 700,
+                      fontSize: isMobile ? '18px' : '20px',
+                      fontWeight: 750,
                       color: designSystem.colors.text.primary,
-                      letterSpacing: '-0.02em',
+                      letterSpacing: '-0.025em',
                     }}>
                       {member.nickname || member.name}
                     </h3>
                     {member.nickname && (
                       <span style={{
                         fontSize: isMobile ? '12px' : '13px',
-                        color: designSystem.colors.text.secondary
+                        color: designSystem.colors.text.disabled
                       }}>
                         ({member.name})
                       </span>
@@ -823,8 +822,8 @@ export function MemberTransaction() {
                     )}
                     {member.phone && (
                       <span style={{
-                        fontSize: '13px',
-                        color: designSystem.colors.text.secondary,
+                        fontSize: '12px',
+                        color: designSystem.colors.text.disabled,
                       }}>
                         {member.phone}
                       </span>
@@ -863,7 +862,7 @@ export function MemberTransaction() {
                   {(member.lastTransactionDate || member.lastTransactionCreatedAt) && (
                     <div style={{
                       fontSize: '12px',
-                      color: designSystem.colors.text.secondary,
+                      color: designSystem.colors.text.disabled,
                       marginTop: '6px',
                       display: 'flex',
                       gap: '12px',
@@ -892,60 +891,45 @@ export function MemberTransaction() {
                 }}>
                     <div>
                       <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>儲值餘額</div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                         ${(member.balance || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>VIP票券</div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                         ${(member.vip_voucher_amount || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>指定課</div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                         {(member.designated_lesson_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G23船券</div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                         {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>黑豹/G21</div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                         {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>贈送大船</div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                         {(member.gift_boat_hours || 0).toLocaleString()}分
                       </div>
                     </div>
-                  </div>
-                  <div style={{
-                    marginTop: '12px',
-                    paddingTop: '10px',
-                    borderTop: `1px solid ${designSystem.colors.border.light}`,
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                  }}>
-                    <span style={{
-                      fontSize: '13px',
-                      fontWeight: 650,
-                      color: designSystem.colors.text.primary,
-                    }}>
-                      記帳 →
-                    </span>
                   </div>
                 </div>
               </div>

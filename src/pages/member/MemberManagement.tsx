@@ -28,6 +28,8 @@ import {
 
 const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
+const cardShadow = designSystem.shadows.elevation[1]
+const cardShadowHover = designSystem.shadows.elevation[2]
 
 function membershipTypeBadge(type: string): { label: string; variant: 'info' | 'warning' | 'default' } {
   switch (type) {
@@ -556,7 +558,7 @@ export function MemberManagement() {
   if (loading) {
     return (
       <div style={{ 
-        padding: isMobile ? '12px' : '20px',
+        padding: isMobile ? '12px 16px' : '20px',
         minHeight: '100dvh',
         background: pageBg,
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
@@ -601,7 +603,7 @@ export function MemberManagement() {
               borderRadius: designSystem.borderRadius.lg,
               padding: isMobile ? '14px' : '18px 20px',
               border: cardBorder,
-              boxShadow: designSystem.shadows.xs,
+              boxShadow: cardShadow,
             }}>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
                 <div style={{ width: '110px', height: '20px', background: designSystem.colors.border.light, borderRadius: '4px' }} />
@@ -631,11 +633,11 @@ export function MemberManagement() {
       paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
     }}>
       <div style={getPageContentShellStyle(isMobile)}>
-      {/* PageHeader + 篩選列一起 sticky */}
+      {/* 桌面：整段 sticky；手機：僅搜尋列 sticky */}
       <div style={{
-        position: 'sticky',
+        position: isMobile ? 'static' : 'sticky',
         top: 0,
-        zIndex: 100,
+        zIndex: isMobile ? undefined : 100,
         background: pageBg,
         marginLeft: isMobile ? '-16px' : 0,
         marginRight: isMobile ? '-16px' : 0,
@@ -644,6 +646,7 @@ export function MemberManagement() {
         paddingRight: isMobile ? '16px' : 0,
         paddingTop: isMobile ? '12px' : '20px',
         paddingBottom: '12px',
+        borderBottom: `1px solid ${designSystem.colors.border.light}`,
       }}>
         <PageHeader 
           title="會員管理" 
@@ -658,7 +661,16 @@ export function MemberManagement() {
           display: 'flex',
           gap: '12px',
           marginBottom: '12px',
-          alignItems: 'center'
+          alignItems: 'center',
+          ...(isMobile ? {
+            position: 'sticky',
+            top: 'env(safe-area-inset-top, 0px)',
+            zIndex: 90,
+            paddingTop: '6px',
+            paddingBottom: '10px',
+            background: pageBg,
+            borderBottom: `1px solid ${designSystem.colors.border.light}`,
+          } : {}),
         }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <input
@@ -750,12 +762,12 @@ export function MemberManagement() {
             {mobileFiltersExpanded && (
             <div style={{
               display: 'flex',
+              flexDirection: 'column',
               gap: '10px',
-              alignItems: 'center',
-              flexWrap: 'wrap'
+              alignItems: 'stretch',
             }}>
               {/* 會員類型下拉選單 */}
-              <div style={{ flex: '1 1 calc(50% - 5px)' }}>
+              <div style={{ width: '100%' }}>
                 <select
                   value={expiringFilter !== 'none' ? `expiring-${expiringFilter}` : membershipTypeFilter}
                   onChange={(e) => {
@@ -770,20 +782,14 @@ export function MemberManagement() {
                     }
                   }}
                   style={{
+                    ...getInputStyle(isMobile),
                     width: '100%',
-                    padding: '10px 12px',
                     paddingRight: '32px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    background: 'white',
-                    cursor: 'pointer',
                     appearance: 'none',
                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                    color: '#333',
+                    cursor: 'pointer',
                     fontWeight: (membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') ? '500' : 'normal',
                   }}
                 >
@@ -803,25 +809,19 @@ export function MemberManagement() {
               </div>
 
               {/* LINE 綁定狀態 */}
-              <div style={{ flex: '1 1 100%' }}>
+              <div style={{ width: '100%' }}>
                 <select
                   value={lineBindingFilter}
                   onChange={(e) => setLineBindingFilter(e.target.value as 'all' | 'bound' | 'unbound')}
                   style={{
+                    ...getInputStyle(isMobile),
                     width: '100%',
-                    padding: '10px 12px',
                     paddingRight: '32px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    background: 'white',
-                    cursor: 'pointer',
                     appearance: 'none',
                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                    color: '#333',
+                    cursor: 'pointer',
                     fontWeight: lineBindingFilter !== 'all' ? '500' : 'normal',
                   }}
                 >
@@ -832,25 +832,20 @@ export function MemberManagement() {
               </div>
 
               {/* 排序下拉選單 + 方向按鈕 */}
-              <div style={{ flex: '1 1 calc(50% - 5px)', display: 'flex', gap: '6px' }}>
+              <div style={{ width: '100%', display: 'flex', gap: '6px' }}>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   style={{
+                    ...getInputStyle(isMobile),
                     flex: 1,
-                    padding: '10px 12px',
+                    minWidth: 0,
                     paddingRight: '32px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    background: 'white',
-                    cursor: 'pointer',
                     appearance: 'none',
                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                    color: '#333',
+                    cursor: 'pointer',
                   }}
                 >
                   <option value="nickname">暱稱</option>
@@ -861,18 +856,11 @@ export function MemberManagement() {
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                   style={{
-                    padding: '10px 14px',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    background: 'white',
-                    cursor: 'pointer',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                    color: '#333',
+                    ...getButtonStyle('outline', 'medium', isMobile),
+                    minWidth: '44px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    minWidth: '44px',
                   }}
                   title={sortOrder === 'asc' ? '升序（點擊切換）' : '降序（點擊切換）'}
                 >
@@ -887,9 +875,9 @@ export function MemberManagement() {
                 cursor: 'pointer',
                 gap: '6px',
                 fontSize: '13px',
-                color: '#666',
+                color: designSystem.colors.text.secondary,
                 whiteSpace: 'nowrap',
-                padding: '8px 0',
+                padding: '4px 0',
               }}>
                 <input
                   type="checkbox"
@@ -906,7 +894,7 @@ export function MemberManagement() {
             {(searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') && (
               <div style={{
                 fontSize: '13px',
-                color: '#666',
+                color: designSystem.colors.text.secondary,
                 marginTop: '8px',
                 textAlign: 'center',
               }}>
@@ -1061,6 +1049,17 @@ export function MemberManagement() {
         )}
       </div>
 
+      {!isMobile && (searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') && (
+        <div style={{
+          fontSize: '13px',
+          color: designSystem.colors.text.secondary,
+          marginBottom: '12px',
+          textAlign: 'center',
+        }}>
+          {searchTerm ? `「${searchTerm}」` : ''} 找到 <strong>{filteredMembers.length}</strong> 位會員
+        </div>
+      )}
+
       {/* 到期詳情（收合式） */}
       {(expiringMemberships.length > 0 || expiringBoards.length > 0) && (
         <div style={{
@@ -1068,7 +1067,7 @@ export function MemberManagement() {
           borderRadius: designSystem.borderRadius.lg,
           marginBottom: '16px',
           border: cardBorder,
-          boxShadow: designSystem.shadows.xs,
+          boxShadow: cardShadow,
           overflow: 'hidden'
         }}>
           <button
@@ -1152,7 +1151,7 @@ export function MemberManagement() {
       {/* 會員列表 */}
       <div style={{ 
         display: 'grid',
-        gap: '16px'
+        gap: '20px'
       }}>
         {filteredMembers.length === 0 ? (
           <div style={{ ...getEmptyStateStyle(isMobile), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
@@ -1187,9 +1186,9 @@ export function MemberManagement() {
               key={member.id}
               style={{
                 background: cardBg,
-                padding: isMobile ? '14px 16px' : '18px 20px',
+                padding: isMobile ? '16px 16px' : '20px 22px',
                 borderRadius: designSystem.borderRadius.lg,
-                boxShadow: designSystem.shadows.xs,
+                boxShadow: cardShadow,
                 transition: designSystem.transitions.normal,
                 cursor: 'pointer',
                 border: cardBorder,
@@ -1202,11 +1201,11 @@ export function MemberManagement() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = designSystem.colors.text.secondary
-                e.currentTarget.style.boxShadow = designSystem.shadows.sm
+                e.currentTarget.style.boxShadow = cardShadowHover
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = designSystem.colors.border.light
-                e.currentTarget.style.boxShadow = designSystem.shadows.xs
+                e.currentTarget.style.boxShadow = cardShadow
               }}
               onTouchStart={(e) => {
                 e.currentTarget.style.background = designSystem.colors.background.main
@@ -1219,12 +1218,12 @@ export function MemberManagement() {
               }}
             >
               <div style={{ position: 'relative', minWidth: 0, maxWidth: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                    <h3 style={{ margin: 0, fontSize: isMobile ? '17px' : '19px', fontWeight: 700, color: designSystem.colors.text.primary, letterSpacing: '-0.02em' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 750, color: designSystem.colors.text.primary, letterSpacing: '-0.025em' }}>
                       {member.nickname && member.nickname.trim() ? member.nickname : member.name}
                     </h3>
                     {member.nickname && member.nickname.trim() && (
-                      <span style={{ fontSize: isMobile ? '12px' : '13px', color: designSystem.colors.text.secondary }}>
+                      <span style={{ fontSize: isMobile ? '12px' : '13px', color: designSystem.colors.text.disabled }}>
                         ({member.name})
                       </span>
                     )}
@@ -1249,8 +1248,8 @@ export function MemberManagement() {
                     display: 'flex', 
                     flexDirection: 'column',
                     gap: isMobile ? '4px' : '6px',
-                    fontSize: isMobile ? '12px' : '13px',
-                    color: designSystem.colors.text.secondary
+                    fontSize: isMobile ? '12px' : '12.5px',
+                    color: designSystem.colors.text.disabled,
                   }}>
                     <div style={{ display: 'flex', gap: isMobile ? '10px' : '16px', flexWrap: 'wrap' }}>
                       {member.phone && (

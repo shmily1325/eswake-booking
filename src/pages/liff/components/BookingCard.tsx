@@ -2,7 +2,7 @@
 
 import { isFacility } from '../../../utils/facility'
 import { displayCoachNameForTomorrowReminder } from '../../../utils/tomorrowReminderDisplay'
-import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { LIFF_THEME, LIFF_TYPE, liffMetricUnit, liffMetricValue } from '../liffUiStyles'
 import type { Booking } from '../types'
 
 interface BookingCardProps {
@@ -99,15 +99,7 @@ export function BookingCard({
             >
               抵達時間
             </div>
-            <div
-              style={{
-                fontSize: timeSize,
-                fontWeight: 700,
-                color: LIFF_THEME.ink,
-                fontVariantNumeric: 'tabular-nums',
-                letterSpacing: '-0.02em',
-              }}
-            >
+            <div style={{ ...liffMetricValue(timeSize), display: 'flex', alignItems: 'baseline' }}>
               {getArrivalTime(booking.start_at)}
             </div>
           </div>
@@ -122,15 +114,7 @@ export function BookingCard({
           >
             {isFacilityBooking ? '開始時間' : '下水時間'}
           </div>
-          <div
-            style={{
-              fontSize: timeSize,
-              fontWeight: 700,
-              color: LIFF_THEME.ink,
-              fontVariantNumeric: 'tabular-nums',
-              letterSpacing: '-0.02em',
-            }}
-          >
+          <div style={{ ...liffMetricValue(timeSize), display: 'flex', alignItems: 'baseline' }}>
             {getStartTime(booking.start_at)}
           </div>
         </div>
@@ -170,10 +154,26 @@ export function BookingCard({
           fontSize: LIFF_TYPE.body,
           color: LIFF_THEME.muted,
           marginBottom: coachNames || activityLine || booking.notes ? 6 : 0,
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 6,
+          flexWrap: 'wrap',
         }}
       >
-        {booking.duration_min} 分鐘
-        <span style={{ color: LIFF_THEME.mutedLight, marginLeft: 8 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'baseline' }}>
+          <span
+            style={{
+              fontVariantNumeric: 'tabular-nums',
+              fontWeight: 600,
+              letterSpacing: '-0.02em',
+              color: LIFF_THEME.inkSoft,
+            }}
+          >
+            {booking.duration_min}
+          </span>
+          <span style={liffMetricUnit}>分</span>
+        </span>
+        <span style={{ color: LIFF_THEME.mutedLight }}>
           結束 {getEndTime(booking.start_at, booking.duration_min)}
         </span>
       </div>

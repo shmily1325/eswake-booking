@@ -49,9 +49,27 @@ export const liffPage: CSSProperties = {
 export const liffContentPanel: CSSProperties = {
   background: LIFF_THEME.cardBg,
   borderRadius: LIFF_THEME.cardRadius,
-  padding: '20px',
+  padding: '22px 20px',
   border: LIFF_THEME.cardBorder,
-  boxShadow: LIFF_THEME.cardShadow,
+  boxShadow: `inset 0 1px 0 rgba(29, 29, 31, 0.06), ${LIFF_THEME.cardShadow}`,
+}
+
+/** 產品感大數字（時間／餘額） */
+export const liffMetricValue = (size = LIFF_TYPE.display + 2): CSSProperties => ({
+  fontSize: size,
+  fontWeight: 700,
+  color: LIFF_THEME.ink,
+  fontVariantNumeric: 'tabular-nums',
+  letterSpacing: '-0.03em',
+  lineHeight: 1.1,
+})
+
+export const liffMetricUnit: CSSProperties = {
+  fontSize: LIFF_TYPE.caption,
+  fontWeight: 500,
+  color: LIFF_THEME.mutedLight,
+  letterSpacing: '0',
+  marginLeft: 3,
 }
 
 export const liffCard: CSSProperties = {

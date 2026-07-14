@@ -5,10 +5,18 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { getLocalDateString, EXPIRING_SOON_DAYS } from '../../utils/date'
-import type { MemberBasic, ImportRecord, BoardExportData } from '../../types/common'
-import { Button, useToast, ToastContainer } from '../../components/ui'
+import { EXPIRING_SOON_DAYS } from '../../utils/date'
+import type { MemberBasic } from '../../types/common'
+import { useToast, ToastContainer } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
+import {
+  designSystem,
+  getPageContentShellStyle,
+} from '../../styles/designSystem'
+
+const pageBg = designSystem.colors.background.main
+const cardBorder = `1px solid ${designSystem.colors.border.light}`
+const cardShadow = designSystem.shadows.elevation[1]
 
 interface BoardSlot {
   id?: number
@@ -70,202 +78,6 @@ export function BoardManagement() {
     notes: ''
   })
   
-  // Import/Export 相關狀態
-  const [showImportDialog, setShowImportDialog] = useState(false)
-  const [importFile, setImportFile] = useState<File | null>(null)
-  const [importing, setImporting] = useState(false)
-  const [importError, setImportError] = useState('')
-  const [importSuccess, setImportSuccess] = useState('')
-
-  useEffect(() => {
-    loadBoardData()
-  }, [])
-
-  // 導出置板資料
-  const handleExportBoards = async () => {
-    try {
-      const { data: allBoards, error } = await supabase
-        .from('board_storage')
-        .select(`
-          id, slot_number, expires_at, notes, status,
-          members:member_id (name, nickname)
-        `)
-        .eq('status', 'active')
-        .order('slot_number', { ascending: true })
-
-      if (error) throw error
-      if (!allBoards || allBoards.length === 0) {
-        toast.warning('沒有置板資料可以導出')
-        return
-      }
-
-      const headers = ['姓名', '暱稱', '格位號碼', '到期日', '備註']
-      const rows = (allBoards as BoardExportData[]).map((board) => [
-        board.members?.name || '',
-        board.members?.nickname || '',
-        board.slot_number,
-        board.expires_at || '',
-        board.notes || ''
-      ])
-
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => 
-          typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))
-            ? `"${cell.replace(/"/g, '""')}"`
-            : cell
-        ).join(','))
-      ].join('\n')
-
-      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.download = `置板資料_${getLocalDateString()}.csv`
-      link.click()
-    } catch (error) {
-      console.error('導出失敗:', error)
-      toast.error('導出失敗')
-    }
-  }
-
-  // 導入置板資料
-  const handleImportBoards = async () => {
-    if (!importFile) {
-      setImportError('請選擇 CSV 檔案')
-      return
-    }
-
-    setImporting(true)
-    setImportError('')
-    setImportSuccess('')
-
-    try {
-      const text = await importFile.text()
-      const Papa = await import('papaparse')
-      
-      Papa.parse(text, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (header: string) => {
-          const headerMap: Record<string, string> = {
-            '姓名': 'name',
-            '暱稱': 'nickname',
-            '格位號碼': 'slot_number',
-            '到期日': 'expires_at',
-            '備註': 'notes'
-          }
-          return headerMap[header] || header
-        },
-        complete: async (results) => {
-          const records = (results.data as ImportRecord[])
-            .filter((row) => row.name && row.name.trim() && row.slot_number)
-
-          if (records.length === 0) {
-            setImportError('未找到有效的置板資料')
-            setImporting(false)
-            return
-          }
-
-          let successCount = 0
-          let errorCount = 0
-          const errors: string[] = []
-
-          for (const record of records) {
-            try {
-              // 查找會員
-              const { data: member } = await supabase
-                .from('members')
-                .select('id')
-                .eq('name', record.name.trim())
-                .single()
-
-              if (!member) {
-                errors.push(`會員「${record.name}」不存在`)
-                errorCount++
-                continue
-              }
-
-              const slotNumber = typeof record.slot_number === 'string' 
-                ? parseInt(record.slot_number) 
-                : record.slot_number
-              if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 145) {
-                errors.push(`格位號碼「${record.slot_number}」無效（需為 1-145）`)
-                errorCount++
-                continue
-              }
-
-              // 檢查格位是否已被其他會員使用
-              const { data: existingSlot } = await supabase
-                .from('board_storage')
-                .select('id, member_id')
-                .eq('slot_number', slotNumber)
-                .eq('status', 'active')
-                .single()
-
-              if (existingSlot && existingSlot.member_id !== member.id) {
-                errors.push(`格位 ${slotNumber} 已被其他會員使用`)
-                errorCount++
-                continue
-              }
-
-              // 如果格位已存在（同一會員），更新；否則創建
-              if (existingSlot && existingSlot.member_id === member.id) {
-                const { error } = await supabase
-                  .from('board_storage')
-                  .update({
-                    expires_at: record.expires_at || null,
-                    notes: record.notes || null,
-                    status: 'active'
-                  })
-                  .eq('id', existingSlot.id)
-
-                if (error) throw error
-              } else {
-                const { error } = await supabase
-                  .from('board_storage')
-                  .insert({
-                    member_id: member.id,
-                    slot_number: slotNumber,
-                    expires_at: record.expires_at || null,
-                    notes: record.notes || null,
-                    status: 'active'
-                  })
-
-                if (error) throw error
-              }
-
-              successCount++
-            } catch (err) {
-              errors.push(`處理失敗：${record.name} - 格位 ${record.slot_number}`)
-              errorCount++
-            }
-          }
-
-          if (successCount > 0) {
-            setImportSuccess(`✅ 成功導入 ${successCount} 筆置板資料${errorCount > 0 ? `\n⚠️ ${errorCount} 筆失敗` : ''}`)
-            loadBoardData()
-            setTimeout(() => {
-              setShowImportDialog(false)
-              setImportFile(null)
-              setImportSuccess('')
-            }, 3000)
-          } else {
-            setImportError(`導入失敗\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? '\n...' : ''}`)
-          }
-
-          setImporting(false)
-        },
-        error: (error: Error) => {
-          setImportError('CSV 解析失敗：' + error.message)
-          setImporting(false)
-        }
-      })
-    } catch (error) {
-      setImportError('導入失敗：' + (error as Error).message)
-      setImporting(false)
-    }
-  }
-
   const loadBoardData = async () => {
     setLoading(true)
     try {
@@ -567,32 +379,31 @@ export function BoardManagement() {
     
     const expiryStatus = isOccupied ? getExpiryStatus() : 'empty'
     
-    // 根據狀態設定顏色
     const getSlotStyles = () => {
       switch (expiryStatus) {
         case 'expired':
           return {
-            background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)',
-            color: '#c62828',
-            border: '2px solid #ef9a9a'
+            background: designSystem.colors.danger[50],
+            color: designSystem.colors.danger[700],
+            border: `1px solid ${designSystem.colors.border.light}`,
           }
         case 'expiring':
           return {
-            background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)',
-            color: '#e65100',
-            border: '2px solid #ffcc80'
+            background: designSystem.colors.warning[50],
+            color: designSystem.colors.warning[700],
+            border: `1px solid ${designSystem.colors.border.light}`,
           }
         case 'normal':
           return {
-            background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
-            color: '#2e7d32',
-            border: '2px solid #a5d6a7'
+            background: designSystem.colors.success[50],
+            color: designSystem.colors.success[700],
+            border: `1px solid ${designSystem.colors.border.light}`,
           }
         default:
           return {
-            background: '#f5f5f5',
-            color: '#999',
-            border: '2px solid #e0e0e0'
+            background: designSystem.colors.background.main,
+            color: designSystem.colors.text.disabled,
+            border: cardBorder,
           }
       }
     }
@@ -607,31 +418,31 @@ export function BoardManagement() {
           padding: isMobile ? '6px' : '8px',
           background: slotStyles.background,
           color: slotStyles.color,
-          borderRadius: '6px',
+          borderRadius: designSystem.borderRadius.md,
           cursor: 'pointer',
           border: slotStyles.border,
-          transition: 'all 0.2s',
+          transition: designSystem.transitions.normal,
           height: isMobile ? '80px' : '90px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'flex-start',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
         }}
         onMouseEnter={(e) => {
           if (isOccupied) {
-            e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+            e.currentTarget.style.borderColor = designSystem.colors.text.secondary
+            e.currentTarget.style.boxShadow = designSystem.shadows.sm
           }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)'
+          e.currentTarget.style.border = slotStyles.border
           e.currentTarget.style.boxShadow = 'none'
         }}
       >
         <div style={{ 
           fontSize: isMobile ? '10px' : '11px', 
-          fontWeight: 'bold',
+          fontWeight: 650,
           opacity: 0.7,
           marginBottom: '3px'
         }}>
@@ -642,7 +453,7 @@ export function BoardManagement() {
           <>
             <div style={{ 
               fontSize: isMobile ? '12px' : '13px', 
-              fontWeight: 'bold',
+              fontWeight: 700,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -658,11 +469,10 @@ export function BoardManagement() {
                 marginTop: '3px',
                 lineHeight: '1.2'
               }}>
-                📅 {slotInfo.expires_at}
+                {slotInfo.expires_at}
               </div>
             )}
             
-            {/* 備註提示 */}
             {slotInfo.notes && (
               <div style={{ 
                 fontSize: isMobile ? '8px' : '9px',
@@ -675,7 +485,7 @@ export function BoardManagement() {
               }}
               title={slotInfo.notes}
               >
-                📝 {slotInfo.notes.length > 8 ? slotInfo.notes.substring(0, 8) + '...' : slotInfo.notes}
+                {slotInfo.notes.length > 8 ? slotInfo.notes.substring(0, 8) + '...' : slotInfo.notes}
               </div>
             )}
           </>
@@ -717,24 +527,23 @@ export function BoardManagement() {
     const columnsPerRow = isMobile ? 3 : 9
     
     return (
-      <div key={section.name} style={{ marginBottom: '30px' }}>
+      <div key={section.name} style={{ marginBottom: '28px' }}>
         <h3 style={{ 
-          margin: '0 0 15px 0', 
-          fontSize: isMobile ? '16px' : '18px', 
-          fontWeight: 'bold',
-          color: 'white',
-          background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-          padding: '12px',
-          borderRadius: '8px'
+          margin: '0 0 12px 0', 
+          fontSize: isMobile ? '15px' : '16px', 
+          fontWeight: 650,
+          color: designSystem.colors.text.primary,
+          letterSpacing: '-0.01em',
         }}>
           {section.name} ({section.start}-{section.end})
         </h3>
         
         <div style={{ 
-          background: 'white', 
-          padding: isMobile ? '12px' : '20px', 
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          background: designSystem.colors.background.card, 
+          padding: isMobile ? '12px' : '16px', 
+          borderRadius: designSystem.borderRadius.lg,
+          border: cardBorder,
+          boxShadow: cardShadow,
         }}>
           <div style={{ 
             display: 'grid', 
@@ -743,14 +552,12 @@ export function BoardManagement() {
           }}>
             {slotPairs.map((pair, index) => (
               <React.Fragment key={index}>
-                {/* 在每一行開始前（除了第一行）插入橫向分隔線 */}
                 {index > 0 && index % columnsPerRow === 0 && (
                   <div style={{
                     gridColumn: `1 / -1`,
-                    height: '3px',
-                    background: 'linear-gradient(to right, transparent, #666, transparent)',
-                    margin: '8px 0',
-                    borderRadius: '2px'
+                    height: '1px',
+                    background: designSystem.colors.border.light,
+                    margin: '6px 0',
                   }} />
                 )}
                 
@@ -773,97 +580,66 @@ export function BoardManagement() {
   if (loading) {
     return (
       <div style={{ 
-        padding: '20px', 
-        textAlign: 'center',
-        fontSize: '18px',
-        color: '#666'
+        padding: isMobile ? '12px 16px' : '20px',
+        minHeight: '100dvh',
+        background: pageBg,
+        paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
       }}>
-        載入中...
+        <div style={getPageContentShellStyle(isMobile)}>
+          <PageHeader title="置板區管理" user={user} showBaoLink={isAdmin(user)} />
+          <div style={{
+            padding: '40px',
+            textAlign: 'center',
+            fontSize: '15px',
+            color: designSystem.colors.text.secondary,
+          }}>
+            載入中...
+          </div>
+          <Footer />
+        </div>
       </div>
     )
   }
 
   return (
     <div style={{ 
-      padding: isMobile ? '12px' : '20px',
-      minHeight: '100vh',
-      background: '#f5f5f5'
+      padding: isMobile ? '12px 16px' : '20px',
+      minHeight: '100dvh',
+      background: pageBg,
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
     }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        <PageHeader title="🏄 置板區管理" user={user} showBaoLink={isAdmin(user)} />
-
-        {/* 操作按鈕區 */}
-      <div style={{
-        display: 'flex',
-        gap: isMobile ? '10px' : '12px',
-        marginBottom: isMobile ? '16px' : '20px',
-        flexWrap: 'wrap',
-      }}>
-        <Button
-          variant="outline"
-          size="medium"
-          data-track="board_import"
-          onClick={() => setShowImportDialog(true)}
-          icon={<span>📥</span>}
-          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
-        >
-          匯入
-        </Button>
-
-        <Button
-          variant="outline"
-          size="medium"
-          data-track="board_export"
-          onClick={handleExportBoards}
-          icon={<span>📤</span>}
-          style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}
-        >
-          匯出
-        </Button>
-      </div>
+      <div style={getPageContentShellStyle(isMobile)}>
+        <PageHeader title="置板區管理" user={user} showBaoLink={isAdmin(user)} />
 
       {/* 統計資訊 */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '15px',
-        marginBottom: '20px'
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: isMobile ? '10px' : '12px',
+        marginTop: '4px',
+        marginBottom: '20px',
+        background: designSystem.colors.background.card,
+        borderRadius: designSystem.borderRadius.lg,
+        border: cardBorder,
+        boxShadow: cardShadow,
+        padding: isMobile ? '14px 12px' : '16px 20px',
+        textAlign: 'center',
       }}>
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>總格位數</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#667eea' }}>
+        <div>
+          <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總格位</div>
+          <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 750, color: designSystem.colors.text.primary }}>
             145
           </div>
         </div>
-        
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>已使用</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4caf50' }}>
+        <div>
+          <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>已使用</div>
+          <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 750, color: designSystem.colors.text.primary }}>
             {boardSlots.length}
           </div>
         </div>
-
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>空位</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ff9800' }}>
+        <div>
+          <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>空位</div>
+          <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 750, color: designSystem.colors.text.primary }}>
             {145 - boardSlots.length}
           </div>
         </div>
@@ -1481,209 +1257,6 @@ export function BoardManagement() {
                   )}
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 導入對話框 */}
-      {showImportDialog && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px',
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            maxWidth: '600px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}>
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e0e0e0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <h3 style={{ margin: 0, fontSize: '20px' }}>📥 導入置板資料</h3>
-              <button
-                onClick={() => {
-                  setShowImportDialog(false)
-                  setImportFile(null)
-                  setImportError('')
-                  setImportSuccess('')
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#999',
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div style={{ padding: '20px' }}>
-              {/* 說明 */}
-              <div style={{
-                background: '#f8f9fa',
-                padding: '16px',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                fontSize: '14px',
-                lineHeight: '1.6',
-              }}>
-                <div style={{ fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-                  💡 導入說明
-                </div>
-                <div style={{ color: '#666' }}>
-                  • CSV 格式：<code style={{ background: '#e9ecef', padding: '2px 6px', borderRadius: '4px' }}>姓名,暱稱,格位號碼,到期日,備註</code><br />
-                  • 會根據會員姓名自動匹配會員資料<br />
-                  • <strong style={{ color: '#2196F3' }}>只更新置板資訊</strong>（格位號碼、到期日、備註），<strong style={{ color: '#2196F3' }}>不會更新會員暱稱</strong><br />
-                  • 支持一個會員多個格位（每個格位一行）<br />
-                  • 格位號碼範圍：1-145<br />
-                  • 如果格位已存在會更新，不存在則新增
-                </div>
-              </div>
-
-              {/* CSV 範例 */}
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontWeight: '600', marginBottom: '8px', fontSize: '14px' }}>
-                  📄 CSV 範例：
-                </div>
-                <code style={{
-                  display: 'block',
-                  background: '#f8f9fa',
-                  padding: '12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  whiteSpace: 'pre',
-                  overflowX: 'auto',
-                  border: '1px solid #dee2e6',
-                }}>
-姓名,暱稱,格位號碼,到期日,備註{'\n'}
-林敏,Ming,1,2025-12-31,第一格{'\n'}
-林敏,Ming,5,2025-12-31,第二格{'\n'}
-賴奕茵,Ingrid,10,2026-06-30,
-                </code>
-              </div>
-
-              {/* 檔案選擇 */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontWeight: '500',
-                  fontSize: '14px',
-                }}>
-                  選擇 CSV 檔案
-                </label>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => {
-                    setImportFile(e.target.files?.[0] || null)
-                    setImportError('')
-                    setImportSuccess('')
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                  }}
-                />
-              </div>
-
-              {/* 錯誤訊息 */}
-              {importError && (
-                <div style={{
-                  background: '#fee',
-                  border: '1px solid #fcc',
-                  color: '#c33',
-                  padding: '12px',
-                  borderRadius: '6px',
-                  marginBottom: '16px',
-                  fontSize: '14px',
-                  whiteSpace: 'pre-wrap',
-                }}>
-                  {importError}
-                </div>
-              )}
-
-              {/* 成功訊息 */}
-              {importSuccess && (
-                <div style={{
-                  background: '#d4edda',
-                  border: '1px solid #c3e6cb',
-                  color: '#155724',
-                  padding: '12px',
-                  borderRadius: '6px',
-                  marginBottom: '16px',
-                  fontSize: '14px',
-                  whiteSpace: 'pre-wrap',
-                }}>
-                  {importSuccess}
-                </div>
-              )}
-
-              {/* 按鈕 */}
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={handleImportBoards}
-                  disabled={!importFile || importing}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    background: !importFile || importing ? '#ccc' : '#4caf50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                    cursor: !importFile || importing ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {importing ? '導入中...' : '開始導入'}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowImportDialog(false)
-                    setImportFile(null)
-                    setImportError('')
-                    setImportSuccess('')
-                  }}
-                  disabled={importing}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    background: 'white',
-                    color: '#666',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                    cursor: importing ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  取消
-                </button>
-              </div>
             </div>
           </div>
         </div>

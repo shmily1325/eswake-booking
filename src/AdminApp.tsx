@@ -12,10 +12,8 @@ import { CoachReport } from './pages/coach/CoachReport'
 import { MyReport } from './pages/coach/MyReport'
 import { CoachAdmin } from './pages/coach/CoachAdmin'
 import { CoachAssignment } from './pages/coach/CoachAssignment'
-import { MemberImport } from './pages/member/MemberImport'
 import { AuditLog } from './pages/admin/AuditLog'
 import { TomorrowReminder } from './pages/TomorrowReminder'
-import { BackupPage } from './pages/admin/BackupPage'
 import { MemberManagement } from './pages/member/MemberManagement'
 import { MemberPhoneEditPage } from './pages/member/MemberPhoneEditPage'
 import { BoardManagement } from './pages/admin/BoardManagement'
@@ -110,10 +108,8 @@ function AdminAppContent() {
           <Route path="/my-report-detail" element={<CoachReport autoFilterByUser={true} />} />
           <Route path="/coach-admin" element={<CoachAdmin />} />
           <Route path="/coach-assignment" element={<CoachAssignment />} />
-          <Route path="/member-import" element={<MemberImport />} />
           <Route path="/audit-log" element={<AuditLog />} />
           <Route path="/tomorrow" element={<TomorrowReminder />} />
-          <Route path="/backup" element={<BackupPage />} />
           <Route path="/quick-transaction" element={<QuickTransaction />} />
           <Route path="/member-transaction" element={<MemberTransaction />} />
           <Route path="/bao" element={<BaoHub />} />

@@ -17,12 +17,37 @@ const sectionHeadingStyle: CSSProperties = {
   letterSpacing: '-0.01em',
 }
 
+const sectionWrapperStyle: CSSProperties = {
+  marginBottom: '28px',
+}
+
+const sectionToolbarStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: '12px',
+}
+
+const sectionHeadingInToolbarStyle: CSSProperties = {
+  ...sectionHeadingStyle,
+  margin: 0,
+}
+
 /** 詳情內容面板：白底細框，取代灰底巢狀卡片 */
 const sectionPanelStyle: CSSProperties = {
   background: designSystem.colors.background.card,
   borderRadius: designSystem.borderRadius.lg,
   padding: '12px 16px',
   border: `1px solid ${designSystem.colors.border.light}`,
+  boxShadow: designSystem.shadows.elevation[1],
+}
+
+const sectionEmptyStateStyle: CSSProperties = {
+  ...sectionPanelStyle,
+  padding: '20px 16px',
+  textAlign: 'center',
+  color: designSystem.colors.text.secondary,
+  fontSize: '13px',
 }
 
 /** 入會／續會贈送提醒（需人工判斷後至會員儲值記帳，不會自動加） */
@@ -884,60 +909,24 @@ export function MemberDetailDialog({
               {/* 內容區 */}
               <div style={{ padding: isMobile ? '16px' : '20px' }}>
                     {/* 基本資料 */}
-                    <div style={{ marginBottom: '28px' }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        marginBottom: '12px'
-                      }}>
-                        <h3 style={{ ...sectionHeadingStyle, margin: 0 }}>基本資料</h3>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          {(onArchiveMember || onRestoreMember) && (
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (!memberId) return
-                                if (member.status === 'inactive') {
-                                  await onRestoreMember?.(memberId)
-                                  await loadMemberData()
-                                  onUpdate()
-                                } else {
-                                  const ok = window.confirm(`確定要隱藏「${member.nickname || member.name}」嗎？`)
-                                  if (!ok) return
-                                  await onArchiveMember?.(memberId)
-                                  onClose()
-                                }
-                              }}
-                              style={{
-                                ...getButtonStyle(
-                                  member.status === 'inactive' ? 'success' : 'outline',
-                                  'small',
-                                  isMobile
-                                ),
-                                color: member.status === 'inactive' ? undefined : designSystem.colors.text.secondary,
-                                fontSize: '12px',
-                              }}
-                            >
-                              {member.status === 'inactive' ? '恢復' : '隱藏'}
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setEditDialogOpen(true)}
-                            style={getButtonStyle('outline', 'small', isMobile)}
-                          >
-                            編輯
-                          </button>
-                        </div>
+                    <div style={sectionWrapperStyle}>
+                      <div style={sectionToolbarStyle}>
+                        <h3 style={sectionHeadingInToolbarStyle}>基本資料</h3>
+                        <button
+                          onClick={() => setEditDialogOpen(true)}
+                          style={getButtonStyle('outline', 'small', isMobile)}
+                        >
+                          編輯
+                        </button>
                       </div>
                       <div style={{ ...sectionPanelStyle, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {/* 第一行：暱稱／姓名＋會籍類型 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: isMobile ? '17px' : '18px', fontWeight: 700, color: designSystem.colors.text.primary, letterSpacing: '-0.02em' }}>
+                          <span style={{ fontSize: isMobile ? '18px' : '19px', fontWeight: 750, color: designSystem.colors.text.primary, letterSpacing: '-0.025em' }}>
                             {member.nickname?.trim() ? member.nickname : member.name}
                           </span>
                           {member.nickname?.trim() && (
-                            <span style={{ fontSize: '13px', color: designSystem.colors.text.secondary }}>
+                            <span style={{ fontSize: '13px', color: designSystem.colors.text.disabled }}>
                               ({member.name})
                             </span>
                           )}
@@ -1027,12 +1016,49 @@ export function MemberDetailDialog({
                             </button>
                           )}
                         </div>
+                        {(onArchiveMember || onRestoreMember) && (
+                          <div style={{
+                            marginTop: '4px',
+                            paddingTop: '10px',
+                            borderTop: `1px solid ${designSystem.colors.border.light}`,
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                          }}>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!memberId) return
+                                if (member.status === 'inactive') {
+                                  await onRestoreMember?.(memberId)
+                                  await loadMemberData()
+                                  onUpdate()
+                                } else {
+                                  const ok = window.confirm(`確定要隱藏「${member.nickname || member.name}」嗎？`)
+                                  if (!ok) return
+                                  await onArchiveMember?.(memberId)
+                                  onClose()
+                                }
+                              }}
+                              style={{
+                                ...getButtonStyle('ghost', 'small', isMobile),
+                                color: member.status === 'inactive'
+                                  ? designSystem.colors.success[700]
+                                  : designSystem.colors.text.secondary,
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                padding: '2px 4px',
+                              }}
+                            >
+                              {member.status === 'inactive' ? '恢復此會員' : '隱藏此會員'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* 會籍 - 會員 */}
                     {(member.membership_type === 'general' || member.membership_type === 'dual') && (
-                      <div style={{ marginBottom: '28px' }}>
+                      <div style={sectionWrapperStyle}>
                         <h3 style={sectionHeadingStyle}>會籍</h3>
                         <div style={sectionPanelStyle}>
                           <div style={{ 
@@ -1093,7 +1119,7 @@ export function MemberDetailDialog({
 
                     {/* 會籍 - 非會員 */}
                     {member.membership_type === 'guest' && (
-                      <div style={{ marginBottom: '28px' }}>
+                      <div style={sectionWrapperStyle}>
                         <h3 style={sectionHeadingStyle}>會籍</h3>
                         <div style={sectionPanelStyle}>
                           <div style={{ fontSize: '14px', color: designSystem.colors.text.secondary, marginBottom: '14px' }}>
@@ -1116,14 +1142,9 @@ export function MemberDetailDialog({
                     )}
 
                     {/* 置板 */}
-                    <div style={{ marginBottom: '28px' }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        marginBottom: '12px'
-                      }}>
-                        <h3 style={{ ...sectionHeadingStyle, margin: 0 }}>置板</h3>
+                    <div style={sectionWrapperStyle}>
+                      <div style={sectionToolbarStyle}>
+                        <h3 style={sectionHeadingInToolbarStyle}>置板</h3>
                         <button
                           onClick={() => setAddBoardDialogOpen(true)}
                           style={getButtonStyle('secondary', 'small', isMobile)}
@@ -1132,12 +1153,7 @@ export function MemberDetailDialog({
                         </button>
                       </div>
                       {boardStorage.length === 0 ? (
-                        <div style={{ 
-                          ...sectionPanelStyle,
-                          textAlign: 'center', 
-                          color: designSystem.colors.text.secondary, 
-                          fontSize: '13px' 
-                        }}>
+                        <div style={sectionEmptyStateStyle}>
                           尚無置板
                         </div>
                       ) : (
@@ -1148,7 +1164,6 @@ export function MemberDetailDialog({
                               onClick={() => openBoardEditDialog(board)}
                               style={{
                                 ...sectionPanelStyle,
-                                padding: '12px 14px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
@@ -1194,14 +1209,9 @@ export function MemberDetailDialog({
                     </div>
 
                     {/* 備忘錄 */}
-                    <div style={{ marginBottom: '28px' }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        marginBottom: '12px'
-                      }}>
-                        <h3 style={{ ...sectionHeadingStyle, margin: 0 }}>
+                    <div style={sectionWrapperStyle}>
+                      <div style={sectionToolbarStyle}>
+                        <h3 style={sectionHeadingInToolbarStyle}>
                           備忘錄 {memberNotes.length > 0 && <span style={{ color: designSystem.colors.text.secondary, fontWeight: 'normal' }}>({memberNotes.length})</span>}
                         </h3>
                         <button
@@ -1213,13 +1223,8 @@ export function MemberDetailDialog({
                       </div>
                       
                       {memberNotes.length === 0 ? (
-                        <div style={{ 
-                          textAlign: 'center', 
-                          padding: '24px 20px', 
-                          color: designSystem.colors.text.secondary,
-                          ...sectionPanelStyle,
-                        }}>
-                          <div style={{ fontSize: '14px' }}>尚無備忘錄</div>
+                        <div style={sectionEmptyStateStyle}>
+                          尚無備忘錄
                         </div>
                       ) : (
                         <div style={{ 
@@ -1311,7 +1316,7 @@ export function MemberDetailDialog({
                     </div>
 
                     {/* 金流資訊 - 點擊可記帳 */}
-                    <div style={{ marginBottom: '24px' }}>
+                    <div style={sectionWrapperStyle}>
                       <h3 style={sectionHeadingStyle}>金流</h3>
                       <div 
                         onClick={() => setTransactionDialogOpen(true)}
@@ -1346,22 +1351,11 @@ export function MemberDetailDialog({
                               <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
                                 {item.label}
                               </div>
-                              <div style={{ fontSize: '16px', fontWeight: 700, color: designSystem.colors.text.primary }}>
+                              <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
                                 {item.value}
                               </div>
                             </div>
                           ))}
-                        </div>
-                        <div style={{
-                          marginTop: '12px',
-                          paddingTop: '10px',
-                          borderTop: `1px solid ${designSystem.colors.border.light}`,
-                          display: 'flex',
-                          justifyContent: 'flex-end',
-                        }}>
-                          <span style={{ fontSize: '13px', fontWeight: 650, color: designSystem.colors.text.primary }}>
-                            記帳 →
-                          </span>
                         </div>
                       </div>
                     </div>

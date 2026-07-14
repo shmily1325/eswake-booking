@@ -66,7 +66,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   const [categoryFilter, setCategoryFilter] = useState<string>('all') // 類別篩選
   const [searchTerm, setSearchTerm] = useState('') // 搜尋關鍵字
   const [loadingHistory, setLoadingHistory] = useState(false)
-  const [exporting, setExporting] = useState(false) // 匯出中狀態
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [editCategory, setEditCategory] = useState('')
   const [editAdjustType, setEditAdjustType] = useState<'increase' | 'decrease'>('increase')
@@ -363,160 +362,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     setEditNotes('')
   }
 
-  // 匯出交易記錄
-  const handleExportTransactions = async () => {
-    if (transactions.length === 0) {
-      toast.warning('本月無交易記錄可匯出')
-      return
-    }
-
-    if (!selectedMonth) {
-      toast.warning('請先選擇月份才能匯出')
-      return
-    }
-
-    setExporting(true)
-    try {
-      const [year, month] = selectedMonth.split('-')
-      const startDate = `${year}-${month}-01`
-      
-      // 查詢該月第一天之前的所有交易，動態計算期初值
-      const { data: prevTxList } = await supabase
-        .from('transactions')
-        .select('category, adjust_type, amount, minutes')
-        .eq('member_id', member.id)
-        .lt('transaction_date', startDate)
-
-      // 動態計算期初值（從交易記錄加總）
-      const initialValues = {
-        balance: 0,
-        vip_voucher: 0,
-        designated_lesson: 0,
-        boat_voucher_g23: 0,
-        boat_voucher_g21_panther: 0,
-        gift_boat_hours: 0,
-      }
-      
-      prevTxList?.forEach(tx => {
-        const isAmount = tx.category === 'balance' || tx.category === 'vip_voucher'
-        const absValue = Math.abs(isAmount ? (tx.amount || 0) : (tx.minutes || 0))
-        const delta = tx.adjust_type === 'increase' ? absValue : -absValue
-        
-        if (tx.category === 'balance') initialValues.balance += delta
-        else if (tx.category === 'vip_voucher') initialValues.vip_voucher += delta
-        else if (tx.category === 'designated_lesson') initialValues.designated_lesson += delta
-        else if (tx.category === 'boat_voucher_g23') initialValues.boat_voucher_g23 += delta
-        else if (tx.category === 'boat_voucher_g21_panther') initialValues.boat_voucher_g21_panther += delta
-        else if (tx.category === 'gift_boat_hours') initialValues.gift_boat_hours += delta
-      })
-
-      // 按類別分組
-      const groupedByCategory: Record<string, Transaction[]> = {}
-      CATEGORIES.forEach(cat => {
-        groupedByCategory[cat.value] = transactions.filter(tx => tx.category === cat.value)
-      })
-
-      const csvLines: string[] = []
-      
-      // 處理每個類別
-      CATEGORIES.forEach(cat => {
-        const txList = groupedByCategory[cat.value]
-        
-        // 移除 emoji
-        const categoryLabel = cat.label.replace(/[^\u0000-\u007F\u4E00-\u9FFF]/g, '').trim()
-        
-        // 計算統計
-        const isAmount = cat.type === 'amount'
-        const unit = isAmount ? '$' : '分'
-        
-        // 期初值從動態計算結果取得
-        const startValue = initialValues[cat.value as keyof typeof initialValues] ?? 0
-        
-        let totalIncrease = 0
-        let totalDecrease = 0
-        
-        // 計算本月增加和減少
-        txList.forEach(tx => {
-          const value = Math.abs(isAmount ? (tx.amount || 0) : (tx.minutes || 0))
-          if (tx.adjust_type === 'increase') {
-            totalIncrease += value
-          } else {
-            totalDecrease += value
-          }
-        })
-        
-        // 期末值 = 期初值 + 本月增加 - 本月減少
-        const endValue = startValue + totalIncrease - totalDecrease
-        
-        // 跳過空的類別（期初期末都是0且沒有交易）
-        if (startValue === 0 && endValue === 0 && txList.length === 0) {
-          return
-        }
-        
-        // 統計行（簡化格式）
-        csvLines.push('') // 空行
-        if (isAmount) {
-          csvLines.push(`"【${categoryLabel}】${unit}${startValue.toLocaleString()} → ${unit}${endValue.toLocaleString()}"`)
-        } else {
-          csvLines.push(`"【${categoryLabel}】${startValue.toLocaleString()} → ${endValue.toLocaleString()}"`)
-        }
-        
-        // 只有有交易時才顯示明細
-        if (txList.length > 0) {
-          csvLines.push('"日期","說明","動作","金額","備註"')
-          
-          // 明細行（按時間正序）
-          const sortedTxList = [...txList].reverse()
-          sortedTxList.forEach(tx => {
-            const date = tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : '')
-            // 轉換日期格式為 MM/DD/YYYY
-            const [y, m, d] = date.split('-')
-            const formattedDate = `${m}/${d}/${y}`
-            
-            // 分成動詞和數值兩欄
-            // 使用 Math.abs 確保顯示正數
-            let action: string
-            let amount: string
-            if (isAmount) {
-              // 金額類別
-              action = tx.adjust_type === 'increase' ? '儲值' : '扣除'
-              amount = `${unit}${Math.abs(tx.amount || 0)}`
-            } else {
-              // 時數類別
-              action = tx.adjust_type === 'increase' ? '增加' : '使用'
-              amount = `${Math.abs(tx.minutes || 0)}分`
-            }
-            
-            csvLines.push(`"${formattedDate}","${tx.description || ''}","${action}","${amount}","${tx.notes || ''}"`)
-          })
-        }
-      })
-
-      // 生成 CSV
-      const csvContent = csvLines.join('\n')
-
-      // 下載
-      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      const url = URL.createObjectURL(blob)
-      link.setAttribute('href', url)
-      
-      const fileName = `${member.nickname || member.name}_交易記錄_${year}年${month}月.csv`
-      link.setAttribute('download', fileName)
-      
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      
-      toast.success('匯出成功')
-    } catch (error: any) {
-      console.error('匯出失敗:', error)
-      toast.error('匯出失敗，請稍後再試')
-    } finally {
-      setExporting(false)
-    }
-  }
 
   useEffect(() => {
     if (open && activeTab === 'history') {
@@ -1025,7 +870,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
             overflow: 'auto',
             flex: 1,
           }}>
-            {/* 月份選擇和匯出按鈕 */}
+            {/* 月份選擇 */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                 選擇月份
@@ -1043,18 +888,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   style={{ ...inputStyle, flex: 1, minWidth: 0 }}
                 />
-                <button
-                  onClick={() => handleExportTransactions()}
-                  disabled={transactions.length === 0 || selectedMonth === '' || exporting}
-                  title={selectedMonth === '' ? '請先選擇月份才能匯出' : ''}
-                  style={{
-                    ...getButtonStyle('success', 'small', isMobile),
-                    opacity: (transactions.length === 0 || selectedMonth === '' || exporting) ? 0.5 : 1,
-                    cursor: (transactions.length === 0 || selectedMonth === '' || exporting) ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {exporting ? '匯出中...' : '匯出'}
-                </button>
               </div>
             </div>
 

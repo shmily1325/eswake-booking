@@ -27,11 +27,25 @@ export function LiffStyles() {
           }
         }
 
+        @keyframes liffFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
         .skeleton-pulse {
           animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .liff-tab-panel {
+          animation: liffFadeIn 0.22s ease-out;
         }
       `}
     </style>
   )
 }
-

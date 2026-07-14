@@ -9,6 +9,8 @@ interface EsBrandLockupProps {
   subtitleClassName?: string
   variant?: 'onDark' | 'onLight'
   logoSize?: number
+  /** 品牌名字級（LIFF header 可略放大） */
+  brandFontSize?: number
   /** 點擊 logo／字標導向（Shop 首頁等） */
   brandTo?: string
   trailing?: ReactNode
@@ -24,6 +26,7 @@ export function EsBrandLockup({
   subtitleClassName,
   variant = 'onDark',
   logoSize = 32,
+  brandFontSize = 15,
   brandTo,
   trailing,
   align = 'start',
@@ -55,11 +58,11 @@ export function EsBrandLockup({
       <div style={{ minWidth: 0, textAlign: centered ? 'center' : undefined }}>
         <div
           style={{
-            fontSize: 15,
+            fontSize: brandFontSize,
             fontWeight: 700,
             color: brandColor,
-            lineHeight: 1.2,
-            letterSpacing: '0.04em',
+            lineHeight: 1.15,
+            letterSpacing: '0.06em',
           }}
         >
           {brand}
@@ -68,13 +71,13 @@ export function EsBrandLockup({
           <div
             className={subtitleClassName}
             style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: subtitleColor,
-            marginTop: 2,
-            lineHeight: 1.25,
-            letterSpacing: '-0.01em',
-          }}
+              fontSize: 13,
+              fontWeight: 600,
+              color: subtitleColor,
+              marginTop: 3,
+              lineHeight: 1.25,
+              letterSpacing: '-0.01em',
+            }}
           >
             {subtitle}
           </div>
