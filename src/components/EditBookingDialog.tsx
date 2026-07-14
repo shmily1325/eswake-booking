@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { logBookingUpdate, logBookingDeletion } from '../utils/auditLog'
-import { getLocalTimestamp, getWeekdayText } from '../utils/date'
+import { getLocalTimestamp } from '../utils/date'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import { normalizeFilledByForSave } from '../utils/filledByHelper'
@@ -11,6 +11,10 @@ import { isFacility } from '../utils/facility'
 import type { Booking } from '../types/booking'
 import { useToast } from './ui'
 
+import { BoatSelector } from './booking/BoatSelector'
+import { TimeSelector } from './booking/TimeSelector'
+import { MemberSelector } from './booking/MemberSelector'
+import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
 import { scheduleCoachTimeOffReminderToast } from '../utils/coachTimeOffWarning'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
@@ -913,698 +917,53 @@ export function EditBookingDialog({
           WebkitOverflowScrolling: 'touch',
         }}>
           <form onSubmit={handleUpdate} id="edit-booking-form">
-          {/* 預約人選擇（支援多會員選擇或手動輸入） */}
-          <div style={{ marginBottom: '18px', position: 'relative' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '6px',
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '500',
-            }}>
-              預約人 {selectedMemberIds.length > 0 && <span style={{ color: '#4caf50', fontSize: '13px' }}>（已選 {selectedMemberIds.length} 位會員）</span>}
-            </label>
+          {/* 1. 預約人選擇 */}
+          <MemberSelector
+            members={members}
+            selectedMemberIds={selectedMemberIds}
+            setSelectedMemberIds={setSelectedMemberIds}
+            memberSearchTerm={memberSearchTerm}
+            setMemberSearchTerm={setMemberSearchTerm}
+            showMemberDropdown={showMemberDropdown}
+            setShowMemberDropdown={setShowMemberDropdown}
+            filteredMembers={filteredMembers}
+            handleMemberSearch={handleMemberSearch}
+            manualStudentName={manualStudentName}
+            setManualStudentName={setManualStudentName}
+            manualNames={manualNames}
+            setManualNames={setManualNames}
+          />
 
-            {/* 已選會員和手動輸入標籤 */}
-            {(selectedMemberIds.length > 0 || manualNames.length > 0) && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-                {/* 會員標籤（藍色） */}
-                {selectedMemberIds.map((id) => {
-                  const member = members.find(m => m.id === id)
-                  if (!member) return null
-                  return (
-                    <span
-                      key={id}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        background: '#2196F3',
-                        color: 'white',
-                        borderRadius: '16px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                      }}
-                    >
-                      {member.nickname || member.name}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedMemberIds(prev => prev.filter(mid => mid !== id))
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'white',
-                          cursor: 'pointer',
-                          padding: '0',
-                          fontSize: '18px',
-                          lineHeight: '1',
-                        }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )
-                })}
+          {/* 2. 船隻選擇 */}
+          <BoatSelector
+            boats={boats}
+            selectedBoatId={selectedBoatId}
+            onSelect={setSelectedBoatId}
+          />
 
-                {/* 非會員標籤（橘色邊框） */}
-                {manualNames.map((name, index) => (
-                  <span
-                    key={index}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 12px',
-                      background: 'white',
-                      color: '#f57c00',
-                      border: '1.5px solid #ffb74d',
-                      borderRadius: '16px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                    }}
-                  >
-                    {name}
-                    <button
-                      type="button"
-                      onClick={() => setManualNames(prev => prev.filter((_, i) => i !== index))}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#f57c00',
-                        cursor: 'pointer',
-                        padding: '0',
-                        fontSize: '18px',
-                        lineHeight: '1',
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+          {/* 3. 教練選擇（含需要駕駛） */}
+          <CoachSelector
+            coaches={coaches}
+            selectedCoaches={selectedCoaches}
+            selectedCoachesSet={selectedCoachesSet}
+            setSelectedCoaches={setSelectedCoaches}
+            toggleCoach={toggleCoach}
+            loadingCoaches={loadingCoaches}
+            requiresDriver={requiresDriver}
+            setRequiresDriver={setRequiresDriver}
+            canRequireDriver={canRequireDriver}
+            isSelectedBoatFacility={isSelectedBoatFacility}
+          />
 
-                {/* 清除全部按鈕 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedMemberIds([])
-                    setMemberSearchTerm('')
-                    setManualStudentName('')
-                    setManualNames([])
-                  }}
-                  style={{
-                    padding: '6px 12px',
-                    background: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '16px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  清除全部
-                </button>
-              </div>
-            )}
-
-            {/* 搜尋會員 */}
-            <input
-              type="text"
-              value={memberSearchTerm}
-              onChange={(e) => {
-                handleMemberSearch(e.target.value)
-              }}
-              onFocus={() => setShowMemberDropdown(true)}
-              placeholder="搜尋會員暱稱/姓名/電話..."
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: selectedMemberIds.length > 0 ? '2px solid #4caf50' : '1px solid #ccc',
-                boxSizing: 'border-box',
-                fontSize: '16px',
-                touchAction: 'manipulation',
-              }}
-            />
-
-            {/* 會員下拉選單 */}
-            {showMemberDropdown && filteredMembers.length > 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                maxHeight: '200px',
-                overflowY: 'auto',
-                background: 'white',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                marginTop: '4px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                zIndex: 1000,
-              }}>
-                {filteredMembers.map((member) => {
-                  const isSelected = selectedMemberIds.includes(member.id)
-                  return (
-                    <div
-                      key={member.id}
-                      onClick={() => {
-                        if (!isSelected) {
-                          setSelectedMemberIds(prev => [...prev, member.id])
-                        }
-                        setMemberSearchTerm('')
-                        setShowMemberDropdown(false)
-                      }}
-                      style={{
-                        padding: '12px',
-                        cursor: isSelected ? 'default' : 'pointer',
-                        borderBottom: '1px solid #f0f0f0',
-                        transition: 'background 0.2s',
-                        background: isSelected ? '#e8f5e9' : 'white',
-                        opacity: isSelected ? 0.6 : 1,
-                      }}
-                      onMouseEnter={(e) => !isSelected && (e.currentTarget.style.background = '#f5f5f5')}
-                      onMouseLeave={(e) => !isSelected && (e.currentTarget.style.background = 'white')}
-                    >
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                        {isSelected && '✓ '}
-                        {member.nickname || member.name}
-                        {member.nickname && <span style={{ color: '#666', fontWeight: 'normal', marginLeft: '6px' }}>({member.name})</span>}
-                      </div>
-                      {member.phone && (
-                        <div style={{ fontSize: '13px', color: '#999' }}>
-                          📱 {member.phone}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* 或手動輸入 */}
-            <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'stretch' }}>
-              <input
-                type="text"
-                value={manualStudentName}
-                onChange={(e) => setManualStudentName(e.target.value)}
-                onKeyDown={(e) => {
-                  // 檢查是否正在使用輸入法（避免中文輸入時 Enter 確認選字被誤觸發）
-                  if (e.key === 'Enter' && !e.nativeEvent.isComposing && manualStudentName.trim()) {
-                    e.preventDefault()
-                    setManualNames(prev => [...prev, manualStudentName.trim()])
-                    setManualStudentName('')
-                  }
-                }}
-                placeholder="或直接輸入姓名（非會員/首次體驗）"
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #ff9800',
-                  boxSizing: 'border-box',
-                  fontSize: '16px',
-                  touchAction: 'manipulation',
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  if (manualStudentName.trim()) {
-                    setManualNames(prev => [...prev, manualStudentName.trim()])
-                    setManualStudentName('')
-                  }
-                }}
-                disabled={!manualStudentName.trim()}
-                style={{
-                  padding: '0 20px',
-                  background: manualStudentName.trim() ? '#ff9800' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  cursor: manualStudentName.trim() ? 'pointer' : 'not-allowed',
-                  minWidth: '52px',
-                  touchAction: 'manipulation',
-                }}
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          {/* 船隻選擇 - 大按鈕 */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '10px',
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '600',
-            }}>
-              船隻 <span style={{ color: 'red' }}>*</span>
-            </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '10px',
-            }}>
-              {boats.map((boat, index) => {
-                const isSelected = selectedBoatId === boat.id
-                const isFirstFacility = isFacility(boat.name) && index === boats.findIndex(b => isFacility(b.name))
-                return (
-                  <button
-                    key={boat.id}
-                    type="button"
-                    onClick={() => setSelectedBoatId(boat.id)}
-                    style={{
-                      padding: '14px 8px',
-                      border: isSelected ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-                      borderRadius: '8px',
-                      background: isSelected ? '#dbeafe' : 'white',
-                      color: '#333',
-                      fontSize: '15px',
-                      fontWeight: isSelected ? '600' : '500',
-                      cursor: 'pointer',
-                      gridColumn: isFirstFacility ? '1 / span 1' : undefined,
-                    }}
-                    onTouchStart={(e) => {
-                      e.currentTarget.style.background = isSelected ? '#dbeafe' : '#fafafa'
-                    }}
-                    onTouchEnd={(e) => {
-                      e.currentTarget.style.background = isSelected ? '#dbeafe' : 'white'
-                    }}
-                  >
-                    {boat.name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* 教練選擇 - 大按鈕 */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '10px',
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '600',
-            }}>
-              教練（可複選）
-            </label>
-
-            {/* 已選教練顯示 */}
-            {selectedCoaches.length > 0 && (
-              <div style={{
-                marginBottom: '12px',
-                padding: '12px 14px',
-                background: '#dbeafe',
-                borderRadius: '8px',
-                border: '2px solid #3b82f6',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '8px',
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  flex: 1,
-                  minWidth: 0,
-                }}>
-                  <span style={{ color: '#1e40af', fontSize: '15px', fontWeight: '600', flexShrink: 0 }}>
-                    已選：
-                  </span>
-                  <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    flex: 1,
-                  }}>
-                    {selectedCoaches.map(coachId => {
-                      const coach = coaches.find(c => c.id === coachId)
-                      return coach ? (
-                        <span
-                          key={coachId}
-                          style={{
-                            padding: '6px 12px',
-                            background: 'white',
-                            borderRadius: '6px',
-                            border: '1px solid #3b82f6',
-                            color: '#1e40af',
-                            fontSize: '15px',
-                            fontWeight: '600',
-                          }}
-                        >
-                          {coach.name}
-                        </span>
-                      ) : null
-                    })}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCoaches([])}
-                  style={{
-                    padding: '6px 12px',
-                    background: 'white',
-                    border: '1px solid #3b82f6',
-                    borderRadius: '6px',
-                    color: '#1e40af',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    fontWeight: '600',
-                    flexShrink: 0,
-                  }}
-                >
-                  清除
-                </button>
-              </div>
-            )}
-
-            {loadingCoaches ? (
-              <div style={{ padding: '12px', color: '#666', fontSize: '14px' }}>
-                載入教練列表中...
-              </div>
-            ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '10px',
-              }}>
-                {/* 不指定教練 */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedCoaches([])}
-                  style={{
-                    padding: '14px 10px',
-                    border: selectedCoaches.length === 0 ? '3px solid #1976d2' : '2px solid #e0e0e0',
-                    borderRadius: '10px',
-                    background: selectedCoaches.length === 0 ? '#1976d2' : 'white',
-                    color: selectedCoaches.length === 0 ? 'white' : '#666',
-                    fontSize: '15px',
-                    fontWeight: selectedCoaches.length === 0 ? '700' : '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: selectedCoaches.length === 0 ? '0 4px 12px rgba(25,118,210,0.3)' : '0 2px 4px rgba(0,0,0,0.05)',
-                    gridColumn: '1 / -1',
-                  }}
-                  onTouchStart={(e) => {
-                    if (selectedCoaches.length > 0) {
-                      e.currentTarget.style.transform = 'scale(0.95)'
-                    }
-                  }}
-                  onTouchEnd={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)'
-                  }}
-                >
-                  不指定教練
-                </button>
-
-                {/* 教練列表 */}
-                {coaches.map((coach) => {
-                  const isSelected = selectedCoachesSet.has(coach.id)
-                  return (
-                    <button
-                      key={coach.id}
-                      type="button"
-                      onClick={() => toggleCoach(coach.id)}
-                      style={{
-                        padding: '14px 10px',
-                        border: isSelected ? '3px solid #1976d2' : '2px solid #e0e0e0',
-                        borderRadius: '10px',
-                        background: isSelected ? '#e3f2fd' : 'white',
-                        color: isSelected ? '#1976d2' : '#333',
-                        fontSize: '15px',
-                        fontWeight: isSelected ? '700' : '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        boxShadow: isSelected ? '0 4px 12px rgba(25,118,210,0.15)' : '0 2px 4px rgba(0,0,0,0.05)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                      }}
-                      onTouchStart={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.transform = 'scale(0.95)'
-                        }
-                      }}
-                      onTouchEnd={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)'
-                      }}
-                    >
-                      {isSelected && <span style={{ fontSize: '16px' }}>✓</span>}
-                      {coach.name}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* 需要駕駛勾選框 */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: canRequireDriver ? 'pointer' : 'not-allowed',
-              padding: '12px',
-              backgroundColor: requiresDriver ? '#dbeafe' : (canRequireDriver ? '#f8f9fa' : '#f5f5f5'),
-              borderRadius: '8px',
-              border: requiresDriver ? '2px solid #3b82f6' : '1px solid #e0e0e0',
-              transition: 'all 0.2s',
-              opacity: canRequireDriver ? 1 : 0.6,
-            }}>
-              <input
-                type="checkbox"
-                checked={requiresDriver}
-                onChange={(e) => setRequiresDriver(e.target.checked)}
-                disabled={!canRequireDriver}
-                style={{
-                  marginRight: '10px',
-                  width: '18px',
-                  height: '18px',
-                  cursor: canRequireDriver ? 'pointer' : 'not-allowed',
-                }}
-              />
-              <div style={{ flex: 1 }}>
-                <span style={{
-                  fontSize: '15px',
-                  fontWeight: '500',
-                  color: requiresDriver ? '#3b82f6' : (canRequireDriver ? '#333' : '#999'),
-                }}>
-                  🚤 需要駕駛（勾選後在排班時必須指定駕駛）
-                </span>
-                {!canRequireDriver && (
-                  <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '4px' }}>
-                    {isSelectedBoatFacility ? '⚠️ 設施不需要駕駛' : '⚠️ 未指定教練不能選駕駛'}
-                  </div>
-                )}
-              </div>
-            </label>
-          </div>
-
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '6px',
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '500',
-            }}>
-              開始日期
-            </label>
-            <div style={{ display: 'flex' }}>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #ccc',
-                  boxSizing: 'border-box',
-                  fontSize: '16px',
-                  touchAction: 'manipulation',
-                }}
-              />
-            </div>
-            {/* 星期幾顯示 - 更醒目 */}
-            {startDate && (
-              <div style={{
-                marginTop: '8px',
-                padding: '8px 12px',
-                background: '#f8f9fa',
-                border: '1px solid #dee2e6',
-                borderRadius: '6px',
-                fontSize: '15px',
-                fontWeight: '600',
-                color: '#495057',
-                textAlign: 'center',
-              }}>
-                {getWeekdayText(startDate)}
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '6px',
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '500',
-            }}>
-              開始時間
-            </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <select
-                value={startTime.split(':')[0]}
-                onChange={(e) => {
-                  const hour = e.target.value
-                  const minute = startTime.split(':')[1] || '00'
-                  setStartTime(`${hour}:${minute}`)
-                }}
-                required
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #ccc',
-                  boxSizing: 'border-box',
-                  fontSize: '16px',
-                  touchAction: 'manipulation',
-                  backgroundColor: 'white',
-                  cursor: 'pointer',
-                }}
-              >
-                {Array.from({ length: 24 }, (_, i) => {
-                  const hour = String(i).padStart(2, '0')
-                  return <option key={hour} value={hour}>{hour}</option>
-                })}
-              </select>
-              <select
-                value={startTime.split(':')[1] || '00'}
-                onChange={(e) => {
-                  const hour = startTime.split(':')[0]
-                  const minute = e.target.value
-                  setStartTime(`${hour}:${minute}`)
-                }}
-                required
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #ccc',
-                  boxSizing: 'border-box',
-                  fontSize: '16px',
-                  touchAction: 'manipulation',
-                  backgroundColor: 'white',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="00">00</option>
-                <option value="15">15</option>
-                <option value="30">30</option>
-                <option value="45">45</option>
-              </select>
-            </div>
-          </div>
-
-          {/* 時長選擇 - 常用按鈕 + 自訂輸入 */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '10px',
-              color: '#000',
-              fontSize: '15px',
-              fontWeight: '600',
-            }}>
-              時長（分鐘）
-            </label>
-
-            {/* 常用時長按鈕 */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '8px',
-              marginBottom: '12px',
-            }}>
-              {[30, 40, 60, 90, 120, 150, 180, 210].map(minutes => {
-                const isSelected = durationMin === minutes
-                return (
-                  <button
-                    key={minutes}
-                    type="button"
-                    onClick={() => setDurationMin(minutes)}
-                    style={{
-                      padding: '12px 8px',
-                      border: isSelected ? '3px solid #1976d2' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      background: isSelected ? '#e3f2fd' : 'white',
-                      color: isSelected ? '#1976d2' : '#333',
-                      fontSize: '14px',
-                      fontWeight: isSelected ? '700' : '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: isSelected ? '0 2px 8px rgba(25,118,210,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
-                    }}
-                    onTouchStart={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.transform = 'scale(0.95)'
-                      }
-                    }}
-                    onTouchEnd={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)'
-                    }}
-                  >
-                    {minutes}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* 自訂時長輸入 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>自訂：</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={durationMin}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '') // 只允許數字
-                  const numValue = Number(value)
-                  if (numValue > 0 && numValue <= 999) {
-                    setDurationMin(numValue)
-                  } else if (value === '') {
-                    setDurationMin(0)
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  textAlign: 'center',
-                  fontWeight: '600',
-                  color: '#333',
-                  boxSizing: 'border-box',
-                }}
-                placeholder="輸入分鐘數"
-              />
-              <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>分</span>
-            </div>
-          </div>
+          {/* 4. 時間選擇（開始日期+開始時間+時長） */}
+          <TimeSelector
+            startDate={startDate}
+            setStartDate={setStartDate}
+            startTime={startTime}
+            setStartTime={setStartTime}
+            durationMin={durationMin}
+            setDurationMin={setDurationMin}
+          />
 
           <BookingDetails
             activityTypesSet={activityTypesSet}
@@ -1658,14 +1017,16 @@ export function EditBookingDialog({
           </div>
         )}
 
-        {/* 按鈕欄 - 固定底部（Safari 底部工具列／Home 指示條額外留白） */}
+        {/* 按鈕欄 - 固定底部一排（Safari 底部工具列／Home 指示條額外留白） */}
         <div style={{
-          padding: isMobile ? '12px 20px' : '20px 24px',
+          padding: isMobile ? '12px 16px' : '20px 24px',
           borderTop: `1px solid ${designSystem.colors.border.light}`,
           background: 'white',
           display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'stretch',
           gap: isMobile ? '8px' : '12px',
-          flexWrap: 'wrap',
+          flexWrap: 'nowrap',
           paddingBottom: isMobile
             ? 'max(40px, calc(env(safe-area-inset-bottom, 0px) + 24px))'
             : '20px',
@@ -1685,70 +1046,71 @@ export function EditBookingDialog({
               borderColor: `${designSystem.colors.danger[500]}66`,
               background: 'transparent',
               boxShadow: 'none',
-              fontSize: isMobile ? '16px' : '15px',
+              fontSize: isMobile ? '15px' : '15px',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.5 : 1,
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',
-              minWidth: isMobile ? '72px' : '100px',
-              flex: '0 0 auto',
-              paddingLeft: isMobile ? '14px' : '18px',
-              paddingRight: isMobile ? '14px' : '18px',
+              flex: 1,
+              minWidth: 0,
+              paddingLeft: isMobile ? '12px' : '18px',
+              paddingRight: isMobile ? '12px' : '18px',
+              whiteSpace: 'nowrap',
             }}
           >
             刪除
           </button>
-          <div style={{ flex: 1, minWidth: isMobile ? '100%' : 'auto', display: 'flex', gap: isMobile ? '8px' : '12px' }}>
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={loading}
-              style={{
-                ...getButtonStyle('secondary', 'large', isMobile),
-                flex: 1,
-                fontSize: isMobile ? '16px' : '15px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.5 : 1,
-                touchAction: 'manipulation',
-                minHeight: isMobile ? '48px' : '44px',
-                minWidth: isMobile ? 'auto' : '120px',
-              }}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              form="edit-booking-form"
-              data-track="booking_edit_save"
-              disabled={loading || conflictStatus === 'conflict'}
-              style={{
-                ...getButtonStyle('primary', 'large', isMobile),
-                flex: 1,
-                fontSize: isMobile ? '16px' : '15px',
-                ...(loading || conflictStatus === 'conflict'
-                  ? { background: '#ccc', boxShadow: 'none', cursor: 'not-allowed' }
-                  : {}),
-                touchAction: 'manipulation',
-                minHeight: isMobile ? '48px' : '44px',
-                minWidth: isMobile ? 'auto' : '120px',
-              }}
-            >
-              {loading ? (
-                <>
-                  <span style={{ 
-                    display: 'inline-block',
-                    width: '16px',
-                    height: '16px',
-                    border: '2px solid rgba(255,255,255,0.3)',
-                    borderTop: '2px solid white',
-                    borderRadius: '50%',
-                    animation: 'spin 0.8s linear infinite',
-                  }} />
-                  處理中...
-                </>
-              ) : '確認更新'}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={loading}
+            style={{
+              ...getButtonStyle('secondary', 'large', isMobile),
+              flex: 1,
+              minWidth: 0,
+              fontSize: isMobile ? '15px' : '15px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            form="edit-booking-form"
+            data-track="booking_edit_save"
+            disabled={loading || conflictStatus === 'conflict'}
+            style={{
+              ...getButtonStyle('primary', 'large', isMobile),
+              flex: 1,
+              minWidth: 0,
+              fontSize: isMobile ? '15px' : '15px',
+              ...(loading || conflictStatus === 'conflict'
+                ? { background: '#ccc', boxShadow: 'none', cursor: 'not-allowed' }
+                : {}),
+              touchAction: 'manipulation',
+              minHeight: isMobile ? '48px' : '44px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {loading ? (
+              <>
+                <span style={{ 
+                  display: 'inline-block',
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                處理中...
+              </>
+            ) : '確認更新'}
+          </button>
         </div>
       </div>
 

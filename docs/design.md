@@ -95,7 +95,7 @@ Keep icons functional. If the label is already clear, the icon is usually unnece
 
 ## Accent Usage
 
-Accent color is scarce. It should only appear on:
+Accent color is scarce on most surfaces. It should only appear on:
 
 - Primary actions.
 - Selected state.
@@ -105,6 +105,8 @@ Accent color is scarce. It should only appear on:
 Do not use accent colors for decoration.
 
 Most UI should be near-black ink, cool light gray, muted gray, and low-saturation status colors. The interface should feel calm even when the data is operational.
+
+**Exception — booking forms** (新增／修改／重複預約): keep **semantic multi-color** so operators retain muscle memory. Do not flatten form selection to near-black. Soften with design-system tonal scales instead of bright stock blues/oranges (`#3b82f6`, `#007bff`, `#ff9800`, `#1976d2`). See [Booking Forms](#booking-forms).
 
 ## Brand Frame
 
@@ -117,7 +119,60 @@ The whole product shares one brand frame, defined in `src/lib/esBrandTokens.ts` 
 - Content sits below on the cool page background (`#f4f5f7`), grouped into white 16px-radius blocks with soft shadows.
 - Public surfaces (Shop, Book, LIFF, Guide) and admin all reuse this same frame. Do not hand-roll a new header color or lockup — reuse `EsBrandLockup` + `ES_BRAND`.
 
-The single interactive accent is the brand near-black (`primary[500]` = `#1d1d1f`), used only for primary buttons, selected states, and active nav. Everything else stays neutral.
+The single interactive accent for **chrome and primary CTAs** is the brand near-black (`primary[500]` = `#1d1d1f`): primary buttons, active nav, and most non-form selected states. Booking form selection uses the muted `info` / `warning` / `success` scales instead (see below).
+
+## Booking Forms
+
+Applies to shared selectors used by **New / Edit / Repeat** booking dialogs (`BoatSelector`, `CoachSelector`, `MemberSelector`, `TimeSelector`, `DateMultiPicker`, `BookingDetails`).
+
+### Intent
+
+- Keep the familiar multi-color language (selected ≈ cool blue-gray, practice ≈ warm, success cues for members).
+- Align structure: same spacing, radius, border weight, and label rhythm as the rest of the product.
+- Soften harsh default UI colors by mapping onto `designSystem` status scales.
+- Do not change conflict checks, validation, or submit/delete flows for a visual pass.
+
+### Color roles
+
+| Role | Token scale | Where |
+|------|-------------|--------|
+| Selection / choice chips | `info` (`50` fill, `500` border, `700` text) | Boat, coach, duration, activity type, calendar selected day |
+| Flag: 教練練習 | `warning` | Boxed checkbox block |
+| Flag: 需要駕駛 | `info` | Boxed checkbox block (same box chrome as 教練練習) |
+| Member selected chips | `info` | Solid border chips |
+| Non-member selected chips | `warning` | Dashed border chips (`50` fill, `500` dashed border, `700` text) |
+| Member “has selection” | `success` | Count hint, search border when members selected |
+| Manual non-member add | `warning` | Input border + add button (same family as non-member chips) |
+| Weekend hints in calendar | `danger[700]` Sunday, `info[700]` Saturday | Labels / unselected day text only |
+
+Implement via helpers in `designSystem.ts`:
+
+- `getBookingChoiceStyle(selected)` — choice / chip selected state
+- `getBookingFlagBoxStyle(active, 'info' \| 'warning')` — boxed flags
+
+Do not reintroduce one-off hex blues/oranges in these components.
+
+### Boxed flags (keep the frame)
+
+Operators prefer **教練練習** and **需要駕駛** to stay in a visible box. Keep the box; make both boxes identical in structure:
+
+- Same padding (`spacing.md`), radius (`borderRadius.lg`), idle vs active border weight (`1px` idle / `1.5px` active)
+- Idle: `background.main` + `border.light`
+- Active: tone `50` fill + tone `500` border
+- Title + short helper text inside; checkbox `accentColor` matches the tone
+
+Do not strip these back to borderless plain rows unless product explicitly asks.
+
+### Dialog chrome vs form body
+
+- **Form body:** multi-color semantic selection (above).
+- **Footer actions:** calm product chrome — `getButtonStyle`; Edit uses equal-width **刪除｜取消｜確認更新** on one row (mobile and desktop).
+- **Safari:** footer `paddingBottom` must include safe area, e.g. `max(40px, calc(env(safe-area-inset-bottom, 0px) + 24px))`, with touch targets ≥ 48px on mobile.
+- Conflict validation UI stays; do not weaken or remove it for styling.
+
+### Shared components first
+
+Visual changes to booking forms should land in the shared `src/components/booking/*` pieces so New / Edit / Repeat stay consistent. Avoid styling the same control three different ways inside each dialog. Prefer composing `MemberSelector`, `BoatSelector`, `CoachSelector`, `TimeSelector`, and `BookingDetails` rather than inlining duplicate markup.
 
 ## Typography
 
@@ -218,5 +273,6 @@ Use this guide to decide what the UI should feel like. Use `src/styles/designSys
 - Which colors should be used?
 - Which radius, shadow, and spacing values are available?
 - How do shared buttons, cards, badges, inputs, and page surfaces render?
+- Booking form helpers: `getBookingChoiceStyle`, `getBookingFlagBoxStyle`
 
 Both files should stay aligned. If the visual direction changes, update this guide first, then adjust tokens.

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { designSystem } from '../../styles/designSystem'
 
 interface DateMultiPickerProps {
   selectedDates: string[]  // 格式: 'YYYY-MM-DD'
@@ -184,7 +185,11 @@ export function DateMultiPicker({
               textAlign: 'center',
               fontSize: '13px',
               fontWeight: '600',
-              color: i === 0 ? '#dc3545' : i === 6 ? '#007bff' : '#666',
+              color: i === 0
+                ? designSystem.colors.danger[700]
+                : i === 6
+                  ? designSystem.colors.info[700]
+                  : designSystem.colors.text.secondary,
               padding: '4px 0',
             }}
           >
@@ -211,24 +216,26 @@ export function DateMultiPicker({
               disabled={dayInfo.isDisabled}
               style={{
                 height: '42px',
-                borderRadius: '6px',
-                border: isSelected ? '2px solid #007bff' : '1px solid #e0e0e0',
+                borderRadius: designSystem.borderRadius.sm,
+                border: isSelected
+                  ? `1.5px solid ${designSystem.colors.info[500]}`
+                  : `1px solid ${designSystem.colors.border.light}`,
                 background: isSelected
-                  ? '#007bff'
+                  ? designSystem.colors.info[500]
                   : dayInfo.isDisabled
-                    ? '#f8f8f8'
+                    ? designSystem.colors.background.main
                     : '#fff',
                 color: isSelected
                   ? 'white'
                   : dayInfo.isDisabled
-                    ? '#ccc'
+                    ? designSystem.colors.text.disabled
                     : !dayInfo.isCurrentMonth
-                      ? '#ccc'
+                      ? designSystem.colors.text.disabled
                       : weekday === 0
-                        ? '#dc3545'
+                        ? designSystem.colors.danger[700]
                         : weekday === 6
-                          ? '#007bff'
-                          : '#333',
+                          ? designSystem.colors.info[700]
+                          : designSystem.colors.text.primary,
                 fontSize: '15px',
                 fontWeight: isSelected ? '700' : '500',
                 cursor: dayInfo.isDisabled ? 'not-allowed' : 'pointer',
@@ -237,7 +244,6 @@ export function DateMultiPicker({
                 justifyContent: 'center',
                 padding: 0,
                 touchAction: 'manipulation',
-                transition: 'transform 0.1s',
               }}
             >
               {dayInfo.day}
@@ -251,13 +257,13 @@ export function DateMultiPicker({
         <div style={{
           marginTop: '12px',
           padding: '10px 12px',
-          background: '#f8f9fa',
-          border: '1px solid #dee2e6',
-          borderRadius: '8px',
+          background: designSystem.colors.background.main,
+          border: `1px solid ${designSystem.colors.border.light}`,
+          borderRadius: designSystem.borderRadius.lg,
         }}>
           <div style={{
             fontWeight: '600',
-            color: '#495057',
+            color: designSystem.colors.text.secondary,
             marginBottom: '8px',
             fontSize: '13px',
           }}>
@@ -279,9 +285,9 @@ export function DateMultiPicker({
                   onClick={() => toggleDate(dateStr)}
                   style={{
                     padding: '8px 12px',
-                    background: '#007bff',
+                    background: designSystem.colors.info[500],
                     color: 'white',
-                    borderRadius: '16px',
+                    borderRadius: designSystem.borderRadius.md,
                     fontSize: '13px',
                     fontWeight: '500',
                     cursor: 'pointer',

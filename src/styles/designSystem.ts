@@ -370,6 +370,35 @@ export const getButtonStyle = (
   }
 }
 
+/** 預約表單選取態（船／教練／時長／活動等）— 保留多色語意，對齊 info 色階 */
+export const getBookingChoiceStyle = (selected: boolean): React.CSSProperties => ({
+  border: selected
+    ? `1.5px solid ${designSystem.colors.info[500]}`
+    : `1px solid ${designSystem.colors.border.light}`,
+  borderRadius: designSystem.borderRadius.lg,
+  background: selected ? designSystem.colors.info[50] : '#ffffff',
+  color: selected ? designSystem.colors.info[700] : designSystem.colors.text.primary,
+})
+
+/**
+ * 預約表單旗標框（教練練習／需要駕駛）
+ * 保留有框；未選／已選結構一致，僅色階不同（warning / info）
+ */
+export const getBookingFlagBoxStyle = (
+  active: boolean,
+  tone: 'info' | 'warning' = 'info'
+): React.CSSProperties => {
+  const palette = designSystem.colors[tone]
+  return {
+    padding: designSystem.spacing.md,
+    borderRadius: designSystem.borderRadius.lg,
+    border: active
+      ? `1.5px solid ${palette[500]}`
+      : `1px solid ${designSystem.colors.border.light}`,
+    background: active ? palette[50] : designSystem.colors.background.main,
+  }
+}
+
 // 卡片樣式
 export const getCardStyle = (isMobile: boolean = false): React.CSSProperties => ({
   background: designSystem.colors.background.card,

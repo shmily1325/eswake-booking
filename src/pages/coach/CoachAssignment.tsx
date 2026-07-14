@@ -1674,7 +1674,6 @@ export function CoachAssignment() {
                   borderRadius: designSystem.borderRadius.lg,
                   boxShadow: designSystem.shadows.xs,
                   border: `1px solid ${designSystem.colors.border.light}`,
-                  borderLeft: `3px solid ${designSystem.colors.danger[500]}`,
                   display: 'flex',
                   flexDirection: 'column',
                   maxHeight: isMobile ? 'none' : '650px',
@@ -1685,11 +1684,11 @@ export function CoachAssignment() {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: '12px',
-                    fontSize: isMobile ? '15px' : '16px',
-                    fontWeight: '700',
+                    fontSize: isMobile ? '16px' : '18px',
+                    fontWeight: '600',
                     color: designSystem.colors.danger[700],
-                    borderBottom: `1px solid ${designSystem.colors.border.light}`,
-                    padding: isMobile ? '12px 14px' : '14px 18px',
+                    borderBottom: `2px solid ${designSystem.colors.primary[500]}`,
+                    padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
                     flexShrink: 0,
                   }}>
                     <span>未排班</span>
@@ -1701,6 +1700,7 @@ export function CoachAssignment() {
                       border: `1px solid ${designSystem.colors.danger[500]}55`,
                       color: designSystem.colors.danger[700],
                       fontSize: '12px',
+                      fontWeight: '600',
                       textAlign: 'center',
                     }}>
                       {needsDriverBookings.length}
@@ -1709,22 +1709,24 @@ export function CoachAssignment() {
                   
                   <div style={{ 
                     display: 'flex', 
-                    flexDirection: 'column', 
+                    flexDirection: 'column',
+                    gap: '6px',
                     overflowY: 'auto',
+                    padding: isMobile ? '0 16px 16px' : '0 20px 20px',
+                    minHeight: '100px',
                   }}>
-                    {needsDriverBookings.map((booking, bookingIndex) => {
+                    {needsDriverBookings.map((booking) => {
                       const assignment = assignments[booking.id] || { coachIds: [], driverIds: [], notes: '', conflicts: [], requiresDriver: false, skipped: false }
                       const isEditing = editingBookingId === booking.id
                       
                       return (
                         <div key={booking.id} style={{
-                          padding: isMobile ? '12px 14px' : '14px 18px',
-                          background: designSystem.colors.background.card,
-                          borderBottom: bookingIndex < needsDriverBookings.length - 1
-                            ? `1px solid ${designSystem.colors.border.light}`
-                            : undefined,
+                          padding: isMobile ? '8px 10px' : '10px 12px',
+                          background: designSystem.colors.background.hover,
+                          borderRadius: designSystem.borderRadius.md,
+                          borderLeft: `3px solid ${designSystem.colors.danger[500]}`,
                           fontSize: isMobile ? '13px' : '14px',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
                         }}
                         onClick={() => setEditingBookingId(isEditing ? null : booking.id)}
                         >

@@ -94,15 +94,16 @@ export function VirtualizedBookingList({
                     >
                         {/* 左側船名欄 */}
                         <div style={{
-                            minWidth: isMobile ? '80px' : '120px',
-                            maxWidth: isMobile ? '80px' : '120px',
+                            // 手機需容納「陸上課程」四字＋色點；80px 會被 ellipsis 吃掉
+                            minWidth: isMobile ? '100px' : '120px',
+                            maxWidth: isMobile ? '100px' : '120px',
                             background: designSystem.colors.secondary[800],
                             color: '#ffffff',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            padding: isMobile ? '12px 8px' : '16px 12px',
+                            padding: isMobile ? '12px 6px' : '16px 12px',
                             borderRight: '1px solid rgba(255,255,255,0.1)',
                             boxShadow: boatIndex > 0 ? 'inset 0 1px 0 rgba(255,255,255,0.1)' : undefined,
                             position: 'sticky',
@@ -115,7 +116,7 @@ export function VirtualizedBookingList({
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '5px',
+                                gap: '4px',
                                 width: '100%',
                                 minWidth: 0,
                                 marginBottom: '4px',
@@ -133,14 +134,17 @@ export function VirtualizedBookingList({
                                 />
                                 <span style={{
                                     minWidth: 0,
-                                    maxWidth: '100%',
+                                    flex: 1,
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap',
                                     wordBreak: 'keep-all',
-                                    fontSize: isMobile ? '14px' : '16px',
+                                    fontSize: isMobile
+                                        ? (boat.name.length >= 4 ? '13px' : '14px')
+                                        : '16px',
                                     fontWeight: '700',
                                     textAlign: 'center',
+                                    letterSpacing: boat.name.length >= 4 ? '-0.02em' : undefined,
                                 }}>
                                     {boat.name}
                                 </span>

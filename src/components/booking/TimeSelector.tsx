@@ -1,4 +1,6 @@
 import { getWeekdayText } from '../../utils/date'
+import { designSystem, getBookingChoiceStyle, getLabelStyle } from '../../styles/designSystem'
+import type { CSSProperties } from 'react'
 
 interface TimeSelectorProps {
     startDate: string
@@ -17,16 +19,20 @@ export function TimeSelector({
     durationMin,
     setDurationMin,
 }: TimeSelectorProps) {
+    const fieldStyle: CSSProperties = {
+        padding: '12px',
+        borderRadius: designSystem.borderRadius.lg,
+        border: `1px solid ${designSystem.colors.border.main}`,
+        boxSizing: 'border-box',
+        fontSize: '16px',
+        touchAction: 'manipulation',
+        backgroundColor: '#ffffff',
+    }
+
     return (
         <>
-            <div style={{ marginBottom: '18px' }}>
-                <label style={{
-                    display: 'block',
-                    marginBottom: '6px',
-                    color: '#000',
-                    fontSize: '15px',
-                    fontWeight: '500',
-                }}>
+            <div style={{ marginBottom: designSystem.spacing.lg }}>
+                <label style={getLabelStyle(true)}>
                     開始日期
                 </label>
                 <div style={{ display: 'flex' }}>
@@ -36,28 +42,22 @@ export function TimeSelector({
                         onChange={(e) => setStartDate(e.target.value)}
                         required
                         style={{
+                            ...fieldStyle,
                             flex: 1,
                             minWidth: 0,
-                            padding: '12px',
-                            borderRadius: '8px',
-                            border: '1px solid #ccc',
-                            boxSizing: 'border-box',
-                            fontSize: '16px',
-                            touchAction: 'manipulation',
                         }}
                     />
                 </div>
-                {/* 星期幾顯示 - 更醒目 */}
                 {startDate && (
                     <div style={{
-                        marginTop: '8px',
+                        marginTop: designSystem.spacing.sm,
                         padding: '8px 12px',
-                        background: '#f8f9fa',
-                        border: '1px solid #dee2e6',
-                        borderRadius: '6px',
+                        background: designSystem.colors.background.main,
+                        border: `1px solid ${designSystem.colors.border.light}`,
+                        borderRadius: designSystem.borderRadius.md,
                         fontSize: '15px',
                         fontWeight: '600',
-                        color: '#495057',
+                        color: designSystem.colors.text.secondary,
                         textAlign: 'center',
                     }}>
                         {getWeekdayText(startDate)}
@@ -65,17 +65,11 @@ export function TimeSelector({
                 )}
             </div>
 
-            <div style={{ marginBottom: '18px' }}>
-                <label style={{
-                    display: 'block',
-                    marginBottom: '6px',
-                    color: '#000',
-                    fontSize: '15px',
-                    fontWeight: '500',
-                }}>
+            <div style={{ marginBottom: designSystem.spacing.lg }}>
+                <label style={getLabelStyle(true)}>
                     開始時間
                 </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: designSystem.spacing.sm }}>
                     <select
                         value={startTime.split(':')[0]}
                         onChange={(e) => {
@@ -85,14 +79,8 @@ export function TimeSelector({
                         }}
                         required
                         style={{
+                            ...fieldStyle,
                             flex: 1,
-                            padding: '12px',
-                            borderRadius: '8px',
-                            border: '1px solid #ccc',
-                            boxSizing: 'border-box',
-                            fontSize: '16px',
-                            touchAction: 'manipulation',
-                            backgroundColor: 'white',
                             cursor: 'pointer',
                         }}
                     >
@@ -110,14 +98,8 @@ export function TimeSelector({
                         }}
                         required
                         style={{
+                            ...fieldStyle,
                             flex: 1,
-                            padding: '12px',
-                            borderRadius: '8px',
-                            border: '1px solid #ccc',
-                            boxSizing: 'border-box',
-                            fontSize: '16px',
-                            touchAction: 'manipulation',
-                            backgroundColor: 'white',
                             cursor: 'pointer',
                         }}
                     >
@@ -129,23 +111,16 @@ export function TimeSelector({
                 </div>
             </div>
 
-            <div style={{ marginBottom: '18px' }}>
-                <label style={{
-                    display: 'block',
-                    marginBottom: '10px',
-                    color: '#000',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                }}>
+            <div style={{ marginBottom: designSystem.spacing.lg }}>
+                <label style={{ ...getLabelStyle(true), fontWeight: '600' }}>
                     時長（分鐘）
                 </label>
 
-                {/* 常用時長按鈕 */}
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: '8px',
-                    marginBottom: '12px',
+                    gap: designSystem.spacing.sm,
+                    marginBottom: designSystem.spacing.md,
                 }}>
                     {[30, 40, 60, 90, 120, 150, 180, 210].map(minutes => {
                         const isSelected = durationMin === minutes
@@ -155,24 +130,13 @@ export function TimeSelector({
                                 type="button"
                                 onClick={() => setDurationMin(minutes)}
                                 style={{
+                                    ...getBookingChoiceStyle(isSelected),
                                     padding: '12px 8px',
-                                    border: isSelected ? '3px solid #1976d2' : '2px solid #e0e0e0',
-                                    borderRadius: '8px',
-                                    background: isSelected ? '#e3f2fd' : 'white',
-                                    color: isSelected ? '#1976d2' : '#333',
                                     fontSize: '14px',
                                     fontWeight: isSelected ? '700' : '500',
                                     cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    boxShadow: isSelected ? '0 2px 8px rgba(25,118,210,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
-                                }}
-                                onTouchStart={(e) => {
-                                    if (!isSelected) {
-                                        e.currentTarget.style.transform = 'scale(0.95)'
-                                    }
-                                }}
-                                onTouchEnd={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1)'
+                                    minHeight: '44px',
+                                    touchAction: 'manipulation',
                                 }}
                             >
                                 {minutes}
@@ -181,15 +145,20 @@ export function TimeSelector({
                     })}
                 </div>
 
-                {/* 自訂時長輸入 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>自訂：</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: designSystem.spacing.sm }}>
+                    <span style={{
+                        fontSize: '14px',
+                        color: designSystem.colors.text.secondary,
+                        flexShrink: 0,
+                    }}>
+                        自訂：
+                    </span>
                     <input
                         type="text"
                         inputMode="numeric"
                         value={durationMin}
                         onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, '') // 只允許數字
+                            const value = e.target.value.replace(/\D/g, '')
                             const numValue = Number(value)
                             if (numValue > 0 && numValue <= 999) {
                                 setDurationMin(numValue)
@@ -198,19 +167,21 @@ export function TimeSelector({
                             }
                         }}
                         style={{
+                            ...fieldStyle,
                             flex: 1,
-                            padding: '10px 12px',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '16px',
                             textAlign: 'center',
                             fontWeight: '600',
-                            color: '#333',
-                            boxSizing: 'border-box',
+                            color: designSystem.colors.text.primary,
                         }}
                         placeholder="輸入分鐘數"
                     />
-                    <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>分</span>
+                    <span style={{
+                        fontSize: '14px',
+                        color: designSystem.colors.text.secondary,
+                        flexShrink: 0,
+                    }}>
+                        分
+                    </span>
                 </div>
             </div>
         </>
