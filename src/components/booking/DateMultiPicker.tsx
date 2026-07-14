@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { designSystem } from '../../styles/designSystem'
+import { designSystem, getFontSize } from '../../styles/designSystem'
 
 interface DateMultiPickerProps {
   selectedDates: string[]  // 格式: 'YYYY-MM-DD'
@@ -130,7 +130,7 @@ export function DateMultiPicker({
             border: '1px solid #ccc',
             background: canGoPrev ? '#fff' : '#f5f5f5',
             color: canGoPrev ? '#333' : '#ccc',
-            fontSize: '20px',
+            fontSize: getFontSize('h2', true),
             fontWeight: 'bold',
             cursor: canGoPrev ? 'pointer' : 'not-allowed',
             display: 'flex',
@@ -142,7 +142,7 @@ export function DateMultiPicker({
           ‹
         </button>
         <span style={{
-          fontSize: '16px',
+          fontSize: getFontSize('bodyLarge', true),
           fontWeight: '600',
           color: '#333',
         }}>
@@ -158,7 +158,7 @@ export function DateMultiPicker({
             border: '1px solid #ccc',
             background: '#fff',
             color: '#333',
-            fontSize: '20px',
+            fontSize: getFontSize('h2', true),
             fontWeight: 'bold',
             cursor: 'pointer',
             display: 'flex',
@@ -183,7 +183,7 @@ export function DateMultiPicker({
             key={label}
             style={{
               textAlign: 'center',
-              fontSize: '13px',
+              fontSize: getFontSize('button', true),
               fontWeight: '600',
               color: i === 0
                 ? designSystem.colors.danger[700]
@@ -236,7 +236,7 @@ export function DateMultiPicker({
                         : weekday === 6
                           ? designSystem.colors.info[700]
                           : designSystem.colors.text.primary,
-                fontSize: '15px',
+                fontSize: getFontSize('body', false),
                 fontWeight: isSelected ? '700' : '500',
                 cursor: dayInfo.isDisabled ? 'not-allowed' : 'pointer',
                 display: 'flex',
@@ -265,7 +265,7 @@ export function DateMultiPicker({
             fontWeight: '600',
             color: designSystem.colors.text.secondary,
             marginBottom: '8px',
-            fontSize: '13px',
+            fontSize: getFontSize('button', true),
           }}>
             已選 {selectedDates.length} 個日期（點擊可移除）
           </div>
@@ -288,7 +288,7 @@ export function DateMultiPicker({
                     background: designSystem.colors.info[500],
                     color: 'white',
                     borderRadius: designSystem.borderRadius.md,
-                    fontSize: '13px',
+                    fontSize: getFontSize('button', true),
                     fontWeight: '500',
                     cursor: 'pointer',
                     display: 'inline-flex',
@@ -300,7 +300,7 @@ export function DateMultiPicker({
                   }}
                 >
                   {parseInt(m)}/{parseInt(d)}({weekday})
-                  <span style={{ fontSize: '16px', fontWeight: 'bold' }}>×</span>
+                  <span style={{ fontSize: getFontSize('bodyLarge', true), fontWeight: 'bold' }}>×</span>
                 </button>
               )
             })}

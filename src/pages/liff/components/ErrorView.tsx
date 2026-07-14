@@ -1,6 +1,7 @@
 // 錯誤顯示組件
 
-import { liffCard, liffPage, liffPrimaryBtn, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { getFontSizePx } from '../../../styles/designSystem'
+import { liffCard, liffPage, liffPrimaryBtn, LIFF_THEME } from '../liffUiStyles'
 
 interface ErrorViewProps {
   error: string
@@ -25,10 +26,10 @@ export function ErrorView({ error, onRetry }: ErrorViewProps) {
         width: '100%',
       }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
-        <div style={{ fontSize: LIFF_TYPE.title, color: '#d32f2f', fontWeight: '600', marginBottom: '8px' }}>
+        <div style={{ fontSize: getFontSizePx('h3', true), color: '#d32f2f', fontWeight: '600', marginBottom: '8px' }}>
           發生錯誤
         </div>
-        <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.muted }}>
+        <div style={{ fontSize: getFontSizePx('body', true), color: LIFF_THEME.muted }}>
           {error}
         </div>
         {onRetry && (

@@ -6,7 +6,7 @@ import { Footer } from '../../components/Footer'
 import { CoachReportFormDialog } from '../../components/CoachReportFormDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
-import { getCardStyle } from '../../styles/designSystem'
+import { getCardStyle, getFilterChipStyle, getFontSize, getReportRolePillStyle, designSystem } from '../../styles/designSystem'
 import { useToast, ToastContainer } from '../../components/ui'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
@@ -943,7 +943,7 @@ export function CoachReport({
   // 統計數據計算已移至需要時再計算（目前 UI 中未顯示）
 
   return (
-    <div style={{ minHeight: embedded ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+    <div style={{ minHeight: embedded ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
       <div style={{
         flex: 1,
         padding: embedded ? '0' : (isMobile ? '16px' : '24px'),
@@ -966,14 +966,11 @@ export function CoachReport({
         {/* 最後更新時間 */}
         {lastRefreshTime && (
           <div style={{
-            fontSize: '12px',
-            color: '#888',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary,
             marginBottom: '16px'
           }}>
-            🔄 已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
         )}
 
@@ -984,8 +981,8 @@ export function CoachReport({
         }}>
           {/* 日期選擇標題 */}
           <div style={{
-            fontSize: isMobile ? '13px' : '14px',
-            color: '#666',
+            fontSize: getFontSize('bodySmall', isMobile),
+            color: designSystem.colors.text.secondary,
             fontWeight: '600',
             marginBottom: '12px'
           }}>
@@ -1005,14 +1002,9 @@ export function CoachReport({
               data-track="coach_report_view_unreported"
               onClick={() => setViewMode('unreported')}
               style={{
+                ...getFilterChipStyle(viewMode === 'unreported', 'warning'),
                 padding: isMobile ? '10px 16px' : '10px 20px',
-                background: viewMode === 'unreported' ? '#f57c00' : '#fff3e0',
-                color: viewMode === 'unreported' ? 'white' : '#e65100',
-                border: `2px solid ${viewMode === 'unreported' ? '#f57c00' : '#ffcc80'}`,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: isMobile ? '13px' : '14px',
-                fontWeight: '600',
+                fontSize: getFontSize('button', isMobile),
                 transition: 'all 0.2s'
               }}
             >
@@ -1038,14 +1030,9 @@ export function CoachReport({
                       setDateOffset(offset)
                     }}
                     style={{
+                      ...getFilterChipStyle(isSelected, 'info'),
                       padding: '10px 20px',
-                      background: isSelected ? '#2196f3' : '#e3f2fd',
-                      color: isSelected ? 'white' : '#1976d2',
-                      border: `2px solid ${isSelected ? '#2196f3' : '#90caf9'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
+                      fontSize: getFontSize('button', false),
                       transition: 'all 0.2s'
                     }}
                   >
@@ -1074,21 +1061,22 @@ export function CoachReport({
                   }} 
                   style={{
                     padding: '8px 12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
+                    border: `1px solid ${designSystem.colors.border.main}`,
+                    borderRadius: designSystem.borderRadius.lg,
                     fontSize: '16px', // 16px 防止 iOS 縮放
-                    color: '#333',
+                    color: designSystem.colors.text.primary,
                     cursor: 'pointer',
-                    flex: isMobile ? '1' : 'none'
+                    flex: isMobile ? '1' : 'none',
+                    background: '#ffffff'
                   }}
                 />
                 <span style={{
                   padding: '8px 12px',
-                  background: '#f5f5f5',
-                  borderRadius: '8px',
-                  fontSize: isMobile ? '13px' : '13px',
+                  background: designSystem.colors.background.hover,
+                  borderRadius: designSystem.borderRadius.lg,
+                  fontSize: getFontSize('bodySmall', isMobile),
                   fontWeight: '600',
-                  color: '#666',
+                  color: designSystem.colors.text.secondary,
                   whiteSpace: 'nowrap'
                 }}>
                   {getWeekdayText(selectedDate)}
@@ -1100,13 +1088,13 @@ export function CoachReport({
           {!autoFilterByUser && !isMobile && (
             <>
               <div style={{
-                fontSize: '14px',
-                color: '#666',
+                fontSize: getFontSize('bodySmall', false),
+                color: designSystem.colors.text.secondary,
                 fontWeight: '600',
                 marginBottom: '12px',
                 marginTop: '16px',
                 paddingTop: '16px',
-                borderTop: '1px solid #eee'
+                borderTop: `1px solid ${designSystem.colors.border.light}`
               }}>
                 選擇教練
               </div>
@@ -1118,14 +1106,9 @@ export function CoachReport({
                 <button
                   onClick={() => setSelectedCoachId('all')}
                   style={{
+                    ...getFilterChipStyle(selectedCoachId === 'all', 'info'),
                     padding: '10px 20px',
-                    background: selectedCoachId === 'all' ? '#2196f3' : '#f5f5f5',
-                    color: selectedCoachId === 'all' ? 'white' : '#666',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600'
+                    fontSize: getFontSize('button', false)
                   }}
                 >
                   全部
@@ -1135,14 +1118,9 @@ export function CoachReport({
                     key={coach.id}
                     onClick={() => setSelectedCoachId(coach.id)}
                     style={{
+                      ...getFilterChipStyle(selectedCoachId === coach.id, 'info'),
                       padding: '10px 20px',
-                      background: selectedCoachId === coach.id ? '#2196f3' : '#f5f5f5',
-                      color: selectedCoachId === coach.id ? 'white' : '#666',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600'
+                      fontSize: getFontSize('button', false)
                     }}
                   >
                     {coach.name}
@@ -1160,9 +1138,9 @@ export function CoachReport({
           <div style={{ 
             textAlign: 'center', 
             padding: isMobile ? '40px 20px' : '40px', 
-            color: '#999',
+            color: designSystem.colors.text.secondary,
             background: 'white',
-            borderRadius: '12px'
+            borderRadius: designSystem.borderRadius.xl
           }}>
             載入中...
           </div>
@@ -1170,9 +1148,9 @@ export function CoachReport({
           <div style={{ 
             textAlign: 'center', 
             padding: isMobile ? '40px 20px' : '40px', 
-            color: '#999',
+            color: designSystem.colors.text.secondary,
             background: 'white',
-            borderRadius: '12px'
+            borderRadius: designSystem.borderRadius.xl
           }}>
             {viewMode === 'unreported' ? '沒有未回報的預約' : '沒有預約記錄'}
           </div>
@@ -1196,19 +1174,19 @@ export function CoachReport({
                   key={booking.id}
                   style={{
                     ...getCardStyle(isMobile),
-                    borderLeft: `4px solid ${booking.boats?.color || '#ccc'}`
+                    borderLeft: `4px solid ${booking.boats?.color || designSystem.colors.border.main}`
                   }}
                 >
                   {/* 預約資訊 */}
-                  <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #e0e0e0' }}>
-                    <div style={{ fontWeight: '600', fontSize: '15px', marginBottom: '4px' }}>
+                  <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
+                    <div style={{ fontWeight: '600', fontSize: getFontSize('bodyLarge', isMobile), marginBottom: '4px' }}>
                       {extractDate(booking.start_at)} {extractTime(booking.start_at)} | {booking.boats?.name} ({booking.duration_min}分)
                     </div>
-                    <div style={{ color: '#666', fontSize: '13px' }}>
+                    <div style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
                       {getDisplayContactName(booking)}
                     </div>
                     {booking.notes && (
-                      <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
+                      <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', isMobile), marginTop: '4px' }}>
                         備註：{booking.notes}
                       </div>
                     )}
@@ -1223,7 +1201,7 @@ export function CoachReport({
                       gap: '8px',
                       alignItems: 'center'
                     }}>
-                      <span style={{ fontSize: '16px', opacity: 0.5 }}>🎓</span>
+                      <span aria-label="教練" style={{ fontSize: getFontSize('bodyLarge', isMobile) }}>🎓</span>
                       {displayCoaches.map(coach => {
                         const isReported = isFullyReported(booking, coach.id)
                         
@@ -1233,22 +1211,12 @@ export function CoachReport({
                             data-track="coach_report_start"
                             onClick={() => startReportWithCoach(booking, coach.id)}
                             style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '6px 12px',
-                              background: isReported ? 'transparent' : '#e8f5e9',
-                              border: isReported ? '2px solid #4caf50' : '2px solid transparent',
-                              borderRadius: '20px',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              color: '#2e7d32',
-                              transition: 'all 0.15s ease',
+                              ...getReportRolePillStyle(isReported, 'coach'),
+                              fontSize: getFontSize('bodySmall', isMobile),
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.transform = 'translateY(-1px)'
-                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.25)'
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(79, 143, 104, 0.22)'
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.transform = 'translateY(0)'
@@ -1275,7 +1243,7 @@ export function CoachReport({
                       gap: '8px',
                       alignItems: 'center'
                     }}>
-                      <span style={{ fontSize: '16px', opacity: 0.5 }}>🚤</span>
+                      <span aria-label="駕駛" style={{ fontSize: getFontSize('bodyLarge', isMobile) }}>🚤</span>
                       {displayDrivers.map(driver => {
                         const isReported = isFullyReported(booking, driver.id)
                         
@@ -1285,22 +1253,12 @@ export function CoachReport({
                             data-track="coach_report_start"
                             onClick={() => startReportWithCoach(booking, driver.id)}
                             style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '6px 12px',
-                              background: isReported ? 'transparent' : '#e3f2fd',
-                              border: isReported ? '2px solid #2196f3' : '2px solid transparent',
-                              borderRadius: '20px',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              color: '#1565c0',
-                              transition: 'all 0.15s ease',
+                              ...getReportRolePillStyle(isReported, 'driver'),
+                              fontSize: getFontSize('bodySmall', isMobile),
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.transform = 'translateY(-1px)'
-                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(33, 150, 243, 0.25)'
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(95, 135, 145, 0.22)'
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.transform = 'translateY(0)'

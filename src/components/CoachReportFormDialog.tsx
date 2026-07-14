@@ -4,7 +4,13 @@
  */
 
 import { ParticipantFormItem } from './ParticipantFormItem'
-import { getButtonStyle, getInputStyle, getLabelStyle } from '../styles/designSystem'
+import {
+  designSystem,
+  getButtonStyle,
+  getFontSize,
+  getInputStyle,
+  getLabelStyle,
+} from '../styles/designSystem'
 import { extractDate, extractTime } from '../utils/formatters'
 import type { Member, Participant, Booking } from '../types/booking'
 
@@ -80,14 +86,14 @@ export function CoachReportFormDialog({
       <div
         style={{
           background: 'white',
-          borderRadius: isMobile ? '0' : '12px',
+          borderRadius: isMobile ? '0' : designSystem.borderRadius.xl,
           width: '100%',
           maxWidth: '800px',
           height: isMobile ? '100%' : 'auto',
           maxHeight: isMobile ? '100%' : '90vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          boxShadow: designSystem.shadows.lg,
           overflow: 'hidden'  // 確保子元素不會溢出
         }}
       >
@@ -95,17 +101,26 @@ export function CoachReportFormDialog({
         <div
           style={{
             padding: '20px',
-            borderBottom: '1px solid #e0e0e0',
+            borderBottom: `1px solid ${designSystem.colors.border.light}`,
             position: 'sticky',
             top: 0,
             background: 'white',
             zIndex: 1
           }}
         >
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-            📝 回報 - {coachName}
+          <h2 style={{
+            margin: 0,
+            fontSize: getFontSize('h2', isMobile),
+            fontWeight: '600',
+            color: designSystem.colors.text.primary
+          }}>
+            回報 - {coachName}
           </h2>
-          <div style={{ marginTop: '8px', color: '#666', fontSize: '14px' }}>
+          <div style={{
+            marginTop: '8px',
+            color: designSystem.colors.text.secondary,
+            fontSize: getFontSize('body', isMobile)
+          }}>
             {extractDate(booking.start_at)} {extractTime(booking.start_at)} |{' '}
             {booking.boats?.name} ({booking.duration_min}分)
           </div>
@@ -114,10 +129,11 @@ export function CoachReportFormDialog({
               style={{
                 marginTop: '8px',
                 padding: '8px 12px',
-                background: '#fff3e0',
-                borderRadius: '6px',
-                fontSize: '13px',
-                color: '#666'
+                background: designSystem.colors.warning[50],
+                border: `1px solid ${designSystem.colors.warning[500]}33`,
+                borderRadius: designSystem.borderRadius.md,
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: designSystem.colors.warning[700]
               }}
             >
               備註：{booking.notes}
@@ -133,11 +149,11 @@ export function CoachReportFormDialog({
               style={{
                 marginBottom: '16px',
                 padding: '12px 16px',
-                background: '#fff3e0',
-                border: '1px solid #ffb74d',
-                borderRadius: '8px',
-                fontSize: '14px',
-                color: '#e65100'
+                background: designSystem.colors.warning[50],
+                border: `1px solid ${designSystem.colors.warning[500]}`,
+                borderRadius: designSystem.borderRadius.lg,
+                fontSize: getFontSize('body', isMobile),
+                color: designSystem.colors.warning[700]
               }}
             >
               ⚠️ <strong>注意：</strong>此記錄已被管理員處理過。如果修改任何內容，將會重新進入待處理狀態。
@@ -150,12 +166,17 @@ export function CoachReportFormDialog({
               style={{
                 marginBottom: '24px',
                 padding: '16px',
-                background: '#e3f2fd',
-                borderRadius: '8px'
+                background: designSystem.colors.info[50],
+                border: `1px solid ${designSystem.colors.info[500]}33`,
+                borderRadius: designSystem.borderRadius.lg
               }}
             >
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>
-                🚤 駕駛回報
+              <h3 style={{
+                margin: '0 0 12px 0',
+                fontSize: getFontSize('h3', isMobile),
+                color: designSystem.colors.info[700]
+              }}>
+                🚤 駕駛時數
               </h3>
               <div>
                 <label style={{ ...getLabelStyle(isMobile) }}>
@@ -186,56 +207,32 @@ export function CoachReportFormDialog({
                 alignItems: 'center',
                 marginBottom: '12px'
               }}>
-                <h3 style={{ margin: '0', fontSize: '16px' }}>
-                  🎓 參與者回報
+                <h3 style={{
+                  margin: '0',
+                  fontSize: getFontSize('h3', isMobile),
+                  color: designSystem.colors.success[700]
+                }}>
+                  🎓 參與者
                 </h3>
                 <button
                   onClick={onParticipantAdd}
                   style={{
-                    padding: '10px 18px',
-                    background: 'white',
-                    color: '#2196f3',
-                    border: '2px solid #2196f3',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s ease',
+                    ...getButtonStyle('secondary', 'medium', isMobile),
+                    color: designSystem.colors.info[700],
+                    border: `1.5px solid ${designSystem.colors.info[500]}`,
                     WebkitTapHighlightColor: 'transparent',
                     touchAction: 'manipulation'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#e3f2fd'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'white'
-                    e.currentTarget.style.transform = 'scale(1)'
-                  }}
-                  onMouseDown={(e) => {
-                    e.currentTarget.style.transform = 'scale(0.95)'
-                    e.currentTarget.style.background = '#bbdefb'
-                  }}
-                  onMouseUp={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)'
-                    e.currentTarget.style.background = '#e3f2fd'
-                  }}
-                  onTouchStart={(e) => {
-                    e.currentTarget.style.transform = 'scale(0.95)'
-                    e.currentTarget.style.background = '#bbdefb'
-                  }}
-                  onTouchEnd={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)'
-                    e.currentTarget.style.background = 'white'
                   }}
                 >
                   ➕ 新增參與者
                 </button>
               </div>
               
-              <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
+              <div style={{
+                fontSize: getFontSize('caption', isMobile),
+                color: designSystem.colors.text.disabled,
+                marginBottom: '12px'
+              }}>
                 可搜尋會員或直接輸入客人姓名
               </div>
 
@@ -275,7 +272,10 @@ export function CoachReportFormDialog({
         <div
           style={{
             padding: '20px',
-            borderTop: '1px solid #e0e0e0',
+            paddingBottom: isMobile
+              ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px))'
+              : '20px',
+            borderTop: `1px solid ${designSystem.colors.border.light}`,
             display: 'flex',
             gap: '12px',
             background: 'white',
@@ -286,7 +286,7 @@ export function CoachReportFormDialog({
             onClick={onCancel}
             disabled={isSubmitting}
             style={{
-              ...getButtonStyle('secondary'),
+              ...getButtonStyle('secondary', 'medium', isMobile),
               flex: 1,
               opacity: isSubmitting ? 0.6 : 1,
               cursor: isSubmitting ? 'not-allowed' : 'pointer'
@@ -299,7 +299,7 @@ export function CoachReportFormDialog({
             onClick={onSubmit}
             disabled={isSubmitting}
             style={{
-              ...getButtonStyle('primary'),
+              ...getButtonStyle('primary', 'medium', isMobile),
               flex: 2,
               opacity: isSubmitting ? 0.7 : 1,
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -340,4 +340,3 @@ export function CoachReportFormDialog({
     </div>
   )
 }
-

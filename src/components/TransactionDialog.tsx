@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp, normalizeDate } from '../utils/date'
 import type { Member } from '../types/booking'
-import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getInputStyle } from '../styles/designSystem'
+import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { useToast } from './ui'
 
 interface TransactionDialogProps {
@@ -540,7 +540,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           background: designSystem.colors.background.card,
           flexShrink: 0,
         }}>
-          <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 'bold', color: designSystem.colors.text.primary }}>
+          <h2 style={{ margin: 0, fontSize: getFontSize('h2', isMobile), fontWeight: 'bold', color: designSystem.colors.text.primary }}>
             {member.nickname || member.name}
           </h2>
           <button
@@ -548,7 +548,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
             style={{
               border: 'none',
               background: 'none',
-              fontSize: '24px',
+              fontSize: getFontSize('h2', isMobile),
               cursor: 'pointer',
               color: designSystem.colors.text.secondary,
               padding: '0 8px',
@@ -603,14 +603,14 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               marginBottom: '20px',
               border: `1px solid ${designSystem.colors.border.light}`,
             }}>
-              <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary, marginBottom: '12px', fontWeight: '600' }}>
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '12px', fontWeight: '600' }}>
                 當前餘額
               </div>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(2, 1fr)',
                 gap: '12px',
-                fontSize: '13px',
+                fontSize: getFontSize('bodySmall', isMobile),
               }}>
                 <div>
                   <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>儲值</div>
@@ -642,7 +642,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
             <form onSubmit={handleSubmit}>
               {/* 選擇項目 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                   項目 *
                 </label>
                 <select
@@ -661,7 +661,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 選擇操作 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                   操作 *
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -672,7 +672,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                       ...getBookingChoiceStyle(adjustType === 'increase'),
                       width: '100%',
                       padding: isMobile ? '12px 14px' : '12px 16px',
-                      fontSize: '15px',
+                      fontSize: getFontSize('bodyLarge', isMobile),
                       fontWeight: 650,
                       cursor: 'pointer',
                     }}
@@ -686,7 +686,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                       ...getBookingChoiceStyle(adjustType === 'decrease'),
                       width: '100%',
                       padding: isMobile ? '12px 14px' : '12px 16px',
-                      fontSize: '15px',
+                      fontSize: getFontSize('bodyLarge', isMobile),
                       fontWeight: 650,
                       cursor: 'pointer',
                     }}
@@ -698,7 +698,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 輸入數值 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                   {selectedCategory?.type === 'amount' ? '金額 (元)' : '時數 (分鐘)'} *
                 </label>
                 <input
@@ -717,7 +717,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 交易日期 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                   交易日期 *
                 </label>
                 <div style={{ display: 'flex' }}>
@@ -737,7 +737,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 說明（必填） */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                   說明 *
                 </label>
                 <input
@@ -752,7 +752,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
               {/* 備註（選填） */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                   備註
                 </label>
                 <textarea
@@ -802,7 +802,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                     alignItems: 'center',
                     gap: '8px',
                     flexWrap: 'wrap',
-                    fontSize: '14px',
+                    fontSize: getFontSize('body', isMobile),
                   }}>
                     <span>{selectedCategory?.label}</span>
                     <span style={getBadgeStyle(adjustType === 'increase' ? 'success' : 'warning', 'small')}>
@@ -880,7 +880,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           }}>
             {/* 月份選擇 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+              <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                 選擇月份
               </label>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -901,7 +901,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
             {/* 類別篩選按鈕 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+              <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                 篩選類別
               </label>
               {/* 第一行：全部 + 金額類 */}
@@ -972,7 +972,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                       borderRadius: '50%',
                       width: '22px',
                       height: '22px',
-                      fontSize: '12px',
+                      fontSize: getFontSize('bodySmall', isMobile),
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -1022,7 +1022,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   borderRadius: designSystem.borderRadius.lg,
                   padding: '10px 16px',
                   marginBottom: '16px',
-                  fontSize: '13px',
+                  fontSize: getFontSize('bodySmall', isMobile),
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
@@ -1103,7 +1103,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                         // 編輯模式
                         <div onClick={(e) => e.stopPropagation()}>
                           <div style={{ marginBottom: '12px' }}>
-                            <div style={{ fontSize: '12px', color: designSystem.colors.text.disabled, marginBottom: '12px' }}>
+                            <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled, marginBottom: '12px' }}>
                               記帳時間：{tx.created_at ? new Date(tx.created_at).toLocaleString('zh-TW', {
                                 year: 'numeric',
                                 month: '2-digit',
@@ -1115,13 +1115,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                             
                             {/* 項目 */}
                             <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
                                 項目 *
                               </label>
                               <select
                                 value={editCategory}
                                 onChange={(e) => setEditCategory(e.target.value)}
-                                style={{ ...inputStyle, fontSize: '14px' }}
+                                style={inputStyle}
                               >
                                 {CATEGORIES.map(cat => (
                                   <option key={cat.value} value={cat.value}>
@@ -1133,7 +1133,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
                             {/* 操作 */}
                             <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
                                 操作 *
                               </label>
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1144,7 +1144,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                     ...getBookingChoiceStyle(editAdjustType === 'increase'),
                                     width: '100%',
                                     padding: '10px 12px',
-                                    fontSize: '14px',
+                                    fontSize: getFontSize('body', isMobile),
                                     fontWeight: 650,
                                     cursor: 'pointer',
                                   }}
@@ -1158,7 +1158,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                     ...getBookingChoiceStyle(editAdjustType === 'decrease'),
                                     width: '100%',
                                     padding: '10px 12px',
-                                    fontSize: '14px',
+                                    fontSize: getFontSize('body', isMobile),
                                     fontWeight: 650,
                                     cursor: 'pointer',
                                   }}
@@ -1170,7 +1170,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
                             {/* 數值 */}
                             <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
                                 {CATEGORIES.find(c => c.value === editCategory)?.type === 'amount' ? '金額 (元)' : '時數 (分鐘)'} *
                               </label>
                               <input
@@ -1181,13 +1181,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                   const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
                                   setEditValue(numValue)
                                 }}
-                                style={{ ...inputStyle, fontSize: '14px' }}
+                                style={inputStyle}
                               />
                             </div>
 
                             {/* 交易日期 */}
                             <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
                                 交易日期 *
                               </label>
                               <div style={{ display: 'flex' }}>
@@ -1206,20 +1206,20 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
                             {/* 說明 */}
                             <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
                                 說明 *
                               </label>
                               <input
                                 type="text"
                                 value={editDescription}
                                 onChange={(e) => setEditDescription(e.target.value)}
-                                style={{ ...inputStyle, fontSize: '14px' }}
+                                style={inputStyle}
                               />
                             </div>
 
                             {/* 備註 */}
                             <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '600' }}>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
                                 備註
                               </label>
                               <textarea
@@ -1227,7 +1227,6 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                 onChange={(e) => setEditNotes(e.target.value)}
                                 style={{
                                   ...inputStyle,
-                                  fontSize: '14px',
                                   minHeight: '60px',
                                   resize: 'vertical',
                                   fontFamily: 'inherit',
@@ -1271,19 +1270,19 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                             marginBottom: '8px',
                           }}>
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px', color: designSystem.colors.text.primary }}>
+                              <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', marginBottom: '4px', color: designSystem.colors.text.primary }}>
                                 {categoryConfig?.label}
                               </div>
-                              <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
+                              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
                                 {tx.description}
                               </div>
-                              <div style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>
+                              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled }}>
                                 {tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : '-')}
                               </div>
                             </div>
                             <div style={{
                               ...getBadgeStyle(isIncrease ? 'success' : 'danger', 'medium'),
-                              fontSize: '14px',
+                              fontSize: getFontSize('body', isMobile),
                               whiteSpace: 'nowrap',
                               marginLeft: '12px',
                             }}>
@@ -1292,7 +1291,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                           </div>
                           {tx.notes && (
                             <div style={{
-                              fontSize: '13px',
+                              fontSize: getFontSize('bodySmall', isMobile),
                               color: designSystem.colors.text.secondary,
                               marginTop: '8px',
                               padding: '8px',

@@ -1,4 +1,4 @@
-import { designSystem, getBookingChoiceStyle, getBookingFlagBoxStyle, getLabelStyle } from '../../styles/designSystem'
+import { designSystem, getBookingChoiceStyle, getBookingFlagBoxStyle, getFontSize, getLabelStyle } from '../../styles/designSystem'
 
 interface BookingDetailsProps {
     activityTypesSet: Set<string>
@@ -54,13 +54,13 @@ export function BookingDetails({
                             color: isCoachPractice
                                 ? designSystem.colors.warning[700]
                                 : designSystem.colors.text.primary,
-                            fontSize: '15px',
+                            fontSize: getFontSize('body', false),
                             fontWeight: '600',
                         }}>
                             教練練習
                         </span>
                         <div style={{
-                            fontSize: '13px',
+                            fontSize: getFontSize('button', true),
                             color: designSystem.colors.text.secondary,
                             marginTop: '4px',
                             lineHeight: 1.5,
@@ -114,7 +114,7 @@ export function BookingDetails({
                                 style={{
                                     ...getBookingChoiceStyle(selected),
                                     padding: '14px 10px',
-                                    fontSize: '15px',
+                                    fontSize: getFontSize('body', false),
                                     fontWeight: selected ? '600' : '500',
                                     cursor: 'pointer',
                                     minHeight: '48px',

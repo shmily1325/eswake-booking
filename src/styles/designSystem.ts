@@ -395,6 +395,56 @@ export const getBookingChoiceStyle = (selected: boolean): React.CSSProperties =>
 })
 
 /**
+ * 篩選列 chip（教練回報／回報管理）
+ * - info：日期／教練等一般選項（soft selected，兩邊都有框）
+ * - warning：未回報／待處理等狀態選項（solid selected，保持醒目）
+ */
+export const getFilterChipStyle = (
+  selected: boolean,
+  tone: 'info' | 'warning' = 'info'
+): React.CSSProperties => {
+  if (tone === 'warning') {
+    return {
+      border: `1.5px solid ${designSystem.colors.warning[500]}`,
+      borderRadius: designSystem.borderRadius.lg,
+      background: selected
+        ? designSystem.colors.warning[500]
+        : designSystem.colors.warning[50],
+      color: selected ? '#ffffff' : designSystem.colors.warning[700],
+      fontWeight: 600,
+      cursor: 'pointer',
+    }
+  }
+  return {
+    ...getBookingChoiceStyle(selected),
+    fontWeight: 600,
+    cursor: 'pointer',
+  }
+}
+
+/** 教練／駕駛回報 pill（綠＝教練、藍灰＝駕駛；兩邊都有框） */
+export const getReportRolePillStyle = (
+  reported: boolean,
+  role: 'coach' | 'driver'
+): React.CSSProperties => {
+  const palette =
+    role === 'coach' ? designSystem.colors.success : designSystem.colors.info
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 12px',
+    background: reported ? '#ffffff' : palette[50],
+    border: `1.5px solid ${palette[500]}`,
+    borderRadius: '20px',
+    cursor: 'pointer',
+    fontWeight: 600,
+    color: palette[700],
+    transition: 'all 0.15s ease',
+  }
+}
+
+/**
  * 預約表單旗標框（教練練習／需要駕駛）
  * 保留有框；未選／已選結構一致，僅色階不同（warning / info）
  */

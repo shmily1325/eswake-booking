@@ -22,6 +22,7 @@ import {
   getBadgeStyle,
   getButtonStyle,
   getEmptyStateStyle,
+  getFontSize,
   getInputStyle,
   getPageContentShellStyle,
 } from '../../styles/designSystem'
@@ -704,7 +705,7 @@ export function MemberManagement() {
                   borderRadius: '50%',
                   width: '24px',
                   height: '24px',
-                  fontSize: '14px',
+                  fontSize: getFontSize('body', isMobile),
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -743,7 +744,7 @@ export function MemberManagement() {
                 padding: '10px 12px',
                 border: cardBorder,
                 borderRadius: designSystem.borderRadius.lg,
-                fontSize: '14px',
+                fontSize: getFontSize('body', isMobile),
                 background: mobileFiltersExpanded
                   ? designSystem.colors.background.card
                   : (filtersActive ? designSystem.colors.warning[50] : designSystem.colors.background.card),
@@ -874,7 +875,7 @@ export function MemberManagement() {
                 alignItems: 'center',
                 cursor: 'pointer',
                 gap: '6px',
-                fontSize: '13px',
+                fontSize: getFontSize('button', isMobile),
                 color: designSystem.colors.text.secondary,
                 whiteSpace: 'nowrap',
                 padding: '4px 0',
@@ -893,7 +894,7 @@ export function MemberManagement() {
             {/* 手機版結果數量 */}
             {(searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') && (
               <div style={{
-                fontSize: '13px',
+                fontSize: getFontSize('button', isMobile),
                 color: designSystem.colors.text.secondary,
                 marginTop: '8px',
                 textAlign: 'center',
@@ -1007,7 +1008,7 @@ export function MemberManagement() {
                   backgroundRepeat: 'no-repeat',
                   backgroundPosition: 'right 10px center',
                   cursor: 'pointer',
-                  fontSize: '13px',
+                  fontSize: getFontSize('button', isMobile),
                 }}
               >
                 <option value="nickname">暱稱</option>
@@ -1033,7 +1034,7 @@ export function MemberManagement() {
                 cursor: 'pointer',
                 gap: '6px',
                 marginLeft: 'auto',
-                fontSize: '13px',
+                fontSize: getFontSize('button', isMobile),
                 color: designSystem.colors.text.secondary,
               }}>
                 <input
@@ -1051,7 +1052,7 @@ export function MemberManagement() {
 
       {!isMobile && (searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') && (
         <div style={{
-          fontSize: '13px',
+          fontSize: getFontSize('button', isMobile),
           color: designSystem.colors.text.secondary,
           marginBottom: '12px',
           textAlign: 'center',
@@ -1081,7 +1082,7 @@ export function MemberManagement() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              fontSize: '13px',
+              fontSize: getFontSize('button', isMobile),
               color: designSystem.colors.text.secondary
             }}
           >
@@ -1100,16 +1101,16 @@ export function MemberManagement() {
                   <div style={{ marginTop: '12px' }}>
                     {expired.length > 0 && (
                       <div style={{ marginBottom: '8px' }}>
-                        <span style={{ fontSize: '12px', color: designSystem.colors.danger[700], fontWeight: '600' }}>已過期 ({expired.length})：</span>
-                        <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
+                        <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.danger[700], fontWeight: '600' }}>已過期 ({expired.length})：</span>
+                        <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
                           {expired.map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
                         </span>
                       </div>
                     )}
                     {upcoming.length > 0 && (
                       <div>
-                        <span style={{ fontSize: '12px', color: designSystem.colors.warning[700], fontWeight: '600' }}>即將到期 ({upcoming.length})：</span>
-                        <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
+                        <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.warning[700], fontWeight: '600' }}>即將到期 ({upcoming.length})：</span>
+                        <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
                           {upcoming.map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
                         </span>
                       </div>
@@ -1126,16 +1127,16 @@ export function MemberManagement() {
                   <div style={{ marginTop: '12px' }}>
                     {expiredBoards.length > 0 && (
                       <div style={{ marginBottom: '8px' }}>
-                        <span style={{ fontSize: '12px', color: designSystem.colors.danger[700], fontWeight: '600' }}>已過期置板 ({expiredBoards.length})：</span>
-                        <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
+                        <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.danger[700], fontWeight: '600' }}>已過期置板 ({expiredBoards.length})：</span>
+                        <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
                           {expiredBoards.map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
                         </span>
                       </div>
                     )}
                     {upcomingBoards.length > 0 && (
                       <div>
-                        <span style={{ fontSize: '12px', color: designSystem.colors.info[700], fontWeight: '600' }}>即將到期置板 ({upcomingBoards.length})：</span>
-                        <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
+                        <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.info[700], fontWeight: '600' }}>即將到期置板 ({upcomingBoards.length})：</span>
+                        <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
                           {upcomingBoards.map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
                         </span>
                       </div>
@@ -1219,11 +1220,11 @@ export function MemberManagement() {
             >
               <div style={{ position: 'relative', minWidth: 0, maxWidth: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                    <h3 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 750, color: designSystem.colors.text.primary, letterSpacing: '-0.025em' }}>
+                    <h3 style={{ margin: 0, fontSize: getFontSize('h3', isMobile), fontWeight: 750, color: designSystem.colors.text.primary, letterSpacing: '-0.025em' }}>
                       {member.nickname && member.nickname.trim() ? member.nickname : member.name}
                     </h3>
                     {member.nickname && member.nickname.trim() && (
-                      <span style={{ fontSize: isMobile ? '12px' : '13px', color: designSystem.colors.text.disabled }}>
+                      <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled }}>
                         ({member.name})
                       </span>
                     )}
@@ -1248,7 +1249,7 @@ export function MemberManagement() {
                     display: 'flex', 
                     flexDirection: 'column',
                     gap: isMobile ? '4px' : '6px',
-                    fontSize: isMobile ? '12px' : '12.5px',
+                    fontSize: getFontSize('bodySmall', isMobile),
                     color: designSystem.colors.text.disabled,
                   }}>
                     <div style={{ display: 'flex', gap: isMobile ? '10px' : '16px', flexWrap: 'wrap' }}>
@@ -1296,7 +1297,7 @@ export function MemberManagement() {
                             background: designSystem.colors.danger[50],
                             color: designSystem.colors.danger[700],
                             borderColor: `${designSystem.colors.danger[500]}66`,
-                            fontSize: '12px',
+                            fontSize: getFontSize('bodySmall', isMobile),
                             fontWeight: 600,
                             padding: '4px 10px',
                           }}
@@ -1325,7 +1326,7 @@ export function MemberManagement() {
                               color: slotExpired
                                 ? designSystem.colors.danger[700]
                                 : designSystem.colors.success[700],
-                              fontSize: '13px'
+                              fontSize: getFontSize('button', isMobile)
                             }}>
                               置板 #{slot.slot_number}：{slot.start_date ? formatDate(slot.start_date) : '?'} → {slot.expires_at ? formatDate(slot.expires_at) : '?'}
                               {slotExpired && ' (已過期)'}
@@ -1340,7 +1341,7 @@ export function MemberManagement() {
                     <div style={{ 
                       marginTop: '10px',
                       paddingTop: '10px',
-                      fontSize: '13px',
+                      fontSize: getFontSize('button', isMobile),
                       color: designSystem.colors.text.secondary,
                       borderTop: `1px solid ${designSystem.colors.border.light}`,
                       wordBreak: 'break-word',
@@ -1371,7 +1372,7 @@ export function MemberManagement() {
                       gap: '8px',
                       marginBottom: '10px',
                     }}>
-                      <div style={{ fontSize: '13px', color: designSystem.colors.text.primary, fontWeight: 650 }}>
+                      <div style={{ fontSize: getFontSize('button', isMobile), color: designSystem.colors.text.primary, fontWeight: 650 }}>
                         備忘錄 ({member.member_notes.length})
                       </div>
                       {allNotes.length > previewCount && (
@@ -1389,7 +1390,7 @@ export function MemberManagement() {
                           style={{
                             ...getButtonStyle('ghost', 'small', isMobile),
                             padding: '2px 8px',
-                            fontSize: '12px',
+                            fontSize: getFontSize('bodySmall', isMobile),
                             color: designSystem.colors.text.secondary,
                           }}
                         >
@@ -1402,7 +1403,7 @@ export function MemberManagement() {
                         const eventColor = NOTE_EVENT_COLORS[note.event_type] || designSystem.colors.text.secondary
                         return (
                           <div key={note.id} style={{
-                            fontSize: '13px',
+                            fontSize: getFontSize('button', isMobile),
                             padding: '8px 10px',
                             color: designSystem.colors.text.primary,
                             lineHeight: '1.45',
@@ -1418,7 +1419,7 @@ export function MemberManagement() {
                             <span style={{
                               color: eventColor,
                               fontWeight: 650,
-                              fontSize: '12px',
+                              fontSize: getFontSize('bodySmall', isMobile),
                               marginRight: '8px',
                             }}>
                               {note.event_type}
@@ -1428,7 +1429,7 @@ export function MemberManagement() {
                         )
                       })}
                       {member.member_notes.length > 10 && isExpanded && (
-                        <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, textAlign: 'center', marginTop: '4px' }}>
+                        <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, textAlign: 'center', marginTop: '4px' }}>
                           還有 {member.member_notes.length - 10} 則較舊的備忘錄（詳情可見）...
                         </div>
                       )}

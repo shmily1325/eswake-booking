@@ -1,7 +1,8 @@
 // LIFF 分頁：底線 + 字重標示 active（無 emoji）
 
+import { getFontSizePx } from '../../../styles/designSystem'
 import { triggerHaptic } from '../../../utils/haptic'
-import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { LIFF_THEME } from '../liffUiStyles'
 import type { TabType } from '../types'
 
 const TABS: { tab: TabType; label: string }[] = [
@@ -45,7 +46,7 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
               background: 'transparent',
               color: active ? LIFF_THEME.tabActive : LIFF_THEME.tabInactive,
               fontWeight: active ? 700 : 400,
-              fontSize: active ? LIFF_TYPE.body : LIFF_TYPE.caption + 1,
+              fontSize: active ? getFontSizePx('body', true) : getFontSizePx('button', true),
               letterSpacing: active ? '0.01em' : '0.02em',
               cursor: 'pointer',
               borderBottom: active ? `2.5px solid ${LIFF_THEME.tabActive}` : '2.5px solid transparent',

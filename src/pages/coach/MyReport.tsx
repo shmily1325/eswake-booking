@@ -7,6 +7,8 @@ import { useToast } from '../../components/ui'
 import { CoachReport } from './CoachReport'
 import { StatisticsTab } from '../../components/StatisticsTab'
 import { CoachSchedulePreviewTable } from './CoachSchedulePreviewTable'
+import { AdminTabBar, AdminTabButton } from '../../components/AdminPageLayout'
+import { designSystem, getFontSize } from '../../styles/designSystem'
 
 export function MyReport() {
   const user = useAuthUser()
@@ -48,22 +50,22 @@ export function MyReport() {
   // 檢查權限中
   if (checkingAuth) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
         <div style={{ 
           flex: 1, 
           padding: isMobile ? '16px' : '24px',
         }}>
           <PageHeader 
             user={user} 
-            title="📝 教練回報"
+            title="教練回報"
             showBaoLink={false}
           />
           <div style={{ 
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '16px',
-            color: '#999',
+            fontSize: getFontSize('bodyLarge', isMobile),
+            color: designSystem.colors.text.secondary,
             marginTop: '100px'
           }}>
             檢查權限中...
@@ -74,7 +76,7 @@ export function MyReport() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
       <div style={{ 
         flex: 1, 
         padding: isMobile ? '16px' : '24px',
@@ -84,76 +86,34 @@ export function MyReport() {
       }}>
         <PageHeader 
           user={user} 
-          title="📝 教練回報"
+          title="教練回報"
           showBaoLink={false}
         />
 
         {/* Tab 切換 */}
-        <div style={{ 
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '24px',
-          borderBottom: '2px solid #e0e0e0',
-          flexWrap: 'wrap'
-        }}>
-          <button
+        <AdminTabBar>
+          <AdminTabButton
             data-track="my_report_tab_report"
+            active={activeTab === 'report'}
             onClick={() => setActiveTab('report')}
-            style={{
-              padding: '12px 24px',
-              background: activeTab === 'report' ? '#2196f3' : 'transparent',
-              color: activeTab === 'report' ? 'white' : '#666',
-              border: 'none',
-              borderBottom: activeTab === 'report' ? '3px solid #2196f3' : 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
           >
             📝 回報
-          </button>
-          <button
+          </AdminTabButton>
+          <AdminTabButton
             data-track="my_report_tab_history"
+            active={activeTab === 'history'}
             onClick={() => setActiveTab('history')}
-            style={{
-              padding: '12px 24px',
-              background: activeTab === 'history' ? '#4caf50' : 'transparent',
-              color: activeTab === 'history' ? 'white' : '#666',
-              border: 'none',
-              borderBottom: activeTab === 'history' ? '3px solid #4caf50' : 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s'
-            }}
           >
             📊 細帳
-          </button>
-          <button
+          </AdminTabButton>
+          <AdminTabButton
             data-track="my_report_tab_schedule"
+            active={activeTab === 'schedule'}
             onClick={() => setActiveTab('schedule')}
-            style={{
-              padding: '12px 24px',
-              background: activeTab === 'schedule' ? '#7b61ff' : 'transparent',
-              color: activeTab === 'schedule' ? 'white' : '#666',
-              border: 'none',
-              borderBottom: activeTab === 'schedule' ? '3px solid #7b61ff' : 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s'
-            }}
           >
             📅 排程
-          </button>
-        </div>
+          </AdminTabButton>
+        </AdminTabBar>
 
         {/* Tab 內容區 */}
         <div>
@@ -182,4 +142,3 @@ export function MyReport() {
     </div>
   )
 }
-

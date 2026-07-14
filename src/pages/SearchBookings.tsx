@@ -10,6 +10,7 @@ import {
   getButtonStyle,
   getBookingCardStyle,
   getEmptyStateStyle,
+  getFontSize,
   getInputStyle,
   getLabelStyle,
 } from '../styles/designSystem'
@@ -749,7 +750,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '14px',
+                    fontSize: getFontSize('body', isMobile),
                     color: designSystem.colors.text.secondary,
                     transition: 'background 0.2s',
                   }}
@@ -762,7 +763,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
 
             {selectedMember && (
-              <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginTop: '6px' }}>
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: '6px' }}>
                 已選：{formatSelectedMemberHint(selectedMember)} · 僅顯示此會員預約
               </div>
             )}
@@ -807,7 +808,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       {member.nickname && <span style={{ color: designSystem.colors.text.disabled, fontWeight: 'normal', marginLeft: '6px' }}>({member.name})</span>}
                     </div>
                     {member.phone && (
-                      <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginTop: '2px' }}>
+                      <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: '2px' }}>
                         {member.phone}
                       </div>
                     )}
@@ -828,14 +829,14 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               marginBottom: '8px'
             }}>
               <span style={{ 
-                fontSize: '14px', 
+                fontSize: getFontSize('body', isMobile), 
                 fontWeight: '600',
                 color: designSystem.colors.text.primary,
               }}>
                 日期區間
                 {(startDate || endDate) 
                   ? <span style={{ color: designSystem.colors.text.secondary, marginLeft: '4px' }}>(已設定)</span>
-                  : <span style={{ color: designSystem.colors.text.disabled, marginLeft: '4px', fontSize: '12px' }}>(不設定則顯示未來預約)</span>
+                  : <span style={{ color: designSystem.colors.text.disabled, marginLeft: '4px', fontSize: getFontSize('bodySmall', isMobile) }}>(不設定則顯示未來預約)</span>
                 }
               </span>
               {(startDate || endDate) && (
@@ -866,7 +867,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 gap: '8px',
                 minWidth: 0,
               }}>
-                <span style={{ fontSize: '13px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>從</span>
+                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>從</span>
                 <input
                   type="date"
                   value={startDate}
@@ -886,7 +887,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 gap: '8px',
                 minWidth: 0,
               }}>
-                <span style={{ fontSize: '13px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>到</span>
+                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>到</span>
                 <input
                   type="date"
                   value={endDate}
@@ -926,7 +927,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             padding: isMobile ? '8px 10px' : '12px 14px',
             backgroundColor: designSystem.colors.background.hover,
             borderRadius: designSystem.borderRadius.md,
-            fontSize: isMobile ? '12px' : '13px',
+            fontSize: getFontSize('bodySmall', isMobile),
             color: designSystem.colors.text.secondary,
             lineHeight: 1.45,
           }}>
@@ -961,7 +962,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                      fontSize: isMobile ? '15px' : '14px',
+                      fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
                       fontWeight: on ? '600' : '500',
                       color: designSystem.colors.text.primary,
                       minHeight: `${slotTouchMin}px`,
@@ -995,15 +996,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               marginBottom: '8px',
             }}>
               <span style={{
-                fontSize: isMobile ? '15px' : '14px',
+                fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
                 fontWeight: '600',
                 color: designSystem.colors.text.primary,
               }}>
                 {isMobile ? '日期' : '起訖日期'}
                 {!slotFromDate && !slotToDate ? (
-                  <span style={{ color: designSystem.colors.text.disabled, marginLeft: '4px', fontSize: isMobile ? '11px' : '12px' }}>{isMobile ? '＊' : '·必填'}</span>
+                  <span style={{ color: designSystem.colors.text.disabled, marginLeft: '4px', fontSize: getFontSize('caption', isMobile) }}>{isMobile ? '＊' : '·必填'}</span>
                 ) : isMobile && slotFromDate && slotToDate ? (
-                  <span style={{ color: designSystem.colors.success[500], marginLeft: '6px', fontSize: '14px' }}>✓</span>
+                  <span style={{ color: designSystem.colors.success[500], marginLeft: '6px', fontSize: getFontSize('body', isMobile) }}>✓</span>
                 ) : !isMobile ? (
                   <span style={{ color: designSystem.colors.text.secondary, marginLeft: '4px' }}>·已填</span>
                 ) : null}
@@ -1034,7 +1035,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               width: '100%',
             }}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span style={{ fontSize: '13px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>從</span>
+                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>從</span>
                 <input
                   type="date"
                   value={slotFromDate}
@@ -1049,7 +1050,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 />
               </div>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span style={{ fontSize: '13px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>到</span>
+                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>到</span>
                 <input
                   type="date"
                   value={slotToDate}
@@ -1076,7 +1077,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               background: designSystem.colors.background.hover,
               border: `1px solid ${designSystem.colors.border.light}`,
               borderRadius: designSystem.borderRadius.md,
-              fontSize: isMobile ? '14px' : '13px',
+              fontSize: isMobile ? getFontSize('body', true) : getFontSize('bodySmall', false),
               color: designSystem.colors.text.secondary,
               lineHeight: 1.5,
             }}>
@@ -1088,7 +1089,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             <span style={{
               display: 'block',
               marginBottom: '6px',
-              fontSize: isMobile ? '15px' : '14px',
+              fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
               fontWeight: '600',
               color: designSystem.colors.text.primary,
             }}>
@@ -1126,7 +1127,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       borderRight: i < 2 ? `1px solid ${designSystem.colors.border.main}` : undefined,
                       background: active ? designSystem.colors.background.card : 'transparent',
                       cursor: 'pointer',
-                      fontSize: isMobile ? '15px' : '14px',
+                      fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
                       fontWeight: active ? '700' : '500',
                       color: active ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                       boxShadow: active ? designSystem.shadows.xs : 'none',
@@ -1140,7 +1141,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
             {slotWeekdayPresetMode === 'custom' && (
               <div style={{
-                fontSize: '11px',
+                fontSize: getFontSize('caption', isMobile),
                 color: designSystem.colors.text.disabled,
                 marginBottom: isMobile ? '4px' : '6px',
                 lineHeight: 1.35,
@@ -1150,7 +1151,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             )}
             {!isMobile && (
             <div style={{
-              fontSize: '11px',
+              fontSize: getFontSize('caption', isMobile),
               color: designSystem.colors.text.disabled,
               marginBottom: '6px',
               lineHeight: 1.35,
@@ -1178,7 +1179,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       background: on ? designSystem.colors.secondary[100] : designSystem.colors.background.hover,
                       borderRadius: designSystem.borderRadius.md,
                       cursor: 'pointer',
-                      fontSize: isMobile ? '16px' : '15px',
+                      fontSize: isMobile ? getFontSize('h3', true) : getFontSize('bodyLarge', false),
                       fontWeight: on ? '700' : '500',
                       color: on ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                       touchAction: 'manipulation',
@@ -1202,7 +1203,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 marginBottom: '6px',
               }}>
                 <span style={{
-                  fontSize: isMobile ? '15px' : '14px',
+                  fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
                   fontWeight: '600',
                   color: designSystem.colors.text.primary,
                 }}>
@@ -1218,7 +1219,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       background: designSystem.colors.background.card,
                       borderRadius: designSystem.borderRadius.full,
                       cursor: 'pointer',
-                      fontSize: '13px',
+                      fontSize: getFontSize('bodySmall', isMobile),
                       color: designSystem.colors.text.primary,
                       touchAction: 'manipulation',
                     }}
@@ -1234,7 +1235,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       background: designSystem.colors.background.card,
                       borderRadius: designSystem.borderRadius.full,
                       cursor: 'pointer',
-                      fontSize: '13px',
+                      fontSize: getFontSize('bodySmall', isMobile),
                       color: designSystem.colors.text.secondary,
                       touchAction: 'manipulation',
                     }}
@@ -1244,7 +1245,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 </div>
               </div>
               <div style={{
-                fontSize: isMobile ? '11px' : '12px',
+                fontSize: getFontSize('caption', isMobile),
                 color: designSystem.colors.text.disabled,
                 marginBottom: '6px',
                 lineHeight: 1.4,
@@ -1289,7 +1290,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         background: excluded ? designSystem.colors.background.hover : designSystem.colors.secondary[100],
                         borderRadius: designSystem.borderRadius.md,
                         cursor: 'pointer',
-                        fontSize: isMobile ? '16px' : '15px',
+                        fontSize: isMobile ? getFontSize('h3', true) : getFontSize('bodyLarge', false),
                         fontWeight: excluded ? '500' : '600',
                         color: excluded ? designSystem.colors.text.disabled : designSystem.colors.text.primary,
                         touchAction: 'manipulation',
@@ -1307,14 +1308,14 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             <span style={{
               display: 'block',
               marginBottom: isMobile ? '4px' : '8px',
-              fontSize: isMobile ? '15px' : '14px',
+              fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
               fontWeight: '600',
               color: designSystem.colors.text.primary,
             }}>
               {isMobile ? '每日時段' : '每日可排時段'}
             </span>
             <div style={{
-              fontSize: isMobile ? '11px' : '12px',
+              fontSize: getFontSize('caption', isMobile),
               color: designSystem.colors.text.disabled,
               marginBottom: isMobile ? '6px' : '8px',
               lineHeight: 1.4,
@@ -1341,7 +1342,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               width: '100%',
             }}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span style={{ fontSize: '13px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>從</span>
+                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>從</span>
                 <input
                   type="time"
                   value={slotTimeFrom}
@@ -1356,7 +1357,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 />
               </div>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span style={{ fontSize: '13px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>到</span>
+                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>到</span>
                 <input
                   type="time"
                   value={slotTimeTo}
@@ -1389,7 +1390,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     background: slotDurationMin === m ? designSystem.colors.secondary[100] : designSystem.colors.background.card,
                     borderRadius: designSystem.borderRadius.full,
                     cursor: 'pointer',
-                    fontSize: isMobile ? '15px' : '14px',
+                    fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
                     fontWeight: '500',
                     color: designSystem.colors.text.primary,
                     minHeight: `${slotTouchMin}px`,
@@ -1421,7 +1422,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   boxSizing: 'border-box',
                 }}
               />
-              <span style={{ fontSize: '14px', color: designSystem.colors.text.secondary }}>分</span>
+              <span style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary }}>分</span>
             </div>
           </div>
 
@@ -1429,14 +1430,14 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             <span style={{
               display: 'block',
               marginBottom: isMobile ? '4px' : '8px',
-              fontSize: isMobile ? '15px' : '14px',
+              fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
               fontWeight: '600',
               color: designSystem.colors.text.primary,
             }}>
               {isMobile ? '接船（分）' : '搜尋用接船緩衝（分鐘）'}
             </span>
             <div style={{
-              fontSize: isMobile ? '11px' : '12px',
+              fontSize: getFontSize('caption', isMobile),
               color: designSystem.colors.text.disabled,
               marginBottom: isMobile ? '6px' : '8px',
               lineHeight: 1.4,
@@ -1457,7 +1458,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     background: slotSearchBufferMin === m ? designSystem.colors.secondary[100] : designSystem.colors.background.card,
                     borderRadius: designSystem.borderRadius.full,
                     cursor: 'pointer',
-                    fontSize: isMobile ? '15px' : '14px',
+                    fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
                     fontWeight: '500',
                     color: designSystem.colors.text.primary,
                     minHeight: `${slotTouchMin}px`,
@@ -1532,7 +1533,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 }}>
                   {/* 左側：已選數量 */}
                   <div style={{
-                    fontSize: '14px',
+                    fontSize: getFontSize('body', isMobile),
                     color: designSystem.colors.text.primary,
                     fontWeight: '600',
                     whiteSpace: 'nowrap',
@@ -1608,7 +1609,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 }}>
                   {/* 第一行/左側：結果統計 */}
                   <div style={{
-                    fontSize: '14px',
+                    fontSize: getFontSize('body', isMobile),
                     color: designSystem.colors.text.secondary,
                   }}>
                     找到 <strong style={{ color: designSystem.colors.text.primary }}>{bookings.length}</strong> 筆預約
@@ -1639,7 +1640,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         alignItems: 'center',
                         gap: '4px',
                         cursor: 'pointer',
-                        fontSize: isMobile ? '12px' : '13px',
+                        fontSize: getFontSize('bodySmall', isMobile),
                         color: designSystem.colors.text.secondary,
                         padding: isMobile ? '6px 8px' : '6px 10px',
                         background: showPastBookings ? designSystem.colors.background.hover : designSystem.colors.background.card,
@@ -1854,13 +1855,13 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                             }}
                           >
                             {isSelected && (
-                              <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>✓</span>
+                              <span style={{ color: 'white', fontSize: getFontSize('body', isMobile), fontWeight: 'bold' }}>✓</span>
                             )}
                           </div>
                         )}
                         <div>
                           <div style={{
-                            fontSize: '18px',
+                            fontSize: getFontSize('h3', isMobile),
                             fontWeight: '600',
                             color: designSystem.colors.text.primary,
                             marginBottom: '4px',
@@ -1868,7 +1869,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                             {getDisplayContactName(booking)}
                           </div>
                           <div style={{
-                            fontSize: '14px',
+                            fontSize: getFontSize('body', isMobile),
                             color: designSystem.colors.text.secondary,
                           }}>
                             {formatDateTime(booking.start_at)}
@@ -1898,7 +1899,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
                       gap: '12px',
-                      fontSize: '14px',
+                      fontSize: getFontSize('body', isMobile),
                     }}>
                       <div>
                         <span style={{ color: designSystem.colors.text.secondary }}>船隻：</span>
@@ -1936,7 +1937,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         padding: '8px',
                         backgroundColor: designSystem.colors.background.hover,
                         borderRadius: designSystem.borderRadius.md,
-                        fontSize: '13px',
+                        fontSize: getFontSize('bodySmall', isMobile),
                         color: designSystem.colors.text.secondary,
                       }}>
                         {booking.notes}
@@ -1964,7 +1965,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               padding: '0 4px',
             }}>
               <div style={{
-                fontSize: '14px',
+                fontSize: getFontSize('body', isMobile),
                 color: designSystem.colors.text.secondary,
               }}>
                 共 <strong style={{ color: designSystem.colors.text.primary }}>{slotResultLines.length}</strong> 行結果
@@ -2059,7 +2060,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 style={{
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
-                  fontSize: isMobile ? '15px' : '15px',
+                  fontSize: getFontSize('bodyLarge', isMobile),
                   lineHeight: 1.65,
                   margin: 0,
                   fontFamily: 'inherit',

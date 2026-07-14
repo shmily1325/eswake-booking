@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { usePullToRefresh } from '../../../hooks/usePullToRefresh'
-import { liffContentPanel, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { getFontSizePx } from '../../../styles/designSystem'
+import { liffContentPanel, LIFF_THEME } from '../liffUiStyles'
 import type { LiffShopOrder } from '../liffShopOrders'
 import {
   LIFF_ORDER_STATUS,
@@ -69,7 +70,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
         >
           <div
             style={{
-              fontSize: LIFF_TYPE.body,
+              fontSize: getFontSizePx('body', true),
               fontWeight: 600,
               color: LIFF_THEME.inkSoft,
               letterSpacing: '0.01em',
@@ -80,7 +81,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
           <span
             style={{
               flexShrink: 0,
-              fontSize: LIFF_TYPE.caption + 1,
+              fontSize: getFontSizePx('button', true),
               fontWeight:
                 statusKey === 'done' || statusKey === 'cancelled' ? 500 : 700,
               color: status.color,
@@ -93,7 +94,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
         {showMeta && (
           <div
             style={{
-              fontSize: LIFF_TYPE.caption,
+              fontSize: getFontSizePx('bodySmall', true),
               color: LIFF_THEME.muted,
               marginBottom: hiddenCount > 0 ? 6 : 10,
               lineHeight: 1.45,
@@ -115,7 +116,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
         {hiddenCount > 0 && (
           <div
             style={{
-              fontSize: LIFF_TYPE.caption,
+              fontSize: getFontSizePx('bodySmall', true),
               color: LIFF_THEME.muted,
               marginBottom: 8,
             }}
@@ -126,7 +127,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
         {collapsible && expanded && (
           <div
             style={{
-              fontSize: LIFF_TYPE.caption,
+              fontSize: getFontSizePx('bodySmall', true),
               color: LIFF_THEME.mutedLight,
               marginBottom: 8,
             }}
@@ -140,7 +141,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
         <div
           style={{
             marginBottom: 10,
-            fontSize: LIFF_TYPE.caption + 1,
+            fontSize: getFontSizePx('button', true),
             color: LIFF_THEME.muted,
             lineHeight: 1.5,
           }}
@@ -157,7 +158,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
             <div key={item.id}>
               <div
                 style={{
-                  fontSize: LIFF_TYPE.body + 1,
+                  fontSize: getFontSizePx('body', false),
                   fontWeight: 600,
                   color: LIFF_THEME.inkSoft,
                 }}
@@ -167,7 +168,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
               {subtitle && (
                 <div
                   style={{
-                    fontSize: LIFF_TYPE.caption,
+                    fontSize: getFontSizePx('bodySmall', true),
                     color: LIFF_THEME.muted,
                     marginTop: 2,
                   }}
@@ -177,7 +178,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
               )}
               <div
                 style={{
-                  fontSize: LIFF_TYPE.caption,
+                  fontSize: getFontSizePx('bodySmall', true),
                   color: LIFF_THEME.mutedLight,
                   marginTop: 4,
                 }}
@@ -208,7 +209,7 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
     <div
       style={{
         textAlign: 'center',
-        fontSize: LIFF_TYPE.caption,
+        fontSize: getFontSizePx('bodySmall', true),
         color: pullReady || refreshing ? LIFF_THEME.tabActive : LIFF_THEME.mutedLight,
         paddingBottom: pullDistance > 8 ? 8 : 0,
         height: refreshing ? 28 : Math.max(0, pullDistance - 8),

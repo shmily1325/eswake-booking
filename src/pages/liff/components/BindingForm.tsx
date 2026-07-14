@@ -2,6 +2,7 @@
 
 import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
+import { getFontSizePx } from '../../../styles/designSystem'
 import { liffTrack } from '../track'
 import {
   liffBindingCard,
@@ -12,7 +13,6 @@ import {
   liffPrimaryBtn,
   liffSelect,
   LIFF_THEME,
-  LIFF_TYPE,
 } from '../liffUiStyles'
 
 interface BindingFormProps {
@@ -73,7 +73,7 @@ export function BindingForm({
         />
         <p
           style={{
-            fontSize: LIFF_TYPE.body,
+            fontSize: getFontSizePx('body', true),
             color: LIFF_THEME.muted,
             margin: '0 0 28px',
             textAlign: 'center',
@@ -166,7 +166,7 @@ export function BindingForm({
             style={{
               marginTop: 12,
               marginBottom: 4,
-              fontSize: LIFF_TYPE.caption + 1,
+              fontSize: getFontSizePx('button', true),
               color: LIFF_THEME.dangerText,
               lineHeight: 1.5,
             }}

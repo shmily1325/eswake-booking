@@ -4,6 +4,7 @@ import {
     designSystem,
     getBookingChoiceStyle,
     getBookingFlagBoxStyle,
+    getFontSize,
     getLabelStyle,
 } from '../../styles/designSystem'
 
@@ -61,7 +62,7 @@ export function CoachSelector({
                         }}>
                             <span style={{
                                 color: designSystem.colors.info[700],
-                                fontSize: '15px',
+                                fontSize: getFontSize('body', true),
                                 fontWeight: '600',
                                 flexShrink: 0,
                             }}>
@@ -84,7 +85,7 @@ export function CoachSelector({
                                                 borderRadius: designSystem.borderRadius.md,
                                                 border: `1px solid ${designSystem.colors.info[500]}`,
                                                 color: designSystem.colors.info[700],
-                                                fontSize: '15px',
+                                                fontSize: getFontSize('body', true),
                                                 fontWeight: '600',
                                             }}
                                         >
@@ -103,7 +104,7 @@ export function CoachSelector({
                                 border: `1px solid ${designSystem.colors.info[500]}`,
                                 borderRadius: designSystem.borderRadius.md,
                                 color: designSystem.colors.info[700],
-                                fontSize: '13px',
+                                fontSize: getFontSize('button', true),
                                 cursor: 'pointer',
                                 fontWeight: '600',
                                 flexShrink: 0,
@@ -120,7 +121,7 @@ export function CoachSelector({
                     <div style={{
                         padding: designSystem.spacing.md,
                         color: designSystem.colors.text.secondary,
-                        fontSize: '14px',
+                        fontSize: getFontSize('body', true),
                     }}>
                         載入教練列表中...
                     </div>
@@ -136,7 +137,7 @@ export function CoachSelector({
                             style={{
                                 ...getBookingChoiceStyle(safeSelectedCoaches.length === 0),
                                 padding: '14px 10px',
-                                fontSize: '15px',
+                                fontSize: getFontSize('body', true),
                                 fontWeight: safeSelectedCoaches.length === 0 ? '600' : '500',
                                 cursor: 'pointer',
                                 minHeight: '48px',
@@ -157,7 +158,7 @@ export function CoachSelector({
                                     style={{
                                         ...getBookingChoiceStyle(isSelected),
                                         padding: '14px 10px',
-                                        fontSize: '15px',
+                                        fontSize: getFontSize('body', true),
                                         fontWeight: isSelected ? '600' : '500',
                                         cursor: 'pointer',
                                         minHeight: '48px',
@@ -200,7 +201,7 @@ export function CoachSelector({
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <span style={{
                             display: 'block',
-                            fontSize: '15px',
+                            fontSize: getFontSize('body', true),
                             fontWeight: '600',
                             color: requiresDriver
                                 ? designSystem.colors.info[700]
@@ -211,7 +212,7 @@ export function CoachSelector({
                             需要駕駛
                         </span>
                         <div style={{
-                            fontSize: '13px',
+                            fontSize: getFontSize('button', true),
                             color: designSystem.colors.text.secondary,
                             marginTop: '4px',
                             lineHeight: 1.5,
@@ -220,7 +221,7 @@ export function CoachSelector({
                         </div>
                         {!canRequireDriver && (
                             <div style={{
-                                fontSize: '12px',
+                                fontSize: getFontSize('bodySmall', true),
                                 color: designSystem.colors.warning[700],
                                 marginTop: '6px',
                             }}>

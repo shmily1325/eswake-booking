@@ -13,6 +13,7 @@ import {
   getBadgeStyle,
   getButtonStyle,
   getEmptyStateStyle,
+  getFontSize,
   getInputStyle,
 } from '../../styles/designSystem'
 
@@ -237,7 +238,7 @@ export function MemberPhoneEditPage() {
 
       <p
         style={{
-          fontSize: '14px',
+          fontSize: getFontSize('body', isMobile),
           color: designSystem.colors.text.secondary,
           marginBottom: '14px',
           lineHeight: 1.5,
@@ -344,7 +345,7 @@ export function MemberPhoneEditPage() {
                     display: 'grid',
                     gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
                     gap: '8px 16px',
-                    fontSize: '14px',
+                    fontSize: getFontSize('body', isMobile),
                     marginBottom: '12px',
                   }}
                 >
@@ -389,7 +390,7 @@ export function MemberPhoneEditPage() {
                     <span
                       style={{
                         color: designSystem.colors.text.secondary,
-                        fontSize: isMobile ? '15px' : '14px',
+                        fontSize: isMobile ? getFontSize('bodyLarge', isMobile) : getFontSize('body', isMobile),
                         fontWeight: 600,
                       }}
                     >

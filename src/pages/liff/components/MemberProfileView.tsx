@@ -1,13 +1,14 @@
 // 會員基本資料（LIFF）
 
 import type { ReactNode } from 'react'
+import { getFontSizePx } from '../../../styles/designSystem'
 import { getMembershipTypeLabel, type Member } from '../types'
 import {
   getBoardExpiryRowStatus,
   getMembershipExpiryRowStatus,
   type LiffExpiryRowStatus
 } from '../liffExpiryAlerts'
-import { liffAlertTone, liffContentPanel, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { liffAlertTone, liffContentPanel, LIFF_THEME } from '../liffUiStyles'
 
 interface MemberProfileViewProps {
   member: Member
@@ -52,7 +53,7 @@ function ExpiryBadge({ status }: { status: LiffExpiryRowStatus }) {
     <span
       style={{
         flexShrink: 0,
-        fontSize: '11px',
+        fontSize: getFontSizePx('caption', true),
         fontWeight: 700,
         color: tone.color,
         background: tone.bg,
@@ -78,7 +79,7 @@ function Row({ label, value, badge }: { label: string; value: string; badge?: Re
         borderBottom: `1px solid ${LIFF_THEME.rowDivider}`,
       }}
     >
-      <span style={{ fontSize: LIFF_TYPE.caption + 1, color: LIFF_THEME.muted, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: getFontSizePx('button', true), color: LIFF_THEME.muted, flexShrink: 0 }}>{label}</span>
       <div
         style={{
           display: 'flex',
@@ -90,7 +91,7 @@ function Row({ label, value, badge }: { label: string; value: string; badge?: Re
       >
         <span
           style={{
-            fontSize: LIFF_TYPE.body + 1,
+            fontSize: getFontSizePx('body', false),
             color: LIFF_THEME.inkSoft,
             fontWeight: 500,
             textAlign: 'right',
@@ -129,12 +130,12 @@ function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number;
         borderLeft: tone ? `3px solid ${tone.border}` : `3px solid transparent`,
       }}
     >
-      <span style={{ fontSize: LIFF_TYPE.body + 1, fontWeight: 700, color: LIFF_THEME.inkSoft }}>
+      <span style={{ fontSize: getFontSizePx('body', false), fontWeight: 700, color: LIFF_THEME.inkSoft }}>
         #{slotNumber}
       </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
         <ExpiryBadge status={boardStatus} />
-        <span style={{ fontSize: LIFF_TYPE.body, fontWeight: 600, color: LIFF_THEME.ink }}>
+        <span style={{ fontSize: getFontSizePx('body', true), fontWeight: 600, color: LIFF_THEME.ink }}>
           {expiryLabel}
         </span>
       </div>
@@ -164,14 +165,14 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-          <span style={{ fontSize: LIFF_TYPE.caption + 1, color: LIFF_THEME.muted, fontWeight: 600 }}>
+          <span style={{ fontSize: getFontSizePx('button', true), color: LIFF_THEME.muted, fontWeight: 600 }}>
             置板
           </span>
           {member.board_slots && member.board_slots.length > 1 && (
             <span
               style={{
                 marginLeft: '4px',
-                fontSize: '11px',
+                fontSize: getFontSizePx('caption', true),
                 fontWeight: 600,
                 color: LIFF_THEME.muted,
                 background: LIFF_THEME.surfaceInset,
@@ -208,7 +209,7 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
               padding: '14px',
               textAlign: 'center',
               color: '#94a3b8',
-              fontSize: '14px',
+              fontSize: getFontSizePx('body', true),
               background: '#f8fafc',
               borderRadius: '10px',
               border: '1px dashed #e2e8f0'

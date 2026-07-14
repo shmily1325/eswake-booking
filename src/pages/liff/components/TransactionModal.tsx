@@ -1,6 +1,7 @@
 // 交易記錄彈出框組件
 
-import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { getFontSizePx } from '../../../styles/designSystem'
+import { LIFF_THEME } from '../liffUiStyles'
 import type { Transaction } from '../types'
 import { getCategoryLabel, getCategoryUnit } from '../types'
 
@@ -61,7 +62,7 @@ export function TransactionModal({
           paddingBottom: '12px',
           borderBottom: LIFF_THEME.cardBorder,
         }}>
-          <h3 style={{ margin: 0, fontSize: LIFF_TYPE.display - 2, fontWeight: 700, color: LIFF_THEME.inkSoft }}>
+          <h3 style={{ margin: 0, fontSize: getFontSizePx('bodyLarge', false), fontWeight: 700, color: LIFF_THEME.inkSoft }}>
             {getCategoryLabel(category)} 交易記錄
           </h3>
           <button
@@ -72,7 +73,7 @@ export function TransactionModal({
               background: LIFF_THEME.surfaceInset,
               border: 'none',
               borderRadius: '50%',
-              fontSize: '18px',
+              fontSize: getFontSizePx('h3', false),
               color: LIFF_THEME.muted,
               cursor: 'pointer',
               width: '32px',
@@ -119,11 +120,11 @@ export function TransactionModal({
                     alignItems: 'flex-start',
                     marginBottom: '6px',
                   }}>
-                    <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.muted }}>
+                    <div style={{ fontSize: getFontSizePx('body', true), color: LIFF_THEME.muted }}>
                       {formatFriendlyDate(transaction.transaction_date)}
                     </div>
                     <div style={{
-                      fontSize: LIFF_TYPE.display - 2,
+                      fontSize: getFontSizePx('bodyLarge', false),
                       fontWeight: 700,
                       color,
                     }}>
@@ -133,11 +134,11 @@ export function TransactionModal({
                       {unit === '分' ? '分' : ''}
                     </div>
                   </div>
-                  <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.inkSoft, marginBottom: '4px' }}>
+                  <div style={{ fontSize: getFontSizePx('body', true), color: LIFF_THEME.inkSoft, marginBottom: '4px' }}>
                     {transaction.description}
                   </div>
                   {transaction.notes && (
-                    <div style={{ fontSize: 13, color: LIFF_THEME.mutedLight }}>
+                    <div style={{ fontSize: getFontSizePx('button', true), color: LIFF_THEME.mutedLight }}>
                       備註：{transaction.notes}
                     </div>
                   )}

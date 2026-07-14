@@ -1,5 +1,5 @@
 import { getWeekdayText } from '../../utils/date'
-import { designSystem, getBookingChoiceStyle, getLabelStyle } from '../../styles/designSystem'
+import { designSystem, getBookingChoiceStyle, getFontSize, getLabelStyle } from '../../styles/designSystem'
 import type { CSSProperties } from 'react'
 
 interface TimeSelectorProps {
@@ -59,7 +59,7 @@ export function TimeSelector({
                         background: designSystem.colors.background.main,
                         border: `1px solid ${designSystem.colors.border.light}`,
                         borderRadius: designSystem.borderRadius.md,
-                        fontSize: '15px',
+                        fontSize: getFontSize('body', false),
                         fontWeight: '600',
                         color: designSystem.colors.text.secondary,
                         textAlign: 'center',
@@ -137,7 +137,7 @@ export function TimeSelector({
                                 style={{
                                     ...getBookingChoiceStyle(isSelected),
                                     padding: '12px 8px',
-                                    fontSize: '14px',
+                                    fontSize: getFontSize('body', true),
                                     fontWeight: isSelected ? '700' : '500',
                                     cursor: 'pointer',
                                     minHeight: '44px',
@@ -152,7 +152,7 @@ export function TimeSelector({
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: designSystem.spacing.sm }}>
                     <span style={{
-                        fontSize: '14px',
+                        fontSize: getFontSize('body', true),
                         color: designSystem.colors.text.secondary,
                         flexShrink: 0,
                     }}>
@@ -181,7 +181,7 @@ export function TimeSelector({
                         placeholder="輸入分鐘數"
                     />
                     <span style={{
-                        fontSize: '14px',
+                        fontSize: getFontSize('body', true),
                         color: designSystem.colors.text.secondary,
                         flexShrink: 0,
                     }}>

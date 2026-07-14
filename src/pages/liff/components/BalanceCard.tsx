@@ -1,6 +1,7 @@
 // 儲值餘額卡（低彩度色階；點擊開明細；六卡等重）
 
-import { LIFF_THEME, LIFF_TYPE, liffMetricUnit } from '../liffUiStyles'
+import { getFontSizePx } from '../../../styles/designSystem'
+import { LIFF_THEME, liffMetricUnit } from '../liffUiStyles'
 
 export type BalanceTone = {
   color: string
@@ -58,7 +59,7 @@ export function BalanceCard({
     >
       <div
         style={{
-          fontSize: LIFF_TYPE.caption + 1,
+          fontSize: getFontSizePx('button', true),
           color: LIFF_THEME.muted,
           marginBottom: 8,
           fontWeight: 500,
@@ -81,7 +82,7 @@ export function BalanceCard({
             </span>
             <span
               style={{
-                fontSize: LIFF_TYPE.display + 2,
+                fontSize: getFontSizePx('h1', true),
                 fontWeight: 700,
                 fontVariantNumeric: 'tabular-nums',
                 letterSpacing: '-0.03em',
@@ -94,7 +95,7 @@ export function BalanceCard({
           <>
             <span
               style={{
-                fontSize: LIFF_TYPE.display + 2,
+                fontSize: getFontSizePx('h1', true),
                 fontWeight: 700,
                 fontVariantNumeric: 'tabular-nums',
                 letterSpacing: '-0.03em',

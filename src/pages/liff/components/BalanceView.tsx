@@ -1,7 +1,7 @@
 // 儲值餘額視圖：2×3 六色低彩卡；點擊開明細
 
-import { designSystem } from '../../../styles/designSystem'
-import { liffContentPanel, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { designSystem, getFontSizePx } from '../../../styles/designSystem'
+import { liffContentPanel, LIFF_THEME } from '../liffUiStyles'
 import type { Member } from '../types'
 import { BalanceCard, type BalanceTone } from './BalanceCard'
 
@@ -86,7 +86,7 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
       <p
         style={{
           margin: '14px 0 0',
-          fontSize: LIFF_TYPE.caption,
+          fontSize: getFontSizePx('bodySmall', true),
           color: LIFF_THEME.mutedLight,
           textAlign: 'center',
           lineHeight: 1.45,

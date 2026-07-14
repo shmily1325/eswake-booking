@@ -14,6 +14,7 @@ import {
   getBadgeStyle,
   getButtonStyle,
   getEmptyStateStyle,
+  getFontSize,
   getInputStyle,
   getPageContentShellStyle,
 } from '../../styles/designSystem'
@@ -339,7 +340,7 @@ export function MemberTransaction() {
                   borderRadius: '50%',
                   width: '24px',
                   height: '24px',
-                  fontSize: '14px',
+                  fontSize: getFontSize('body', isMobile),
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -362,7 +363,7 @@ export function MemberTransaction() {
               padding: '10px 12px',
               border: cardBorder,
               borderRadius: designSystem.borderRadius.lg,
-              fontSize: '14px',
+              fontSize: getFontSize('body', isMobile),
               background: designSystem.colors.background.card,
               color: designSystem.colors.text.primary,
               cursor: 'pointer',
@@ -394,26 +395,26 @@ export function MemberTransaction() {
             textAlign: 'center'
           }}>
             <div>
-              <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總儲值</div>
-              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總儲值</div>
+              <div style={{ fontSize: isMobile ? getFontSize('h3', isMobile) : getFontSize('h2', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                 ${stats.totalBalance.toLocaleString()}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總VIP票券</div>
-              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總VIP票券</div>
+              <div style={{ fontSize: isMobile ? getFontSize('h3', isMobile) : getFontSize('h2', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                 ${stats.totalVipVoucher.toLocaleString()}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總G23船券</div>
-              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總G23船券</div>
+              <div style={{ fontSize: isMobile ? getFontSize('h3', isMobile) : getFontSize('h2', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                 {stats.totalG23.toLocaleString()}分
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總G21/黑豹</div>
-              <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總G21/黑豹</div>
+              <div style={{ fontSize: isMobile ? getFontSize('h3', isMobile) : getFontSize('h2', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                 {stats.totalG21.toLocaleString()}分
               </div>
             </div>
@@ -438,7 +439,7 @@ export function MemberTransaction() {
                 padding: '10px 12px',
                 border: cardBorder,
                 borderRadius: designSystem.borderRadius.lg,
-                fontSize: '14px',
+                fontSize: getFontSize('body', isMobile),
                 background: mobileFiltersExpanded
                   ? designSystem.colors.background.card
                   : (filtersActive ? designSystem.colors.warning[50] : designSystem.colors.background.card),
@@ -555,7 +556,7 @@ export function MemberTransaction() {
             {/* 手機版結果數量 */}
             {(searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
               <div style={{
-                fontSize: '13px',
+                fontSize: getFontSize('button', isMobile),
                 color: designSystem.colors.text.secondary,
                 marginTop: '8px',
                 textAlign: 'center',
@@ -637,7 +638,7 @@ export function MemberTransaction() {
                   backgroundRepeat: 'no-repeat',
                   backgroundPosition: 'right 10px center',
                   cursor: 'pointer',
-                  fontSize: '13px',
+                  fontSize: getFontSize('button', false),
                 }}
               >
                 <option value="nickname">暱稱</option>
@@ -667,7 +668,7 @@ export function MemberTransaction() {
       {/* 桌面結果筆數（與手機同句式，較安靜） */}
       {!isMobile && (searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
         <div style={{
-          fontSize: '13px',
+          fontSize: getFontSize('button', false),
           color: designSystem.colors.text.secondary,
           marginBottom: '12px',
           textAlign: 'center',
@@ -779,7 +780,7 @@ export function MemberTransaction() {
                   }}>
                     <h3 style={{
                       margin: 0,
-                      fontSize: isMobile ? '18px' : '20px',
+                      fontSize: getFontSize('h3', isMobile),
                       fontWeight: 750,
                       color: designSystem.colors.text.primary,
                       letterSpacing: '-0.025em',
@@ -788,7 +789,7 @@ export function MemberTransaction() {
                     </h3>
                     {member.nickname && (
                       <span style={{
-                        fontSize: isMobile ? '12px' : '13px',
+                        fontSize: getFontSize('bodySmall', isMobile),
                         color: designSystem.colors.text.disabled
                       }}>
                         ({member.name})
@@ -822,7 +823,7 @@ export function MemberTransaction() {
                     )}
                     {member.phone && (
                       <span style={{
-                        fontSize: '12px',
+                        fontSize: getFontSize('bodySmall', isMobile),
                         color: designSystem.colors.text.disabled,
                       }}>
                         {member.phone}
@@ -848,7 +849,7 @@ export function MemberTransaction() {
                           background: designSystem.colors.danger[50],
                           color: designSystem.colors.danger[700],
                           borderColor: `${designSystem.colors.danger[500]}66`,
-                          fontSize: '12px',
+                          fontSize: getFontSize('bodySmall', isMobile),
                           fontWeight: 600,
                           padding: '4px 10px',
                         }}
@@ -861,7 +862,7 @@ export function MemberTransaction() {
                   {/* 最後交易日期和更新日期 */}
                   {(member.lastTransactionDate || member.lastTransactionCreatedAt) && (
                     <div style={{
-                      fontSize: '12px',
+                      fontSize: getFontSize('bodySmall', isMobile),
                       color: designSystem.colors.text.disabled,
                       marginTop: '6px',
                       display: 'flex',
@@ -890,43 +891,43 @@ export function MemberTransaction() {
                   textAlign: 'center'
                 }}>
                     <div>
-                      <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>儲值餘額</div>
-                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>儲值餘額</div>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                         ${(member.balance || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
-                      <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>VIP票券</div>
-                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>VIP票券</div>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                         ${(member.vip_voucher_amount || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
-                      <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>指定課</div>
-                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>指定課</div>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                         {(member.designated_lesson_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
-                      <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G23船券</div>
-                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G23船券</div>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                         {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
-                      <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>黑豹/G21</div>
-                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>黑豹/G21</div>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                         {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
-                      <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>贈送大船</div>
-                      <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>贈送大船</div>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                         {(member.gift_boat_hours || 0).toLocaleString()}分
                       </div>
                     </div>

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from './ui'
 import { useAuthUser } from '../contexts/AuthContext'
+import { useResponsive } from '../hooks/useResponsive'
+import { getFontSize } from '../styles/designSystem'
 import { normalizeDate } from '../utils/date'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 import { isFacility } from '../utils/facility'
@@ -61,6 +63,7 @@ interface Props {
 export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpandChange }: Props) {
   const user = useAuthUser()
   const toast = useToast()
+  const { isMobile } = useResponsive()
   const [isExpanded, setIsExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [memberData, setMemberData] = useState<any>(null)
@@ -847,10 +850,10 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '6px' }}>
+          <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: '600', marginBottom: '6px' }}>
             {isExpanded ? '▼' : '▶'} {report.participant_name}
           </div>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+          <div style={{ fontSize: getFontSize('body', isMobile), color: '#666', marginBottom: '4px' }}>
             {(() => {
               const [datePart] = report.bookings.start_at.split('T')
               return datePart
@@ -858,7 +861,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
           </div>
           {/* 提交者資訊 */}
           {submitterInfo && (submitterInfo.createdBy || submitterInfo.updatedBy) && (
-            <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>
+            <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#999', marginBottom: '4px' }}>
               {submitterInfo.createdBy && submitterInfo.updatedBy && submitterInfo.createdBy !== submitterInfo.updatedBy ? (
                 // 有修改者且與回報者不同
                 <>📤 由 {submitterInfo.createdBy} 回報，{submitterInfo.updatedBy} 修改</>
@@ -916,7 +919,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
             padding: '6px 12px',
             background: '#f0f0f0',
             borderRadius: '6px',
-            fontSize: '14px',
+            fontSize: getFontSize('body', isMobile),
             color: '#666'
           }}>
             點擊展開
@@ -943,14 +946,14 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
             }}>
               <div>
                 <div style={{ 
-                  fontSize: '15px', 
+                  fontSize: getFontSize('bodyLarge', isMobile), 
                   fontWeight: '600', 
                   color: isFacilityFreeLesson ? '#15803d' : '#0369a1', 
                   marginBottom: '4px' 
                 }}>
                   {isFacilityFreeLesson ? '🎓 指定課不收費' : `💵 ${report.payment_method === 'cash' ? '現金' : '匯款'}結清`}
                 </div>
-                <div style={{ fontSize: '13px', color: isFacilityFreeLesson ? '#166534' : '#075985' }}>
+                <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: isFacilityFreeLesson ? '#166534' : '#075985' }}>
                   {isFacilityFreeLesson ? '設施指定課（免費），點擊確認結清' : '此筆記錄為現金/匯款付款'}
                 </div>
               </div>
@@ -967,7 +970,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   borderRadius: '8px',
                   color: 'white',
                   fontWeight: '600',
-                  fontSize: '14px',
+                  fontSize: getFontSize('body', isMobile),
                   cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.6 : 1,
                   boxShadow: isFacilityFreeLesson 
@@ -1016,15 +1019,15 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   gap: '8px'
                 }}>
                   <div>
-                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+                    <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#666', marginBottom: '4px' }}>
                       扣款帳戶：
                     </div>
-                    <div style={{ fontSize: '15px', fontWeight: '600' }}>
+                    <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: '600' }}>
                       {proxyMemberId ? (
                         <div>
                           <span style={{ color: '#e65100' }}>
                             🔄 {proxyMemberName}
-                            <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>
+                            <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#999', marginLeft: '8px' }}>
                               (代扣 {report.participant_name} 的費用)
                             </span>
                             {isAutoProxy && (
@@ -1041,7 +1044,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                             )}
                           </span>
                           {proxyMemberData && (
-                            <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                            <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#666', marginTop: '4px' }}>
                               💰 儲值 ${(proxyMemberData.balance || 0).toLocaleString()} • 
                               💎 VIP票券 ${(proxyMemberData.vip_voucher_amount || 0).toLocaleString()} • 
                               🚤 G23 {proxyMemberData.boat_voucher_g23_minutes || 0}分 • 
@@ -1064,7 +1067,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '13px',
+                          fontSize: getFontSize('button', isMobile),
                           cursor: 'pointer'
                         }}
                       >
@@ -1079,7 +1082,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '13px',
+                          fontSize: getFontSize('button', isMobile),
                           cursor: 'pointer'
                         }}
                       >
@@ -1097,7 +1100,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '13px',
+                          fontSize: getFontSize('button', isMobile),
                           cursor: loading ? 'not-allowed' : 'pointer',
                           opacity: loading ? 0.6 : 1
                         }}
@@ -1109,7 +1112,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 </div>
               </div>
 
-              <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', marginBottom: '12px' }}>
                 扣款項目：
               </div>
 
@@ -1159,6 +1162,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                     validationErrors={validationErrors}
                     itemIndex={index}
                     previousDeductions={previousDeductions}
+                    isMobile={isMobile}
                     onUpdate={(updates) => {
                       updateItem(item.id, updates)
                       // 清除該項目的錯誤
@@ -1284,7 +1288,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                       boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
                     }}>
                       <div style={{ 
-                        fontSize: '13px', 
+                        fontSize: getFontSize('bodySmall', isMobile), 
                         fontWeight: '600', 
                         marginBottom: '10px',
                         color: '#0369a1',
@@ -1304,7 +1308,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                             padding: '8px 10px',
                             background: 'white',
                             borderRadius: '6px',
-                            fontSize: '13px',
+                            fontSize: getFontSize('button', isMobile),
                             border: '1px solid #e0e0e0'
                           }}>
                             <span style={{ fontWeight: '500', color: '#64748b' }}>
@@ -1392,7 +1396,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 {!report.member_id && !proxyMemberId && (
                   <div style={{ 
                     marginTop: '8px', 
-                    fontSize: '13px', 
+                    fontSize: getFontSize('bodySmall', isMobile),
                     color: '#f44336',
                     textAlign: 'center'
                   }}>
@@ -1443,7 +1447,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: getFontSize('h3', isMobile) }}>
                   🔄 選擇代扣會員
                 </h3>
                 <button
@@ -1454,7 +1458,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   style={{
                     border: 'none',
                     background: 'none',
-                    fontSize: '20px',
+                    fontSize: getFontSize('h2', isMobile),
                     cursor: 'pointer',
                     color: '#666'
                   }}
@@ -1467,7 +1471,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
               <div style={{
                 padding: '12px 16px',
                 background: '#fff3e0',
-                fontSize: '13px',
+                fontSize: getFontSize('bodySmall', isMobile),
                 color: '#e65100'
               }}>
                 選擇要代扣的會員帳戶。代扣後：
@@ -1522,12 +1526,12 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                         {member.nickname || member.name}
                       </div>
                       {member.nickname && member.name !== member.nickname && (
-                        <div style={{ fontSize: '14px', color: '#666' }}>
+                        <div style={{ fontSize: getFontSize('body', isMobile), color: '#666' }}>
                           {member.name}
                         </div>
                       )}
                       {member.phone && (
-                        <div style={{ fontSize: '14px', color: '#999' }}>
+                        <div style={{ fontSize: getFontSize('body', isMobile), color: '#999' }}>
                           {member.phone}
                         </div>
                       )}
@@ -1571,6 +1575,7 @@ interface DeductionItemRowProps {
   onRemove: () => void
   canRemove: boolean
   totalItems: number
+  isMobile: boolean
 }
 
 function DeductionItemRow({ 
@@ -1588,7 +1593,8 @@ function DeductionItemRow({
   onUpdate, 
   onRemove,
   canRemove,
-  totalItems: _totalItems
+  totalItems: _totalItems,
+  isMobile,
 }: DeductionItemRowProps) {
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [showNotes, setShowNotes] = useState(!!item.notes)
@@ -1729,7 +1735,7 @@ function DeductionItemRow({
                 color: '#ef4444',
                 border: '1px solid #fecaca',
                 borderRadius: '6px',
-                fontSize: '12px',
+                fontSize: getFontSize('bodySmall', isMobile),
                 cursor: 'pointer',
                 fontWeight: '500',
                 transition: 'all 0.2s'
@@ -1805,7 +1811,7 @@ function DeductionItemRow({
             padding: '10px 12px',
             borderRadius: '8px',
             border: '2px solid #e0e0e0',
-            fontSize: '15px',
+            fontSize: getFontSize('bodyLarge', isMobile),
             fontWeight: '500',
             cursor: 'pointer',
             background: 'white',
@@ -1834,10 +1840,10 @@ function DeductionItemRow({
         }}>
           <span style={{ fontSize: '18px', flexShrink: 0 }}>⚠️</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#92400e', marginBottom: '4px' }}>
+            <div style={{ fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600', color: '#92400e', marginBottom: '4px' }}>
               價格尚未設定
             </div>
-            <div style={{ fontSize: '12px', color: '#b45309' }}>
+            <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#b45309' }}>
               {isPriceNotSet && (
                 <div>
                   {isBalance ? '此船隻的儲值價格尚未設定' : '此船隻的VIP票券價格尚未設定'}
@@ -1868,10 +1874,10 @@ function DeductionItemRow({
           }}>
             <span style={{ fontSize: '18px' }}>✅</span>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#2e7d32' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', color: '#2e7d32' }}>
                 直接結清
               </div>
-              <div style={{ fontSize: '12px', color: '#558b2f' }}>
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#558b2f' }}>
                 不扣任何費用
               </div>
             </div>
@@ -1888,10 +1894,10 @@ function DeductionItemRow({
           }}>
             <span style={{ fontSize: '18px' }}>⭐</span>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#b35900' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', color: '#b35900' }}>
                 方案記錄
               </div>
-              <div style={{ fontSize: '12px', color: '#cc6600' }}>
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#cc6600' }}>
                 不扣除任何餘額，僅記錄方案使用（請在下方填寫方案名稱）
               </div>
             </div>
@@ -1899,7 +1905,7 @@ function DeductionItemRow({
         ) : isBalance || isVipVoucher || isDesignatedLessonFromBalance ? (
           <div>
             <div style={{ 
-              fontSize: '13px', 
+              fontSize: getFontSize('bodySmall', isMobile), 
               color: '#7f8c8d', 
               marginBottom: '8px',
               fontWeight: '500'
@@ -1914,7 +1920,7 @@ function DeductionItemRow({
                   borderRadius: '8px',
                   border: '1px solid #f0c36d',
                   background: 'linear-gradient(135deg, #fffbeb 0%, #fff4d6 100%)',
-                  fontSize: '13px',
+                  fontSize: getFontSize('bodySmall', isMobile),
                   lineHeight: 1.55,
                   color: '#7c5d10'
                 }}
@@ -1925,7 +1931,7 @@ function DeductionItemRow({
             {/* 統一設計：直接顯示金額輸入框 + 計算說明 */}
             <div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span style={{ fontSize: '16px', color: '#666', fontWeight: '500' }}>$</span>
+                <span style={{ fontSize: getFontSize('h3', isMobile), color: '#666', fontWeight: '500' }}>$</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -1944,7 +1950,7 @@ function DeductionItemRow({
                     padding: '12px 14px',
                     border: '2px solid #667eea',
                     borderRadius: '8px',
-                    fontSize: '18px',
+                    fontSize: '16px',
                     fontWeight: '600',
                     background: '#f8f9ff'
                   }}
@@ -1953,7 +1959,7 @@ function DeductionItemRow({
               {/* 計算說明 */}
               <div style={{ 
                 marginTop: '8px',
-                fontSize: '13px', 
+                fontSize: getFontSize('bodySmall', isMobile), 
                 color: '#666',
                 background: '#f5f5f5',
                 padding: '8px 12px',
@@ -1981,7 +1987,7 @@ function DeductionItemRow({
         ) : (
           <div>
             <div style={{ 
-              fontSize: '13px', 
+              fontSize: getFontSize('bodySmall', isMobile), 
               color: '#7f8c8d', 
               marginBottom: '8px',
               fontWeight: '500'
@@ -2005,17 +2011,17 @@ function DeductionItemRow({
                     padding: '12px 14px',
                     border: '2px solid #667eea',
                     borderRadius: '8px',
-                    fontSize: '18px',
+                    fontSize: '16px',
                     fontWeight: '600',
                     background: '#f8f9ff'
                   }}
                 />
-                <span style={{ fontSize: '14px', color: '#666' }}>分鐘</span>
+                <span style={{ fontSize: getFontSize('body', isMobile), color: '#666' }}>分鐘</span>
               </div>
               {/* 說明 */}
               <div style={{ 
                 marginTop: '8px',
-                fontSize: '13px', 
+                fontSize: getFontSize('bodySmall', isMobile), 
                 color: '#666',
                 background: '#f5f5f5',
                 padding: '8px 12px',
@@ -2035,7 +2041,7 @@ function DeductionItemRow({
             background: '#fef2f2',
             borderRadius: '6px',
             border: '1px solid #fecaca',
-            fontSize: '13px',
+            fontSize: getFontSize('bodySmall', isMobile),
             color: '#dc2626',
             display: 'flex',
             alignItems: 'center',
@@ -2051,7 +2057,7 @@ function DeductionItemRow({
       {isPlan && (
         <div style={{ marginBottom: '14px' }}>
           <div style={{ 
-            fontSize: '13px', 
+            fontSize: getFontSize('bodySmall', isMobile), 
             color: '#7f8c8d', 
             marginBottom: '8px',
             fontWeight: '500'
@@ -2068,7 +2074,7 @@ function DeductionItemRow({
               padding: '10px 12px',
               border: validationErrors[`item-${itemIndex}-planName`] ? '2px solid #dc2626' : '2px solid #e0e0e0',
               borderRadius: '8px',
-              fontSize: '14px'
+              fontSize: '16px'
             }}
           />
           
@@ -2080,7 +2086,7 @@ function DeductionItemRow({
               background: '#fef2f2',
               borderRadius: '6px',
               border: '1px solid #fecaca',
-              fontSize: '13px',
+              fontSize: getFontSize('bodySmall', isMobile),
               color: '#dc2626',
               display: 'flex',
               alignItems: 'center',
@@ -2096,7 +2102,7 @@ function DeductionItemRow({
       {/* 說明（精簡顯示） */}
       <div style={{ marginBottom: '14px' }}>
         <div style={{ 
-          fontSize: '13px', 
+          fontSize: getFontSize('bodySmall', isMobile),
           color: '#7f8c8d', 
           marginBottom: '8px',
           fontWeight: '500',
@@ -2113,7 +2119,7 @@ function DeductionItemRow({
               background: 'none',
               border: '1px solid #e0e0e0',
               borderRadius: '6px',
-              fontSize: '12px',
+              fontSize: getFontSize('bodySmall', isMobile),
               color: '#666',
               cursor: 'pointer',
               transition: 'all 0.2s'
@@ -2158,7 +2164,7 @@ function DeductionItemRow({
               background: '#f8f9fa',
               border: validationErrors[`item-${itemIndex}-description`] ? '2px solid #dc2626' : '1px solid #e9ecef',
               borderRadius: '8px',
-              fontSize: '13px',
+              fontSize: getFontSize('bodySmall', isMobile),
               color: '#666',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
@@ -2179,7 +2185,7 @@ function DeductionItemRow({
             background: '#fef2f2',
             borderRadius: '6px',
             border: '1px solid #fecaca',
-            fontSize: '13px',
+            fontSize: getFontSize('bodySmall', isMobile),
             color: '#dc2626',
             display: 'flex',
             alignItems: 'center',
@@ -2202,7 +2208,7 @@ function DeductionItemRow({
               background: 'none',
               border: '1px dashed #cbd5e0',
               borderRadius: '6px',
-              fontSize: '13px',
+              fontSize: getFontSize('bodySmall', isMobile),
               color: '#718096',
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -2223,7 +2229,7 @@ function DeductionItemRow({
         ) : (
           <>
             <div style={{ 
-              fontSize: '13px', 
+              fontSize: getFontSize('bodySmall', isMobile), 
               color: '#7f8c8d', 
               marginBottom: '8px',
               fontWeight: '500',
@@ -2242,7 +2248,7 @@ function DeductionItemRow({
                   padding: '2px 8px',
                   background: 'none',
                   border: 'none',
-                  fontSize: '18px',
+                  fontSize: getFontSize('h3', isMobile),
                   color: '#999',
                   cursor: 'pointer',
                   lineHeight: 1
@@ -2261,7 +2267,7 @@ function DeductionItemRow({
                 padding: '10px 12px',
                 border: '2px solid #e0e0e0',
                 borderRadius: '8px',
-                fontSize: '14px'
+                fontSize: '16px'
               }}
               onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
               onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
@@ -2276,7 +2282,7 @@ function DeductionItemRow({
           padding: '8px 12px',
           background: balance.after < 0 ? '#fef2f2' : '#f0fdf4',
           borderRadius: '6px',
-          fontSize: '13px',
+          fontSize: getFontSize('bodySmall', isMobile),
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',

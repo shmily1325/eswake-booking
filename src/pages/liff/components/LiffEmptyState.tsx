@@ -1,7 +1,8 @@
 // LIFF 空狀態：單色線條圖＋標題／短句（無 emoji）
 
 import type { ReactNode } from 'react'
-import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { getFontSizePx } from '../../../styles/designSystem'
+import { LIFF_THEME } from '../liffUiStyles'
 
 type EmptyKind = 'bookings' | 'orders'
 
@@ -50,7 +51,7 @@ export function LiffEmptyState({ kind, title, detail, hint }: LiffEmptyStateProp
       </div>
       <div
         style={{
-          fontSize: LIFF_TYPE.display - 2,
+          fontSize: getFontSizePx('bodyLarge', false),
           fontWeight: 600,
           color: LIFF_THEME.inkSoft,
           marginBottom: 8,
@@ -61,7 +62,7 @@ export function LiffEmptyState({ kind, title, detail, hint }: LiffEmptyStateProp
       </div>
       <div
         style={{
-          fontSize: LIFF_TYPE.body,
+          fontSize: getFontSizePx('body', true),
           color: LIFF_THEME.mutedLight,
           lineHeight: 1.5,
           marginBottom: hint ? 20 : 0,
@@ -72,7 +73,7 @@ export function LiffEmptyState({ kind, title, detail, hint }: LiffEmptyStateProp
       {hint ? (
         <div
           style={{
-            fontSize: LIFF_TYPE.caption,
+            fontSize: getFontSizePx('bodySmall', true),
             color: LIFF_THEME.mutedLight,
             lineHeight: 1.45,
           }}

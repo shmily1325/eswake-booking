@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useResponsive } from '../hooks/useResponsive'
-import { getFontSize } from '../styles/designSystem'
+import { designSystem, getFontSize } from '../styles/designSystem'
 
 /** 商品管理 / 訂單 Hub 外層（跟 ProductManagement 一致） */
 export function productHubOuterStyle(): CSSProperties {
@@ -20,7 +20,7 @@ export function productHubInnerStyle(isMobile: boolean, maxWidth = 1100): CSSPro
 
 /** 外層：CoachAdmin / 回報管理 */
 export function adminPageOuterStyle(): CSSProperties {
-  return { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }
+  return { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f4f5f7' }
 }
 
 export function adminPageInnerStyle(isMobile: boolean, maxWidth = 1400): CSSProperties {
@@ -107,7 +107,7 @@ export function adminTabBarStyle(): CSSProperties {
     display: 'flex',
     gap: '8px',
     marginBottom: '24px',
-    borderBottom: '2px solid #e0e0e0',
+    borderBottom: `1px solid ${designSystem.colors.border.light}`,
     flexWrap: 'wrap',
   }
 }
@@ -115,10 +115,12 @@ export function adminTabBarStyle(): CSSProperties {
 export function adminTabButtonStyle(active: boolean, isMobile: boolean): CSSProperties {
   return {
     padding: isMobile ? '10px 16px' : '12px 24px',
-    background: active ? '#2196f3' : 'transparent',
-    color: active ? 'white' : '#666',
+    background: active ? designSystem.colors.primary[500] : 'transparent',
+    color: active ? 'white' : designSystem.colors.text.secondary,
     border: 'none',
-    borderBottom: active ? '3px solid #2196f3' : 'none',
+    borderBottom: active
+      ? `3px solid ${designSystem.colors.primary[500]}`
+      : '3px solid transparent',
     borderRadius: '8px 8px 0 0',
     cursor: 'pointer',
     fontSize: getFontSize(isMobile ? 'body' : 'bodyLarge', isMobile),
@@ -133,8 +135,8 @@ export function adminTabButtonStyle(active: boolean, isMobile: boolean): CSSProp
 
 export function adminTabBadgeStyle(active: boolean): CSSProperties {
   return {
-    background: active ? 'white' : '#e3f2fd',
-    color: active ? '#2196f3' : '#1976d2',
+    background: active ? 'rgba(255,255,255,0.22)' : designSystem.colors.background.hover,
+    color: active ? '#fff' : designSystem.colors.text.secondary,
     borderRadius: '12px',
     padding: '2px 8px',
     fontSize: getFontSize('caption', false),

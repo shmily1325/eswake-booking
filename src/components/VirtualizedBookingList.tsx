@@ -5,7 +5,7 @@ import { validateBoats, validateBookings } from '../utils/safetyHelpers'
 import type { BoatUnavailableBlock } from '../utils/boatUnavailableDay'
 import type { RestrictionDayBlock } from '../utils/restrictionDayBlocks'
 import { getBoatSidebarDayAlert } from '../utils/dayViewBoatSidebarAlert'
-import { designSystem } from '../styles/designSystem'
+import { designSystem, getFontSize } from '../styles/designSystem'
 
 interface VirtualizedBookingListProps {
     boats: Boat[]
@@ -58,7 +58,7 @@ export function VirtualizedBookingList({
                 justifyContent: 'center',
                 height: '200px',
                 color: designSystem.colors.text.disabled,
-                fontSize: '14px'
+                fontSize: getFontSize('body', isMobile)
             }}>
                 沒有可用的船隻
             </div>
@@ -134,8 +134,8 @@ export function VirtualizedBookingList({
                                 whiteSpace: 'nowrap',
                                 wordBreak: 'keep-all',
                                 fontSize: isMobile
-                                    ? (boat.name.length >= 4 ? '13px' : '14px')
-                                    : '16px',
+                                    ? (boat.name.length >= 4 ? getFontSize('button', true) : getFontSize('body', true))
+                                    : getFontSize('bodyLarge', true),
                                 fontWeight: '700',
                                 textAlign: 'center',
                                 letterSpacing: boat.name.length >= 4 ? '-0.02em' : undefined,
@@ -161,7 +161,7 @@ export function VirtualizedBookingList({
                                 </div>
                             )}
                             <div style={{
-                                fontSize: isMobile ? '11px' : '12px',
+                                fontSize: isMobile ? getFontSize('caption', true) : getFontSize('caption', false),
                                 color: 'rgba(255,255,255,0.65)',
                                 textAlign: 'center',
                             }}>
@@ -182,7 +182,7 @@ export function VirtualizedBookingList({
                                     justifyContent: 'center',
                                     height: '100%',
                                     color: designSystem.colors.text.disabled,
-                                    fontSize: isMobile ? '13px' : '14px',
+                                    fontSize: isMobile ? getFontSize('button', true) : getFontSize('body', false),
                                     fontStyle: 'italic',
                                 }}>
                                     今日無預約
@@ -240,7 +240,7 @@ export function VirtualizedBookingList({
                                                     color: designSystem.colors.text.primary,
                                                     borderRadius: designSystem.borderRadius.md,
                                                     borderLeft: `3px solid ${boat.color}`,
-                                                    fontSize: isMobile ? '12px' : '13px',
+                                                    fontSize: isMobile ? getFontSize('bodySmall', true) : getFontSize('bodySmall', false),
                                                     fontWeight: '600',
                                                     textAlign: 'center',
                                                     lineHeight: '1.3',
@@ -267,7 +267,7 @@ export function VirtualizedBookingList({
                                                     {booking.is_coach_practice && (
                                                         <div style={{
                                                             display: 'inline-block',
-                                                            fontSize: '11px',
+                                                            fontSize: getFontSize('caption', true),
                                                             fontWeight: '600',
                                                             padding: '3px 8px',
                                                             background: designSystem.colors.warning[50],
@@ -282,7 +282,7 @@ export function VirtualizedBookingList({
                                                     
                                                     {/* 第一行：預約人 */}
 												<div style={{
-													fontSize: isMobile ? '14px' : '16px',
+													fontSize: isMobile ? getFontSize('body', true) : getFontSize('bodyLarge', true),
 													fontWeight: '700',
 													color: designSystem.colors.text.primary,
 													marginBottom: '4px',
@@ -311,7 +311,7 @@ export function VirtualizedBookingList({
 													{/* 衝突原因（行內顯示） */}
 													{conflictedBookingIds?.has(booking.id) && conflictReasons?.get(booking.id) && (
 														<div style={{
-															fontSize: '12px',
+															fontSize: getFontSize('bodySmall', true),
 															color: designSystem.colors.danger[700],
 															marginBottom: '4px',
 															fontWeight: 600,
@@ -323,7 +323,7 @@ export function VirtualizedBookingList({
 
                                                     {/* 第二行：教練 + 駕駛 + 活動類型 */}
                                                     <div style={{
-                                                        fontSize: isMobile ? '12px' : '13px',
+                                                        fontSize: isMobile ? getFontSize('bodySmall', true) : getFontSize('bodySmall', false),
                                                         color: designSystem.colors.text.secondary,
                                                         lineHeight: '1.4',
                                                     }}>
@@ -350,7 +350,7 @@ export function VirtualizedBookingList({
                                                                     color: designSystem.colors.text.primary,
                                                                     padding: '2px 6px',
                                                                     borderRadius: designSystem.borderRadius.full,
-                                                                    fontSize: isMobile ? '11px' : '12px',
+                                                                    fontSize: isMobile ? getFontSize('caption', true) : getFontSize('caption', false),
                                                                     fontWeight: '600',
                                                                     border: `1px solid ${designSystem.colors.border.light}`,
                                                                 }}>
@@ -363,7 +363,7 @@ export function VirtualizedBookingList({
                                                     {/* 第三行：備註 / 排班備註 */}
                                                     {(booking.notes || booking.schedule_notes) && (
                                                         <div style={{
-                                                            fontSize: isMobile ? '11px' : '12px',
+                                                            fontSize: isMobile ? getFontSize('caption', true) : getFontSize('caption', false),
                                                             color: designSystem.colors.text.disabled,
                                                             lineHeight: '1.4',
                                                         }}>

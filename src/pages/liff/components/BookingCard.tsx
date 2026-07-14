@@ -1,8 +1,9 @@
 // 預約列（分組列表內；時間焦點塊＋船色點綴；同日後續較緊）
 
+import { getFontSizePx } from '../../../styles/designSystem'
 import { isFacility } from '../../../utils/facility'
 import { displayCoachNameForTomorrowReminder } from '../../../utils/tomorrowReminderDisplay'
-import { LIFF_THEME, LIFF_TYPE, liffMetricUnit, liffMetricValue } from '../liffUiStyles'
+import { LIFF_THEME, liffMetricUnit, liffMetricValue } from '../liffUiStyles'
 import type { Booking } from '../types'
 
 interface BookingCardProps {
@@ -36,7 +37,7 @@ export function BookingCard({
     booking.activity_types && booking.activity_types.length > 0
       ? booking.activity_types.join(' · ')
       : null
-  const timeSize = isFirstOfDay ? LIFF_TYPE.display + 2 : LIFF_TYPE.display
+  const timeSize = isFirstOfDay ? getFontSizePx('h1', true) : getFontSizePx('h2', true)
 
   return (
     <div
@@ -67,7 +68,7 @@ export function BookingCard({
           />
           <div
             style={{
-              fontSize: LIFF_TYPE.title + 1,
+              fontSize: getFontSizePx('bodyLarge', false),
               fontWeight: 700,
               color: LIFF_THEME.ink,
               letterSpacing: '-0.02em',
@@ -94,7 +95,7 @@ export function BookingCard({
           <div>
             <div
               style={{
-                fontSize: LIFF_TYPE.caption,
+                fontSize: getFontSizePx('bodySmall', true),
                 color: LIFF_THEME.muted,
                 marginBottom: 4,
               }}
@@ -109,7 +110,7 @@ export function BookingCard({
         <div>
           <div
             style={{
-              fontSize: LIFF_TYPE.caption,
+              fontSize: getFontSizePx('bodySmall', true),
               color: LIFF_THEME.muted,
               marginBottom: 4,
             }}
@@ -142,7 +143,7 @@ export function BookingCard({
         />
         <span
           style={{
-            fontSize: LIFF_TYPE.body + 1,
+            fontSize: getFontSizePx('body', false),
             fontWeight: 600,
             color: LIFF_THEME.inkSoft,
           }}
@@ -153,7 +154,7 @@ export function BookingCard({
 
       <div
         style={{
-          fontSize: LIFF_TYPE.body,
+          fontSize: getFontSizePx('body', true),
           color: LIFF_THEME.muted,
           marginBottom: coachNames || activityLine || booking.notes ? 6 : 0,
           display: 'flex',
@@ -183,7 +184,7 @@ export function BookingCard({
       {coachNames && (
         <div
           style={{
-            fontSize: LIFF_TYPE.body,
+            fontSize: getFontSizePx('body', true),
             color: LIFF_THEME.muted,
             marginBottom: activityLine || booking.notes ? 6 : 0,
           }}
@@ -195,7 +196,7 @@ export function BookingCard({
       {activityLine && (
         <div
           style={{
-            fontSize: LIFF_TYPE.caption + 1,
+            fontSize: getFontSizePx('button', true),
             color: LIFF_THEME.mutedLight,
             marginBottom: booking.notes ? 6 : 0,
             lineHeight: 1.45,
@@ -209,7 +210,7 @@ export function BookingCard({
         <div
           style={{
             marginTop: 4,
-            fontSize: LIFF_TYPE.caption + 1,
+            fontSize: getFontSizePx('button', true),
             color: LIFF_THEME.muted,
             lineHeight: 1.5,
           }}

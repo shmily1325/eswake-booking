@@ -5,12 +5,11 @@ import { usePendingBillOrderCount } from '../hooks/usePendingBillOrderCount'
 import { useAuthUser } from '../contexts/AuthContext'
 import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
-import { EsBrandLockup } from '../components/EsBrandLockup'
 import { useResponsive } from '../hooks/useResponsive'
 import { isAdmin } from '../utils/auth'
 import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
 import { ExternalNavLink } from '../components/ExternalNavLink'
-import { designSystem, getFontSize, getFontSizePx } from '../styles/designSystem'
+import { designSystem, getFontSize } from '../styles/designSystem'
 import { supabase } from '../lib/supabase'
 
 type BackupHealthStatus = 'ok' | 'warning' | 'error' | 'unknown'
@@ -229,26 +228,36 @@ export function BaoHub() {
             marginBottom: isMobile ? '28px' : '50px',
           }}
         >
-          <EsBrandLockup
-            variant="onLight"
-            subtitle="BAO"
-            align="center"
-            logoSize={isMobile ? 36 : 40}
-            brandFontSize={getFontSizePx('bodyLarge', isMobile)}
-            isMobile={isMobile}
+          <div
             style={{
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: isMobile ? '16px' : '20px',
+              fontSize: isMobile ? '80px' : '100px',
+              marginBottom: isMobile ? '12px' : '20px',
+              lineHeight: 1,
             }}
-          />
+            aria-hidden
+          >
+            🔧
+          </div>
+          <h1
+            style={{
+              margin: isMobile ? '0 0 12px 0' : '0 0 20px 0',
+              fontSize: isMobile ? '28px' : '42px',
+              fontWeight: 800,
+              color: designSystem.colors.text.primary,
+              letterSpacing: isMobile ? '1px' : '2px',
+              fontFamily:
+                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            }}
+          >
+            BAO
+          </h1>
           <div
             style={{
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
               gap: '16px',
+              marginTop: isMobile ? '8px' : '15px',
             }}
           >
             <Link

@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Member } from '../../types/booking'
-import { designSystem, getLabelStyle } from '../../styles/designSystem'
+import { designSystem, getFontSize, getLabelStyle } from '../../styles/designSystem'
 
 interface MemberSelectorProps {
     members: Pick<Member, 'id' | 'name' | 'nickname' | 'phone'>[]
@@ -37,7 +37,7 @@ export function MemberSelector({
         <div style={{ marginBottom: designSystem.spacing.lg, position: 'relative' }}>
             <label style={getLabelStyle(true)}>
                 預約人 {selectedMemberIds.length > 0 && (
-                    <span style={{ color: designSystem.colors.success[700], fontSize: '13px' }}>
+                    <span style={{ color: designSystem.colors.success[700], fontSize: getFontSize('button', true) }}>
                         （已選 {selectedMemberIds.length} 位）
                     </span>
                 )}
@@ -54,7 +54,7 @@ export function MemberSelector({
                                 color: designSystem.colors.info[700],
                                 border: `1px solid ${designSystem.colors.info[500]}`,
                                 borderRadius: designSystem.borderRadius.md,
-                                fontSize: '15px',
+                                fontSize: getFontSize('body', true),
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '6px',
@@ -70,7 +70,7 @@ export function MemberSelector({
                                         color: designSystem.colors.info[700],
                                         cursor: 'pointer',
                                         padding: '0',
-                                        fontSize: '18px',
+                                        fontSize: getFontSize('h3', false),
                                         lineHeight: '1',
                                         touchAction: 'manipulation',
                                     }}
@@ -86,7 +86,7 @@ export function MemberSelector({
                             color: designSystem.colors.warning[700],
                             border: `1.5px dashed ${designSystem.colors.warning[500]}`,
                             borderRadius: designSystem.borderRadius.md,
-                            fontSize: '15px',
+                            fontSize: getFontSize('body', true),
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px',
@@ -102,7 +102,7 @@ export function MemberSelector({
                                     color: designSystem.colors.warning[700],
                                     cursor: 'pointer',
                                     padding: '0',
-                                    fontSize: '18px',
+                                    fontSize: getFontSize('h3', false),
                                     lineHeight: '1',
                                     touchAction: 'manipulation',
                                 }}
@@ -199,7 +199,7 @@ export function MemberSelector({
                                 </div>
                                 {member.phone && (
                                     <div style={{
-                                        fontSize: '13px',
+                                        fontSize: getFontSize('button', true),
                                         color: designSystem.colors.text.disabled,
                                     }}>
                                         {member.phone}
@@ -256,7 +256,7 @@ export function MemberSelector({
                         color: 'white',
                         border: 'none',
                         borderRadius: designSystem.borderRadius.lg,
-                        fontSize: '20px',
+                        fontSize: getFontSize('h2', true),
                         fontWeight: 'bold',
                         cursor: manualStudentName.trim() ? 'pointer' : 'not-allowed',
                         minWidth: '52px',
@@ -282,7 +282,7 @@ export function MemberSelector({
                         color: designSystem.colors.danger[700],
                         border: `1px solid ${designSystem.colors.danger[500]}66`,
                         borderRadius: designSystem.borderRadius.md,
-                        fontSize: '13px',
+                        fontSize: getFontSize('button', true),
                         cursor: 'pointer',
                         minHeight: '36px',
                         touchAction: 'manipulation',

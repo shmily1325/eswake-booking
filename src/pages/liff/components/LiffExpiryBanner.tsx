@@ -1,7 +1,8 @@
 // Tab 下方到期提醒：一條 compact 提示，詳情在「會員」
 
+import { getFontSizePx } from '../../../styles/designSystem'
 import type { LiffExpiryBannerLine } from '../liffExpiryAlerts'
-import { LIFF_THEME, LIFF_TYPE, liffAlertTone } from '../liffUiStyles'
+import { LIFF_THEME, liffAlertTone } from '../liffUiStyles'
 
 interface LiffExpiryBannerProps {
   lines: LiffExpiryBannerLine[]
@@ -57,7 +58,7 @@ export function LiffExpiryBanner({ lines, onOpenProfile }: LiffExpiryBannerProps
       >
         <span
           style={{
-            fontSize: LIFF_TYPE.caption + 1,
+            fontSize: getFontSizePx('button', true),
             lineHeight: 1.45,
             fontWeight: 500,
             flex: 1,
@@ -69,7 +70,7 @@ export function LiffExpiryBanner({ lines, onOpenProfile }: LiffExpiryBannerProps
         <span
           aria-hidden
           style={{
-            fontSize: 18,
+            fontSize: getFontSizePx('h3', false),
             lineHeight: 1,
             color: LIFF_THEME.muted,
             fontWeight: 300,

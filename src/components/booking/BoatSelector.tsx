@@ -1,6 +1,6 @@
 import type { Boat } from '../../types/booking'
 import { isFacility } from '../../utils/facility'
-import { designSystem, getBookingChoiceStyle, getLabelStyle } from '../../styles/designSystem'
+import { designSystem, getBookingChoiceStyle, getFontSize, getLabelStyle } from '../../styles/designSystem'
 
 interface BoatSelectorProps {
     boats: Pick<Boat, 'id' | 'name' | 'color'>[]
@@ -32,7 +32,7 @@ export function BoatSelector({ boats, selectedBoatId, onSelect }: BoatSelectorPr
                             style={{
                                 ...getBookingChoiceStyle(isSelected),
                                 padding: '14px 8px',
-                                fontSize: '15px',
+                                fontSize: getFontSize('body', true),
                                 fontWeight: isSelected ? '600' : '500',
                                 cursor: 'pointer',
                                 minHeight: '48px',

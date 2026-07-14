@@ -10,7 +10,8 @@ import { DeductionDetails } from '../../components/DeductionDetails'
 import { DateRangePicker } from '../../components/DateRangePicker'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
-import { getButtonStyle, getCardStyle, getInputStyle, getLabelStyle } from '../../styles/designSystem'
+import { getButtonStyle, getCardStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle, designSystem } from '../../styles/designSystem'
+import { AdminTabBar, AdminTabButton } from '../../components/AdminPageLayout'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { fetchAllInBatches, fetchAllPaginated } from '../../utils/supabasePaginate'
 import { extractDate, extractTime } from '../../utils/formatters'
@@ -689,7 +690,7 @@ export function CoachAdmin() {
   // ============ Render ============
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
       <div style={{ 
         flex: 1,
         maxWidth: '1400px', 
@@ -709,113 +710,46 @@ export function CoachAdmin() {
         {/* 最後更新時間 */}
         {lastRefreshTime && (
           <div style={{
-            fontSize: '12px',
-            color: '#888',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary,
             marginBottom: '16px'
           }}>
-            🔄 已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            已更新 {lastRefreshTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
         )}
 
         {/* Tab 切換 */}
-        <div style={{ 
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '24px',
-          borderBottom: '2px solid #e0e0e0',
-          flexWrap: 'wrap'
-        }}>
-          <button
+        <AdminTabBar>
+          <AdminTabButton
             data-track="coach_admin_tab_pending"
+            active={activeTab === 'pending'}
             onClick={() => setActiveTab('pending')}
-            style={{
-              padding: '12px 24px',
-              background: activeTab === 'pending' ? '#2196f3' : 'transparent',
-              color: activeTab === 'pending' ? 'white' : '#666',
-              border: 'none',
-              borderBottom: activeTab === 'pending' ? '3px solid #2196f3' : 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
+            badge={pendingReports.length + nonMemberReports.length}
           >
             📋 待處理
-            {(pendingReports.length + nonMemberReports.length) > 0 && (
-              <span style={{
-                background: 'white',
-                color: '#2196f3',
-                borderRadius: '12px',
-                padding: '2px 8px',
-                fontSize: '12px',
-                fontWeight: 'bold'
-              }}>
-                {pendingReports.length + nonMemberReports.length}
-              </span>
-            )}
-          </button>
-          <button
+          </AdminTabButton>
+          <AdminTabButton
             data-track="coach_admin_tab_completed"
+            active={activeTab === 'completed'}
             onClick={() => setActiveTab('completed')}
-            style={{
-              padding: '12px 24px',
-              background: activeTab === 'completed' ? '#2196f3' : 'transparent',
-              color: activeTab === 'completed' ? 'white' : '#666',
-              border: 'none',
-              borderBottom: activeTab === 'completed' ? '3px solid #2196f3' : 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s'
-            }}
           >
             ✅ 已處理
-          </button>
-          <button
+          </AdminTabButton>
+          <AdminTabButton
             data-track="coach_admin_tab_statistics"
+            active={activeTab === 'statistics'}
             onClick={() => setActiveTab('statistics')}
-            style={{
-              padding: '12px 24px',
-              background: activeTab === 'statistics' ? '#2196f3' : 'transparent',
-              color: activeTab === 'statistics' ? 'white' : '#666',
-              border: 'none',
-              borderBottom: activeTab === 'statistics' ? '3px solid #2196f3' : 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s'
-            }}
           >
             📊 統計報表
-          </button>
-          <button
+          </AdminTabButton>
+          <AdminTabButton
             data-track="coach_admin_tab_billing"
+            active={activeTab === 'billing'}
             onClick={() => setActiveTab('billing')}
-            style={{
-              padding: '12px 24px',
-              background: activeTab === 'billing' ? '#2196f3' : 'transparent',
-              color: activeTab === 'billing' ? 'white' : '#666',
-              border: 'none',
-              borderBottom: activeTab === 'billing' ? '3px solid #2196f3' : 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '600',
-              transition: 'all 0.2s'
-            }}
           >
             🔄 代扣設定
-          </button>
-        </div>
+          </AdminTabButton>
+        </AdminTabBar>
 
         {/* Tab 1: 待處理記錄 */}
         {activeTab === 'pending' && (
@@ -830,14 +764,9 @@ export function CoachAdmin() {
                 <button
                   onClick={() => setPendingViewMode('all')}
                   style={{
+                    ...getFilterChipStyle(pendingViewMode === 'all', 'warning'),
                     padding: '10px 20px',
-                    background: pendingViewMode === 'all' ? '#f57c00' : '#fff3e0',
-                    color: pendingViewMode === 'all' ? 'white' : '#e65100',
-                    border: `2px solid ${pendingViewMode === 'all' ? '#f57c00' : '#ffcc80'}`,
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
+                    fontSize: getFontSize('button', isMobile),
                     transition: 'all 0.2s'
                   }}
                 >
@@ -863,14 +792,9 @@ export function CoachAdmin() {
                         setSelectedDate(targetDateStr)
                       }}
                       style={{
+                        ...getFilterChipStyle(isSelected, 'info'),
                         padding: '10px 20px',
-                        background: isSelected ? '#2196f3' : '#e3f2fd',
-                        color: isSelected ? 'white' : '#1976d2',
-                        border: `2px solid ${isSelected ? '#2196f3' : '#90caf9'}`,
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '600',
+                        fontSize: getFontSize('button', isMobile),
                         transition: 'all 0.2s'
                       }}
                     >
@@ -882,7 +806,7 @@ export function CoachAdmin() {
             </div>
 
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
                 載入中...
               </div>
             ) : (
@@ -891,10 +815,10 @@ export function CoachAdmin() {
                 {pendingReports.length > 0 && (
                   <>
                     <h2 style={{ 
-                      fontSize: isMobile ? '18px' : '20px',
+                      fontSize: getFontSize('h2', isMobile),
                       fontWeight: '600',
                       marginBottom: '16px',
-                      color: '#333'
+                      color: designSystem.colors.text.primary
                     }}>
                       待處理扣款 ({pendingReports.length})
                     </h2>
@@ -938,10 +862,10 @@ export function CoachAdmin() {
                 {Object.keys(groupedNonMemberReports).length > 0 && (
                   <>
                     <h2 style={{ 
-                      fontSize: isMobile ? '18px' : '20px',
+                      fontSize: getFontSize('h2', isMobile),
                       fontWeight: '600',
                       marginBottom: '16px',
-                      color: '#333'
+                      color: designSystem.colors.text.primary
                     }}>
                       非會員記錄 ({nonMemberReports.length})
                     </h2>
@@ -951,19 +875,19 @@ export function CoachAdmin() {
                           key={booking.id}
                           style={{
                             ...getCardStyle(isMobile),
-                            borderLeft: '4px solid #ff9800'
+                            borderLeft: `4px solid ${designSystem.colors.warning[500]}`
                           }}
                         >
                           {/* 預約資訊 */}
                           <div style={{ 
                             marginBottom: '16px', 
                             paddingBottom: '12px', 
-                            borderBottom: '1px solid #e0e0e0' 
+                            borderBottom: `1px solid ${designSystem.colors.border.light}` 
                           }}>
-                            <div style={{ fontWeight: '600', fontSize: '15px', marginBottom: '4px' }}>
+                            <div style={{ fontWeight: '600', fontSize: getFontSize('bodyLarge', isMobile), marginBottom: '4px' }}>
                               {extractDate(booking.start_at)} {extractTime(booking.start_at)} | {booking.boats?.name} ({booking.duration_min}分)
                             </div>
-                            <div style={{ color: '#666', fontSize: '13px' }}>
+                            <div style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
                               預約人：{booking.contact_name}
                             </div>
                           </div>
@@ -975,8 +899,9 @@ export function CoachAdmin() {
                                 key={report.id}
                                 style={{
                                   padding: '12px',
-                                  background: '#fff3e0',
-                                  borderRadius: '8px',
+                                  background: designSystem.colors.warning[50],
+                                  borderRadius: designSystem.borderRadius.lg,
+                                  border: `1px solid ${designSystem.colors.warning[500]}33`,
                                   display: 'flex',
                                   justifyContent: 'space-between',
                                   alignItems: 'center',
@@ -985,20 +910,20 @@ export function CoachAdmin() {
                                 }}
                               >
                                 <div style={{ flex: 1, minWidth: '200px' }}>
-                                  <div style={{ fontWeight: '600', fontSize: '15px', marginBottom: '4px' }}>
+                                  <div style={{ fontWeight: '600', fontSize: getFontSize('bodyLarge', isMobile), marginBottom: '4px' }}>
                                     {report.participant_name}
                                     <span style={{
                                       marginLeft: '8px',
                                       padding: '2px 8px',
-                                      background: '#ff9800',
+                                      background: designSystem.colors.warning[500],
                                       color: 'white',
-                                      borderRadius: '4px',
-                                      fontSize: '11px'
+                                      borderRadius: designSystem.borderRadius.sm,
+                                      fontSize: getFontSize('caption', true)
                                     }}>
                                       非會員
                                     </span>
                                   </div>
-                                  <div style={{ color: '#666', fontSize: '13px' }}>
+                                  <div style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
                                     {report.duration_min}分 • {PAYMENT_METHODS.find(m => m.value === report.payment_method)?.label} • {LESSON_TYPES.find(lt => lt.value === report.lesson_type)?.label || '不指定'}
                                     {report.coaches && ` • ${report.coaches.name}`}
                                   </div>
@@ -1008,13 +933,13 @@ export function CoachAdmin() {
                                     const updatedBy = getSubmitterName((report as any).updated_by_email)
                                     if (!createdBy && !updatedBy) return null
                                     return (
-                                      <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                                      <div style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.disabled, marginTop: '4px' }}>
                                         {createdBy && updatedBy && createdBy !== updatedBy ? (
-                                          <>📤 由 {createdBy} 回報，{updatedBy} 修改</>
+                                          <>由 {createdBy} 回報，{updatedBy} 修改</>
                                         ) : createdBy ? (
-                                          <>📤 由 {createdBy} 回報</>
+                                          <>由 {createdBy} 回報</>
                                         ) : updatedBy ? (
-                                          <>📝 由 {updatedBy} 修改</>
+                                          <>由 {updatedBy} 修改</>
                                         ) : null}
                                       </div>
                                     )
@@ -1035,12 +960,10 @@ export function CoachAdmin() {
                                       }}
                                       disabled={loading}
                                       style={{
-                                        ...getButtonStyle('secondary'),
-                                        padding: '8px 16px',
-                                        fontSize: '14px',
-                                        background: '#fff3e0',
-                                        color: '#e65100',
-                                        border: '2px solid #ffcc80',
+                                        ...getButtonStyle('secondary', 'medium', isMobile),
+                                        background: designSystem.colors.warning[50],
+                                        color: designSystem.colors.warning[700],
+                                        border: `1.5px solid ${designSystem.colors.warning[500]}`,
                                         opacity: loading ? 0.6 : 1,
                                         cursor: loading ? 'not-allowed' : 'pointer'
                                       }}
@@ -1055,9 +978,7 @@ export function CoachAdmin() {
                                       }}
                                       disabled={loading}
                                       style={{
-                                        ...getButtonStyle('secondary'),
-                                        padding: '8px 16px',
-                                        fontSize: '14px',
+                                        ...getButtonStyle('secondary', 'medium', isMobile),
                                         opacity: loading ? 0.6 : 1,
                                         cursor: loading ? 'not-allowed' : 'pointer'
                                       }}
@@ -1069,10 +990,7 @@ export function CoachAdmin() {
                                     onClick={() => handleCloseNonMemberReport(report)}
                                     disabled={loading}
                                     style={{
-                                      ...getButtonStyle('primary'),
-                                      padding: '8px 16px',
-                                      fontSize: '14px',
-                                      background: '#4caf50',
+                                      ...getButtonStyle('success', 'medium', isMobile),
                                       opacity: loading ? 0.6 : 1,
                                       cursor: loading ? 'not-allowed' : 'pointer'
                                     }}
@@ -1092,7 +1010,7 @@ export function CoachAdmin() {
                 {/* 空狀態 */}
                 {Object.keys(groupedPendingReports).length === 0 && 
                  Object.keys(groupedNonMemberReports).length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                  <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
                     沒有待處理記錄
                   </div>
                 )}
@@ -1130,7 +1048,7 @@ export function CoachAdmin() {
             </div>
 
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
                 載入中...
               </div>
             ) : (
@@ -1139,29 +1057,29 @@ export function CoachAdmin() {
                 {bookingStats.length > 0 && (
                   <div style={{
                     padding: '16px',
-                    background: '#f8f9fa',
-                    borderRadius: '8px',
+                    background: designSystem.colors.background.hover,
+                    borderRadius: designSystem.borderRadius.lg,
                     marginBottom: '24px'
                   }}>
-                    <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#666' }}>
-                      📊 {selectedDate.length === 10 ? '當日總計' : '當月總計'}
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600', color: designSystem.colors.text.secondary }}>
+                      {selectedDate.length === 10 ? '當日總計' : '當月總計'}
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                       <div>
-                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總教學時數</div>
-                        <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#333' }}>
+                        <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>🎓 總教學時數</div>
+                        <div style={{ fontSize: getFontSize('h1', isMobile), fontWeight: 'bold', color: designSystem.colors.text.primary }}>
                           {completedReports.filter((r: any) => r.is_teaching).reduce((sum: number, r: any) => sum + (r.duration_min || 0), 0)} 分
                         </div>
-                        <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
+                        <div style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.disabled, marginTop: '2px' }}>
                           ({(completedReports.filter((r: any) => r.is_teaching).reduce((sum: number, r: any) => sum + (r.duration_min || 0), 0) / 60).toFixed(1)} 小時)
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>總駕駛時數</div>
-                        <div style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#333' }}>
+                        <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>🚤 總駕駛時數</div>
+                        <div style={{ fontSize: getFontSize('h1', isMobile), fontWeight: 'bold', color: designSystem.colors.text.primary }}>
                           {completedDriverReports.reduce((sum, r) => sum + (r.driver_duration_min || 0), 0)} 分
                         </div>
-                        <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
+                        <div style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.disabled, marginTop: '2px' }}>
                           ({(completedDriverReports.reduce((sum, r) => sum + (r.driver_duration_min || 0), 0) / 60).toFixed(1)} 小時)
                         </div>
                       </div>
@@ -1176,14 +1094,14 @@ export function CoachAdmin() {
                         key={stat.booking.id}
                         style={{
                           ...getCardStyle(isMobile),
-                          borderLeft: '4px solid #4caf50'
+                          borderLeft: `4px solid ${designSystem.colors.success[500]}`
                         }}
                       >
                         {/* 預約資訊 */}
                         <div style={{ 
                           marginBottom: '16px', 
                           paddingBottom: '12px', 
-                          borderBottom: '1px solid #e0e0e0',
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
@@ -1191,26 +1109,26 @@ export function CoachAdmin() {
                           gap: '8px'
                         }}>
                           <div>
-                            <div style={{ fontWeight: '600', fontSize: isMobile ? '15px' : '16px', marginBottom: '4px' }}>
+                            <div style={{ fontWeight: '600', fontSize: getFontSize('bodyLarge', isMobile), marginBottom: '4px' }}>
                               {extractDate(stat.booking.start_at)} {extractTime(stat.booking.start_at)} | {stat.booking.boats?.name}
                             </div>
-                            <div style={{ color: '#666', fontSize: isMobile ? '13px' : '14px' }}>
+                            <div style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('body', isMobile) }}>
                               {stat.booking.contact_name}
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
+                          <div style={{ display: 'flex', gap: '16px', fontSize: getFontSize('body', isMobile) }}>
                             {stat.totalTeachingMinutes > 0 && (
                               <div>
-                                <span style={{ color: '#666' }}>教學：</span>
-                                <span style={{ fontWeight: '600', color: '#4caf50' }}>
+                                <span style={{ color: designSystem.colors.text.secondary }}>🎓 </span>
+                                <span style={{ fontWeight: '600', color: designSystem.colors.success[700] }}>
                                   {stat.totalTeachingMinutes}分
                                 </span>
                               </div>
                             )}
                             {stat.totalDrivingMinutes > 0 && (
                               <div>
-                                <span style={{ color: '#666' }}>駕駛：</span>
-                                <span style={{ fontWeight: '600', color: '#2196f3' }}>
+                                <span style={{ color: designSystem.colors.text.secondary }}>🚤 </span>
+                                <span style={{ fontWeight: '600', color: designSystem.colors.info[700] }}>
                                   {stat.totalDrivingMinutes}分
                                 </span>
                               </div>
@@ -1239,8 +1157,8 @@ export function CoachAdmin() {
                                 <div style={{ marginBottom: (stat.driverReports.length > 0 || driverParticipants.length > 0) ? '16px' : 0 }}>
                                   <h4 style={{ 
                                     margin: '0 0 12px 0', 
-                                    fontSize: '14px', 
-                                    color: '#4caf50',
+                                    fontSize: getFontSize('body', isMobile), 
+                                    color: designSystem.colors.success[700],
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px'
@@ -1253,17 +1171,18 @@ export function CoachAdmin() {
                                         key={record.id}
                                         style={{
                                           padding: '10px',
-                                          background: '#f1f8e9',
-                                          borderRadius: '6px',
-                                          fontSize: '13px'
+                                          background: designSystem.colors.success[50],
+                                          borderRadius: designSystem.borderRadius.md,
+                                          border: `1px solid ${designSystem.colors.success[500]}33`,
+                                          fontSize: getFontSize('bodySmall', isMobile)
                                         }}
                                       >
                                         <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                          教練：{record.coaches?.name || '未知'}
+                                          🎓 {record.coaches?.name || '未知'}
                                         </div>
-                                        <div style={{ color: '#666' }}>
+                                        <div style={{ color: designSystem.colors.text.secondary }}>
                                           學員：{record.members?.nickname || record.members?.name || record.participant_name}
-                                          {!record.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
+                                          {!record.member_id && <span style={{ color: designSystem.colors.warning[700] }}> (非會員)</span>}
                                           {' • '}{record.duration_min}分
                                           {' • '}{LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}
                                           {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
@@ -1284,8 +1203,8 @@ export function CoachAdmin() {
                                 <div>
                                   <h4 style={{ 
                                     margin: '0 0 12px 0', 
-                                    fontSize: '14px', 
-                                    color: '#2196f3',
+                                    fontSize: getFontSize('body', isMobile), 
+                                    color: designSystem.colors.info[700],
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px'
@@ -1302,15 +1221,16 @@ export function CoachAdmin() {
                                           key={record.id}
                                           style={{
                                             padding: '10px',
-                                            background: '#e3f2fd',
-                                            borderRadius: '6px',
-                                            fontSize: '13px'
+                                            background: designSystem.colors.info[50],
+                                            borderRadius: designSystem.borderRadius.md,
+                                            border: `1px solid ${designSystem.colors.info[500]}33`,
+                                            fontSize: getFontSize('bodySmall', isMobile)
                                           }}
                                         >
                                           <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                            駕駛：{record.coaches?.name || '未知'}
+                                            🚤 {record.coaches?.name || '未知'}
                                           </div>
-                                          <div style={{ color: '#666', marginBottom: relatedParticipants.length > 0 ? '8px' : 0 }}>
+                                          <div style={{ color: designSystem.colors.text.secondary, marginBottom: relatedParticipants.length > 0 ? '8px' : 0 }}>
                                             駕駛時數：{record.driver_duration_min}分
                                           </div>
                                           
@@ -1319,13 +1239,13 @@ export function CoachAdmin() {
                                             <div style={{ 
                                               marginTop: '8px', 
                                               paddingTop: '8px', 
-                                              borderTop: '1px dashed #90caf9'
+                                              borderTop: `1px dashed ${designSystem.colors.info[500]}66`
                                             }}>
                                               {relatedParticipants.map((p: any) => (
                                                 <div key={p.id} style={{ marginBottom: '8px' }}>
-                                                  <div style={{ color: '#666' }}>
+                                                  <div style={{ color: designSystem.colors.text.secondary }}>
                                                     學員：{p.members?.nickname || p.members?.name || p.participant_name}
-                                                    {!p.member_id && <span style={{ color: '#ff9800' }}> (非會員)</span>}
+                                                    {!p.member_id && <span style={{ color: designSystem.colors.warning[700] }}> (非會員)</span>}
                                                     {' • '}{p.duration_min}分
                                                     {' • '}{LESSON_TYPES.find(lt => lt.value === p.lesson_type)?.label || '不指定'}
                                                     {' • '}{PAYMENT_METHODS.find(m => m.value === p.payment_method)?.label}
@@ -1352,7 +1272,7 @@ export function CoachAdmin() {
                     ))}
 
                     {bookingStats.length === 0 && (
-                      <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                      <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
                         沒有已結案記錄
                       </div>
                     )}
@@ -1371,21 +1291,22 @@ export function CoachAdmin() {
         {activeTab === 'billing' && (
           <div style={{ ...getCardStyle(isMobile) }}>
             <h2 style={{ 
-              fontSize: isMobile ? '18px' : '20px',
+              fontSize: getFontSize('h2', isMobile),
               fontWeight: '600',
               marginBottom: '20px',
-              color: '#333'
+              color: designSystem.colors.text.primary
             }}>
-              🔄 代扣關係設定
+              代扣關係設定
             </h2>
             
             <div style={{
-              background: '#fff3e0',
-              borderRadius: '8px',
+              background: designSystem.colors.warning[50],
+              borderRadius: designSystem.borderRadius.lg,
+              border: `1px solid ${designSystem.colors.warning[500]}33`,
               padding: '12px 16px',
               marginBottom: '24px',
-              fontSize: '14px',
-              color: '#e65100',
+              fontSize: getFontSize('body', isMobile),
+              color: designSystem.colors.warning[700],
               lineHeight: 1.6
             }}>
               <strong>說明：</strong>設定代扣關係後，扣款時會自動帶入對應的代扣會員。
@@ -1394,17 +1315,17 @@ export function CoachAdmin() {
 
             {/* 新增代扣關係表單 */}
             <div style={{
-              background: '#f8f9fa',
-              borderRadius: '12px',
+              background: designSystem.colors.background.hover,
+              borderRadius: designSystem.borderRadius.xl,
               padding: '20px',
               marginBottom: '24px',
-              border: '2px dashed #dee2e6'
+              border: `1.5px dashed ${designSystem.colors.border.main}`
             }}>
               <h3 style={{ 
-                fontSize: '16px',
+                fontSize: getFontSize('h3', isMobile),
                 fontWeight: '600',
                 marginBottom: '16px',
-                color: '#495057'
+                color: designSystem.colors.text.primary
               }}>
                 ➕ 新增代扣關係
               </h3>
@@ -1454,7 +1375,7 @@ export function CoachAdmin() {
                       style={{
                         ...getInputStyle(isMobile),
                         width: '100%',
-                        background: newBillingMemberId ? '#e8f5e9' : '#fff'
+                        background: newBillingMemberId ? designSystem.colors.success[50] : '#fff'
                       }}
                     />
                     {newBillingMemberId && (
@@ -1556,7 +1477,7 @@ export function CoachAdmin() {
                 disabled={addingBillingRelation || !newParticipantName.trim() || !newBillingMemberId}
                 style={{
                   ...getButtonStyle('success', 'medium', isMobile),
-                  background: (!newParticipantName.trim() || !newBillingMemberId) ? '#ccc' : '#4CAF50',
+                  opacity: (!newParticipantName.trim() || !newBillingMemberId) ? 0.5 : 1,
                   cursor: (!newParticipantName.trim() || !newBillingMemberId) ? 'not-allowed' : 'pointer'
                 }}
               >
@@ -1566,10 +1487,10 @@ export function CoachAdmin() {
 
             {/* 代扣關係列表 */}
             <h3 style={{ 
-              fontSize: '16px',
+              fontSize: getFontSize('h3', isMobile),
               fontWeight: '600',
               marginBottom: '16px',
-              color: '#495057'
+              color: designSystem.colors.text.primary
             }}>
               📋 現有代扣關係 ({billingRelations.length})
             </h3>
@@ -1578,9 +1499,9 @@ export function CoachAdmin() {
               <div style={{
                 textAlign: 'center',
                 padding: '40px',
-                color: '#999',
-                background: '#f8f9fa',
-                borderRadius: '8px'
+                color: designSystem.colors.text.secondary,
+                background: designSystem.colors.background.hover,
+                borderRadius: designSystem.borderRadius.lg
               }}>
                 尚未設定任何代扣關係
               </div>
@@ -1595,9 +1516,9 @@ export function CoachAdmin() {
                     key={relation.id}
                     style={{
                       background: 'white',
-                      borderRadius: '10px',
+                      borderRadius: designSystem.borderRadius.lg,
                       padding: '16px',
-                      border: '1px solid #e0e0e0',
+                      border: `1px solid ${designSystem.colors.border.light}`,
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
@@ -1612,44 +1533,30 @@ export function CoachAdmin() {
                         gap: '8px',
                         marginBottom: '4px'
                       }}>
-                        <span style={{ fontWeight: '600', fontSize: '16px' }}>
+                        <span style={{ fontWeight: '600', fontSize: getFontSize('bodyLarge', isMobile) }}>
                           {relation.participant_name}
                         </span>
-                        <span style={{ color: '#999' }}>→</span>
+                        <span style={{ color: designSystem.colors.text.disabled }}>→</span>
                         <span style={{ 
                           fontWeight: '600',
-                          fontSize: '16px',
-                          color: '#ff9800'
+                          fontSize: getFontSize('bodyLarge', isMobile),
+                          color: designSystem.colors.warning[700]
                         }}>
                           {relation.billing_member_nickname || relation.billing_member_name}
                         </span>
                       </div>
                       {relation.notes && (
-                        <div style={{ fontSize: '13px', color: '#666' }}>
-                          📝 {relation.notes}
+                        <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
+                          {relation.notes}
                         </div>
                       )}
                     </div>
                     <button
                       onClick={() => deleteBillingRelation(relation.id, relation.participant_name)}
                       style={{
-                        padding: '8px 16px',
-                        background: '#fff',
-                        color: '#f44336',
-                        border: '1px solid #f44336',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#f44336'
-                        e.currentTarget.style.color = 'white'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#fff'
-                        e.currentTarget.style.color = '#f44336'
+                        ...getButtonStyle('outline', 'medium', isMobile),
+                        color: designSystem.colors.danger[700],
+                        border: `1px solid ${designSystem.colors.danger[500]}`,
                       }}
                     >
                       🗑️ 刪除
