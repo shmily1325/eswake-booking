@@ -1,7 +1,10 @@
 import type { CSSProperties } from 'react'
 import { ES_BRAND } from '../../lib/esBrandTokens'
+import { designSystem } from '../../styles/designSystem'
 
-/** LIFF 共用字級（與預約 bookTheme 對齊） */
+const c = designSystem.colors
+
+/** LIFF 共用字級（與預約 bookTheme 對齊；數值對應 designSystem mobile body／h3） */
 export const LIFF_TYPE = {
   display: 20,
   title: 16,
@@ -9,21 +12,33 @@ export const LIFF_TYPE = {
   caption: 12,
 } as const
 
+/**
+ * LIFF 視覺 token — 對齊 `designSystem`／`ES_BRAND`。
+ * LINE 官方綠保留為平台色，不進 designSystem。
+ */
 export const LIFF_THEME = {
-  ink: '#1a1a1a',
-  inkSoft: '#333',
-  muted: '#888',
-  mutedLight: '#aaa',
-  pageBg: ES_BRAND.pageBg,
-  cardBg: '#fff',
-  cardBorder: '1px solid rgba(0,0,0,0.06)',
-  cardRadius: 16,
-  cardShadow: '0 2px 14px rgba(0,0,0,0.07)',
+  ink: c.text.primary,
+  inkSoft: c.secondary[800],
+  muted: c.text.secondary,
+  mutedLight: c.text.disabled,
+  pageBg: c.background.main,
+  cardBg: c.background.card,
+  cardBorder: `1px solid ${c.border.light}`,
+  cardRadius: designSystem.borderRadius.lg,
+  cardShadow: designSystem.shadows.sm,
+  controlRadius: designSystem.borderRadius.md,
+  borderSubtle: c.border.main,
+  rowDivider: c.border.light,
   tabActive: ES_BRAND.headerBg,
-  tabInactive: '#9e9e9e',
+  tabInactive: c.text.disabled,
+  /** LINE 品牌綠（平台色） */
   lineGreen: '#00b900',
-  inputBorder: '#e0e0e0',
-  surfaceInset: '#f3f4f6',
+  inputBorder: c.border.main,
+  surfaceInset: c.primary[50],
+  ctaBg: c.primary[500],
+  ctaDisabled: c.secondary[300],
+  dangerText: c.danger[700],
+  dangerBorder: c.danger[500],
 } as const
 
 export const liffPage: CSSProperties = {
@@ -49,10 +64,10 @@ export const liffCard: CSSProperties = {
 export const liffPrimaryBtn = (enabled = true): CSSProperties => ({
   width: '100%',
   padding: '14px',
-  background: enabled ? ES_BRAND.ctaBg : '#ccc',
+  background: enabled ? LIFF_THEME.ctaBg : LIFF_THEME.ctaDisabled,
   color: 'white',
   border: 'none',
-  borderRadius: '12px',
+  borderRadius: LIFF_THEME.controlRadius,
   fontSize: LIFF_TYPE.title,
   fontWeight: 600,
   cursor: enabled ? 'pointer' : 'not-allowed',
@@ -64,7 +79,7 @@ export const liffLineBtn: CSSProperties = {
   background: LIFF_THEME.lineGreen,
   color: 'white',
   border: 'none',
-  borderRadius: '12px',
+  borderRadius: LIFF_THEME.controlRadius,
   fontSize: 15,
   fontWeight: 600,
   cursor: 'pointer',
@@ -73,10 +88,10 @@ export const liffLineBtn: CSSProperties = {
 export const liffSecondaryBtn: CSSProperties = {
   width: '100%',
   padding: '12px',
-  background: 'white',
+  background: LIFF_THEME.cardBg,
   color: LIFF_THEME.inkSoft,
   border: `1px solid ${LIFF_THEME.inputBorder}`,
-  borderRadius: '12px',
+  borderRadius: LIFF_THEME.controlRadius,
   fontSize: LIFF_TYPE.body,
   fontWeight: 500,
   cursor: 'pointer',
@@ -103,8 +118,10 @@ export const liffLabel: CSSProperties = {
 export const liffInput = (hasError = false): CSSProperties => ({
   width: '100%',
   padding: '14px',
-  border: hasError ? '2px solid #ff4d4f' : `2px solid ${LIFF_THEME.inputBorder}`,
-  borderRadius: '12px',
+  border: hasError
+    ? `2px solid ${LIFF_THEME.dangerBorder}`
+    : `2px solid ${LIFF_THEME.inputBorder}`,
+  borderRadius: LIFF_THEME.controlRadius,
   fontSize: LIFF_TYPE.title,
   boxSizing: 'border-box',
   outline: 'none',
@@ -114,17 +131,17 @@ export const liffSelect: CSSProperties = {
   flex: 1,
   padding: '14px 8px',
   border: `2px solid ${LIFF_THEME.inputBorder}`,
-  borderRadius: '12px',
+  borderRadius: LIFF_THEME.controlRadius,
   fontSize: LIFF_TYPE.title,
   boxSizing: 'border-box',
   outline: 'none',
-  background: 'white',
+  background: LIFF_THEME.cardBg,
 }
 
 export const liffHintBox: CSSProperties = {
   padding: '10px 12px',
   background: LIFF_THEME.surfaceInset,
-  borderRadius: '12px',
+  borderRadius: LIFF_THEME.controlRadius,
   border: LIFF_THEME.cardBorder,
   marginBottom: '12px',
   fontSize: 13,
@@ -153,11 +170,11 @@ export type LiffAlertTone = 'danger' | 'warning' | 'info'
 export function liffAlertTone(tone: LiffAlertTone): { bg: string; border: string; color: string } {
   switch (tone) {
     case 'danger':
-      return { bg: '#ffebee', border: '#ef9a9a', color: '#b71c1c' }
+      return { bg: c.danger[50], border: c.danger[500], color: c.danger[700] }
     case 'warning':
-      return { bg: '#fffbe6', border: '#ffe58f', color: '#614700' }
+      return { bg: c.warning[50], border: c.warning[500], color: c.warning[700] }
     case 'info':
-      return { bg: LIFF_THEME.surfaceInset, border: 'rgba(0,0,0,0.08)', color: LIFF_THEME.inkSoft }
+      return { bg: LIFF_THEME.surfaceInset, border: c.border.light, color: LIFF_THEME.inkSoft }
   }
 }
 
@@ -168,7 +185,7 @@ export const liffAlertRow = (tone: LiffAlertTone): CSSProperties => {
     alignItems: 'flex-start',
     gap: '8px',
     padding: '10px 12px',
-    borderRadius: '12px',
+    borderRadius: LIFF_THEME.controlRadius,
     background: t.bg,
     border: `1px solid ${t.border}`,
     color: t.color,

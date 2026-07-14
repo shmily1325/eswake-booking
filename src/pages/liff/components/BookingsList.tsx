@@ -36,16 +36,32 @@ export function BookingsList({
       <div
         style={{
           ...liffContentPanel,
-          padding: '20px 20px 60px',
+          padding: '28px 20px 40px',
           textAlign: 'center',
         }}
       >
-        <LiffPageHint>{BOOKINGS_PAGE_HINT}</LiffPageHint>
-        <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
-        <div style={{ fontSize: LIFF_TYPE.display - 2, fontWeight: 600, color: LIFF_THEME.inkSoft, marginBottom: '8px' }}>
+        <div
+          style={{
+            fontSize: LIFF_TYPE.display - 2,
+            fontWeight: 600,
+            color: LIFF_THEME.inkSoft,
+            marginBottom: 8,
+          }}
+        >
           目前沒有預約
         </div>
-        <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.mutedLight }}>您目前沒有即將到來的預約</div>
+        <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.mutedLight, marginBottom: 20 }}>
+          您目前沒有即將到來的預約
+        </div>
+        <div
+          style={{
+            fontSize: LIFF_TYPE.caption,
+            color: LIFF_THEME.mutedLight,
+            lineHeight: 1.45,
+          }}
+        >
+          {BOOKINGS_PAGE_HINT}
+        </div>
       </div>
     )
   }
@@ -54,15 +70,8 @@ export function BookingsList({
 
   return (
     <div style={liffContentPanel}>
-      <LiffPageHint>{BOOKINGS_PAGE_HINT}</LiffPageHint>
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-        }}
-      >
-        {bookings.map((booking) => {
+      <div>
+        {bookings.map((booking, index) => {
           const bookingDate = booking.start_at.split('T')[0]
           const isFirstOfDay = !seenDates.has(bookingDate)
           if (isFirstOfDay) {
@@ -75,6 +84,7 @@ export function BookingsList({
               booking={booking}
               viewerMemberName={viewerMemberName}
               isFirstOfDay={isFirstOfDay}
+              isLast={index === bookings.length - 1}
               formatDate={formatDate}
               getArrivalTime={getArrivalTime}
               getStartTime={getStartTime}
@@ -83,6 +93,7 @@ export function BookingsList({
           )
         })}
       </div>
+      <LiffPageHint>{BOOKINGS_PAGE_HINT}</LiffPageHint>
     </div>
   )
 }

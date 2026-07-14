@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp, normalizeDate } from '../utils/date'
 import type { Member } from '../types/booking'
+import { designSystem, getBadgeStyle, getButtonStyle, getInputStyle } from '../styles/designSystem'
 import { useToast } from './ui'
 
 interface TransactionDialogProps {
@@ -34,12 +35,12 @@ interface Transaction {
 
 // 六個項目的配置
 const CATEGORIES = [
-  { value: 'balance', label: '💰 儲值', unit: '元', type: 'amount' },
-  { value: 'vip_voucher', label: '💎 VIP票券', unit: '元', type: 'amount' },
-  { value: 'designated_lesson', label: '📚 指定課', unit: '分', type: 'minutes' },
-  { value: 'boat_voucher_g23', label: '🚤 G23船券', unit: '分', type: 'minutes' },
-  { value: 'boat_voucher_g21_panther', label: '⛵ G21/黑豹船券', unit: '分', type: 'minutes' },
-  { value: 'gift_boat_hours', label: '🎁 贈送大船', unit: '分', type: 'minutes' },
+  { value: 'balance', label: '儲值', unit: '元', type: 'amount' },
+  { value: 'vip_voucher', label: 'VIP票券', unit: '元', type: 'amount' },
+  { value: 'designated_lesson', label: '指定課', unit: '分', type: 'minutes' },
+  { value: 'boat_voucher_g23', label: 'G23船券', unit: '分', type: 'minutes' },
+  { value: 'boat_voucher_g21_panther', label: 'G21/黑豹船券', unit: '分', type: 'minutes' },
+  { value: 'gift_boat_hours', label: '贈送大船', unit: '分', type: 'minutes' },
 ]
 
 export function TransactionDialog({ open, member, onClose, onSuccess, defaultDescription, defaultTransactionDate }: TransactionDialogProps) {
@@ -74,15 +75,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   const [editNotes, setEditNotes] = useState('')
   const [editTransactionDate, setEditTransactionDate] = useState('')
 
-  const inputStyle = {
-    width: '100%',
-    padding: isMobile ? '12px' : '10px',
-    border: '2px solid #e0e0e0',
-    borderRadius: '8px',
-    fontSize: isMobile ? '16px' : '14px',
-    transition: 'border-color 0.2s',
-    boxSizing: 'border-box' as const,
-  }
+  const inputStyle = getInputStyle(isMobile)
 
   const resetForm = () => {
     setCategory('balance')
@@ -680,13 +673,14 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       padding: isMobile ? '0' : '20px',
     }}>
       <div style={{
-        background: 'white',
-        borderRadius: isMobile ? '12px 12px 0 0' : '12px',
+        background: designSystem.colors.background.card,
+        borderRadius: isMobile ? `${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg} 0 0` : designSystem.borderRadius.lg,
         maxWidth: isMobile ? '100%' : '600px',
         width: '100%',
         maxHeight: isMobile ? '90dvh' : '90vh',
         overflow: 'hidden',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        boxShadow: designSystem.shadows.lg,
+        border: `1px solid ${designSystem.colors.border.light}`,
         margin: isMobile ? 'auto 0 0 0' : 'auto',
         display: 'flex',
         flexDirection: 'column',
@@ -694,15 +688,15 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         {/* 標題欄 */}
         <div style={{
           padding: isMobile ? '16px' : '20px',
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: `1px solid ${designSystem.colors.border.light}`,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'white',
+          background: designSystem.colors.background.card,
           flexShrink: 0,
         }}>
-          <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 'bold' }}>
-            💳 {member.nickname || member.name}
+          <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 'bold', color: designSystem.colors.text.primary }}>
+            {member.nickname || member.name}
           </h2>
           <button
             onClick={onClose}
@@ -711,7 +705,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               background: 'none',
               fontSize: '24px',
               cursor: 'pointer',
-              color: '#666',
+              color: designSystem.colors.text.secondary,
               padding: '0 8px',
             }}
           >
@@ -722,43 +716,29 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         {/* Tabs */}
         <div style={{
           display: 'flex',
-          borderBottom: '1px solid #e0e0e0',
-          background: 'white',
+          gap: designSystem.spacing.sm,
+          padding: `${designSystem.spacing.sm} ${isMobile ? '16px' : '20px'}`,
+          borderBottom: `1px solid ${designSystem.colors.border.light}`,
+          background: designSystem.colors.background.card,
           flexShrink: 0,
         }}>
           <button
             onClick={() => setActiveTab('transaction')}
             style={{
+              ...getButtonStyle(activeTab === 'transaction' ? 'secondary' : 'outline', 'small', isMobile),
               flex: 1,
-              padding: '12px',
-              border: 'none',
-              background: activeTab === 'transaction' ? 'white' : '#f8f9fa',
-              borderBottom: activeTab === 'transaction' ? '2px solid #424242' : '2px solid transparent',
-              color: activeTab === 'transaction' ? '#424242' : '#999',
-              fontSize: '14px',
-              fontWeight: activeTab === 'transaction' ? 'bold' : 'normal',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
             }}
           >
-            💰 記帳
+            記帳
           </button>
           <button
             onClick={() => setActiveTab('history')}
             style={{
+              ...getButtonStyle(activeTab === 'history' ? 'secondary' : 'outline', 'small', isMobile),
               flex: 1,
-              padding: '12px',
-              border: 'none',
-              background: activeTab === 'history' ? 'white' : '#f8f9fa',
-              borderBottom: activeTab === 'history' ? '2px solid #424242' : '2px solid transparent',
-              color: activeTab === 'history' ? '#424242' : '#999',
-              fontSize: '14px',
-              fontWeight: activeTab === 'history' ? 'bold' : 'normal',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
             }}
           >
-            📊 交易
+            交易
           </button>
         </div>
 
@@ -772,13 +752,14 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           }}>
             {/* 會員餘額顯示 */}
             <div style={{
-              background: '#f8f9fa',
-              padding: '16px',
-              borderRadius: '8px',
+              background: designSystem.colors.background.card,
+              padding: designSystem.spacing.lg,
+              borderRadius: designSystem.borderRadius.lg,
               marginBottom: '20px',
+              border: `1px solid ${designSystem.colors.border.light}`,
             }}>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px', fontWeight: '600' }}>
-                📊 當前餘額
+              <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary, marginBottom: '12px', fontWeight: '600' }}>
+                當前餘額
               </div>
               <div style={{
                 display: 'grid',
@@ -787,28 +768,28 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 fontSize: '13px',
               }}>
                 <div>
-                  <div style={{ color: '#999', marginBottom: '4px' }}>💰 儲值</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>${(member.balance ?? 0).toLocaleString()}</div>
+                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>儲值</div>
+                  <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>${(member.balance ?? 0).toLocaleString()}</div>
                 </div>
                 <div>
-                  <div style={{ color: '#999', marginBottom: '4px' }}>💎 VIP票券</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>${(member.vip_voucher_amount ?? 0).toLocaleString()}</div>
+                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>VIP票券</div>
+                  <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>${(member.vip_voucher_amount ?? 0).toLocaleString()}</div>
                 </div>
                 <div>
-                  <div style={{ color: '#999', marginBottom: '4px' }}>📚 指定課</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>{(member.designated_lesson_minutes ?? 0).toLocaleString()}分</div>
+                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>指定課</div>
+                  <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.designated_lesson_minutes ?? 0).toLocaleString()}分</div>
                 </div>
                 <div>
-                  <div style={{ color: '#999', marginBottom: '4px' }}>🚤 G23船券</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>{(member.boat_voucher_g23_minutes ?? 0).toLocaleString()}分</div>
+                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>G23船券</div>
+                  <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.boat_voucher_g23_minutes ?? 0).toLocaleString()}分</div>
                 </div>
                 <div>
-                  <div style={{ color: '#999', marginBottom: '4px' }}>⛵ G21/黑豹船券</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>{(member.boat_voucher_g21_panther_minutes ?? 0).toLocaleString()}分</div>
+                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>G21/黑豹船券</div>
+                  <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.boat_voucher_g21_panther_minutes ?? 0).toLocaleString()}分</div>
                 </div>
                 <div>
-                  <div style={{ color: '#999', marginBottom: '4px' }}>🎁 贈送大船</div>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>{(member.gift_boat_hours ?? 0).toLocaleString()}分</div>
+                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>贈送大船</div>
+                  <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.gift_boat_hours ?? 0).toLocaleString()}分</div>
                 </div>
               </div>
             </div>
@@ -843,35 +824,21 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                     type="button"
                     onClick={() => setAdjustType('increase')}
                     style={{
-                      padding: '12px',
-                      border: adjustType === 'increase' ? '2px solid #1976d2' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      background: adjustType === 'increase' ? '#e3f2fd' : 'white',
-                      color: adjustType === 'increase' ? '#1976d2' : '#666',
-                      fontSize: '14px',
-                      fontWeight: adjustType === 'increase' ? '600' : 'normal',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      ...getButtonStyle(adjustType === 'increase' ? 'secondary' : 'outline', 'medium', isMobile),
+                      width: '100%',
                     }}
                   >
-                    ➕ 增加
+                    增加
                   </button>
                   <button
                     type="button"
                     onClick={() => setAdjustType('decrease')}
                     style={{
-                      padding: '12px',
-                      border: adjustType === 'decrease' ? '2px solid #757575' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      background: adjustType === 'decrease' ? '#f5f5f5' : 'white',
-                      color: adjustType === 'decrease' ? '#757575' : '#666',
-                      fontSize: '14px',
-                      fontWeight: adjustType === 'decrease' ? '600' : 'normal',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      ...getButtonStyle(adjustType === 'decrease' ? 'secondary' : 'outline', 'medium', isMobile),
+                      width: '100%',
                     }}
                   >
-                    ➖ 減少
+                    減少
                   </button>
                 </div>
               </div>
@@ -906,13 +873,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                     value={transactionDate}
                     onChange={(e) => setTransactionDate(e.target.value)}
                     style={{
+                      ...getInputStyle(isMobile),
                       flex: 1,
                       minWidth: 0,
-                      padding: '12px',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      boxSizing: 'border-box',
                     }}
                     required
                   />
@@ -977,9 +940,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 
                 return (
                   <div style={{
-                    background: adjustType === 'increase' ? '#e8f5e9' : '#fff3e0',
-                    border: `1px solid ${adjustType === 'increase' ? '#a5d6a7' : '#ffcc80'}`,
-                    borderRadius: '8px',
+                    background: designSystem.colors.background.card,
+                    border: `1px solid ${designSystem.colors.border.light}`,
+                    borderRadius: designSystem.borderRadius.lg,
                     padding: '12px 16px',
                     marginBottom: '20px',
                     display: 'flex',
@@ -989,17 +952,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                     fontSize: '14px',
                   }}>
                     <span>{selectedCategory?.label}</span>
-                    <span style={{ 
-                      fontWeight: 'bold',
-                      color: adjustType === 'increase' ? '#2e7d32' : '#e65100',
-                    }}>
+                    <span style={getBadgeStyle(adjustType === 'increase' ? 'success' : 'warning', 'small')}>
                       {changeText}
                     </span>
-                    <span style={{ color: '#999' }}>→</span>
-                    <strong style={{ color: newValue < 0 ? '#d32f2f' : '#333' }}>
+                    <span style={{ color: designSystem.colors.text.disabled }}>→</span>
+                    <strong style={{ color: newValue < 0 ? designSystem.colors.danger[700] : designSystem.colors.text.primary }}>
                       {newValueText}
                     </strong>
-                    {newValue < 0 && <span style={{ color: '#d32f2f' }}>⚠️</span>}
                   </div>
                 )
               })()}
@@ -1010,22 +969,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   type="submit"
                   disabled={loading}
                   style={{
+                    ...getButtonStyle('primary', 'large', isMobile),
                     width: '100%',
-                    padding: '14px',
-                    background: loading ? '#ccc' : '#424242',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: '600',
+                    opacity: loading ? 0.6 : 1,
                     cursor: loading ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!loading) e.currentTarget.style.background = '#212121'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!loading) e.currentTarget.style.background = '#424242'
                   }}
                 >
                   {loading ? '處理中...' : '確認記帳'}
@@ -1044,8 +991,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
             right: 0,
             padding: '16px 20px',
             paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
-            background: 'white',
-            borderTop: '1px solid #e0e0e0',
+            background: designSystem.colors.background.card,
+            borderTop: `1px solid ${designSystem.colors.border.light}`,
             zIndex: 1002,
           }}>
             <button
@@ -1059,16 +1006,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 }
               }}
               style={{
+                ...getButtonStyle('primary', 'large', isMobile),
                 width: '100%',
-                padding: '14px',
-                background: loading ? '#ccc' : '#424242',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
+                opacity: loading ? 0.6 : 1,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
               }}
             >
               {loading ? '處理中...' : '確認記帳'}
@@ -1092,18 +1033,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
                   onClick={() => setSelectedMonth('')}
-                  style={{
-                    padding: '10px 16px',
-                    background: selectedMonth === '' ? '#424242' : 'white',
-                    color: selectedMonth === '' ? 'white' : '#666',
-                    border: selectedMonth === '' ? '2px solid #424242' : '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: selectedMonth === '' ? '600' : 'normal',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s',
-                  }}
+                  style={getButtonStyle(selectedMonth === '' ? 'secondary' : 'outline', 'small', isMobile)}
                 >
                   全部
                 </button>
@@ -1118,25 +1048,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   disabled={transactions.length === 0 || selectedMonth === '' || exporting}
                   title={selectedMonth === '' ? '請先選擇月份才能匯出' : ''}
                   style={{
-                    padding: '10px 20px',
-                    background: (transactions.length === 0 || selectedMonth === '' || exporting) ? '#ccc' : '#4caf50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
+                    ...getButtonStyle('success', 'small', isMobile),
+                    opacity: (transactions.length === 0 || selectedMonth === '' || exporting) ? 0.5 : 1,
                     cursor: (transactions.length === 0 || selectedMonth === '' || exporting) ? 'not-allowed' : 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (transactions.length > 0 && selectedMonth !== '' && !exporting) e.currentTarget.style.background = '#388e3c'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (transactions.length > 0 && selectedMonth !== '' && !exporting) e.currentTarget.style.background = '#4caf50'
                   }}
                 >
-                  {exporting ? '匯出中...' : '📥 匯出'}
+                  {exporting ? '匯出中...' : '匯出'}
                 </button>
               </div>
             </div>
@@ -1155,17 +1072,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               }}>
                 <button
                   onClick={() => setCategoryFilter('all')}
-                  style={{
-                    padding: '8px 16px',
-                    border: categoryFilter === 'all' ? '2px solid #424242' : '2px solid #e0e0e0',
-                    borderRadius: '20px',
-                    background: categoryFilter === 'all' ? '#f5f5f5' : 'white',
-                    color: categoryFilter === 'all' ? '#424242' : '#666',
-                    fontSize: '13px',
-                    fontWeight: categoryFilter === 'all' ? '600' : 'normal',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
+                  style={getButtonStyle(categoryFilter === 'all' ? 'secondary' : 'outline', 'small', isMobile)}
                 >
                   全部
                 </button>
@@ -1173,17 +1080,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   <button
                     key={cat.value}
                     onClick={() => setCategoryFilter(cat.value)}
-                    style={{
-                      padding: '8px 16px',
-                      border: categoryFilter === cat.value ? '2px solid #424242' : '2px solid #e0e0e0',
-                      borderRadius: '20px',
-                      background: categoryFilter === cat.value ? '#f5f5f5' : 'white',
-                      color: categoryFilter === cat.value ? '#424242' : '#666',
-                      fontSize: '13px',
-                      fontWeight: categoryFilter === cat.value ? '600' : 'normal',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
+                    style={getButtonStyle(categoryFilter === cat.value ? 'secondary' : 'outline', 'small', isMobile)}
                   >
                     {cat.label}
                   </button>
@@ -1199,17 +1096,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   <button
                     key={cat.value}
                     onClick={() => setCategoryFilter(cat.value)}
-                    style={{
-                      padding: '8px 16px',
-                      border: categoryFilter === cat.value ? '2px solid #424242' : '2px solid #e0e0e0',
-                      borderRadius: '20px',
-                      background: categoryFilter === cat.value ? '#f5f5f5' : 'white',
-                      color: categoryFilter === cat.value ? '#424242' : '#666',
-                      fontSize: '13px',
-                      fontWeight: categoryFilter === cat.value ? '600' : 'normal',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
+                    style={getButtonStyle(categoryFilter === cat.value ? 'secondary' : 'outline', 'small', isMobile)}
                   >
                     {cat.label}
                   </button>
@@ -1224,10 +1111,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="🔍 搜尋說明或備註..."
+                  placeholder="搜尋說明或備註..."
                   style={{
                     ...inputStyle,
-                    paddingRight: searchTerm ? '36px' : '12px',
+                    paddingRight: searchTerm ? '36px' : undefined,
                   }}
                 />
                 {searchTerm && (
@@ -1238,7 +1125,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                       right: '8px',
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      background: '#999',
+                      background: designSystem.colors.secondary[400],
                       color: 'white',
                       border: 'none',
                       borderRadius: '50%',
@@ -1251,7 +1138,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                       justifyContent: 'center',
                     }}
                   >
-                    ✕
+                    ×
                   </button>
                 )}
               </div>
@@ -1289,9 +1176,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               
               return (
                 <div style={{
-                  background: '#f0f7ff',
-                  border: '1px solid #bbdefb',
-                  borderRadius: '8px',
+                  background: designSystem.colors.background.card,
+                  border: `1px solid ${designSystem.colors.border.light}`,
+                  borderRadius: designSystem.borderRadius.lg,
                   padding: '10px 16px',
                   marginBottom: '16px',
                   fontSize: '13px',
@@ -1300,15 +1187,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   gap: '10px',
                   flexWrap: 'wrap',
                 }}>
-                  <span style={{ fontWeight: '600', color: '#1976d2' }}>
+                  <span style={{ fontWeight: '600', color: designSystem.colors.text.primary }}>
                     {selectedMonth.split('-')[1]}月 {catConfig.label}
                   </span>
-                  <span style={{ color: '#2e7d32' }}>+{isAmount ? '$' : ''}{increase.toLocaleString()}{!isAmount ? '分' : ''}</span>
-                  <span style={{ color: '#c62828' }}>-{isAmount ? '$' : ''}{decrease.toLocaleString()}{!isAmount ? '分' : ''}</span>
-                  <span style={{ 
-                    fontWeight: '600',
-                    color: net >= 0 ? '#2e7d32' : '#c62828'
-                  }}>
+                  <span style={getBadgeStyle('success', 'small')}>+{isAmount ? '$' : ''}{increase.toLocaleString()}{!isAmount ? '分' : ''}</span>
+                  <span style={getBadgeStyle('danger', 'small')}>-{isAmount ? '$' : ''}{decrease.toLocaleString()}{!isAmount ? '分' : ''}</span>
+                  <span style={getBadgeStyle(net >= 0 ? 'success' : 'danger', 'small')}>
                     = {net >= 0 ? '+' : ''}{isAmount ? '$' : ''}{net.toLocaleString()}{!isAmount ? '分' : ''}
                   </span>
                 </div>
@@ -1317,11 +1201,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
             {/* 交易記錄列表 */}
             {loadingHistory ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
                 載入中...
               </div>
             ) : transactions.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
                 {selectedMonth === '' ? '無交易記錄' : '本月無交易記錄'}
               </div>
             ) : (() => {
@@ -1341,7 +1225,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               
               if (filteredTransactions.length === 0) {
                 return (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                  <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
                     {searchTerm ? '找不到符合的交易記錄' : '此類別無交易記錄'}
                   </div>
                 )
@@ -1358,26 +1242,27 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                     <div
                       key={tx.id}
                       style={{
-                        background: '#f8f9fa',
+                        background: designSystem.colors.background.card,
                         padding: '14px',
-                        borderRadius: '8px',
-                        borderLeft: `4px solid ${isIncrease ? '#4caf50' : '#f44336'}`,
+                        borderRadius: designSystem.borderRadius.lg,
+                        border: `1px solid ${designSystem.colors.border.light}`,
+                        borderLeft: `3px solid ${isIncrease ? designSystem.colors.success[500] : designSystem.colors.danger[500]}`,
                         cursor: isEditing ? 'default' : 'pointer',
-                        transition: 'all 0.2s',
+                        transition: designSystem.transitions.normal,
                       }}
                       onClick={() => !isEditing && handleEditTransaction(tx)}
                       onMouseEnter={(e) => {
-                        if (!isEditing) e.currentTarget.style.background = '#eeeff1'
+                        if (!isEditing) e.currentTarget.style.background = designSystem.colors.background.hover
                       }}
                       onMouseLeave={(e) => {
-                        if (!isEditing) e.currentTarget.style.background = '#f8f9fa'
+                        if (!isEditing) e.currentTarget.style.background = designSystem.colors.background.card
                       }}
                     >
                       {isEditing ? (
                         // 編輯模式
                         <div onClick={(e) => e.stopPropagation()}>
                           <div style={{ marginBottom: '12px' }}>
-                            <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
+                            <div style={{ fontSize: '12px', color: designSystem.colors.text.disabled, marginBottom: '12px' }}>
                               記帳時間：{tx.created_at ? new Date(tx.created_at).toLocaleString('zh-TW', {
                                 year: 'numeric',
                                 month: '2-digit',
@@ -1415,33 +1300,21 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                   type="button"
                                   onClick={() => setEditAdjustType('increase')}
                                   style={{
-                                    padding: '8px',
-                                    border: editAdjustType === 'increase' ? '2px solid #1976d2' : '2px solid #e0e0e0',
-                                    borderRadius: '6px',
-                                    background: editAdjustType === 'increase' ? '#e3f2fd' : 'white',
-                                    color: editAdjustType === 'increase' ? '#1976d2' : '#666',
-                                    fontSize: '13px',
-                                    fontWeight: editAdjustType === 'increase' ? '600' : 'normal',
-                                    cursor: 'pointer',
+                                    ...getButtonStyle(editAdjustType === 'increase' ? 'secondary' : 'outline', 'small', isMobile),
+                                    width: '100%',
                                   }}
                                 >
-                                  ➕ 增加
+                                  增加
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setEditAdjustType('decrease')}
                                   style={{
-                                    padding: '8px',
-                                    border: editAdjustType === 'decrease' ? '2px solid #757575' : '2px solid #e0e0e0',
-                                    borderRadius: '6px',
-                                    background: editAdjustType === 'decrease' ? '#f5f5f5' : 'white',
-                                    color: editAdjustType === 'decrease' ? '#757575' : '#666',
-                                    fontSize: '13px',
-                                    fontWeight: editAdjustType === 'decrease' ? '600' : 'normal',
-                                    cursor: 'pointer',
+                                    ...getButtonStyle(editAdjustType === 'decrease' ? 'secondary' : 'outline', 'small', isMobile),
+                                    width: '100%',
                                   }}
                                 >
-                                  ➖ 減少
+                                  減少
                                 </button>
                               </div>
                             </div>
@@ -1474,13 +1347,9 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                   value={editTransactionDate}
                                   onChange={(e) => setEditTransactionDate(e.target.value)}
                                   style={{
+                                    ...getInputStyle(isMobile),
                                     flex: 1,
                                     minWidth: 0,
-                                    padding: '12px',
-                                    border: '1px solid #e0e0e0',
-                                    borderRadius: '8px',
-                                    fontSize: '16px',
-                                    boxSizing: 'border-box',
                                   }}
                                 />
                               </div>
@@ -1523,48 +1392,23 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                             <button
                               onClick={handleSaveEdit}
                               style={{
+                                ...getButtonStyle('primary', 'small', isMobile),
                                 flex: 1,
-                                padding: '10px',
-                                background: '#1976d2',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
                               }}
                             >
-                              ✓ 儲存
+                              儲存
                             </button>
                             <button
                               onClick={() => handleDeleteTransaction(tx)}
-                              style={{
-                                padding: '10px 16px',
-                                background: '#757575',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                              }}
+                              style={getButtonStyle('danger', 'small', isMobile)}
                             >
-                              🗑️
+                              刪除
                             </button>
                             <button
                               onClick={handleCancelEdit}
-                              style={{
-                                padding: '10px 16px',
-                                background: '#e0e0e0',
-                                color: '#666',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                              }}
+                              style={getButtonStyle('outline', 'small', isMobile)}
                             >
-                              ✕
+                              取消
                             </button>
                           </div>
                         </div>
@@ -1578,20 +1422,19 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                             marginBottom: '8px',
                           }}>
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                              <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px', color: designSystem.colors.text.primary }}>
                                 {categoryConfig?.label}
                               </div>
-                              <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+                              <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
                                 {tx.description}
                               </div>
-                              <div style={{ fontSize: '12px', color: '#999' }}>
+                              <div style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>
                                 {tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : '-')}
                               </div>
                             </div>
                             <div style={{
-                              fontSize: '18px',
-                              fontWeight: 'bold',
-                              color: isIncrease ? '#1976d2' : '#757575',
+                              ...getBadgeStyle(isIncrease ? 'success' : 'danger', 'medium'),
+                              fontSize: '14px',
                               whiteSpace: 'nowrap',
                               marginLeft: '12px',
                             }}>
@@ -1601,11 +1444,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                           {tx.notes && (
                             <div style={{
                               fontSize: '13px',
-                              color: '#666',
+                              color: designSystem.colors.text.secondary,
                               marginTop: '8px',
                               padding: '8px',
-                              background: 'white',
-                              borderRadius: '4px',
+                              background: designSystem.colors.background.main,
+                              borderRadius: designSystem.borderRadius.sm,
+                              border: `1px solid ${designSystem.colors.border.light}`,
                             }}>
                               備註：{tx.notes}
                             </div>

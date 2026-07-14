@@ -17,6 +17,29 @@ import {
 } from '../../utils/date'
 import { isAdmin } from '../../utils/auth'
 import { chunkArray, fetchAllPaginated, IN_FILTER_BATCH_SIZE } from '../../utils/supabasePaginate'
+import {
+  designSystem,
+  getBadgeStyle,
+  getButtonStyle,
+  getEmptyStateStyle,
+  getInputStyle,
+} from '../../styles/designSystem'
+
+const pageBg = designSystem.colors.background.main
+const cardBorder = `1px solid ${designSystem.colors.border.light}`
+
+function membershipTypeBadge(type: string): { label: string; variant: 'info' | 'warning' | 'default' } {
+  switch (type) {
+    case 'guest':
+      return { label: '非會員', variant: 'warning' }
+    case 'dual':
+      return { label: '雙人會籍', variant: 'info' }
+    case 'es':
+      return { label: 'ES', variant: 'default' }
+    default:
+      return { label: '一般會員', variant: 'info' }
+  }
+}
 
 interface Member {
   id: string
@@ -659,15 +682,15 @@ export function MemberManagement() {
       <div style={{ 
         padding: isMobile ? '12px' : '20px',
         minHeight: '100dvh',
-        background: '#f5f5f5',
+        background: pageBg,
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <PageHeader 
-            title="👥 會員管理" 
+            title="會員管理" 
             user={user} 
             showBaoLink={isAdmin(user)} 
-            extraLinks={userIsAdmin ? [{ label: '💰', link: '/member-transaction' }] : undefined}
+            extraLinks={userIsAdmin ? [{ label: '儲值', link: '/member-transaction' }] : undefined}
           />
 
           {/* 搜尋框骨架屏 */}
@@ -682,43 +705,37 @@ export function MemberManagement() {
             flex: 1, 
             minWidth: '200px',
             height: '48px', 
-            background: 'white', 
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            background: designSystem.colors.background.card, 
+            borderRadius: designSystem.borderRadius.lg,
+            border: cardBorder,
           }} />
           <div style={{ 
             width: '120px', 
             height: '48px', 
-            background: '#e0e0e0', 
-            borderRadius: '8px'
+            background: designSystem.colors.border.light, 
+            borderRadius: designSystem.borderRadius.lg,
           }} />
         </div>
 
         {/* 會員列表骨架屏 */}
-        <div style={{ display: 'grid', gap: '15px', marginTop: '16px' }}>
+        <div style={{ display: 'grid', gap: '12px', marginTop: '16px' }}>
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: isMobile ? '14px' : '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
+              padding: isMobile ? '14px' : '18px 20px',
+              border: cardBorder,
+              boxShadow: designSystem.shadows.xs,
             }}>
-              <div style={{
-                background: '#f0f0f0',
-                padding: isMobile ? '10px' : '14px 16px',
-                borderRadius: '8px',
-                marginBottom: '12px',
-              }}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div style={{ width: '110px', height: '20px', background: '#e0e0e0', borderRadius: '4px' }} />
-                  <div style={{ width: '48px', height: '18px', background: '#e8e8e8', borderRadius: '10px' }} />
-                  <div style={{ width: '60px', height: '18px', background: '#e8e8e8', borderRadius: '10px' }} />
-                </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
+                <div style={{ width: '110px', height: '20px', background: designSystem.colors.border.light, borderRadius: '4px' }} />
+                <div style={{ width: '48px', height: '18px', background: designSystem.colors.border.light, borderRadius: '10px' }} />
+                <div style={{ width: '60px', height: '18px', background: designSystem.colors.border.light, borderRadius: '10px' }} />
               </div>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ width: '80px', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
-                <div style={{ width: '100px', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
-                <div style={{ width: '70px', height: '14px', background: '#f0f0f0', borderRadius: '4px' }} />
+                <div style={{ width: '80px', height: '14px', background: designSystem.colors.border.light, borderRadius: '4px' }} />
+                <div style={{ width: '100px', height: '14px', background: designSystem.colors.border.light, borderRadius: '4px' }} />
+                <div style={{ width: '70px', height: '14px', background: designSystem.colors.border.light, borderRadius: '4px' }} />
               </div>
             </div>
           ))}
@@ -734,7 +751,7 @@ export function MemberManagement() {
     <div style={{ 
       padding: isMobile ? '12px 16px' : '20px',
       minHeight: '100dvh',
-      background: '#f5f5f5',
+      background: pageBg,
       paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
     }}>
       {/* PageHeader + 篩選列一起 sticky */}
@@ -742,7 +759,7 @@ export function MemberManagement() {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        background: '#f5f5f5',
+        background: pageBg,
         marginLeft: isMobile ? '-16px' : '-20px',
         marginRight: isMobile ? '-16px' : '-20px',
         marginTop: isMobile ? '-12px' : '-20px',
@@ -752,11 +769,11 @@ export function MemberManagement() {
         paddingBottom: '12px',
       }}>
         <PageHeader 
-          title="👥 會員管理" 
+          title="會員管理" 
           user={user} 
           showBaoLink={isAdmin(user)} 
           extraLinks={
-            userIsAdmin ? [{ label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' }] : undefined
+            userIsAdmin ? [{ label: isMobile ? '儲值' : '會員儲值', link: '/member-transaction' }] : undefined
           }
         />
         {/* 搜尋欄 + 新增會員按鈕 */}
@@ -769,7 +786,7 @@ export function MemberManagement() {
           <div style={{ flex: 1, position: 'relative' }}>
             <input
               type="text"
-              placeholder="🔍 搜尋會員（姓名、暱稱）"
+              placeholder="搜尋會員（姓名、暱稱）"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
@@ -778,15 +795,10 @@ export function MemberManagement() {
                 }
               }}
               style={{
+                ...getInputStyle(isMobile),
                 width: '100%',
-                padding: isMobile ? '12px 14px' : '12px 16px',
-                paddingRight: searchTerm ? '40px' : '16px',
-                border: '1px solid #dee2e6',
-                borderRadius: '8px',
-                fontSize: '15px',
-                outline: 'none',
-                background: 'white',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                paddingRight: searchTerm ? '40px' : undefined,
+                boxSizing: 'border-box',
               }}
             />
             {searchTerm && (
@@ -797,7 +809,7 @@ export function MemberManagement() {
                   right: '10px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  background: '#999',
+                  background: designSystem.colors.text.secondary,
                   color: 'white',
                   border: 'none',
                   borderRadius: '50%',
@@ -818,19 +830,8 @@ export function MemberManagement() {
             data-track="member_add"
             onClick={() => setAddDialogOpen(true)}
             style={{
-              padding: isMobile ? '12px 16px' : '12px 20px',
-              background: '#5a5a5a',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
+              ...getButtonStyle('primary', 'medium', isMobile),
               whiteSpace: 'nowrap',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
             }}
           >
             + {isMobile ? '新增' : '新增會員'}
@@ -851,19 +852,21 @@ export function MemberManagement() {
                 width: '100%',
                 marginBottom: '10px',
                 padding: '10px 12px',
-                border: `1px solid ${filtersActive && !mobileFiltersExpanded ? '#fb8c00' : '#dee2e6'}`,
-                borderRadius: '8px',
+                border: cardBorder,
+                borderRadius: designSystem.borderRadius.lg,
                 fontSize: '14px',
-                background: mobileFiltersExpanded ? '#e3f2fd' : (filtersActive ? '#fff8f0' : 'white'),
-                color: '#333',
+                background: mobileFiltersExpanded
+                  ? designSystem.colors.background.card
+                  : (filtersActive ? designSystem.colors.warning[50] : designSystem.colors.background.card),
+                color: designSystem.colors.text.primary,
                 cursor: 'pointer',
                 textAlign: 'left',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                boxShadow: designSystem.shadows.xs,
               }}
             >
               {mobileFiltersExpanded
-                ? '▲ 收合篩選與排序'
-                : `▼ 篩選與排序（類型、LINE、排序）${filtersActive ? ' 🔸' : ''}`}
+                ? '收合篩選與排序'
+                : `篩選與排序（類型、LINE、排序）${filtersActive ? ' · 已套用' : ''}`}
             </button>
               )
             })()}
@@ -1030,7 +1033,7 @@ export function MemberManagement() {
                 marginTop: '8px',
                 textAlign: 'center',
               }}>
-                {searchTerm ? `🔍 「${searchTerm}」` : ''} 找到 <strong>{filteredMembers.length}</strong> 位會員
+                {searchTerm ? `「${searchTerm}」` : ''} 找到 <strong>{filteredMembers.length}</strong> 位會員
               </div>
             )}
           </>
@@ -1058,14 +1061,11 @@ export function MemberManagement() {
                   setExpiringFilter('none')
                 }}
                 style={{
-                  padding: '6px 12px',
-                  background: membershipTypeFilter === type.value && expiringFilter === 'none' ? '#5a5a5a' : 'white',
-                  color: membershipTypeFilter === type.value && expiringFilter === 'none' ? 'white' : '#666',
-                  border: `1px solid ${membershipTypeFilter === type.value && expiringFilter === 'none' ? '#5a5a5a' : '#ddd'}`,
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  fontWeight: membershipTypeFilter === type.value && expiringFilter === 'none' ? '600' : 'normal'
+                  ...getButtonStyle(
+                    membershipTypeFilter === type.value && expiringFilter === 'none' ? 'secondary' : 'outline',
+                    'small',
+                    false
+                  ),
                 }}
               >
                 {type.label} ({type.count})
@@ -1073,7 +1073,7 @@ export function MemberManagement() {
             ))}
 
             {/* 分隔線 */}
-            <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+            <div style={{ width: '1px', height: '24px', background: designSystem.colors.border.light, margin: '0 4px' }} />
 
             {/* 到期篩選按鈕 */}
             <button
@@ -1083,18 +1083,12 @@ export function MemberManagement() {
               }}
               disabled={expiringMemberships.length === 0}
               style={{
-                padding: '6px 12px',
-                background: expiringFilter === 'membership' ? '#ff9800' : 'white',
-                color: expiringFilter === 'membership' ? 'white' : (expiringMemberships.length > 0 ? '#ff9800' : '#ccc'),
-                border: `1px solid ${expiringFilter === 'membership' ? '#ff9800' : (expiringMemberships.length > 0 ? '#ff9800' : '#ddd')}`,
-                borderRadius: '6px',
-                fontSize: '13px',
+                ...getButtonStyle(expiringFilter === 'membership' ? 'warning' : 'outline', 'small', false),
+                opacity: expiringMemberships.length === 0 ? 0.5 : 1,
                 cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
-                fontWeight: expiringFilter === 'membership' ? '600' : 'normal',
-                opacity: expiringMemberships.length === 0 ? 0.5 : 1
               }}
             >
-              ⚠️ 會籍到期 ({expiringMemberships.length})
+              會籍到期 ({expiringMemberships.length})
             </button>
 
             <button
@@ -1104,33 +1098,18 @@ export function MemberManagement() {
               }}
               disabled={expiringBoards.length === 0}
               style={{
-                padding: '6px 12px',
-                background: expiringFilter === 'board' ? '#2196F3' : 'white',
-                color: expiringFilter === 'board' ? 'white' : (expiringBoards.length > 0 ? '#2196F3' : '#ccc'),
-                border: `1px solid ${expiringFilter === 'board' ? '#2196F3' : (expiringBoards.length > 0 ? '#2196F3' : '#ddd')}`,
-                borderRadius: '6px',
-                fontSize: '13px',
+                ...getButtonStyle(expiringFilter === 'board' ? 'info' : 'outline', 'small', false),
+                opacity: expiringBoards.length === 0 ? 0.5 : 1,
                 cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
-                fontWeight: expiringFilter === 'board' ? '600' : 'normal',
-                opacity: expiringBoards.length === 0 ? 0.5 : 1
               }}
             >
-              🏄 置板到期 ({expiringBoards.length})
+              置板到期 ({expiringBoards.length})
             </button>
 
             <button
               data-track="member_filter_line_bound"
               onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
-              style={{
-                padding: '6px 12px',
-                background: lineBindingFilter === 'bound' ? '#06C755' : 'white',
-                color: lineBindingFilter === 'bound' ? 'white' : '#06C755',
-                border: `1px solid ${lineBindingFilter === 'bound' ? '#06C755' : '#06C755'}`,
-                borderRadius: '6px',
-                fontSize: '13px',
-                cursor: 'pointer',
-                fontWeight: lineBindingFilter === 'bound' ? '600' : 'normal',
-              }}
+              style={getButtonStyle(lineBindingFilter === 'bound' ? 'secondary' : 'outline', 'small', false)}
             >
               LINE 已綁定 ({members.filter(m => m.is_line_bound).length})
             </button>
@@ -1138,22 +1117,13 @@ export function MemberManagement() {
             <button
               data-track="member_filter_line_unbound"
               onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
-              style={{
-                padding: '6px 12px',
-                background: lineBindingFilter === 'unbound' ? '#888' : 'white',
-                color: lineBindingFilter === 'unbound' ? 'white' : '#666',
-                border: `1px solid ${lineBindingFilter === 'unbound' ? '#888' : '#ddd'}`,
-                borderRadius: '6px',
-                fontSize: '13px',
-                cursor: 'pointer',
-                fontWeight: lineBindingFilter === 'unbound' ? '600' : 'normal',
-              }}
+              style={getButtonStyle(lineBindingFilter === 'unbound' ? 'secondary' : 'outline', 'small', false)}
             >
               LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
             </button>
             
             {/* 分隔線 */}
-            <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+            <div style={{ width: '1px', height: '24px', background: designSystem.colors.border.light, margin: '0 4px' }} />
 
             {/* 排序按鈕 */}
             {[
@@ -1173,22 +1143,15 @@ export function MemberManagement() {
                   }
                 }}
                 style={{
-                  padding: '6px 10px',
-                  border: sortBy === key ? '1px solid #1976d2' : '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  background: sortBy === key ? '#e3f2fd' : 'white',
-                  cursor: 'pointer',
-                  color: sortBy === key ? '#1976d2' : '#666',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontWeight: sortBy === key ? '500' : '400'
+                  ...getButtonStyle(sortBy === key ? 'outline' : 'ghost', 'small', false),
+                  borderColor: sortBy === key ? designSystem.colors.text.secondary : undefined,
+                  color: sortBy === key ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
+                  fontWeight: sortBy === key ? 600 : 400,
                 }}
               >
                 {label}
                 {sortBy === key && (
-                  <span style={{ fontSize: '11px' }}>
+                  <span style={{ fontSize: '11px', marginLeft: '4px' }}>
                     {sortOrder === 'asc' ? '▲' : '▼'}
                   </span>
                 )}
@@ -1220,10 +1183,11 @@ export function MemberManagement() {
       {/* 到期詳情（收合式） */}
       {(expiringMemberships.length > 0 || expiringBoards.length > 0) && (
         <div style={{
-          background: 'white',
-          borderRadius: '8px',
+          background: designSystem.colors.background.card,
+          borderRadius: designSystem.borderRadius.lg,
           marginBottom: '16px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+          border: cardBorder,
+          boxShadow: designSystem.shadows.xs,
           overflow: 'hidden'
         }}>
           <button
@@ -1238,17 +1202,17 @@ export function MemberManagement() {
               justifyContent: 'space-between',
               alignItems: 'center',
               fontSize: '13px',
-              color: '#666'
+              color: designSystem.colors.text.secondary
             }}
           >
             <span>
-              📋 到期詳情：會籍 {expiringMemberships.length} 位、置板 {expiringBoards.length} 位
+              到期詳情：會籍 {expiringMemberships.length} 位、置板 {expiringBoards.length} 位
             </span>
-            <span>{showExpiringDetails ? '▲ 收合' : '▼ 展開'}</span>
+            <span>{showExpiringDetails ? '收合' : '展開'}</span>
           </button>
           
           {showExpiringDetails && (
-            <div style={{ padding: '0 16px 16px', borderTop: '1px solid #eee' }}>
+            <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${designSystem.colors.border.light}` }}>
               {expiringMemberships.length > 0 && (() => {
                 const expired = expiringMemberships.filter((m: any) => isDateExpired(m.membership_end_date))
                 const upcoming = expiringMemberships.filter((m: any) => !isDateExpired(m.membership_end_date))
@@ -1256,16 +1220,16 @@ export function MemberManagement() {
                   <div style={{ marginTop: '12px' }}>
                     {expired.length > 0 && (
                       <div style={{ marginBottom: '8px' }}>
-                        <span style={{ fontSize: '12px', color: '#f44336', fontWeight: '600' }}>⚠️ 已過期 ({expired.length})：</span>
-                        <span style={{ fontSize: '12px', color: '#666' }}>
+                        <span style={{ fontSize: '12px', color: designSystem.colors.danger[700], fontWeight: '600' }}>已過期 ({expired.length})：</span>
+                        <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
                           {expired.map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
                         </span>
                       </div>
                     )}
                     {upcoming.length > 0 && (
                       <div>
-                        <span style={{ fontSize: '12px', color: '#ff9800', fontWeight: '600' }}>⏰ 即將到期 ({upcoming.length})：</span>
-                        <span style={{ fontSize: '12px', color: '#666' }}>
+                        <span style={{ fontSize: '12px', color: designSystem.colors.warning[700], fontWeight: '600' }}>即將到期 ({upcoming.length})：</span>
+                        <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
                           {upcoming.map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
                         </span>
                       </div>
@@ -1279,19 +1243,19 @@ export function MemberManagement() {
                 const expiredBoards = expiringBoards.filter((b: any) => b.expires_at < today)
                 const upcomingBoards = expiringBoards.filter((b: any) => b.expires_at >= today)
                 return (
-                  <div style={{ marginTop: expiringMemberships.length > 0 ? '12px' : '12px' }}>
+                  <div style={{ marginTop: '12px' }}>
                     {expiredBoards.length > 0 && (
                       <div style={{ marginBottom: '8px' }}>
-                        <span style={{ fontSize: '12px', color: '#f44336', fontWeight: '600' }}>🏄 已過期置板 ({expiredBoards.length})：</span>
-                        <span style={{ fontSize: '12px', color: '#666' }}>
+                        <span style={{ fontSize: '12px', color: designSystem.colors.danger[700], fontWeight: '600' }}>已過期置板 ({expiredBoards.length})：</span>
+                        <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
                           {expiredBoards.map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
                         </span>
                       </div>
                     )}
                     {upcomingBoards.length > 0 && (
                       <div>
-                        <span style={{ fontSize: '12px', color: '#2196F3', fontWeight: '600' }}>🏄 即將到期置板 ({upcomingBoards.length})：</span>
-                        <span style={{ fontSize: '12px', color: '#666' }}>
+                        <span style={{ fontSize: '12px', color: designSystem.colors.info[700], fontWeight: '600' }}>即將到期置板 ({upcomingBoards.length})：</span>
+                        <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
                           {upcomingBoards.map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
                         </span>
                       </div>
@@ -1307,74 +1271,55 @@ export function MemberManagement() {
       {/* 會員列表 */}
       <div style={{ 
         display: 'grid',
-        gap: '15px'
+        gap: '12px'
       }}>
         {filteredMembers.length === 0 ? (
-          <div style={{
-            background: 'white',
-            padding: '40px',
-            borderRadius: '12px',
-            textAlign: 'center',
-            color: '#999',
-            fontSize: '16px'
-          }}>
+          <div style={getEmptyStateStyle(isMobile)}>
             {searchTerm ? '找不到符合的會員' : '尚無會員資料'}
           </div>
         ) : (
-          filteredMembers.map(member => (
+          filteredMembers.map(member => {
+            const typeBadge = membershipTypeBadge(member.membership_type)
+            const cardBg = member.status === 'inactive'
+              ? designSystem.colors.background.main
+              : designSystem.colors.background.card
+            return (
             <div
               key={member.id}
               style={{
-                background: member.status === 'inactive' ? '#f5f5f5' : 'white',
-                padding: isMobile ? '14px' : '20px',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                transition: 'all 0.2s',
+                background: cardBg,
+                padding: isMobile ? '14px 16px' : '18px 20px',
+                borderRadius: designSystem.borderRadius.lg,
+                boxShadow: designSystem.shadows.xs,
+                transition: designSystem.transitions.normal,
                 cursor: 'pointer',
-                border: '2px solid transparent',
+                border: cardBorder,
                 position: 'relative',
-                opacity: member.status === 'inactive' ? 0.7 : 1
+                opacity: member.status === 'inactive' ? 0.72 : 1
               }}
               onClick={() => {
                 setSelectedMemberId(member.id)
                 setDetailDialogOpen(true)
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#5a5a5a'
-                e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 4px 16px rgba(90, 90, 90, 0.2)'
+                e.currentTarget.style.borderColor = designSystem.colors.text.secondary
+                e.currentTarget.style.boxShadow = designSystem.shadows.sm
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'transparent'
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+                e.currentTarget.style.borderColor = designSystem.colors.border.light
+                e.currentTarget.style.boxShadow = designSystem.shadows.xs
               }}
               onTouchStart={(e) => {
-                e.currentTarget.style.background = '#f0f0f0'
-                e.currentTarget.style.transform = 'scale(0.99)'
+                e.currentTarget.style.background = designSystem.colors.background.main
               }}
               onTouchEnd={(e) => {
-                e.currentTarget.style.background = member.status === 'inactive' ? '#f5f5f5' : 'white'
-                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = cardBg
               }}
               onTouchCancel={(e) => {
-                e.currentTarget.style.background = member.status === 'inactive' ? '#f5f5f5' : 'white'
-                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = cardBg
               }}
             >
-              {/* 上下分層式佈局 */}
-              <div>
-                
-                {/* 第一層：會籍資料 */}
-                <div style={{ 
-                  background: '#f8f9fa',
-                  padding: isMobile ? '10px' : '14px 16px',
-                  borderRadius: '8px',
-                  marginBottom: '12px',
-                  position: 'relative',
-                  minWidth: 0,
-                  maxWidth: '100%'
-                }}>
+              <div style={{ position: 'relative', minWidth: 0, maxWidth: '100%' }}>
                   {/* 隱藏/恢復按鈕 */}
                   <button
                     onClick={(e) => {
@@ -1387,96 +1332,39 @@ export function MemberManagement() {
                     }}
                     style={{
                       position: 'absolute',
-                      top: isMobile ? '8px' : '12px',
-                      right: isMobile ? '8px' : '12px',
-                      background: member.status === 'inactive' ? '#4caf50' : '#f5f5f5',
-                      color: member.status === 'inactive' ? 'white' : '#999',
-                      border: 'none',
-                      borderRadius: '6px',
+                      top: 0,
+                      right: 0,
+                      ...getButtonStyle(member.status === 'inactive' ? 'success' : 'ghost', 'small', isMobile),
                       padding: isMobile ? '3px 8px' : '4px 10px',
                       fontSize: isMobile ? '11px' : '12px',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      transition: 'all 0.2s',
-                      zIndex: 10
+                      zIndex: 10,
                     }}
                   >
                     {member.status === 'inactive' ? '恢復' : '隱藏'}
                   </button>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: isMobile ? '50px' : '60px' }}>
-                    <h3 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: 'bold' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px', marginBottom: '10px', flexWrap: 'wrap', paddingRight: isMobile ? '50px' : '60px' }}>
+                    <h3 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: 650, color: designSystem.colors.text.primary }}>
                       {member.nickname && member.nickname.trim() ? member.nickname : member.name}
                     </h3>
                     {member.nickname && member.nickname.trim() && (
-                      <span style={{ fontSize: isMobile ? '12px' : '13px', color: '#999' }}>
+                      <span style={{ fontSize: isMobile ? '12px' : '13px', color: designSystem.colors.text.secondary }}>
                         ({member.name})
                       </span>
                     )}
-                    {member.membership_type !== 'es' && (
-                      <span style={{ 
-                        background: member.membership_type === 'guest' ? '#fff9e6' : '#e3f2fd',
-                        color: member.membership_type === 'guest' ? '#856404' : '#1976d2',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontWeight: 'bold',
-                        fontSize: '12px'
-                      }}>
-                        {member.membership_type === 'guest' ? '🎫 非會員' : '👤 會員'}
-                      </span>
-                    )}
-                    {member.membership_type === 'dual' && (
-                      <span style={{ 
-                        fontSize: '12px', 
-                        color: '#fff',
-                        background: '#2196F3',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontWeight: '600'
-                      }}>
-                        雙人會籍
-                      </span>
-                    )}
-                    {member.membership_type === 'es' && (
-                      <span style={{ 
-                        fontSize: '12px', 
-                        color: '#fff',
-                        background: '#888',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontWeight: '600'
-                      }}>
-                        ES
-                      </span>
-                    )}
+                    <span style={getBadgeStyle(typeBadge.variant, 'small')}>
+                      {typeBadge.label}
+                    </span>
                     {member.status === 'inactive' && (
-                      <span style={{ 
-                        fontSize: '12px', 
-                        color: '#fff',
-                        background: '#9e9e9e',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontWeight: '600'
-                      }}>
-                        已隱藏
-                      </span>
+                      <span style={getBadgeStyle('default', 'small')}>已隱藏</span>
                     )}
-
-                    {/* 本月壽星標記 */}
                     {member.birthday && (() => {
                       const today = new Date()
                       const birthMonth = new Date(member.birthday).getMonth()
                       return birthMonth === today.getMonth()
                     })() && (
-                      <span style={{ 
-                        fontSize: '12px', 
-                        color: '#d63384',
-                        background: '#ffe4ec',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontWeight: '600'
-                      }}>
-                        🎂 本月壽星
+                      <span style={{ ...getBadgeStyle('warning', 'small'), fontWeight: 500 }}>
+                        本月壽星
                       </span>
                     )}
                   </div>
@@ -1486,14 +1374,14 @@ export function MemberManagement() {
                     flexDirection: 'column',
                     gap: isMobile ? '4px' : '6px',
                     fontSize: isMobile ? '12px' : '13px',
-                    color: '#666'
+                    color: designSystem.colors.text.secondary
                   }}>
                     <div style={{ display: 'flex', gap: isMobile ? '10px' : '16px', flexWrap: 'wrap' }}>
                       {member.phone && (
-                        <div>📱 {member.phone}</div>
+                        <div>{member.phone}</div>
                       )}
                       {member.birthday && (
-                        <div>🎂 {formatDate(member.birthday)}</div>
+                        <div>生日 {formatDate(member.birthday)}</div>
                       )}
                       {member.partner && (
                         <div 
@@ -1503,7 +1391,7 @@ export function MemberManagement() {
                             setDetailDialogOpen(true)
                           }}
                           style={{ 
-                            color: '#2196F3', 
+                            color: designSystem.colors.info[700], 
                             cursor: 'pointer',
                             textDecoration: 'underline',
                             textDecorationStyle: 'dotted',
@@ -1511,28 +1399,16 @@ export function MemberManagement() {
                           }}
                           title={`點擊查看 ${member.partner.nickname || member.partner.name} 的資料`}
                         >
-                          🔗 配對：{member.partner.nickname || member.partner.name}
+                          配對：{member.partner.nickname || member.partner.name}
                         </div>
                       )}
                     </div>
-                    {/* LINE 綁定狀態（資訊區塊） */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span
                         title={member.is_line_bound ? '已綁定 LINE' : '未綁定 LINE'}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '2px 8px',
-                          borderRadius: '999px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          background: member.is_line_bound ? '#e8f5e9' : '#f5f5f5',
-                          color: member.is_line_bound ? '#2e7d32' : '#9e9e9e',
-                          border: `1px solid ${member.is_line_bound ? '#a5d6a7' : '#e0e0e0'}`
-                        }}
+                        style={getBadgeStyle(member.is_line_bound ? 'success' : 'default', 'small')}
                       >
-                        {member.is_line_bound ? '✅ LINE 已綁定' : '❌ LINE 未綁定'}
+                        {member.is_line_bound ? 'LINE 已綁定' : 'LINE 未綁定'}
                       </span>
                       {member.is_line_bound && (
                         <button
@@ -1541,14 +1417,10 @@ export function MemberManagement() {
                             handleUnbindLine(member.id, member.nickname || member.name)
                           }}
                           style={{
-                            padding: '4px 8px',
-                            background: '#fdecec',
-                            color: '#b91c1c',
-                            border: '1px solid #f8b4b4',
-                            borderRadius: '6px',
+                            ...getButtonStyle('ghost', 'small', isMobile),
+                            color: designSystem.colors.danger[700],
                             fontSize: '12px',
-                            cursor: 'pointer',
-                            fontWeight: 700
+                            padding: '4px 8px',
                           }}
                           title="移除 LINE 綁定"
                         >
@@ -1558,23 +1430,26 @@ export function MemberManagement() {
                     </div>
                     {(member.membership_start_date || member.membership_end_date) && (
                       <div style={{ 
-                        color: isDateExpired(member.membership_end_date) ? '#f44336' : '#666'
+                        color: isDateExpired(member.membership_end_date)
+                          ? designSystem.colors.danger[700]
+                          : designSystem.colors.text.secondary
                       }}>
-                        🎫 會籍：{member.membership_start_date ? formatDate(member.membership_start_date) : '?'} → {member.membership_end_date ? formatDate(member.membership_end_date) : '?'}
+                        會籍：{member.membership_start_date ? formatDate(member.membership_start_date) : '?'} → {member.membership_end_date ? formatDate(member.membership_end_date) : '?'}
                         {isDateExpired(member.membership_end_date) && ' (已過期)'}
                       </div>
                     )}
-                    {/* 置板資訊 */}
                     {member.board_slots && member.board_slots.length > 0 && (
-                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '2px' }}>
                         {member.board_slots.map((slot, index) => {
                           const slotExpired = isDateExpired(slot.expires_at)
                           return (
                             <div key={index} style={{ 
-                              color: slotExpired ? '#f44336' : '#2e7d32',
+                              color: slotExpired
+                                ? designSystem.colors.danger[700]
+                                : designSystem.colors.success[700],
                               fontSize: '13px'
                             }}>
-                              🏄 置板 #{slot.slot_number}：{slot.start_date ? formatDate(slot.start_date) : '?'} → {slot.expires_at ? formatDate(slot.expires_at) : '?'}
+                              置板 #{slot.slot_number}：{slot.start_date ? formatDate(slot.start_date) : '?'} → {slot.expires_at ? formatDate(slot.expires_at) : '?'}
                               {slotExpired && ' (已過期)'}
                             </div>
                           )
@@ -1585,75 +1460,60 @@ export function MemberManagement() {
 
                   {member.notes && (
                     <div style={{ 
-                      marginTop: '8px',
-                      padding: '8px',
+                      marginTop: '10px',
+                      paddingTop: '10px',
                       fontSize: '13px',
-                      color: '#666',
-                      background: '#f9f9f9',
-                      borderRadius: '4px',
-                      borderLeft: '3px solid #ddd',
+                      color: designSystem.colors.text.secondary,
+                      borderTop: `1px solid ${designSystem.colors.border.light}`,
                       wordBreak: 'break-word',
                       whiteSpace: 'pre-wrap',
                       maxWidth: '100%',
                       lineHeight: '1.5'
                     }}>
-                      💬 {member.notes}
+                      {member.notes}
                     </div>
                   )}
                 </div>
 
-                {/* 第二層：備忘錄 */}
                 {member.member_notes && member.member_notes.length > 0 && (
                   <div style={{ 
-                    background: '#fff',
-                    padding: isMobile ? '10px' : '12px',
-                    borderRadius: '6px',
-                    marginBottom: '10px',
-                    border: '1px solid #e0e0e0'
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: `1px solid ${designSystem.colors.border.light}`,
                   }}>
-                    <div style={{ fontSize: '13px', color: '#555', marginBottom: '10px', fontWeight: '600' }}>
-                      📝 備忘錄 ({member.member_notes.length})
+                    <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary, marginBottom: '8px', fontWeight: 600 }}>
+                      備忘錄 ({member.member_notes.length})
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {member.member_notes.slice(-10).map((note) => {
-                        const eventColors: Record<string, string> = {
-                          '續約': '#4caf50',
-                          '購買': '#2196f3',
-                          '贈送': '#9c27b0',
-                          '使用': '#ff9800',
-                          '入會': '#e91e63',
-                          '備註': '#607d8b'
-                        }
-                        const color = eventColors[note.event_type] || '#607d8b'
-                        return (
+                      {member.member_notes.slice(-10).map((note) => (
                           <div key={note.id} style={{
                             fontSize: '13px',
-                            padding: '6px 10px',
-                            borderLeft: `3px solid ${color}`,
-                            color: '#333',
+                            padding: '4px 0',
+                            color: designSystem.colors.text.primary,
                             lineHeight: '1.4'
                           }}>
                             {note.event_date && (
-                              <span style={{ color: '#888', marginRight: '8px' }}>
+                              <span style={{ color: designSystem.colors.text.secondary, marginRight: '8px' }}>
                                 {note.event_date}
                               </span>
                             )}
+                            <span style={{ color: designSystem.colors.text.secondary, marginRight: '6px' }}>
+                              {note.event_type}
+                            </span>
                             {note.description}
                           </div>
-                        )
-                      })}
+                      ))}
                       {member.member_notes.length > 10 && (
-                        <div style={{ fontSize: '12px', color: '#999', textAlign: 'center', marginTop: '4px' }}>
+                        <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, textAlign: 'center', marginTop: '4px' }}>
                           還有 {member.member_notes.length - 10} 則較舊的備忘錄...
                         </div>
                       )}
                     </div>
                   </div>
                 )}
-
-              </div>
             </div>
-          ))
+            )
+          })
         )}
       </div>
 
@@ -1669,38 +1529,16 @@ export function MemberManagement() {
         <button
           data-track="member_export"
           onClick={handleExportMembers}
-          style={{
-            padding: '10px 20px',
-            background: 'white',
-            color: '#666',
-            border: '1px solid #ddd',
-            borderRadius: '6px',
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
+          style={getButtonStyle('outline', 'small', isMobile)}
         >
-          📤 匯出會員資料
+          匯出會員資料
         </button>
         <button
           data-track="member_boards_link"
           onClick={() => navigate('/boards')}
-          style={{
-            padding: '10px 20px',
-            background: 'white',
-            color: '#666',
-            border: '1px solid #ddd',
-            borderRadius: '6px',
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
+          style={getButtonStyle('outline', 'small', isMobile)}
         >
-          🏄 置板管理
+          置板管理
         </button>
       </div>
 

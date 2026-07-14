@@ -554,7 +554,7 @@ export function TomorrowReminder() {
             </label>
           </div>
           
-          {/* 天氣警告文字 */}
+          {/* 天氣提醒 */}
           <div style={{ marginBottom: isMobile ? '12px' : '15px' }}>
             <label style={{
               display: 'block',
@@ -563,7 +563,7 @@ export function TomorrowReminder() {
               marginBottom: '6px',
               color: '#555'
             }}>
-              天氣警告文字
+              天氣提醒
             </label>
             <textarea
               value={weatherWarning}
@@ -585,7 +585,7 @@ export function TomorrowReminder() {
             />
           </div>
           
-          {/* 結尾提醒文字 */}
+          {/* 預約提醒 */}
           <div>
             <label style={{
               display: 'block',
@@ -594,7 +594,7 @@ export function TomorrowReminder() {
               marginBottom: '6px',
               color: '#555'
             }}>
-              結尾提醒文字
+              預約提醒
             </label>
             <textarea
               value={footerText}

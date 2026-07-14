@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { PREVIEW_SHOP_ORDERS } from '../__fixtures__/shopOrdersPreview'
-import { LiffContactBar, LiffTabs, LiffStyles, ShopOrdersList } from '../components'
+import { LiffTabs, LiffStyles, ShopOrdersList } from '../components'
 import { BrandCopyrightBlock } from '../../../components/BrandCopyrightBlock'
 import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import type { TabType } from '../types'
@@ -56,8 +56,7 @@ export function LiffShopOrdersPreview() {
 
       <LiffTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div style={{ padding: 16 }}>
-        <LiffContactBar />
+      <div style={{ padding: '20px 18px 8px' }}>
         {activeTab === 'orders' && (
           <ShopOrdersList
             orders={orders}

@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase'
+import { designSystem } from '../../styles/designSystem'
 import { formatAttributes } from '../admin/products/schema'
 import {
   orderHasPendingBill,
@@ -7,6 +8,8 @@ import {
   qtyOpen,
 } from '../admin/orders/orderUtils'
 import type { ShopOrderWithItems } from '../admin/orders/types'
+
+const c = designSystem.colors
 
 const LIFF_ORDER_SELECT = `
   id, order_no, contact_name, delivery_method, shipping_info, customer_note, cancelled_at, created_at,
@@ -29,16 +32,17 @@ export type LiffOrderStatusKey =
   | 'waiting'
   | 'processing'
 
+/** 狀態文字色（對齊 designSystem；LIFF 列表不再用彩色 pill） */
 export const LIFF_ORDER_STATUS: Record<
   LiffOrderStatusKey,
   { label: string; color: string; bg: string }
 > = {
-  cancelled: { label: '已取消', color: '#757575', bg: '#f5f5f5' },
-  done: { label: '已完成', color: '#2e7d32', bg: '#e8f5e9' },
-  partial: { label: '部分到貨', color: '#6a1b9a', bg: '#f3e5f5' },
-  pending_pay: { label: '待收款', color: '#6a1b9a', bg: '#f3e5f5' },
-  waiting: { label: '等貨中', color: '#ef6c00', bg: '#fff4e0' },
-  processing: { label: '處理中', color: '#1565c0', bg: '#e3f2fd' },
+  cancelled: { label: '已取消', color: c.text.disabled, bg: c.background.main },
+  done: { label: '已完成', color: c.success[700], bg: c.success[50] },
+  partial: { label: '部分到貨', color: c.secondary[700], bg: c.secondary[50] },
+  pending_pay: { label: '待收款', color: c.warning[700], bg: c.warning[50] },
+  waiting: { label: '等貨中', color: c.warning[700], bg: c.warning[50] },
+  processing: { label: '處理中', color: c.info[700], bg: c.info[50] },
 }
 
 export type LiffOrderQtySummary = {
@@ -96,8 +100,8 @@ export function liffOrderStatus(order: LiffShopOrder): LiffOrderStatusKey {
 }
 
 export function liffDeliveryLabel(method: string): string {
-  if (method === 'shipping') return '📦 寄送'
-  return '📍 面交'
+  if (method === 'shipping') return '寄送'
+  return '面交'
 }
 
 export type LiffItemProgressChip = { label: string; color: string; bg: string }

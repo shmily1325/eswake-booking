@@ -28,7 +28,6 @@ import { QuickTransaction } from './pages/QuickTransaction'
 import { MemberTransaction } from './pages/member/MemberTransaction'
 import { AnnouncementManagement } from './pages/admin/AnnouncementManagement'
 import { LineBindingStatus } from './pages/admin/LineBindingStatus'
-import { LineSettings } from './pages/admin/LineSettings'
 import { Statistics } from './pages/admin/Statistics'
 import { BoatUsageHoursPage } from './pages/admin/BoatUsageHoursPage'
 import { CoachDailyView } from './pages/coach/CoachDailyView'
@@ -124,7 +123,6 @@ function AdminAppContent() {
           <Route path="/staff" element={<StaffManagement />} />
           <Route path="/announcements" element={<AnnouncementManagement />} />
           <Route path="/line-binding" element={<LineBindingStatus />} />
-          <Route path="/line-settings" element={<LineSettings />} />
           <Route path="/coach-daily" element={<CoachDailyView />} />
           <Route path="/coach-time-off" element={<CoachTimeOffPage />} />
           <Route path="/boats" element={<BoatManagement />} />

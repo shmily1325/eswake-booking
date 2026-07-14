@@ -3505,9 +3505,9 @@
                     '<div style="margin-bottom: 18px; padding: 14px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e0e0e0;">' +
                     '<label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; font-weight: 500; gap: 10px;">' +
                     '<input type="checkbox" id="tomorrow-include-weather" ' + (includeW ? 'checked' : '') + ' style="width: 16px; height: 16px; cursor: pointer;"> <span>🌥️ 包含天氣警告</span></label></div>' +
-                    '<div style="margin-bottom: 15px;"><label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">天氣警告文字</label>' +
+                    '<div style="margin-bottom: 15px;"><label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">天氣提醒</label>' +
                     '<textarea id="tomorrow-weather-warning" style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; box-sizing: border-box; resize: vertical;" ' + (includeW ? '' : 'disabled') + '>' + (weatherW || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea></div>' +
-                    '<div><label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">結尾提醒文字</label>' +
+                    '<div><label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">預約提醒</label>' +
                     '<textarea id="tomorrow-footer-text" style="width: 100%; min-height: 140px; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; box-sizing: border-box; resize: vertical;">' + (footerT || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea></div>' +
                     '<div style="margin-top: 15px; padding: 12px; background: #e8f5e9; border-radius: 4px; font-size: 13px; color: #2e7d32;">✓ 您的修改會自動保存，下次打開時繼續使用</div></div>';
                 

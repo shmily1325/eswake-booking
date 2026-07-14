@@ -1,14 +1,14 @@
-// LIFF 分頁：僅 active 顯示 emoji，避免四格過擠
+// LIFF 分頁：底線 + 字重標示 active（無 emoji）
 
 import { triggerHaptic } from '../../../utils/haptic'
 import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 import type { TabType } from '../types'
 
-const TABS: { tab: TabType; label: string; emoji: string }[] = [
-  { tab: 'bookings', label: '預約', emoji: '📅' },
-  { tab: 'balance', label: '儲值', emoji: '💰' },
-  { tab: 'orders', label: '商品', emoji: '📦' },
-  { tab: 'profile', label: '會員', emoji: '👤' },
+const TABS: { tab: TabType; label: string }[] = [
+  { tab: 'bookings', label: '預約' },
+  { tab: 'balance', label: '儲值' },
+  { tab: 'orders', label: '商品' },
+  { tab: 'profile', label: '會員' },
 ]
 
 interface LiffTabsProps {
@@ -21,14 +21,14 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
     <div
       style={{
         display: 'flex',
-        background: 'white',
-        borderBottom: '1px solid #e8e8e8',
+        background: LIFF_THEME.cardBg,
+        borderBottom: `1px solid ${LIFF_THEME.borderSubtle}`,
         position: 'sticky',
         top: 'var(--safe-area-inset-top, 0px)',
         zIndex: 10,
       }}
     >
-      {TABS.map(({ tab, label, emoji }) => {
+      {TABS.map(({ tab, label }) => {
         const active = activeTab === tab
         return (
           <button
@@ -40,7 +40,7 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
             }}
             style={{
               flex: 1,
-              padding: '12px 4px',
+              padding: '14px 4px',
               border: 'none',
               background: 'transparent',
               color: active ? LIFF_THEME.tabActive : LIFF_THEME.tabInactive,
@@ -52,7 +52,7 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
               transition: 'color 0.15s, border-color 0.15s',
             }}
           >
-            {active ? `${emoji} ${label}` : label}
+            {label}
           </button>
         )
       })}

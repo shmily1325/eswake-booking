@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
 import type { FaqItem } from './liffBookingContent'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookAccordionProps {
   items: FaqItem[]
@@ -19,10 +20,10 @@ export function BookAccordion({ items, defaultOpenId }: BookAccordionProps) {
           <div
             key={item.id}
             style={{
-              border: '1px solid #e8e8e8',
+              border: `1px solid ${T.borderSubtle}`,
               borderRadius: 10,
               overflow: 'hidden',
-              background: 'white',
+              background: T.cardBg,
             }}
           >
             <button
@@ -35,11 +36,11 @@ export function BookAccordion({ items, defaultOpenId }: BookAccordionProps) {
                 width: '100%',
                 padding: '14px 16px',
                 border: 'none',
-                background: open ? '#fafafa' : 'white',
+                background: open ? T.surfaceMuted : T.cardBg,
                 textAlign: 'left',
-                fontSize: 14,
+                fontSize: ty.body,
                 fontWeight: 600,
-                color: '#333',
+                color: T.inkSoft,
                 cursor: 'pointer',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -48,14 +49,14 @@ export function BookAccordion({ items, defaultOpenId }: BookAccordionProps) {
               }}
             >
               <span>{item.question}</span>
-              <span style={{ color: '#999', fontSize: 18, lineHeight: 1 }}>{open ? '−' : '+'}</span>
+              <span style={{ color: T.mutedLight, fontSize: 18, lineHeight: 1 }}>{open ? '−' : '+'}</span>
             </button>
             {open && (
               <div
                 style={{
                   padding: '0 16px 14px',
-                  fontSize: 14,
-                  color: '#555',
+                  fontSize: ty.body,
+                  color: T.muted,
                   lineHeight: 1.7,
                   whiteSpace: 'pre-wrap',
                 }}

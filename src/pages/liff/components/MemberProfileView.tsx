@@ -7,7 +7,7 @@ import {
   getMembershipExpiryRowStatus,
   type LiffExpiryRowStatus
 } from '../liffExpiryAlerts'
-import { liffContentPanel, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+import { liffAlertTone, liffContentPanel, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 
 interface MemberProfileViewProps {
   member: Member
@@ -47,38 +47,21 @@ function membershipTypeLine(member: Member): string {
 
 function ExpiryBadge({ status }: { status: LiffExpiryRowStatus }) {
   if (status === 'none') return null
-  if (status === 'expired') {
-    return (
-      <span
-        style={{
-          flexShrink: 0,
-          fontSize: '11px',
-          fontWeight: 700,
-          color: '#b71c1c',
-          background: '#ffebee',
-          padding: '2px 8px',
-          borderRadius: '999px',
-          border: '1px solid #ef9a9a'
-        }}
-      >
-        已過期
-      </span>
-    )
-  }
+  const tone = liffAlertTone(status === 'expired' ? 'danger' : 'warning')
   return (
     <span
       style={{
         flexShrink: 0,
         fontSize: '11px',
         fontWeight: 700,
-        color: '#e65100',
-        background: '#fff8e1',
+        color: tone.color,
+        background: tone.bg,
         padding: '2px 8px',
         borderRadius: '999px',
-        border: '1px solid #ffcc80'
+        border: `1px solid ${tone.border}`,
       }}
     >
-      即將到期
+      {status === 'expired' ? '已過期' : '即將到期'}
     </span>
   )
 }
@@ -92,7 +75,7 @@ function Row({ label, value, badge }: { label: string; value: string; badge?: Re
         justifyContent: 'space-between',
         gap: '10px',
         padding: '11px 0',
-        borderBottom: '1px solid #f0f0f0',
+        borderBottom: `1px solid ${LIFF_THEME.rowDivider}`,
       }}
     >
       <span style={{ fontSize: LIFF_TYPE.caption + 1, color: LIFF_THEME.muted, flexShrink: 0 }}>{label}</span>
@@ -125,12 +108,12 @@ function Row({ label, value, badge }: { label: string; value: string; badge?: Re
 function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number; expiresAt: string | null | undefined }) {
   const expiryLabel = formatDateSlash(expiresAt)
   const boardStatus = getBoardExpiryRowStatus(expiresAt)
-  const accent =
+  const tone =
     boardStatus === 'expired'
-      ? '4px solid #c62828'
+      ? liffAlertTone('danger')
       : boardStatus === 'soon'
-        ? '4px solid #ff9800'
-        : '4px solid transparent'
+        ? liffAlertTone('warning')
+        : null
 
   return (
     <div
@@ -140,16 +123,20 @@ function BoardSlotCard({ slotNumber, expiresAt }: { slotNumber: string | number;
         justifyContent: 'space-between',
         gap: '10px',
         padding: '10px 12px',
-        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-        borderRadius: '10px',
-        border: '1px solid #e2e8f0',
-        borderLeft: accent,
+        background: LIFF_THEME.surfaceInset,
+        borderRadius: LIFF_THEME.controlRadius,
+        border: `1px solid ${LIFF_THEME.borderSubtle}`,
+        borderLeft: tone ? `3px solid ${tone.border}` : `3px solid transparent`,
       }}
     >
-      <span style={{ fontSize: '15px', fontWeight: 700, color: '#334155' }}>#{slotNumber}</span>
+      <span style={{ fontSize: LIFF_TYPE.body + 1, fontWeight: 700, color: LIFF_THEME.inkSoft }}>
+        #{slotNumber}
+      </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
         <ExpiryBadge status={boardStatus} />
-        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>{expiryLabel}</span>
+        <span style={{ fontSize: LIFF_TYPE.body, fontWeight: 600, color: LIFF_THEME.ink }}>
+          {expiryLabel}
+        </span>
       </div>
     </div>
   )
@@ -172,25 +159,24 @@ export function MemberProfileView({ member }: MemberProfileViewProps) {
       <div
         style={{
           padding: '14px 0 0 0',
-          borderBottom: '1px solid #f0f0f0',
-          paddingBottom: '14px'
+          borderBottom: `1px solid ${LIFF_THEME.rowDivider}`,
+          paddingBottom: '14px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-          <span style={{ fontSize: '16px' }} aria-hidden>
-            🏄
+          <span style={{ fontSize: LIFF_TYPE.caption + 1, color: LIFF_THEME.muted, fontWeight: 600 }}>
+            置板
           </span>
-          <span style={{ fontSize: '13px', color: '#888', fontWeight: 600 }}>置板</span>
           {member.board_slots && member.board_slots.length > 1 && (
             <span
               style={{
                 marginLeft: '4px',
                 fontSize: '11px',
                 fontWeight: 600,
-                color: '#64748b',
-                background: '#e2e8f0',
+                color: LIFF_THEME.muted,
+                background: LIFF_THEME.surfaceInset,
                 padding: '2px 8px',
-                borderRadius: '999px'
+                borderRadius: '999px',
               }}
             >
               {member.board_slots.length} 格

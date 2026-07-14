@@ -23,7 +23,6 @@ import {
   TransactionModal,
   LiffStyles,
   LiffExpiryBanner,
-  LiffContactBar,
   TabPanelSkeleton,
 } from './components'
 import { buildLiffExpiryBannerLines } from './liffExpiryAlerts'
@@ -33,6 +32,7 @@ import { useRouteDocumentMeta } from '../../lib/useRouteDocumentMeta'
 import { ROUTE_OG_BY_PATH } from '../../lib/routeOgMeta'
 import { BrandCopyrightBlock } from '../../components/BrandCopyrightBlock'
 import { ES_BRAND } from '../../lib/esBrandTokens'
+import { LIFF_THEME } from './liffUiStyles'
 import { LiffBootScreen } from './LiffBootScreen'
 import {
   enrichMemberForLiff,
@@ -552,8 +552,7 @@ export function LiffMyBookings() {
       />
 
       {/* Content（順序：預約 → 儲值 → 商品 → 會員） */}
-      <div style={{ padding: '16px' }}>
-        {activeTab !== 'bookings' && expiryBannerLines.length === 0 && <LiffContactBar />}
+      <div style={{ padding: '20px 18px 8px' }}>
         {member && expiryBannerLines.length > 0 && activeTab !== 'profile' && (
           <LiffExpiryBanner
             lines={expiryBannerLines}
@@ -612,10 +611,10 @@ export function LiffMyBookings() {
       <BrandCopyrightBlock
         subtitle={ES_BRAND.memberAreaLabel}
         style={{
-          padding: '20px',
+          padding: '28px 20px 20px',
           paddingBottom: 'calc(20px + var(--safe-area-inset-bottom, 0px))',
           textAlign: 'center',
-          color: '#999',
+          color: LIFF_THEME.mutedLight,
           fontSize: '12px',
         }}
       />

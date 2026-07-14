@@ -1,6 +1,6 @@
-// 儲值餘額視圖組件
+// 儲值餘額視圖：iOS 分組列表，點列開明細
 
-import { liffContentPanel, liffHintBox } from '../liffUiStyles'
+import { liffContentPanel, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 import type { Member } from '../types'
 import { BalanceCard } from './BalanceCard'
 
@@ -9,73 +9,65 @@ interface BalanceViewProps {
   onCategoryClick: (category: string) => void
 }
 
+const ROWS: {
+  label: string
+  unit: '元' | '分'
+  category: string
+  value: (m: Member) => number | undefined
+}[] = [
+  { label: '儲值餘額', unit: '元', category: 'balance', value: (m) => m.balance },
+  { label: 'VIP票券', unit: '元', category: 'vip_voucher', value: (m) => m.vip_voucher_amount },
+  {
+    label: '指定課',
+    unit: '分',
+    category: 'designated_lesson',
+    value: (m) => m.designated_lesson_minutes,
+  },
+  {
+    label: 'G23船券',
+    unit: '分',
+    category: 'boat_voucher_g23',
+    value: (m) => m.boat_voucher_g23_minutes,
+  },
+  {
+    label: 'G21/黑豹',
+    unit: '分',
+    category: 'boat_voucher_g21_panther',
+    value: (m) => m.boat_voucher_g21_panther_minutes,
+  },
+  {
+    label: '贈送大船',
+    unit: '分',
+    category: 'gift_boat',
+    value: (m) => m.gift_boat_hours,
+  },
+]
+
 export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
   return (
     <div style={liffContentPanel}>
-      <div style={liffHintBox}>
-        點擊下方任一張卡片，即可查看該項目的<strong style={{ color: '#333' }}>扣款明細</strong>。
-      </div>
-      <div
+      <p
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '12px',
+          margin: '0 0 4px',
+          fontSize: LIFF_TYPE.caption,
+          color: LIFF_THEME.mutedLight,
+          lineHeight: 1.5,
         }}
       >
-        <BalanceCard
-          label="儲值餘額"
-          emoji="💰"
-          value={member.balance}
-          unit="元"
-          color="#52c41a"
-          category="balance"
-          onClick={onCategoryClick}
-        />
-        <BalanceCard
-          label="VIP票券"
-          emoji="💎"
-          value={member.vip_voucher_amount}
-          unit="元"
-          color="#9c27b0"
-          category="vip_voucher"
-          onClick={onCategoryClick}
-        />
-        <BalanceCard
-          label="指定課"
-          emoji="📚"
-          value={member.designated_lesson_minutes}
-          unit="分"
-          color="#ff9800"
-          category="designated_lesson"
-          onClick={onCategoryClick}
-        />
-        <BalanceCard
-          label="G23船券"
-          emoji="🚤"
-          value={member.boat_voucher_g23_minutes}
-          unit="分"
-          color="#1976d2"
-          category="boat_voucher_g23"
-          onClick={onCategoryClick}
-        />
-        <BalanceCard
-          label="G21/黑豹"
-          emoji="⛵"
-          value={member.boat_voucher_g21_panther_minutes}
-          unit="分"
-          color="#00acc1"
-          category="boat_voucher_g21_panther"
-          onClick={onCategoryClick}
-        />
-        <BalanceCard
-          label="贈送大船"
-          emoji="🎁"
-          value={member.gift_boat_hours}
-          unit="分"
-          color="#e91e63"
-          category="gift_boat"
-          onClick={onCategoryClick}
-        />
+        點選項目可查看扣款明細
+      </p>
+      <div>
+        {ROWS.map((row, index) => (
+          <BalanceCard
+            key={row.category}
+            label={row.label}
+            value={row.value(member)}
+            unit={row.unit}
+            category={row.category}
+            onClick={onCategoryClick}
+            isLast={index === ROWS.length - 1}
+          />
+        ))}
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { EditMemberDialog } from './EditMemberDialog'
@@ -6,6 +6,27 @@ import { TransactionDialog } from './TransactionDialog'
 import { useToast } from './ui'
 import { normalizeDate } from '../utils/date'
 import { MemoRecordCheckbox } from './MemoRecordCheckbox'
+import { designSystem, getBadgeStyle, getButtonStyle } from '../styles/designSystem'
+
+/** 詳情區塊標題（純樣式） */
+const sectionHeadingStyle: CSSProperties = {
+  margin: '0 0 12px 0',
+  fontSize: '16px',
+  color: designSystem.colors.text.primary,
+  fontWeight: 600,
+}
+
+/** 詳情內容面板：白底細框，取代灰底巢狀卡片 */
+const sectionPanelStyle: CSSProperties = {
+  background: designSystem.colors.background.card,
+  borderRadius: designSystem.borderRadius.lg,
+  padding: '12px 16px',
+  border: `1px solid ${designSystem.colors.border.light}`,
+}
+
+/** 入會／續會贈送提醒（需人工判斷後至會員儲值記帳，不會自動加） */
+const MEMBERSHIP_GIFT_CREDIT_HINT =
+  '贈送提醒：30分鐘指定課程、40分鐘大船時數\n請至「會員儲值」記帳'
 
 interface Member {
   id: string
@@ -58,14 +79,14 @@ interface MemberNote {
   updated_at: string | null
 }
 
-// 事件類型選項
+// 事件類型選項（value 不變；色階僅供顯示）
 const EVENT_TYPES = [
-  { value: '續約', label: '續約', color: '#4caf50' },
-  { value: '購買', label: '購買', color: '#2196f3' },
-  { value: '贈送', label: '贈送', color: '#9c27b0' },
-  { value: '使用', label: '使用', color: '#ff9800' },
-  { value: '入會', label: '入會', color: '#e91e63' },
-  { value: '備註', label: '備註', color: '#607d8b' },
+  { value: '續約', label: '續約', color: designSystem.colors.success[500] },
+  { value: '購買', label: '購買', color: designSystem.colors.info[500] },
+  { value: '贈送', label: '贈送', color: '#7a6b8a' },
+  { value: '使用', label: '使用', color: designSystem.colors.warning[500] },
+  { value: '入會', label: '入會', color: '#8a5a6a' },
+  { value: '備註', label: '備註', color: designSystem.colors.text.secondary },
 ]
 
 interface MemberDetailDialogProps {
@@ -542,6 +563,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
 
       const partnerMsg = hasPartner ? (renewBothPartners ? '（含配對會員）' : '（已解除配對）') : ''
       toast.success(isGuest ? '已轉為會員' : `續約成功${partnerMsg}`)
+      toast.warning(MEMBERSHIP_GIFT_CREDIT_HINT, 8000)
       setRenewDialogOpen(false)
       setRenewEndDate('')
       setRenewBothPartners(true)
@@ -858,27 +880,15 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                         alignItems: 'center',
                         marginBottom: '12px'
                       }}>
-                        <h3 style={{ margin: 0, fontSize: '16px', color: '#333', fontWeight: '600' }}>👤 基本資料</h3>
+                        <h3 style={{ ...sectionHeadingStyle, margin: 0 }}>基本資料</h3>
                         <button
                           onClick={() => setEditDialogOpen(true)}
-                          style={{
-                            padding: '4px 12px',
-                            background: '#f5f5f5',
-                            color: '#666',
-                            border: '1px solid #ddd',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                          }}
+                          style={getButtonStyle('outline', 'small', isMobile)}
                         >
-                          ✏️ 編輯
+                          編輯
                         </button>
                       </div>
-                      <div style={{ 
-                        background: '#f8f9fa',
-                        borderRadius: '8px',
-                        padding: '12px 16px',
-                      }}>
+                      <div style={sectionPanelStyle}>
                         <div style={{ 
                           display: isMobile ? 'flex' : 'flex', 
                           flexDirection: isMobile ? 'column' : 'row',
@@ -886,47 +896,33 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                           gap: isMobile ? '8px' : '16px', 
                           fontSize: '14px' 
                         }}>
-                          <div><span style={{ color: '#666' }}>姓名：</span>{member.name}</div>
-                          {member.nickname && <div><span style={{ color: '#666' }}>暱稱：</span>{member.nickname}</div>}
+                          <div><span style={{ color: designSystem.colors.text.secondary }}>姓名：</span>{member.name}</div>
+                          {member.nickname && <div><span style={{ color: designSystem.colors.text.secondary }}>暱稱：</span>{member.nickname}</div>}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ color: '#666' }}>手機：</span>
-                            <span>{member.phone || <span style={{ color: '#999' }}>未填寫</span>}</span>
+                            <span style={{ color: designSystem.colors.text.secondary }}>手機：</span>
+                            <span>{member.phone || <span style={{ color: designSystem.colors.text.disabled }}>未填寫</span>}</span>
                             <button
                               onClick={() => {
                                 setQuickEditPhone(member.phone || '')
                                 setQuickEditPhoneOpen(true)
                               }}
                               style={{
-                                background: 'none',
-                                border: 'none',
+                                ...getButtonStyle('ghost', 'small', isMobile),
                                 padding: '2px 6px',
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                color: '#5a5a5a',
+                                fontSize: '12px',
                                 flexShrink: 0,
                               }}
                               title="修改手機號碼"
                             >
-                              ✏️
+                              修改
                             </button>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <span
                               title={lineBound ? (lineUserId ? `已綁定 (${lineUserId})` : '已綁定') : '未綁定'}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '2px 8px',
-                                borderRadius: '999px',
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                background: lineBound ? '#e8f5e9' : '#f5f5f5',
-                                color: lineBound ? '#2e7d32' : '#9e9e9e',
-                                border: `1px solid ${lineBound ? '#a5d6a7' : '#e0e0e0'}`
-                              }}
+                              style={getBadgeStyle(lineBound ? 'success' : 'default', 'small')}
                             >
-                              {lineBound ? '✅ LINE 已綁定' : '❌ LINE 未綁定'}
+                              {lineBound ? 'LINE 已綁定' : 'LINE 未綁定'}
                             </span>
                             {lineBound && (
                               <button
@@ -950,14 +946,10 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                   }
                                 }}
                                 style={{
-                                  padding: '4px 8px',
-                                  background: '#fdecec',
-                                  color: '#b91c1c',
-                                  border: '1px solid #f8b4b4',
-                                  borderRadius: '6px',
+                                  ...getButtonStyle('ghost', 'small', isMobile),
+                                  color: designSystem.colors.danger[700],
                                   fontSize: '12px',
-                                  cursor: 'pointer',
-                                  fontWeight: 700
+                                  padding: '4px 8px',
                                 }}
                                 title="移除 LINE 綁定"
                               >
@@ -965,16 +957,12 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               </button>
                             )}
                           </div>
-                          {member.birthday && <div><span style={{ color: '#666' }}>生日：</span>{formatDate(member.birthday)}</div>}
+                          {member.birthday && <div><span style={{ color: designSystem.colors.text.secondary }}>生日：</span>{formatDate(member.birthday)}</div>}
                           <div>
-                            <span style={{ 
-                              background: member.membership_type === 'guest' ? '#fff9e6' : '#e3f2fd',
-                              color: member.membership_type === 'guest' ? '#856404' : '#1976d2',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              fontWeight: '600'
-                            }}>
+                            <span style={getBadgeStyle(
+                              member.membership_type === 'guest' ? 'warning' : 'info',
+                              'small'
+                            )}>
                               {getMembershipTypeLabel(member.membership_type || 'general')}
                             </span>
                           </div>
@@ -985,16 +973,14 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                     {/* 會籍 - 會員 */}
                     {(member.membership_type === 'general' || member.membership_type === 'dual') && (
                       <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333', fontWeight: '600' }}>🎫 會籍</h3>
-                        <div style={{ 
-                          background: '#f8f9fa',
-                          borderRadius: '8px',
-                          padding: '12px 16px',
-                        }}>
+                        <h3 style={sectionHeadingStyle}>會籍</h3>
+                        <div style={sectionPanelStyle}>
                           <div style={{ 
                             fontSize: '14px', 
                             marginBottom: '12px',
-                            color: member.membership_end_date && isExpired(member.membership_end_date) ? '#f44336' : '#333'
+                            color: member.membership_end_date && isExpired(member.membership_end_date)
+                              ? designSystem.colors.danger[700]
+                              : designSystem.colors.text.primary
                           }}>
                             {formatDate(member.membership_start_date) || '?'} → {formatDate(member.membership_end_date) || '?'}
                             {member.membership_end_date && isExpired(member.membership_end_date) && 
@@ -1006,7 +992,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               onClick={() => onSwitchMember?.(member.partner!.id)}
                               style={{ 
                                 fontSize: '13px', 
-                                color: onSwitchMember ? '#2196F3' : '#666', 
+                                color: onSwitchMember ? designSystem.colors.info[700] : designSystem.colors.text.secondary, 
                                 marginBottom: '12px',
                                 cursor: onSwitchMember ? 'pointer' : 'default',
                                 textDecoration: onSwitchMember ? 'underline' : 'none',
@@ -1015,7 +1001,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               }}
                               title={onSwitchMember ? `點擊查看 ${member.partner.nickname || member.partner.name} 的資料` : undefined}
                             >
-                              🔗 配對：{member.partner.nickname || member.partner.name}
+                              配對：{member.partner.nickname || member.partner.name}
                             </div>
                           )}
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
@@ -1029,35 +1015,18 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                 setRenewEndDate(newEnd.toISOString().split('T')[0])
                                 setRenewDialogOpen(true)
                               }}
-                              style={{
-                                padding: '6px 14px',
-                                background: '#4caf50',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                              }}
+                              style={getButtonStyle('success', 'small', isMobile)}
                             >
-                              🔄 續約
+                              續約
                             </button>
                             <button
                               onClick={handleConvertToGuest}
-                              style={{
-                                padding: '6px 14px',
-                                background: 'white',
-                                color: '#666',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px',
-                                fontSize: '13px',
-                                cursor: 'pointer',
-                              }}
+                              style={getButtonStyle('outline', 'small', isMobile)}
                             >
                               轉非會員
                             </button>
                           </div>
-                          <div style={{ fontSize: '12px', color: '#999', lineHeight: '1.5' }}>
+                          <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, lineHeight: '1.5' }}>
                             <div>• <strong>續約</strong>：設定新的到期日（預設+1年），會記錄到備忘錄</div>
                             <div>• <strong>轉非會員</strong>：清空會籍日期（資料在備忘錄），保留儲值和置板可繼續使用</div>
                           </div>
@@ -1068,13 +1037,9 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                     {/* 會籍 - 非會員 */}
                     {member.membership_type === 'guest' && (
                       <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333', fontWeight: '600' }}>🎫 會籍</h3>
-                        <div style={{ 
-                          background: '#f8f9fa',
-                          borderRadius: '8px',
-                          padding: '12px 16px',
-                        }}>
-                          <div style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
+                        <h3 style={sectionHeadingStyle}>會籍</h3>
+                        <div style={sectionPanelStyle}>
+                          <div style={{ fontSize: '14px', color: designSystem.colors.text.secondary, marginBottom: '12px' }}>
                             目前為非會員
                           </div>
                           <button
@@ -1085,20 +1050,11 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               setRenewEndDate(endDate.toISOString().split('T')[0])
                               setRenewDialogOpen(true)
                             }}
-                            style={{
-                              padding: '6px 14px',
-                              background: '#4caf50',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              cursor: 'pointer',
-                            }}
+                            style={getButtonStyle('success', 'small', isMobile)}
                           >
-                            🎫 轉為會員
+                            轉為會員
                           </button>
-                          <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                          <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginTop: '8px' }}>
                             設定會籍開始與到期日，會記錄到備忘錄
                           </div>
                         </div>
@@ -1113,29 +1069,19 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                         alignItems: 'center',
                         marginBottom: '12px'
                       }}>
-                        <h3 style={{ margin: 0, fontSize: '16px', color: '#333', fontWeight: '600' }}>🏄 置板</h3>
+                        <h3 style={{ ...sectionHeadingStyle, margin: 0 }}>置板</h3>
                         <button
                           onClick={() => setAddBoardDialogOpen(true)}
-                          style={{
-                            padding: '4px 12px',
-                            background: '#5a5a5a',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                          }}
+                          style={getButtonStyle('secondary', 'small', isMobile)}
                         >
                           + 新增
                         </button>
                       </div>
                       {boardStorage.length === 0 ? (
                         <div style={{ 
-                          background: '#f8f9fa',
-                          borderRadius: '8px',
-                          padding: '16px',
+                          ...sectionPanelStyle,
                           textAlign: 'center', 
-                          color: '#999', 
+                          color: designSystem.colors.text.secondary, 
                           fontSize: '13px' 
                         }}>
                           尚無置板
@@ -1147,36 +1093,32 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               key={board.id} 
                               onClick={() => openBoardEditDialog(board)}
                               style={{
-                                background: '#f8f9fa',
-                                borderRadius: '6px',
+                                ...sectionPanelStyle,
                                 padding: '10px 14px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 fontSize: '13px',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                border: '1px solid transparent',
+                                transition: designSystem.transitions.normal,
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#e8f4fd'
-                                e.currentTarget.style.borderColor = '#90caf9'
+                                e.currentTarget.style.borderColor = designSystem.colors.text.secondary
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.background = '#f8f9fa'
-                                e.currentTarget.style.borderColor = 'transparent'
+                                e.currentTarget.style.borderColor = designSystem.colors.border.light
                               }}
                             >
                               <div>
                                 <span style={{ fontWeight: '600' }}>#{board.slot_number}</span>
-                                {board.start_date && <span style={{ color: '#666', marginLeft: '8px' }}>{formatDate(board.start_date)}</span>}
-                                {board.expires_at && <span style={{ color: '#666' }}> → {formatDate(board.expires_at)}</span>}
+                                {board.start_date && <span style={{ color: designSystem.colors.text.secondary, marginLeft: '8px' }}>{formatDate(board.start_date)}</span>}
+                                {board.expires_at && <span style={{ color: designSystem.colors.text.secondary }}> → {formatDate(board.expires_at)}</span>}
                                 {board.expires_at && isExpired(board.expires_at) && 
-                                  <span style={{ color: '#f44336', marginLeft: '6px' }}>(已過期)</span>
+                                  <span style={{ color: designSystem.colors.danger[700], marginLeft: '6px' }}>(已過期)</span>
                                 }
                                 {board.notes && (
-                                  <span style={{ color: '#999', marginLeft: '8px', fontSize: '12px' }}>
-                                    📝 {board.notes.length > 10 ? board.notes.substring(0, 10) + '...' : board.notes}
+                                  <span style={{ color: designSystem.colors.text.secondary, marginLeft: '8px', fontSize: '12px' }}>
+                                    {board.notes.length > 10 ? board.notes.substring(0, 10) + '...' : board.notes}
                                   </span>
                                 )}
                               </div>
@@ -1185,15 +1127,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                   e.stopPropagation()  // 防止觸發卡片的點擊
                                   openBoardRenewDialog(board.id, board.slot_number, board.expires_at)
                                 }}
-                                style={{
-                                  padding: '4px 10px',
-                                  background: '#4caf50',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  cursor: 'pointer',
-                                }}
+                                style={getButtonStyle('success', 'small', isMobile)}
                               >
                                 +1年
                               </button>
@@ -1211,20 +1145,12 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                         alignItems: 'center',
                         marginBottom: '12px'
                       }}>
-                        <h3 style={{ margin: 0, fontSize: '16px', color: '#333', fontWeight: '600' }}>
-                          📝 備忘錄 {memberNotes.length > 0 && <span style={{ color: '#999', fontWeight: 'normal' }}>({memberNotes.length})</span>}
+                        <h3 style={{ ...sectionHeadingStyle, margin: 0 }}>
+                          備忘錄 {memberNotes.length > 0 && <span style={{ color: designSystem.colors.text.secondary, fontWeight: 'normal' }}>({memberNotes.length})</span>}
                         </h3>
                         <button
                           onClick={handleAddNote}
-                          style={{
-                            padding: '4px 12px',
-                            background: '#5a5a5a',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                          }}
+                          style={getButtonStyle('secondary', 'small', isMobile)}
                         >
                           + 新增
                         </button>
@@ -1233,13 +1159,10 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                       {memberNotes.length === 0 ? (
                         <div style={{ 
                           textAlign: 'center', 
-                          padding: '30px 20px', 
-                          color: '#999',
-                          background: '#f8f9fa',
-                          borderRadius: '8px',
-                          border: '1px solid #e0e0e0'
+                          padding: '24px 20px', 
+                          color: designSystem.colors.text.secondary,
+                          ...sectionPanelStyle,
                         }}>
-                          <div style={{ fontSize: '32px', marginBottom: '8px' }}>📝</div>
                           <div style={{ fontSize: '14px' }}>尚無備忘錄</div>
                         </div>
                       ) : (
@@ -1256,10 +1179,9 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               <div
                                 key={note.id}
                                 style={{
-                                  background: '#f8f9fa',
-                                  borderRadius: '8px',
+                                  ...sectionPanelStyle,
                                   padding: '12px',
-                                  borderLeft: `4px solid ${eventType.color}`,
+                                  borderLeft: `3px solid ${eventType.color}`,
                                 }}
                               >
                                 <div style={{
@@ -1275,22 +1197,19 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                       marginBottom: '4px',
                                     }}>
                                       <span style={{
+                                        ...getBadgeStyle('default', 'small'),
                                         background: eventType.color,
                                         color: 'white',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px',
-                                        fontSize: '11px',
-                                        fontWeight: '600',
                                       }}>
                                         {eventType.label}
                                       </span>
-                                      <span style={{ color: '#666', fontSize: '12px' }}>
+                                      <span style={{ color: designSystem.colors.text.secondary, fontSize: '12px' }}>
                                         {note.event_date || ''}
                                       </span>
                                     </div>
                                     <div style={{ 
                                       fontSize: '13px', 
-                                      color: '#333',
+                                      color: designSystem.colors.text.primary,
                                       lineHeight: '1.4',
                                     }}>
                                       {note.description}
@@ -1300,30 +1219,23 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                     <button
                                       onClick={() => handleEditNote(note)}
                                       style={{
+                                        ...getButtonStyle('ghost', 'small', isMobile),
                                         padding: '4px 8px',
-                                        background: '#e3f2fd',
-                                        color: '#1976d2',
-                                        border: 'none',
-                                        borderRadius: '4px',
                                         fontSize: '11px',
-                                        cursor: 'pointer',
                                       }}
                                     >
-                                      ✏️
+                                      編輯
                                     </button>
                                     <button
                                       onClick={() => handleDeleteNote(note.id)}
                                       style={{
+                                        ...getButtonStyle('ghost', 'small', isMobile),
                                         padding: '4px 8px',
-                                        background: '#ffebee',
-                                        color: '#d32f2f',
-                                        border: 'none',
-                                        borderRadius: '4px',
                                         fontSize: '11px',
-                                        cursor: 'pointer',
+                                        color: designSystem.colors.danger[700],
                                       }}
                                     >
-                                      🗑️
+                                      刪除
                                     </button>
                                   </div>
                                 </div>
@@ -1336,24 +1248,19 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
 
                     {/* 金流資訊 - 點擊可記帳 */}
                     <div style={{ marginBottom: '24px' }}>
-                      <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333', fontWeight: '600' }}>💰 金流</h3>
+                      <h3 style={sectionHeadingStyle}>金流</h3>
                       <div 
                         onClick={() => setTransactionDialogOpen(true)}
                         style={{ 
-                          background: '#f8f9fa',
-                          borderRadius: '8px',
-                          padding: '12px 16px',
+                          ...sectionPanelStyle,
                           cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          border: '2px solid transparent',
+                          transition: designSystem.transitions.normal,
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#e8f4e8'
-                          e.currentTarget.style.borderColor = '#4caf50'
+                          e.currentTarget.style.borderColor = designSystem.colors.text.secondary
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#f8f9fa'
-                          e.currentTarget.style.borderColor = 'transparent'
+                          e.currentTarget.style.borderColor = designSystem.colors.border.light
                         }}
                       >
                         <div style={{ 
@@ -1362,9 +1269,9 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                           alignItems: 'center',
                           marginBottom: '10px',
                           paddingBottom: '8px',
-                          borderBottom: '1px solid #e0e0e0',
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
                         }}>
-                          <span style={{ fontSize: '12px', color: '#4caf50', fontWeight: '500' }}>
+                          <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary, fontWeight: '500' }}>
                             點擊記帳 →
                           </span>
                         </div>
@@ -1375,27 +1282,27 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                           fontSize: '13px'
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#666' }}>儲值</span>
+                            <span style={{ color: designSystem.colors.text.secondary }}>儲值</span>
                             <span style={{ fontWeight: '500' }}>${(member.balance ?? 0).toFixed(0)}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#666' }}>VIP票券</span>
+                            <span style={{ color: designSystem.colors.text.secondary }}>VIP票券</span>
                             <span style={{ fontWeight: '500' }}>${(member.vip_voucher_amount ?? 0).toFixed(0)}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#666' }}>G23船券</span>
+                            <span style={{ color: designSystem.colors.text.secondary }}>G23船券</span>
                             <span style={{ fontWeight: '500' }}>{member.boat_voucher_g23_minutes ?? 0}分</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#666' }}>G21/黑豹</span>
+                            <span style={{ color: designSystem.colors.text.secondary }}>G21/黑豹</span>
                             <span style={{ fontWeight: '500' }}>{member.boat_voucher_g21_panther_minutes ?? 0}分</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#666' }}>贈送大船</span>
+                            <span style={{ color: designSystem.colors.text.secondary }}>贈送大船</span>
                             <span style={{ fontWeight: '500' }}>{member.gift_boat_hours ?? 0}分</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#666' }}>指定課</span>
+                            <span style={{ color: designSystem.colors.text.secondary }}>指定課</span>
                             <span style={{ fontWeight: '500' }}>{member.designated_lesson_minutes ?? 0}分</span>
                           </div>
                         </div>
@@ -1655,7 +1562,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
               alignItems: 'center',
             }}>
               <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-                {editingNote ? '✏️ 編輯備忘錄' : '➕ 新增備忘錄'}
+                {editingNote ? '編輯備忘錄' : '新增備忘錄'}
               </h2>
               <button
                 onClick={() => {
@@ -1825,9 +1732,38 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
             padding: '24px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
           }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
-              {member?.membership_type === 'guest' ? '🎫 轉為會員' : '🔄 會籍續約'}
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>
+              {member?.membership_type === 'guest' ? '轉為會員' : '會籍續約'}
             </h3>
+
+            {/* 入會／續會贈送提醒：只提示政策，是否贈送／怎麼記仍由操作者判斷 */}
+            <div
+              role="note"
+              style={{
+                marginBottom: '20px',
+                padding: '12px 14px',
+                background: designSystem.colors.warning[50],
+                border: `1px solid ${designSystem.colors.warning[500]}55`,
+                borderRadius: '10px',
+                color: designSystem.colors.warning[700],
+                fontSize: '14px',
+                fontWeight: 600,
+                lineHeight: 1.5,
+              }}
+            >
+              <div style={{ marginBottom: '8px' }}>
+                {member?.membership_type === 'guest' ? '入會贈送提醒' : '續會贈送提醒'}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '14px' }}>
+                ▶︎ 30分鐘指定課程
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>
+                ▶︎ 40分鐘大船時數
+              </div>
+              <div style={{ marginTop: '8px', fontWeight: 500, fontSize: '12px', opacity: 0.9 }}>
+                這裡只改會籍到期日，請至「會員儲值」記帳
+              </div>
+            </div>
             
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
@@ -1883,7 +1819,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                     style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                   />
                   <span>
-                    🔗 同時續約配對會員 <strong>{member.partner.nickname || member.partner.name}</strong>
+                    同時續約配對會員 <strong>{member.partner.nickname || member.partner.name}</strong>
                   </span>
                 </label>
                 <div style={{ fontSize: '12px', color: '#666', marginTop: '8px', marginLeft: '28px' }}>
@@ -1891,7 +1827,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                 </div>
                 {!renewBothPartners && (
                   <div style={{ fontSize: '12px', color: '#e65100', marginTop: '8px', marginLeft: '28px' }}>
-                    ⚠️ 不勾選會解除配對，雙方都變為一般會員
+                    不勾選會解除配對，雙方都變為一般會員
                   </div>
                 )}
               </div>
@@ -1920,7 +1856,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                   padding: '10px 20px',
                   border: 'none',
                   borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                  background: designSystem.colors.success[500],
                   color: 'white',
                   cursor: 'pointer',
                   fontSize: '14px',
@@ -1956,7 +1892,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
             padding: '24px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
           }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>🏄 置板續約 #{renewingBoard.slot_number}</h3>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>置板續約 #{renewingBoard.slot_number}</h3>
             
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
@@ -2044,7 +1980,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
           }}>
             <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
-              ✏️ 編輯置板 #{editingBoard.slot_number}
+              編輯置板 #{editingBoard.slot_number}
             </h3>
             
             {/* 開始日期 */}
@@ -2148,7 +2084,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                   fontSize: '13px',
                 }}
               >
-                🗑️ 移除置板
+                移除置板
               </button>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
@@ -2215,7 +2151,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
             }}
           >
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>📱 修改手機號碼</h3>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>修改手機號碼</h3>
             
             <div style={{ marginBottom: '20px' }}>
               <input

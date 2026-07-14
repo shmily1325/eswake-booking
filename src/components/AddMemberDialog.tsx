@@ -3,6 +3,11 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalTimestamp } from '../utils/date'
 import { useToast } from './ui'
+import { designSystem } from '../styles/designSystem'
+
+/** 入會贈送提醒（需人工判斷後至會員儲值記帳，不會自動加） */
+const MEMBERSHIP_GIFT_CREDIT_HINT =
+  '入會贈送提醒：30分鐘指定課程、40分鐘大船時數\n請至「會員儲值」記帳'
 
 interface AddMemberDialogProps {
   open: boolean
@@ -240,6 +245,10 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         // @ts-ignore
         await supabase.from('member_notes').insert(notesToAdd)
       }
+      toast.success('會員已新增')
+      if (formData.membership_type === 'general' || formData.membership_type === 'dual') {
+        toast.warning(MEMBERSHIP_GIFT_CREDIT_HINT, 8000)
+      }
       onSuccess()
       onClose()  // useEffect 會在 open=false 時自動重置表單
     } catch (error: any) {
@@ -409,6 +418,34 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 <option value="es">ES</option>
               </select>
             </div>
+
+            {(formData.membership_type === 'general' || formData.membership_type === 'dual') && (
+              <div
+                role="note"
+                style={{
+                  marginBottom: '16px',
+                  padding: '12px 14px',
+                  background: designSystem.colors.warning[50],
+                  border: `1px solid ${designSystem.colors.warning[500]}55`,
+                  borderRadius: '10px',
+                  color: designSystem.colors.warning[700],
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ marginBottom: '8px' }}>入會贈送提醒</div>
+                <div style={{ fontWeight: 700, fontSize: '14px' }}>
+                  ▶︎ 30分鐘指定課程
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>
+                  ▶︎ 40分鐘大船時數
+                </div>
+                <div style={{ marginTop: '8px', fontWeight: 500, fontSize: '12px', opacity: 0.9 }}>
+                  這裡不會自動加額度，請至「會員儲值」記帳
+                </div>
+              </div>
+            )}
 
             {/* 會員日期 */}
             <div style={{ 

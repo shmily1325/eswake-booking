@@ -9,7 +9,7 @@ import {
   classifyBookingDate,
   monthBookability,
 } from './liffBookingDates'
-import { BOOK_TYPE as ty } from './bookTheme'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookDateCalendarProps {
   value: string
@@ -151,10 +151,10 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
               style={{
                 aspectRatio: '1',
                 minHeight: 40,
-                border: selected ? '2px solid #4a4a4a' : '1px solid #e8e8e8',
+                border: selected ? `2px solid ${T.accent}` : `1px solid ${T.borderSubtle}`,
                 borderRadius: 10,
-                background: selected ? '#4a4a4a' : disabled ? '#fafafa' : '#fff',
-                color: selected ? '#fff' : disabled ? '#ccc' : '#333',
+                background: selected ? T.accent : disabled ? T.surfaceMuted : T.cardBg,
+                color: selected ? '#fff' : disabled ? T.mutedLight : T.inkSoft,
                 fontSize: ty.body,
                 fontWeight: selected ? 700 : 500,
                 cursor: disabled ? 'not-allowed' : 'pointer',
@@ -179,10 +179,10 @@ function navBtn(disabled: boolean) {
   return {
     width: 36,
     height: 36,
-    border: '1px solid #ddd',
+    border: `1px solid ${T.borderSubtle}`,
     borderRadius: 10,
-    background: disabled ? '#f5f5f5' : '#fff',
-    color: disabled ? '#ccc' : '#444',
+    background: disabled ? T.surfaceMuted : T.cardBg,
+    color: disabled ? T.mutedLight : T.inkSoft,
     fontSize: 20,
     lineHeight: 1,
     cursor: disabled ? 'not-allowed' as const : 'pointer' as const,

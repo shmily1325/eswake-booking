@@ -19,8 +19,8 @@ export const ES_BRAND = {
   /** 預約／會員內容區底色 */
   pageBg: '#f4f5f7',
   progressFill: '#ffffff',
-  /** LIFF 主按鈕（比 header 純黑略輕） */
-  ctaBg: '#2d2d2d',
+  /** 主 CTA：對齊 designSystem primary[500] */
+  ctaBg: '#1d1d1f',
 } as const
 
 /** 頁面標題：ES Wake {區域}（OG / document.title 共用） */

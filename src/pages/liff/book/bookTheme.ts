@@ -1,41 +1,44 @@
+import { designSystem } from '../../../styles/designSystem'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
+import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 
-/** 預約表單字級（4 級，最低 12px） */
+const c = designSystem.colors
+
+/** 預約表單字級（與 LIFF_TYPE／designSystem mobile 對齊） */
 export const BOOK_TYPE = {
   /** 步驟標題、大價格 */
-  display: 20,
+  display: LIFF_TYPE.display,
   /** 卡片標題、活動/船型主標 */
-  title: 16,
+  title: LIFF_TYPE.title,
   /** 正文、chip、欄位 label、輸入 */
-  body: 14,
+  body: LIFF_TYPE.body,
   /** 提示、副標、pill、metadata */
-  caption: 12,
+  caption: LIFF_TYPE.caption,
 } as const
 
-/** 預約表單視覺 token（與會員專區同色系，略加層次） */
+/** 預約表單視覺 token（繼承 LIFF_THEME，估價卡用 info 色階） */
 export const BOOK_THEME = {
-  ink: '#1a1a1a',
-  inkSoft: '#333',
-  muted: '#888',
-  mutedLight: '#aaa',
+  ink: LIFF_THEME.ink,
+  inkSoft: LIFF_THEME.inkSoft,
+  muted: LIFF_THEME.muted,
+  mutedLight: LIFF_THEME.mutedLight,
   headerBg: ES_BRAND.headerBg,
-  pageBg: ES_BRAND.pageBg,
-  cardBg: '#fff',
-  cardBorder: '1px solid rgba(0,0,0,0.06)',
-  cardShadow: '0 2px 14px rgba(0,0,0,0.07)',
-  cardRadius: 16,
-  surfaceMuted: '#f8f9fb',
-  surfaceInset: '#f3f4f6',
-  lineGreen: '#00b900',
+  pageBg: LIFF_THEME.pageBg,
+  cardBg: LIFF_THEME.cardBg,
+  cardBorder: LIFF_THEME.cardBorder,
+  cardShadow: LIFF_THEME.cardShadow,
+  cardRadius: LIFF_THEME.cardRadius,
+  surfaceMuted: c.secondary[50],
+  surfaceInset: LIFF_THEME.surfaceInset,
+  lineGreen: LIFF_THEME.lineGreen,
   lineGreenSoft: 'rgba(0,185,0,0.14)',
-  accent: '#4a4a4a',
-  accentSoft: 'rgba(74,74,74,0.08)',
-  /** 主按鈕（比 header 純黑略輕，減少上下夾擠感） */
-  ctaBg: ES_BRAND.ctaBg,
-  borderSubtle: '#e4e6ea',
-  /** 估價卡：淡海藍底，與表單灰白區隔 */
-  estimateBg: '#f0f6fa',
-  estimateBorder: '#c5dce8',
-  estimateAccent: '#2b6b8a',
-  estimateDetailInk: '#3d5566',
+  accent: c.secondary[700],
+  accentSoft: 'rgba(65,68,75,0.08)',
+  ctaBg: LIFF_THEME.ctaBg,
+  borderSubtle: LIFF_THEME.borderSubtle,
+  /** 估價卡：info 色階，與表單灰白區隔 */
+  estimateBg: c.info[50],
+  estimateBorder: c.secondary[200],
+  estimateAccent: c.info[700],
+  estimateDetailInk: c.info[700],
 } as const

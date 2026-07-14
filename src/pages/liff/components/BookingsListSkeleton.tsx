@@ -1,12 +1,9 @@
+import { liffContentPanel } from '../liffUiStyles'
+
 /** 預約分頁 inline 骨架（專區 shell 已顯示時用） */
 export function BookingsListSkeleton() {
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '12px',
-      padding: '20px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    }}>
+    <div style={liffContentPanel}>
       <div className="skeleton-pulse" style={{
         width: '70%',
         height: 14,

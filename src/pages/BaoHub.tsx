@@ -127,12 +127,6 @@ export function BaoHub() {
             icon: '📱',
             link: '/line-binding',
           },
-          {
-            title: 'LINE 提醒設置',
-            icon: '📱',
-            link: '/line-settings',
-            disabled: true
-          }
         ]
       }
     ]
@@ -164,7 +158,7 @@ export function BaoHub() {
             🔧
           </div>
           <h1 style={{
-            margin: '0 0 10px 0',
+            margin: '0 0 20px 0',
             fontSize: isMobile ? '32px' : '42px',
             fontWeight: '800',
             color: '#000',
@@ -173,14 +167,6 @@ export function BaoHub() {
           }}>
             BAO
           </h1>
-          <p style={{
-            margin: '0 0 20px 0',
-            fontSize: isMobile ? '14px' : '16px',
-            color: '#666',
-            fontWeight: '500'
-          }}>
-            管理者專用後台
-          </p>
           <div style={{
             display: 'flex',
             justifyContent: 'center',

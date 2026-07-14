@@ -9,7 +9,6 @@ import {
   liffGhostBtn,
   liffInput,
   liffLabel,
-  liffLineBtn,
   liffPrimaryBtn,
   liffSelect,
   LIFF_THEME,
@@ -77,43 +76,28 @@ export function BookBindingGate({
           right: 16,
         }}
       />
-      <div style={liffBindingCard}>
+      <div style={{ ...liffBindingCard, padding: '40px 24px 28px' }}>
         <EsBrandLockup
           brand={s.header.brand}
           subtitle={s.header.title}
           variant="onLight"
           align="center"
-          logoSize={48}
-          style={{ marginBottom: 8, justifyContent: 'center' }}
+          logoSize={56}
+          style={{ marginBottom: 12, justifyContent: 'center' }}
         />
-        <p style={{
-          fontSize: LIFF_TYPE.body,
-          color: LIFF_THEME.muted,
-          margin: '0 0 24px',
-          textAlign: 'center',
-          lineHeight: 1.5,
-        }}>
+        <p
+          style={{
+            fontSize: LIFF_TYPE.body,
+            color: LIFF_THEME.muted,
+            margin: '0 0 28px',
+            textAlign: 'center',
+            lineHeight: 1.55,
+          }}
+        >
           {b.subtitle}
         </p>
 
-        {bindingError && (
-          <div style={{
-            background: '#fff2f0',
-            border: '1px solid #ffccc7',
-            borderRadius: '12px',
-            padding: '12px 16px',
-            marginBottom: '16px',
-          }}>
-            <div style={{ fontSize: LIFF_TYPE.body, color: '#cf1322', marginBottom: '8px', fontWeight: '600' }}>
-              ❌ {bindingError}
-            </div>
-            <div style={{ fontSize: 13, color: LIFF_THEME.muted, lineHeight: '1.5' }}>
-              {b.errorHelp}
-            </div>
-          </div>
-        )}
-
-        <div style={{ marginBottom: '16px' }}>
+        <div style={{ marginBottom: 18 }}>
           <label style={liffLabel}>{b.phone}</label>
           <input
             type="tel"
@@ -127,24 +111,41 @@ export function BookBindingGate({
           />
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: 8 }}>
           <label style={liffLabel}>{b.birthday}</label>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: 8 }}>
             <select
               value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value)}
-              style={{ ...liffSelect, flex: 1.2 }}
+              onChange={(e) => {
+                setBirthYear(e.target.value)
+                setBindingError(null)
+              }}
+              style={{
+                ...liffSelect,
+                flex: 1.2,
+                color: birthYear ? LIFF_THEME.inkSoft : LIFF_THEME.mutedLight,
+              }}
             >
               <option value="">{b.year}</option>
               {Array.from({ length: 100 }, (_, i) => {
                 const year = new Date().getFullYear() - i
-                return <option key={year} value={year}>{year}</option>
+                return (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                )
               })}
             </select>
             <select
               value={birthMonth}
-              onChange={(e) => setBirthMonth(e.target.value)}
-              style={liffSelect}
+              onChange={(e) => {
+                setBirthMonth(e.target.value)
+                setBindingError(null)
+              }}
+              style={{
+                ...liffSelect,
+                color: birthMonth ? LIFF_THEME.inkSoft : LIFF_THEME.mutedLight,
+              }}
             >
               <option value="">{b.month}</option>
               {Array.from({ length: 12 }, (_, i) => (
@@ -155,8 +156,14 @@ export function BookBindingGate({
             </select>
             <select
               value={birthDay}
-              onChange={(e) => setBirthDay(e.target.value)}
-              style={liffSelect}
+              onChange={(e) => {
+                setBirthDay(e.target.value)
+                setBindingError(null)
+              }}
+              style={{
+                ...liffSelect,
+                color: birthDay ? LIFF_THEME.inkSoft : LIFF_THEME.mutedLight,
+              }}
             >
               <option value="">{b.day}</option>
               {Array.from({ length: 31 }, (_, i) => (
@@ -168,11 +175,30 @@ export function BookBindingGate({
           </div>
         </div>
 
+        {bindingError && (
+          <div
+            style={{
+              marginTop: 12,
+              marginBottom: 4,
+              fontSize: LIFF_TYPE.caption + 1,
+              color: LIFF_THEME.dangerText,
+              lineHeight: 1.5,
+            }}
+          >
+            {bindingError}
+            {b.errorHelp ? ` ${b.errorHelp}` : null}
+          </div>
+        )}
+
         <button
           type="button"
           onClick={onSubmit}
           disabled={binding || !isFormValid}
-          style={{ ...liffPrimaryBtn(!binding && !!isFormValid), marginBottom: '10px' }}
+          style={{
+            ...liffPrimaryBtn(!binding && !!isFormValid),
+            marginTop: 24,
+            marginBottom: 8,
+          }}
         >
           {binding ? b.submitting : b.submit}
         </button>
@@ -181,13 +207,17 @@ export function BookBindingGate({
           type="button"
           onClick={onSkip}
           disabled={binding}
-          style={{ ...liffGhostBtn, marginBottom: '16px', cursor: binding ? 'not-allowed' : 'pointer' }}
+          style={{
+            ...liffGhostBtn,
+            marginBottom: oaUrl ? 4 : 0,
+            cursor: binding ? 'not-allowed' : 'pointer',
+          }}
         >
           {b.skip}
         </button>
 
         {oaUrl && (
-          <button type="button" onClick={openOfficialContact} style={liffLineBtn}>
+          <button type="button" onClick={openOfficialContact} style={liffGhostBtn}>
             {b.contactOfficial}
           </button>
         )}
