@@ -861,7 +861,7 @@ export function EditBookingDialog({
           borderRadius: isMobile ? '16px 16px 0 0' : '12px',
           width: '100%',
           maxWidth: '500px',
-          color: '#000',
+          color: designSystem.colors.text.primary,
           margin: isMobile ? 'auto 0 0 0' : 'auto',
           position: 'relative',
           maxHeight: isMobile ? '80vh' : '90vh',
@@ -874,7 +874,7 @@ export function EditBookingDialog({
         {/* 標題欄 - Sticky */}
         <div style={{
           padding: isMobile ? '20px 20px 16px' : '20px',
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: `1px solid ${designSystem.colors.border.light}`,
           position: 'sticky',
           top: 0,
           background: 'white',
@@ -887,9 +887,9 @@ export function EditBookingDialog({
             margin: 0, 
             fontSize: isMobile ? '18px' : '20px', 
             fontWeight: 'bold',
-            color: '#000',
+            color: designSystem.colors.text.primary,
           }}>
-            ✏️ 修改預約
+            修改預約
           </h2>
           <button
             type="button"
@@ -900,7 +900,7 @@ export function EditBookingDialog({
               background: 'none',
               fontSize: '28px',
               cursor: (loading || isDeleting) ? 'not-allowed' : 'pointer',
-              color: '#666',
+              color: designSystem.colors.text.secondary,
               padding: '0 8px',
               opacity: (loading || isDeleting) ? 0.5 : 1,
             }}
@@ -1089,7 +1089,7 @@ export function EditBookingDialog({
               minWidth: 0,
               fontSize: isMobile ? '15px' : '15px',
               ...(loading || conflictStatus === 'conflict'
-                ? { background: '#ccc', boxShadow: 'none', cursor: 'not-allowed' }
+                ? { background: designSystem.colors.text.disabled, boxShadow: 'none', cursor: 'not-allowed' }
                 : {}),
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',

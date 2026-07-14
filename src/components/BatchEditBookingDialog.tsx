@@ -20,6 +20,9 @@ import {
   scheduleCoachTimeOffLinesToast,
 } from '../utils/coachTimeOffWarning'
 import { checkGlobalRestriction } from '../utils/restriction'
+import { designSystem, getBookingChoiceStyle, getBookingFlagBoxStyle, getButtonStyle } from '../styles/designSystem'
+
+const { colors: ds } = designSystem
 
 interface Coach {
   id: string
@@ -649,13 +652,21 @@ export function BatchEditBookingDialog({
   }
   
   if (!isOpen) return null
-  
+
+  const submitDisabled =
+    loading ||
+    fieldsToEdit.size === 0 ||
+    !filledBy.trim() ||
+    (fieldsToEdit.has('boat') && !selectedBoatId) ||
+    (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
+
   const inputStyle = {
     width: '100%',
     padding: isMobile ? '12px' : '10px',
-    border: '2px solid #e0e0e0',
-    borderRadius: '8px',
+    border: `1px solid ${ds.border.main}`,
+    borderRadius: designSystem.borderRadius.lg,
     fontSize: isMobile ? '16px' : '14px',
+    boxSizing: 'border-box' as const,
   }
   
   return (
@@ -688,7 +699,7 @@ export function BatchEditBookingDialog({
         {/* 標題 */}
         <div style={{
           padding: isMobile ? '20px 20px 16px' : '20px',
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: `1px solid ${ds.border.light}`,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -696,10 +707,10 @@ export function BatchEditBookingDialog({
           background: 'white',
         }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '18px', fontWeight: 'bold' }}>
-              ✏️ 批次修改預約
+            <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '18px', fontWeight: 'bold', color: ds.text.primary }}>
+              批次修改預約
             </h2>
-            <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
+            <div style={{ fontSize: '14px', color: ds.text.secondary, marginTop: '4px' }}>
               已選擇 {bookingIds.length} 筆預約
             </div>
           </div>
@@ -712,7 +723,7 @@ export function BatchEditBookingDialog({
               background: 'none',
               fontSize: '28px',
               cursor: loading ? 'not-allowed' : 'pointer',
-              color: '#666',
+              color: ds.text.secondary,
               padding: '0 8px',
               opacity: loading ? 0.5 : 1,
             }}
@@ -729,23 +740,19 @@ export function BatchEditBookingDialog({
           WebkitOverflowScrolling: 'touch',
         }}>
           <div style={{
-            padding: '12px',
-            backgroundColor: '#fff3cd',
-            borderRadius: '8px',
             marginBottom: '20px',
             fontSize: '14px',
-            color: '#856404',
+            color: ds.text.secondary,
+            lineHeight: 1.5,
           }}>
-            ⚠️ 請勾選要修改的欄位，未勾選的欄位將保持不變
+            請勾選要修改的欄位，未勾選的欄位將保持不變
           </div>
           
           {/* 船隻 */}
           <div style={{
             marginBottom: '20px',
+            ...getBookingFlagBoxStyle(fieldsToEdit.has('boat'), 'info'),
             padding: '16px',
-            border: fieldsToEdit.has('boat') ? '2px solid #ff6b35' : '1px solid #e0e0e0',
-            borderRadius: '8px',
-            backgroundColor: fieldsToEdit.has('boat') ? '#fff5f0' : 'white',
           }}>
             <label style={{
               display: 'flex',
@@ -758,41 +765,35 @@ export function BatchEditBookingDialog({
                 type="checkbox"
                 checked={fieldsToEdit.has('boat')}
                 onChange={() => toggleField('boat')}
-                style={{ width: '18px', height: '18px' }}
+                style={{ width: '18px', height: '18px', accentColor: ds.info[500] }}
               />
-              <span style={{ fontWeight: '600', fontSize: '15px' }}>🚤 修改船隻</span>
+              <span style={{ fontWeight: '600', fontSize: '15px', color: ds.text.primary }}>修改船隻</span>
             </label>
             
             {fieldsToEdit.has('boat') && (
               <div>
                 <div style={{ 
-                  padding: '8px 12px', 
-                  backgroundColor: '#ffe0b2', 
-                  borderRadius: '6px', 
                   marginBottom: '12px',
                   fontSize: '13px',
-                  color: '#e65100'
+                  color: ds.text.secondary,
+                  lineHeight: 1.45,
                 }}>
-                  ⚠️ 若目標船隻在該時段已有預約，該筆會被跳過
+                  若目標船隻在該時段已有預約，該筆會被跳過
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {loadingData ? (
-                    <span style={{ color: '#666' }}>載入中...</span>
+                    <span style={{ color: ds.text.secondary }}>載入中...</span>
                   ) : boats.map(boat => (
                     <button
                       key={boat.id}
                       type="button"
                       onClick={() => setSelectedBoatId(boat.id)}
                       style={{
+                        ...getBookingChoiceStyle(selectedBoatId === boat.id),
                         padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: selectedBoatId === boat.id ? '#ff6b35' : '#e9ecef',
-                        color: selectedBoatId === boat.id ? 'white' : '#495057',
-                        cursor: 'pointer',
                         fontSize: '14px',
-                        fontWeight: '600',
-                        transition: 'all 0.2s',
+                        fontWeight: selectedBoatId === boat.id ? '600' : '500',
+                        cursor: 'pointer',
                       }}
                     >
                       {boat.name}
@@ -806,10 +807,8 @@ export function BatchEditBookingDialog({
           {/* 教練 */}
           <div style={{
             marginBottom: '20px',
+            ...getBookingFlagBoxStyle(fieldsToEdit.has('coaches'), 'info'),
             padding: '16px',
-            border: fieldsToEdit.has('coaches') ? '2px solid #007bff' : '1px solid #e0e0e0',
-            borderRadius: '8px',
-            backgroundColor: fieldsToEdit.has('coaches') ? '#f0f7ff' : 'white',
           }}>
             <label style={{
               display: 'flex',
@@ -822,22 +821,20 @@ export function BatchEditBookingDialog({
                 type="checkbox"
                 checked={fieldsToEdit.has('coaches')}
                 onChange={() => toggleField('coaches')}
-                style={{ width: '18px', height: '18px' }}
+                style={{ width: '18px', height: '18px', accentColor: ds.info[500] }}
               />
-              <span style={{ fontWeight: '600', fontSize: '15px' }}>🎓 修改教練</span>
+              <span style={{ fontWeight: '600', fontSize: '15px', color: ds.text.primary }}>修改教練</span>
             </label>
             
             {fieldsToEdit.has('coaches') && (
               <div>
                 <div style={{ 
-                  padding: '8px 12px', 
-                  backgroundColor: '#fff3cd', 
-                  borderRadius: '6px', 
                   marginBottom: '12px',
                   fontSize: '13px',
-                  color: '#856404'
+                  color: ds.text.secondary,
+                  lineHeight: 1.45,
                 }}>
-                  ⚠️ 彈簧床、陸上課程一律必須指定教練；其他船隻 08:00 前必須指定，不指定時該筆會被跳過
+                  彈簧床、陸上課程一律必須指定教練；其他船隻 08:00 前必須指定，不指定時該筆會被跳過
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {/* 不指定教練按鈕 */}
@@ -845,36 +842,33 @@ export function BatchEditBookingDialog({
                     type="button"
                     onClick={() => setSelectedCoaches([])}
                     style={{
+                      ...getBookingChoiceStyle(false),
                       padding: '8px 12px',
-                      borderRadius: '20px',
-                      border: selectedCoaches.length === 0 ? '2px solid #dc3545' : '2px solid #e9ecef',
-                      background: selectedCoaches.length === 0 ? '#f8d7da' : '#e9ecef',
-                      color: selectedCoaches.length === 0 ? '#dc3545' : '#495057',
+                      border: selectedCoaches.length === 0
+                        ? `1.5px solid ${ds.danger[500]}`
+                        : `1px solid ${ds.border.light}`,
+                      background: selectedCoaches.length === 0 ? ds.danger[50] : '#ffffff',
+                      color: selectedCoaches.length === 0 ? ds.danger[700] : ds.text.primary,
                       cursor: 'pointer',
                       fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
+                      fontWeight: selectedCoaches.length === 0 ? '600' : '500',
                     }}
                   >
                     不指定教練
                   </button>
                   {loadingData ? (
-                    <span style={{ color: '#666' }}>載入中...</span>
+                    <span style={{ color: ds.text.secondary }}>載入中...</span>
                   ) : coaches.map(coach => (
                     <button
                       key={coach.id}
                       type="button"
                       onClick={() => toggleCoach(coach.id)}
                       style={{
+                        ...getBookingChoiceStyle(selectedCoaches.includes(coach.id)),
                         padding: '8px 12px',
-                        borderRadius: '20px',
-                        border: 'none',
-                        background: selectedCoaches.includes(coach.id) ? '#007bff' : '#e9ecef',
-                        color: selectedCoaches.includes(coach.id) ? 'white' : '#495057',
-                        cursor: 'pointer',
                         fontSize: '14px',
-                        fontWeight: '500',
-                        transition: 'all 0.2s',
+                        fontWeight: selectedCoaches.includes(coach.id) ? '600' : '500',
+                        cursor: 'pointer',
                       }}
                     >
                       {coach.name}
@@ -888,10 +882,8 @@ export function BatchEditBookingDialog({
           {/* 備註 */}
           <div style={{
             marginBottom: '20px',
+            ...getBookingFlagBoxStyle(fieldsToEdit.has('notes'), 'info'),
             padding: '16px',
-            border: fieldsToEdit.has('notes') ? '2px solid #007bff' : '1px solid #e0e0e0',
-            borderRadius: '8px',
-            backgroundColor: fieldsToEdit.has('notes') ? '#f0f7ff' : 'white',
           }}>
             <label style={{
               display: 'flex',
@@ -904,9 +896,9 @@ export function BatchEditBookingDialog({
                 type="checkbox"
                 checked={fieldsToEdit.has('notes')}
                 onChange={() => toggleField('notes')}
-                style={{ width: '18px', height: '18px' }}
+                style={{ width: '18px', height: '18px', accentColor: ds.info[500] }}
               />
-              <span style={{ fontWeight: '600', fontSize: '15px' }}>📝 修改備註</span>
+              <span style={{ fontWeight: '600', fontSize: '15px', color: ds.text.primary }}>修改備註</span>
             </label>
             
             {fieldsToEdit.has('notes') && (
@@ -927,10 +919,8 @@ export function BatchEditBookingDialog({
           {/* 時長 */}
           <div style={{
             marginBottom: '20px',
+            ...getBookingFlagBoxStyle(fieldsToEdit.has('duration'), 'info'),
             padding: '16px',
-            border: fieldsToEdit.has('duration') ? '2px solid #9c27b0' : '1px solid #e0e0e0',
-            borderRadius: '8px',
-            backgroundColor: fieldsToEdit.has('duration') ? '#f3e5f5' : 'white',
           }}>
             <label style={{
               display: 'flex',
@@ -943,22 +933,20 @@ export function BatchEditBookingDialog({
                 type="checkbox"
                 checked={fieldsToEdit.has('duration')}
                 onChange={() => toggleField('duration')}
-                style={{ width: '18px', height: '18px' }}
+                style={{ width: '18px', height: '18px', accentColor: ds.info[500] }}
               />
-              <span style={{ fontWeight: '600', fontSize: '15px' }}>⏱️ 修改時長</span>
+              <span style={{ fontWeight: '600', fontSize: '15px', color: ds.text.primary }}>修改時長</span>
             </label>
             
             {fieldsToEdit.has('duration') && (
               <div>
                 <div style={{ 
-                  padding: '8px 12px', 
-                  backgroundColor: '#e1bee7', 
-                  borderRadius: '6px', 
                   marginBottom: '12px',
                   fontSize: '13px',
-                  color: '#7b1fa2'
+                  color: ds.text.secondary,
+                  lineHeight: 1.45,
                 }}>
-                  ⚠️ 若修改後與其他預約時間衝突，該筆會被跳過
+                  若修改後與其他預約時間衝突，該筆會被跳過
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                   {DURATION_OPTIONS.map(duration => (
@@ -970,15 +958,11 @@ export function BatchEditBookingDialog({
                         setDurationInput(String(duration))
                       }}
                       style={{
+                        ...getBookingChoiceStyle(durationMin === duration),
                         padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: durationMin === duration ? '#9c27b0' : '#e9ecef',
-                        color: durationMin === duration ? 'white' : '#495057',
-                        cursor: 'pointer',
                         fontSize: '14px',
-                        fontWeight: '600',
-                        transition: 'all 0.2s',
+                        fontWeight: durationMin === duration ? '600' : '500',
+                        cursor: 'pointer',
                       }}
                     >
                       {duration}分鐘
@@ -991,9 +975,9 @@ export function BatchEditBookingDialog({
                   gap: '8px', 
                   marginTop: '12px',
                   paddingTop: '12px',
-                  borderTop: '1px dashed #ce93d8'
+                  borderTop: `1px dashed ${ds.border.light}`
                 }}>
-                  <span style={{ fontSize: '14px', color: '#7b1fa2', fontWeight: '500' }}>自訂：</span>
+                  <span style={{ fontSize: '14px', color: ds.text.secondary, fontWeight: '500' }}>自訂：</span>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1038,37 +1022,31 @@ export function BatchEditBookingDialog({
                     style={{
                       width: '80px',
                       padding: '8px 12px',
-                      border: '2px solid #9c27b0',
-                      borderRadius: '8px',
+                      border: `1px solid ${ds.border.main}`,
+                      borderRadius: designSystem.borderRadius.lg,
                       fontSize: '14px',
                       fontWeight: '600',
                       textAlign: 'center',
-                      color: '#7b1fa2',
+                      color: ds.text.primary,
                       imeMode: 'disabled',
                     } as React.CSSProperties}
                   />
-                  <span style={{ fontSize: '14px', color: '#7b1fa2' }}>分鐘</span>
+                  <span style={{ fontSize: '14px', color: ds.text.secondary }}>分鐘</span>
                 </div>
               </div>
             )}
           </div>
           
           {/* 填表人（必填）*/}
-          <div style={{
-            marginBottom: '20px',
-            padding: '16px',
-            border: filledBy.trim() ? '2px solid #28a745' : '2px solid #dc3545',
-            borderRadius: '8px',
-            backgroundColor: filledBy.trim() ? '#d4edda' : '#fff5f5',
-          }}>
+          <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
               fontWeight: '600',
               fontSize: '15px',
               marginBottom: '8px',
-              color: filledBy.trim() ? '#28a745' : '#dc3545',
+              color: ds.text.primary,
             }}>
-              ✍️ 填表人 <span style={{ color: '#dc3545' }}>*</span>
+              填表人 <span style={{ color: ds.danger[500] }}>*</span>
             </label>
             <input
               type="text"
@@ -1077,7 +1055,7 @@ export function BatchEditBookingDialog({
               placeholder="請輸入填表人姓名"
               style={{
                 ...inputStyle,
-                borderColor: filledBy.trim() ? '#28a745' : '#dc3545',
+                borderColor: filledBy.trim() ? ds.border.main : ds.danger[500],
               }}
             />
           </div>
@@ -1086,11 +1064,13 @@ export function BatchEditBookingDialog({
         {/* 底部按鈕欄 - 固定底部 */}
         <div style={{
           padding: isMobile ? '12px 20px' : '20px 24px',
-          borderTop: '1px solid #e0e0e0',
+          borderTop: `1px solid ${ds.border.light}`,
           background: 'white',
           display: 'flex',
           gap: isMobile ? '8px' : '12px',
-          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
+          paddingBottom: isMobile
+            ? 'max(40px, calc(env(safe-area-inset-bottom, 0px) + 24px))'
+            : '20px',
           flexShrink: 0,
         }}>
           <button
@@ -1098,14 +1078,9 @@ export function BatchEditBookingDialog({
             onClick={handleClose}
             disabled={loading}
             style={{
+              ...getButtonStyle('secondary', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
-              borderRadius: '8px',
-              border: '1px solid #ccc',
-              backgroundColor: 'white',
-              color: '#333',
               fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '500',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.5 : 1,
               touchAction: 'manipulation',
@@ -1118,44 +1093,19 @@ export function BatchEditBookingDialog({
             type="button"
             data-track="search_batch_edit_confirm"
             onClick={handleSubmit}
-            disabled={
-              loading || 
-              fieldsToEdit.size === 0 || 
-              !filledBy.trim() ||
-              (fieldsToEdit.has('boat') && !selectedBoatId) ||
-              (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
-            }
+            disabled={submitDisabled}
             style={{
+              ...getButtonStyle('primary', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              background: (
-                loading || 
-                fieldsToEdit.size === 0 || 
-                !filledBy.trim() ||
-                (fieldsToEdit.has('boat') && !selectedBoatId) ||
-                (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
-              ) ? '#ccc' : '#28a745',
-              color: 'white',
               fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '600',
-              cursor: (
-                loading || 
-                fieldsToEdit.size === 0 || 
-                !filledBy.trim() ||
-                (fieldsToEdit.has('boat') && !selectedBoatId) ||
-                (fieldsToEdit.has('duration') && (!durationMin || durationMin < 15))
-              ) ? 'not-allowed' : 'pointer',
+              ...(submitDisabled
+                ? { background: ds.text.disabled, boxShadow: 'none', cursor: 'not-allowed' }
+                : {}),
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
             }}
           >
-            {loading ? '🔄 更新中...' : `✅ 確認修改 (${bookingIds.length} 筆)`}
+            {loading ? '更新中...' : `確認修改 (${bookingIds.length} 筆)`}
           </button>
         </div>
       </div>

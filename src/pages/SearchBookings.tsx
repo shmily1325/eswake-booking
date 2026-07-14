@@ -94,16 +94,14 @@ interface SearchBookingsProps {
   isEmbedded?: boolean
 }
 
-type SearchTab = 'member' | 'availability'
+/** 船空檔搜尋暫時停用（保留程式，設 true 可恢復） */
+const ENABLE_BOAT_SLOT_SEARCH = false
 
 export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const toast = useToast()
   const slotTouchMin = isMobile ? 44 : 38
-  
-  // Tab 切換
-  const [activeTab, setActiveTab] = useState<SearchTab>('member')
   
   // 會員搜尋相關狀態
   const [searchName, setSearchName] = useState('')
@@ -173,7 +171,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
   useEffect(() => {
     loadMembers()
-    loadBoats()
+    if (ENABLE_BOAT_SLOT_SEARCH) {
+      loadBoats()
+    }
   }, [])
 
   const loadMembers = async () => {
@@ -630,7 +630,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     setSelectedBookingForEdit(null)
     // 重新執行搜尋
     const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-    if (activeTab === 'member' && searchName.trim()) {
+    if (searchName.trim()) {
       handleSearch(fakeEvent)
     }
   }
@@ -671,7 +671,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     setSelectionMode(false)
     // 重新執行搜尋
     const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-    if (activeTab === 'member' && searchName.trim()) {
+    if (searchName.trim()) {
       handleSearch(fakeEvent)
     }
   }
@@ -686,70 +686,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     }}>
       {!isEmbedded && <PageHeader title="預約查詢" user={user} />}
 
-      {/* Tab 切換 */}
-      <div style={{
-        display: 'flex',
-        gap: '0',
-        marginBottom: '15px',
-        background: designSystem.colors.background.card,
-        borderRadius: designSystem.borderRadius.lg,
-        padding: '4px',
-        boxShadow: designSystem.shadows.xs,
-        border: `1px solid ${designSystem.colors.border.light}`,
-      }}>
-        <button
-          type="button"
-          data-track="search_tab_member"
-          onClick={() => {
-            setActiveTab('member')
-            setBookings([])
-            setHasSearched(false)
-            setSlotSearchDone(false)
-            setSlotResultLines([])
-            setSelectionMode(false)
-            setSelectedBookingIds(new Set())
-          }}
-          style={{
-            flex: 1,
-            padding: '12px 10px',
-            border: 'none',
-            borderRadius: designSystem.borderRadius.md,
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            background: activeTab === 'member' ? designSystem.colors.primary[500] : 'transparent',
-            color: activeTab === 'member' ? 'white' : designSystem.colors.text.secondary,
-          }}
-        >
-          預約人
-        </button>
-        <button
-          type="button"
-          data-track="search_tab_availability"
-          onClick={() => {
-            setActiveTab('availability')
-            setBookings([])
-            setHasSearched(false)
-            setSelectionMode(false)
-            setSelectedBookingIds(new Set())
-          }}
-          style={{
-            flex: 1,
-            padding: '12px 10px',
-            border: 'none',
-            borderRadius: designSystem.borderRadius.md,
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            background: activeTab === 'availability' ? designSystem.colors.primary[500] : 'transparent',
-            color: activeTab === 'availability' ? 'white' : designSystem.colors.text.secondary,
-          }}
-        >
-          船空檔
-        </button>
-      </div>
+      {/* 船空檔分頁暫時停用，目前僅保留預約人搜尋 */}
 
       {/* Search Form */}
       <div style={{
@@ -761,7 +698,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         border: `1px solid ${designSystem.colors.border.light}`,
       }}>
         {/* 會員搜尋表單 */}
-        {activeTab === 'member' && (
         <form onSubmit={handleSearch}>
           <div style={{ marginBottom: '20px', position: 'relative' }}>
             <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
@@ -981,9 +917,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             {loading ? '搜尋中...' : '搜尋'}
           </button>
         </form>
-        )}
 
-        {activeTab === 'availability' && (
+        {/* 船空檔搜尋表單（暫時停用，保留程式） */}
+        {ENABLE_BOAT_SLOT_SEARCH && (
         <form onSubmit={handleSlotSearch}>
           <div style={{
             marginBottom: isMobile ? '12px' : '16px',
@@ -1575,7 +1511,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       </div>
 
       {/* Results */}
-      {activeTab !== 'availability' && hasSearched && (
+      {hasSearched && (
         <div>
           {/* 只在非載入狀態時顯示結果統計和操作列 */}
           {!loading && (
@@ -1740,19 +1676,17 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         </button>
                       )}
 
-                      {/* 複製 LINE 格式按鈕 - 只在預約人頁面顯示 */}
-                      {activeTab === 'member' && (
-                        <button
-                          data-track="search_copy"
-                          onClick={handleCopyToClipboard}
-                          style={{
-                            ...getButtonStyle(copySuccess ? 'success' : 'primary', 'small', isMobile),
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {copySuccess ? '已複製' : '複製'}
-                        </button>
-                      )}
+                      {/* 複製 LINE 格式按鈕 */}
+                      <button
+                        data-track="search_copy"
+                        onClick={handleCopyToClipboard}
+                        style={{
+                          ...getButtonStyle(copySuccess ? 'success' : 'primary', 'small', isMobile),
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {copySuccess ? '已複製' : '複製'}
+                      </button>
                     </div>
                   )}
                 </div>
@@ -2016,7 +1950,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         </div>
       )}
 
-      {activeTab === 'availability' && (slotSearching || slotSearchDone) && (
+      {/* 船空檔搜尋結果（暫時停用，保留程式） */}
+      {ENABLE_BOAT_SLOT_SEARCH && (slotSearching || slotSearchDone) && (
         <div>
           {!slotSearching && (
             <div style={{

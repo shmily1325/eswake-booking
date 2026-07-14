@@ -382,7 +382,7 @@ export function NewBookingDialog({
           borderRadius: isMobile ? '16px 16px 0 0' : '12px',
           width: '100%',
           maxWidth: '500px',
-          color: '#000',
+          color: designSystem.colors.text.primary,
           margin: isMobile ? 'auto 0 0 0' : 'auto',
           maxHeight: isMobile ? '80vh' : '90vh',
           display: 'flex',
@@ -394,7 +394,7 @@ export function NewBookingDialog({
         {/* 標題欄 - Sticky */}
         <div style={{
           padding: isMobile ? '20px 20px 16px' : '20px',
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: `1px solid ${designSystem.colors.border.light}`,
           position: 'sticky',
           top: 0,
           background: 'white',
@@ -407,9 +407,9 @@ export function NewBookingDialog({
             margin: 0, 
             fontSize: isMobile ? '18px' : '20px', 
             fontWeight: 'bold',
-            color: '#000',
+            color: designSystem.colors.text.primary,
           }}>
-            ➕ 新增預約
+            新增預約
           </h2>
           <button
             type="button"
@@ -420,7 +420,7 @@ export function NewBookingDialog({
               background: 'none',
               fontSize: '28px',
               cursor: loading ? 'not-allowed' : 'pointer',
-              color: '#666',
+              color: designSystem.colors.text.secondary,
               padding: '0 8px',
               opacity: loading ? 0.5 : 1,
             }}
@@ -578,7 +578,7 @@ export function NewBookingDialog({
               flex: 1,
               fontSize: isMobile ? '16px' : '15px',
               ...(loading || conflictStatus === 'conflict'
-                ? { background: '#ccc', boxShadow: 'none', cursor: 'not-allowed' }
+                ? { background: designSystem.colors.text.disabled, boxShadow: 'none', cursor: 'not-allowed' }
                 : {}),
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',

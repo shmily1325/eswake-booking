@@ -3,21 +3,24 @@ import { designSystem, getBookingChoiceStyle, getLabelStyle } from '../../styles
 import type { CSSProperties } from 'react'
 
 interface TimeSelectorProps {
-    startDate: string
-    setStartDate: (date: string) => void
+    startDate?: string
+    setStartDate?: (date: string) => void
     startTime: string
     setStartTime: (time: string) => void
     durationMin: number
     setDurationMin: (min: number) => void
+    /** false = 只顯示開始時間＋時長（重複預約：日期改由 DateMultiPicker） */
+    showDate?: boolean
 }
 
 export function TimeSelector({
-    startDate,
+    startDate = '',
     setStartDate,
     startTime,
     setStartTime,
     durationMin,
     setDurationMin,
+    showDate = true,
 }: TimeSelectorProps) {
     const fieldStyle: CSSProperties = {
         padding: '12px',
@@ -31,6 +34,7 @@ export function TimeSelector({
 
     return (
         <>
+            {showDate && setStartDate && (
             <div style={{ marginBottom: designSystem.spacing.lg }}>
                 <label style={getLabelStyle(true)}>
                     開始日期
@@ -64,6 +68,7 @@ export function TimeSelector({
                     </div>
                 )}
             </div>
+            )}
 
             <div style={{ marginBottom: designSystem.spacing.lg }}>
                 <label style={getLabelStyle(true)}>

@@ -61,7 +61,7 @@ function BoatUsageMobileCards({
               fontSize: '13px',
             }}
           >
-            <div style={{ color: designSystem.colors.text.secondary }}>營運</div>
+            <div style={{ color: designSystem.colors.text.secondary }}>已扣款</div>
             <div style={{ textAlign: 'right', color: row.generalMinutes > 0 ? designSystem.colors.text.primary : designSystem.colors.text.disabled }}>
               {formatDuration(row.generalMinutes)}
             </div>
@@ -250,7 +250,7 @@ export function BoatUsageHoursPage() {
                       船隻
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', borderBottom: `1px solid ${designSystem.colors.border.main}` }}>
-                      營運（已扣款）
+                      已扣款
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', borderBottom: `1px solid ${designSystem.colors.border.main}` }}>
                       教練練習

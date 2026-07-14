@@ -8,23 +8,15 @@ import { supabase } from '../lib/supabase'
 import { hasViewAccess } from '../utils/auth'
 import { addDaysToDate, getLocalDateString } from '../utils/date'
 import { trackClickDedupedWithin } from '../utils/trackClick'
-import { designSystem, getBadgeStyle, getButtonStyle, getInputStyle, styles } from '../styles/designSystem'
+import { designSystem, getButtonStyle, getInputStyle } from '../styles/designSystem'
 import {
   getTimeOffCellLabel,
   getTimeOffCellTooltip,
-  getTimeOffDayDisplayLabel,
   groupTimeOffByCoach,
   type CoachTimeOffRow,
 } from '../utils/coachTimeOff'
 
 type CoachRow = { id: string; name: string }
-
-type DayOffEntry = {
-  coachId: string
-  name: string
-  label: string
-  tooltip: string
-}
 
 function monthRange(ym: string): { start: string; end: string; year: number; monthIndex: number } {
   const [year, monthNum] = ym.split('-').map(Number)
@@ -62,22 +54,6 @@ function weekdayIndex(ymd: string): number {
 }
 
 const WEEKDAY_ZH = ['日', '一', '二', '三', '四', '五', '六'] as const
-
-function formatDayHeader(ymd: string): string {
-  const month = parseInt(ymd.slice(5, 7), 10)
-  return `${month}/${dayOfMonth(ymd)}（${WEEKDAY_ZH[weekdayIndex(ymd)]}）`
-}
-
-function timeOffLabelPillStyle(label: string): CSSProperties {
-  if (label === '整天') {
-    return {
-      ...getBadgeStyle('warning'),
-    }
-  }
-  return {
-    ...getBadgeStyle('default'),
-  }
-}
 
 function cellStyle(label: string, isWeekend: boolean, isToday: boolean): CSSProperties {
   const base: CSSProperties = {
@@ -125,46 +101,6 @@ function getWeekDaysMondayStart(anchorYmd: string): string[] {
   return Array.from({ length: 7 }, (_, i) => addDaysToDate(monday, i))
 }
 
-function buildMonthCalendarCells(ym: string): (string | null)[] {
-  const days = daysInMonth(ym)
-  const leading = weekdayIndex(days[0])
-  const cells: (string | null)[] = Array(leading).fill(null)
-  for (const d of days) cells.push(d)
-  while (cells.length % 7 !== 0) cells.push(null)
-  return cells
-}
-
-function dayHasAnyTimeOff(
-  ymd: string,
-  coaches: CoachRow[],
-  timeOffByCoach: Map<string, CoachTimeOffRow[]>
-): boolean {
-  return coaches.some(coach => {
-    const records = timeOffByCoach.get(coach.id) ?? []
-    return getTimeOffDayDisplayLabel(records, ymd) !== ''
-  })
-}
-
-function buildDayEntries(
-  ymd: string,
-  coaches: CoachRow[],
-  timeOffByCoach: Map<string, CoachTimeOffRow[]>
-): DayOffEntry[] {
-  return coaches
-    .map(coach => {
-      const records = timeOffByCoach.get(coach.id) ?? []
-      const label = getTimeOffDayDisplayLabel(records, ymd)
-      if (!label) return null
-      return {
-        coachId: coach.id,
-        name: coach.name,
-        label,
-        tooltip: getTimeOffCellTooltip(coach.name, records, ymd),
-      }
-    })
-    .filter((e): e is DayOffEntry => e !== null)
-}
-
 function TimeOffLegend({ compact }: { compact?: boolean }) {
   const chip: CSSProperties = {
     display: 'inline-flex',
@@ -199,72 +135,6 @@ function TimeOffLegend({ compact }: { compact?: boolean }) {
       <span style={chip}><span style={badge(designSystem.colors.background.hover, designSystem.colors.text.secondary)}>下</span> 下午</span>
       {!compact && (
         <span style={{ ...chip, color: designSystem.colors.text.disabled }}>其他為自訂時段 · 空白為可上班</span>
-      )}
-    </div>
-  )
-}
-
-function CoachTimeOffDayDetail({
-  ymd,
-  isToday,
-  entries,
-}: {
-  ymd: string
-  isToday: boolean
-  entries: DayOffEntry[]
-}) {
-  const wd = weekdayIndex(ymd)
-  const isWeekend = wd === 0 || wd === 6
-
-  return (
-    <div style={{
-      background: designSystem.colors.background.card,
-      borderRadius: designSystem.borderRadius.lg,
-      padding: '16px 18px',
-      border: `1px solid ${isToday ? designSystem.colors.primary[200] : designSystem.colors.border.light}`,
-      boxShadow: isToday ? designSystem.shadows.sm : designSystem.shadows.xs,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: entries.length > 0 ? '10px' : 0 }}>
-        <span style={{
-          fontSize: '16px',
-          fontWeight: 700,
-          color: isToday ? designSystem.colors.text.primary : isWeekend ? designSystem.colors.text.disabled : designSystem.colors.text.primary,
-        }}>
-          {formatDayHeader(ymd)}
-        </span>
-        {isToday && (
-          <span style={{
-            ...styles.badgeDefault,
-            padding: '2px 8px',
-            fontSize: '11px',
-            backgroundColor: designSystem.colors.secondary[100],
-            color: designSystem.colors.text.primary,
-            border: `1px solid ${designSystem.colors.border.light}`,
-          }}>
-            今天
-          </span>
-        )}
-      </div>
-      {entries.length === 0 ? (
-        <div style={{ color: designSystem.colors.success[700], fontSize: '14px' }}>全員可上班</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {entries.map(entry => (
-            <div key={entry.coachId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-              <span style={{ fontSize: '15px', fontWeight: 600, color: designSystem.colors.text.primary }}>{entry.name}</span>
-              <span style={{
-                ...styles.badgeWarning,
-                ...timeOffLabelPillStyle(entry.label),
-                padding: '4px 12px',
-                fontSize: '13px',
-                fontWeight: 600,
-                flexShrink: 0,
-              }}>
-                {entry.label}
-              </span>
-            </div>
-          ))}
-        </div>
       )}
     </div>
   )
@@ -400,200 +270,6 @@ function CoachTimeOffWeekGrid({
   )
 }
 
-function CoachTimeOffMonthCalendar({
-  monthParam,
-  today,
-  coaches,
-  timeOffByCoach,
-  selectedDay,
-  onSelectDay,
-}: {
-  monthParam: string
-  today: string
-  coaches: CoachRow[]
-  timeOffByCoach: Map<string, CoachTimeOffRow[]>
-  selectedDay: string | null
-  onSelectDay: (ymd: string) => void
-}) {
-  const cells = useMemo(() => buildMonthCalendarCells(monthParam), [monthParam])
-  const offDays = useMemo(
-    () => new Set(cells.filter((d): d is string => d !== null && dayHasAnyTimeOff(d, coaches, timeOffByCoach))),
-    [cells, coaches, timeOffByCoach]
-  )
-  const selectedEntries = selectedDay
-    ? buildDayEntries(selectedDay, coaches, timeOffByCoach)
-    : []
-
-  return (
-    <div style={{ padding: '14px' }}>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(7, 1fr)',
-        gap: '6px',
-        marginBottom: '14px',
-      }}>
-        {WEEKDAY_ZH.map(wd => (
-          <div key={wd} style={{ textAlign: 'center', fontSize: '11px', color: designSystem.colors.text.disabled, fontWeight: 650, padding: '4px 0' }}>
-            {wd}
-          </div>
-        ))}
-        {cells.map((ymd, i) => {
-          if (!ymd) {
-            return <div key={`empty-${i}`} />
-          }
-          const wd = weekdayIndex(ymd)
-          const isToday = ymd === today
-          const isSelected = ymd === selectedDay
-          const hasOff = offDays.has(ymd)
-          return (
-            <button
-              key={ymd}
-              type="button"
-              data-track="coach_time_off_day_pick"
-              onClick={() => onSelectDay(ymd)}
-              style={{
-                aspectRatio: '1',
-                border: isSelected ? `1px solid ${designSystem.colors.primary[400]}` : isToday ? `1px solid ${designSystem.colors.primary[200]}` : `1px solid ${designSystem.colors.border.light}`,
-                borderRadius: designSystem.borderRadius.lg,
-                background: isSelected ? designSystem.colors.secondary[100] : designSystem.colors.background.card,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '2px',
-                padding: 0,
-                boxShadow: isSelected ? designSystem.shadows.xs : 'none',
-              }}
-            >
-              <span style={{
-                fontSize: '14px',
-                fontWeight: isToday || isSelected ? 700 : 500,
-                color: wd === 0 || wd === 6 ? designSystem.colors.text.disabled : designSystem.colors.text.primary,
-              }}>
-                {dayOfMonth(ymd)}
-              </span>
-              {hasOff && (
-                <span style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: designSystem.colors.warning[500],
-                }} />
-              )}
-            </button>
-          )
-        })}
-      </div>
-      {selectedDay && (
-        <CoachTimeOffDayDetail
-          ymd={selectedDay}
-          isToday={selectedDay === today}
-          entries={selectedEntries}
-        />
-      )}
-    </div>
-  )
-}
-
-function CoachTimeOffMobileViews({
-  mobileTab,
-  onTabChange,
-  weekDays,
-  coaches,
-  timeOffByCoach,
-  today,
-  monthParam,
-  selectedDay,
-  onSelectDay,
-  onPrevWeek,
-  onNextWeek,
-  loading,
-}: {
-  mobileTab: 'week' | 'month'
-  onTabChange: (tab: 'week' | 'month') => void
-  weekDays: string[]
-  coaches: CoachRow[]
-  timeOffByCoach: Map<string, CoachTimeOffRow[]>
-  today: string
-  monthParam: string
-  selectedDay: string | null
-  onSelectDay: (ymd: string) => void
-  onPrevWeek: () => void
-  onNextWeek: () => void
-  loading: boolean
-}) {
-  const tabStyle = (active: boolean) => ({
-    flex: 1,
-    padding: '10px 12px',
-    border: 'none',
-    borderRadius: designSystem.borderRadius.full,
-    fontSize: '14px',
-    fontWeight: active ? 700 : 600,
-    cursor: 'pointer',
-    background: active ? designSystem.colors.background.card : 'transparent',
-    color: active ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-    boxShadow: active ? designSystem.shadows.xs : 'none',
-  })
-
-  if (loading) {
-    return <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>載入中...</div>
-  }
-
-  if (coaches.length === 0) {
-    return <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>無啟用中的教練</div>
-  }
-
-  return (
-    <>
-      <div style={{
-        display: 'flex',
-        gap: '6px',
-        padding: '12px 12px 0',
-        background: designSystem.colors.secondary[50],
-        margin: 0,
-        borderRadius: `${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg} 0 0`,
-      }}>
-        <button
-          type="button"
-          data-track="coach_time_off_tab_week"
-          onClick={() => onTabChange('week')}
-          style={tabStyle(mobileTab === 'week')}
-        >
-          週排班
-        </button>
-        <button
-          type="button"
-          data-track="coach_time_off_tab_month"
-          onClick={() => onTabChange('month')}
-          style={tabStyle(mobileTab === 'month')}
-        >
-          月排班
-        </button>
-      </div>
-      {mobileTab === 'week' ? (
-        <CoachTimeOffWeekGrid
-          weekDays={weekDays}
-          coaches={coaches}
-          timeOffByCoach={timeOffByCoach}
-          today={today}
-          onPrevWeek={onPrevWeek}
-          onNextWeek={onNextWeek}
-        />
-      ) : (
-        <CoachTimeOffMonthCalendar
-          monthParam={monthParam}
-          today={today}
-          coaches={coaches}
-          timeOffByCoach={timeOffByCoach}
-          selectedDay={selectedDay}
-          onSelectDay={onSelectDay}
-        />
-      )}
-    </>
-  )
-}
-
 export function CoachTimeOffPage() {
   const user = useAuthUser()
   const navigate = useNavigate()
@@ -602,17 +278,11 @@ export function CoachTimeOffPage() {
 
   const today = getLocalDateString()
   const monthParam = searchParams.get('month') || today.slice(0, 7)
-  const mobileTabParam = searchParams.get('view')
-  const mobileTab: 'week' | 'month' = mobileTabParam === 'month' ? 'month' : 'week'
 
   const [coaches, setCoaches] = useState<CoachRow[]>([])
   const [timeOffByCoach, setTimeOffByCoach] = useState<Map<string, CoachTimeOffRow[]>>(new Map())
   const [loading, setLoading] = useState(true)
   const [weekAnchor, setWeekAnchor] = useState(today)
-  const [selectedDay, setSelectedDay] = useState<string | null>(() => {
-    const inMonth = today.slice(0, 7) === (searchParams.get('month') || today.slice(0, 7))
-    return inMonth ? today : null
-  })
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -669,41 +339,16 @@ export function CoachTimeOffPage() {
   const monthTitle = `${year} 年 ${monthIndex + 1} 月`
   const weekDays = useMemo(() => getWeekDaysMondayStart(weekAnchor), [weekAnchor])
 
-  useEffect(() => {
-    if (monthParam === today.slice(0, 7)) {
-      setSelectedDay(prev => prev ?? today)
-    } else {
-      setSelectedDay(null)
-    }
-  }, [monthParam, today])
-
   const setMonth = (ym: string) => {
-    const next: Record<string, string> = { month: ym }
-    if (isMobile && mobileTab === 'week') next.view = 'week'
-    else if (mobileTab !== 'week') next.view = mobileTab
-    setSearchParams(next)
+    setSearchParams({ month: ym })
   }
 
   const syncMonthParamToWeekAnchor = useCallback((anchorYmd: string) => {
     const ym = anchorYmd.slice(0, 7)
     if (ym !== monthParam) {
-      const next: Record<string, string> = { month: ym, view: 'week' }
-      setSearchParams(next)
+      setSearchParams({ month: ym })
     }
   }, [monthParam, setSearchParams])
-
-  const setMobileTab = (tab: 'week' | 'month') => {
-    const next: Record<string, string> = { month: monthParam, view: tab }
-    setSearchParams(next)
-    if (tab === 'month' && !selectedDay && monthParam === today.slice(0, 7)) {
-      setSelectedDay(today)
-    }
-    if (tab === 'week') {
-      setWeekAnchor(prev => (prev.slice(0, 7) === monthParam ? prev : (
-        monthParam === today.slice(0, 7) ? today : `${monthParam}-01`
-      )))
-    }
-  }
 
   const handlePrevWeek = () => {
     const nextAnchor = addDaysToDate(weekAnchor, -7)
@@ -720,9 +365,6 @@ export function CoachTimeOffPage() {
     const next = e.target.value
     if (!next || next === monthParam) return
     setMonth(next)
-    if (isMobile && mobileTab === 'month') {
-      setSelectedDay(next === today.slice(0, 7) ? today : `${next}-01`)
-    }
     if (user?.email) {
       trackClickDedupedWithin(`coach_time_off_month_pick:${next}`, user.email)
     }
@@ -731,7 +373,6 @@ export function CoachTimeOffPage() {
   const goTodayMonth = () => {
     setMonth(today.slice(0, 7))
     setWeekAnchor(today)
-    if (mobileTab === 'month') setSelectedDay(today)
   }
 
   return (
@@ -739,61 +380,57 @@ export function CoachTimeOffPage() {
       <div style={{ maxWidth: isMobile ? '100%' : '100%', margin: '0 auto' }}>
         <PageHeader title="教練休假" user={user} />
 
-        {(!isMobile || mobileTab === 'month') && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: isMobile ? 'center' : 'flex-start',
-          gap: isMobile ? '8px' : '10px',
-          marginBottom: '18px',
-          flexWrap: 'wrap',
-        }}>
-          <button
-            type="button"
-            data-track="coach_time_off_month_prev"
-            onClick={() => setMonth(addMonths(monthParam, -1))}
-            style={{ ...getButtonStyle('outline', 'medium', false), padding: isMobile ? '10px 14px' : '8px 12px' }}
-            aria-label="上個月"
-          >
-            ←
-          </button>
-          <input
-            type="month"
-            value={monthParam}
-            onChange={handleMonthInputChange}
-            style={{
-              ...getInputStyle(isMobile),
-              width: 'auto',
-              padding: isMobile ? '11px 14px' : '10px 14px',
-              fontWeight: 600,
-            }}
-          />
-          {!isMobile && (
+        {!isMobile && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            gap: '10px',
+            marginBottom: '18px',
+            flexWrap: 'wrap',
+          }}>
+            <button
+              type="button"
+              data-track="coach_time_off_month_prev"
+              onClick={() => setMonth(addMonths(monthParam, -1))}
+              style={{ ...getButtonStyle('outline', 'medium', false), padding: '8px 12px' }}
+              aria-label="上個月"
+            >
+              ←
+            </button>
+            <input
+              type="month"
+              value={monthParam}
+              onChange={handleMonthInputChange}
+              style={{
+                ...getInputStyle(false),
+                width: 'auto',
+                padding: '10px 14px',
+                fontWeight: 600,
+              }}
+            />
             <span style={{ fontWeight: 750, fontSize: '17px', color: designSystem.colors.text.primary, letterSpacing: '-0.02em' }}>{monthTitle}</span>
-          )}
-          <button
-            type="button"
-            data-track="coach_time_off_month_next"
-            onClick={() => setMonth(addMonths(monthParam, 1))}
-            style={{ ...getButtonStyle('outline', 'medium', false), padding: isMobile ? '10px 14px' : '8px 12px' }}
-            aria-label="下個月"
-          >
-            →
-          </button>
-          <button
-            type="button"
-            data-track="coach_time_off_month_today"
-            onClick={goTodayMonth}
-            style={{ ...getButtonStyle('secondary', 'medium', false), padding: isMobile ? '10px 14px' : undefined }}
-          >
-            本月
-          </button>
-        </div>
+            <button
+              type="button"
+              data-track="coach_time_off_month_next"
+              onClick={() => setMonth(addMonths(monthParam, 1))}
+              style={{ ...getButtonStyle('outline', 'medium', false), padding: '8px 12px' }}
+              aria-label="下個月"
+            >
+              →
+            </button>
+            <button
+              type="button"
+              data-track="coach_time_off_month_today"
+              onClick={goTodayMonth}
+              style={getButtonStyle('secondary', 'medium', false)}
+            >
+              本月
+            </button>
+          </div>
         )}
 
-        {!isMobile && <TimeOffLegend />}
-
-        {isMobile && mobileTab === 'week' && <TimeOffLegend compact />}
+        <TimeOffLegend compact={isMobile} />
 
         <div style={{
           background: designSystem.colors.background.card,
@@ -803,25 +440,19 @@ export function CoachTimeOffPage() {
           overflow: isMobile ? 'visible' : 'auto',
           marginBottom: '24px',
         }}>
-          {isMobile ? (
-            <CoachTimeOffMobileViews
-              mobileTab={mobileTab}
-              onTabChange={setMobileTab}
+          {loading ? (
+            <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>載入中...</div>
+          ) : coaches.length === 0 ? (
+            <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>無啟用中的教練</div>
+          ) : isMobile ? (
+            <CoachTimeOffWeekGrid
               weekDays={weekDays}
               coaches={coaches}
               timeOffByCoach={timeOffByCoach}
               today={today}
-              monthParam={monthParam}
-              selectedDay={selectedDay}
-              onSelectDay={setSelectedDay}
               onPrevWeek={handlePrevWeek}
               onNextWeek={handleNextWeek}
-              loading={loading}
             />
-          ) : loading ? (
-            <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>載入中...</div>
-          ) : coaches.length === 0 ? (
-            <div style={{ padding: '32px', color: designSystem.colors.text.secondary, textAlign: 'center' }}>無啟用中的教練</div>
           ) : (
             <table style={{
               borderCollapse: 'collapse',

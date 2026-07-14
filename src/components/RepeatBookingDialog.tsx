@@ -13,7 +13,8 @@ import { BoatSelector } from './booking/BoatSelector'
 import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
-import { designSystem, getBookingChoiceStyle, getButtonStyle } from '../styles/designSystem'
+import { TimeSelector } from './booking/TimeSelector'
+import { designSystem, getButtonStyle, getLabelStyle } from '../styles/designSystem'
 import { getLocalTimestamp } from '../utils/date'
 import { BatchResultDialog } from './BatchResultDialog'
 import { DateMultiPicker } from './booking/DateMultiPicker'
@@ -489,7 +490,7 @@ export function RepeatBookingDialog({
         {/* 標題欄 - Sticky */}
         <div style={{
           padding: isMobile ? '20px 20px 16px' : '24px 30px 20px',
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: `1px solid ${designSystem.colors.border.light}`,
           position: 'sticky',
           top: 0,
           background: 'white',
@@ -502,8 +503,9 @@ export function RepeatBookingDialog({
             margin: 0, 
             fontSize: isMobile ? '20px' : '24px', 
             fontWeight: 'bold',
+            color: designSystem.colors.text.primary,
           }}>
-            📅 重複預約
+            重複預約
           </h2>
           <button
             type="button"
@@ -514,7 +516,7 @@ export function RepeatBookingDialog({
               background: 'none',
               fontSize: '28px',
               cursor: loading ? 'not-allowed' : 'pointer',
-              color: '#666',
+              color: designSystem.colors.text.secondary,
               padding: '0 8px',
               opacity: loading ? 0.5 : 1,
             }}
@@ -572,12 +574,9 @@ export function RepeatBookingDialog({
           {/* 自選日期與時間（與新增預約邏輯對齊：先日期後時間） */}
           <>
             {/* 自選日期（取代開始日期概念） */}
-            <div style={{ marginBottom: isMobile ? '14px' : '18px' }}>
+            <div style={{ marginBottom: designSystem.spacing.lg }}>
               <label style={{
-                display: 'block',
-                marginBottom: '6px',
-                color: '#000',
-                fontSize: '15px',
+                ...getLabelStyle(true),
                 fontWeight: '600',
               }}>
                 日期（可多選）
@@ -588,142 +587,13 @@ export function RepeatBookingDialog({
               />
             </div>
 
-            {/* 開始時間 */}
-            <div style={{ marginBottom: isMobile ? '14px' : '18px' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  color: '#000',
-                  fontSize: '15px',
-                  fontWeight: '500',
-                }}>
-                  開始時間
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <select
-                    value={startTime.split(':')[0]}
-                    onChange={(e) => {
-                      const hour = e.target.value
-                      const minute = startTime.split(':')[1] || '00'
-                      setStartTime(`${hour}:${minute}`)
-                    }}
-                    required
-                    style={{
-                      flex: 1,
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #ccc',
-                      boxSizing: 'border-box',
-                      fontSize: '16px',
-                      touchAction: 'manipulation',
-                      backgroundColor: 'white',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => {
-                      const hour = String(i).padStart(2, '0')
-                      return <option key={hour} value={hour}>{hour}</option>
-                    })}
-                  </select>
-                  <select
-                    value={startTime.split(':')[1] || '00'}
-                    onChange={(e) => {
-                      const hour = startTime.split(':')[0]
-                      const minute = e.target.value
-                      setStartTime(`${hour}:${minute}`)
-                    }}
-                    required
-                    style={{
-                      flex: 1,
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #ccc',
-                      boxSizing: 'border-box',
-                      fontSize: '16px',
-                      touchAction: 'manipulation',
-                      backgroundColor: 'white',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <option value="00">00</option>
-                    <option value="15">15</option>
-                    <option value="30">30</option>
-                    <option value="45">45</option>
-                  </select>
-                </div>
-            </div>
-
-            {/* 時長 */}
-            <div style={{ marginBottom: isMobile ? '14px' : '18px' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '10px',
-                  color: designSystem.colors.text.primary,
-                  fontSize: '15px',
-                  fontWeight: '600',
-                }}>
-                  時長（分鐘）
-                </label>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: designSystem.spacing.sm,
-                  marginBottom: designSystem.spacing.md,
-                }}>
-                  {[30, 40, 60, 90, 120, 150, 180, 210].map(minutes => {
-                    const isSelected = durationMin === minutes
-                    return (
-                      <button
-                        key={minutes}
-                        type="button"
-                        onClick={() => setDurationMin(minutes)}
-                        style={{
-                          ...getBookingChoiceStyle(isSelected),
-                          padding: '12px 8px',
-                          fontSize: '14px',
-                          fontWeight: isSelected ? '700' : '500',
-                          cursor: 'pointer',
-                          minHeight: '44px',
-                          touchAction: 'manipulation',
-                        }}
-                      >
-                        {minutes}
-                      </button>
-                    )
-                  })}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: designSystem.spacing.sm }}>
-                  <span style={{ fontSize: '14px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>自訂：</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={durationMin}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '')
-                      const numValue = Number(value)
-                      if (numValue > 0 && numValue <= 999) {
-                        setDurationMin(numValue)
-                      } else if (value === '') {
-                        setDurationMin(0)
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '10px 12px',
-                      border: `1px solid ${designSystem.colors.border.light}`,
-                      borderRadius: designSystem.borderRadius.lg,
-                      fontSize: '16px',
-                      textAlign: 'center',
-                      fontWeight: '600',
-                      color: designSystem.colors.text.primary,
-                      background: '#ffffff',
-                      boxSizing: 'border-box',
-                    }}
-                    placeholder="輸入分鐘數"
-                  />
-                  <span style={{ fontSize: '14px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>分</span>
-                </div>
-            </div>
+            <TimeSelector
+              showDate={false}
+              startTime={startTime}
+              setStartTime={setStartTime}
+              durationMin={durationMin}
+              setDurationMin={setDurationMin}
+            />
           </>
 
           {/* 預覽區塊移至按鈕列上方（僅顯示前 5 個） */}
@@ -732,7 +602,7 @@ export function RepeatBookingDialog({
               marginTop: '8px', 
               marginBottom: '8px', 
               fontSize: '13px', 
-              color: '#666' 
+              color: designSystem.colors.text.secondary 
             }}>
               <div style={{ fontWeight: '600', marginBottom: '6px' }}>預覽（前5個）：</div>
               {previewDates.map((date, i) => (
@@ -820,7 +690,7 @@ export function RepeatBookingDialog({
               flex: 1,
               fontSize: isMobile ? '16px' : '15px',
               ...(loading
-                ? { background: '#ccc', boxShadow: 'none', cursor: 'not-allowed' }
+                ? { background: designSystem.colors.text.disabled, boxShadow: 'none', cursor: 'not-allowed' }
                 : {}),
               touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',

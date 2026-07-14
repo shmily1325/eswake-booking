@@ -1,5 +1,7 @@
+import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import '@testing-library/jest-dom/vitest'
 import { SearchBookings } from '../SearchBookings'
 
 const mockUser = { id: 'test-user', email: 'test@example.com' } as import('@supabase/supabase-js').User
@@ -76,15 +78,21 @@ describe('SearchBookings', () => {
     })
   })
 
-  it('預設顯示預約人分頁', async () => {
+  it('預設顯示預約人搜尋表單', async () => {
     render(<SearchBookings isEmbedded />)
-    expect(screen.getByRole('button', { name: /預約人/ })).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/搜尋會員/)).toBeInTheDocument()
     })
   })
 
-  it('船空檔：選船、日期後搜尋可顯示結果行', async () => {
+  it('船空檔分頁暫時停用，不應顯示船空檔切換按鈕', () => {
+    render(<SearchBookings isEmbedded />)
+    expect(screen.queryByRole('button', { name: /船空檔/ })).not.toBeInTheDocument()
+  })
+
+  // 船空檔搜尋功能暫時停用（ENABLE_BOAT_SLOT_SEARCH = false in SearchBookings.tsx）。
+  // 下列測試保留供未來恢復功能時參考，暫時 skip。
+  it.skip('船空檔：選船、日期後搜尋可顯示結果行', async () => {
     render(<SearchBookings isEmbedded />)
 
     fireEvent.click(screen.getByRole('button', { name: /船空檔/ }))
@@ -112,7 +120,7 @@ describe('SearchBookings', () => {
     })
   })
 
-  it('未選船時搜尋按鈕為停用', async () => {
+  it.skip('未選船時搜尋按鈕為停用', async () => {
     render(<SearchBookings isEmbedded />)
     fireEvent.click(screen.getByRole('button', { name: /船空檔/ }))
 

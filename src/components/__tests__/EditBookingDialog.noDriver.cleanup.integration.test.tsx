@@ -159,7 +159,7 @@ describe('EditBookingDialog - integration cleanup when requires_driver=false', (
       <EditBookingDialog isOpen={true} onClose={() => {}} onSuccess={() => {}} booking={booking} user={user} />
     )
 
-    fireEvent.click(getByText('✅ 確認更新'))
+    fireEvent.click(getByText('確認更新'))
 
     await waitFor(() => {
       expect(confirmSpy).toHaveBeenCalled()
