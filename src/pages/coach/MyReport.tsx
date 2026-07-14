@@ -97,21 +97,21 @@ export function MyReport() {
             active={activeTab === 'report'}
             onClick={() => setActiveTab('report')}
           >
-            📝 回報
+            回報
           </AdminTabButton>
           <AdminTabButton
             data-track="my_report_tab_history"
             active={activeTab === 'history'}
             onClick={() => setActiveTab('history')}
           >
-            📊 細帳
+            細帳
           </AdminTabButton>
           <AdminTabButton
             data-track="my_report_tab_schedule"
             active={activeTab === 'schedule'}
             onClick={() => setActiveTab('schedule')}
           >
-            📅 排程
+            排程
           </AdminTabButton>
         </AdminTabBar>
 

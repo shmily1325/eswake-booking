@@ -3,7 +3,14 @@
  * 用於教練回報中的參與者信息輸入
  */
 
-import { getInputStyle, getLabelStyle } from '../styles/designSystem'
+import type { CSSProperties } from 'react'
+import {
+  designSystem,
+  getBookingChoiceStyle,
+  getFontSize,
+  getInputStyle,
+  getLabelStyle,
+} from '../styles/designSystem'
 import type { Member, Participant } from '../types/booking'
 
 interface ParticipantFormItemProps {
@@ -23,6 +30,19 @@ interface ParticipantFormItemProps {
   onSelectMember: (index: number, member: Member) => void
   onSearchFocus?: (index: number) => void  // 輸入框獲得焦點時通知父組件
   onSearchBlur?: (index: number) => void   // 輸入框失去焦點時通知父組件
+}
+
+function getPaymentChoiceStyle(selected: boolean): CSSProperties {
+  return {
+    border: selected
+      ? `1.5px solid ${designSystem.colors.success[500]}`
+      : `1px solid ${designSystem.colors.border.light}`,
+    borderRadius: designSystem.borderRadius.lg,
+    background: selected ? designSystem.colors.success[50] : '#ffffff',
+    color: selected ? designSystem.colors.success[700] : designSystem.colors.text.primary,
+    fontWeight: 600,
+    cursor: 'pointer',
+  }
 }
 
 export function ParticipantFormItem({
@@ -47,8 +67,9 @@ export function ParticipantFormItem({
     <div
       style={{
         padding: '16px',
-        background: '#f8f9fa',
-        borderRadius: '8px',
+        background: designSystem.colors.background.hover,
+        borderRadius: designSystem.borderRadius.lg,
+        border: `1px solid ${designSystem.colors.border.light}`,
         position: 'relative'
       }}
     >
@@ -61,45 +82,46 @@ export function ParticipantFormItem({
             top: '8px',
             right: '8px',
             padding: '4px 8px',
-            background: '#f5f5f5',
-            color: '#999',
-            border: '1px solid #e0e0e0',
-            borderRadius: '4px',
+            background: '#ffffff',
+            color: designSystem.colors.text.secondary,
+            border: `1px solid ${designSystem.colors.border.light}`,
+            borderRadius: designSystem.borderRadius.sm,
             cursor: 'pointer',
-            fontSize: '12px',
+            fontSize: getFontSize('caption', isMobile),
             transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
             gap: '4px'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#ffebee'
-            e.currentTarget.style.color = '#f44336'
-            e.currentTarget.style.borderColor = '#ffcdd2'
+            e.currentTarget.style.background = designSystem.colors.danger[50]
+            e.currentTarget.style.color = designSystem.colors.danger[700]
+            e.currentTarget.style.borderColor = designSystem.colors.danger[500]
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#f5f5f5'
-            e.currentTarget.style.color = '#999'
-            e.currentTarget.style.borderColor = '#e0e0e0'
+            e.currentTarget.style.background = '#ffffff'
+            e.currentTarget.style.color = designSystem.colors.text.secondary
+            e.currentTarget.style.borderColor = designSystem.colors.border.light
           }}
         >
-          <span style={{ fontSize: '14px', lineHeight: 1 }}>×</span>
+          <span style={{ fontSize: getFontSize('body', isMobile), lineHeight: 1 }}>×</span>
           <span>移除</span>
         </button>
       )}
 
       {/* 會員狀態標籤 + 清除按鈕 */}
-      <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
         {participant.member_id ? (
           <>
             <span
               style={{
                 display: 'inline-block',
                 padding: '4px 12px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                borderRadius: '12px',
-                fontSize: '12px',
+                background: designSystem.colors.success[50],
+                color: designSystem.colors.success[700],
+                border: `1px solid ${designSystem.colors.success[500]}`,
+                borderRadius: designSystem.borderRadius.full,
+                fontSize: getFontSize('caption', isMobile),
                 fontWeight: '600'
               }}
             >
@@ -109,16 +131,16 @@ export function ParticipantFormItem({
               onClick={() => onClearMember(index)}
               style={{
                 padding: '4px 8px',
-                background: '#ff5252',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '11px',
+                background: designSystem.colors.danger[50],
+                color: designSystem.colors.danger[700],
+                border: `1px solid ${designSystem.colors.danger[500]}`,
+                borderRadius: designSystem.borderRadius.md,
+                fontSize: getFontSize('caption', true),
                 cursor: 'pointer',
                 fontWeight: '600'
               }}
             >
-              ❌ 清除
+              清除
             </button>
           </>
         ) : (
@@ -126,15 +148,15 @@ export function ParticipantFormItem({
             style={{
               display: 'inline-block',
               padding: '4px 12px',
-              background: '#fff3e0',
-              color: '#e65100',
-              border: '1px solid #ffb74d',
-              borderRadius: '12px',
-              fontSize: '12px',
+              background: designSystem.colors.warning[50],
+              color: designSystem.colors.warning[700],
+              border: `1px solid ${designSystem.colors.warning[500]}`,
+              borderRadius: designSystem.borderRadius.full,
+              fontSize: getFontSize('caption', isMobile),
               fontWeight: '600'
             }}
           >
-            🔍 可搜尋會員或輸入客人姓名
+            可搜尋會員或輸入客人姓名
           </span>
         )}
       </div>
@@ -157,7 +179,7 @@ export function ParticipantFormItem({
           readOnly={!!participant.member_id}
           style={{
             ...getInputStyle(isMobile),
-            background: participant.member_id ? '#f0f0f0' : 'white',
+            background: participant.member_id ? designSystem.colors.background.hover : 'white',
             cursor: participant.member_id ? 'not-allowed' : 'text'
           }}
           placeholder="搜尋會員或輸入姓名"
@@ -174,11 +196,11 @@ export function ParticipantFormItem({
               maxHeight: '200px',
               overflow: 'auto',
               background: 'white',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
+              border: `1px solid ${designSystem.colors.border.main}`,
+              borderRadius: designSystem.borderRadius.md,
               marginTop: '4px',
               zIndex: 1000,
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+              boxShadow: designSystem.shadows.md
             }}
             onMouseDown={(e) => e.preventDefault()}
           >
@@ -189,11 +211,11 @@ export function ParticipantFormItem({
                 style={{
                   padding: '8px 12px',
                   cursor: 'pointer',
-                  borderBottom: '1px solid #f0f0f0',
+                  borderBottom: `1px solid ${designSystem.colors.border.light}`,
                   transition: 'background 0.2s'
                 }}
                 onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = '#f5f5f5')
+                  (e.currentTarget.style.background = designSystem.colors.background.hover)
                 }
                 onMouseLeave={(e) =>
                   (e.currentTarget.style.background = 'white')
@@ -203,7 +225,10 @@ export function ParticipantFormItem({
                   {member.nickname || member.name}
                 </div>
                 {member.phone && (
-                  <div style={{ fontSize: '12px', color: '#666' }}>
+                  <div style={{
+                    fontSize: getFontSize('caption', isMobile),
+                    color: designSystem.colors.text.secondary
+                  }}>
                     {member.phone}
                   </div>
                 )}
@@ -242,19 +267,12 @@ export function ParticipantFormItem({
               type="button"
               onClick={() => onUpdate(index, 'lesson_type', type.value)}
               style={{
+                ...getBookingChoiceStyle(participant.lesson_type === type.value),
                 flex: isMobile ? '1 1 calc(50% - 4px)' : 'none',
                 padding: '10px 16px',
-                background:
-                  participant.lesson_type === type.value ? '#2196f3' : 'white',
-                color:
-                  participant.lesson_type === type.value ? 'white' : '#666',
-                border: `2px solid ${
-                  participant.lesson_type === type.value ? '#2196f3' : '#e0e0e0'
-                }`,
-                borderRadius: '8px',
+                fontSize: getFontSize('button', isMobile),
+                fontWeight: 600,
                 cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
                 transition: 'all 0.2s'
               }}
             >
@@ -276,23 +294,10 @@ export function ParticipantFormItem({
               type="button"
               onClick={() => onUpdate(index, 'payment_method', method.value)}
               style={{
+                ...getPaymentChoiceStyle(participant.payment_method === method.value),
                 flex: isMobile ? '1 1 calc(50% - 4px)' : 'none',
                 padding: '10px 16px',
-                background:
-                  participant.payment_method === method.value
-                    ? '#4caf50'
-                    : 'white',
-                color:
-                  participant.payment_method === method.value ? 'white' : '#666',
-                border: `2px solid ${
-                  participant.payment_method === method.value
-                    ? '#4caf50'
-                    : '#e0e0e0'
-                }`,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
+                fontSize: getFontSize('button', isMobile),
                 transition: 'all 0.2s'
               }}
             >
@@ -304,4 +309,3 @@ export function ParticipantFormItem({
     </div>
   )
 }
-

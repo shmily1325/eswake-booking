@@ -726,28 +726,28 @@ export function CoachAdmin() {
             onClick={() => setActiveTab('pending')}
             badge={pendingReports.length + nonMemberReports.length}
           >
-            📋 待處理
+            待處理
           </AdminTabButton>
           <AdminTabButton
             data-track="coach_admin_tab_completed"
             active={activeTab === 'completed'}
             onClick={() => setActiveTab('completed')}
           >
-            ✅ 已處理
+            已處理
           </AdminTabButton>
           <AdminTabButton
             data-track="coach_admin_tab_statistics"
             active={activeTab === 'statistics'}
             onClick={() => setActiveTab('statistics')}
           >
-            📊 統計報表
+            統計報表
           </AdminTabButton>
           <AdminTabButton
             data-track="coach_admin_tab_billing"
             active={activeTab === 'billing'}
             onClick={() => setActiveTab('billing')}
           >
-            🔄 代扣設定
+            代扣設定
           </AdminTabButton>
         </AdminTabBar>
 
@@ -1589,29 +1589,42 @@ export function CoachAdmin() {
         }}>
           <div style={{
             background: 'white',
-            borderRadius: '12px',
+            borderRadius: designSystem.borderRadius.xl,
             padding: isMobile ? '24px' : '32px',
             maxWidth: '500px',
             width: '100%',
             maxHeight: '80vh',
-            overflow: 'auto'
+            overflow: 'auto',
+            boxShadow: designSystem.shadows.lg
           }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px' }}>
+            <h3 style={{
+              margin: '0 0 16px 0',
+              fontSize: getFontSize('h2', isMobile),
+              color: designSystem.colors.text.primary
+            }}>
               關聯會員
             </h3>
             <div style={{ 
               padding: '12px', 
-              background: '#f5f5f5', 
-              borderRadius: '8px',
+              background: designSystem.colors.background.hover, 
+              borderRadius: designSystem.borderRadius.lg,
+              border: `1px solid ${designSystem.colors.border.light}`,
               marginBottom: '16px'
             }}>
-              <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+              <div style={{
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: designSystem.colors.text.secondary,
+                marginBottom: '4px'
+              }}>
                 當前記錄
               </div>
-              <div style={{ fontWeight: '600' }}>
+              <div style={{ fontWeight: '600', color: designSystem.colors.text.primary }}>
                 {linkingReport.participant_name}
               </div>
-              <div style={{ fontSize: '14px', color: '#666' }}>
+              <div style={{
+                fontSize: getFontSize('body', isMobile),
+                color: designSystem.colors.text.secondary
+              }}>
                 {linkingReport.duration_min}分 • {PAYMENT_METHODS.find(m => m.value === linkingReport.payment_method)?.label}
               </div>
             </div>
@@ -1632,12 +1645,16 @@ export function CoachAdmin() {
               <div style={{ 
                 maxHeight: '300px', 
                 overflow: 'auto',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
+                border: `1px solid ${designSystem.colors.border.main}`,
+                borderRadius: designSystem.borderRadius.lg,
                 marginBottom: '16px'
               }}>
                 {filteredMembers.length === 0 ? (
-                  <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
+                  <div style={{
+                    padding: '16px',
+                    textAlign: 'center',
+                    color: designSystem.colors.text.secondary
+                  }}>
                     找不到會員
                   </div>
                 ) : (
@@ -1647,13 +1664,13 @@ export function CoachAdmin() {
                       onClick={() => handleLinkMember(linkingReport, member)}
                       style={{
                         padding: '12px',
-                        borderBottom: '1px solid #f0f0f0',
+                        borderBottom: `1px solid ${designSystem.colors.border.light}`,
                         cursor: 'pointer',
                         transition: 'background 0.2s'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = designSystem.colors.background.hover}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                      onTouchStart={(e) => e.currentTarget.style.background = '#eeeeee'}
+                      onTouchStart={(e) => e.currentTarget.style.background = designSystem.colors.background.hover}
                       onTouchEnd={(e) => e.currentTarget.style.background = 'transparent'}
                       onTouchCancel={(e) => e.currentTarget.style.background = 'transparent'}
                     >
@@ -1661,12 +1678,18 @@ export function CoachAdmin() {
                         {member.nickname || member.name}
                       </div>
                       {member.nickname && member.name !== member.nickname && (
-                        <div style={{ fontSize: '14px', color: '#666' }}>
+                        <div style={{
+                          fontSize: getFontSize('body', isMobile),
+                          color: designSystem.colors.text.secondary
+                        }}>
                           {member.name}
                         </div>
                       )}
                       {member.phone && (
-                        <div style={{ fontSize: '14px', color: '#999' }}>
+                        <div style={{
+                          fontSize: getFontSize('body', isMobile),
+                          color: designSystem.colors.text.disabled
+                        }}>
                           {member.phone}
                         </div>
                       )}
@@ -1683,7 +1706,7 @@ export function CoachAdmin() {
                   setMemberSearchTerm('')
                 }}
                 style={{
-                  ...getButtonStyle('secondary'),
+                  ...getButtonStyle('secondary', 'medium', isMobile),
                   flex: 1
                 }}
               >

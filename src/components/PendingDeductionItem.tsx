@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from './ui'
 import { useAuthUser } from '../contexts/AuthContext'
 import { useResponsive } from '../hooks/useResponsive'
-import { getFontSize } from '../styles/designSystem'
+import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../styles/designSystem'
 import { normalizeDate } from '../utils/date'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 import { isFacility } from '../utils/facility'
@@ -390,7 +390,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
           members:billing_member_id(id, name, nickname)
         `)
         .eq('participant_name', report.participant_name)
-        .single()
+        .maybeSingle()
       
       if (error || !data) return // 沒有找到代扣關係
       
@@ -831,12 +831,14 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
 
   return (
     <div style={{
-      background: 'white',
-      borderRadius: '12px',
+      background: designSystem.colors.background.card,
+      borderRadius: designSystem.borderRadius.xl,
       padding: '16px',
       marginBottom: '12px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      border: isExpanded ? '2px solid #4a90e2' : '1px solid #e0e0e0'
+      boxShadow: designSystem.shadows.sm,
+      border: isExpanded
+        ? `1.5px solid ${designSystem.colors.primary[500]}`
+        : `1px solid ${designSystem.colors.border.light}`
     }}>
       {/* 標題列 */}
       <div 
@@ -850,10 +852,10 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: '600', marginBottom: '6px' }}>
+          <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: '600', marginBottom: '6px', color: designSystem.colors.text.primary }}>
             {isExpanded ? '▼' : '▶'} {report.participant_name}
           </div>
-          <div style={{ fontSize: getFontSize('body', isMobile), color: '#666', marginBottom: '4px' }}>
+          <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
             {(() => {
               const [datePart] = report.bookings.start_at.split('T')
               return datePart
@@ -861,16 +863,16 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
           </div>
           {/* 提交者資訊 */}
           {submitterInfo && (submitterInfo.createdBy || submitterInfo.updatedBy) && (
-            <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#999', marginBottom: '4px' }}>
+            <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled, marginBottom: '4px' }}>
               {submitterInfo.createdBy && submitterInfo.updatedBy && submitterInfo.createdBy !== submitterInfo.updatedBy ? (
                 // 有修改者且與回報者不同
-                <>📤 由 {submitterInfo.createdBy} 回報，{submitterInfo.updatedBy} 修改</>
+                <>由 {submitterInfo.createdBy} 回報，{submitterInfo.updatedBy} 修改</>
               ) : submitterInfo.createdBy ? (
                 // 只有回報者（或修改者與回報者相同）
-                <>📤 由 {submitterInfo.createdBy} 回報</>
+                <>由 {submitterInfo.createdBy} 回報</>
               ) : submitterInfo.updatedBy ? (
                 // 只有修改者（舊資料可能沒有 createdBy）
-                <>📝 由 {submitterInfo.updatedBy} 修改</>
+                <>由 {submitterInfo.updatedBy} 修改</>
               ) : null}
             </div>
           )}
@@ -878,16 +880,22 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
             {/* 收款方式 */}
             <span style={{
               padding: '2px 8px',
-              background: report.payment_method === 'cash' ? '#fff3e0' : 
-                         report.payment_method === 'transfer' ? '#e3f2fd' :
-                         report.payment_method === 'voucher' ? '#f3e5f5' :
-                         '#e8f5e9',
-              color: report.payment_method === 'cash' ? '#e65100' :
-                     report.payment_method === 'transfer' ? '#1565c0' :
-                     report.payment_method === 'voucher' ? '#6a1b9a' :
-                     '#2e7d32',
-              fontSize: '11px',
-              borderRadius: '4px',
+              background: report.payment_method === 'cash' ? designSystem.colors.warning[50] : 
+                         report.payment_method === 'transfer' ? designSystem.colors.info[50] :
+                         report.payment_method === 'voucher' ? designSystem.colors.primary[50] :
+                         designSystem.colors.success[50],
+              color: report.payment_method === 'cash' ? designSystem.colors.warning[700] :
+                     report.payment_method === 'transfer' ? designSystem.colors.info[700] :
+                     report.payment_method === 'voucher' ? designSystem.colors.primary[700] :
+                     designSystem.colors.success[700],
+              border: `1px solid ${
+                report.payment_method === 'cash' ? designSystem.colors.warning[500] :
+                report.payment_method === 'transfer' ? designSystem.colors.info[500] :
+                report.payment_method === 'voucher' ? designSystem.colors.primary[500] :
+                designSystem.colors.success[500]
+              }33`,
+              fontSize: getFontSize('caption', true),
+              borderRadius: designSystem.borderRadius.sm,
               fontWeight: '500'
             }}>
               {report.payment_method === 'cash' ? '💵 現金' :
@@ -898,14 +906,19 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
             {/* 教學方式 */}
             <span style={{
               padding: '2px 8px',
-              background: report.lesson_type === 'designated_paid' ? '#fff9e6' : 
-                         report.lesson_type === 'designated_free' ? '#e8f5e9' :
-                         '#f5f5f5',
-              color: report.lesson_type === 'designated_paid' ? '#f57c00' : 
-                     report.lesson_type === 'designated_free' ? '#388e3c' :
-                     '#999',
-              fontSize: '11px',
-              borderRadius: '4px',
+              background: report.lesson_type === 'designated_paid' ? designSystem.colors.warning[50] : 
+                         report.lesson_type === 'designated_free' ? designSystem.colors.success[50] :
+                         designSystem.colors.background.hover,
+              color: report.lesson_type === 'designated_paid' ? designSystem.colors.warning[700] : 
+                     report.lesson_type === 'designated_free' ? designSystem.colors.success[700] :
+                     designSystem.colors.text.secondary,
+              border: `1px solid ${
+                report.lesson_type === 'designated_paid' ? `${designSystem.colors.warning[500]}33` :
+                report.lesson_type === 'designated_free' ? `${designSystem.colors.success[500]}33` :
+                designSystem.colors.border.light
+              }`,
+              fontSize: getFontSize('caption', true),
+              borderRadius: designSystem.borderRadius.sm,
               fontWeight: '500'
             }}>
               {report.lesson_type === 'designated_paid' ? '指定（需收費）' : 
@@ -917,10 +930,11 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
         {!isExpanded && (
           <div style={{
             padding: '6px 12px',
-            background: '#f0f0f0',
-            borderRadius: '6px',
+            background: designSystem.colors.background.hover,
+            borderRadius: designSystem.borderRadius.md,
+            border: `1px solid ${designSystem.colors.border.light}`,
             fontSize: getFontSize('body', isMobile),
-            color: '#666'
+            color: designSystem.colors.text.secondary
           }}>
             點擊展開
           </div>
@@ -929,31 +943,38 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
 
       {/* 展開內容 */}
       {isExpanded && (
-        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
+        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${designSystem.colors.border.light}` }}>
           {/* 結清提示（現金/匯款/設施指定課不收費） */}
           {showSettlementButton && (
             <div style={{ 
               padding: '16px',
               background: isFacilityFreeLesson 
-                ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
-                : 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-              borderRadius: '12px',
-              border: isFacilityFreeLesson ? '2px solid #bbf7d0' : '2px solid #bae6fd',
+                ? designSystem.colors.success[50]
+                : designSystem.colors.info[50],
+              borderRadius: designSystem.borderRadius.xl,
+              border: isFacilityFreeLesson
+                ? `1.5px solid ${designSystem.colors.success[500]}`
+                : `1.5px solid ${designSystem.colors.info[500]}`,
               marginBottom: '16px',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              gap: '12px',
+              flexWrap: 'wrap'
             }}>
               <div>
                 <div style={{ 
                   fontSize: getFontSize('bodyLarge', isMobile), 
                   fontWeight: '600', 
-                  color: isFacilityFreeLesson ? '#15803d' : '#0369a1', 
+                  color: isFacilityFreeLesson ? designSystem.colors.success[700] : designSystem.colors.info[700], 
                   marginBottom: '4px' 
                 }}>
                   {isFacilityFreeLesson ? '🎓 指定課不收費' : `💵 ${report.payment_method === 'cash' ? '現金' : '匯款'}結清`}
                 </div>
-                <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: isFacilityFreeLesson ? '#166534' : '#075985' }}>
+                <div style={{
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  color: isFacilityFreeLesson ? designSystem.colors.success[700] : designSystem.colors.info[700]
+                }}>
                   {isFacilityFreeLesson ? '設施指定課（免費），點擊確認結清' : '此筆記錄為現金/匯款付款'}
                 </div>
               </div>
@@ -962,25 +983,10 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 onClick={handleSettlement}
                 disabled={loading}
                 style={{
-                  padding: '10px 20px',
-                  background: isFacilityFreeLesson 
-                    ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
-                    : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontWeight: '600',
-                  fontSize: getFontSize('body', isMobile),
+                  ...getButtonStyle(isFacilityFreeLesson ? 'success' : 'info', 'medium', isMobile),
                   cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.6 : 1,
-                  boxShadow: isFacilityFreeLesson 
-                    ? '0 2px 8px rgba(34,197,94,0.3)'
-                    : '0 2px 8px rgba(14,165,233,0.3)',
                   whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
                 }}
               >
                 {loading ? (
@@ -996,7 +1002,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                     }} />
                     處理中...
                   </>
-                ) : '✅ 確認結清'}
+                ) : '確認結清'}
               </button>
             </div>
           )}
@@ -1007,9 +1013,11 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
               <div style={{ 
                 marginBottom: '16px',
                 padding: '12px',
-                background: proxyMemberId ? '#fff3e0' : '#f5f5f5',
-                borderRadius: '8px',
-                border: proxyMemberId ? '2px solid #ffcc80' : '1px solid #e0e0e0'
+                background: proxyMemberId ? designSystem.colors.warning[50] : designSystem.colors.background.hover,
+                borderRadius: designSystem.borderRadius.lg,
+                border: proxyMemberId
+                  ? `1.5px solid ${designSystem.colors.warning[500]}`
+                  : `1px solid ${designSystem.colors.border.light}`
               }}>
                 <div style={{ 
                   display: 'flex', 
@@ -1019,24 +1027,24 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   gap: '8px'
                 }}>
                   <div>
-                    <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#666', marginBottom: '4px' }}>
+                    <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
                       扣款帳戶：
                     </div>
                     <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: '600' }}>
                       {proxyMemberId ? (
                         <div>
-                          <span style={{ color: '#e65100' }}>
+                          <span style={{ color: designSystem.colors.warning[700] }}>
                             🔄 {proxyMemberName}
-                            <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#999', marginLeft: '8px' }}>
+                            <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled, marginLeft: '8px' }}>
                               (代扣 {report.participant_name} 的費用)
                             </span>
                             {isAutoProxy && (
                               <span style={{ 
-                                fontSize: '11px', 
+                                fontSize: getFontSize('caption', true), 
                                 color: '#fff',
-                                background: '#4CAF50',
+                                background: designSystem.colors.success[500],
                                 padding: '2px 6px',
-                                borderRadius: '4px',
+                                borderRadius: designSystem.borderRadius.sm,
                                 marginLeft: '8px'
                               }}>
                                 ✓ 自動帶入
@@ -1044,7 +1052,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                             )}
                           </span>
                           {proxyMemberData && (
-                            <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#666', marginTop: '4px' }}>
+                            <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: '4px' }}>
                               💰 儲值 ${(proxyMemberData.balance || 0).toLocaleString()} • 
                               💎 VIP票券 ${(proxyMemberData.vip_voucher_amount || 0).toLocaleString()} • 
                               🚤 G23 {proxyMemberData.boat_voucher_g23_minutes || 0}分 • 
@@ -1062,13 +1070,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                       <button
                         onClick={clearProxyMember}
                         style={{
-                          padding: '6px 12px',
-                          background: '#757575',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: getFontSize('button', isMobile),
-                          cursor: 'pointer'
+                          ...getButtonStyle('secondary', 'small', isMobile),
                         }}
                       >
                         ✕ 取消代扣
@@ -1077,13 +1079,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                       <button
                         onClick={() => setShowProxyMemberSearch(true)}
                         style={{
-                          padding: '6px 12px',
-                          background: '#ff9800',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: getFontSize('button', isMobile),
-                          cursor: 'pointer'
+                          ...getButtonStyle('warning', 'small', isMobile),
                         }}
                       >
                         🔄 切換扣款會員
@@ -1095,12 +1091,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                         onClick={handleUnlinkMember}
                         disabled={loading}
                         style={{
-                          padding: '6px 12px',
-                          background: '#f44336',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: getFontSize('button', isMobile),
+                          ...getButtonStyle('danger', 'small', isMobile),
                           cursor: loading ? 'not-allowed' : 'pointer',
                           opacity: loading ? 0.6 : 1
                         }}
@@ -1112,7 +1103,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 </div>
               </div>
 
-              <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', marginBottom: '12px' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', marginBottom: '12px', color: designSystem.colors.text.primary }}>
                 扣款項目：
               </div>
 
@@ -1188,7 +1179,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 background: 'white',
                 paddingTop: '16px',
                 marginTop: '16px',
-                borderTop: '2px solid #e0e0e0',
+                borderTop: `1px solid ${designSystem.colors.border.light}`,
                 zIndex: 10
               }}>
                 {/* 總覽卡片 - 已移除 */}
@@ -1343,13 +1334,10 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   onClick={addItem}
                   style={{
                     flex: 1,
-                    padding: '10px',
-                    background: 'white',
-                    border: '2px dashed #4a90e2',
-                    borderRadius: '8px',
-                    color: '#4a90e2',
-                    fontWeight: '600',
-                    cursor: 'pointer'
+                    ...getButtonStyle('outline', 'medium', isMobile),
+                    border: `1.5px dashed ${designSystem.colors.info[500]}`,
+                    color: designSystem.colors.info[700],
+                    background: '#ffffff',
                   }}
                 >
                   ➕ 新增項目
@@ -1360,20 +1348,17 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   disabled={loading || (!report.member_id && !proxyMemberId)}
                   style={{
                     flex: 1,
-                    padding: '10px',
-                    background: (report.member_id || proxyMemberId) 
-                      ? (proxyMemberId ? '#ff9800' : '#4CAF50')
-                      : '#ccc',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: 'white',
-                    fontWeight: '600',
+                    ...getButtonStyle(
+                      !(report.member_id || proxyMemberId)
+                        ? 'secondary'
+                        : proxyMemberId
+                          ? 'warning'
+                          : 'success',
+                      'medium',
+                      isMobile
+                    ),
                     cursor: (loading || (!report.member_id && !proxyMemberId)) ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.6 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
+                    opacity: (loading || (!report.member_id && !proxyMemberId)) ? 0.55 : 1,
                   }}
                 >
                   {loading ? (
@@ -1389,7 +1374,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                       }} />
                       處理中...
                     </>
-                  ) : proxyMemberId ? `✅ 確認扣款（${proxyMemberName}）` : '✅ 確認扣款'}
+                  ) : proxyMemberId ? `確認扣款（${proxyMemberName}）` : '確認扣款'}
                 </button>
               </div>
 
@@ -1397,7 +1382,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   <div style={{ 
                     marginTop: '8px', 
                     fontSize: getFontSize('bodySmall', isMobile),
-                    color: '#f44336',
+                    color: designSystem.colors.danger[700],
                     textAlign: 'center'
                   }}>
                     ⚠️ 非會員無法扣款，請選擇「切換扣款會員」
@@ -1432,23 +1417,23 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
           }}>
             <div style={{
               background: 'white',
-              borderRadius: '12px',
+              borderRadius: designSystem.borderRadius.xl,
               maxWidth: '400px',
               width: '100%',
               maxHeight: '80vh',
               overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+              boxShadow: designSystem.shadows.lg
             }}>
               {/* 標題 */}
               <div style={{
                 padding: '16px',
-                borderBottom: '1px solid #e0e0e0',
+                borderBottom: `1px solid ${designSystem.colors.border.light}`,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <h3 style={{ margin: 0, fontSize: getFontSize('h3', isMobile) }}>
-                  🔄 選擇代扣會員
+                <h3 style={{ margin: 0, fontSize: getFontSize('h3', isMobile), color: designSystem.colors.text.primary }}>
+                  選擇代扣會員
                 </h3>
                 <button
                   onClick={() => {
@@ -1460,7 +1445,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                     background: 'none',
                     fontSize: getFontSize('h2', isMobile),
                     cursor: 'pointer',
-                    color: '#666'
+                    color: designSystem.colors.text.secondary
                   }}
                 >
                   ×
@@ -1470,9 +1455,10 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
               {/* 說明 */}
               <div style={{
                 padding: '12px 16px',
-                background: '#fff3e0',
+                background: designSystem.colors.warning[50],
+                borderBottom: `1px solid ${designSystem.colors.warning[500]}33`,
                 fontSize: getFontSize('bodySmall', isMobile),
-                color: '#e65100'
+                color: designSystem.colors.warning[700]
               }}>
                 選擇要代扣的會員帳戶。代扣後：
                 <br />• 該會員的交易說明會顯示「教練 ({report.participant_name})」
@@ -1488,11 +1474,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                   placeholder="搜尋會員姓名、暱稱或電話..."
                   autoFocus
                   style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
+                    ...getInputStyle(isMobile),
                     boxSizing: 'border-box'
                   }}
                 />
@@ -1502,10 +1484,10 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
               <div style={{ 
                 maxHeight: '300px', 
                 overflow: 'auto',
-                borderTop: '1px solid #e0e0e0'
+                borderTop: `1px solid ${designSystem.colors.border.light}`
               }}>
                 {proxySearchTerm && proxyFilteredMembers.length === 0 ? (
-                  <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
+                  <div style={{ padding: '16px', textAlign: 'center', color: designSystem.colors.text.secondary }}>
                     找不到會員
                   </div>
                 ) : (
@@ -1515,23 +1497,23 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                       onClick={() => selectProxyMember(member)}
                       style={{
                         padding: '12px 16px',
-                        borderBottom: '1px solid #f0f0f0',
+                        borderBottom: `1px solid ${designSystem.colors.border.light}`,
                         cursor: 'pointer',
                         transition: 'background 0.2s'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = designSystem.colors.background.hover}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                       <div style={{ fontWeight: '600' }}>
                         {member.nickname || member.name}
                       </div>
                       {member.nickname && member.name !== member.nickname && (
-                        <div style={{ fontSize: getFontSize('body', isMobile), color: '#666' }}>
+                        <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary }}>
                           {member.name}
                         </div>
                       )}
                       {member.phone && (
-                        <div style={{ fontSize: getFontSize('body', isMobile), color: '#999' }}>
+                        <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.disabled }}>
                           {member.phone}
                         </div>
                       )}
@@ -1685,12 +1667,12 @@ function DeductionItemRow({
     <div 
       id={`deduction-item-${itemIndex}`}
       style={{
-        background: index % 2 === 0 ? 'linear-gradient(to bottom, #f8fcff, #f0f8ff)' : 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
-        borderRadius: '12px',
+        background: designSystem.colors.background.hover,
+        borderRadius: designSystem.borderRadius.xl,
         padding: '16px',
         marginBottom: '12px',
-        border: index % 2 === 0 ? '2px solid #bae6fd' : '2px solid #e0e0e0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        border: `1px solid ${designSystem.colors.border.light}`,
+        boxShadow: designSystem.shadows.xs,
         position: 'relative'
       }}
     >
@@ -1702,7 +1684,7 @@ function DeductionItemRow({
           alignItems: 'center', 
           marginBottom: '12px',
           paddingBottom: '10px',
-          borderBottom: '1px solid #e8ecef'
+          borderBottom: `1px solid ${designSystem.colors.border.light}`
         }}>
           <div style={{ 
             display: 'flex',
@@ -1710,10 +1692,11 @@ function DeductionItemRow({
             gap: '10px'
           }}>
             <span style={{ 
-              fontSize: '11px', 
+              fontSize: getFontSize('caption', true), 
               fontWeight: '500',
-              color: '#9ca3af',
-              background: '#f3f4f6',
+              color: designSystem.colors.text.secondary,
+              background: '#ffffff',
+              border: `1px solid ${designSystem.colors.border.light}`,
               width: '20px',
               height: '20px',
               borderRadius: '50%',
@@ -1724,7 +1707,7 @@ function DeductionItemRow({
             }}>
               {index}
             </span>
-            <span style={{ fontSize: '16px' }}>{currentCategory?.emoji}</span>
+            <span style={{ fontSize: getFontSize('bodyLarge', isMobile) }}>{currentCategory?.emoji}</span>
           </div>
           {canRemove && (
             <button
@@ -1732,21 +1715,19 @@ function DeductionItemRow({
               style={{
                 padding: '4px 10px',
                 background: '#fff',
-                color: '#ef4444',
-                border: '1px solid #fecaca',
-                borderRadius: '6px',
+                color: designSystem.colors.danger[700],
+                border: `1px solid ${designSystem.colors.danger[500]}`,
+                borderRadius: designSystem.borderRadius.md,
                 fontSize: getFontSize('bodySmall', isMobile),
                 cursor: 'pointer',
                 fontWeight: '500',
                 transition: 'all 0.2s'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#fef2f2'
-                e.currentTarget.style.borderColor = '#ef4444'
+                e.currentTarget.style.background = designSystem.colors.danger[50]
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = '#fff'
-                e.currentTarget.style.borderColor = '#fecaca'
               }}
             >
               刪除
@@ -1817,8 +1798,8 @@ function DeductionItemRow({
             background: 'white',
             transition: 'all 0.2s'
           }}
-          onFocus={(e) => e.currentTarget.style.borderColor = '#4a90e2'}
-          onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+          onFocus={(e) => e.currentTarget.style.borderColor = designSystem.colors.primary[500]}
+          onBlur={(e) => e.currentTarget.style.borderColor = designSystem.colors.border.main}
         >
           {categories.map(cat => (
             <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -1864,20 +1845,20 @@ function DeductionItemRow({
       <div style={{ marginBottom: '14px' }}>
         {isDirectSettlement ? (
           <div style={{
-            background: '#f1f8f4',
+            background: designSystem.colors.success[50],
             padding: '14px 18px',
-            borderRadius: '8px',
-            border: '1px solid #c8e6c9',
+            borderRadius: designSystem.borderRadius.lg,
+            border: `1px solid ${designSystem.colors.success[500]}33`,
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
           }}>
             <span style={{ fontSize: '18px' }}>✅</span>
             <div>
-              <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', color: '#2e7d32' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', color: designSystem.colors.success[700] }}>
                 直接結清
               </div>
-              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: '#558b2f' }}>
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.success[700] }}>
                 不扣任何費用
               </div>
             </div>
@@ -1948,11 +1929,11 @@ function DeductionItemRow({
                   style={{
                     flex: 1,
                     padding: '12px 14px',
-                    border: '2px solid #667eea',
-                    borderRadius: '8px',
+                    border: `2px solid ${designSystem.colors.info[500]}`,
+                    borderRadius: designSystem.borderRadius.lg,
                     fontSize: '16px',
                     fontWeight: '600',
-                    background: '#f8f9ff'
+                    background: designSystem.colors.info[50]
                   }}
                 />
               </div>
@@ -2009,11 +1990,11 @@ function DeductionItemRow({
                   style={{
                     flex: 1,
                     padding: '12px 14px',
-                    border: '2px solid #667eea',
-                    borderRadius: '8px',
+                    border: `2px solid ${designSystem.colors.info[500]}`,
+                    borderRadius: designSystem.borderRadius.lg,
                     fontSize: '16px',
                     fontWeight: '600',
-                    background: '#f8f9ff'
+                    background: designSystem.colors.info[50]
                   }}
                 />
                 <span style={{ fontSize: getFontSize('body', isMobile), color: '#666' }}>分鐘</span>
@@ -2154,8 +2135,8 @@ function DeductionItemRow({
               resize: 'vertical',
               fontFamily: 'inherit'
             }}
-            onFocus={(e) => e.currentTarget.style.borderColor = '#4a90e2'}
-            onBlur={(e) => e.currentTarget.style.borderColor = validationErrors[`item-${itemIndex}-description`] ? '#dc2626' : '#e9ecef'}
+            onFocus={(e) => e.currentTarget.style.borderColor = designSystem.colors.primary[500]}
+            onBlur={(e) => e.currentTarget.style.borderColor = validationErrors[`item-${itemIndex}-description`] ? designSystem.colors.danger[500] : designSystem.colors.border.main}
           />
         ) : (
           <div 
@@ -2269,7 +2250,7 @@ function DeductionItemRow({
                 borderRadius: '8px',
                 fontSize: '16px'
               }}
-              onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+              onFocus={(e) => e.currentTarget.style.borderColor = designSystem.colors.primary[500]}
               onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
             />
           </>
