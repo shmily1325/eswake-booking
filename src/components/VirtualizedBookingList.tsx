@@ -94,9 +94,9 @@ export function VirtualizedBookingList({
                     >
                         {/* 左側船名欄 */}
                         <div style={{
-                            // 手機加寬：色點＋「陸上課程」同列、統一字級、不省略
-                            minWidth: isMobile ? '112px' : '120px',
-                            maxWidth: isMobile ? '112px' : '120px',
+                            // 手機需容納「陸上課程」四字；色點改回船名上方，不再跟文字搶寬
+                            minWidth: isMobile ? '100px' : '120px',
+                            maxWidth: isMobile ? '100px' : '120px',
                             background: designSystem.colors.secondary[800],
                             color: '#ffffff',
                             display: 'flex',
@@ -112,36 +112,35 @@ export function VirtualizedBookingList({
                         }}
                             title={sidebarAlert.show ? sidebarAlert.title : undefined}
                         >
-                            {/* 色點固定左側＋船名同列；各船點位垂直成一直線 */}
+                            {/* 色點置於船名上方置中，避免與長名（陸上課程）橫排時各列點位左右漂移 */}
+                            <span
+                                aria-hidden
+                                style={{
+                                    width: isMobile ? '7px' : '8px',
+                                    height: isMobile ? '7px' : '8px',
+                                    borderRadius: '50%',
+                                    background: boat.color || designSystem.colors.border.dark,
+                                    border: '1px solid rgba(255,255,255,0.45)',
+                                    flexShrink: 0,
+                                    marginBottom: '6px',
+                                }}
+                            />
                             <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: isMobile ? '5px' : '6px',
                                 width: '100%',
+                                minWidth: 0,
                                 marginBottom: '4px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                wordBreak: 'keep-all',
+                                fontSize: isMobile
+                                    ? (boat.name.length >= 4 ? '13px' : '14px')
+                                    : '16px',
+                                fontWeight: '700',
+                                textAlign: 'center',
+                                letterSpacing: boat.name.length >= 4 ? '-0.02em' : undefined,
                             }}>
-                                <span
-                                    aria-hidden
-                                    style={{
-                                        width: isMobile ? '7px' : '8px',
-                                        height: isMobile ? '7px' : '8px',
-                                        borderRadius: '50%',
-                                        background: boat.color || designSystem.colors.border.dark,
-                                        border: '1px solid rgba(255,255,255,0.45)',
-                                        flexShrink: 0,
-                                    }}
-                                />
-                                <span style={{
-                                    flex: 1,
-                                    whiteSpace: 'nowrap',
-                                    wordBreak: 'keep-all',
-                                    fontSize: isMobile ? '14px' : '16px',
-                                    fontWeight: '700',
-                                    textAlign: 'left',
-                                    lineHeight: 1.2,
-                                }}>
-                                    {boat.name}
-                                </span>
+                                {boat.name}
                             </div>
                             {sidebarAlert.show && (
                                 <div style={{
@@ -215,7 +214,7 @@ export function VirtualizedBookingList({
                                                     display: 'flex',
                                                     gap: isMobile ? '10px' : '14px',
                                                     alignItems: 'center',
-                                                    backgroundColor: designSystem.colors.background.main,
+                                                    backgroundColor: designSystem.colors.background.card,
                                                     border: conflictedBookingIds?.has(booking.id)
                                                         ? `2px solid ${designSystem.colors.danger[500]}`
                                                         : `1px solid ${designSystem.colors.border.light}`,
@@ -230,7 +229,7 @@ export function VirtualizedBookingList({
                                                     e.currentTarget.style.backgroundColor = designSystem.colors.background.hover
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.backgroundColor = designSystem.colors.background.main
+                                                    e.currentTarget.style.backgroundColor = designSystem.colors.background.card
                                                 }}
                                             >
                                                 {/* 時間區塊 */}

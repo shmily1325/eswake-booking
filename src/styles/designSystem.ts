@@ -541,7 +541,8 @@ export const getBookingCardStyle = (
   isClickable: boolean = false
 ): React.CSSProperties => ({
   padding: isMobile ? '10px 8px' : '14px 12px',
-  background: '#ffffff',
+  // 淺灰底，避免白底牌卡疊在白底格線上幾乎看不見
+  background: designSystem.colors.background.main,
   border: `1px solid ${designSystem.colors.border.light}`,
   borderLeft: `3px solid ${boatColor}`,
   verticalAlign: 'top',
