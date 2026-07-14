@@ -38,7 +38,14 @@ interface LiffEmptyStateProps {
 export function LiffEmptyState({ kind, title, detail, hint }: LiffEmptyStateProps) {
   return (
     <div style={{ textAlign: 'center', padding: '12px 0 8px' }}>
-      <div style={{ marginBottom: 18, opacity: 0.85 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: 18,
+          opacity: 0.85,
+        }}
+      >
         <EmptyGlyph kind={kind} />
       </div>
       <div

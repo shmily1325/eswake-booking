@@ -3,6 +3,13 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
 import { MemoRecordCheckbox } from './MemoRecordCheckbox'
+import {
+  designSystem,
+  getButtonStyle,
+  getInputStyle,
+  getLabelStyle,
+  getTextStyle,
+} from '../styles/designSystem'
 
 interface Member {
   id: string
@@ -131,26 +138,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     setPartnerSearch('')
     setPartnerSearchResults([])
   }, [member, open])
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: isMobile ? '12px' : '10px',
-    border: '2px solid #e0e0e0',
-    borderRadius: '8px',
-    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
-    transition: 'border-color 0.2s',
-    boxSizing: 'border-box',
-    minWidth: 0,
-    touchAction: 'manipulation',
-  }
-
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = '#5a5a5a'
-  }
-
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = '#e0e0e0'
-  }
 
   // 添加新置板格位
   const handleAddBoardSlot = () => {
@@ -331,6 +318,16 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
 
   if (!open) return null
 
+  const inputStyle = getInputStyle(isMobile)
+  const typeSize = (variant: keyof typeof designSystem.fontSize) =>
+    designSystem.fontSize[variant][isMobile ? 'mobile' : 'desktop']
+  const requiredMark = { color: designSystem.colors.danger[500] }
+  const quietHint = {
+    fontSize: typeSize('bodySmall'),
+    color: designSystem.colors.text.disabled,
+    fontWeight: 400 as const,
+  }
+
   return (
     <div style={{
       position: 'fixed',
@@ -347,60 +344,67 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       overflowY: isMobile ? 'hidden' : 'auto',
     }}>
       <div style={{
-        background: 'white',
-        borderRadius: isMobile ? '16px 16px 0 0' : '12px',
+        background: designSystem.colors.background.card,
+        borderRadius: isMobile
+          ? `${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg} 0 0`
+          : designSystem.borderRadius.lg,
         maxWidth: isMobile ? '100%' : '600px',
         width: '100%',
         maxHeight: isMobile ? '80vh' : '90vh',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+        boxShadow: designSystem.shadows.lg,
+        border: `1px solid ${designSystem.colors.border.light}`,
         margin: isMobile ? 'auto 0 0 0' : 'auto',
       }}>
-        {/* 標題欄 */}
         <div style={{
           padding: isMobile ? '20px 20px 16px' : '20px',
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: `1px solid ${designSystem.colors.border.light}`,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexShrink: 0,
-          background: 'white',
+          background: designSystem.colors.background.card,
         }}>
-          <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 'bold' }}>
-            ✏️ 編輯會員資料
+          <h2 style={{
+            margin: 0,
+            ...getTextStyle('h3', isMobile),
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+          }}>
+            編輯會員資料
           </h2>
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
+            aria-label="關閉"
             style={{
               border: 'none',
               background: 'none',
-              fontSize: '28px',
+              fontSize: designSystem.fontSize.h1.desktop,
               cursor: loading ? 'not-allowed' : 'pointer',
-              color: '#666',
+              color: designSystem.colors.text.secondary,
               padding: '0 8px',
               opacity: loading ? 0.5 : 1,
+              lineHeight: 1,
             }}
           >
             ×
           </button>
         </div>
 
-        {/* 內容區域 - Scrollable */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: isMobile ? '20px' : '20px',
+          padding: '20px',
           WebkitOverflowScrolling: 'touch',
         }}>
           <form onSubmit={handleSubmit} id="edit-member-form">
-            {/* 姓名 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                姓名 <span style={{ color: 'red' }}>*</span>
+              <label style={getLabelStyle(isMobile)}>
+                姓名 <span style={requiredMark}>*</span>
               </label>
               <input
                 type="text"
@@ -408,16 +412,13 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="請輸入姓名"
                 style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
                 required
               />
             </div>
 
-            {/* 暱稱 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                暱稱 <span style={{ fontSize: '13px', color: '#999' }}>（可輸入多個）</span>
+              <label style={getLabelStyle(isMobile)}>
+                暱稱 <span style={quietHint}>（可輸入多個）</span>
               </label>
               <input
                 type="text"
@@ -426,55 +427,38 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                 placeholder="請輸入暱稱"
                 maxLength={100}
                 style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
               />
             </div>
 
-            {/* 生日 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                生日
-              </label>
-              <div style={{ display: 'flex' }}>
-                <input
-                  type="date"
-                  value={formData.birthday}
-                  onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-                  style={{...inputStyle, flex: 1}}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                />
-              </div>
+              <label style={getLabelStyle(isMobile)}>生日</label>
+              <input
+                type="date"
+                value={formData.birthday}
+                onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                style={inputStyle}
+              />
             </div>
 
-            {/* 電話 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                電話
-              </label>
+              <label style={getLabelStyle(isMobile)}>電話</label>
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="請輸入電話"
                 style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
               />
             </div>
 
-            {/* 會籍類型 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                會籍類型 <span style={{ color: 'red' }}>*</span>
+              <label style={getLabelStyle(isMobile)}>
+                會籍類型 <span style={requiredMark}>*</span>
               </label>
               <select
                 value={formData.membership_type}
                 onChange={(e) => setFormData({ ...formData, membership_type: e.target.value })}
                 style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
                 required
               >
                 <option value="general">會員</option>
@@ -484,49 +468,32 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               </select>
             </div>
 
-            {/* 會員日期 */}
-            <div style={{ 
+            <div style={{
               display: 'grid',
               gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
               gap: '12px',
-              marginBottom: '16px'
+              marginBottom: '16px',
             }}>
-              {/* 會員開始日期 */}
               <div style={{ minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                  會員開始日期
-                </label>
-                <div style={{ display: 'flex' }}>
-                  <input
-                    type="date"
-                    value={formData.membership_start_date}
-                    onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
-                    style={{...inputStyle, flex: 1}}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                  />
-                </div>
+                <label style={getLabelStyle(isMobile)}>會員開始日期</label>
+                <input
+                  type="date"
+                  value={formData.membership_start_date}
+                  onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
+                  style={inputStyle}
+                />
               </div>
-
-              {/* 會員截止日期 */}
               <div style={{ minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                  會員截止日期
-                </label>
-                <div style={{ display: 'flex' }}>
-                  <input
-                    type="date"
-                    value={formData.membership_end_date}
-                    onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
-                    style={{...inputStyle, flex: 1}}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                  />
-                </div>
+                <label style={getLabelStyle(isMobile)}>會員截止日期</label>
+                <input
+                  type="date"
+                  value={formData.membership_end_date}
+                  onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
+                  style={inputStyle}
+                />
               </div>
             </div>
 
-            {/* 日期有變更時才顯示記錄選項 */}
             {(formData.membership_start_date !== (member.membership_start_date || '') ||
               formData.membership_end_date !== (member.membership_end_date || '')) && (
               <MemoRecordCheckbox
@@ -539,11 +506,15 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               />
             )}
 
-            {/* 配對會員 - 只在選擇「雙人會籍」時顯示 */}
             {formData.membership_type === 'dual' && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#2196F3' }}>
-                  🔗 配對會員 {selectedPartner ? '' : member.partner && <span style={{ fontSize: '13px', color: '#666', fontWeight: 'normal' }}>（目前：{member.partner.nickname || member.partner.name}）</span>}
+                <label style={getLabelStyle(isMobile)}>
+                  配對會員{' '}
+                  {!selectedPartner && member.partner && (
+                    <span style={quietHint}>
+                      （目前：{member.partner.nickname || member.partner.name}）
+                    </span>
+                  )}
                 </label>
                 <input
                   type="text"
@@ -554,19 +525,16 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                   }}
                   placeholder="搜尋會員姓名/暱稱..."
                   style={inputStyle}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
                 />
 
-                {/* 搜尋結果 */}
                 {partnerSearchResults.length > 0 && !selectedPartner && (
                   <div style={{
                     marginTop: '8px',
                     maxHeight: '200px',
                     overflowY: 'auto',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    background: 'white'
+                    border: `1px solid ${designSystem.colors.border.light}`,
+                    borderRadius: designSystem.borderRadius.lg,
+                    background: designSystem.colors.background.card,
                   }}>
                     {partnerSearchResults.map((m) => (
                       <div
@@ -578,16 +546,20 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                           setPartnerSearchResults([])
                         }}
                         style={{
-                          padding: '10px',
+                          padding: '10px 12px',
                           cursor: 'pointer',
-                          borderBottom: '1px solid #f0f0f0'
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = designSystem.colors.background.main
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = designSystem.colors.background.card
+                        }}
                       >
-                        <div style={{ fontWeight: '500' }}>{m.name}</div>
+                        <div style={{ fontWeight: 500, color: designSystem.colors.text.primary }}>{m.name}</div>
                         {m.nickname && (
-                          <div style={{ fontSize: '13px', color: '#666' }}>
+                          <div style={{ fontSize: typeSize('bodySmall'), color: designSystem.colors.text.secondary }}>
                             暱稱：{m.nickname}
                           </div>
                         )}
@@ -596,101 +568,92 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                   </div>
                 )}
 
-                {/* 已選擇的配對會員（綠色框） */}
                 {selectedPartner && (
                   <div style={{
                     marginTop: '8px',
-                    padding: '12px',
-                    background: selectedPartner.id === member.membership_partner_id ? '#e3f2fd' : '#e8f5e9',
-                    borderRadius: '8px',
+                    padding: '12px 14px',
+                    background: designSystem.colors.info[50],
+                    border: `1px solid ${designSystem.colors.info[500]}55`,
+                    borderRadius: designSystem.borderRadius.lg,
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    gap: '12px',
                   }}>
-                    <div>
-                      <div style={{ fontWeight: '500', color: selectedPartner.id === member.membership_partner_id ? '#1976d2' : '#2e7d32' }}>
-                        {selectedPartner.id === member.membership_partner_id ? '✓ 維持原配對：' : '🔄 更換為：'}{selectedPartner.name}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, color: designSystem.colors.info[700], fontSize: typeSize('body') }}>
+                        {selectedPartner.id === member.membership_partner_id ? '維持原配對：' : '更換為：'}
+                        {selectedPartner.name}
                       </div>
                       {selectedPartner.nickname && (
-                        <div style={{ fontSize: '13px', color: '#666' }}>
+                        <div style={{ fontSize: typeSize('bodySmall'), color: designSystem.colors.text.secondary }}>
                           暱稱：{selectedPartner.nickname}
                         </div>
                       )}
                       {selectedPartner.id !== member.membership_partner_id && member.partner && (
-                        <div style={{ fontSize: '12px', color: '#e65100', marginTop: '4px' }}>
+                        <div style={{ fontSize: typeSize('caption'), color: designSystem.colors.warning[700], marginTop: '4px' }}>
                           從「{member.partner.nickname || member.partner.name}」更換
                         </div>
                       )}
                     </div>
                     <button
+                      type="button"
                       onClick={() => {
                         setSelectedPartner(null)
                         setFormData({ ...formData, membership_partner_id: '' })
                         setPartnerSearch('')
                       }}
                       style={{
+                        ...getButtonStyle('ghost', 'small', isMobile),
                         padding: '4px 8px',
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '18px'
+                        color: designSystem.colors.text.secondary,
+                        flexShrink: 0,
                       }}
+                      aria-label="清除配對"
                     >
-                      ✕
+                      ×
                     </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* 置板資訊 */}
             <div style={{
-              background: '#e8f5e9',
+              background: designSystem.colors.background.main,
               padding: '16px',
-              borderRadius: '8px',
-              marginBottom: '16px'
+              borderRadius: designSystem.borderRadius.lg,
+              border: `1px solid ${designSystem.colors.border.light}`,
+              marginBottom: '8px',
             }}>
-              <div style={{ 
+              <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '12px'
+                marginBottom: '12px',
+                gap: '12px',
               }}>
-                <h3 style={{ 
+                <h3 style={{
                   margin: 0,
-                  fontSize: '15px', 
-                  fontWeight: '600',
-                  color: '#2e7d32',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
+                  ...getTextStyle('body', isMobile),
+                  fontWeight: 650,
                 }}>
-                  🏄 置板資訊
+                  置板資訊
                 </h3>
                 <button
                   type="button"
                   onClick={handleAddBoardSlot}
-                  style={{
-                    padding: '6px 12px',
-                    background: '#2e7d32',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    fontWeight: '500'
-                  }}
+                  style={getButtonStyle('secondary', 'small', isMobile)}
                 >
                   + 新增格位
                 </button>
               </div>
-              
+
               {boardSlots.length === 0 ? (
-                <div style={{ 
-                  textAlign: 'center', 
-                  color: '#666', 
-                  fontSize: '13px',
-                  padding: '20px'
+                <div style={{
+                  textAlign: 'center',
+                  color: designSystem.colors.text.secondary,
+                  fontSize: typeSize('bodySmall'),
+                  padding: '20px 12px',
                 }}>
                   尚無置板格位，點擊「新增格位」添加
                 </div>
@@ -698,19 +661,19 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {boardSlots.map((slot, index) => (
                     <div key={index} style={{
-                      background: 'white',
+                      background: designSystem.colors.background.card,
                       padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #c8e6c9'
+                      borderRadius: designSystem.borderRadius.lg,
+                      border: `1px solid ${designSystem.colors.border.light}`,
                     }}>
-                      <div style={{ 
+                      <div style={{
                         display: 'grid',
                         gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
                         gap: '12px',
-                        marginBottom: '8px'
+                        marginBottom: '8px',
                       }}>
                         <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '13px' }}>
+                          <label style={{ ...getLabelStyle(isMobile), marginBottom: '4px' }}>
                             格位編號 (1-145)
                           </label>
                           <input
@@ -718,54 +681,47 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                             inputMode="numeric"
                             value={slot.slot_number}
                             onChange={(e) => {
-                              const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                              const numValue = e.target.value.replace(/\D/g, '')
                               const num = Number(numValue)
                               if ((num >= 1 && num <= 145) || numValue === '') {
                                 handleUpdateBoardSlot(index, 'slot_number', numValue)
                               }
                             }}
                             placeholder="例如：1"
-                            style={{...inputStyle}}
+                            style={inputStyle}
                           />
                         </div>
                         <div style={{ minWidth: 0 }}>
-                          <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '13px' }}>
+                          <label style={{ ...getLabelStyle(isMobile), marginBottom: '4px' }}>
                             開始日期
                           </label>
-                          <div style={{ display: 'flex' }}>
-                            <input
-                              type="date"
-                              value={slot.start_date}
-                              onChange={(e) => handleUpdateBoardSlot(index, 'start_date', e.target.value)}
-                              style={{...inputStyle, flex: 1}}
-                            />
-                          </div>
+                          <input
+                            type="date"
+                            value={slot.start_date}
+                            onChange={(e) => handleUpdateBoardSlot(index, 'start_date', e.target.value)}
+                            style={inputStyle}
+                          />
                         </div>
                         <div style={{ minWidth: 0 }}>
-                          <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', fontSize: '13px' }}>
+                          <label style={{ ...getLabelStyle(isMobile), marginBottom: '4px' }}>
                             到期日期
                           </label>
-                          <div style={{ display: 'flex' }}>
-                            <input
-                              type="date"
-                              value={slot.expires_at}
-                              onChange={(e) => handleUpdateBoardSlot(index, 'expires_at', e.target.value)}
-                              style={{...inputStyle, flex: 1}}
-                            />
-                          </div>
+                          <input
+                            type="date"
+                            value={slot.expires_at}
+                            onChange={(e) => handleUpdateBoardSlot(index, 'expires_at', e.target.value)}
+                            style={inputStyle}
+                          />
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveBoardSlot(index)}
                         style={{
-                          padding: '4px 10px',
-                          background: '#f44336',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          cursor: 'pointer'
+                          ...getButtonStyle('outline', 'small', isMobile),
+                          color: designSystem.colors.danger[700],
+                          borderColor: `${designSystem.colors.danger[500]}66`,
+                          background: designSystem.colors.danger[50],
                         }}
                       >
                         刪除
@@ -775,18 +731,18 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                 </div>
               )}
             </div>
-
           </form>
         </div>
 
-        {/* 底部按鈕欄 - 固定底部 */}
         <div style={{
-          padding: isMobile ? '12px 20px' : '20px 24px',
-          borderTop: '1px solid #e0e0e0',
-          background: 'white',
+          padding: isMobile ? '12px 20px' : '16px 20px',
+          borderTop: `1px solid ${designSystem.colors.border.light}`,
+          background: designSystem.colors.background.card,
           display: 'flex',
           gap: isMobile ? '8px' : '12px',
-          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
+          paddingBottom: isMobile
+            ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
+            : '16px',
           flexShrink: 0,
         }}>
           <button
@@ -794,17 +750,10 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             onClick={onClose}
             disabled={loading}
             style={{
+              ...getButtonStyle('outline', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
-              borderRadius: '8px',
-              border: '1px solid #ccc',
-              backgroundColor: 'white',
-              color: '#333',
-              fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '500',
-              cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.5 : 1,
-              touchAction: 'manipulation',
+              cursor: loading ? 'not-allowed' : 'pointer',
               minHeight: isMobile ? '48px' : '44px',
             }}
           >
@@ -815,40 +764,17 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             form="edit-member-form"
             disabled={loading}
             style={{
+              ...getButtonStyle('primary', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-              color: 'white',
-              fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '600',
+              opacity: loading ? 0.7 : 1,
               cursor: loading ? 'not-allowed' : 'pointer',
-              touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
             }}
           >
-            {loading ? (
-              <>
-                <span style={{ 
-                  display: 'inline-block',
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderTop: '2px solid white',
-                  borderRadius: '50%',
-                }} />
-                更新中...
-              </>
-            ) : '✅ 確認更新'}
+            {loading ? '更新中...' : '確認更新'}
           </button>
         </div>
       </div>
     </div>
   )
 }
-

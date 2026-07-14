@@ -470,10 +470,10 @@ export function LiffMyBookings() {
   const formatDate = (dateString: string) => {
     const { date } = parseDbTimestamp(dateString.length >= 16 ? dateString : `${dateString}T00:00:00`)
     const [, month, day] = date.split('-').map(Number)
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const [y, mo, d] = date.split('-').map(Number)
     const weekday = weekdays[new Date(y, mo - 1, d).getDay()]
-    return `週${weekday} · ${month}/${day}`
+    return `${month}/${day} · ${weekday}`
   }
 
   const getEndTime = (startAt: string, duration: number) =>

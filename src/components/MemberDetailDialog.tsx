@@ -6,16 +6,28 @@ import { TransactionDialog } from './TransactionDialog'
 import { useToast } from './ui'
 import { normalizeDate } from '../utils/date'
 import { MemoRecordCheckbox } from './MemoRecordCheckbox'
-import { designSystem, getBadgeStyle, getButtonStyle } from '../styles/designSystem'
+import {
+  designSystem,
+  getBadgeStyle,
+  getBookingChoiceStyle,
+  getButtonStyle,
+  getInputStyle,
+  getLabelStyle,
+  getTextStyle,
+} from '../styles/designSystem'
 
-/** 詳情區塊標題（純樣式） */
-const sectionHeadingStyle: CSSProperties = {
+const typeSize = (
+  variant: keyof typeof designSystem.fontSize,
+  isMobile: boolean,
+) => designSystem.fontSize[variant][isMobile ? 'mobile' : 'desktop']
+
+/** 詳情區塊標題 */
+const getSectionHeadingStyle = (isMobile: boolean): CSSProperties => ({
   margin: '0 0 12px 0',
-  fontSize: '16px',
-  color: designSystem.colors.text.primary,
+  ...getTextStyle('h3', isMobile),
   fontWeight: 700,
   letterSpacing: '-0.01em',
-}
+})
 
 const sectionWrapperStyle: CSSProperties = {
   marginBottom: '28px',
@@ -28,10 +40,10 @@ const sectionToolbarStyle: CSSProperties = {
   marginBottom: '12px',
 }
 
-const sectionHeadingInToolbarStyle: CSSProperties = {
-  ...sectionHeadingStyle,
+const getSectionHeadingInToolbarStyle = (isMobile: boolean): CSSProperties => ({
+  ...getSectionHeadingStyle(isMobile),
   margin: 0,
-}
+})
 
 /** 詳情內容面板：白底細框，取代灰底巢狀卡片 */
 const sectionPanelStyle: CSSProperties = {
@@ -42,12 +54,92 @@ const sectionPanelStyle: CSSProperties = {
   boxShadow: designSystem.shadows.elevation[1],
 }
 
-const sectionEmptyStateStyle: CSSProperties = {
+const getSectionEmptyStateStyle = (isMobile: boolean): CSSProperties => ({
   ...sectionPanelStyle,
   padding: '20px 16px',
   textAlign: 'center',
   color: designSystem.colors.text.secondary,
-  fontSize: '13px',
+  fontSize: typeSize('bodySmall', isMobile),
+})
+
+/** 巢狀／主對話框共用 chrome */
+const dialogOverlayStyle = (zIndex: number): CSSProperties => ({
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: 'rgba(0,0,0,0.5)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex,
+  padding: '20px',
+})
+
+const dialogPanelStyle = (maxWidth: string): CSSProperties => ({
+  background: designSystem.colors.background.card,
+  borderRadius: designSystem.borderRadius.lg,
+  maxWidth,
+  width: '100%',
+  boxShadow: designSystem.shadows.lg,
+  border: `1px solid ${designSystem.colors.border.light}`,
+  overflow: 'hidden',
+})
+
+const dialogHeaderBarStyle: CSSProperties = {
+  padding: '20px',
+  borderBottom: `1px solid ${designSystem.colors.border.light}`,
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  background: designSystem.colors.background.card,
+}
+
+const getDialogTitleStyle = (isMobile: boolean): CSSProperties => ({
+  margin: 0,
+  ...getTextStyle('h3', isMobile),
+  fontWeight: 700,
+  letterSpacing: '-0.02em',
+})
+
+const dialogCloseButtonStyle: CSSProperties = {
+  border: 'none',
+  background: 'none',
+  fontSize: typeSize('h1', false),
+  cursor: 'pointer',
+  color: designSystem.colors.text.secondary,
+  padding: '0 8px',
+  lineHeight: 1,
+}
+
+const dialogBodyStyle: CSSProperties = {
+  padding: '20px',
+}
+
+const dialogFooterStyle: CSSProperties = {
+  padding: '16px 20px',
+  borderTop: `1px solid ${designSystem.colors.border.light}`,
+  display: 'flex',
+  gap: '12px',
+  justifyContent: 'flex-end',
+  background: designSystem.colors.background.card,
+}
+
+const getFieldHintStyle = (isMobile: boolean): CSSProperties => ({
+  fontSize: typeSize('caption', isMobile),
+  color: designSystem.colors.text.disabled,
+  marginTop: '8px',
+})
+
+const getQuietHintStyle = (isMobile: boolean): CSSProperties => ({
+  fontSize: typeSize('bodySmall', isMobile),
+  color: designSystem.colors.text.disabled,
+  fontWeight: 400,
+})
+
+const requiredMarkStyle: CSSProperties = {
+  color: designSystem.colors.danger[500],
 }
 
 /** 入會／續會贈送提醒（需人工判斷後至會員儲值記帳，不會自動加） */
@@ -847,63 +939,53 @@ export function MemberDetailDialog({
   return (
     <>
       <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
+        ...dialogOverlayStyle(1000),
         alignItems: isMobile ? 'flex-end' : 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
         padding: isMobile ? '0' : '20px',
       }}>
         <div style={{
-          background: 'white',
-          borderRadius: isMobile ? '12px 12px 0 0' : '12px',
-          maxWidth: isMobile ? '100%' : '800px',
-          width: '100%',
+          ...dialogPanelStyle(isMobile ? '100%' : '800px'),
+          borderRadius: isMobile
+            ? `${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg} 0 0`
+            : designSystem.borderRadius.lg,
           maxHeight: isMobile ? '95vh' : '90vh',
           overflow: 'auto',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
           margin: isMobile ? 'auto 0 0 0' : 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
           {/* 標題欄 */}
           <div style={{
-            padding: '20px',
-            borderBottom: '1px solid #e0e0e0',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            ...dialogHeaderBarStyle,
             position: 'sticky',
             top: 0,
-            background: 'white',
             zIndex: 1,
           }}>
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+            <h2 style={getDialogTitleStyle(isMobile)}>
               會員詳情
             </h2>
             <button
               onClick={onClose}
-              style={{
-                border: 'none',
-                background: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                color: '#666',
-                padding: '0 8px',
-              }}
+              style={dialogCloseButtonStyle}
+              aria-label="關閉"
             >
               ×
             </button>
           </div>
 
           {loading ? (
-            <div style={{ padding: '50px', textAlign: 'center', color: '#666' }}>載入中...</div>
+            <div style={{
+              padding: '50px',
+              textAlign: 'center',
+              color: designSystem.colors.text.secondary,
+              fontSize: typeSize('body', isMobile),
+            }}>載入中...</div>
           ) : !member ? (
-            <div style={{ padding: '50px', textAlign: 'center', color: '#666' }}>找不到會員資料</div>
+            <div style={{
+              padding: '50px',
+              textAlign: 'center',
+              color: designSystem.colors.text.secondary,
+              fontSize: typeSize('body', isMobile),
+            }}>找不到會員資料</div>
           ) : (
             <>
               {/* 內容區 */}
@@ -911,7 +993,7 @@ export function MemberDetailDialog({
                     {/* 基本資料 */}
                     <div style={sectionWrapperStyle}>
                       <div style={sectionToolbarStyle}>
-                        <h3 style={sectionHeadingInToolbarStyle}>基本資料</h3>
+                        <h3 style={getSectionHeadingInToolbarStyle(isMobile)}>基本資料</h3>
                         <button
                           onClick={() => setEditDialogOpen(true)}
                           style={getButtonStyle('outline', 'small', isMobile)}
@@ -922,11 +1004,15 @@ export function MemberDetailDialog({
                       <div style={{ ...sectionPanelStyle, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {/* 第一行：暱稱／姓名＋會籍類型 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: isMobile ? '18px' : '19px', fontWeight: 750, color: designSystem.colors.text.primary, letterSpacing: '-0.025em' }}>
+                          <span style={{
+                            ...getTextStyle('h3', isMobile),
+                            fontWeight: 750,
+                            letterSpacing: '-0.025em',
+                          }}>
                             {member.nickname?.trim() ? member.nickname : member.name}
                           </span>
                           {member.nickname?.trim() && (
-                            <span style={{ fontSize: '13px', color: designSystem.colors.text.disabled }}>
+                            <span style={{ ...getTextStyle('bodySmall', isMobile), color: designSystem.colors.text.disabled }}>
                               ({member.name})
                             </span>
                           )}
@@ -943,7 +1029,7 @@ export function MemberDetailDialog({
                           alignItems: 'center',
                           gap: isMobile ? '10px' : '16px',
                           flexWrap: 'wrap',
-                          fontSize: '14px',
+                          fontSize: typeSize('body', isMobile),
                           color: designSystem.colors.text.primary,
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -957,7 +1043,6 @@ export function MemberDetailDialog({
                               style={{
                                 ...getButtonStyle('outline', 'small', isMobile),
                                 padding: '2px 8px',
-                                fontSize: '12px',
                                 flexShrink: 0,
                               }}
                               title="修改手機號碼"
@@ -1006,9 +1091,6 @@ export function MemberDetailDialog({
                                 background: designSystem.colors.danger[50],
                                 color: designSystem.colors.danger[700],
                                 borderColor: `${designSystem.colors.danger[500]}66`,
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                padding: '4px 10px',
                               }}
                               title="移除 LINE 綁定"
                             >
@@ -1044,7 +1126,6 @@ export function MemberDetailDialog({
                                 color: member.status === 'inactive'
                                   ? designSystem.colors.success[700]
                                   : designSystem.colors.text.secondary,
-                                fontSize: '12px',
                                 fontWeight: 500,
                                 padding: '2px 4px',
                               }}
@@ -1059,10 +1140,10 @@ export function MemberDetailDialog({
                     {/* 會籍 - 會員 */}
                     {(member.membership_type === 'general' || member.membership_type === 'dual') && (
                       <div style={sectionWrapperStyle}>
-                        <h3 style={sectionHeadingStyle}>會籍</h3>
+                        <h3 style={getSectionHeadingStyle(isMobile)}>會籍</h3>
                         <div style={sectionPanelStyle}>
                           <div style={{ 
-                            fontSize: '15px',
+                            fontSize: typeSize('body', isMobile),
                             fontWeight: 600,
                             marginBottom: member.membership_type === 'dual' && member.partner ? '8px' : '14px',
                             color: member.membership_end_date && isExpired(member.membership_end_date)
@@ -1078,7 +1159,7 @@ export function MemberDetailDialog({
                             <div 
                               onClick={() => onSwitchMember?.(member.partner!.id)}
                               style={{ 
-                                fontSize: '13px', 
+                                fontSize: typeSize('bodySmall', isMobile), 
                                 color: onSwitchMember ? designSystem.colors.info[700] : designSystem.colors.text.secondary, 
                                 marginBottom: '14px',
                                 cursor: onSwitchMember ? 'pointer' : 'default',
@@ -1102,7 +1183,7 @@ export function MemberDetailDialog({
                                 setRenewEndDate(newEnd.toISOString().split('T')[0])
                                 setRenewDialogOpen(true)
                               }}
-                              style={getButtonStyle('success', 'small', isMobile)}
+                              style={getButtonStyle('primary', 'small', isMobile)}
                             >
                               續約
                             </button>
@@ -1120,9 +1201,9 @@ export function MemberDetailDialog({
                     {/* 會籍 - 非會員 */}
                     {member.membership_type === 'guest' && (
                       <div style={sectionWrapperStyle}>
-                        <h3 style={sectionHeadingStyle}>會籍</h3>
+                        <h3 style={getSectionHeadingStyle(isMobile)}>會籍</h3>
                         <div style={sectionPanelStyle}>
-                          <div style={{ fontSize: '14px', color: designSystem.colors.text.secondary, marginBottom: '14px' }}>
+                          <div style={{ fontSize: typeSize('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: '14px' }}>
                             目前為非會員
                           </div>
                           <button
@@ -1133,7 +1214,7 @@ export function MemberDetailDialog({
                               setRenewEndDate(endDate.toISOString().split('T')[0])
                               setRenewDialogOpen(true)
                             }}
-                            style={getButtonStyle('success', 'small', isMobile)}
+                            style={getButtonStyle('primary', 'small', isMobile)}
                           >
                             轉為會員
                           </button>
@@ -1144,7 +1225,7 @@ export function MemberDetailDialog({
                     {/* 置板 */}
                     <div style={sectionWrapperStyle}>
                       <div style={sectionToolbarStyle}>
-                        <h3 style={sectionHeadingInToolbarStyle}>置板</h3>
+                        <h3 style={getSectionHeadingInToolbarStyle(isMobile)}>置板</h3>
                         <button
                           onClick={() => setAddBoardDialogOpen(true)}
                           style={getButtonStyle('secondary', 'small', isMobile)}
@@ -1153,7 +1234,7 @@ export function MemberDetailDialog({
                         </button>
                       </div>
                       {boardStorage.length === 0 ? (
-                        <div style={sectionEmptyStateStyle}>
+                        <div style={getSectionEmptyStateStyle(isMobile)}>
                           尚無置板
                         </div>
                       ) : (
@@ -1168,7 +1249,7 @@ export function MemberDetailDialog({
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 gap: '12px',
-                                fontSize: '13px',
+                                fontSize: typeSize('bodySmall', isMobile),
                                 cursor: 'pointer',
                                 transition: designSystem.transitions.normal,
                               }}
@@ -1188,7 +1269,7 @@ export function MemberDetailDialog({
                                   <span style={{ color: designSystem.colors.danger[700], marginLeft: '6px' }}>(已過期)</span>
                                 }
                                 {board.notes && (
-                                  <span style={{ color: designSystem.colors.text.secondary, marginLeft: '8px', fontSize: '12px' }}>
+                                  <span style={{ color: designSystem.colors.text.secondary, marginLeft: '8px', fontSize: typeSize('caption', isMobile) }}>
                                     {board.notes.length > 10 ? board.notes.substring(0, 10) + '...' : board.notes}
                                   </span>
                                 )}
@@ -1198,7 +1279,7 @@ export function MemberDetailDialog({
                                   e.stopPropagation()  // 防止觸發卡片的點擊
                                   openBoardRenewDialog(board.id, board.slot_number, board.expires_at)
                                 }}
-                                style={getButtonStyle('success', 'small', isMobile)}
+                                style={getButtonStyle('outline', 'small', isMobile)}
                               >
                                 +1年
                               </button>
@@ -1211,7 +1292,7 @@ export function MemberDetailDialog({
                     {/* 備忘錄 */}
                     <div style={sectionWrapperStyle}>
                       <div style={sectionToolbarStyle}>
-                        <h3 style={sectionHeadingInToolbarStyle}>
+                        <h3 style={getSectionHeadingInToolbarStyle(isMobile)}>
                           備忘錄 {memberNotes.length > 0 && <span style={{ color: designSystem.colors.text.secondary, fontWeight: 'normal' }}>({memberNotes.length})</span>}
                         </h3>
                         <button
@@ -1223,7 +1304,7 @@ export function MemberDetailDialog({
                       </div>
                       
                       {memberNotes.length === 0 ? (
-                        <div style={sectionEmptyStateStyle}>
+                        <div style={getSectionEmptyStateStyle(isMobile)}>
                           尚無備忘錄
                         </div>
                       ) : (
@@ -1264,18 +1345,18 @@ export function MemberDetailDialog({
                                       flexWrap: 'wrap',
                                     }}>
                                       <span style={{
-                                        fontSize: '12px',
+                                        fontSize: typeSize('caption', isMobile),
                                         fontWeight: 650,
                                         color: eventType.color,
                                       }}>
                                         {eventType.label}
                                       </span>
-                                      <span style={{ color: designSystem.colors.text.secondary, fontSize: '12px' }}>
+                                      <span style={{ color: designSystem.colors.text.secondary, fontSize: typeSize('caption', isMobile) }}>
                                         {note.event_date || ''}
                                       </span>
                                     </div>
                                     <div style={{ 
-                                      fontSize: '13px', 
+                                      fontSize: typeSize('bodySmall', isMobile), 
                                       color: designSystem.colors.text.primary,
                                       lineHeight: '1.45',
                                     }}>
@@ -1288,7 +1369,6 @@ export function MemberDetailDialog({
                                       style={{
                                         ...getButtonStyle('outline', 'small', isMobile),
                                         padding: '4px 8px',
-                                        fontSize: '11px',
                                       }}
                                     >
                                       編輯
@@ -1298,7 +1378,6 @@ export function MemberDetailDialog({
                                       style={{
                                         ...getButtonStyle('outline', 'small', isMobile),
                                         padding: '4px 8px',
-                                        fontSize: '11px',
                                         color: designSystem.colors.danger[700],
                                         borderColor: `${designSystem.colors.danger[500]}66`,
                                         background: designSystem.colors.danger[50],
@@ -1317,7 +1396,7 @@ export function MemberDetailDialog({
 
                     {/* 金流資訊 - 點擊可記帳 */}
                     <div style={sectionWrapperStyle}>
-                      <h3 style={sectionHeadingStyle}>金流</h3>
+                      <h3 style={getSectionHeadingStyle(isMobile)}>金流</h3>
                       <div 
                         onClick={() => setTransactionDialogOpen(true)}
                         style={{ 
@@ -1336,7 +1415,7 @@ export function MemberDetailDialog({
                           display: 'grid', 
                           gridTemplateColumns: 'repeat(2, 1fr)',
                           gap: '12px',
-                          fontSize: '13px',
+                          fontSize: typeSize('bodySmall', isMobile),
                           textAlign: 'center',
                         }}>
                           {[
@@ -1348,10 +1427,10 @@ export function MemberDetailDialog({
                             { label: '贈送大船', value: `${member.gift_boat_hours ?? 0}分` },
                           ].map((item) => (
                             <div key={item.label}>
-                              <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
+                              <div style={{ fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
                                 {item.label}
                               </div>
-                              <div style={{ fontSize: '17px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+                              <div style={{ fontSize: typeSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
                                 {item.value}
                               </div>
                             </div>
@@ -1391,68 +1470,34 @@ export function MemberDetailDialog({
 
       {/* 新增置板對話框 */}
       {addBoardDialogOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 2000,
-          padding: '20px',
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}>
-            {/* 標題 */}
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e0e0e0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-                新增置板
-              </h2>
+        <div style={dialogOverlayStyle(2000)}>
+          <div style={dialogPanelStyle('500px')}>
+            <div style={dialogHeaderBarStyle}>
+              <h2 style={getDialogTitleStyle(isMobile)}>新增置板</h2>
               <button
                 onClick={() => {
                   setAddBoardDialogOpen(false)
                   setBoardFormData({ slot_number: '', start_date: '', expires_at: '', notes: '' })
                 }}
-                style={{
-                  border: 'none',
-                  background: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#666',
-                }}
+                style={dialogCloseButtonStyle}
+                aria-label="關閉"
               >
                 &times;
               </button>
             </div>
 
-            {/* 表單 */}
-            <div style={{ padding: '20px' }}>
-              {/* 格位編號 */}
+            <div style={dialogBodyStyle}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  格位編號 <span style={{ color: 'red' }}>*</span>
-                  <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>（1-145）</span>
+                <label style={getLabelStyle(isMobile)}>
+                  格位編號 <span style={requiredMarkStyle}>*</span>
+                  <span style={{ ...getQuietHintStyle(isMobile), marginLeft: '8px' }}>（1-145）</span>
                 </label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={boardFormData.slot_number}
                   onChange={(e) => {
-                    const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                    const numValue = e.target.value.replace(/\D/g, '')
                     const num = Number(numValue)
                     if (num >= 1 && num <= 145) {
                       setBoardFormData({ ...boardFormData, slot_number: numValue })
@@ -1461,119 +1506,61 @@ export function MemberDetailDialog({
                     }
                   }}
                   placeholder="請輸入格位編號"
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                  }}
+                  style={getInputStyle(isMobile)}
                 />
               </div>
 
-              {/* 置板開始 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                  置板開始 <span style={{ fontSize: '13px' }}>（選填）</span>
+                <label style={getLabelStyle(isMobile)}>
+                  置板開始 <span style={getQuietHintStyle(isMobile)}>（選填）</span>
                 </label>
-                <div style={{ display: 'flex' }}>
-                  <input
-                    type="date"
-                    value={boardFormData.start_date}
-                    onChange={(e) => setBoardFormData({ ...boardFormData, start_date: e.target.value })}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      padding: '10px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
+                <input
+                  type="date"
+                  value={boardFormData.start_date}
+                  onChange={(e) => setBoardFormData({ ...boardFormData, start_date: e.target.value })}
+                  style={getInputStyle(isMobile)}
+                />
               </div>
 
-              {/* 置板到期 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                  置板到期 <span style={{ fontSize: '13px' }}>（選填）</span>
+                <label style={getLabelStyle(isMobile)}>
+                  置板到期 <span style={getQuietHintStyle(isMobile)}>（選填）</span>
                 </label>
-                <div style={{ display: 'flex' }}>
-                  <input
-                    type="date"
-                    value={boardFormData.expires_at}
-                    onChange={(e) => setBoardFormData({ ...boardFormData, expires_at: e.target.value })}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      padding: '10px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
+                <input
+                  type="date"
+                  value={boardFormData.expires_at}
+                  onChange={(e) => setBoardFormData({ ...boardFormData, expires_at: e.target.value })}
+                  style={getInputStyle(isMobile)}
+                />
               </div>
 
-              {/* 置板備註 */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                  置板備註 <span style={{ fontSize: '13px' }}>（選填）</span>
+              <div style={{ marginBottom: '0' }}>
+                <label style={getLabelStyle(isMobile)}>
+                  置板備註 <span style={getQuietHintStyle(isMobile)}>（選填）</span>
                 </label>
                 <input
                   type="text"
                   value={boardFormData.notes}
                   onChange={(e) => setBoardFormData({ ...boardFormData, notes: e.target.value })}
                   placeholder="例如：有三格"
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                  }}
+                  style={getInputStyle(isMobile)}
                 />
               </div>
             </div>
 
-            {/* 按鈕 */}
-            <div style={{
-              padding: '20px',
-              borderTop: '1px solid #e0e0e0',
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end',
-            }}>
+            <div style={dialogFooterStyle}>
               <button
                 onClick={() => {
                   setAddBoardDialogOpen(false)
                   setBoardFormData({ slot_number: '', start_date: '', expires_at: '', notes: '' })
                 }}
-                style={{
-                  padding: '10px 20px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                }}
+                style={getButtonStyle('outline', 'medium', isMobile)}
               >
                 取消
               </button>
               <button
                 onClick={handleAddBoard}
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                }}
+                style={getButtonStyle('primary', 'medium', isMobile)}
               >
                 確認新增
               </button>
@@ -1584,35 +1571,10 @@ export function MemberDetailDialog({
 
       {/* 新增/編輯備忘錄對話框 */}
       {noteDialogOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 2000,
-          padding: '20px',
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}>
-            {/* 標題 */}
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e0e0e0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+        <div style={dialogOverlayStyle(2000)}>
+          <div style={dialogPanelStyle('500px')}>
+            <div style={dialogHeaderBarStyle}>
+              <h2 style={getDialogTitleStyle(isMobile)}>
                 {editingNote ? '編輯備忘錄' : '新增備忘錄'}
               </h2>
               <button
@@ -1621,82 +1583,55 @@ export function MemberDetailDialog({
                   setEditingNote(null)
                   setNoteFormData({ event_date: '', event_type: '備註', description: '' })
                 }}
-                style={{
-                  border: 'none',
-                  background: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#666',
-                }}
+                style={dialogCloseButtonStyle}
+                aria-label="關閉"
               >
                 &times;
               </button>
             </div>
 
-            {/* 表單 */}
-            <div style={{ padding: '20px' }}>
-              {/* 事件日期 */}
+            <div style={dialogBodyStyle}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  事件日期 <span style={{ color: 'red' }}>*</span>
+                <label style={getLabelStyle(isMobile)}>
+                  事件日期 <span style={requiredMarkStyle}>*</span>
                 </label>
-                <div style={{ display: 'flex' }}>
-                  <input
-                    type="date"
-                    value={noteFormData.event_date}
-                    onChange={(e) => setNoteFormData({ ...noteFormData, event_date: e.target.value })}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      padding: '10px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
+                <input
+                  type="date"
+                  value={noteFormData.event_date}
+                  onChange={(e) => setNoteFormData({ ...noteFormData, event_date: e.target.value })}
+                  style={getInputStyle(isMobile)}
+                />
               </div>
 
-              {/* 事件類型 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  事件類型
-                </label>
+                <label style={getLabelStyle(isMobile)}>事件類型</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {EVENT_TYPES.map((type) => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() => setNoteFormData({ ...noteFormData, event_type: type.value })}
-                      style={{
-                        padding: '8px 14px',
-                        border: noteFormData.event_type === type.value 
-                          ? `2px solid ${type.color}` 
-                          : '2px solid #e0e0e0',
-                        borderRadius: '20px',
-                        background: noteFormData.event_type === type.value 
-                          ? type.color 
-                          : 'white',
-                        color: noteFormData.event_type === type.value 
-                          ? 'white' 
-                          : '#666',
-                        fontSize: '13px',
-                        fontWeight: noteFormData.event_type === type.value ? '600' : 'normal',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
+                  {EVENT_TYPES.map((type) => {
+                    const selected = noteFormData.event_type === type.value
+                    return (
+                      <button
+                        key={type.value}
+                        type="button"
+                        onClick={() => setNoteFormData({ ...noteFormData, event_type: type.value })}
+                        style={{
+                          ...getBookingChoiceStyle(selected),
+                          padding: '8px 14px',
+                          fontSize: typeSize('button', isMobile),
+                          fontWeight: selected ? 600 : 500,
+                          cursor: 'pointer',
+                          transition: designSystem.transitions.normal,
+                        }}
+                      >
+                        {type.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
-              {/* 說明 */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  說明 <span style={{ color: 'red' }}>*</span>
+              <div style={{ marginBottom: '0' }}>
+                <label style={getLabelStyle(isMobile)}>
+                  說明 <span style={requiredMarkStyle}>*</span>
                 </label>
                 <textarea
                   value={noteFormData.description}
@@ -1704,55 +1639,29 @@ export function MemberDetailDialog({
                   placeholder="請輸入備忘錄內容..."
                   rows={4}
                   style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px', // 16px 防止 iOS 縮放
+                    ...getInputStyle(isMobile),
                     resize: 'vertical',
                     fontFamily: 'inherit',
+                    minHeight: '96px',
                   }}
                 />
               </div>
             </div>
 
-            {/* 按鈕 */}
-            <div style={{
-              padding: '20px',
-              borderTop: '1px solid #e0e0e0',
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end',
-            }}>
+            <div style={dialogFooterStyle}>
               <button
                 onClick={() => {
                   setNoteDialogOpen(false)
                   setEditingNote(null)
                   setNoteFormData({ event_date: '', event_type: '備註', description: '' })
                 }}
-                style={{
-                  padding: '10px 20px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                }}
+                style={getButtonStyle('outline', 'medium', isMobile)}
               >
                 取消
               </button>
               <button
                 onClick={handleSaveNote}
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: '#5a5a5a',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                }}
+                style={getButtonStyle('primary', 'medium', isMobile)}
               >
                 {editingNote ? '儲存' : '新增'}
               </button>
@@ -1763,156 +1672,134 @@ export function MemberDetailDialog({
 
       {/* 續約/入會對話框 */}
       {renewDialogOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1100,
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            maxWidth: '400px',
-            width: '90%',
-            padding: '24px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>
-              {member?.membership_type === 'guest' ? '轉為會員' : '會籍續約'}
-            </h3>
-
-            {/* 入會／續會贈送提醒：只提示政策，是否贈送／怎麼記仍由操作者判斷 */}
-            <div
-              role="note"
-              style={{
-                marginBottom: '20px',
-                padding: '12px 14px',
-                background: designSystem.colors.warning[50],
-                border: `1px solid ${designSystem.colors.warning[500]}55`,
-                borderRadius: '10px',
-                color: designSystem.colors.warning[700],
-                fontSize: '14px',
-                fontWeight: 600,
-                lineHeight: 1.5,
-              }}
-            >
-              <div style={{ marginBottom: '8px' }}>
-                {member?.membership_type === 'guest' ? '入會贈送提醒' : '續會贈送提醒'}
-              </div>
-              <div style={{ fontWeight: 700, fontSize: '14px' }}>
-                ▶︎ 30分鐘指定課程
-              </div>
-              <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>
-                ▶︎ 40分鐘大船時數
-              </div>
-              <div style={{ marginTop: '8px', fontWeight: 500, fontSize: '12px', opacity: 0.9 }}>
-                這裡只改會籍到期日，請至「會員儲值」記帳
-              </div>
-            </div>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                {member?.membership_type === 'guest' ? '會籍到期日' : '新的到期日'}
-              </label>
-              <div style={{ display: 'flex' }}>
-                <input
-                  type="date"
-                  value={renewEndDate}
-                  onChange={(e) => setRenewEndDate(e.target.value)}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              {member?.membership_type === 'guest' ? (
-                <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                  會籍開始日將設為今天
-                </div>
-              ) : (
-                <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                  目前到期：{member?.membership_end_date ? formatDate(member.membership_end_date) : '未設定'}
-                </div>
-              )}
-            </div>
-
-            {/* 雙人會員選項 */}
-            {member?.membership_type === 'dual' && member?.partner && (
-              <div style={{ 
-                marginBottom: '20px',
-                padding: '12px',
-                background: renewBothPartners ? '#e3f2fd' : '#fff3e0',
-                borderRadius: '8px',
-                border: renewBothPartners ? '1px solid #90caf9' : '1px solid #ffcc80',
-              }}>
-                <label style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '10px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={renewBothPartners}
-                    onChange={(e) => setRenewBothPartners(e.target.checked)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  <span>
-                    同時續約配對會員 <strong>{member.partner.nickname || member.partner.name}</strong>
-                  </span>
-                </label>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '8px', marginLeft: '28px' }}>
-                  配對會員目前到期：{(member.partner as any).membership_end_date ? formatDate((member.partner as any).membership_end_date) : '未設定'}
-                </div>
-                {!renewBothPartners && (
-                  <div style={{ fontSize: '12px', color: '#e65100', marginTop: '8px', marginLeft: '28px' }}>
-                    不勾選會解除配對，雙方都變為一般會員
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+        <div style={dialogOverlayStyle(1100)}>
+          <div style={{ ...dialogPanelStyle('400px'), width: '90%' }}>
+            <div style={dialogHeaderBarStyle}>
+              <h2 style={getDialogTitleStyle(isMobile)}>
+                {member?.membership_type === 'guest' ? '轉為會員' : '會籍續約'}
+              </h2>
               <button
                 onClick={() => {
                   setRenewDialogOpen(false)
                   setRenewEndDate('')
                 }}
+                style={dialogCloseButtonStyle}
+                aria-label="關閉"
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={dialogBodyStyle}>
+              {/* 入會／續會贈送提醒：只提示政策，是否贈送／怎麼記仍由操作者判斷 */}
+              <div
+                role="note"
                 style={{
-                  padding: '10px 20px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
+                  marginBottom: '20px',
+                  padding: '12px 14px',
+                  background: designSystem.colors.background.main,
+                  border: `1px solid ${designSystem.colors.border.light}`,
+                  borderRadius: designSystem.borderRadius.lg,
+                  color: designSystem.colors.text.secondary,
+                  fontSize: typeSize('bodySmall', isMobile),
+                  fontWeight: 500,
+                  lineHeight: 1.5,
                 }}
+              >
+                <div style={{ marginBottom: '6px', color: designSystem.colors.text.primary, fontWeight: 600 }}>
+                  {member?.membership_type === 'guest' ? '入會贈送提醒' : '續會贈送提醒'}
+                </div>
+                <div>30分鐘指定課程 · 40分鐘大船時數</div>
+                <div style={{ marginTop: '6px', fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.disabled }}>
+                  這裡只改會籍到期日，請至「會員儲值」記帳
+                </div>
+              </div>
+
+              <div style={{ marginBottom: member?.membership_type === 'dual' && member?.partner ? '20px' : '0' }}>
+                <label style={getLabelStyle(isMobile)}>
+                  {member?.membership_type === 'guest' ? '會籍到期日' : '新的到期日'}
+                </label>
+                <input
+                  type="date"
+                  value={renewEndDate}
+                  onChange={(e) => setRenewEndDate(e.target.value)}
+                  style={getInputStyle(isMobile)}
+                />
+                {member?.membership_type === 'guest' ? (
+                  <div style={getFieldHintStyle(isMobile)}>會籍開始日將設為今天</div>
+                ) : (
+                  <div style={getFieldHintStyle(isMobile)}>
+                    目前到期：{member?.membership_end_date ? formatDate(member.membership_end_date) : '未設定'}
+                  </div>
+                )}
+              </div>
+
+              {/* 雙人會員選項 */}
+              {member?.membership_type === 'dual' && member?.partner && (
+                <div style={{
+                  marginBottom: '0',
+                  padding: '12px 14px',
+                  background: renewBothPartners
+                    ? designSystem.colors.info[50]
+                    : designSystem.colors.background.main,
+                  borderRadius: designSystem.borderRadius.lg,
+                  border: renewBothPartners
+                    ? `1.5px solid ${designSystem.colors.info[500]}`
+                    : `1px solid ${designSystem.colors.border.light}`,
+                }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    fontSize: typeSize('body', isMobile),
+                    color: designSystem.colors.text.primary,
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={renewBothPartners}
+                      onChange={(e) => setRenewBothPartners(e.target.checked)}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                        accentColor: designSystem.colors.info[500],
+                      }}
+                    />
+                    <span>
+                      同時續約配對會員 <strong>{member.partner.nickname || member.partner.name}</strong>
+                    </span>
+                  </label>
+                  <div style={{ ...getFieldHintStyle(isMobile), marginLeft: '28px' }}>
+                    配對會員目前到期：{(member.partner as any).membership_end_date ? formatDate((member.partner as any).membership_end_date) : '未設定'}
+                  </div>
+                  {!renewBothPartners && (
+                    <div style={{
+                      fontSize: typeSize('caption', isMobile),
+                      color: designSystem.colors.warning[700],
+                      marginTop: '8px',
+                      marginLeft: '28px',
+                    }}>
+                      不勾選會解除配對，雙方都變為一般會員
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div style={dialogFooterStyle}>
+              <button
+                onClick={() => {
+                  setRenewDialogOpen(false)
+                  setRenewEndDate('')
+                }}
+                style={getButtonStyle('outline', 'medium', isMobile)}
               >
                 取消
               </button>
               <button
                 onClick={handleRenew}
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: designSystem.colors.success[500],
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                }}
+                style={getButtonStyle('primary', 'medium', isMobile)}
               >
                 {member?.membership_type === 'guest' ? '確認轉為會員' : '確認續約'}
               </button>
@@ -1923,83 +1810,50 @@ export function MemberDetailDialog({
 
       {/* 置板續約對話框 */}
       {boardRenewDialogOpen && renewingBoard && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1100,
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            maxWidth: '400px',
-            width: '90%',
-            padding: '24px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>置板續約 #{renewingBoard.slot_number}</h3>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                新的到期日
-              </label>
-              <div style={{ display: 'flex' }}>
-                <input
-                  type="date"
-                  value={boardRenewEndDate}
-                  onChange={(e) => setBoardRenewEndDate(e.target.value)}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                目前到期：{renewingBoard.expires_at ? formatDate(renewingBoard.expires_at) : '未設定'}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+        <div style={dialogOverlayStyle(1100)}>
+          <div style={{ ...dialogPanelStyle('400px'), width: '90%' }}>
+            <div style={dialogHeaderBarStyle}>
+              <h2 style={getDialogTitleStyle(isMobile)}>置板續約 #{renewingBoard.slot_number}</h2>
               <button
                 onClick={() => {
                   setBoardRenewDialogOpen(false)
                   setBoardRenewEndDate('')
                   setRenewingBoard(null)
                 }}
-                style={{
-                  padding: '10px 20px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  background: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
+                style={dialogCloseButtonStyle}
+                aria-label="關閉"
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={dialogBodyStyle}>
+              <label style={getLabelStyle(isMobile)}>新的到期日</label>
+              <input
+                type="date"
+                value={boardRenewEndDate}
+                onChange={(e) => setBoardRenewEndDate(e.target.value)}
+                style={getInputStyle(isMobile)}
+              />
+              <div style={getFieldHintStyle(isMobile)}>
+                目前到期：{renewingBoard.expires_at ? formatDate(renewingBoard.expires_at) : '未設定'}
+              </div>
+            </div>
+
+            <div style={dialogFooterStyle}>
+              <button
+                onClick={() => {
+                  setBoardRenewDialogOpen(false)
+                  setBoardRenewEndDate('')
+                  setRenewingBoard(null)
                 }}
+                style={getButtonStyle('outline', 'medium', isMobile)}
               >
                 取消
               </button>
               <button
                 onClick={handleBoardRenew}
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                }}
+                style={getButtonStyle('primary', 'medium', isMobile)}
               >
                 確認續約
               </button>
@@ -2010,113 +1864,73 @@ export function MemberDetailDialog({
 
       {/* 置板編輯對話框 */}
       {boardEditDialogOpen && editingBoard && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1100,
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            maxWidth: '400px',
-            width: '90%',
-            padding: '24px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
-              編輯置板 #{editingBoard.slot_number}
-            </h3>
-            
-            {/* 開始日期 */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                開始日期
-              </label>
-              <div style={{ display: 'flex' }}>
+        <div style={dialogOverlayStyle(1100)}>
+          <div style={{ ...dialogPanelStyle('400px'), width: '90%' }}>
+            <div style={dialogHeaderBarStyle}>
+              <h2 style={getDialogTitleStyle(isMobile)}>
+                編輯置板 #{editingBoard.slot_number}
+              </h2>
+              <button
+                onClick={() => {
+                  setBoardEditDialogOpen(false)
+                  setEditingBoard(null)
+                }}
+                style={dialogCloseButtonStyle}
+                aria-label="關閉"
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={dialogBodyStyle}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={getLabelStyle(isMobile)}>開始日期</label>
                 <input
                   type="date"
                   value={boardEditForm.start_date}
                   onChange={(e) => setBoardEditForm({ ...boardEditForm, start_date: e.target.value })}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box',
-                  }}
+                  style={getInputStyle(isMobile)}
                 />
               </div>
-            </div>
 
-            {/* 到期日期 */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                到期日期
-              </label>
-              <div style={{ display: 'flex' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={getLabelStyle(isMobile)}>到期日期</label>
                 <input
                   type="date"
                   value={boardEditForm.expires_at}
                   onChange={(e) => setBoardEditForm({ ...boardEditForm, expires_at: e.target.value })}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box',
-                  }}
+                  style={getInputStyle(isMobile)}
+                />
+                <div style={getFieldHintStyle(isMobile)}>
+                  目前：{editingBoard.expires_at || '未設定'}
+                </div>
+              </div>
+
+              {(boardEditForm.start_date !== (editingBoard.start_date || '') ||
+                boardEditForm.expires_at !== (editingBoard.expires_at || '')) && (
+                <MemoRecordCheckbox
+                  checked={boardEditForm.addToMemo}
+                  onChange={(checked) => setBoardEditForm({ ...boardEditForm, addToMemo: checked })}
+                  inputValue={boardEditForm.memoText}
+                  onInputChange={(text) => setBoardEditForm({ ...boardEditForm, memoText: text })}
+                  inputPlaceholder="可輸入說明（選填），例如：出國暫停"
+                  hint="如僅修正錯誤可不勾選"
+                />
+              )}
+
+              <div style={{ marginBottom: '0' }}>
+                <label style={getLabelStyle(isMobile)}>備註</label>
+                <input
+                  type="text"
+                  value={boardEditForm.notes}
+                  onChange={(e) => setBoardEditForm({ ...boardEditForm, notes: e.target.value })}
+                  placeholder="例如：有三格"
+                  style={getInputStyle(isMobile)}
                 />
               </div>
-              <div style={{ fontSize: '12px', color: '#999', marginTop: '6px' }}>
-                目前：{editingBoard.expires_at || '未設定'}
-              </div>
             </div>
 
-            {/* 日期有變更時才顯示記錄選項 */}
-            {(boardEditForm.start_date !== (editingBoard.start_date || '') ||
-              boardEditForm.expires_at !== (editingBoard.expires_at || '')) && (
-              <MemoRecordCheckbox
-                checked={boardEditForm.addToMemo}
-                onChange={(checked) => setBoardEditForm({ ...boardEditForm, addToMemo: checked })}
-                inputValue={boardEditForm.memoText}
-                onInputChange={(text) => setBoardEditForm({ ...boardEditForm, memoText: text })}
-                inputPlaceholder="可輸入說明（選填），例如：出國暫停"
-                hint="如僅修正錯誤可不勾選"
-              />
-            )}
-
-            {/* 備註 */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                備註
-              </label>
-              <input
-                type="text"
-                value={boardEditForm.notes}
-                onChange={(e) => setBoardEditForm({ ...boardEditForm, notes: e.target.value })}
-                placeholder="例如：有三格"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ ...dialogFooterStyle, justifyContent: 'space-between', alignItems: 'center' }}>
               <button
                 onClick={() => {
                   if (confirm(`確定要移除置板 #${editingBoard.slot_number} 嗎？`)) {
@@ -2126,13 +1940,10 @@ export function MemberDetailDialog({
                   }
                 }}
                 style={{
-                  padding: '10px 16px',
-                  border: '1px solid #f44336',
-                  borderRadius: '6px',
-                  background: 'white',
-                  color: '#f44336',
-                  cursor: 'pointer',
-                  fontSize: '13px',
+                  ...getButtonStyle('outline', 'small', isMobile),
+                  color: designSystem.colors.danger[700],
+                  borderColor: `${designSystem.colors.danger[500]}66`,
+                  background: designSystem.colors.danger[50],
                 }}
               >
                 移除置板
@@ -2143,29 +1954,13 @@ export function MemberDetailDialog({
                     setBoardEditDialogOpen(false)
                     setEditingBoard(null)
                   }}
-                  style={{
-                    padding: '10px 20px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    background: 'white',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                  }}
+                  style={getButtonStyle('outline', 'medium', isMobile)}
                 >
                   取消
                 </button>
                 <button
                   onClick={handleBoardEdit}
-                  style={{
-                    padding: '10px 20px',
-                    border: 'none',
-                    borderRadius: '6px',
-                    background: 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-                    color: 'white',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                  }}
+                  style={getButtonStyle('primary', 'medium', isMobile)}
                 >
                   儲存
                 </button>
@@ -2177,49 +1972,32 @@ export function MemberDetailDialog({
 
       {/* 快速編輯手機號碼彈出框 */}
       {quickEditPhoneOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
-            padding: '20px',
-          }}
-        >
-          <div
-            style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: '24px',
-              maxWidth: '360px',
-              width: '100%',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            }}
-          >
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>修改手機號碼</h3>
-            
-            <div style={{ marginBottom: '20px' }}>
+        <div style={dialogOverlayStyle(2000)}>
+          <div style={dialogPanelStyle('360px')}>
+            <div style={dialogHeaderBarStyle}>
+              <h2 style={getDialogTitleStyle(isMobile)}>修改手機號碼</h2>
+              <button
+                onClick={() => setQuickEditPhoneOpen(false)}
+                disabled={savingPhone}
+                style={{
+                  ...dialogCloseButtonStyle,
+                  opacity: savingPhone ? 0.5 : 1,
+                  cursor: savingPhone ? 'not-allowed' : 'pointer',
+                }}
+                aria-label="關閉"
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={dialogBodyStyle}>
               <input
                 type="tel"
                 value={quickEditPhone}
                 onChange={(e) => setQuickEditPhone(e.target.value)}
                 placeholder="請輸入手機號碼"
                 autoFocus
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#5a5a5a'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                style={getInputStyle(isMobile)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleQuickSavePhone()
@@ -2228,23 +2006,18 @@ export function MemberDetailDialog({
                   }
                 }}
               />
-              <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                格式：09 開頭的 10 位數字
-              </div>
+              <div style={getFieldHintStyle(isMobile)}>格式：09 開頭的 10 位數字</div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ ...dialogFooterStyle, display: 'flex' }}>
               <button
                 onClick={() => setQuickEditPhoneOpen(false)}
                 disabled={savingPhone}
                 style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
                   flex: 1,
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  background: 'white',
+                  opacity: savingPhone ? 0.5 : 1,
                   cursor: savingPhone ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
                 }}
               >
                 取消
@@ -2253,15 +2026,10 @@ export function MemberDetailDialog({
                 onClick={handleQuickSavePhone}
                 disabled={savingPhone}
                 style={{
+                  ...getButtonStyle('primary', 'medium', isMobile),
                   flex: 1,
-                  padding: '12px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: savingPhone ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-                  color: 'white',
+                  opacity: savingPhone ? 0.6 : 1,
                   cursor: savingPhone ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
                 }}
               >
                 {savingPhone ? '儲存中...' : '確認'}

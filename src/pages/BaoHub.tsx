@@ -128,40 +128,41 @@ export function BaoHub() {
     section: string
     items: Array<{
       title: string
+      icon: string
       link: string
     }>
   }> = [
     {
       section: '預約',
       items: [
-        { title: '排班', link: '/coach-assignment' },
-        { title: '預約回報', link: '/coach-report' },
-        { title: '回報管理', link: '/coach-admin' },
+        { title: '排班', icon: '📅', link: '/coach-assignment' },
+        { title: '回報', icon: '📝', link: '/coach-report' },
+        { title: '回報管理', icon: '💼', link: '/coach-admin' },
       ],
     },
     {
       section: '會員',
       items: [
-        { title: '會員管理', link: '/members' },
-        { title: '會員儲值', link: '/member-transaction' },
-        { title: '置板管理', link: '/boards' },
+        { title: '會員', icon: '👥', link: '/members' },
+        { title: '儲值', icon: '💰', link: '/member-transaction' },
+        { title: '置板', icon: '🏄', link: '/boards' },
       ],
     },
     {
       section: '商品',
       items: [
-        { title: '商品管理', link: '/products' },
-        { title: '訂單結帳', link: '/order-settle' },
-        { title: 'ES SHOP', link: getPublicShopHomeUrl() },
+        { title: '商品', icon: '📦', link: '/products' },
+        { title: '訂單結帳', icon: '🧾', link: '/order-settle' },
+        { title: 'ES SHOP', icon: '🛒', link: getPublicShopHomeUrl() },
       ],
     },
     {
       section: '營運',
       items: [
-        { title: 'Dashboard', link: '/statistics' },
-        { title: '公告', link: '/announcements' },
-        { title: '人員管理', link: '/staff' },
-        { title: '船隻管理', link: '/boats' },
+        { title: 'Dashboard', icon: '📊', link: '/statistics' },
+        { title: '公告', icon: '📢', link: '/announcements' },
+        { title: '人員', icon: '🎓', link: '/staff' },
+        { title: '船隻', icon: '🚤', link: '/boats' },
       ],
     },
   ]
@@ -169,22 +170,22 @@ export function BaoHub() {
   const menuCardStyle: CSSProperties = {
     textDecoration: 'none',
     background: designSystem.colors.background.card,
-    borderRadius: designSystem.borderRadius.lg,
-    padding: isMobile ? '16px 14px' : '18px 16px',
-    boxShadow: designSystem.shadows.elevation[1],
-    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+    borderRadius: designSystem.borderRadius.xl,
+    padding: isMobile ? '28px 14px' : '35px 20px',
+    boxShadow: designSystem.shadows.xs,
+    transition: 'transform 0.15s ease',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'flex-start',
-    textAlign: 'left',
-    gap: '4px',
+    alignItems: 'center',
+    textAlign: 'center',
+    gap: '12px',
     cursor: 'pointer',
     border: `1px solid ${designSystem.colors.border.light}`,
   }
 
   const menuCardTouchHandlers = {
     onTouchStart: (e: React.TouchEvent<HTMLElement>) => {
-      e.currentTarget.style.transform = 'scale(0.98)'
+      e.currentTarget.style.transform = 'scale(0.97)'
     },
     onTouchEnd: (e: React.TouchEvent<HTMLElement>) => {
       e.currentTarget.style.transform = 'scale(1)'
@@ -196,11 +197,10 @@ export function BaoHub() {
 
   const titleStyle: CSSProperties = {
     margin: 0,
-    fontSize: isMobile ? '15px' : '16px',
+    fontSize: isMobile ? '16px' : '18px',
     fontWeight: 600,
     color: designSystem.colors.text.primary,
-    letterSpacing: '-0.01em',
-    lineHeight: 1.35,
+    letterSpacing: '0.5px',
   }
 
   return (
@@ -266,11 +266,22 @@ export function BaoHub() {
             <UserMenu user={user} />
           </div>
           {backupHealth && (
-            <div style={{ marginTop: isMobile ? 10 : 12 }}>
+            <div
+              style={{
+                marginTop: isMobile ? 10 : 12,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
               <Link
                 to="/backup"
                 data-track="bao_backup_status"
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
                   color: backupHealthColor(backupHealth.status),
                   textDecoration: 'none',
                   fontSize: isMobile ? 12 : 13,
@@ -278,8 +289,34 @@ export function BaoHub() {
                   letterSpacing: '0.02em',
                 }}
               >
+                <span
+                  aria-hidden
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: backupHealthColor(backupHealth.status),
+                    flexShrink: 0,
+                    boxShadow:
+                      backupHealth.status === 'unknown'
+                        ? 'none'
+                        : `0 0 0 2px ${backupHealthColor(backupHealth.status)}33`,
+                  }}
+                />
                 {backupHealth.message}
               </Link>
+              {(backupHealth.status === 'warning' || backupHealth.status === 'error') && (
+                <span
+                  style={{
+                    fontSize: isMobile ? 11 : 12,
+                    fontWeight: 500,
+                    color: designSystem.colors.text.secondary,
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  請通知工程師處理備份
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -303,25 +340,31 @@ export function BaoHub() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-                gap: isMobile ? '10px' : '12px',
+                gap: '15px',
               }}
             >
               {section.items.map((feature) => {
                 const inner = (
-                  <h2
-                    style={{
-                      ...titleStyle,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: 4,
-                    }}
-                  >
-                    {feature.title}
-                    {feature.link === '/order-settle' && (
-                      <CountBadge count={pendingSettleCount} />
-                    )}
-                  </h2>
+                  <>
+                    <div style={{ marginBottom: '5px' }}>
+                      <span style={{ fontSize: isMobile ? '36px' : '42px' }}>{feature.icon}</span>
+                    </div>
+                    <h2
+                      style={{
+                        ...titleStyle,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexWrap: 'wrap',
+                        gap: 4,
+                      }}
+                    >
+                      {feature.title}
+                      {feature.link === '/order-settle' && (
+                        <CountBadge count={pendingSettleCount} />
+                      )}
+                    </h2>
+                  </>
                 )
 
                 if (isExternalNavLink(feature.link)) {
