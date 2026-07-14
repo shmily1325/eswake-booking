@@ -1,5 +1,5 @@
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { getCardStyle } from '../../../../styles/designSystem'
+import { designSystem, getCardStyle, getFontSize } from '../../../../styles/designSystem'
 
 interface SummaryCardProps {
   label: string
@@ -33,24 +33,29 @@ export function SummaryCard({
       marginBottom: 0,
       gridColumn: fullWidth && isMobile ? '1 / -1' : 'auto'
     }}>
-      <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
+      <div style={{
+        fontSize: getFontSize('bodySmall', isMobile),
+        color: designSystem.colors.text.secondary,
+        marginBottom: '8px'
+      }}>
         {label}
       </div>
       <div style={{ 
-        fontSize: '28px', 
+        fontSize: getFontSize('h1', isMobile), 
         fontWeight: 'bold', 
-        color: '#333',
+        color: designSystem.colors.text.primary,
         display: 'flex',
         alignItems: 'baseline',
         gap: '8px'
       }}>
         {value}
-        {/* 變化指標 */}
         {change && change.direction !== 'same' && (
           <span style={{
-            fontSize: '13px',
+            fontSize: getFontSize('bodySmall', isMobile),
             fontWeight: '500',
-            color: change.direction === 'up' ? '#4caf50' : '#f44336',
+            color: change.direction === 'up'
+              ? designSystem.colors.success[700]
+              : designSystem.colors.danger[700],
             display: 'flex',
             alignItems: 'center',
             gap: '2px'
@@ -58,16 +63,28 @@ export function SummaryCard({
             {change.direction === 'up' ? '↑' : '↓'}
             {Math.round(change.value)}%
             {change.label && (
-              <span style={{ color: '#999', fontSize: '11px' }}>
+              <span style={{
+                color: designSystem.colors.text.disabled,
+                fontSize: getFontSize('caption', true)
+              }}>
                 {change.label}
               </span>
             )}
           </span>
         )}
       </div>
-      <div style={{ fontSize: '12px', color: '#999' }}>{unit}</div>
+      <div style={{
+        fontSize: getFontSize('caption', isMobile),
+        color: designSystem.colors.text.disabled
+      }}>
+        {unit}
+      </div>
       {subValue && (
-        <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+        <div style={{
+          fontSize: getFontSize('caption', true),
+          color: designSystem.colors.text.secondary,
+          marginTop: '4px'
+        }}>
           {subValue}
         </div>
       )}
@@ -93,4 +110,3 @@ export function SummaryCardsGrid({ children }: SummaryCardsGridProps) {
     </div>
   )
 }
-

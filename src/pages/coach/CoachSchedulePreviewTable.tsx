@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { getLocalDateString, getWeekdayText } from '../../utils/date'
 import { extractTime } from '../../utils/formatters'
-import { getCardStyle } from '../../styles/designSystem'
+import { getCardStyle, getFilterChipStyle, getFontSize, designSystem } from '../../styles/designSystem'
 import { MonthFilter } from '../admin/Statistics/components'
 import { splitMinutesEqually } from '../../utils/teachingMinutesAllocation'
 
@@ -72,8 +72,6 @@ function coachShareMinutesForBooking(booking: ScheduleBooking, coachId: string):
 }
 
 export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePreviewTableProps) {
-  const fontBody = 13
-  const fontMeta = 12
   const [loading, setLoading] = useState(false)
   const [bookings, setBookings] = useState<ScheduleBooking[]>([])
   const [monthOptions, setMonthOptions] = useState<MonthOption[]>([])
@@ -284,7 +282,8 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           display: 'block',
           marginBottom: '8px',
           fontWeight: '600',
-          fontSize: `${fontBody}px`
+          fontSize: getFontSize('bodySmall', isMobile),
+          color: designSystem.colors.text.primary
         }}>
           篩選月份
         </label>
@@ -302,18 +301,31 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       </div>
 
       <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '4px', color: '#444', fontWeight: 600 }}>
+        <div style={{
+          display: 'flex',
+          gap: '16px',
+          flexWrap: 'wrap',
+          marginBottom: '4px',
+          color: designSystem.colors.text.primary,
+          fontWeight: 600,
+          fontSize: getFontSize('body', isMobile)
+        }}>
           <span>總堂數：{stats.totalSessions}</span>
           <span>總分鐘：{stats.totalMinutes}</span>
         </div>
       </div>
 
       <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
-        <div style={{ margin: '0 0 10px 0', fontSize: `${fontBody}px`, fontWeight: 600, color: '#475569' }}>
+        <div style={{
+          margin: '0 0 10px 0',
+          fontSize: getFontSize('bodySmall', isMobile),
+          fontWeight: 600,
+          color: designSystem.colors.text.secondary
+        }}>
           會員時數分布
         </div>
         {memberDistribution.length === 0 && !loading ? (
-          <div style={{ color: '#999', padding: '8px 0' }}>這個月份沒有資料</div>
+          <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>這個月份沒有資料</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {memberDistribution.map(item => (
@@ -324,14 +336,21 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '9px 4px',
-                  borderBottom: '1px solid #eef2f6',
-                  fontSize: `${fontBody}px`
+                  borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                  fontSize: getFontSize('bodySmall', isMobile)
                 }}
               >
-                <span style={{ color: '#334155' }}>
-                  {item.rank}. {item.name} <span style={{ color: '#8c8c8c' }}>({item.count}筆)</span>
+                <span style={{ color: designSystem.colors.text.primary }}>
+                  {item.rank}. {item.name}{' '}
+                  <span style={{ color: designSystem.colors.text.disabled }}>({item.count}筆)</span>
                 </span>
-                <span style={{ color: '#4a90e2', fontWeight: 500, fontSize: `${fontBody}px` }}>{item.minutes} 分</span>
+                <span style={{
+                  color: designSystem.colors.info[700],
+                  fontWeight: 500,
+                  fontSize: getFontSize('bodySmall', isMobile)
+                }}>
+                  {item.minutes} 分
+                </span>
               </div>
             ))}
           </div>
@@ -339,20 +358,21 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       </div>
 
       <div style={{ ...getCardStyle(isMobile) }}>
-        <div style={{ margin: '0 0 10px 0', fontSize: `${fontBody}px`, fontWeight: 600, color: '#475569' }}>
+        <div style={{
+          margin: '0 0 10px 0',
+          fontSize: getFontSize('bodySmall', isMobile),
+          fontWeight: 600,
+          color: designSystem.colors.text.secondary
+        }}>
           預約列表（依日期時間）
         </div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <button
             onClick={() => setViewMode('list')}
             style={{
-              border: viewMode === 'list' ? '1px solid #4a90e2' : '1px solid #d9d9d9',
-              background: viewMode === 'list' ? '#4a90e2' : '#fff',
-              color: viewMode === 'list' ? '#fff' : '#555',
-              borderRadius: '6px',
+              ...getFilterChipStyle(viewMode === 'list', 'info'),
               padding: '4px 10px',
-              fontSize: `${fontMeta}px`,
-              cursor: 'pointer'
+              fontSize: getFontSize('caption', isMobile),
             }}
           >
             列表
@@ -360,20 +380,16 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           <button
             onClick={() => setViewMode('calendar')}
             style={{
-              border: viewMode === 'calendar' ? '1px solid #4a90e2' : '1px solid #d9d9d9',
-              background: viewMode === 'calendar' ? '#4a90e2' : '#fff',
-              color: viewMode === 'calendar' ? '#fff' : '#555',
-              borderRadius: '6px',
+              ...getFilterChipStyle(viewMode === 'calendar', 'info'),
               padding: '4px 10px',
-              fontSize: `${fontMeta}px`,
-              cursor: 'pointer'
+              fontSize: getFontSize('caption', isMobile),
             }}
           >
             行事曆
           </button>
         </div>
         {groupedBookings.length === 0 && !loading ? (
-          <div style={{ color: '#999', padding: '8px 0' }}>這個月份沒有預約</div>
+          <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>這個月份沒有預約</div>
         ) : viewMode === 'list' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {groupedBookings.map(group => (
@@ -386,9 +402,9 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                     background: 'transparent',
                     border: 'none',
                     cursor: 'pointer',
-                    fontSize: `${fontBody}px`,
+                    fontSize: getFontSize('bodySmall', isMobile),
                     fontWeight: 600,
-                    color: '#64748b',
+                    color: designSystem.colors.text.secondary,
                     padding: '2px 2px 8px',
                     display: 'flex',
                     alignItems: 'center',
@@ -399,7 +415,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                     display: 'inline-block',
                     transform: expandedDates.has(group.date) ? 'rotate(90deg)' : 'rotate(0deg)',
                     transition: 'transform 0.15s ease',
-                    fontSize: `${fontMeta}px`
+                    fontSize: getFontSize('caption', isMobile)
                   }}>
                     ▶
                   </span>
@@ -416,19 +432,38 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                           gridTemplateColumns: isMobile ? '66px 1fr auto' : '74px 1fr auto',
                           alignItems: 'center',
                           gap: '10px',
-                          borderBottom: '1px solid #eef2f6'
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`
                         }}
                       >
-                        <div style={{ fontWeight: 600, color: '#334155', fontSize: `${fontBody}px` }}>
+                        <div style={{
+                          fontWeight: 600,
+                          color: designSystem.colors.text.primary,
+                          fontSize: getFontSize('bodySmall', isMobile)
+                        }}>
                           {extractTime(booking.start_at)}
                         </div>
-                        <div style={{ color: '#666', fontSize: `${fontBody}px`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{
+                          color: designSystem.colors.text.secondary,
+                          fontSize: getFontSize('bodySmall', isMobile),
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
                           {booking.contact_name || '-'} ｜ {booking.boats?.name || '-'}
                         </div>
-                        <div style={{ color: '#4a90e2', fontWeight: '500', fontSize: `${fontBody}px`, flexShrink: 0 }}>
+                        <div style={{
+                          color: designSystem.colors.info[700],
+                          fontWeight: '500',
+                          fontSize: getFontSize('bodySmall', isMobile),
+                          flexShrink: 0
+                        }}>
                           {coachShareMinutesForBooking(booking, coachId)} 分
                           {(booking.booking_coaches || []).length > 1 && (
-                            <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: `${fontMeta}px` }}>
+                            <span style={{
+                              color: designSystem.colors.text.disabled,
+                              fontWeight: 400,
+                              fontSize: getFontSize('caption', isMobile)
+                            }}>
                               {' '}（堂 {(booking.duration_min || 0)}）
                             </span>
                           )}
@@ -444,7 +479,11 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {calendarWeeks.map(week => (
               <div key={week.weekStart}>
-                <div style={{ fontSize: `${fontMeta}px`, color: '#64748b', marginBottom: '6px' }}>
+                <div style={{
+                  fontSize: getFontSize('caption', isMobile),
+                  color: designSystem.colors.text.secondary,
+                  marginBottom: '6px'
+                }}>
                   {week.weekStart} ~ {week.weekEnd}
                 </div>
                 <div style={{ overflowX: 'auto' }}>
@@ -455,23 +494,56 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                     minWidth: '860px'
                   }}>
                     {week.days.map(day => (
-                      <div key={day.key} style={{ border: '1px solid #e8edf3', borderRadius: '8px', padding: '8px', background: '#fff' }}>
-                        <div style={{ fontSize: `${fontMeta}px`, color: '#475569', marginBottom: '6px', fontWeight: 600 }}>
+                      <div key={day.key} style={{
+                        border: `1px solid ${designSystem.colors.border.light}`,
+                        borderRadius: designSystem.borderRadius.lg,
+                        padding: '8px',
+                        background: '#fff'
+                      }}>
+                        <div style={{
+                          fontSize: getFontSize('caption', isMobile),
+                          color: designSystem.colors.text.secondary,
+                          marginBottom: '6px',
+                          fontWeight: 600
+                        }}>
                           {day.label}
                         </div>
                         {day.bookings.length === 0 ? (
-                          <div style={{ fontSize: `${fontMeta}px`, color: '#a0a0a0' }}>-</div>
+                          <div style={{
+                            fontSize: getFontSize('caption', isMobile),
+                            color: designSystem.colors.text.disabled
+                          }}>
+                            -
+                          </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {day.bookings.map(booking => (
-                              <div key={booking.id} style={{ borderTop: '1px dashed #eef2f6', paddingTop: '4px' }}>
-                                <div style={{ fontSize: `${fontMeta}px`, color: '#1e293b', fontWeight: 600 }}>
+                              <div key={booking.id} style={{
+                                borderTop: `1px dashed ${designSystem.colors.border.light}`,
+                                paddingTop: '4px'
+                              }}>
+                                <div style={{
+                                  fontSize: getFontSize('caption', isMobile),
+                                  color: designSystem.colors.text.primary,
+                                  fontWeight: 600
+                                }}>
                                   {extractTime(booking.start_at)} / {coachShareMinutesForBooking(booking, coachId)}分
                                   {(booking.booking_coaches || []).length > 1 && (
-                                    <span style={{ color: '#94a3b8', fontWeight: 400 }}>（堂{booking.duration_min || 0}）</span>
+                                    <span style={{
+                                      color: designSystem.colors.text.disabled,
+                                      fontWeight: 400
+                                    }}>
+                                      （堂{booking.duration_min || 0}）
+                                    </span>
                                   )}
                                 </div>
-                                <div style={{ fontSize: `${fontMeta}px`, color: '#667085', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <div style={{
+                                  fontSize: getFontSize('caption', isMobile),
+                                  color: designSystem.colors.text.secondary,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}>
                                   {booking.contact_name || '-'} ｜ {booking.boats?.name || '-'}
                                 </div>
                               </div>

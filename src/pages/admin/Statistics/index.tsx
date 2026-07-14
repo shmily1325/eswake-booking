@@ -18,6 +18,7 @@ import { fetchAllInBatches, fetchAllPaginated } from '../../../utils/supabasePag
 
 import { LoadingSkeleton, LastUpdated } from './components'
 import { TrendTab, MonthlyTab, FutureTab } from './tabs'
+import { designSystem, getFontSize } from '../../../styles/designSystem'
 import type {
   MonthlyStats,
   CoachFutureBooking,
@@ -72,10 +73,10 @@ export function Statistics() {
   >([])
 
   // Tab 配置（重新命名）
-  const tabs: { key: TabType; label: string; icon: string }[] = [
-    { key: 'trend', label: '歷史趨勢', icon: '📈' },
-    { key: 'monthly', label: '月報分析', icon: '🎯' },
-    { key: 'future', label: '排程預覽', icon: '📅' },
+  const tabs: { key: TabType; label: string }[] = [
+    { key: 'trend', label: '歷史趨勢' },
+    { key: 'monthly', label: '月報分析' },
+    { key: 'future', label: '排程預覽' },
   ]
 
   // 載入所有船隻
@@ -875,19 +876,24 @@ export function Statistics() {
 
   const tabStyle = (isActive: boolean) => ({
     padding: isMobile ? '12px 16px' : '14px 24px',
-    background: isActive ? 'linear-gradient(135deg, #4a90e2 0%, #1976d2 100%)' : 'white',
-    color: isActive ? 'white' : '#666',
-    border: isActive ? 'none' : '1px solid #e0e0e0',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    fontSize: isMobile ? '14px' : '15px',
+    background: isActive ? designSystem.colors.primary[500] : '#ffffff',
+    color: isActive ? 'white' : designSystem.colors.text.secondary,
+    border: isActive
+      ? `1px solid ${designSystem.colors.primary[500]}`
+      : `1px solid ${designSystem.colors.border.light}`,
+    borderRadius: designSystem.borderRadius.lg,
+    cursor: 'pointer' as const,
+    fontSize: getFontSize(isMobile ? 'body' : 'bodyLarge', isMobile),
     fontWeight: isActive ? '600' : '500',
     transition: 'all 0.2s',
-    boxShadow: isActive ? '0 4px 12px rgba(74, 144, 226, 0.3)' : 'none'
   })
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: '80px' }}>
+    <div style={{
+      minHeight: '100vh',
+      background: designSystem.colors.background.main,
+      paddingBottom: '80px'
+    }}>
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',
@@ -920,7 +926,7 @@ export function Statistics() {
                 onClick={() => setActiveTab(tab.key)}
                 style={tabStyle(activeTab === tab.key)}
               >
-                {isMobile ? tab.label : `${tab.icon} ${tab.label}`}
+                {tab.label}
               </button>
             ))}
           </div>

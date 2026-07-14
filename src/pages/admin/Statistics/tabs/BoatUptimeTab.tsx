@@ -87,7 +87,7 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
   )
 
   /** 與歷史趨勢主色一致；100% 用綠色凸顯「當月無維修時段」 */
-  const barFill = (uptimePct: number) => (uptimePct >= 100 ? '#43a047' : '#4a90e2')
+  const barFill = (uptimePct: number) => (uptimePct >= 100 ? designSystem.colors.success[500] : designSystem.colors.info[500])
 
   const quickMonths = useMemo(() => {
     const out: { value: string; label: string }[] = []
@@ -155,7 +155,7 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
                     : `1px solid ${designSystem.colors.border.main}`,
                 background:
                   selectedMonth === m.value
-                    ? 'linear-gradient(135deg, #4a90e2 0%, #1976d2 100%)'
+                    ? designSystem.colors.primary[500]
                     : 'white',
                 color: selectedMonth === m.value ? 'white' : '#666',
                 fontSize: isMobile ? '13px' : '14px',
@@ -200,7 +200,7 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
               style={{
                 width: '4px',
                 height: '20px',
-                background: '#4a90e2',
+                background: designSystem.colors.info[500],
                 borderRadius: '2px',
                 display: 'inline-block',
               }}
@@ -250,7 +250,7 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
                       >
                         <div style={{ fontWeight: 600, marginBottom: '8px', color: '#333' }}>{label}</div>
                         <div style={{ marginBottom: '4px' }}>
-                          <span style={{ color: '#4a90e2' }}>妥善率</span>{' '}
+                          <span style={{ color: designSystem.colors.info[500] }}>妥善率</span>{' '}
                           <strong>{p.uptimePct}%</strong>
                         </div>
                         <div style={{ color: '#666' }}>
@@ -295,7 +295,7 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
             style={{
               width: '4px',
               height: '20px',
-              background: '#50c878',
+              background: designSystem.colors.success[500],
               borderRadius: '2px',
               display: 'inline-block',
             }}

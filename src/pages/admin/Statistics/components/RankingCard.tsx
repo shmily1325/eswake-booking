@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { getCardStyle } from '../../../../styles/designSystem'
+import { designSystem, getCardStyle, getFontSize } from '../../../../styles/designSystem'
 import { formatDuration, getRankIcon, getProgressPercent } from '../utils'
 
 interface RankingItem {
   id: string
   name: string
-  value: number // 主要數值（用於排序和進度條）
-  count?: number // 次數
-  isWarning?: boolean // 是否為警告項目（如未指派）
-  badge?: string // 額外標籤
+  value: number
+  count?: number
+  isWarning?: boolean
+  badge?: string
 }
 
 interface RankingCardProps {
@@ -18,11 +18,11 @@ interface RankingCardProps {
   icon: string
   subtitle?: string
   items: RankingItem[]
-  accentColor?: string // 進度條顏色
-  warningColor?: string // 警告項目顏色
+  accentColor?: string
+  warningColor?: string
   renderDetail?: (item: RankingItem) => ReactNode
   emptyText?: string
-  showRank?: boolean // 是否顯示排名
+  showRank?: boolean
 }
 
 export function RankingCard({
@@ -30,8 +30,8 @@ export function RankingCard({
   icon,
   subtitle,
   items,
-  accentColor = '#4a90e2',
-  warningColor = '#ff9800',
+  accentColor = designSystem.colors.info[500],
+  warningColor = designSystem.colors.warning[500],
   renderDetail,
   emptyText = '暫無資料',
   showRank = true
@@ -42,7 +42,6 @@ export function RankingCard({
 
   const maxValue = Math.max(...items.map(item => item.value), 1)
 
-  // 計算非警告項目的排名
   let rank = 0
 
   return (
@@ -50,15 +49,15 @@ export function RankingCard({
       ...getCardStyle(isMobile),
       padding: isMobile ? '14px' : '20px'
     }}>
-      {/* 標題區 */}
       <h3 style={{
         margin: '0 0 16px 0',
-        fontSize: isMobile ? '15px' : '17px',
+        fontSize: getFontSize('h3', isMobile),
         fontWeight: '700',
         display: 'flex',
         alignItems: isMobile ? 'flex-start' : 'center',
         flexDirection: isMobile ? 'column' : 'row',
-        gap: isMobile ? '4px' : '8px'
+        gap: isMobile ? '4px' : '8px',
+        color: designSystem.colors.text.primary
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{
@@ -72,8 +71,8 @@ export function RankingCard({
         </div>
         {subtitle && (
           <span style={{
-            fontSize: isMobile ? '11px' : '13px',
-            color: '#999',
+            fontSize: getFontSize('bodySmall', isMobile),
+            color: designSystem.colors.text.disabled,
             fontWeight: '400',
             marginLeft: isMobile ? '12px' : '0'
           }}>
@@ -82,11 +81,9 @@ export function RankingCard({
         )}
       </h3>
 
-      {/* 排行列表 */}
       {items.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {items.map((item) => {
-            // 計算排名（跳過警告項目）
             const displayRank = item.isWarning ? null : ++rank
             const isExpanded = expandedId === item.id
             const isHovered = hoveredId === item.id
@@ -96,7 +93,6 @@ export function RankingCard({
 
             return (
               <div key={item.id}>
-                {/* 項目列 */}
                 <div
                   onClick={() => hasDetail && setExpandedId(isExpanded ? null : item.id)}
                   onMouseEnter={() => setHoveredId(item.id)}
@@ -104,15 +100,17 @@ export function RankingCard({
                   style={{
                     padding: '12px',
                     background: isExpanded 
-                      ? '#e3f2fd' 
+                      ? designSystem.colors.info[50]
                       : isHovered && hasDetail 
-                        ? '#f0f4f8' 
+                        ? designSystem.colors.background.hover
                         : item.isWarning 
-                          ? '#fff8e1'
+                          ? designSystem.colors.warning[50]
                           : displayRank && displayRank <= 3
-                            ? '#fffbeb'
-                            : '#f8f9fa',
-                    borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
+                            ? designSystem.colors.warning[50]
+                            : designSystem.colors.background.hover,
+                    borderRadius: isExpanded
+                      ? `${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg} 0 0`
+                      : designSystem.borderRadius.lg,
                     cursor: hasDetail ? 'pointer' : 'default',
                     transition: 'background 0.2s',
                     borderLeft: item.isWarning ? `3px solid ${warningColor}` : 'none'
@@ -125,92 +123,87 @@ export function RankingCard({
                     marginBottom: '8px'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {/* 展開箭頭 */}
                       {hasDetail && (
                         <span style={{
-                          fontSize: '12px',
-                          color: isExpanded ? accentColor : '#999',
+                          fontSize: getFontSize('caption', isMobile),
+                          color: isExpanded ? accentColor : designSystem.colors.text.disabled,
                           transition: 'transform 0.2s',
                           transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
                         }}>
                           ▶
                         </span>
                       )}
-                      {/* 排名/圖示 */}
-                      <span style={{ fontWeight: '600', color: '#333', fontSize: '14px' }}>
+                      <span style={{
+                        fontWeight: '600',
+                        color: designSystem.colors.text.primary,
+                        fontSize: getFontSize('body', isMobile)
+                      }}>
                         {showRank && (displayRank === null ? '⚠️' : getRankIcon(displayRank))}
                         {' '}{item.name}
                       </span>
-                      {/* 標籤 */}
                       {item.badge && (
                         <span style={{
                           marginLeft: '4px',
-                          fontSize: '11px',
-                          color: item.isWarning ? warningColor : '#666',
-                          background: item.isWarning ? '#fff3e0' : '#e3f2fd',
+                          fontSize: getFontSize('caption', true),
+                          color: item.isWarning
+                            ? designSystem.colors.warning[700]
+                            : designSystem.colors.text.secondary,
+                          background: item.isWarning
+                            ? designSystem.colors.warning[50]
+                            : designSystem.colors.info[50],
+                          border: `1px solid ${item.isWarning ? designSystem.colors.warning[500] : designSystem.colors.info[500]}33`,
                           padding: '2px 6px',
-                          borderRadius: '4px'
+                          borderRadius: designSystem.borderRadius.sm
                         }}>
                           {item.badge}
                         </span>
                       )}
                     </div>
-                    {/* 數值 */}
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                       {item.count !== undefined && (
-                        <span style={{ color: '#666', fontSize: '13px' }}>
+                        <span style={{
+                          color: designSystem.colors.text.secondary,
+                          fontSize: getFontSize('bodySmall', isMobile)
+                        }}>
                           {item.count} 筆
                         </span>
                       )}
-                      <span style={{ color: itemColor, fontSize: '14px', fontWeight: '600' }}>
+                      <span style={{
+                        color: itemColor,
+                        fontSize: getFontSize('body', isMobile),
+                        fontWeight: '600'
+                      }}>
                         {formatDuration(item.value)}
                       </span>
                     </div>
                   </div>
 
-                  {/* 進度條 */}
                   <div style={{
                     width: '100%',
                     height: '8px',
-                    background: item.isWarning ? '#ffecb3' : '#e3f2fd',
-                    borderRadius: '4px',
+                    background: item.isWarning
+                      ? `${designSystem.colors.warning[500]}33`
+                      : designSystem.colors.info[50],
+                    borderRadius: designSystem.borderRadius.sm,
                     overflow: 'hidden',
                     position: 'relative'
                   }}>
                     <div style={{
                       width: `${progressPercent}%`,
                       height: '100%',
-                      background: item.isWarning
-                        ? `linear-gradient(90deg, ${warningColor}, #f57c00)`
-                        : `linear-gradient(90deg, ${accentColor}, #1976d2)`,
-                      borderRadius: '4px',
+                      background: itemColor,
+                      borderRadius: designSystem.borderRadius.sm,
                       transition: 'width 0.3s'
                     }} />
-                    {/* 進度條上的數字 */}
-                    {progressPercent > 25 && (
-                      <span style={{
-                        position: 'absolute',
-                        right: `${100 - progressPercent + 2}%`,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        fontSize: '9px',
-                        color: 'white',
-                        fontWeight: '600',
-                        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                      }}>
-                        {Math.round(progressPercent)}%
-                      </span>
-                    )}
                   </div>
                 </div>
 
-                {/* 展開詳情 */}
                 {isExpanded && hasDetail && renderDetail && (
                   <div style={{
                     background: 'white',
-                    border: '1px solid #e3f2fd',
+                    border: `1px solid ${designSystem.colors.border.light}`,
                     borderTop: 'none',
-                    borderRadius: '0 0 8px 8px',
+                    borderRadius: `0 0 ${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg}`,
                     padding: '12px'
                   }}>
                     {renderDetail(item)}
@@ -223,14 +216,12 @@ export function RankingCard({
       ) : (
         <div style={{
           textAlign: 'center',
-          padding: '40px',
-          color: '#999'
+          padding: '24px',
+          color: designSystem.colors.text.disabled
         }}>
-          <div style={{ fontSize: '32px', marginBottom: '8px' }}>📭</div>
           {emptyText}
         </div>
       )}
     </div>
   )
 }
-

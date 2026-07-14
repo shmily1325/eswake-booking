@@ -1,5 +1,5 @@
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { getCardStyle } from '../../../../styles/designSystem'
+import { designSystem, getCardStyle } from '../../../../styles/designSystem'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line
@@ -157,7 +157,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           label="本月已結帳"
           value={currentMonth?.bookingCount || 0}
           unit="筆"
-          accentColor="#4a90e2"
+          accentColor={designSystem.colors.info[500]}
           change={bookingChange ? {
             value: bookingChange.value,
             direction: bookingChange.direction,
@@ -168,7 +168,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           label="本月已扣款時數"
           value={currentMonth?.totalMinutes || 0}
           unit="分"
-          accentColor="#50c878"
+          accentColor={designSystem.colors.success[500]}
           change={minutesChange ? {
             value: minutesChange.value,
             direction: minutesChange.direction,
@@ -179,13 +179,13 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           label="6個月平均（已結帳）"
           value={Math.round(monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0) / Math.max(monthlyStats.length, 1))}
           unit="筆/月"
-          accentColor="#ffd93d"
+          accentColor={designSystem.colors.warning[500]}
         />
         <SummaryCard
           label="6個月總計（已結帳）"
           value={monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0)}
           unit="筆"
-          accentColor="#6c5ce7"
+          accentColor={designSystem.colors.primary[500]}
         />
       </SummaryCardsGrid>
 
@@ -206,7 +206,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           <span style={{
             width: '4px',
             height: '20px',
-            background: '#4a90e2',
+            background: designSystem.colors.info[500],
             borderRadius: '2px',
             display: 'inline-block'
           }} />
@@ -246,18 +246,18 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                 type="monotone"
                 dataKey="bookingCount"
                 name="已結帳筆數"
-                stroke="#4a90e2"
+                stroke={designSystem.colors.info[500]}
                 strokeWidth={3}
-                dot={{ fill: '#4a90e2', strokeWidth: 2, r: 5 }}
+                dot={{ fill: designSystem.colors.info[500], strokeWidth: 2, r: 5 }}
                 activeDot={{ r: 8 }}
               />
               <Line
                 type="monotone"
                 dataKey="totalMinutes"
                 name="已扣款時數"
-                stroke="#50c878"
+                stroke={designSystem.colors.success[500]}
                 strokeWidth={3}
-                dot={{ fill: '#50c878', strokeWidth: 2, r: 5 }}
+                dot={{ fill: designSystem.colors.success[500], strokeWidth: 2, r: 5 }}
                 activeDot={{ r: 8 }}
               />
             </LineChart>
@@ -279,7 +279,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             <span style={{
               width: '4px',
               height: '20px',
-              background: '#50c878',
+              background: designSystem.colors.success[500],
               borderRadius: '2px',
               display: 'inline-block'
             }} />
@@ -339,7 +339,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               <tbody>
                 {monthlyStats.map((stat, idx) => (
                   <tr key={stat.month} style={{
-                    background: idx === monthlyStats.length - 1 ? '#e3f2fd' : 'white'
+                    background: idx === monthlyStats.length - 1 ? designSystem.colors.info[50] : 'white'
                   }}>
                     <td style={{
                       padding: '12px 16px 12px 12px',
@@ -379,7 +379,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                           verticalAlign: 'middle',
                           fontVariantNumeric: 'tabular-nums',
                           fontSize: '13px',
-                          color: minutes > 0 ? '#1976d2' : '#9e9e9e'
+                          color: minutes > 0 ? designSystem.colors.info[700] : '#9e9e9e'
                         }}>
                           {formatDuration(minutes)}
                         </td>
@@ -407,7 +407,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             <span style={{
               width: '4px',
               height: '20px',
-              background: '#50c878',
+              background: designSystem.colors.success[500],
               borderRadius: '2px',
               display: 'inline-block'
             }} />
@@ -420,7 +420,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                 key={stat.month}
                 style={{
                   padding: '14px',
-                  background: idx === 0 ? '#e3f2fd' : '#f8f9fa',
+                  background: idx === 0 ? designSystem.colors.info[50] : '#f8f9fa',
                   borderRadius: '10px'
                 }}
               >
@@ -430,7 +430,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                   marginBottom: '8px'
                 }}>
                   <span style={{ fontWeight: '600', color: '#333' }}>{stat.month}</span>
-                  <span style={{ color: '#4a90e2', fontWeight: '600' }}>
+                  <span style={{ color: designSystem.colors.info[500], fontWeight: '600' }}>
                     {stat.bookingCount} 筆 · {formatDuration(stat.totalMinutes)}
                   </span>
                 </div>
@@ -472,7 +472,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           <span style={{
             width: '4px',
             height: '20px',
-            background: '#ff9800',
+            background: designSystem.colors.warning[500],
             borderRadius: '2px',
             display: 'inline-block'
           }} />
@@ -506,16 +506,16 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                     <td style={{ padding: '12px', fontWeight: idx === financeStats.length - 1 ? '600' : '400' }}>
                       {stat.month}
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right', color: '#4a90e2' }}>
+                    <td style={{ padding: '12px', textAlign: 'right', color: designSystem.colors.info[500] }}>
                       ${stat.balanceUsed.toLocaleString()}{getArrow(stat.balanceUsed, prev?.balanceUsed ?? null)}
                     </td>
                     <td style={{ padding: '12px', textAlign: 'right', color: '#9c27b0' }}>
                       ${stat.vipUsed.toLocaleString()}{getArrow(stat.vipUsed, prev?.vipUsed ?? null)}
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right', color: '#50c878' }}>
+                    <td style={{ padding: '12px', textAlign: 'right', color: designSystem.colors.success[500] }}>
                       {stat.g23Used} 分{getArrow(stat.g23Used, prev?.g23Used ?? null)}
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right', color: '#ff9800' }}>
+                    <td style={{ padding: '12px', textAlign: 'right', color: designSystem.colors.warning[500] }}>
                       {stat.g21Used} 分{getArrow(stat.g21Used, prev?.g21Used ?? null)}
                     </td>
                   </tr>

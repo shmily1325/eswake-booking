@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { getCardStyle } from '../../../../styles/designSystem'
+import { designSystem, getCardStyle, getFontSize } from '../../../../styles/designSystem'
 import { formatDuration } from '../utils'
 
 interface ContactStat {
@@ -24,22 +24,22 @@ interface AlertCardProps {
 
 const variantStyles = {
   warning: {
-    background: '#fff8e1',
-    borderColor: '#ff9800',
-    iconBg: '#fff3e0',
-    textColor: '#e65100'
+    background: designSystem.colors.warning[50],
+    borderColor: designSystem.colors.warning[500],
+    iconBg: designSystem.colors.warning[50],
+    textColor: designSystem.colors.warning[700]
   },
   info: {
-    background: '#e3f2fd',
-    borderColor: '#2196f3',
-    iconBg: '#bbdefb',
-    textColor: '#1565c0'
+    background: designSystem.colors.info[50],
+    borderColor: designSystem.colors.info[500],
+    iconBg: designSystem.colors.info[50],
+    textColor: designSystem.colors.info[700]
   },
   success: {
-    background: '#e8f5e9',
-    borderColor: '#4caf50',
-    iconBg: '#c8e6c9',
-    textColor: '#2e7d32'
+    background: designSystem.colors.success[50],
+    borderColor: designSystem.colors.success[500],
+    iconBg: designSystem.colors.success[50],
+    textColor: designSystem.colors.success[700]
   }
 }
 
@@ -58,7 +58,6 @@ export function AlertCard({
   const [expanded, setExpanded] = useState(false)
   const styles = variantStyles[variant]
 
-  // 判斷是否有可展開的內容
   const hasExpandableContent = expandable && (expandedContent || (contactStats && contactStats.length > 0))
 
   return (
@@ -70,7 +69,6 @@ export function AlertCard({
       padding: 0,
       overflow: 'hidden'
     }}>
-      {/* 主要內容區 */}
       <div 
         onClick={() => hasExpandableContent && setExpanded(!expanded)}
         style={{
@@ -85,11 +83,10 @@ export function AlertCard({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* 展開箭頭 */}
           {hasExpandableContent && (
             <span style={{
-              fontSize: '12px',
-              color: expanded ? styles.borderColor : '#999',
+              fontSize: getFontSize('caption', isMobile),
+              color: expanded ? styles.borderColor : designSystem.colors.text.disabled,
               transition: 'transform 0.2s',
               transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)'
             }}>
@@ -97,8 +94,9 @@ export function AlertCard({
             </span>
           )}
           <span style={{
-            fontSize: '24px',
+            fontSize: getFontSize('h2', isMobile),
             background: styles.iconBg,
+            border: `1px solid ${styles.borderColor}33`,
             width: '40px',
             height: '40px',
             borderRadius: '50%',
@@ -110,14 +108,17 @@ export function AlertCard({
           </span>
           <div>
             <div style={{
-              fontSize: '15px',
+              fontSize: getFontSize('bodyLarge', isMobile),
               fontWeight: '600',
               color: styles.textColor,
               marginBottom: '2px'
             }}>
               {title}
             </div>
-            <div style={{ fontSize: '13px', color: '#666' }}>
+            <div style={{
+              fontSize: getFontSize('bodySmall', isMobile),
+              color: designSystem.colors.text.secondary
+            }}>
               {count} 筆預約 · {formatDuration(minutes)}
             </div>
           </div>
@@ -125,22 +126,21 @@ export function AlertCard({
         {children}
       </div>
 
-      {/* 展開內容 - 使用 contactStats 或自訂 expandedContent */}
       {hasExpandableContent && expanded && (
         <div style={{
-          borderTop: `1px solid ${styles.borderColor}`,
+          borderTop: `1px solid ${styles.borderColor}33`,
           background: 'white',
           padding: isMobile ? '14px' : '16px'
         }}>
           {expandedContent || (contactStats && contactStats.length > 0 && (
             <div>
               <div style={{
-                fontSize: '13px',
-                color: '#666',
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: designSystem.colors.text.secondary,
                 marginBottom: '10px',
                 fontWeight: '500'
               }}>
-                👥 會員時數分布：
+                會員時數分布：
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {contactStats.map((contact, idx) => (
@@ -151,18 +151,24 @@ export function AlertCard({
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '8px 12px',
-                      background: '#fafafa',
-                      borderRadius: '6px'
+                      background: designSystem.colors.background.hover,
+                      borderRadius: designSystem.borderRadius.md
                     }}
                   >
-                    <span style={{ fontSize: '13px', color: '#333' }}>
+                    <span style={{
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      color: designSystem.colors.text.primary
+                    }}>
                       {idx + 1}. {contact.contactName}
-                      <span style={{ color: '#999', marginLeft: '8px' }}>
+                      <span style={{
+                        color: designSystem.colors.text.disabled,
+                        marginLeft: '8px'
+                      }}>
                         ({contact.count} 筆)
                       </span>
                     </span>
                     <span style={{
-                      fontSize: '13px',
+                      fontSize: getFontSize('bodySmall', isMobile),
                       color: styles.textColor,
                       fontWeight: '600',
                       flexShrink: 0,
@@ -180,4 +186,3 @@ export function AlertCard({
     </div>
   )
 }
-

@@ -1,3 +1,5 @@
+import { getFilterChipStyle, getFontSize, designSystem } from '../../../../styles/designSystem'
+
 interface MonthOption {
   value: string
   label: string
@@ -22,16 +24,11 @@ export function MonthFilter({
   allCount
 }: MonthFilterProps) {
   const buttonStyle = (isActive: boolean) => ({
+    ...getFilterChipStyle(isActive, 'info'),
     padding: '8px 16px',
-    background: isActive ? '#4a90e2' : 'white',
-    color: isActive ? 'white' : '#666',
-    border: isActive ? 'none' : '1px solid #e0e0e0',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontWeight: '500' as const,
-    fontSize: '14px',
-    display: 'flex',
-    alignItems: 'center',
+    fontSize: getFontSize('button', false),
+    display: 'flex' as const,
+    alignItems: 'center' as const,
     gap: '4px',
     transition: 'all 0.2s'
   })
@@ -47,11 +44,16 @@ export function MonthFilter({
           {allLabel}
           {allCount !== undefined && (
             <span style={{ 
-              fontSize: '11px', 
-              opacity: 0.8,
-              background: selected === 'all' ? 'rgba(255,255,255,0.2)' : '#f0f0f0',
+              fontSize: getFontSize('caption', true), 
+              fontWeight: 700,
+              background: selected === 'all'
+                ? `${designSystem.colors.info[500]}22`
+                : designSystem.colors.background.hover,
+              color: selected === 'all'
+                ? designSystem.colors.info[700]
+                : designSystem.colors.text.secondary,
               padding: '1px 5px',
-              borderRadius: '4px'
+              borderRadius: designSystem.borderRadius.sm
             }}>
               {allCount}
             </span>
@@ -68,11 +70,16 @@ export function MonthFilter({
           {option.label}
           {option.count !== undefined && (
             <span style={{ 
-              fontSize: '11px', 
-              opacity: 0.8,
-              background: selected === option.value ? 'rgba(255,255,255,0.2)' : '#f0f0f0',
+              fontSize: getFontSize('caption', true), 
+              fontWeight: 700,
+              background: selected === option.value
+                ? `${designSystem.colors.info[500]}22`
+                : designSystem.colors.background.hover,
+              color: selected === option.value
+                ? designSystem.colors.info[700]
+                : designSystem.colors.text.secondary,
               padding: '1px 5px',
-              borderRadius: '4px'
+              borderRadius: designSystem.borderRadius.sm
             }}>
               {option.count}
             </span>
@@ -82,4 +89,3 @@ export function MonthFilter({
     </div>
   )
 }
-

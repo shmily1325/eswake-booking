@@ -1,5 +1,5 @@
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { getCardStyle } from '../../../../styles/designSystem'
+import { designSystem, getCardStyle, getFontSize } from '../../../../styles/designSystem'
 import { formatDuration } from '../utils'
 import type { WeekdayStats } from '../types'
 
@@ -20,29 +20,53 @@ export function WeekdayRatioBar({ stats, compact = false }: WeekdayRatioBarProps
         display: 'flex',
         gap: '12px',
         padding: '12px',
-        background: '#f8f9fa',
-        borderRadius: '8px'
+        background: designSystem.colors.background.hover,
+        borderRadius: designSystem.borderRadius.lg
       }}>
         <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: '12px', color: '#4a90e2', marginBottom: '4px', fontWeight: '500' }}>
+          <div style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.info[700],
+            marginBottom: '4px',
+            fontWeight: '500'
+          }}>
             平日
           </div>
-          <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#333' }}>
+          <div style={{
+            fontSize: getFontSize('body', isMobile),
+            fontWeight: '600',
+            color: designSystem.colors.text.primary
+          }}>
             {stats.weekdayCount} 筆
           </div>
-          <div style={{ fontSize: '12px', color: '#666' }}>
+          <div style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary
+          }}>
             {formatDuration(stats.weekdayMinutes)}
           </div>
         </div>
-        <div style={{ width: '1px', background: '#ddd' }} />
+        <div style={{ width: '1px', background: designSystem.colors.border.light }} />
         <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: '12px', color: '#ff9800', marginBottom: '4px', fontWeight: '500' }}>
+          <div style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.warning[700],
+            marginBottom: '4px',
+            fontWeight: '500'
+          }}>
             假日
           </div>
-          <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#333' }}>
+          <div style={{
+            fontSize: getFontSize('body', isMobile),
+            fontWeight: '600',
+            color: designSystem.colors.text.primary
+          }}>
             {stats.weekendCount} 筆
           </div>
-          <div style={{ fontSize: '12px', color: '#666' }}>
+          <div style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary
+          }}>
             {formatDuration(stats.weekendMinutes)}
           </div>
         </div>
@@ -56,27 +80,30 @@ export function WeekdayRatioBar({ stats, compact = false }: WeekdayRatioBarProps
       marginBottom: 0,
       gridColumn: isMobile ? '1 / -1' : 'auto'
     }}>
-      <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+      <div style={{
+        fontSize: getFontSize('bodySmall', isMobile),
+        color: designSystem.colors.text.secondary,
+        marginBottom: '12px'
+      }}>
         平日/假日分布
       </div>
       
-      {/* 比例條 */}
       <div style={{
         display: 'flex',
         height: '24px',
-        borderRadius: '12px',
+        borderRadius: designSystem.borderRadius.full,
         overflow: 'hidden',
         marginBottom: '12px'
       }}>
         <div
           style={{
             width: `${weekdayPercent}%`,
-            background: 'linear-gradient(90deg, #4a90e2, #1976d2)',
+            background: designSystem.colors.info[500],
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            fontSize: '11px',
+            fontSize: getFontSize('caption', true),
             fontWeight: '600',
             transition: 'width 0.3s'
           }}
@@ -86,12 +113,12 @@ export function WeekdayRatioBar({ stats, compact = false }: WeekdayRatioBarProps
         <div
           style={{
             width: `${weekendPercent}%`,
-            background: 'linear-gradient(90deg, #ff9800, #f57c00)',
+            background: designSystem.colors.warning[500],
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            fontSize: '11px',
+            fontSize: getFontSize('caption', true),
             fontWeight: '600',
             transition: 'width 0.3s'
           }}
@@ -100,12 +127,11 @@ export function WeekdayRatioBar({ stats, compact = false }: WeekdayRatioBarProps
         </div>
       </div>
 
-      {/* 詳細數據 */}
       <div style={{ display: 'flex', gap: '16px' }}>
         <div style={{ flex: 1 }}>
           <div style={{ 
-            fontSize: '11px', 
-            color: '#4a90e2', 
+            fontSize: getFontSize('caption', true), 
+            color: designSystem.colors.info[700], 
             marginBottom: '4px',
             display: 'flex',
             alignItems: 'center',
@@ -114,22 +140,29 @@ export function WeekdayRatioBar({ stats, compact = false }: WeekdayRatioBarProps
             <span style={{ 
               width: '8px', 
               height: '8px', 
-              background: '#4a90e2', 
+              background: designSystem.colors.info[500], 
               borderRadius: '50%' 
             }} />
             平日
           </div>
-          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+          <div style={{
+            fontSize: getFontSize('bodyLarge', isMobile),
+            fontWeight: 'bold',
+            color: designSystem.colors.text.primary
+          }}>
             {stats.weekdayCount} 筆
           </div>
-          <div style={{ fontSize: '12px', color: '#666' }}>
+          <div style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary
+          }}>
             {formatDuration(stats.weekdayMinutes)}
           </div>
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ 
-            fontSize: '11px', 
-            color: '#ff9800', 
+            fontSize: getFontSize('caption', true), 
+            color: designSystem.colors.warning[700], 
             marginBottom: '4px',
             display: 'flex',
             alignItems: 'center',
@@ -138,15 +171,22 @@ export function WeekdayRatioBar({ stats, compact = false }: WeekdayRatioBarProps
             <span style={{ 
               width: '8px', 
               height: '8px', 
-              background: '#ff9800', 
+              background: designSystem.colors.warning[500], 
               borderRadius: '50%' 
             }} />
             假日
           </div>
-          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+          <div style={{
+            fontSize: getFontSize('bodyLarge', isMobile),
+            fontWeight: 'bold',
+            color: designSystem.colors.text.primary
+          }}>
             {stats.weekendCount} 筆
           </div>
-          <div style={{ fontSize: '12px', color: '#666' }}>
+          <div style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary
+          }}>
             {formatDuration(stats.weekendMinutes)}
           </div>
         </div>
@@ -154,4 +194,3 @@ export function WeekdayRatioBar({ stats, compact = false }: WeekdayRatioBarProps
     </div>
   )
 }
-

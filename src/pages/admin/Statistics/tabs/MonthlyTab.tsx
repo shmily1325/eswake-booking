@@ -80,14 +80,14 @@ export function MonthlyTab({
                 borderRadius: designSystem.borderRadius.md,
                 border: selectedPeriod === m.value ? 'none' : `1px solid ${designSystem.colors.border.main}`,
                 background: selectedPeriod === m.value
-                  ? 'linear-gradient(135deg, #4a90e2 0%, #1976d2 100%)'
+                  ? designSystem.colors.primary[500]
                   : 'white',
                 color: selectedPeriod === m.value ? 'white' : '#666',
                 fontSize: isMobile ? '13px' : '14px',
                 fontWeight: selectedPeriod === m.value ? '600' : '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                boxShadow: selectedPeriod === m.value ? '0 2px 8px rgba(74,144,226,0.3)' : 'none',
+                boxShadow: selectedPeriod === m.value ? designSystem.shadows.sm : 'none',
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
               }}
@@ -201,7 +201,7 @@ export function MonthlyTab({
                 value: c.teachingMinutes,
                 count: c.designatedStudents.length
               }))}
-            accentColor="#4a90e2"
+            
             emptyText="本月無教學時數記錄"
             renderDetail={(item) => {
               const coach = coachStats.find(c => c.coachId === item.id)
@@ -244,7 +244,7 @@ export function MonthlyTab({
                         </span>
                         <span style={{
                           fontSize: '13px',
-                          color: '#ff9800',
+                          color: designSystem.colors.warning[500],
                           fontWeight: '600',
                           flexShrink: 0,
                           marginLeft: '12px'
@@ -272,7 +272,7 @@ export function MonthlyTab({
                   name: c.coachName,
                   value: c.drivingMinutes
                 }))}
-              accentColor="#50c878"
+              accentColor={designSystem.colors.success[500]}
               emptyText="本月無駕駛時數記錄"
             />
           </div>
@@ -292,7 +292,7 @@ export function MonthlyTab({
             count: m.bookingCount,
             badge: m.totalMinutes > 0 ? `指定 ${Math.round(m.designatedMinutes / m.totalMinutes * 100)}%` : '指定 0%'
           }))}
-          accentColor="#4a90e2"
+          
           emptyText="本月無會員預約記錄"
           renderDetail={(item) => {
             const member = memberStats.find(m => m.memberId === item.id)
@@ -322,7 +322,7 @@ export function MonthlyTab({
                         }}
                       >
                         <span>{idx + 1}. {coach.coachName}</span>
-                        <span style={{ color: '#4a90e2' }}>{formatDuration(coach.minutes)}</span>
+                        <span style={{ color: designSystem.colors.info[500] }}>{formatDuration(coach.minutes)}</span>
                       </div>
                     ))}
                   </div>
@@ -351,7 +351,7 @@ export function MonthlyTab({
                         }}
                       >
                         <span>{idx + 1}. {boat.boatName}</span>
-                        <span style={{ color: '#50c878' }}>{formatDuration(boat.minutes)}</span>
+                        <span style={{ color: designSystem.colors.success[500] }}>{formatDuration(boat.minutes)}</span>
                       </div>
                     ))}
                   </div>

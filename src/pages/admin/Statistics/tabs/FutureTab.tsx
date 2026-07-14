@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { getCardStyle } from '../../../../styles/designSystem'
+import { designSystem, getCardStyle } from '../../../../styles/designSystem'
 import {
   SummaryCard,
   SummaryCardsGrid,
@@ -99,19 +99,19 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
           label={`${monthLabel}預約`}
           value={filteredTotalBookings}
           unit="筆"
-          accentColor="#4a90e2"
+          accentColor={designSystem.colors.info[500]}
         />
         <SummaryCard
           label="總預約時數"
           value={filteredTotalMinutes}
           unit="分"
-          accentColor="#50c878"
+          accentColor={designSystem.colors.success[500]}
         />
         <SummaryCard
           label="教練人數"
           value={filteredCoachCount}
           unit="人"
-          accentColor="#ff9800"
+          accentColor={designSystem.colors.warning[500]}
         />
         <WeekdayRatioBar stats={futureWeekdayStats} />
       </SummaryCardsGrid>
@@ -166,7 +166,7 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
           value: getFilteredValue(coach, 'minutes'),
           count: getFilteredContactCount(coach)
         }))}
-        accentColor="#4a90e2"
+        
         emptyText="目前沒有未來預約"
         renderDetail={(item) => {
           const coach = futureBookings.find(c => c.coachId === item.id)
@@ -209,7 +209,7 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
                     </span>
                     <span style={{
                       fontSize: '13px',
-                      color: '#4a90e2',
+                      color: designSystem.colors.info[500],
                       fontWeight: '600',
                       flexShrink: 0,
                       marginLeft: '12px'

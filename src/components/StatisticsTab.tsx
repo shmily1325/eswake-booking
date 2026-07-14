@@ -4,6 +4,7 @@ import { fetchAllPaginated } from '../utils/supabasePaginate'
 import { extractDate, extractTime, getLocalDateString } from '../utils/formatters'
 import { useToast } from './ui'
 import { DateRangePicker } from './DateRangePicker'
+import { designSystem, getCardStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 
 interface CoachStats {
   coachId: string
@@ -267,11 +268,8 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
     <div>
       {/* 篩選區 */}
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: isMobile ? '20px' : '24px',
-        marginBottom: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        ...getCardStyle(isMobile),
+        marginBottom: '24px'
       }}>
         {/* 查詢期間 - 簡化版 */}
         <div style={{ marginBottom: '20px' }}>
@@ -288,34 +286,19 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         {/* 教練篩選 - 只在非自動篩選模式下顯示 */}
         {!autoFilterCoachId && (
           <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '600', 
-              fontSize: '15px', 
-              color: '#333' 
-            }}>
+            <label style={getLabelStyle(isMobile)}>
               篩選教練
             </label>
             <select
               value={selectedCoachId}
               onChange={(e) => setSelectedCoachId(e.target.value)}
               style={{
-                width: '100%',
-                padding: '12px 14px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '14px',
+                ...getInputStyle(isMobile),
                 fontWeight: '500',
                 cursor: 'pointer',
-                outline: 'none',
-                background: 'white',
-                transition: 'border-color 0.2s'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#90caf9'}
-              onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
             >
-              <option value="all">👥 全部教練</option>
+              <option value="all">全部教練</option>
               {allCoachStats.map(stat => (
                 <option key={stat.coachId} value={stat.coachId}>
                   {stat.coachName}
@@ -327,11 +310,11 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
           載入中...
         </div>
       ) : coachStats.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
           {selectedDate.length === 10 ? '當日無記錄' : '當月無記錄'}
         </div>
       ) : (
@@ -345,54 +328,54 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           }}>
             <div style={{
               padding: '24px',
-              background: 'white',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              borderLeft: '4px solid #90caf9'
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.xl,
+              boxShadow: designSystem.shadows.sm,
+              borderLeft: `4px solid ${designSystem.colors.success[500]}`
             }}>
-              <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: '8px', fontWeight: '500' }}>
                 🎓 教學時數
               </div>
-              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
+              <div style={{ fontSize: getFontSize('h1', isMobile), fontWeight: 'bold', color: designSystem.colors.text.primary, marginBottom: '4px' }}>
                 {totalTeachingMinutes}
               </div>
-              <div style={{ fontSize: '14px', color: '#999' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.disabled }}>
                 分鐘 ({(totalTeachingMinutes / 60).toFixed(1)} 小時)
               </div>
             </div>
 
             <div style={{
               padding: '24px',
-              background: 'white',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              borderLeft: '4px solid #81c784'
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.xl,
+              boxShadow: designSystem.shadows.sm,
+              borderLeft: `4px solid ${designSystem.colors.info[500]}`
             }}>
-              <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: '8px', fontWeight: '500' }}>
                 🚤 駕駛時數
               </div>
-              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
+              <div style={{ fontSize: getFontSize('h1', isMobile), fontWeight: 'bold', color: designSystem.colors.text.primary, marginBottom: '4px' }}>
                 {totalDrivingMinutes}
               </div>
-              <div style={{ fontSize: '14px', color: '#999' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.disabled }}>
                 分鐘 ({(totalDrivingMinutes / 60).toFixed(1)} 小時)
               </div>
             </div>
 
             <div style={{
               padding: '24px',
-              background: 'white',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              borderLeft: '4px solid #ffb74d'
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.xl,
+              boxShadow: designSystem.shadows.sm,
+              borderLeft: `4px solid ${designSystem.colors.warning[500]}`
             }}>
-              <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                📊 總預約數
+              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: '8px', fontWeight: '500' }}>
+                總預約數
               </div>
-              <div style={{ fontSize: isMobile ? '32px' : '36px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
+              <div style={{ fontSize: getFontSize('h1', isMobile), fontWeight: 'bold', color: designSystem.colors.text.primary, marginBottom: '4px' }}>
                 {totalBookings}
               </div>
-              <div style={{ fontSize: '14px', color: '#999' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.disabled }}>
                 筆記錄
               </div>
             </div>
@@ -407,16 +390,14 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           }}>
             {/* 教學時數圖表 */}
             <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: isMobile ? '20px' : '24px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+              ...getCardStyle(isMobile),
+              marginBottom: 0
             }}>
               <h3 style={{ 
                 margin: '0 0 20px 0', 
-                fontSize: '17px', 
+                fontSize: getFontSize('h3', isMobile), 
                 fontWeight: '700', 
-                color: '#333',
+                color: designSystem.colors.text.primary,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
@@ -425,40 +406,40 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                   display: 'inline-block',
                   width: '4px',
                   height: '20px',
-                  background: '#90caf9',
+                  background: designSystem.colors.success[500],
                   borderRadius: '2px'
                 }}></span>
-                教學時數對比
+                🎓 教學時數對比
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {coachStats.map(stat => (
                   <div key={`teaching-${stat.coachId}`}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                      <span style={{ fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600', color: designSystem.colors.text.primary }}>
                         {stat.coachName}
                       </span>
-                      <span style={{ fontSize: '12px', color: '#666' }}>
+                      <span style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
                         {stat.teachingMinutes}分 ({stat.teachingCount}筆)
                       </span>
                     </div>
                     <div style={{
                       width: '100%',
                       height: '24px',
-                      background: '#e3f2fd',
-                      borderRadius: '6px',
+                      background: designSystem.colors.success[50],
+                      borderRadius: designSystem.borderRadius.md,
                       overflow: 'hidden'
                     }}>
                       <div
                         style={{
                           width: `${(stat.teachingMinutes / Math.max(...coachStats.map(s => s.teachingMinutes), 1)) * 100}%`,
                           height: '100%',
-                          background: 'linear-gradient(90deg, #2196f3, #1976d2)',
+                          background: designSystem.colors.success[500],
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'flex-end',
                           paddingRight: '8px',
                           color: 'white',
-                          fontSize: '11px',
+                          fontSize: getFontSize('caption', true),
                           fontWeight: '600',
                           transition: 'width 0.3s'
                         }}
@@ -473,16 +454,14 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
             {/* 駕駛時數圖表 */}
             <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: isMobile ? '20px' : '24px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+              ...getCardStyle(isMobile),
+              marginBottom: 0
             }}>
               <h3 style={{ 
                 margin: '0 0 20px 0', 
-                fontSize: '17px', 
+                fontSize: getFontSize('h3', isMobile), 
                 fontWeight: '700', 
-                color: '#333',
+                color: designSystem.colors.text.primary,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
@@ -491,40 +470,40 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                   display: 'inline-block',
                   width: '4px',
                   height: '20px',
-                  background: '#81c784',
+                  background: designSystem.colors.info[500],
                   borderRadius: '2px'
                 }}></span>
-                駕駛時數對比
+                🚤 駕駛時數對比
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {coachStats.map(stat => (
                   <div key={`driving-${stat.coachId}`}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                      <span style={{ fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600', color: designSystem.colors.text.primary }}>
                         {stat.coachName}
                       </span>
-                      <span style={{ fontSize: '12px', color: '#666' }}>
+                      <span style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
                         {stat.drivingMinutes}分 ({stat.drivingCount}筆)
                       </span>
                     </div>
                     <div style={{
                       width: '100%',
                       height: '24px',
-                      background: '#e8f5e9',
-                      borderRadius: '6px',
+                      background: designSystem.colors.info[50],
+                      borderRadius: designSystem.borderRadius.md,
                       overflow: 'hidden'
                     }}>
                       <div
                         style={{
                           width: `${(stat.drivingMinutes / Math.max(...coachStats.map(s => s.drivingMinutes), 1)) * 100}%`,
                           height: '100%',
-                          background: 'linear-gradient(90deg, #4caf50, #388e3c)',
+                          background: designSystem.colors.info[500],
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'flex-end',
                           paddingRight: '8px',
                           color: 'white',
-                          fontSize: '11px',
+                          fontSize: getFontSize('caption', true),
                           fontWeight: '600',
                           transition: 'width 0.3s'
                         }}
@@ -542,32 +521,20 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h2 style={{ 
               margin: '0 0 16px 0', 
-              fontSize: '20px', 
+              fontSize: getFontSize('h2', isMobile), 
               fontWeight: '700', 
-              color: '#333',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
+              color: designSystem.colors.text.primary,
             }}>
-              <span style={{ 
-                display: 'inline-block',
-                width: '4px',
-                height: '24px',
-                background: '#ffb74d',
-                borderRadius: '2px'
-              }}></span>
               教練細帳
             </h2>
             {coachStats.map(stat => (
               <div key={stat.coachId} style={{
-                background: 'white',
-                borderRadius: '12px',
-                padding: isMobile ? '20px' : '24px',
-                boxShadow: expandedCoachId === stat.coachId 
-                  ? '0 4px 16px rgba(144, 202, 249, 0.3)' 
-                  : '0 2px 8px rgba(0,0,0,0.06)',
-                border: expandedCoachId === stat.coachId ? '2px solid #90caf9' : 'none',
-                transition: 'all 0.3s'
+                ...getCardStyle(isMobile),
+                marginBottom: 0,
+                border: expandedCoachId === stat.coachId
+                  ? `1.5px solid ${designSystem.colors.primary[500]}`
+                  : `1px solid ${designSystem.colors.border.light}`,
+                transition: 'all 0.2s'
               }}>
                 {/* 教練標題 */}
                 <div
@@ -584,43 +551,47 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                   <div style={{ flex: 1 }}>
                     <h3 style={{ 
                       margin: 0, 
-                      fontSize: '20px', 
+                      fontSize: getFontSize('h3', isMobile), 
                       fontWeight: '700', 
-                      color: '#333',
+                      color: designSystem.colors.text.primary,
                       marginBottom: '8px'
                     }}>
                       🎓 {stat.coachName}
                     </h3>
                     <div style={{ 
-                      fontSize: '14px', 
-                      color: '#666',
+                      fontSize: getFontSize('body', isMobile), 
+                      color: designSystem.colors.text.secondary,
                       display: 'flex',
                       gap: '16px',
                       flexWrap: 'wrap'
                     }}>
                       <span style={{ 
                         padding: '4px 12px', 
-                        background: '#f0f9ff', 
-                        borderRadius: '6px',
+                        background: designSystem.colors.success[50],
+                        color: designSystem.colors.success[700],
+                        border: `1px solid ${designSystem.colors.success[500]}33`,
+                        borderRadius: designSystem.borderRadius.md,
                         fontWeight: '500'
                       }}>
-                        🎓 教學 {stat.teachingMinutes}分 ({stat.teachingCount}筆)
+                        🎓 {stat.teachingMinutes}分 ({stat.teachingCount}筆)
                       </span>
                       <span style={{ 
                         padding: '4px 12px', 
-                        background: '#fef2f2', 
-                        borderRadius: '6px',
+                        background: designSystem.colors.info[50],
+                        color: designSystem.colors.info[700],
+                        border: `1px solid ${designSystem.colors.info[500]}33`,
+                        borderRadius: designSystem.borderRadius.md,
                         fontWeight: '500'
                       }}>
-                        🚤 駕駛 {stat.drivingMinutes}分 ({stat.drivingCount}筆)
+                        🚤 {stat.drivingMinutes}分 ({stat.drivingCount}筆)
                       </span>
                     </div>
                   </div>
                   <div style={{ 
-                    fontSize: '20px',
-                    color: '#90caf9',
+                    fontSize: getFontSize('h3', isMobile),
+                    color: designSystem.colors.text.secondary,
                     marginLeft: '16px',
-                    transition: 'transform 0.3s',
+                    transition: 'transform 0.2s',
                     transform: expandedCoachId === stat.coachId ? 'rotate(90deg)' : 'rotate(0deg)'
                   }}>
                     ▶
@@ -629,30 +600,30 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
                 {/* 細帳 */}
                 {expandedCoachId === stat.coachId && (
-                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0', overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${designSystem.colors.border.light}`, overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: getFontSize('bodySmall', isMobile) }}>
                       <thead>
-                        <tr style={{ background: '#f5f5f5' }}>
-                          <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>日期時間</th>
-                          <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>船隻</th>
-                          <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>學員</th>
-                          <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>教學</th>
-                          <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#666' }}>駕駛</th>
+                        <tr style={{ background: designSystem.colors.background.hover }}>
+                          <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}>日期時間</th>
+                          <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}>船隻</th>
+                          <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}>學員</th>
+                          <th style={{ padding: '10px', textAlign: 'center', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}>教學</th>
+                          <th style={{ padding: '10px', textAlign: 'center', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}>駕駛</th>
                         </tr>
                       </thead>
                       <tbody>
                         {stat.details.map((detail, idx) => (
-                          <tr key={`${detail.bookingId}-${idx}`} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <tr key={`${detail.bookingId}-${idx}`} style={{ borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
                             <td style={{ padding: '10px', whiteSpace: 'nowrap' }}>
-                              <div style={{ fontWeight: '600', color: '#333' }}>{detail.date}</div>
-                              <div style={{ color: '#999', fontSize: '12px' }}>{detail.time}</div>
+                              <div style={{ fontWeight: '600', color: designSystem.colors.text.primary }}>{detail.date}</div>
+                              <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', isMobile) }}>{detail.time}</div>
                               {detail.contactName && (
-                                <div style={{ color: '#888', fontSize: '12px', marginTop: '2px' }}>{detail.contactName}</div>
+                                <div style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile), marginTop: '2px' }}>{detail.contactName}</div>
                               )}
                             </td>
                             <td style={{ padding: '10px' }}>
-                              <div style={{ color: '#666' }}>{detail.boatName}</div>
-                              <div style={{ color: '#999', fontSize: '12px' }}>({detail.duration}分)</div>
+                              <div style={{ color: designSystem.colors.text.secondary }}>{detail.boatName}</div>
+                              <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', isMobile) }}>({detail.duration}分)</div>
                             </td>
                             <td style={{ padding: '10px' }}>
                               {detail.participants.length > 0 ? (
@@ -660,34 +631,34 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                                   {detail.participants.map((p, pIdx) => (
                                     <div key={pIdx}>
                                       {p.memberName ? (
-                                        <span style={{ color: '#2196f3', fontWeight: '600' }}>{p.memberName}</span>
+                                        <span style={{ color: designSystem.colors.info[700], fontWeight: '600' }}>{p.memberName}</span>
                                       ) : (
-                                        <span style={{ color: '#333' }}>{p.name}</span>
+                                        <span style={{ color: designSystem.colors.text.primary }}>{p.name}</span>
                                       )}
-                                      <span style={{ color: '#999', fontSize: '12px', marginLeft: '4px' }}>
+                                      <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', isMobile), marginLeft: '4px' }}>
                                         {p.lessonType} {p.duration}分
                                       </span>
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                <span style={{ color: '#999' }}>-</span>
+                                <span style={{ color: designSystem.colors.text.disabled }}>-</span>
                               )}
                             </td>
                             <td style={{ padding: '10px', textAlign: 'center' }}>
                               {detail.participants.length > 0 ? (
-                                <span style={{ color: '#2196f3', fontWeight: '600' }}>
+                                <span style={{ color: designSystem.colors.success[700], fontWeight: '600' }}>
                                   {detail.participants.reduce((sum, p) => sum + p.duration, 0)}分
                                 </span>
                               ) : (
-                                <span style={{ color: '#999' }}>-</span>
+                                <span style={{ color: designSystem.colors.text.disabled }}>-</span>
                               )}
                             </td>
                             <td style={{ padding: '10px', textAlign: 'center' }}>
                               {detail.driverDuration ? (
-                                <span style={{ color: '#4caf50', fontWeight: '600' }}>{detail.driverDuration}分</span>
+                                <span style={{ color: designSystem.colors.info[700], fontWeight: '600' }}>{detail.driverDuration}分</span>
                               ) : (
-                                <span style={{ color: '#999' }}>-</span>
+                                <span style={{ color: designSystem.colors.text.disabled }}>-</span>
                               )}
                             </td>
                           </tr>
