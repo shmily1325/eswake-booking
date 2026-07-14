@@ -290,6 +290,7 @@ export const designSystem: DesignSystem = {
 export const PAGE_MAX_WIDTHS = {
   mobileColumn: '480px',
   hub: '640px',
+  hubWide: '750px',
   content: '1100px',
   dashboard: '1200px',
   wide: '1400px',

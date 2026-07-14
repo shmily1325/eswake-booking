@@ -195,7 +195,7 @@ export function BaoHub() {
 
   return (
     <PageShell
-      variant="hub"
+      variant="hubWide"
       mobilePadding="24px 16px max(20px, env(safe-area-inset-bottom))"
       desktopPadding="40px 20px max(20px, env(safe-area-inset-bottom))"
       outerStyle={{ minHeight: '100dvh', alignItems: 'center' }}
