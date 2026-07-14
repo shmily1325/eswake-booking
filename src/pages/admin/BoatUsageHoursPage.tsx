@@ -147,20 +147,12 @@ export function BoatUsageHoursPage() {
         />
 
         <div style={getCardStyle(isMobile)}>
-          <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: designSystem.colors.text.secondary, lineHeight: 1.55 }}>
-            <strong>營運</strong>：有收錢的船使用時數。
-            <br />
-            <strong>教練練習</strong>：同區間內標記為教練練習且未取消，以預約表時長加總。
-            <br />
-            <strong>總和</strong>為兩者相加。僅列出實際船隻。
-          </p>
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'auto auto auto',
+              display: 'flex',
+              flexWrap: 'wrap',
               gap: '12px',
-              alignItems: 'end',
-              marginBottom: '12px',
+              alignItems: 'flex-end',
             }}
           >
             <label
@@ -169,7 +161,9 @@ export function BoatUsageHoursPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '4px',
-                minWidth: 0,
+                marginBottom: 0,
+                flex: isMobile ? '1 1 100%' : '0 1 auto',
+                minWidth: isMobile ? 0 : '160px',
               }}
             >
               起始日
@@ -191,7 +185,9 @@ export function BoatUsageHoursPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '4px',
-                minWidth: 0,
+                marginBottom: 0,
+                flex: isMobile ? '1 1 100%' : '0 1 auto',
+                minWidth: isMobile ? 0 : '160px',
               }}
             >
               結束日
@@ -214,7 +210,9 @@ export function BoatUsageHoursPage() {
               style={{
                 ...getButtonStyle('primary', 'medium', isMobile),
                 cursor: loading ? 'wait' : 'pointer',
-                width: '100%',
+                flex: isMobile ? '1 1 100%' : '0 0 auto',
+                width: isMobile ? '100%' : 'auto',
+                minHeight: isMobile ? '46px' : '48px',
                 boxSizing: 'border-box',
               }}
             >

@@ -1781,7 +1781,8 @@ export function CoachAssignment() {
                             <div style={{ 
                               marginTop: '12px',
                               paddingTop: '12px',
-                              borderTop: `1px solid ${designSystem.colors.border.light}`
+                              // 卡片底是 background.hover，border.light 幾乎同色會「看不見」
+                              borderTop: `1px solid ${designSystem.colors.border.main}`
                             }}>
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: designSystem.colors.text.secondary }}>

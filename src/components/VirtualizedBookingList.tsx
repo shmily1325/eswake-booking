@@ -94,7 +94,7 @@ export function VirtualizedBookingList({
                     >
                         {/* 左側船名欄 */}
                         <div style={{
-                            // 手機需容納「陸上課程」四字＋色點；80px 會被 ellipsis 吃掉
+                            // 手機需容納「陸上課程」四字；色點改回船名上方，不再跟文字搶寬
                             minWidth: isMobile ? '100px' : '120px',
                             maxWidth: isMobile ? '100px' : '120px',
                             background: designSystem.colors.secondary[800],
@@ -112,42 +112,35 @@ export function VirtualizedBookingList({
                         }}
                             title={sidebarAlert.show ? sidebarAlert.title : undefined}
                         >
+                            {/* 色點置於船名上方置中，避免與長名（陸上課程）橫排時各列點位左右漂移 */}
+                            <span
+                                aria-hidden
+                                style={{
+                                    width: isMobile ? '7px' : '8px',
+                                    height: isMobile ? '7px' : '8px',
+                                    borderRadius: '50%',
+                                    background: boat.color || designSystem.colors.border.dark,
+                                    border: '1px solid rgba(255,255,255,0.45)',
+                                    flexShrink: 0,
+                                    marginBottom: '6px',
+                                }}
+                            />
                             <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px',
                                 width: '100%',
                                 minWidth: 0,
                                 marginBottom: '4px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                wordBreak: 'keep-all',
+                                fontSize: isMobile
+                                    ? (boat.name.length >= 4 ? '13px' : '14px')
+                                    : '16px',
+                                fontWeight: '700',
+                                textAlign: 'center',
+                                letterSpacing: boat.name.length >= 4 ? '-0.02em' : undefined,
                             }}>
-                                <span
-                                    aria-hidden
-                                    style={{
-                                        width: isMobile ? '7px' : '8px',
-                                        height: isMobile ? '7px' : '8px',
-                                        borderRadius: '50%',
-                                        background: boat.color || designSystem.colors.border.dark,
-                                        border: '1px solid rgba(255,255,255,0.45)',
-                                        flexShrink: 0,
-                                    }}
-                                />
-                                <span style={{
-                                    minWidth: 0,
-                                    flex: 1,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    wordBreak: 'keep-all',
-                                    fontSize: isMobile
-                                        ? (boat.name.length >= 4 ? '13px' : '14px')
-                                        : '16px',
-                                    fontWeight: '700',
-                                    textAlign: 'center',
-                                    letterSpacing: boat.name.length >= 4 ? '-0.02em' : undefined,
-                                }}>
-                                    {boat.name}
-                                </span>
+                                {boat.name}
                             </div>
                             {sidebarAlert.show && (
                                 <div style={{
