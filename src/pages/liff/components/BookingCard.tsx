@@ -1,4 +1,4 @@
-// 預約列（分組列表內，時間為主視覺）
+// 預約列（分組列表內；時間焦點塊＋船色點綴；同日後續較緊）
 
 import { isFacility } from '../../../utils/facility'
 import { displayCoachNameForTomorrowReminder } from '../../../utils/tomorrowReminderDisplay'
@@ -36,31 +36,56 @@ export function BookingCard({
     booking.activity_types && booking.activity_types.length > 0
       ? booking.activity_types.join(' · ')
       : null
+  const timeSize = isFirstOfDay ? LIFF_TYPE.display + 2 : LIFF_TYPE.display
 
   return (
     <div
       style={{
-        padding: '16px 0',
+        padding: isFirstOfDay ? '18px 0' : '10px 0',
         borderBottom: isLast ? 'none' : `1px solid ${LIFF_THEME.rowDivider}`,
       }}
     >
-      <div
-        style={{
-          fontSize: LIFF_TYPE.body,
-          fontWeight: 600,
-          color: LIFF_THEME.inkSoft,
-          marginBottom: 12,
-          letterSpacing: '0.01em',
-        }}
-      >
-        {formatDate(booking.start_at)}
-      </div>
+      {isFirstOfDay && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 12,
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              width: 2,
+              height: 14,
+              borderRadius: 1,
+              background: boatColor,
+              flexShrink: 0,
+            }}
+          />
+          <div
+            style={{
+              fontSize: LIFF_TYPE.body,
+              fontWeight: 600,
+              color: LIFF_THEME.inkSoft,
+              letterSpacing: '0.01em',
+            }}
+          >
+            {formatDate(booking.start_at)}
+          </div>
+        </div>
+      )}
 
       <div
         style={{
           display: 'flex',
-          gap: 20,
-          marginBottom: 14,
+          gap: isFirstOfDay ? 20 : 16,
+          marginBottom: isFirstOfDay ? 14 : 10,
+          padding: isFirstOfDay ? '14px 14px' : '10px 12px',
+          background: LIFF_THEME.surfaceInset,
+          borderRadius: LIFF_THEME.controlRadius,
+          borderLeft: isFirstOfDay ? undefined : `2px solid ${boatColor}`,
         }}
       >
         {isFirstOfDay && (
@@ -76,7 +101,7 @@ export function BookingCard({
             </div>
             <div
               style={{
-                fontSize: LIFF_TYPE.display,
+                fontSize: timeSize,
                 fontWeight: 700,
                 color: LIFF_THEME.ink,
                 fontVariantNumeric: 'tabular-nums',
@@ -99,7 +124,7 @@ export function BookingCard({
           </div>
           <div
             style={{
-              fontSize: LIFF_TYPE.display,
+              fontSize: timeSize,
               fontWeight: 700,
               color: LIFF_THEME.ink,
               fontVariantNumeric: 'tabular-nums',
@@ -122,8 +147,8 @@ export function BookingCard({
         <div
           aria-hidden
           style={{
-            width: 10,
-            height: 10,
+            width: 12,
+            height: 12,
             borderRadius: 3,
             background: boatColor,
             flexShrink: 0,

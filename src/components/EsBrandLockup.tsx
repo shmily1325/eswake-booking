@@ -68,12 +68,13 @@ export function EsBrandLockup({
           <div
             className={subtitleClassName}
             style={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: subtitleColor,
-              marginTop: 2,
-              lineHeight: 1.25,
-            }}
+            fontSize: 13,
+            fontWeight: 600,
+            color: subtitleColor,
+            marginTop: 2,
+            lineHeight: 1.25,
+            letterSpacing: '-0.01em',
+          }}
           >
             {subtitle}
           </div>

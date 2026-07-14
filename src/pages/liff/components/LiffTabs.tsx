@@ -44,12 +44,12 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
               border: 'none',
               background: 'transparent',
               color: active ? LIFF_THEME.tabActive : LIFF_THEME.tabInactive,
-              fontWeight: active ? 600 : 400,
-              fontSize: LIFF_TYPE.caption + 1,
-              letterSpacing: '0.02em',
+              fontWeight: active ? 700 : 400,
+              fontSize: active ? LIFF_TYPE.body : LIFF_TYPE.caption + 1,
+              letterSpacing: active ? '0.01em' : '0.02em',
               cursor: 'pointer',
-              borderBottom: active ? `2px solid ${LIFF_THEME.tabActive}` : '2px solid transparent',
-              transition: 'color 0.15s, border-color 0.15s',
+              borderBottom: active ? `2.5px solid ${LIFF_THEME.tabActive}` : '2.5px solid transparent',
+              transition: 'color 0.15s, border-color 0.15s, font-size 0.15s',
             }}
           >
             {label}

@@ -9,6 +9,7 @@ import {
   liffOrderProgressSummary,
   liffOrderStatus,
 } from '../liffShopOrders'
+import { LiffEmptyState } from './LiffEmptyState'
 import { LiffPageHint } from './LiffPageHint'
 import { ShopOrdersListSkeleton } from './ShopOrdersListSkeleton'
 
@@ -29,12 +30,16 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
   const hiddenCount = collapsible && !expanded ? order.items.length - 1 : 0
   const showMeta = !collapsible || expanded
   const progressSummary = liffOrderProgressSummary(order)
+  const inProgress = statusKey !== 'done' && statusKey !== 'cancelled'
 
   return (
     <div
       style={{
-        padding: '16px 0',
-        borderBottom: isLast ? 'none' : `1px solid ${LIFF_THEME.rowDivider}`,
+        padding: inProgress ? '14px 12px' : '16px 0',
+        marginBottom: inProgress && !isLast ? 8 : 0,
+        borderBottom: isLast || inProgress ? 'none' : `1px solid ${LIFF_THEME.rowDivider}`,
+        borderRadius: inProgress ? LIFF_THEME.controlRadius : 0,
+        background: inProgress ? LIFF_THEME.surfaceInset : 'transparent',
       }}
     >
       <button
@@ -76,7 +81,8 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
             style={{
               flexShrink: 0,
               fontSize: LIFF_TYPE.caption + 1,
-              fontWeight: 600,
+              fontWeight:
+                statusKey === 'done' || statusKey === 'cancelled' ? 500 : 700,
               color: status.color,
             }}
           >
@@ -225,32 +231,15 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
         <div
           style={{
             ...liffContentPanel,
-            padding: '28px 20px 40px',
-            textAlign: 'center',
+            padding: '32px 20px 36px',
           }}
         >
-          <div
-            style={{
-              fontSize: LIFF_TYPE.display - 2,
-              fontWeight: 600,
-              color: LIFF_THEME.inkSoft,
-              marginBottom: 8,
-            }}
-          >
-            目前沒有商品訂單
-          </div>
-          <div style={{ fontSize: LIFF_TYPE.body, color: LIFF_THEME.mutedLight, marginBottom: 20 }}>
-            店內開單後會顯示在這裡
-          </div>
-          <div
-            style={{
-              fontSize: LIFF_TYPE.caption,
-              color: LIFF_THEME.mutedLight,
-              lineHeight: 1.45,
-            }}
-          >
-            {ORDERS_PAGE_HINT}
-          </div>
+          <LiffEmptyState
+            kind="orders"
+            title="目前沒有商品訂單"
+            detail="店內開單後會顯示在這裡"
+            hint={ORDERS_PAGE_HINT}
+          />
         </div>
       </div>
     )

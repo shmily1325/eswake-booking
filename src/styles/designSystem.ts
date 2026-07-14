@@ -284,6 +284,18 @@ export const designSystem: DesignSystem = {
   },
 }
 
+/** 列表／閱讀型頁面內容最大寬（桌面置中，避免滿版掃讀吃力） */
+export const PAGE_CONTENT_MAX_WIDTH = '1100px'
+
+/** 置中內容殼層：手機近滿寬，桌面限制行寬 */
+export const getPageContentShellStyle = (isMobile: boolean = false): React.CSSProperties => ({
+  width: '100%',
+  maxWidth: isMobile ? undefined : PAGE_CONTENT_MAX_WIDTH,
+  marginLeft: 'auto',
+  marginRight: 'auto',
+  boxSizing: 'border-box',
+})
+
 // 按鈕樣式生成器
 export const getButtonStyle = (
   variant: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info' | 'ghost' | 'outline',

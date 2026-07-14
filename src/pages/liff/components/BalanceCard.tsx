@@ -1,24 +1,29 @@
-// 儲值餘額列（分組列表列，點擊開明細）
+// 儲值餘額卡（低彩度色階；點擊開明細）
 
 import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
+
+export type BalanceTone = {
+  color: string
+  bg: string
+  border: string
+}
 
 interface BalanceCardProps {
   label: string
   value: number | undefined
   unit: '元' | '分'
+  tone: BalanceTone
   category: string
   onClick: (category: string) => void
-  /** 最後一列不加底部分隔 */
-  isLast?: boolean
 }
 
 export function BalanceCard({
   label,
   value,
   unit,
+  tone,
   category,
   onClick,
-  isLast = false,
 }: BalanceCardProps) {
   const displayValue = value || 0
   const formattedValue = unit === '元' ? `$${displayValue}` : `${displayValue}分`
@@ -29,62 +34,51 @@ export function BalanceCard({
       onClick={() => onClick(category)}
       aria-label={`查看${label}扣款明細`}
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '12px',
+        display: 'block',
         width: '100%',
-        minHeight: 48,
-        padding: '14px 0',
         margin: 0,
-        border: 'none',
-        borderBottom: isLast ? 'none' : `1px solid ${LIFF_THEME.rowDivider}`,
-        background: 'transparent',
+        padding: '14px 14px 16px',
+        border: `1px solid ${tone.border}`,
+        borderRadius: LIFF_THEME.controlRadius,
+        background: tone.bg,
         cursor: 'pointer',
         textAlign: 'left',
         WebkitTapHighlightColor: 'transparent',
+        boxSizing: 'border-box',
+        transition: 'transform 0.15s ease',
+      }}
+      onTouchStart={(e) => {
+        e.currentTarget.style.transform = 'scale(0.98)'
+      }}
+      onTouchEnd={(e) => {
+        e.currentTarget.style.transform = 'scale(1)'
+      }}
+      onTouchCancel={(e) => {
+        e.currentTarget.style.transform = 'scale(1)'
       }}
     >
-      <span
+      <div
         style={{
-          fontSize: LIFF_TYPE.body,
+          fontSize: LIFF_TYPE.caption + 1,
           color: LIFF_THEME.muted,
-          flexShrink: 0,
+          marginBottom: 8,
+          fontWeight: 500,
         }}
       >
         {label}
-      </span>
-      <span
+      </div>
+      <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          minWidth: 0,
+          fontSize: unit === '元' ? LIFF_TYPE.display + 2 : LIFF_TYPE.display,
+          fontWeight: 700,
+          color: tone.color,
+          fontVariantNumeric: 'tabular-nums',
+          letterSpacing: '-0.02em',
+          lineHeight: 1.15,
         }}
       >
-        <span
-          style={{
-            fontSize: LIFF_TYPE.title + 1,
-            fontWeight: 600,
-            color: LIFF_THEME.ink,
-            fontVariantNumeric: 'tabular-nums',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {formattedValue}
-        </span>
-        <span
-          aria-hidden
-          style={{
-            fontSize: 18,
-            lineHeight: 1,
-            color: LIFF_THEME.mutedLight,
-            fontWeight: 300,
-          }}
-        >
-          ›
-        </span>
-      </span>
+        {formattedValue}
+      </div>
     </button>
   )
 }

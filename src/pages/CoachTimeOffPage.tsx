@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase'
 import { hasViewAccess } from '../utils/auth'
 import { addDaysToDate, getLocalDateString } from '../utils/date'
 import { trackClickDedupedWithin } from '../utils/trackClick'
-import { designSystem, getButtonStyle, getInputStyle } from '../styles/designSystem'
+import { designSystem, getButtonStyle, getInputStyle, getPageContentShellStyle } from '../styles/designSystem'
 import {
   getTimeOffCellLabel,
   getTimeOffCellTooltip,
@@ -377,7 +377,7 @@ export function CoachTimeOffPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, padding: isMobile ? '18px' : '28px' }}>
-      <div style={{ maxWidth: isMobile ? '100%' : '100%', margin: '0 auto' }}>
+      <div style={getPageContentShellStyle(isMobile)}>
         <PageHeader title="教練休假" user={user} />
 
         {!isMobile && (

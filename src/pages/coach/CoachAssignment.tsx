@@ -9,7 +9,7 @@ import { BookingDateNav } from '../../components/BookingDateNav'
 import { TodayOverview } from '../../components/TodayOverview'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useDailyStaff } from '../../hooks/useDailyStaff'
-import { designSystem, getButtonStyle } from '../../styles/designSystem'
+import { designSystem, getButtonStyle, getPageContentShellStyle } from '../../styles/designSystem'
 import { isAdmin, hasEditorFeatureAsync } from '../../utils/auth'
 import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
@@ -1226,7 +1226,12 @@ export function CoachAssignment() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
-      <div style={{ flex: 1, padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl, maxWidth: '100%', margin: '0 auto', width: '100%' }}>
+      <div style={{
+        flex: 1,
+        padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl,
+        ...getPageContentShellStyle(isMobile),
+        ...(isMobile ? {} : { maxWidth: '1400px' }),
+      }}>
         <PageHeader user={user} title="排班" showBaoLink={isAdmin(user)} />
 
         <BookingDateNav

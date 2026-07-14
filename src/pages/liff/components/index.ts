@@ -17,5 +17,6 @@ export { LiffStyles } from './LiffStyles'
 export { BookingsListSkeleton } from './BookingsListSkeleton'
 export { TabPanelSkeleton } from './TabPanelSkeleton'
 export { LiffContactBar, LiffPageHint, LIFF_CONTACT_LINE } from './LiffPageHint'
+export { LiffEmptyState } from './LiffEmptyState'
 export { LiffExpiryBanner } from './LiffExpiryBanner'
 

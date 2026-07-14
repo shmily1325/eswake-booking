@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CountBadge } from '../components/CountBadge'
 import { usePendingBillOrderCount } from '../hooks/usePendingBillOrderCount'
@@ -9,6 +9,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { isAdmin } from '../utils/auth'
 import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
 import { ExternalNavLink } from '../components/ExternalNavLink'
+import { designSystem } from '../styles/designSystem'
 
 export function BaoHub() {
   const user = useAuthUser()
@@ -30,174 +31,149 @@ export function BaoHub() {
       title: string
       icon: string
       link: string
-      comingSoon?: boolean
-      disabled?: boolean
     }>
   }> = [
-      {
-        section: '📋 預約相關',
-        items: [
-          {
-            title: '排班',
-            icon: '📅',
-            link: '/coach-assignment'
-          },
-          {
-            title: '預約回報',
-            icon: '📝',
-            link: '/coach-report'
-          },
-          {
-            title: '回報管理',
-            icon: '💼',
-            link: '/coach-admin'
-          },
-          {
-            title: 'Dashboard',
-            icon: '📊',
-            link: '/statistics'
-          },
-        ]
-      },
-      {
-        section: '👥 會員相關',
-        items: [
-          {
-            title: '會員管理',
-            icon: '👥',
-            link: '/members'
-          },
-          {
-            title: '會員儲值',
-            icon: '💰',
-            link: '/member-transaction',
-          },
-          {
-            title: '置板管理',
-            icon: '🏄',
-            link: '/boards'
-          },
-          {
-            title: '訂單結帳',
-            icon: '🧾',
-            link: '/order-settle',
-          }
-        ]
-      },
-      {
-        section: '🏢 營運管理',
-        items: [
-          {
-            title: '公告',
-            icon: '📢',
-            link: '/announcements'
-          },
-          {
-            title: '人員管理',
-            icon: '🎓',
-            link: '/staff'
-          },
-          {
-            title: '船隻管理',
-            icon: '🚤',
-            link: '/boats'
-          },
-          {
-            title: '商品管理',
-            icon: '📦',
-            link: '/products'
-          },
-          {
-            title: 'ES SHOP',
-            icon: '🛒',
-            link: getPublicShopHomeUrl()
-          }
-        ]
-      },
-      {
-        section: '⚙️ 系統設定',
-        items: [
-          {
-            title: '匯出',
-            icon: '💾',
-            link: '/backup'
-          },
-          {
-            title: 'LINE 綁定狀態',
-            icon: '📱',
-            link: '/line-binding',
-          },
-        ]
-      }
-    ]
+    {
+      section: '預約相關',
+      items: [
+        { title: '排班', icon: '📅', link: '/coach-assignment' },
+        { title: '預約回報', icon: '📝', link: '/coach-report' },
+        { title: '回報管理', icon: '💼', link: '/coach-admin' },
+        { title: 'Dashboard', icon: '📊', link: '/statistics' },
+      ],
+    },
+    {
+      section: '會員相關',
+      items: [
+        { title: '會員管理', icon: '👥', link: '/members' },
+        { title: '會員儲值', icon: '💰', link: '/member-transaction' },
+        { title: '置板管理', icon: '🏄', link: '/boards' },
+        { title: '訂單結帳', icon: '🧾', link: '/order-settle' },
+      ],
+    },
+    {
+      section: '營運管理',
+      items: [
+        { title: '公告', icon: '📢', link: '/announcements' },
+        { title: '人員管理', icon: '🎓', link: '/staff' },
+        { title: '船隻管理', icon: '🚤', link: '/boats' },
+        { title: '商品管理', icon: '📦', link: '/products' },
+        { title: 'ES SHOP', icon: '🛒', link: getPublicShopHomeUrl() },
+      ],
+    },
+    {
+      section: '系統設定',
+      items: [
+        { title: '匯出', icon: '💾', link: '/backup' },
+        { title: 'LINE 綁定狀態', icon: '📱', link: '/line-binding' },
+      ],
+    },
+  ]
+
+  const menuCardStyle: CSSProperties = {
+    textDecoration: 'none',
+    background: designSystem.colors.background.card,
+    borderRadius: designSystem.borderRadius.xl,
+    padding: isMobile ? '28px 14px' : '35px 20px',
+    boxShadow: designSystem.shadows.xs,
+    transition: 'transform 0.15s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    gap: '12px',
+    cursor: 'pointer',
+    border: `1px solid ${designSystem.colors.border.light}`,
+  }
+
+  const menuCardTouchHandlers = {
+    onTouchStart: (e: React.TouchEvent<HTMLElement>) => {
+      e.currentTarget.style.transform = 'scale(0.97)'
+    },
+    onTouchEnd: (e: React.TouchEvent<HTMLElement>) => {
+      e.currentTarget.style.transform = 'scale(1)'
+    },
+    onTouchCancel: (e: React.TouchEvent<HTMLElement>) => {
+      e.currentTarget.style.transform = 'scale(1)'
+    },
+  }
+
+  const titleStyle: CSSProperties = {
+    margin: 0,
+    fontSize: isMobile ? '16px' : '18px',
+    fontWeight: '600',
+    color: designSystem.colors.text.primary,
+    letterSpacing: '0.5px',
+  }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)',
-      padding: '40px 20px',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <div style={{
-        maxWidth: '750px',
-        width: '100%',
-        margin: '0 auto'
-      }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        background: designSystem.colors.background.main,
+        padding: isMobile ? '24px 16px' : '40px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '750px',
+          width: '100%',
+          margin: '0 auto',
+        }}
+      >
         {/* Header */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '50px'
-        }}>
-          <div style={{
-            fontSize: isMobile ? '80px' : '100px',
-            marginBottom: '20px'
-          }}>
+        <div
+          style={{
+            textAlign: 'center',
+            marginBottom: isMobile ? '28px' : '50px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: isMobile ? '80px' : '100px',
+              marginBottom: isMobile ? '12px' : '20px',
+              lineHeight: 1,
+            }}
+            aria-hidden
+          >
             🔧
           </div>
-          <h1 style={{
-            margin: '0 0 20px 0',
-            fontSize: isMobile ? '32px' : '42px',
-            fontWeight: '800',
-            color: '#000',
-            letterSpacing: '2px',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-          }}>
+          <h1
+            style={{
+              margin: isMobile ? '0 0 12px 0' : '0 0 20px 0',
+              fontSize: isMobile ? '28px' : '42px',
+              fontWeight: '800',
+              color: designSystem.colors.text.primary,
+              letterSpacing: isMobile ? '1px' : '2px',
+              fontFamily:
+                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            }}
+          >
             BAO
           </h1>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '10px',
-            marginTop: '20px'
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '16px',
+              marginTop: isMobile ? '8px' : '15px',
+            }}
+          >
             <Link
               to="/"
               data-track="bao_home"
               style={{
-                padding: '10px 20px',
-                background: 'rgba(255, 255, 255, 0.7)',
-                color: '#333',
+                color: designSystem.colors.text.secondary,
                 textDecoration: 'none',
-                borderRadius: '8px',
                 fontSize: isMobile ? '13px' : '14px',
-                border: '1px solid rgba(224, 224, 224, 0.5)',
-                fontWeight: '500',
-                transition: 'all 0.2s'
+                fontWeight: 500,
+                letterSpacing: '0.02em',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'white'
-                e.currentTarget.style.borderColor = '#000'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
-                e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
-              }}
-              onTouchStart={(e) => e.currentTarget.style.background = '#f0f0f0'}
-              onTouchEnd={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'}
-              onTouchCancel={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'}
             >
               ← HOME
             </Link>
@@ -206,207 +182,36 @@ export function BaoHub() {
         </div>
 
         {/* Feature Cards by Section */}
-        {baoFeatures.map((section, sectionIdx) => (
-          <div key={sectionIdx} style={{ marginBottom: '40px' }}>
-            {/* Section Title */}
-            <h3 style={{
-              margin: '0 0 20px 0',
-              fontSize: isMobile ? '18px' : '20px',
-              fontWeight: '700',
-              color: '#333',
-              paddingBottom: '12px',
-              borderBottom: '2px solid rgba(0, 0, 0, 0.1)',
-              letterSpacing: '0.5px'
-            }}>
+        {baoFeatures.map((section) => (
+          <div key={section.section} style={{ marginBottom: isMobile ? '32px' : '40px' }}>
+            <h3
+              style={{
+                margin: '0 0 16px 0',
+                fontSize: isMobile ? '13px' : '14px',
+                fontWeight: 600,
+                color: designSystem.colors.text.secondary,
+                letterSpacing: '0.08em',
+              }}
+            >
               {section.section}
             </h3>
 
-            {/* Cards Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-              gap: '15px'
-            }}>
-              {section.items.map((feature) => (
-                feature.comingSoon ? (
-                  <div
-                    key={feature.title}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.5)',
-                      backdropFilter: 'blur(10px)',
-                      borderRadius: '16px',
-                      padding: isMobile ? '30px 15px' : '35px 20px',
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                      textAlign: 'center',
-                      position: 'relative',
-                      opacity: 0.6,
-                      cursor: 'not-allowed',
-                      border: '1px solid rgba(224, 224, 224, 0.5)'
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '10px',
-                      right: '10px',
-                      background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
-                      color: 'white',
-                      padding: '4px 10px',
-                      borderRadius: '12px',
-                      fontSize: '11px',
-                      fontWeight: 'bold'
-                    }}>
-                      即將推出
-                    </div>
-                    <div style={{
-                      fontSize: isMobile ? '36px' : '42px',
-                      marginBottom: isMobile ? '8px' : '12px'
-                    }}>
-                      {feature.icon}
-                    </div>
-                    <h2 style={{
-                      margin: 0,
-                      fontSize: isMobile ? '15px' : '17px',
-                      fontWeight: '600',
-                      color: '#000',
-                      letterSpacing: '0.5px'
-                    }}>
-                      {feature.title}
-                    </h2>
-                  </div>
-                ) : feature.disabled ? (
-                  <div
-                    key={feature.title}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.5)',
-                      backdropFilter: 'blur(10px)',
-                      borderRadius: '16px',
-                      padding: isMobile ? '30px 15px' : '35px 20px',
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                      textAlign: 'center',
-                      opacity: 0.5,
-                      cursor: 'not-allowed',
-                      border: '1px solid rgba(224, 224, 224, 0.5)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: isMobile ? '8px' : '12px'
-                    }}
-                  >
-                    <div style={{
-                      fontSize: isMobile ? '36px' : '42px',
-                      marginBottom: '5px'
-                    }}>
-                      {feature.icon}
-                    </div>
-                    <h2 style={{
-                      margin: 0,
-                      fontSize: isMobile ? '15px' : '17px',
-                      fontWeight: '600',
-                      color: '#000',
-                      letterSpacing: '0.5px'
-                    }}>
-                      {feature.title}
-                    </h2>
-                  </div>
-                ) : isExternalNavLink(feature.link) ? (
-                  <ExternalNavLink
-                    key={feature.title}
-                    href={feature.link}
-                    data-track="bao_shop"
-                    style={{
-                      textDecoration: 'none',
-                      background: 'rgba(255, 255, 255, 0.7)',
-                      backdropFilter: 'blur(10px)',
-                      borderRadius: '16px',
-                      padding: isMobile ? '30px 15px' : '35px 20px',
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                      transition: 'all 0.3s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      gap: isMobile ? '8px' : '12px',
-                      cursor: 'pointer',
-                      border: '1px solid rgba(224, 224, 224, 0.5)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-5px)'
-                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
-                      e.currentTarget.style.borderColor = '#000'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                      e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
-                    }}
-                  >
-                    <div style={{ fontSize: isMobile ? '36px' : '42px', marginBottom: '5px' }}>
-                      {feature.icon}
-                    </div>
-                    <h2 style={{
-                      margin: 0,
-                      fontSize: isMobile ? '15px' : '17px',
-                      fontWeight: '600',
-                      color: '#000',
-                      letterSpacing: '0.5px',
-                    }}>
-                      {feature.title}
-                    </h2>
-                  </ExternalNavLink>
-                ) : (
-                  <Link
-                    key={feature.title}
-                    to={feature.link}
-                    data-track={`bao_${feature.link.replace(/^\//, '')}`}
-                    style={{
-                      textDecoration: 'none',
-                      background: 'rgba(255, 255, 255, 0.7)',
-                      backdropFilter: 'blur(10px)',
-                      borderRadius: '16px',
-                      padding: isMobile ? '30px 15px' : '35px 20px',
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                      transition: 'all 0.3s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      gap: isMobile ? '8px' : '12px',
-                      cursor: 'pointer',
-                      border: '1px solid rgba(224, 224, 224, 0.5)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-5px)'
-                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
-                      e.currentTarget.style.borderColor = '#000'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                      e.currentTarget.style.borderColor = 'rgba(224, 224, 224, 0.5)'
-                    }}
-                    onTouchStart={(e) => {
-                      e.currentTarget.style.transform = 'scale(0.97)'
-                      e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.1)'
-                    }}
-                    onTouchEnd={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                    }}
-                    onTouchCancel={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
-                    }}
-                  >
-                    <div style={{ fontSize: isMobile ? '36px' : '42px', marginBottom: '5px' }}>
-                      {feature.icon}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                gap: '15px',
+              }}
+            >
+              {section.items.map((feature) => {
+                const inner = (
+                  <>
+                    <div style={{ marginBottom: '5px' }}>
+                      <span style={{ fontSize: isMobile ? '36px' : '42px' }}>{feature.icon}</span>
                     </div>
                     <h2
                       style={{
-                        margin: 0,
-                        fontSize: isMobile ? '15px' : '17px',
-                        fontWeight: '600',
-                        color: '#000',
-                        letterSpacing: '0.5px',
+                        ...titleStyle,
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -419,14 +224,39 @@ export function BaoHub() {
                         <CountBadge count={pendingSettleCount} />
                       )}
                     </h2>
+                  </>
+                )
+
+                if (isExternalNavLink(feature.link)) {
+                  return (
+                    <ExternalNavLink
+                      key={feature.title}
+                      href={feature.link}
+                      data-track="bao_shop"
+                      style={menuCardStyle}
+                      {...menuCardTouchHandlers}
+                    >
+                      {inner}
+                    </ExternalNavLink>
+                  )
+                }
+
+                return (
+                  <Link
+                    key={feature.title}
+                    to={feature.link}
+                    data-track={`bao_${feature.link.replace(/^\//, '')}`}
+                    style={menuCardStyle}
+                    {...menuCardTouchHandlers}
+                  >
+                    {inner}
                   </Link>
                 )
-              ))}
+              })}
             </div>
           </div>
         ))}
 
-        {/* Footer */}
         <Footer />
       </div>
     </div>

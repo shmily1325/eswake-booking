@@ -13,7 +13,8 @@ const sectionHeadingStyle: CSSProperties = {
   margin: '0 0 12px 0',
   fontSize: '16px',
   color: designSystem.colors.text.primary,
-  fontWeight: 600,
+  fontWeight: 700,
+  letterSpacing: '-0.01em',
 }
 
 /** 詳情內容面板：白底細框，取代灰底巢狀卡片 */
@@ -95,9 +96,19 @@ interface MemberDetailDialogProps {
   onClose: () => void
   onUpdate: () => void
   onSwitchMember?: (memberId: string) => void  // 切換到另一個會員
+  onArchiveMember?: (memberId: string) => Promise<void>
+  onRestoreMember?: (memberId: string) => Promise<void>
 }
 
-export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitchMember }: MemberDetailDialogProps) {
+export function MemberDetailDialog({
+  open,
+  memberId,
+  onClose,
+  onUpdate,
+  onSwitchMember,
+  onArchiveMember,
+  onRestoreMember,
+}: MemberDetailDialogProps) {
   const { isMobile } = useResponsive()
   const toast = useToast()
   const [member, setMember] = useState<Member | null>(null)
@@ -873,7 +884,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
               {/* 內容區 */}
               <div style={{ padding: isMobile ? '16px' : '20px' }}>
                     {/* 基本資料 */}
-                    <div style={{ marginBottom: '24px' }}>
+                    <div style={{ marginBottom: '28px' }}>
                       <div style={{ 
                         display: 'flex', 
                         justifyContent: 'space-between', 
@@ -881,25 +892,73 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                         marginBottom: '12px'
                       }}>
                         <h3 style={{ ...sectionHeadingStyle, margin: 0 }}>基本資料</h3>
-                        <button
-                          onClick={() => setEditDialogOpen(true)}
-                          style={getButtonStyle('outline', 'small', isMobile)}
-                        >
-                          編輯
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {(onArchiveMember || onRestoreMember) && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!memberId) return
+                                if (member.status === 'inactive') {
+                                  await onRestoreMember?.(memberId)
+                                  await loadMemberData()
+                                  onUpdate()
+                                } else {
+                                  const ok = window.confirm(`確定要隱藏「${member.nickname || member.name}」嗎？`)
+                                  if (!ok) return
+                                  await onArchiveMember?.(memberId)
+                                  onClose()
+                                }
+                              }}
+                              style={{
+                                ...getButtonStyle(
+                                  member.status === 'inactive' ? 'success' : 'outline',
+                                  'small',
+                                  isMobile
+                                ),
+                                color: member.status === 'inactive' ? undefined : designSystem.colors.text.secondary,
+                                fontSize: '12px',
+                              }}
+                            >
+                              {member.status === 'inactive' ? '恢復' : '隱藏'}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setEditDialogOpen(true)}
+                            style={getButtonStyle('outline', 'small', isMobile)}
+                          >
+                            編輯
+                          </button>
+                        </div>
                       </div>
-                      <div style={sectionPanelStyle}>
-                        <div style={{ 
-                          display: isMobile ? 'flex' : 'flex', 
-                          flexDirection: isMobile ? 'column' : 'row',
-                          flexWrap: isMobile ? 'nowrap' : 'wrap', 
-                          gap: isMobile ? '8px' : '16px', 
-                          fontSize: '14px' 
+                      <div style={{ ...sectionPanelStyle, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {/* 第一行：暱稱／姓名＋會籍類型 */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: isMobile ? '17px' : '18px', fontWeight: 700, color: designSystem.colors.text.primary, letterSpacing: '-0.02em' }}>
+                            {member.nickname?.trim() ? member.nickname : member.name}
+                          </span>
+                          {member.nickname?.trim() && (
+                            <span style={{ fontSize: '13px', color: designSystem.colors.text.secondary }}>
+                              ({member.name})
+                            </span>
+                          )}
+                          <span style={getBadgeStyle(
+                            member.membership_type === 'guest' ? 'warning' : 'info',
+                            'small'
+                          )}>
+                            {getMembershipTypeLabel(member.membership_type || 'general')}
+                          </span>
+                        </div>
+                        {/* 第二行：手機＋修改｜生日 */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: isMobile ? '10px' : '16px',
+                          flexWrap: 'wrap',
+                          fontSize: '14px',
+                          color: designSystem.colors.text.primary,
                         }}>
-                          <div><span style={{ color: designSystem.colors.text.secondary }}>姓名：</span>{member.name}</div>
-                          {member.nickname && <div><span style={{ color: designSystem.colors.text.secondary }}>暱稱：</span>{member.nickname}</div>}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ color: designSystem.colors.text.secondary }}>手機：</span>
+                            <span style={{ color: designSystem.colors.text.secondary }}>手機</span>
                             <span>{member.phone || <span style={{ color: designSystem.colors.text.disabled }}>未填寫</span>}</span>
                             <button
                               onClick={() => {
@@ -907,8 +966,8 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                 setQuickEditPhoneOpen(true)
                               }}
                               style={{
-                                ...getButtonStyle('ghost', 'small', isMobile),
-                                padding: '2px 6px',
+                                ...getButtonStyle('outline', 'small', isMobile),
+                                padding: '2px 8px',
                                 fontSize: '12px',
                                 flexShrink: 0,
                               }}
@@ -917,67 +976,69 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               修改
                             </button>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span
-                              title={lineBound ? (lineUserId ? `已綁定 (${lineUserId})` : '已綁定') : '未綁定'}
-                              style={getBadgeStyle(lineBound ? 'success' : 'default', 'small')}
+                          {member.birthday && (
+                            <div>
+                              <span style={{ color: designSystem.colors.text.secondary }}>生日 </span>
+                              {formatDate(member.birthday)}
+                            </div>
+                          )}
+                        </div>
+                        {/* 第三行：LINE＋移除綁定 */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span
+                            title={lineBound ? (lineUserId ? `已綁定 (${lineUserId})` : '已綁定') : '未綁定'}
+                            style={getBadgeStyle(lineBound ? 'success' : 'default', 'small')}
+                          >
+                            {lineBound ? 'LINE 已綁定' : 'LINE 未綁定'}
+                          </span>
+                          {lineBound && (
+                            <button
+                              onClick={async () => {
+                                if (!memberId) return
+                                const confirmed = window.confirm(`確定要移除「${member.nickname || member.name}」的 LINE 綁定嗎？`)
+                                if (!confirmed) return
+                                try {
+                                  const { error } = await supabase
+                                    .from('line_bindings')
+                                    .update({ status: 'revoked' })
+                                    .eq('member_id', memberId)
+                                    .eq('status', 'active')
+                                  if (error) throw error
+                                  toast.success('已移除 LINE 綁定')
+                                  await loadMemberData()
+                                  onUpdate()
+                                } catch (err) {
+                                  console.error('移除 LINE 綁定失敗:', err)
+                                  toast.error('移除 LINE 綁定失敗')
+                                }
+                              }}
+                              style={{
+                                ...getButtonStyle('outline', 'small', isMobile),
+                                background: designSystem.colors.danger[50],
+                                color: designSystem.colors.danger[700],
+                                borderColor: `${designSystem.colors.danger[500]}66`,
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                padding: '4px 10px',
+                              }}
+                              title="移除 LINE 綁定"
                             >
-                              {lineBound ? 'LINE 已綁定' : 'LINE 未綁定'}
-                            </span>
-                            {lineBound && (
-                              <button
-                                onClick={async () => {
-                                  if (!memberId) return
-                                  const confirmed = window.confirm(`確定要移除「${member.nickname || member.name}」的 LINE 綁定嗎？`)
-                                  if (!confirmed) return
-                                  try {
-                                    const { error } = await supabase
-                                      .from('line_bindings')
-                                      .update({ status: 'revoked' })
-                                      .eq('member_id', memberId)
-                                      .eq('status', 'active')
-                                    if (error) throw error
-                                    toast.success('已移除 LINE 綁定')
-                                    await loadMemberData()
-                                    onUpdate()
-                                  } catch (err) {
-                                    console.error('移除 LINE 綁定失敗:', err)
-                                    toast.error('移除 LINE 綁定失敗')
-                                  }
-                                }}
-                                style={{
-                                  ...getButtonStyle('ghost', 'small', isMobile),
-                                  color: designSystem.colors.danger[700],
-                                  fontSize: '12px',
-                                  padding: '4px 8px',
-                                }}
-                                title="移除 LINE 綁定"
-                              >
-                                移除綁定
-                              </button>
-                            )}
-                          </div>
-                          {member.birthday && <div><span style={{ color: designSystem.colors.text.secondary }}>生日：</span>{formatDate(member.birthday)}</div>}
-                          <div>
-                            <span style={getBadgeStyle(
-                              member.membership_type === 'guest' ? 'warning' : 'info',
-                              'small'
-                            )}>
-                              {getMembershipTypeLabel(member.membership_type || 'general')}
-                            </span>
-                          </div>
+                              移除綁定
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {/* 會籍 - 會員 */}
                     {(member.membership_type === 'general' || member.membership_type === 'dual') && (
-                      <div style={{ marginBottom: '24px' }}>
+                      <div style={{ marginBottom: '28px' }}>
                         <h3 style={sectionHeadingStyle}>會籍</h3>
                         <div style={sectionPanelStyle}>
                           <div style={{ 
-                            fontSize: '14px', 
-                            marginBottom: '12px',
+                            fontSize: '15px',
+                            fontWeight: 600,
+                            marginBottom: member.membership_type === 'dual' && member.partner ? '8px' : '14px',
                             color: member.membership_end_date && isExpired(member.membership_end_date)
                               ? designSystem.colors.danger[700]
                               : designSystem.colors.text.primary
@@ -993,7 +1054,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               style={{ 
                                 fontSize: '13px', 
                                 color: onSwitchMember ? designSystem.colors.info[700] : designSystem.colors.text.secondary, 
-                                marginBottom: '12px',
+                                marginBottom: '14px',
                                 cursor: onSwitchMember ? 'pointer' : 'default',
                                 textDecoration: onSwitchMember ? 'underline' : 'none',
                                 textDecorationStyle: 'dotted',
@@ -1004,7 +1065,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               配對：{member.partner.nickname || member.partner.name}
                             </div>
                           )}
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             <button
                               onClick={() => {
                                 const currentEnd = member.membership_end_date 
@@ -1026,20 +1087,16 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               轉非會員
                             </button>
                           </div>
-                          <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, lineHeight: '1.5' }}>
-                            <div>• <strong>續約</strong>：設定新的到期日（預設+1年），會記錄到備忘錄</div>
-                            <div>• <strong>轉非會員</strong>：清空會籍日期（資料在備忘錄），保留儲值和置板可繼續使用</div>
-                          </div>
                         </div>
                       </div>
                     )}
 
                     {/* 會籍 - 非會員 */}
                     {member.membership_type === 'guest' && (
-                      <div style={{ marginBottom: '24px' }}>
+                      <div style={{ marginBottom: '28px' }}>
                         <h3 style={sectionHeadingStyle}>會籍</h3>
                         <div style={sectionPanelStyle}>
-                          <div style={{ fontSize: '14px', color: designSystem.colors.text.secondary, marginBottom: '12px' }}>
+                          <div style={{ fontSize: '14px', color: designSystem.colors.text.secondary, marginBottom: '14px' }}>
                             目前為非會員
                           </div>
                           <button
@@ -1054,15 +1111,12 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                           >
                             轉為會員
                           </button>
-                          <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginTop: '8px' }}>
-                            設定會籍開始與到期日，會記錄到備忘錄
-                          </div>
                         </div>
                       </div>
                     )}
 
                     {/* 置板 */}
-                    <div style={{ marginBottom: '24px' }}>
+                    <div style={{ marginBottom: '28px' }}>
                       <div style={{ 
                         display: 'flex', 
                         justifyContent: 'space-between', 
@@ -1087,17 +1141,18 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                           尚無置板
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {boardStorage.map((board) => (
                             <div 
                               key={board.id} 
                               onClick={() => openBoardEditDialog(board)}
                               style={{
                                 ...sectionPanelStyle,
-                                padding: '10px 14px',
+                                padding: '12px 14px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
+                                gap: '12px',
                                 fontSize: '13px',
                                 cursor: 'pointer',
                                 transition: designSystem.transitions.normal,
@@ -1109,9 +1164,10 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                 e.currentTarget.style.borderColor = designSystem.colors.border.light
                               }}
                             >
-                              <div>
+                              <div style={{ minWidth: 0 }}>
                                 <span style={{ fontWeight: '600' }}>#{board.slot_number}</span>
-                                {board.start_date && <span style={{ color: designSystem.colors.text.secondary, marginLeft: '8px' }}>{formatDate(board.start_date)}</span>}
+                                <span style={{ color: designSystem.colors.text.secondary, margin: '0 6px' }}>·</span>
+                                {board.start_date && <span style={{ color: designSystem.colors.text.secondary }}>{formatDate(board.start_date)}</span>}
                                 {board.expires_at && <span style={{ color: designSystem.colors.text.secondary }}> → {formatDate(board.expires_at)}</span>}
                                 {board.expires_at && isExpired(board.expires_at) && 
                                   <span style={{ color: designSystem.colors.danger[700], marginLeft: '6px' }}>(已過期)</span>
@@ -1138,7 +1194,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                     </div>
 
                     {/* 備忘錄 */}
-                    <div style={{ marginBottom: '24px' }}>
+                    <div style={{ marginBottom: '28px' }}>
                       <div style={{ 
                         display: 'flex', 
                         justifyContent: 'space-between', 
@@ -1169,7 +1225,7 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                         <div style={{ 
                           display: 'flex', 
                           flexDirection: 'column', 
-                          gap: '10px',
+                          gap: '8px',
                           maxHeight: '500px',
                           overflowY: 'auto'
                         }}>
@@ -1179,27 +1235,33 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                               <div
                                 key={note.id}
                                 style={{
-                                  ...sectionPanelStyle,
-                                  padding: '12px',
+                                  background: designSystem.colors.background.main,
+                                  borderRadius: `0 ${designSystem.borderRadius.md} ${designSystem.borderRadius.md} 0`,
+                                  padding: '10px 12px',
                                   borderLeft: `3px solid ${eventType.color}`,
+                                  borderTop: 'none',
+                                  borderRight: 'none',
+                                  borderBottom: 'none',
                                 }}
                               >
                                 <div style={{
                                   display: 'flex',
                                   justifyContent: 'space-between',
                                   alignItems: 'flex-start',
+                                  gap: '8px',
                                 }}>
-                                  <div style={{ flex: 1 }}>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ 
                                       display: 'flex', 
                                       alignItems: 'center', 
                                       gap: '8px',
                                       marginBottom: '4px',
+                                      flexWrap: 'wrap',
                                     }}>
                                       <span style={{
-                                        ...getBadgeStyle('default', 'small'),
-                                        background: eventType.color,
-                                        color: 'white',
+                                        fontSize: '12px',
+                                        fontWeight: 650,
+                                        color: eventType.color,
                                       }}>
                                         {eventType.label}
                                       </span>
@@ -1210,16 +1272,16 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                     <div style={{ 
                                       fontSize: '13px', 
                                       color: designSystem.colors.text.primary,
-                                      lineHeight: '1.4',
+                                      lineHeight: '1.45',
                                     }}>
                                       {note.description}
                                     </div>
                                   </div>
-                                  <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+                                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                                     <button
                                       onClick={() => handleEditNote(note)}
                                       style={{
-                                        ...getButtonStyle('ghost', 'small', isMobile),
+                                        ...getButtonStyle('outline', 'small', isMobile),
                                         padding: '4px 8px',
                                         fontSize: '11px',
                                       }}
@@ -1229,10 +1291,12 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                                     <button
                                       onClick={() => handleDeleteNote(note.id)}
                                       style={{
-                                        ...getButtonStyle('ghost', 'small', isMobile),
+                                        ...getButtonStyle('outline', 'small', isMobile),
                                         padding: '4px 8px',
                                         fontSize: '11px',
                                         color: designSystem.colors.danger[700],
+                                        borderColor: `${designSystem.colors.danger[500]}66`,
+                                        background: designSystem.colors.danger[50],
                                       }}
                                     >
                                       刪除
@@ -1264,47 +1328,40 @@ export function MemberDetailDialog({ open, memberId, onClose, onUpdate, onSwitch
                         }}
                       >
                         <div style={{ 
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: '10px',
-                          paddingBottom: '8px',
-                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
-                        }}>
-                          <span style={{ fontSize: '12px', color: designSystem.colors.text.secondary, fontWeight: '500' }}>
-                            點擊記帳 →
-                          </span>
-                        </div>
-                        <div style={{ 
                           display: 'grid', 
                           gridTemplateColumns: 'repeat(2, 1fr)',
-                          gap: '10px',
-                          fontSize: '13px'
+                          gap: '12px',
+                          fontSize: '13px',
+                          textAlign: 'center',
                         }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: designSystem.colors.text.secondary }}>儲值</span>
-                            <span style={{ fontWeight: '500' }}>${(member.balance ?? 0).toFixed(0)}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: designSystem.colors.text.secondary }}>VIP票券</span>
-                            <span style={{ fontWeight: '500' }}>${(member.vip_voucher_amount ?? 0).toFixed(0)}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: designSystem.colors.text.secondary }}>G23船券</span>
-                            <span style={{ fontWeight: '500' }}>{member.boat_voucher_g23_minutes ?? 0}分</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: designSystem.colors.text.secondary }}>G21/黑豹</span>
-                            <span style={{ fontWeight: '500' }}>{member.boat_voucher_g21_panther_minutes ?? 0}分</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: designSystem.colors.text.secondary }}>贈送大船</span>
-                            <span style={{ fontWeight: '500' }}>{member.gift_boat_hours ?? 0}分</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: designSystem.colors.text.secondary }}>指定課</span>
-                            <span style={{ fontWeight: '500' }}>{member.designated_lesson_minutes ?? 0}分</span>
-                          </div>
+                          {[
+                            { label: '儲值', value: `$${(member.balance ?? 0).toLocaleString()}` },
+                            { label: 'VIP票券', value: `$${(member.vip_voucher_amount ?? 0).toLocaleString()}` },
+                            { label: '指定課', value: `${member.designated_lesson_minutes ?? 0}分` },
+                            { label: 'G23船券', value: `${member.boat_voucher_g23_minutes ?? 0}分` },
+                            { label: '黑豹/G21', value: `${member.boat_voucher_g21_panther_minutes ?? 0}分` },
+                            { label: '贈送大船', value: `${member.gift_boat_hours ?? 0}分` },
+                          ].map((item) => (
+                            <div key={item.label}>
+                              <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
+                                {item.label}
+                              </div>
+                              <div style={{ fontSize: '16px', fontWeight: 700, color: designSystem.colors.text.primary }}>
+                                {item.value}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{
+                          marginTop: '12px',
+                          paddingTop: '10px',
+                          borderTop: `1px solid ${designSystem.colors.border.light}`,
+                          display: 'flex',
+                          justifyContent: 'flex-end',
+                        }}>
+                          <span style={{ fontSize: '13px', fontWeight: 650, color: designSystem.colors.text.primary }}>
+                            記帳 →
+                          </span>
                         </div>
                       </div>
                     </div>

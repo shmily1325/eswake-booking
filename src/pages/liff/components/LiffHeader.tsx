@@ -1,4 +1,4 @@
-// LIFF 頁首：品牌 lockup 為主視覺；問候次之；刷新不搶戲
+// LIFF 頁首：品牌 lockup 為主視覺；問候次之；刷新用 emoji 確保可見
 
 import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
@@ -11,37 +11,6 @@ interface LiffHeaderProps {
   lineDisplayName?: string | null
   refreshing: boolean
   onRefresh: () => void
-}
-
-function RefreshIcon({ spinning }: { spinning: boolean }) {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-      style={{
-        display: 'block',
-        animation: spinning ? 'spin 1s linear infinite' : 'none',
-      }}
-    >
-      <path
-        d="M20 6v5h-5M4 18v-5h5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6.3 9.2A7 7 0 0 1 18.5 8M17.7 14.8A7 7 0 0 1 5.5 16"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
 }
 
 export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: LiffHeaderProps) {
@@ -66,21 +35,29 @@ export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: L
             disabled={refreshing}
             aria-label="重新整理"
             style={{
-              background: 'rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.22)',
               border: 'none',
               borderRadius: '50%',
-              width: '34px',
-              height: '34px',
+              width: '36px',
+              height: '36px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: refreshing ? 'not-allowed' : 'pointer',
-              color: 'rgba(255,255,255,0.9)',
               transition: 'opacity 0.2s',
-              opacity: refreshing ? 0.65 : 1,
+              opacity: refreshing ? 0.7 : 1,
             }}
           >
-            <RefreshIcon spinning={refreshing} />
+            <span
+              style={{
+                fontSize: 18,
+                display: 'inline-block',
+                lineHeight: 1,
+                animation: refreshing ? 'spin 1s linear infinite' : 'none',
+              }}
+            >
+              🔄
+            </span>
           </button>
         )}
         style={{ marginBottom: 10 }}

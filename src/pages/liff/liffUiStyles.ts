@@ -25,7 +25,7 @@ export const LIFF_THEME = {
   cardBg: c.background.card,
   cardBorder: `1px solid ${c.border.light}`,
   cardRadius: designSystem.borderRadius.lg,
-  cardShadow: designSystem.shadows.sm,
+  cardShadow: designSystem.shadows.elevation[2],
   controlRadius: designSystem.borderRadius.md,
   borderSubtle: c.border.main,
   rowDivider: c.border.light,
