@@ -13,7 +13,7 @@ import { BoatSelector } from './booking/BoatSelector'
 import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
-import { designSystem, getButtonStyle } from '../styles/designSystem'
+import { designSystem, getBookingChoiceStyle, getButtonStyle } from '../styles/designSystem'
 import { getLocalTimestamp } from '../utils/date'
 import { BatchResultDialog } from './BatchResultDialog'
 import { DateMultiPicker } from './booking/DateMultiPicker'
@@ -658,7 +658,7 @@ export function RepeatBookingDialog({
                 <label style={{
                   display: 'block',
                   marginBottom: '10px',
-                  color: '#000',
+                  color: designSystem.colors.text.primary,
                   fontSize: '15px',
                   fontWeight: '600',
                 }}>
@@ -667,8 +667,8 @@ export function RepeatBookingDialog({
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: '8px',
-                  marginBottom: '12px',
+                  gap: designSystem.spacing.sm,
+                  marginBottom: designSystem.spacing.md,
                 }}>
                   {[30, 40, 60, 90, 120, 150, 180, 210].map(minutes => {
                     const isSelected = durationMin === minutes
@@ -678,16 +678,13 @@ export function RepeatBookingDialog({
                         type="button"
                         onClick={() => setDurationMin(minutes)}
                         style={{
+                          ...getBookingChoiceStyle(isSelected),
                           padding: '12px 8px',
-                          border: isSelected ? '3px solid #1976d2' : '2px solid #e0e0e0',
-                          borderRadius: '8px',
-                          background: isSelected ? '#e3f2fd' : 'white',
-                          color: isSelected ? '#1976d2' : '#333',
                           fontSize: '14px',
                           fontWeight: isSelected ? '700' : '500',
                           cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          boxShadow: isSelected ? '0 2px 8px rgba(25,118,210,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
+                          minHeight: '44px',
+                          touchAction: 'manipulation',
                         }}
                       >
                         {minutes}
@@ -695,8 +692,8 @@ export function RepeatBookingDialog({
                     )
                   })}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>自訂：</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: designSystem.spacing.sm }}>
+                  <span style={{ fontSize: '14px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>自訂：</span>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -713,17 +710,18 @@ export function RepeatBookingDialog({
                     style={{
                       flex: 1,
                       padding: '10px 12px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
+                      border: `1px solid ${designSystem.colors.border.light}`,
+                      borderRadius: designSystem.borderRadius.lg,
                       fontSize: '16px',
                       textAlign: 'center',
                       fontWeight: '600',
-                      color: '#333',
+                      color: designSystem.colors.text.primary,
+                      background: '#ffffff',
                       boxSizing: 'border-box',
                     }}
                     placeholder="輸入分鐘數"
                   />
-                  <span style={{ fontSize: '14px', color: '#666', flexShrink: 0 }}>分</span>
+                  <span style={{ fontSize: '14px', color: designSystem.colors.text.secondary, flexShrink: 0 }}>分</span>
                 </div>
             </div>
           </>
