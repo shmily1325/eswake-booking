@@ -50,26 +50,28 @@ export function BookingCard({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            marginBottom: 12,
+            gap: 10,
+            marginBottom: 14,
+            paddingBottom: 2,
           }}
         >
           <span
             aria-hidden
             style={{
-              width: 2,
-              height: 14,
-              borderRadius: 1,
+              width: 3,
+              height: 18,
+              borderRadius: 2,
               background: boatColor,
               flexShrink: 0,
             }}
           />
           <div
             style={{
-              fontSize: LIFF_TYPE.body,
-              fontWeight: 600,
-              color: LIFF_THEME.inkSoft,
-              letterSpacing: '0.01em',
+              fontSize: LIFF_TYPE.title + 1,
+              fontWeight: 700,
+              color: LIFF_THEME.ink,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.2,
             }}
           >
             {formatDate(booking.start_at)}

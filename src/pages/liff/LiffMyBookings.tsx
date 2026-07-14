@@ -473,7 +473,7 @@ export function LiffMyBookings() {
     const weekdays = ['日', '一', '二', '三', '四', '五', '六']
     const [y, mo, d] = date.split('-').map(Number)
     const weekday = weekdays[new Date(y, mo - 1, d).getDay()]
-    return `${month}/${day} (${weekday})`
+    return `週${weekday} · ${month}/${day}`
   }
 
   const getEndTime = (startAt: string, duration: number) =>

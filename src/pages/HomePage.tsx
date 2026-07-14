@@ -141,7 +141,8 @@ export function HomePage() {
     hideFromHomeForSuperAdmin?: boolean
   }
 
-  const menuItemsMain: HomeMenuItem[] = [
+  /** 日常操作：今日預約 → 預約表 → 預約查詢 → 教練回報 → 教練休假 → 明日提醒 → 編輯記錄 */
+  const menuItemsOps: HomeMenuItem[] = [
     {
       title: '今日預約',
       icon: '📅',
@@ -155,15 +156,21 @@ export function HomePage() {
       requiresViewAccess: true
     },
     {
+      title: '預約查詢',
+      icon: '🔍',
+      link: '/search',
+      requiresViewAccess: true
+    },
+    {
       title: '教練回報',
       icon: '✅',
       link: '/my-report',
       isCoach: true
     },
     {
-      title: '預約查詢',
-      icon: '🔍',
-      link: '/search',
+      title: '教練休假',
+      icon: '🏖️',
+      link: `/coach-time-off?month=${getLocalDateString().slice(0, 7)}`,
       requiresViewAccess: true
     },
     {
@@ -173,17 +180,15 @@ export function HomePage() {
       requiresViewAccess: true
     },
     {
-      title: '教練休假',
-      icon: '🏖️',
-      link: `/coach-time-off?month=${getLocalDateString().slice(0, 7)}`,
-      requiresViewAccess: true
-    },
-    {
       title: '編輯記錄',
       icon: '📋',
       link: '/audit-log',
       requiresViewAccess: true
-    },
+    }
+  ]
+
+  /** 分隔線下方：排班 / 船隻管理 / 商品管理 / ES SHOP / 會員電話 / BAO */
+  const menuItemsTools: HomeMenuItem[] = [
     {
       title: '排班',
       icon: '📆',
@@ -228,7 +233,7 @@ export function HomePage() {
     }
   ]
 
-  /** 橫線下方：區間時數合計 */
+  /** 小胖橫線下方：區間時數合計 */
   const menuItemsBelowDivider: HomeMenuItem[] = [
     {
       title: '區間時數合計',
@@ -260,7 +265,8 @@ export function HomePage() {
       return true
     })
 
-  const visibleMainMenu = filterVisibleMenuItems(menuItemsMain)
+  const visibleOpsMenu = filterVisibleMenuItems(menuItemsOps)
+  const visibleToolsMenu = filterVisibleMenuItems(menuItemsTools)
   const visibleBelowDivider = filterVisibleMenuItems(menuItemsBelowDivider)
 
   const menuCardStyle: CSSProperties = {
@@ -289,6 +295,133 @@ export function HomePage() {
     onTouchCancel: (e: React.TouchEvent<HTMLElement>) => {
       e.currentTarget.style.transform = 'scale(1)'
     },
+  }
+
+  const renderMenuDivider = (label?: string) => (
+    <div
+      style={{
+        gridColumn: '1 / -1',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        margin: '12px 0 8px',
+        width: '100%'
+      }}
+    >
+      <div
+        style={{
+          flex: 1,
+          height: '1px',
+          background: 'rgba(0, 0, 0, 0.12)'
+        }}
+      />
+      {label && (
+        <span
+          style={{
+            fontSize: isMobile ? '11px' : '12px',
+            fontWeight: 600,
+            color: 'rgba(0, 0, 0, 0.45)',
+            letterSpacing: '0.12em',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {label}
+        </span>
+      )}
+      <div
+        style={{
+          flex: 1,
+          height: '1px',
+          background: 'rgba(0, 0, 0, 0.12)'
+        }}
+      />
+    </div>
+  )
+
+  const renderMenuCard = (item: HomeMenuItem, keyPrefix: string) => {
+    const cardBaseStyle: CSSProperties = { ...menuCardStyle }
+    const disabledExtra: CSSProperties = item.disabled
+      ? {
+          opacity: 0.62,
+          pointerEvents: 'none',
+          cursor: 'not-allowed'
+        }
+      : { cursor: 'pointer' }
+
+    const inner = (
+      <>
+        <div style={{ marginBottom: '5px' }}>
+          <span style={{ fontSize: isMobile ? '36px' : '42px' }}>{item.icon}</span>
+        </div>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: isMobile ? '16px' : '18px',
+            fontWeight: '600',
+            color: item.disabled ? designSystem.colors.text.secondary : designSystem.colors.text.primary,
+            letterSpacing: '0.5px',
+          }}
+        >
+          {item.title}
+        </h2>
+        {item.subtitle && (
+          <p
+            style={{
+              margin: 0,
+              marginTop: item.disabled ? '2px' : 0,
+              fontSize: isMobile ? '12px' : '13px',
+              color: item.disabled ? designSystem.colors.info[700] : designSystem.colors.text.secondary,
+              fontStyle: item.disabled ? 'normal' : 'italic',
+              fontWeight: item.disabled ? 600 : 400,
+              letterSpacing: item.disabled ? '0.02em' : undefined,
+            }}
+          >
+            {item.subtitle}
+          </p>
+        )}
+      </>
+    )
+
+    if (item.disabled) {
+      return (
+        <div
+          key={`${keyPrefix}-${item.link}-${item.title}`}
+          role="group"
+          aria-disabled
+          aria-label={`${item.title}（已停用）`}
+          style={{ ...cardBaseStyle, ...disabledExtra }}
+        >
+          {inner}
+        </div>
+      )
+    }
+
+    const track = homeNavTrackId(item.link)
+    if (isExternalNavLink(item.link)) {
+      return (
+        <ExternalNavLink
+          key={`${keyPrefix}-${item.link}-${item.title}`}
+          href={item.link}
+          data-track={track}
+          style={{ ...cardBaseStyle, ...disabledExtra }}
+          {...menuCardTouchHandlers}
+        >
+          {inner}
+        </ExternalNavLink>
+      )
+    }
+
+    return (
+      <Link
+        key={`${keyPrefix}-${item.link}-${item.title}`}
+        to={item.link}
+        data-track={track}
+        style={{ ...cardBaseStyle, ...disabledExtra }}
+        {...menuCardTouchHandlers}
+      >
+        {inner}
+      </Link>
+    )
   }
 
   return (
@@ -372,181 +505,19 @@ export function HomePage() {
             </>
           ) : (
             <>
-              {visibleMainMenu.map((item) => {
-                const cardStyle: CSSProperties = menuCardStyle
-                const cardHandlers = menuCardTouchHandlers
-                const inner = (
-                  <>
-                    <div style={{ marginBottom: '5px' }}>
-                      <span style={{ fontSize: isMobile ? '36px' : '42px' }}>{item.icon}</span>
-                    </div>
-                    <h2 style={{
-                      margin: 0,
-                      fontSize: isMobile ? '16px' : '18px',
-                      fontWeight: '600',
-                      color: designSystem.colors.text.primary,
-                      letterSpacing: '0.5px',
-                    }}>
-                      {item.title}
-                    </h2>
-                    {item.subtitle && (
-                      <p style={{
-                        margin: 0,
-                        fontSize: isMobile ? '12px' : '13px',
-                        color: designSystem.colors.text.secondary,
-                        fontStyle: 'italic'
-                      }}>
-                        {item.subtitle}
-                      </p>
-                    )}
-                  </>
-                )
-                const track = homeNavTrackId(item.link)
+              {visibleOpsMenu.map((item) => renderMenuCard(item, 'ops'))}
 
-                if (isExternalNavLink(item.link)) {
-                  return (
-                    <ExternalNavLink
-                      key={`main-${item.link}-${item.title}`}
-                      href={item.link}
-                      data-track={track}
-                      style={cardStyle}
-                      {...cardHandlers}
-                    >
-                      {inner}
-                    </ExternalNavLink>
-                  )
-                }
-
-                return (
-                  <Link
-                    key={`main-${item.link}-${item.title}`}
-                    to={item.link}
-                    data-track={track}
-                    style={cardStyle}
-                    {...cardHandlers}
-                  >
-                    {inner}
-                  </Link>
-                )
-              })}
+              {visibleToolsMenu.length > 0 && (
+                <>
+                  {renderMenuDivider()}
+                  {visibleToolsMenu.map((item) => renderMenuCard(item, 'tools'))}
+                </>
+              )}
 
               {visibleBelowDivider.length > 0 && (
                 <>
-                  <div
-                    style={{
-                      gridColumn: '1 / -1',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      margin: '12px 0 8px',
-                      width: '100%'
-                    }}
-                  >
-                    <div
-                      style={{
-                        flex: 1,
-                        height: '1px',
-                        background: 'rgba(0, 0, 0, 0.12)'
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: isMobile ? '11px' : '12px',
-                        fontWeight: 600,
-                        color: 'rgba(0, 0, 0, 0.45)',
-                        letterSpacing: '0.12em',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      小胖
-                    </span>
-                    <div
-                      style={{
-                        flex: 1,
-                        height: '1px',
-                        background: 'rgba(0, 0, 0, 0.12)'
-                      }}
-                    />
-                  </div>
-                  {visibleBelowDivider.map((item) => {
-                    const cardBaseStyle: CSSProperties = {
-                      ...menuCardStyle,
-                    }
-                    const disabledExtra: CSSProperties = item.disabled
-                      ? {
-                          opacity: 0.62,
-                          pointerEvents: 'none',
-                          cursor: 'not-allowed'
-                        }
-                      : { cursor: 'pointer' }
-
-                    const inner = (
-                      <>
-                        <div
-                          style={{
-                            fontSize: isMobile ? '36px' : '42px',
-                            marginBottom: '5px'
-                          }}
-                        >
-                          {item.icon}
-                        </div>
-
-                        <h2
-                          style={{
-                            margin: 0,
-                            fontSize: isMobile ? '16px' : '18px',
-                            fontWeight: '600',
-                            color: item.disabled ? designSystem.colors.text.secondary : designSystem.colors.text.primary,
-                            letterSpacing: '0.5px'
-                          }}
-                        >
-                          {item.title}
-                        </h2>
-
-                        {item.subtitle && (
-                          <p
-                            style={{
-                              margin: 0,
-                              marginTop: '2px',
-                              fontSize: isMobile ? '12px' : '13px',
-                              color: item.disabled ? designSystem.colors.info[700] : designSystem.colors.text.secondary,
-                              fontStyle: item.disabled ? 'normal' : 'italic',
-                              fontWeight: item.disabled ? 600 : 400,
-                              letterSpacing: '0.02em'
-                            }}
-                          >
-                            {item.subtitle}
-                          </p>
-                        )}
-                      </>
-                    )
-
-                    if (item.disabled) {
-                      return (
-                        <div
-                          key={`below-${item.link}-${item.title}`}
-                          role="group"
-                          aria-disabled
-                          aria-label={`${item.title}（已停用）`}
-                          style={{ ...cardBaseStyle, ...disabledExtra }}
-                        >
-                          {inner}
-                        </div>
-                      )
-                    }
-
-                    return (
-                      <Link
-                        key={`below-${item.link}-${item.title}`}
-                        to={item.link}
-                        data-track={homeNavTrackId(item.link)}
-                        style={{ ...cardBaseStyle, ...disabledExtra }}
-                        {...menuCardTouchHandlers}
-                      >
-                        {inner}
-                      </Link>
-                    )
-                  })}
+                  {renderMenuDivider('小胖')}
+                  {visibleBelowDivider.map((item) => renderMenuCard(item, 'below'))}
                 </>
               )}
             </>

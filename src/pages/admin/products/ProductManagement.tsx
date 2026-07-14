@@ -24,6 +24,9 @@ import { getVariantAvailability, getVariantSellableStock } from '../../shop/lib/
 import { ProductEditView } from './ProductEditView'
 import { variantMatchesSearchTokens } from './productSearchHaystack'
 import { isMissingLabelCode } from './labelCode'
+import { designSystem, getPageContentShellStyle } from '../../../styles/designSystem'
+
+const pageBg = designSystem.colors.background.main
 
 type ViewMode =
   | { kind: 'list' }
@@ -393,14 +396,19 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
 
   return (
     <div
-      style={{
-        minHeight: embedded ? 'auto' : '100vh',
-        background: embedded ? 'transparent' : '#f5f6f8',
-        padding: embedded ? 0 : isMobile ? '12px' : '20px',
-      }}
+      style={
+        embedded
+          ? { minHeight: 'auto', background: 'transparent', padding: 0 }
+          : {
+              padding: isMobile ? '12px 16px' : '20px',
+              minHeight: '100dvh',
+              background: pageBg,
+              paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+            }
+      }
     >
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        {!embedded && <PageHeader user={user} title="📦 商品管理" showBaoLink={isAdmin(user)} />}
+      <div style={embedded ? { maxWidth: 1100, margin: '0 auto' } : getPageContentShellStyle(isMobile)}>
+        {!embedded && <PageHeader user={user} title="商品管理" showBaoLink={isAdmin(user)} />}
 
         {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面 / 缺標籤 / 已售完（皆為 SKU 種數，隨搜尋變動） */}
         <InventoryDashboard
@@ -427,10 +435,10 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           <div
             style={{
               fontSize: 12,
-              color: '#757575',
-              background: '#fafafa',
-              border: '1px solid #ececec',
-              borderRadius: 8,
+              color: designSystem.colors.warning[700],
+              background: designSystem.colors.warning[50],
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.md,
               padding: '8px 12px',
               marginBottom: 10,
             }}
@@ -457,15 +465,15 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
               placeholder="搜尋品牌、型號、貨號、規格"
               style={{
                 width: '100%',
-                padding: '10px 14px 10px 36px',
+                padding: search ? '10px 36px 10px 14px' : '10px 14px',
                 fontSize: 14,
-                border: '1px solid #ddd',
-                borderRadius: 10,
+                border: `1px solid ${designSystem.colors.border.light}`,
+                borderRadius: designSystem.borderRadius.lg,
                 boxSizing: 'border-box',
-                background: '#fff',
+                background: designSystem.colors.background.card,
+                color: designSystem.colors.text.primary,
               }}
             />
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#999' }}>🔍</span>
             {search && (
               <button
                 type="button"
@@ -478,7 +486,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
                   transform: 'translateY(-50%)',
                   background: 'transparent',
                   border: 'none',
-                  color: '#999',
+                  color: designSystem.colors.text.secondary,
                   fontSize: 16,
                   cursor: 'pointer',
                   padding: 4,
@@ -644,7 +652,15 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
 
         {/* 列表 */}
         {loading ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#888', background: '#fff', borderRadius: 12 }}>
+          <div
+            style={{
+              padding: 40,
+              textAlign: 'center',
+              color: designSystem.colors.text.secondary,
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
+            }}
+          >
             載入中…
           </div>
         ) : filteredItems.length === 0 ? (

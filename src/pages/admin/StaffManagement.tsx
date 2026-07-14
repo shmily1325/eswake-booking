@@ -39,7 +39,14 @@ import {
   type TimeOffMode,
   type TimeOffPeriodKind,
 } from '../../utils/coachTimeOff'
-import { designSystem } from '../../styles/designSystem'
+import {
+  designSystem,
+  getPageContentShellStyle,
+} from '../../styles/designSystem'
+
+const pageBg = designSystem.colors.background.main
+const cardBorder = `1px solid ${designSystem.colors.border.light}`
+const cardShadow = designSystem.shadows.elevation[1]
 
 /** 人員權限表上顯示的「小編」欄位：重複預約＋批次合併為一格（寫庫仍為兩欄同值） */
 const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats', 'can_products_view', 'can_products'] as const
@@ -240,7 +247,7 @@ export function StaffManagement() {
   const [permissionMatrixConfirm, setPermissionMatrixConfirm] = useState<PermissionMatrixConfirmAction | null>(null)
 
   // 說明展開狀態
-  const [showHelp, setShowHelp] = useState(true)
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -1262,20 +1269,37 @@ export function StaffManagement() {
 
   if (loading) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        載入中...
+      <div style={{
+        padding: isMobile ? '12px 16px' : '20px',
+        minHeight: '100dvh',
+        background: pageBg,
+        paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+      }}>
+        <div style={getPageContentShellStyle(isMobile)}>
+          <PageHeader user={user} title="人員管理" showBaoLink={isAdmin(user)} />
+          <div style={{
+            padding: '40px',
+            textAlign: 'center',
+            fontSize: '15px',
+            color: designSystem.colors.text.secondary,
+          }}>
+            載入中...
+          </div>
+          <Footer />
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, paddingBottom: '80px' }}>
-      <div style={{
-        maxWidth: '1000px',
-        margin: '0 auto',
-        padding: isMobile ? '24px 18px' : '48px 28px'
-      }}>
-        <PageHeader user={user} title="🎓 人員管理" showBaoLink={isAdmin(user)} />
+    <div style={{
+      padding: isMobile ? '12px 16px' : '20px',
+      minHeight: '100dvh',
+      background: pageBg,
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+    }}>
+      <div style={getPageContentShellStyle(isMobile)}>
+        <PageHeader user={user} title="人員管理" showBaoLink={isAdmin(user)} />
 
         {/* Tab 切換 */}
         <div style={{
@@ -1283,7 +1307,7 @@ export function StaffManagement() {
           gap: '4px',
           marginBottom: '24px',
           background: designSystem.colors.secondary[100],
-          borderRadius: designSystem.borderRadius.full,
+          borderRadius: designSystem.borderRadius.lg,
           padding: '4px',
           overflowX: 'auto'
         }}>
@@ -1294,10 +1318,10 @@ export function StaffManagement() {
               padding: isMobile ? '9px 16px' : '10px 22px',
               background: activeTab === 'coaches' ? 'white' : 'transparent',
               border: 'none',
-              borderRadius: designSystem.borderRadius.full,
+              borderRadius: designSystem.borderRadius.lg,
               boxShadow: activeTab === 'coaches' ? designSystem.shadows.xs : 'none',
-              color: activeTab === 'coaches' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-              fontWeight: activeTab === 'coaches' ? 700 : 600,
+              color: activeTab === 'coaches' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+              fontWeight: activeTab === 'coaches' ? 600 : 500,
               fontSize: isMobile ? '13px' : '14px',
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -1313,10 +1337,10 @@ export function StaffManagement() {
               padding: isMobile ? '9px 16px' : '10px 22px',
               background: activeTab === 'accounts' ? 'white' : 'transparent',
               border: 'none',
-              borderRadius: designSystem.borderRadius.full,
+              borderRadius: designSystem.borderRadius.lg,
               boxShadow: activeTab === 'accounts' ? designSystem.shadows.xs : 'none',
-              color: activeTab === 'accounts' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-              fontWeight: activeTab === 'accounts' ? 700 : 600,
+              color: activeTab === 'accounts' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+              fontWeight: activeTab === 'accounts' ? 600 : 500,
               fontSize: isMobile ? '13px' : '14px',
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -1332,10 +1356,10 @@ export function StaffManagement() {
               padding: isMobile ? '9px 16px' : '10px 22px',
               background: activeTab === 'pricing' ? 'white' : 'transparent',
               border: 'none',
-              borderRadius: designSystem.borderRadius.full,
+              borderRadius: designSystem.borderRadius.lg,
               boxShadow: activeTab === 'pricing' ? designSystem.shadows.xs : 'none',
-              color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-              fontWeight: activeTab === 'pricing' ? 700 : 600,
+              color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+              fontWeight: activeTab === 'pricing' ? 600 : 500,
               fontSize: isMobile ? '13px' : '14px',
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -1351,10 +1375,10 @@ export function StaffManagement() {
               padding: isMobile ? '9px 16px' : '10px 22px',
               background: activeTab === 'permissions' ? 'white' : 'transparent',
               border: 'none',
-              borderRadius: designSystem.borderRadius.full,
+              borderRadius: designSystem.borderRadius.lg,
               boxShadow: activeTab === 'permissions' ? designSystem.shadows.xs : 'none',
-              color: activeTab === 'permissions' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-              fontWeight: activeTab === 'permissions' ? 700 : 600,
+              color: activeTab === 'permissions' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+              fontWeight: activeTab === 'permissions' ? 600 : 500,
               fontSize: isMobile ? '13px' : '14px',
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -1368,21 +1392,27 @@ export function StaffManagement() {
         {/* 說明提示 - 可展開收起 */}
         {activeTab === 'coaches' && (
           <div style={{
-            background: showHelp ? 'rgba(255,255,255,0.72)' : 'transparent',
-            padding: showHelp ? '16px 18px' : '8px 2px',
+            background: showHelp ? designSystem.colors.background.card : 'transparent',
+            padding: showHelp ? '14px 16px' : '4px 0',
             borderRadius: designSystem.borderRadius.lg,
-            marginBottom: '20px',
+            marginBottom: showHelp ? '20px' : '12px',
             fontSize: '14px',
             color: designSystem.colors.text.secondary,
-            border: showHelp ? `1px solid ${designSystem.colors.border.light}` : '1px solid transparent',
-            boxShadow: showHelp ? designSystem.shadows.xs : 'none',
+            border: showHelp ? cardBorder : 'none',
+            boxShadow: showHelp ? cardShadow : 'none',
             cursor: 'pointer',
             transition: 'all 0.2s'
           }}
           onClick={() => setShowHelp(!showHelp)}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 650, color: designSystem.colors.text.primary }}>{showHelp ? '功能說明' : '點此查看功能說明'}</span>
+              <span style={{
+                fontWeight: 500,
+                fontSize: '13px',
+                color: showHelp ? designSystem.colors.text.secondary : designSystem.colors.text.disabled,
+              }}>
+                {showHelp ? '功能說明' : '說明'}
+              </span>
               <span style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>{showHelp ? '收起' : '展開'}</span>
             </div>
             {showHelp && (
@@ -1452,7 +1482,7 @@ export function StaffManagement() {
               <div style={{
                 display: 'flex',
                 background: designSystem.colors.secondary[100],
-                borderRadius: designSystem.borderRadius.full,
+                borderRadius: designSystem.borderRadius.lg,
                 padding: '4px',
                 gap: '2px'
               }}>
@@ -1461,7 +1491,7 @@ export function StaffManagement() {
                   style={{
                     padding: '6px 12px',
                     border: 'none',
-                    borderRadius: designSystem.borderRadius.full,
+                    borderRadius: designSystem.borderRadius.lg,
                     background: statusFilter === 'active' ? 'white' : 'transparent',
                     color: statusFilter === 'active' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                     fontSize: '13px',
@@ -1477,7 +1507,7 @@ export function StaffManagement() {
                   style={{
                     padding: '6px 12px',
                     border: 'none',
-                    borderRadius: designSystem.borderRadius.full,
+                    borderRadius: designSystem.borderRadius.lg,
                     background: statusFilter === 'all' ? 'white' : 'transparent',
                     color: statusFilter === 'all' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                     fontSize: '13px',
@@ -1493,7 +1523,7 @@ export function StaffManagement() {
                   style={{
                     padding: '6px 12px',
                     border: 'none',
-                    borderRadius: designSystem.borderRadius.full,
+                    borderRadius: designSystem.borderRadius.lg,
                     background: statusFilter === 'archived' ? 'white' : 'transparent',
                     color: statusFilter === 'archived' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                     fontSize: '13px',
@@ -1573,7 +1603,7 @@ export function StaffManagement() {
                   background: 'white',
                   borderRadius: designSystem.borderRadius.xl,
                   padding: isMobile ? '20px' : '24px',
-                  boxShadow: designSystem.shadows.elevation[2],
+                  boxShadow: cardShadow,
                   border: `1px solid ${borderColor}`,
                   opacity: isArchived ? 0.7 : 1,
                   transition: 'all 0.2s'
@@ -1904,25 +1934,16 @@ export function StaffManagement() {
           <>
             {/* 說明提示 */}
             <div style={{
-              background: '#e3f2fd',
-              padding: isMobile ? '12px 16px' : '14px 20px',
-              borderRadius: '8px',
               marginBottom: '20px',
               fontSize: '14px',
-              color: '#1565c0',
-              border: '1px solid #90caf9',
-              lineHeight: '1.6'
+              color: designSystem.colors.text.secondary,
+              lineHeight: '1.6',
             }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ flexShrink: 0 }}>🔐</span>
-                <div>
-                  <div style={{ marginBottom: '4px' }}>
-                    <strong>帳號配對</strong>：設定教練對應的登入帳號
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                    配對後，教練可以在「預約表」旁的「我的回報」頁面看到自己需要回報的預約
-                  </div>
-                </div>
+              <div style={{ marginBottom: '4px' }}>
+                帳號配對：設定教練對應的登入帳號
+              </div>
+              <div style={{ fontSize: '13px', color: designSystem.colors.text.disabled }}>
+                配對後，教練可以在「我的回報」看到自己需要回報的預約
               </div>
             </div>
 
@@ -1936,75 +1957,70 @@ export function StaffManagement() {
                 <div
                   key={coach.id}
                   style={{
-                    background: 'white',
-                    borderRadius: '12px',
+                    background: designSystem.colors.background.card,
+                    borderRadius: designSystem.borderRadius.lg,
                     padding: isMobile ? '16px' : '20px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    border: coach.user_email ? '2px solid #4CAF50' : '2px solid #e0e0e0'
+                    boxShadow: cardShadow,
+                    border: coach.user_email
+                      ? `1px solid ${designSystem.colors.success[500]}44`
+                      : cardBorder,
                   }}
                 >
-                  {/* 教練名稱 */}
                   <div style={{
                     fontSize: isMobile ? '18px' : '20px',
-                    fontWeight: 'bold',
+                    fontWeight: 650,
                     marginBottom: '12px',
-                    color: '#333'
+                    color: designSystem.colors.text.primary,
                   }}>
                     {coach.name}
                   </div>
 
-                  {/* 帳號狀態 */}
                   {coach.user_email ? (
                     <div style={{
-                      background: '#e8f5e9',
+                      background: designSystem.colors.success[50],
                       padding: '12px',
-                      borderRadius: '8px',
-                      marginBottom: '12px'
+                      borderRadius: designSystem.borderRadius.lg,
+                      marginBottom: '12px',
+                      border: `1px solid ${designSystem.colors.success[500]}24`,
                     }}>
-                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      <div style={{
+                        fontSize: '12px',
+                        color: designSystem.colors.text.secondary,
+                        marginBottom: '4px',
+                      }}>
                         已配對帳號
                       </div>
                       <div style={{
                         fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#2e7d32',
-                        wordBreak: 'break-all'
+                        fontWeight: 600,
+                        color: designSystem.colors.success[700],
+                        wordBreak: 'break-all',
                       }}>
                         {coach.user_email}
                       </div>
                     </div>
                   ) : (
                     <div style={{
-                      background: '#fff3e0',
+                      background: designSystem.colors.warning[50],
                       padding: '12px',
-                      borderRadius: '8px',
+                      borderRadius: designSystem.borderRadius.lg,
                       marginBottom: '12px',
                       fontSize: '14px',
-                      color: '#e65100'
+                      color: designSystem.colors.warning[700],
+                      border: `1px solid ${designSystem.colors.warning[500]}24`,
                     }}>
-                      ⚠️ 尚未配對帳號
+                      尚未配對帳號
                     </div>
                   )}
 
-                  {/* 設定按鈕 */}
-                  <button
+                  <Button
+                    variant={coach.user_email ? 'outline' : 'primary'}
+                    size="medium"
+                    fullWidth
                     onClick={() => openAccountDialog(coach)}
-                    style={{
-                      width: '100%',
-                      padding: isMobile ? '12px' : '14px',
-                      background: coach.user_email ? '#e3f2fd' : '#2196F3',
-                      color: coach.user_email ? '#1565c0' : 'white',
-                      border: coach.user_email ? '2px solid #90caf9' : 'none',
-                      borderRadius: '10px',
-                      fontSize: isMobile ? '14px' : '15px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
                   >
                     {coach.user_email ? '修改帳號' : '設定帳號'}
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -2016,28 +2032,16 @@ export function StaffManagement() {
           <>
             {/* 說明提示 */}
             <div style={{
-              background: '#fff9e6',
-              padding: isMobile ? '12px 16px' : '14px 20px',
-              borderRadius: '8px',
               marginBottom: '20px',
               fontSize: '14px',
-              color: '#856404',
-              border: '1px solid #ffeaa7',
-              lineHeight: '1.6'
+              color: designSystem.colors.text.secondary,
+              lineHeight: '1.6',
             }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ flexShrink: 0 }}>💰</span>
-                <div>
-                  <div style={{ marginBottom: '4px' }}>
-                    <strong>指定課價格</strong>：設定每位教練 30 分鐘指定課的價格
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                    設定後，在扣款時如果是該教練的指定課，會自動帶入對應價格（其他時長會按比例自動換算，無條件進位）
-                  </div>
-                  <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '4px' }}>
-                    如果未設定，扣款時會顯示自訂輸入框
-                  </div>
-                </div>
+              <div style={{ marginBottom: '4px' }}>
+                指定課價格：設定每位教練 30 分鐘指定課的價格
+              </div>
+              <div style={{ fontSize: '13px', color: designSystem.colors.text.disabled }}>
+                扣款時若為該教練指定課會自動帶入價格（其他時長按比例換算、無條件進位）。未設定則顯示自訂輸入框。
               </div>
             </div>
 
@@ -2051,45 +2055,58 @@ export function StaffManagement() {
                 <div
                   key={coach.id}
                   style={{
-                    background: 'white',
-                    borderRadius: '12px',
+                    background: designSystem.colors.background.card,
+                    borderRadius: designSystem.borderRadius.lg,
                     padding: isMobile ? '16px' : '20px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    border: coach.designated_lesson_price_30min ? '2px solid #FF9800' : '2px solid #e0e0e0'
+                    boxShadow: cardShadow,
+                    border: coach.designated_lesson_price_30min
+                      ? `1px solid ${designSystem.colors.warning[500]}44`
+                      : cardBorder,
                   }}
                 >
-                  {/* 教練名稱 */}
                   <div style={{
                     fontSize: isMobile ? '18px' : '20px',
-                    fontWeight: 'bold',
+                    fontWeight: 650,
                     marginBottom: '12px',
-                    color: '#333'
+                    color: designSystem.colors.text.primary,
                   }}>
                     {coach.name}
                   </div>
 
-                  {/* 價格狀態 */}
                   {coach.designated_lesson_price_30min ? (
                     <div style={{
-                      background: '#fff8e1',
+                      background: designSystem.colors.secondary[50],
                       padding: '12px',
-                      borderRadius: '8px',
-                      marginBottom: '12px'
+                      borderRadius: designSystem.borderRadius.lg,
+                      marginBottom: '12px',
+                      border: cardBorder,
                     }}>
-                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      <div style={{
+                        fontSize: '12px',
+                        color: designSystem.colors.text.secondary,
+                        marginBottom: '4px',
+                      }}>
                         30分鐘指定課價格
                       </div>
                       <div style={{
                         fontSize: '24px',
-                        fontWeight: 'bold',
-                        color: '#f57c00'
+                        fontWeight: 650,
+                        color: designSystem.colors.text.primary,
                       }}>
                         ${coach.designated_lesson_price_30min}
                       </div>
-                      <div style={{ fontSize: '12px', color: '#999', marginTop: '6px' }}>
+                      <div style={{
+                        fontSize: '12px',
+                        color: designSystem.colors.text.disabled,
+                        marginTop: '6px',
+                      }}>
                         其他時長自動換算（無條件捨去）：
                       </div>
-                      <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                      <div style={{
+                        fontSize: '12px',
+                        color: designSystem.colors.text.secondary,
+                        marginTop: '4px',
+                      }}>
                         20分=${Math.floor(coach.designated_lesson_price_30min * 20 / 30)} / 
                         40分=${Math.floor(coach.designated_lesson_price_30min * 40 / 30)} / 
                         60分=${Math.floor(coach.designated_lesson_price_30min * 60 / 30)} / 
@@ -2098,36 +2115,26 @@ export function StaffManagement() {
                     </div>
                   ) : (
                     <div style={{
-                      background: '#f5f5f5',
+                      background: designSystem.colors.secondary[50],
                       padding: '12px',
-                      borderRadius: '8px',
+                      borderRadius: designSystem.borderRadius.lg,
                       marginBottom: '12px',
                       fontSize: '14px',
-                      color: '#666'
+                      color: designSystem.colors.text.secondary,
+                      border: cardBorder,
                     }}>
-                      💡 未設定價格
+                      未設定價格
                     </div>
                   )}
 
-                  {/* 設定按鈕 */}
-                  <button
+                  <Button
+                    variant={coach.designated_lesson_price_30min ? 'outline' : 'primary'}
+                    size="medium"
+                    fullWidth
                     onClick={() => openPricingDialog(coach)}
-                    style={{
-                      width: '100%',
-                      padding: isMobile ? '12px' : '14px',
-                      background: coach.designated_lesson_price_30min ? '#fff8e1' : '#FF9800',
-                      color: coach.designated_lesson_price_30min ? '#e65100' : 'white',
-                      border: coach.designated_lesson_price_30min ? '2px solid #ffcc80' : 'none',
-                      borderRadius: '10px',
-                      fontSize: isMobile ? '14px' : '15px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
                   >
                     {coach.designated_lesson_price_30min ? '修改價格' : '設定價格'}
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -2138,31 +2145,27 @@ export function StaffManagement() {
         {activeTab === 'permissions' && (
           <>
             <div style={{
-              background: '#e3f2fd',
-              padding: isMobile ? '12px 16px' : '14px 20px',
-              borderRadius: '8px',
               marginBottom: '20px',
               fontSize: '14px',
-              color: '#1565c0',
-              border: '1px solid #90caf9',
-              lineHeight: 1.75
+              color: designSystem.colors.text.secondary,
+              lineHeight: 1.75,
             }}>
-              <div style={{ fontWeight: 600, marginBottom: '6px' }}>以一張表管理：</div>
-              <div>登入 - <span style={{ fontSize: '12px', fontFamily: 'ui-monospace, monospace' }}>allowed_users</span>，能使用本系統，僅能看到今日預約</div>
-              <div>一般 - <span style={{ fontSize: '12px', fontFamily: 'ui-monospace, monospace' }}>view_users</span>，預約表／查詢／提醒等，以及各項功能</div>
-              <div>勾選下層時，上層會自動帶出打勾、反灰不可改；勾選任一小編功能前須有登入＋一般（由系統一併寫入）</div>
-              <div>取消「登入」或「刪除整列」時，會一併清除下層權限，避免衝突</div>
+              <div style={{ fontWeight: 600, marginBottom: '6px', color: designSystem.colors.text.primary }}>以一張表管理：</div>
+              <div>登入 — 能使用本系統，僅能看到今日預約</div>
+              <div>一般 — 預約表／查詢／提醒等，以及各項功能</div>
+              <div>勾選下層時，上層會自動帶出打勾、反灰不可改；勾選任一小編功能前須有登入＋一般</div>
+              <div>取消「登入」或「刪除整列」時，會一併清除下層權限</div>
             </div>
             <div style={{
-              background: 'white',
-              borderRadius: '12px',
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
               padding: isMobile ? '16px' : '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              border: '1px solid #e0e0e0',
+              boxShadow: cardShadow,
+              border: cardBorder,
               marginBottom: '8px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '6px' }}>
-                <h3 style={{ margin: 0, fontSize: isMobile ? '17px' : '18px', fontWeight: 700, color: '#333' }}>人員權限</h3>
+                <h3 style={{ margin: 0, fontSize: isMobile ? '17px' : '18px', fontWeight: 600, color: designSystem.colors.text.primary }}>人員權限</h3>
                 <Badge variant="info" size="small">{permissionMatrixRows.length} 帳號</Badge>
                 {matrixMissingLoginCount > 0 && (
                   <span title="有列有下層權限但尚未有登入名單，開啟此分頁會自動同步，同步前以底色與圖示標示">
@@ -2624,6 +2627,7 @@ export function StaffManagement() {
             </div>
           </>
         )}
+        <Footer />
       </div>
 
       {/* 新增教練彈窗 */}
@@ -3081,7 +3085,6 @@ export function StaffManagement() {
         />
       )}
 
-      <Footer />
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )

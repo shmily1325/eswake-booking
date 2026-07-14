@@ -11,6 +11,16 @@ import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { validateRequired } from '../../utils/errorHandler'
 import { useToast, ToastContainer } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
+import {
+  designSystem,
+  getButtonStyle,
+  getInputStyle,
+  getPageContentShellStyle,
+} from '../../styles/designSystem'
+
+const pageBg = designSystem.colors.background.main
+const cardBorder = `1px solid ${designSystem.colors.border.light}`
+const cardShadow = designSystem.shadows.elevation[1]
 
 interface Announcement {
   id: number
@@ -415,29 +425,31 @@ export function AnnouncementManagement() {
 
   return (
     <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      padding: isMobile ? '16px' : '20px'
+      padding: isMobile ? '12px 16px' : '20px',
+      minHeight: '100dvh',
+      background: pageBg,
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
     }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <PageHeader title="📢 公告" user={user} showBaoLink={isAdmin(user)} />
+      <div style={getPageContentShellStyle(isMobile)}>
+        <PageHeader title="公告" user={user} showBaoLink={isAdmin(user)} />
 
         {/* 新增表單 */}
         <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: isMobile ? '16px' : '20px',
-          marginBottom: '15px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          overflow: 'hidden'
+          background: designSystem.colors.background.card,
+          borderRadius: designSystem.borderRadius.lg,
+          padding: isMobile ? designSystem.spacing.xl : '20px',
+          marginBottom: designSystem.spacing.lg,
+          border: cardBorder,
+          boxShadow: cardShadow,
+          overflow: 'hidden',
         }}>
           <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'block',
-              fontSize: '13px',
-              color: '#666',
+              fontSize: designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
+              color: designSystem.colors.text.secondary,
               marginBottom: '6px',
-              fontWeight: '500'
+              fontWeight: '500',
             }}>
               內容
             </label>
@@ -447,14 +459,9 @@ export function AnnouncementManagement() {
               placeholder="輸入交辦事項..."
               rows={3}
               style={{
-                width: '100%',
-                padding: isMobile ? '12px' : '10px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: isMobile ? '16px' : '14px',
+                ...getInputStyle(isMobile),
                 resize: 'vertical',
                 fontFamily: 'inherit',
-                boxSizing: 'border-box'
               }}
             />
           </div>
@@ -462,10 +469,10 @@ export function AnnouncementManagement() {
           <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'block',
-              fontSize: '13px',
-              color: '#666',
+              fontSize: designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
+              color: designSystem.colors.text.secondary,
               marginBottom: '8px',
-              fontWeight: '500'
+              fontWeight: '500',
             }}>
               事項日期
             </label>
@@ -478,40 +485,34 @@ export function AnnouncementManagement() {
                   if (e.target.value > newEndDate) setNewEndDate(e.target.value)
                 }}
                 style={{
+                  ...getInputStyle(isMobile),
                   flex: '1 1 120px',
                   minWidth: 0,
-                  padding: isMobile ? '12px' : '10px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: isMobile ? '16px' : '14px',
-                  boxSizing: 'border-box'
+                  width: 'auto',
                 }}
               />
-              <span style={{ color: '#999', fontSize: '14px', flexShrink: 0 }}>～</span>
+              <span style={{ color: designSystem.colors.text.disabled, fontSize: '14px', flexShrink: 0 }}>～</span>
               <input
                 type="date"
                 value={newEndDate}
                 onChange={(e) => setNewEndDate(e.target.value)}
                 min={newStartDate}
                 style={{
+                  ...getInputStyle(isMobile),
                   flex: '1 1 120px',
                   minWidth: 0,
-                  padding: isMobile ? '12px' : '10px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: isMobile ? '16px' : '14px',
-                  boxSizing: 'border-box'
+                  width: 'auto',
                 }}
               />
               <span style={{
                 padding: '10px 14px',
-                borderRadius: '8px',
-                background: '#5a5a5a',
+                borderRadius: designSystem.borderRadius.md,
+                background: designSystem.colors.primary[500],
                 color: 'white',
                 fontSize: '14px',
                 fontWeight: '600',
                 whiteSpace: 'nowrap',
-                flexShrink: 0
+                flexShrink: 0,
               }}>
                 {newStartDate === newEndDate 
                   ? getWeekdayText(newStartDate)
@@ -528,7 +529,7 @@ export function AnnouncementManagement() {
               gap: '10px',
               cursor: 'pointer',
               fontSize: isMobile ? '15px' : '14px',
-              color: '#555',
+              color: designSystem.colors.text.secondary,
               padding: isMobile ? '8px 0' : 0,
               minHeight: isMobile ? 44 : undefined
             }}>
@@ -543,7 +544,7 @@ export function AnnouncementManagement() {
           </div>
 
           {/* 預約限制（簡易） */}
-          <div style={{ marginBottom: '12px', borderTop: '1px dashed #eee', paddingTop: '12px' }}>
+          <div style={{ marginBottom: '12px', borderTop: `1px dashed ${designSystem.colors.border.light}`, paddingTop: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
               <label style={{
                 display: 'flex',
@@ -551,7 +552,7 @@ export function AnnouncementManagement() {
                 gap: '10px',
                 cursor: 'pointer',
                 fontSize: isMobile ? '15px' : '14px',
-                color: '#333',
+                color: designSystem.colors.text.primary,
                 padding: isMobile ? '8px 0' : 0,
                 minHeight: isMobile ? 44 : undefined,
                 fontWeight: 600
@@ -575,7 +576,7 @@ export function AnnouncementManagement() {
                 <span>啟用預約限制</span>
               </label>
               {newRestrictEnabled && (
-                <div style={{ fontSize: '12px', color: '#777' }}>
+                <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
                   設定後，此時段內將禁止建立/編輯預約
                 </div>
               )}
@@ -593,30 +594,30 @@ export function AnnouncementManagement() {
                       setImpactedBookings([])
                       if (e.target.value > newRestrictEndDate) setNewRestrictEndDate(e.target.value)
                     }}
-                    style={{ width: isMobile ? '160px' : '150px', padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                    style={{ ...getInputStyle(isMobile), width: isMobile ? '160px' : '150px' }}
                   />
                   {!newRestrictAllDay && (
                     <input
                       type="time"
                       value={newRestrictStartTime}
                       onChange={(e) => { setNewRestrictStartTime(e.target.value); setNeedsRecalc(true); setImpactedBookings([]) }}
-                      style={{ width: '120px', padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                      style={{ ...getInputStyle(isMobile), width: '120px' }}
                     />
                   )}
-                  <span style={{ color: '#999', fontSize: '14px', flexShrink: 0 }}>～</span>
+                  <span style={{ color: designSystem.colors.text.disabled, fontSize: '14px', flexShrink: 0 }}>～</span>
                   <input
                     type="date"
                     value={newRestrictEndDate}
                     onChange={(e) => { setNewRestrictEndDate(e.target.value); setNeedsRecalc(true); setImpactedBookings([]) }}
                     min={newRestrictStartDate}
-                    style={{ width: isMobile ? '160px' : '150px', padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                    style={{ ...getInputStyle(isMobile), width: isMobile ? '160px' : '150px' }}
                   />
                   {!newRestrictAllDay && (
                     <input
                       type="time"
                       value={newRestrictEndTime}
                       onChange={(e) => { setNewRestrictEndTime(e.target.value); setNeedsRecalc(true); setImpactedBookings([]) }}
-                      style={{ width: '120px', padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                      style={{ ...getInputStyle(isMobile), width: '120px' }}
                     />
                   )}
                 </div>
@@ -627,7 +628,7 @@ export function AnnouncementManagement() {
                     gap: '10px',
                     cursor: 'pointer',
                     fontSize: isMobile ? '15px' : '14px',
-                    color: '#555',
+                    color: designSystem.colors.text.secondary,
                     whiteSpace: 'nowrap'
                   }}>
                     <input
@@ -641,7 +642,7 @@ export function AnnouncementManagement() {
                 </div>
 
                 {/* 即時摘要 */}
-                <div style={{ background: '#f6f8fa', color: '#444', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>
+                <div style={{ background: designSystem.colors.background.main, color: designSystem.colors.text.primary, padding: '6px 10px', borderRadius: designSystem.borderRadius.md, fontSize: 12 }}>
                   限制時段：{newRestrictStartDate}
                   {!newRestrictAllDay && ` ${newRestrictStartTime}`} ～ {newRestrictEndDate}
                   {!newRestrictAllDay && ` ${newRestrictEndTime}`}{newRestrictAllDay && ' 全天'}
@@ -698,15 +699,8 @@ export function AnnouncementManagement() {
                   }
                 }}
                 style={{
-                  padding: isMobile ? '12px' : '10px',
+                  ...getButtonStyle('secondary', 'medium', isMobile),
                   minHeight: isMobile ? 44 : undefined,
-                  background: '#fff',
-                  color: '#666',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: isMobile ? '15px' : '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
                 }}
               >
                 試算
@@ -715,50 +709,50 @@ export function AnnouncementManagement() {
               {/* 清單 */}
               <div style={{
                 marginTop: '10px',
-                background: '#fafafa',
-                border: '1px solid #eee',
-                borderRadius: '6px',
-                padding: '10px'
+                background: designSystem.colors.background.main,
+                border: cardBorder,
+                borderRadius: designSystem.borderRadius.md,
+                padding: '10px',
               }}>
                 {needsRecalc && (
-                  <div style={{ background: '#fff7e6', border: '1px solid #ffe0b2', color: '#8a6d3b', padding: '6px 10px', borderRadius: 4, fontSize: 12, marginBottom: 8 }}>
+                  <div style={{ background: designSystem.colors.warning[50], border: `1px solid ${designSystem.colors.warning[500]}33`, color: designSystem.colors.warning[700], padding: '6px 10px', borderRadius: designSystem.borderRadius.sm, fontSize: 12, marginBottom: 8 }}>
                     設定已變更，請重新試算
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontSize: '13px', color: '#333', fontWeight: 600 }}>
+                  <div style={{ fontSize: '13px', color: designSystem.colors.text.primary, fontWeight: 600 }}>
                     受影響預約
                   </div>
-                  <div style={{ fontSize: 12, color: '#777' }}>
+                  <div style={{ fontSize: 12, color: designSystem.colors.text.secondary }}>
                     {impactLoading ? '載入中…' : `共 ${impactedBookings.length} 筆`}
                   </div>
                 </div>
                 {impactedBookings.length === 0 && !impactLoading && (
-                  <div style={{ fontSize: '13px', color: '#888' }}>此時段沒有受影響的預約</div>
+                  <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary }}>此時段沒有受影響的預約</div>
                 )}
                 {impactedBookings.length > 0 && (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: 12, color: '#888', padding: '4px 0' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: 12, color: designSystem.colors.text.secondary, padding: '4px 0' }}>
                       {!isMobile && <div>時間</div>}
                       <div>聯絡人 / 船</div>
                       {!isMobile && <div>教練</div>}
                     </div>
                     <div style={{ display: 'grid', rowGap: '6px' }}>
                       {impactedBookings.map(item => (
-                        <div key={item.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: 13, color: '#555', alignItems: 'baseline' }}>
+                        <div key={item.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: 13, color: designSystem.colors.text.secondary, alignItems: 'baseline' }}>
                           {!isMobile && (
-                            <div style={{ color: '#1976d2', fontWeight: 600 }}>
+                            <div style={{ color: designSystem.colors.info[700], fontWeight: 600 }}>
                               {new Date(item.start_at).toLocaleString()}
                             </div>
                           )}
                           <div>
-                            <span style={{ color: '#333', fontWeight: 600 }}>{item.contact_name}</span>
-                            {item.boat_name ? <span style={{ color: '#777' }}>{` · 船：${item.boat_name}`}</span> : null}
+                            <span style={{ color: designSystem.colors.text.primary, fontWeight: 600 }}>{item.contact_name}</span>
+                            {item.boat_name ? <span style={{ color: designSystem.colors.text.secondary }}>{` · 船：${item.boat_name}`}</span> : null}
                             {isMobile && (
-                              <div style={{ color: '#1976d2' }}>{new Date(item.start_at).toLocaleString()}</div>
+                              <div style={{ color: designSystem.colors.info[700] }}>{new Date(item.start_at).toLocaleString()}</div>
                             )}
                           </div>
-                          {!isMobile && <div style={{ color: '#555' }}>{item.coach_names || '-'}</div>}
+                          {!isMobile && <div style={{ color: designSystem.colors.text.secondary }}>{item.coach_names || '-'}</div>}
                         </div>
                       ))}
                     </div>
@@ -772,17 +766,9 @@ export function AnnouncementManagement() {
             data-track="announcement_add"
             onClick={handleAdd}
             style={{
+              ...getButtonStyle('primary', 'large', isMobile),
               width: '100%',
-              padding: isMobile ? '14px' : '12px',
               minHeight: isMobile ? 48 : undefined,
-              background: 'white',
-              color: '#666',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
             }}
           >
             新增
@@ -791,12 +777,13 @@ export function AnnouncementManagement() {
 
         {/* 列表 */}
         <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: isMobile ? '16px' : '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          background: designSystem.colors.background.card,
+          borderRadius: designSystem.borderRadius.lg,
+          padding: isMobile ? designSystem.spacing.xl : '20px',
+          border: cardBorder,
+          boxShadow: cardShadow,
           minHeight: '200px',
-          overflow: 'hidden'
+          overflow: 'hidden',
         }}>
           <div style={{
             display: 'flex',
@@ -809,8 +796,8 @@ export function AnnouncementManagement() {
               margin: 0,
               fontSize: isMobile ? '16px' : '18px',
               fontWeight: '600',
-              color: '#333',
-              flexShrink: 0
+              color: designSystem.colors.text.primary,
+              flexShrink: 0,
             }}>
               所有交辦事項 ({announcements.filter(a => 
                 searchText ? a.content.toLowerCase().includes(searchText.toLowerCase()) : true
@@ -823,13 +810,9 @@ export function AnnouncementManagement() {
               style={{
                 flex: '1 1 140px',
                 minWidth: 0,
-                padding: isMobile ? '12px' : '10px',
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '16px',
+                ...getInputStyle(isMobile),
+                width: 'auto',
                 cursor: 'pointer',
-                background: 'white',
-                boxSizing: 'border-box'
               }}
             />
           </div>
@@ -849,16 +832,8 @@ export function AnnouncementManagement() {
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 style={{
-                  width: '100%',
-                  padding: isMobile ? '12px 14px' : '10px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: isMobile ? '16px' : '14px',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
+                  ...getInputStyle(isMobile),
                 }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#2196F3'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
               />
             </div>
 
@@ -867,23 +842,8 @@ export function AnnouncementManagement() {
               data-track="announcement_sort"
               onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
               style={{
-                padding: isMobile ? '12px 18px' : '10px 16px',
+                ...getButtonStyle('secondary', 'medium', isMobile),
                 minHeight: isMobile ? 44 : undefined,
-                background: '#f5f5f5',
-                color: '#666',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: isMobile ? '15px' : '14px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#e8e8e8'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#f5f5f5'
               }}
             >
               {sortOrder === 'desc' ? '新→舊' : '舊→新'}
@@ -891,13 +851,13 @@ export function AnnouncementManagement() {
           </div>
 
           {loading && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
               載入中...
             </div>
           )}
 
           {!loading && announcements.length === 0 && !searchText && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
               目前沒有交辦事項
             </div>
           )}
@@ -905,7 +865,7 @@ export function AnnouncementManagement() {
           {!loading && searchText && announcements.filter(a => 
             a.content.toLowerCase().includes(searchText.toLowerCase())
           ).length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
               沒有符合「{searchText}」的搜尋結果
             </div>
           )}
@@ -921,23 +881,23 @@ export function AnnouncementManagement() {
                 {/* 日期標題 */}
                 <div style={{
                   padding: isMobile ? '10px 14px' : '8px 12px',
-                  background: '#f5f5f5',
-                  borderRadius: '6px',
+                  background: designSystem.colors.background.main,
+                  borderRadius: designSystem.borderRadius.md,
                   marginBottom: '10px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  gap: '8px',
                 }}>
                   <span style={{
                     fontSize: isMobile ? '15px' : '14px',
                     fontWeight: '600',
-                    color: '#555'
+                    color: designSystem.colors.text.secondary,
                   }}>
                     {formatDateHeader(date)}
                   </span>
                   <span style={{
                     fontSize: isMobile ? '13px' : '12px',
-                    color: '#999'
+                    color: designSystem.colors.text.disabled,
                   }}>
                     ({dateAnnouncements.length} 條)
                   </span>
@@ -951,10 +911,10 @@ export function AnnouncementManagement() {
                     key={announcement.id}
                     style={{
                       padding: isMobile ? '16px' : '12px',
-                      background: 'white',
-                      borderRadius: '6px',
+                      background: designSystem.colors.background.card,
+                      borderRadius: designSystem.borderRadius.md,
                       marginBottom: '8px',
-                      border: '1px solid #e0e0e0'
+                      border: cardBorder,
                     }}
                   >
                     {editingId === announcement.id ? (
@@ -965,18 +925,13 @@ export function AnnouncementManagement() {
                           onChange={(e) => setEditContent(e.target.value)}
                           rows={3}
                           style={{
-                            width: '100%',
-                            padding: isMobile ? '12px' : '8px',
-                            border: '1px solid #ddd',
-                            borderRadius: '6px',
-                            fontSize: isMobile ? '16px' : '14px',
+                            ...getInputStyle(isMobile),
                             marginBottom: '10px',
                             fontFamily: 'inherit',
-                            boxSizing: 'border-box'
                           }}
                         />
                         <div style={{ marginBottom: '10px' }}>
-                          <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>事項日期</div>
+                          <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '6px' }}>事項日期</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <input
                               type="date"
@@ -986,29 +941,23 @@ export function AnnouncementManagement() {
                                 if (e.target.value > editEndDate) setEditEndDate(e.target.value)
                               }}
                               style={{
+                                ...getInputStyle(isMobile),
                                 flex: '1 1 120px',
                                 minWidth: 0,
-                                padding: isMobile ? '12px' : '10px',
-                                border: '1px solid #e0e0e0',
-                                borderRadius: '8px',
-                                fontSize: '16px',
-                                boxSizing: 'border-box'
+                                width: 'auto',
                               }}
                             />
-                            <span style={{ color: '#999', fontSize: '14px', flexShrink: 0 }}>～</span>
+                            <span style={{ color: designSystem.colors.text.disabled, fontSize: '14px', flexShrink: 0 }}>～</span>
                             <input
                               type="date"
                               value={editEndDate}
                               onChange={(e) => setEditEndDate(e.target.value)}
                               min={editStartDate}
                               style={{
+                                ...getInputStyle(isMobile),
                                 flex: '1 1 120px',
                                 minWidth: 0,
-                                padding: isMobile ? '12px' : '10px',
-                                border: '1px solid #e0e0e0',
-                                borderRadius: '8px',
-                                fontSize: '16px',
-                                boxSizing: 'border-box'
+                                width: 'auto',
                               }}
                             />
                           </div>
@@ -1020,7 +969,7 @@ export function AnnouncementManagement() {
                             gap: '10px',
                             cursor: 'pointer',
                             fontSize: isMobile ? '15px' : '14px',
-                            color: '#555',
+                            color: designSystem.colors.text.secondary,
                             padding: isMobile ? '8px 0' : 0,
                             minHeight: isMobile ? 44 : undefined
                           }}>
@@ -1034,14 +983,14 @@ export function AnnouncementManagement() {
                           </label>
                         </div>
                         {/* 預約限制（編輯） */}
-                        <div style={{ marginBottom: '10px', borderTop: '1px dashed #eee', paddingTop: '10px' }}>
+                        <div style={{ marginBottom: '10px', borderTop: `1px dashed ${designSystem.colors.border.light}`, paddingTop: '10px' }}>
                           <label style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '10px',
                             cursor: 'pointer',
                             fontSize: isMobile ? '15px' : '14px',
-                            color: '#333',
+                            color: designSystem.colors.text.primary,
                             fontWeight: 600
                           }}>
                             <input
@@ -1059,34 +1008,34 @@ export function AnnouncementManagement() {
                                   type="date"
                                   value={editRestrictStartDate || editStartDate}
                                   onChange={(e) => setEditRestrictStartDate(e.target.value)}
-                                  style={{ width: isMobile ? '160px' : '150px', padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                                  style={{ ...getInputStyle(isMobile), width: isMobile ? '160px' : '150px' }}
                                 />
                                 {!editRestrictAllDay && (
                                   <input
                                     type="time"
                                     value={editRestrictStartTime}
                                     onChange={(e) => setEditRestrictStartTime(e.target.value)}
-                                    style={{ width: '120px', padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                                    style={{ ...getInputStyle(isMobile), width: '120px' }}
                                   />
                                 )}
-                                <span style={{ color: '#999', fontSize: '14px', flexShrink: 0 }}>～</span>
+                                <span style={{ color: designSystem.colors.text.disabled, fontSize: '14px', flexShrink: 0 }}>～</span>
                                 <input
                                   type="date"
                                   value={editRestrictEndDate || editEndDate}
                                   onChange={(e) => setEditRestrictEndDate(e.target.value)}
-                                  style={{ width: isMobile ? '160px' : '150px', padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                                  style={{ ...getInputStyle(isMobile), width: isMobile ? '160px' : '150px' }}
                                 />
                                 {!editRestrictAllDay && (
                                   <input
                                     type="time"
                                     value={editRestrictEndTime}
                                     onChange={(e) => setEditRestrictEndTime(e.target.value)}
-                                    style={{ width: '120px', padding: isMobile ? '12px' : '10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: isMobile ? '16px' : '14px' }}
+                                    style={{ ...getInputStyle(isMobile), width: '120px' }}
                                   />
                                 )}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: isMobile ? '15px' : '14px', color: '#555', whiteSpace: 'nowrap' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: isMobile ? '15px' : '14px', color: designSystem.colors.text.secondary, whiteSpace: 'nowrap' }}>
                                   <input
                                     type="checkbox"
                                     checked={editRestrictAllDay}
@@ -1104,16 +1053,9 @@ export function AnnouncementManagement() {
                             data-track="announcement_edit"
                             onClick={() => handleEdit(announcement.id)}
                             style={{
+                              ...getButtonStyle('primary', 'medium', isMobile),
                               flex: 1,
-                              padding: isMobile ? '12px' : '8px',
                               minHeight: isMobile ? 44 : undefined,
-                              background: '#2196F3',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              fontSize: isMobile ? '15px' : '13px',
-                              fontWeight: '600',
-                              cursor: 'pointer'
                             }}
                           >
                             儲存
@@ -1122,16 +1064,9 @@ export function AnnouncementManagement() {
                             data-track="announcement_edit_cancel"
                             onClick={cancelEdit}
                             style={{
+                              ...getButtonStyle('secondary', 'medium', isMobile),
                               flex: 1,
-                              padding: isMobile ? '12px' : '8px',
                               minHeight: isMobile ? 44 : undefined,
-                              background: '#f5f5f5',
-                              color: '#666',
-                              border: '1px solid #ddd',
-                              borderRadius: '6px',
-                              fontSize: isMobile ? '15px' : '13px',
-                              fontWeight: '600',
-                              cursor: 'pointer'
                             }}
                           >
                             取消
@@ -1152,7 +1087,7 @@ export function AnnouncementManagement() {
                             {dateLabel.isRange && (
                               <div style={{
                                 fontSize: isMobile ? '12px' : '11px',
-                                color: '#888',
+                                color: designSystem.colors.text.secondary,
                                 marginBottom: '4px',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1161,8 +1096,8 @@ export function AnnouncementManagement() {
                                 <span style={{
                                   padding: isMobile ? '3px 8px' : '2px 8px',
                                   borderRadius: '4px',
-                                  background: '#e3f2fd',
-                                  color: '#1976d2',
+                                  background: designSystem.colors.info[50],
+                                  color: designSystem.colors.info[700],
                                   fontWeight: '500'
                                 }}>
                                   {dateLabel.text}
@@ -1171,7 +1106,7 @@ export function AnnouncementManagement() {
                             )}
                             <div style={{ 
                               fontSize: isMobile ? '15px' : '14px',
-                              color: '#333',
+                              color: designSystem.colors.text.primary,
                               lineHeight: '1.5',
                               whiteSpace: 'pre-wrap',
                               wordBreak: 'break-word',
@@ -1185,7 +1120,7 @@ export function AnnouncementManagement() {
                               {restrictionsMap[announcement.id] && (
                                 <span style={{
                                   fontSize: isMobile ? '12px' : '11px',
-                                  color: '#888'
+                                  color: designSystem.colors.text.secondary,
                                 }}>
                                   {' '}
                                   {formatRestrictionNote(getLocalDateString(), restrictionsMap[announcement.id])}
@@ -1196,8 +1131,8 @@ export function AnnouncementManagement() {
                                   fontSize: isMobile ? '12px' : '11px',
                                   padding: isMobile ? '3px 8px' : '2px 6px',
                                   borderRadius: '3px',
-                                  background: '#fff3e0',
-                                  color: '#e65100',
+                                  background: designSystem.colors.warning[50],
+                                  color: designSystem.colors.warning[700],
                                   whiteSpace: 'nowrap',
                                   flexShrink: 0
                                 }}>
@@ -1217,16 +1152,8 @@ export function AnnouncementManagement() {
                               data-track="announcement_edit"
                               onClick={() => startEdit(announcement)}
                               style={{
-                                padding: isMobile ? '12px 16px' : '5px 10px',
+                                ...getButtonStyle('secondary', 'small', isMobile),
                                 minHeight: isMobile ? 44 : undefined,
-                                background: '#f5f5f5',
-                                color: '#666',
-                                border: '1px solid #ddd',
-                                borderRadius: '6px',
-                                fontSize: isMobile ? '15px' : '12px',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap'
                               }}
                             >
                               編輯
@@ -1235,16 +1162,10 @@ export function AnnouncementManagement() {
                               data-track="announcement_delete"
                               onClick={() => handleDelete(announcement.id)}
                               style={{
-                                padding: isMobile ? '12px 16px' : '5px 10px',
+                                ...getButtonStyle('outline', 'small', isMobile),
+                                color: designSystem.colors.danger[500],
+                                borderColor: designSystem.colors.danger[500],
                                 minHeight: isMobile ? 44 : undefined,
-                                background: '#fff',
-                                color: '#f44336',
-                                border: '1px solid #f44336',
-                                borderRadius: '6px',
-                                fontSize: isMobile ? '15px' : '12px',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap'
                               }}
                             >
                               刪除

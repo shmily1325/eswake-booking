@@ -1,4 +1,4 @@
-// 儲值餘額視圖：2×3 低彩度卡；點擊開明細
+// 儲值餘額視圖：2×3 六色低彩卡；點擊開明細
 
 import { designSystem } from '../../../styles/designSystem'
 import { liffContentPanel, LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
@@ -12,13 +12,13 @@ interface BalanceViewProps {
 
 const c = designSystem.colors
 
-/** 低彩度：50 底 + 500 邊 + 700 字（對齊 designSystem status） */
+/** 六色保留氣氛；皆低彩。綠／紫灰／暖／青／石板／珊瑚可分辨 */
 const TONES = {
   balance: { color: c.success[700], bg: c.success[50], border: c.success[500] },
-  vip: { color: c.secondary[700], bg: c.secondary[50], border: c.secondary[300] },
+  vip: { color: '#5a4d63', bg: '#f5f2f6', border: '#b0a4bc' },
   lesson: { color: c.warning[700], bg: c.warning[50], border: c.warning[500] },
   g23: { color: c.info[700], bg: c.info[50], border: c.info[500] },
-  g21: { color: c.info[700], bg: c.primary[50], border: c.info[500] },
+  g21: { color: c.secondary[800], bg: c.secondary[100], border: c.secondary[400] },
   gift: { color: c.danger[700], bg: c.danger[50], border: c.danger[500] },
 } as const satisfies Record<string, BalanceTone>
 

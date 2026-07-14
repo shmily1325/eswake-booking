@@ -86,7 +86,7 @@ export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: L
             lineHeight: 1.35,
           }}
         >
-          歡迎回來
+          歡迎回來 🌊
         </div>
       </div>
     </div>

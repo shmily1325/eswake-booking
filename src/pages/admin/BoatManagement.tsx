@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
+import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import type { Boat, BoatUnavailableDate } from '../../types/booking'
 import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
-import { designSystem } from '../../styles/designSystem'
+import {
+  designSystem,
+  getPageContentShellStyle,
+} from '../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../utils/auth'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { isFacility, isLandCourse } from '../../utils/facility'
@@ -21,6 +25,11 @@ import {
   TimeSelectField,
 } from '../../components/admin/AdminFormUi'
 
+const pageBg = designSystem.colors.background.main
+const cardBorder = `1px solid ${designSystem.colors.border.light}`
+const cardShadow = designSystem.shadows.elevation[1]
+const defaultBoatColor = designSystem.colors.info[500]
+
 export function BoatManagement() {
     const user = useAuthUser()
     const navigate = useNavigate()
@@ -32,7 +41,7 @@ export function BoatManagement() {
     const [activeTab, setActiveTab] = useState<'boats' | 'pricing'>('boats') // Tab 切換
     const [addDialogOpen, setAddDialogOpen] = useState(false)
     const [newBoatName, setNewBoatName] = useState('')
-    const [newBoatColor, setNewBoatColor] = useState('#1976d2')
+    const [newBoatColor, setNewBoatColor] = useState(defaultBoatColor)
     const [addLoading, setAddLoading] = useState(false)
     const [unavailableDialogOpen, setUnavailableDialogOpen] = useState(false)
     const [selectedBoat, setSelectedBoat] = useState<Boat | null>(null)
@@ -56,7 +65,7 @@ export function BoatManagement() {
     const [savingPrices, setSavingPrices] = useState<{[key: string]: boolean}>({})
     
     // 說明展開狀態
-    const [showHelp, setShowHelp] = useState(true)
+    const [showHelp, setShowHelp] = useState(false)
 
     // 權限檢查
     useEffect(() => {
@@ -136,7 +145,7 @@ export function BoatManagement() {
 
             toast.success('船隻新增成功！')
             setNewBoatName('')
-            setNewBoatColor('#1976d2')
+            setNewBoatColor(defaultBoatColor)
             setAddDialogOpen(false)
             loadData()
         } catch (error) {
@@ -380,24 +389,97 @@ export function BoatManagement() {
 
     if (loading || !hasAccess) {
         return (
-            <div style={{ padding: '20px', textAlign: 'center' }}>
-                載入中...
+            <div style={{
+                padding: isMobile ? '12px 16px' : '20px',
+                minHeight: '100dvh',
+                background: pageBg,
+                paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+            }}>
+                <div style={getPageContentShellStyle(isMobile)}>
+                    <PageHeader user={user!} title="船隻管理" showBaoLink={isAdmin(user)} />
+                    <div style={{
+                        padding: '40px',
+                        textAlign: 'center',
+                        fontSize: '15px',
+                        color: designSystem.colors.text.secondary,
+                    }}>
+                        載入中...
+                    </div>
+                    <Footer />
+                </div>
             </div>
         )
     }
 
     return (
-        <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, paddingBottom: '80px' }}>
-            <div style={{
-                maxWidth: '1000px',
-                margin: '0 auto',
-                padding: isMobile ? '24px 18px' : '48px 28px'
-            }}>
-                <PageHeader user={user!} title="🚤 船隻管理" showBaoLink={isAdmin(user)} />
-                
-                {/* 操作按鈕 */}
-                {activeTab === 'boats' && (
-                    <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{
+            padding: isMobile ? '12px 16px' : '20px',
+            minHeight: '100dvh',
+            background: pageBg,
+            paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+        }}>
+            <div style={getPageContentShellStyle(isMobile)}>
+                <PageHeader user={user!} title="船隻管理" showBaoLink={isAdmin(user)} />
+
+                {/* Tab + primary action */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginTop: '4px',
+                    marginBottom: '20px',
+                    flexWrap: 'wrap',
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        gap: '4px',
+                        background: designSystem.colors.secondary[100],
+                        borderRadius: designSystem.borderRadius.lg,
+                        padding: '4px',
+                        width: 'fit-content',
+                        maxWidth: '100%',
+                    }}>
+                        <button
+                            data-track="boat_tab_list"
+                            onClick={() => setActiveTab('boats')}
+                            style={{
+                                padding: isMobile ? '9px 16px' : '10px 20px',
+                                background: activeTab === 'boats' ? designSystem.colors.background.card : 'transparent',
+                                border: 'none',
+                                borderRadius: designSystem.borderRadius.md,
+                                boxShadow: activeTab === 'boats' ? designSystem.shadows.xs : 'none',
+                                color: activeTab === 'boats' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+                                fontWeight: activeTab === 'boats' ? 600 : 500,
+                                fontSize: isMobile ? '13px' : '14px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            船隻列表
+                        </button>
+                        <button
+                            data-track="boat_tab_pricing"
+                            onClick={() => setActiveTab('pricing')}
+                            style={{
+                                padding: isMobile ? '9px 16px' : '10px 20px',
+                                background: activeTab === 'pricing' ? designSystem.colors.background.card : 'transparent',
+                                border: 'none',
+                                borderRadius: designSystem.borderRadius.md,
+                                boxShadow: activeTab === 'pricing' ? designSystem.shadows.xs : 'none',
+                                color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+                                fontWeight: activeTab === 'pricing' ? 600 : 500,
+                                fontSize: isMobile ? '13px' : '14px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            價格設定
+                        </button>
+                    </div>
+                    <div style={{ flex: 1 }} />
+                    {activeTab === 'boats' && (
                         <Button
                             variant="primary"
                             size="medium"
@@ -406,101 +488,58 @@ export function BoatManagement() {
                         >
                             新增船隻
                         </Button>
-                    </div>
-                )}
-
-                {/* Tab 切換 */}
-                <div style={{
-                    display: 'flex',
-                    gap: '4px',
-                    background: designSystem.colors.secondary[100],
-                    borderRadius: designSystem.borderRadius.full,
-                    padding: '4px',
-                    marginBottom: '24px',
-                    width: 'fit-content',
-                    maxWidth: '100%'
-                }}>
-                    <button
-                        data-track="boat_tab_list"
-                        onClick={() => setActiveTab('boats')}
-                        style={{
-                            padding: isMobile ? '9px 16px' : '10px 24px',
-                            background: activeTab === 'boats' ? 'white' : 'transparent',
-                            border: 'none',
-                            borderRadius: designSystem.borderRadius.full,
-                            boxShadow: activeTab === 'boats' ? designSystem.shadows.xs : 'none',
-                            color: activeTab === 'boats' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-                            fontWeight: activeTab === 'boats' ? 700 : 600,
-                            fontSize: isMobile ? '13px' : '14px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        船隻列表
-                    </button>
-                    <button
-                        data-track="boat_tab_pricing"
-                        onClick={() => setActiveTab('pricing')}
-                        style={{
-                            padding: isMobile ? '9px 16px' : '10px 24px',
-                            background: activeTab === 'pricing' ? 'white' : 'transparent',
-                            border: 'none',
-                            borderRadius: designSystem.borderRadius.full,
-                            boxShadow: activeTab === 'pricing' ? designSystem.shadows.xs : 'none',
-                            color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-                            fontWeight: activeTab === 'pricing' ? 700 : 600,
-                            fontSize: isMobile ? '13px' : '14px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        價格設定
-                    </button>
+                    )}
                 </div>
 
                 {/* 船隻列表 Tab */}
                 {activeTab === 'boats' && (
                     <>
-                        {/* 可收起的說明 */}
-                        <div style={{
-                            background: showHelp ? 'rgba(255,255,255,0.72)' : 'transparent',
-                            padding: showHelp ? '16px 18px' : '8px 2px',
-                            borderRadius: designSystem.borderRadius.lg,
-                            marginBottom: '20px',
-                            fontSize: '14px',
-                            color: designSystem.colors.text.secondary,
-                            border: showHelp ? `1px solid ${designSystem.colors.border.light}` : '1px solid transparent',
-                            boxShadow: showHelp ? designSystem.shadows.xs : 'none',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                        data-track="boat_help_toggle"
-                        onClick={() => setShowHelp(!showHelp)}
+                        <div
+                            style={{
+                                background: showHelp ? designSystem.colors.background.card : 'transparent',
+                                padding: showHelp ? '14px 16px' : '4px 0',
+                                borderRadius: designSystem.borderRadius.lg,
+                                marginBottom: showHelp ? '20px' : '12px',
+                                fontSize: '14px',
+                                color: designSystem.colors.text.secondary,
+                                border: showHelp ? cardBorder : 'none',
+                                boxShadow: showHelp ? cardShadow : 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                            }}
+                            data-track="boat_help_toggle"
+                            onClick={() => setShowHelp(!showHelp)}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontWeight: 650, color: designSystem.colors.text.primary }}>{showHelp ? '功能說明' : '點此查看功能說明'}</span>
-                                <span style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>{showHelp ? '收起' : '展開'}</span>
+                                <span style={{
+                                    fontWeight: 500,
+                                    color: showHelp ? designSystem.colors.text.secondary : designSystem.colors.text.disabled,
+                                }}>
+                                    {showHelp ? '功能說明' : '說明'}
+                                </span>
+                                <span style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>
+                                    {showHelp ? '收起' : '展開'}
+                                </span>
                             </div>
                             {showHelp && (
                                 <div style={{ marginTop: '12px', lineHeight: '1.7' }}>
-                                    <div><strong>維修/停用</strong>：設定特定日期或時段船隻不可預約。</div>
-                                    <div style={{ fontSize: '13px', opacity: 0.85, marginTop: '4px' }}>
-                                        若不指定時間，則視為全天停用。若指定時間（例如 10:00-12:00），則該時段外仍可預約。
+                                    <div>維修/停用：設定特定日期或時段船隻不可預約。</div>
+                                    <div style={{ fontSize: '13px', marginTop: '4px', color: designSystem.colors.text.disabled }}>
+                                        若不指定時間，則視為全天停用。若指定時間（例如 10:00–12:00），則該時段外仍可預約。
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* 控制列：月份選擇器 */}
                         <div style={{
                             marginBottom: '16px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '12px'
+                            gap: '12px',
                         }}>
-                            <span style={{ fontSize: '14px', color: designSystem.colors.text.secondary, fontWeight: 600 }}>查看維修記錄</span>
+                            <span style={{ fontSize: '14px', color: designSystem.colors.text.secondary }}>
+                                查看維修記錄
+                            </span>
                             <input
                                 type="month"
                                 value={selectedMonth}
@@ -509,13 +548,13 @@ export function BoatManagement() {
                                     flex: 1,
                                     minWidth: 0,
                                     padding: '12px 14px',
-                                    border: `1px solid ${designSystem.colors.border.light}`,
+                                    border: cardBorder,
                                     borderRadius: designSystem.borderRadius.lg,
                                     fontSize: '16px',
                                     cursor: 'pointer',
-                                    background: 'white',
-                                    boxShadow: designSystem.shadows.xs,
-                                    boxSizing: 'border-box'
+                                    background: designSystem.colors.background.card,
+                                    boxShadow: 'none',
+                                    boxSizing: 'border-box',
                                 }}
                             />
                         </div>
@@ -527,7 +566,7 @@ export function BoatManagement() {
                     <div style={{
                         display: 'grid',
                         gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-                        gap: isMobile ? '16px' : '20px'
+                        gap: isMobile ? '12px' : '16px',
                     }}>
                         {boats.map(boat => {
                         // 先過濾該船的維修記錄，再按月份過濾
@@ -540,14 +579,14 @@ export function BoatManagement() {
                             <div
                                 key={boat.id}
                                 style={{
-                                    background: 'white',
-                                    borderRadius: designSystem.borderRadius.xl,
-                                    padding: isMobile ? '20px' : '24px',
-                                    boxShadow: designSystem.shadows.elevation[2],
-                                    border: `1px solid ${designSystem.colors.border.light}`,
+                                    background: designSystem.colors.background.card,
+                                    borderRadius: designSystem.borderRadius.lg,
+                                    padding: isMobile ? '16px' : '20px',
+                                    boxShadow: cardShadow,
+                                    border: cardBorder,
                                     borderTop: `3px solid ${boat.color}`,
                                     opacity: isActive ? 1 : 0.8,
-                                    transition: 'all 0.2s'
+                                    transition: 'all 0.2s',
                                 }}
                             >
                                 {/* 船隻名稱 + 狀態 */}
@@ -556,17 +595,17 @@ export function BoatManagement() {
                                     justifyContent: 'space-between',
                                     alignItems: 'flex-start',
                                     marginBottom: '16px',
-                                    gap: '12px'
+                                    gap: '12px',
                                 }}>
                                     <div style={{ flex: 1 }}>
                                         <h3 style={{
                                             margin: 0,
-                                            fontSize: isMobile ? '20px' : '22px',
-                                            fontWeight: 750,
+                                            fontSize: isMobile ? '18px' : '20px',
+                                            fontWeight: 650,
                                             color: designSystem.colors.text.primary,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '10px'
+                                            gap: '10px',
                                         }}>
                                             {boat.name}
                                             {!isActive && (
@@ -725,39 +764,24 @@ export function BoatManagement() {
                 {/* 價格設定 Tab */}
                 {activeTab === 'pricing' && (
                     <>
-                        {/* 說明提示 */}
                         <div style={{
-                            background: 'rgba(255,255,255,0.74)',
-                            padding: isMobile ? '16px 18px' : '18px 22px',
-                            borderRadius: designSystem.borderRadius.lg,
-                            marginBottom: '24px',
+                            marginBottom: '20px',
                             fontSize: '14px',
                             color: designSystem.colors.text.secondary,
-                            border: `1px solid ${designSystem.colors.border.light}`,
-                            boxShadow: designSystem.shadows.xs,
-                            lineHeight: '1.6'
+                            lineHeight: '1.6',
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                <div>
-                                    <div style={{ marginBottom: '4px' }}>
-                                        <strong>價格計算公式</strong>：實際金額 = Math.floor(每小時價格 * 分鐘數 / 60)
-                                    </div>
-                                    <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                                        例如：$10800/小時 * 30分鐘 / 60 = $5400
-                                    </div>
-                                    <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '4px' }}>
-                                        • <strong>儲值價格</strong>：用於扣儲值時的金額<br />
-                                        • <strong>VIP票券價格</strong>：用於 VIP 票券時的金額
-                                    </div>
-                                </div>
+                            <div style={{ marginBottom: '4px' }}>
+                                價格計算：實際金額 = Math.floor(每小時價格 × 分鐘數 / 60)
+                            </div>
+                            <div style={{ fontSize: '13px', color: designSystem.colors.text.disabled }}>
+                                例如：$10800/小時 × 30分鐘 / 60 = $5400。儲值價格用於扣儲值；VIP 票券價格用於 VIP 票券。
                             </div>
                         </div>
 
-                        {/* 價格設定列表 */}
                         <div style={{
                             display: 'grid',
                             gridTemplateColumns: '1fr',
-                            gap: isMobile ? '16px' : '20px'
+                            gap: isMobile ? '12px' : '16px',
                         }}>
                             {boats.map(boat => {
                                 initEditingPrice(boat)
@@ -770,23 +794,22 @@ export function BoatManagement() {
                                     <div
                                         key={boat.id}
                                         style={{
-                                            background: 'white',
-                                            borderRadius: designSystem.borderRadius.xl,
-                                            padding: isMobile ? '20px' : '26px',
-                                            boxShadow: designSystem.shadows.elevation[2],
-                                            border: `1px solid ${designSystem.colors.border.light}`,
-                                            borderTop: `3px solid ${boat.color}`
+                                            background: designSystem.colors.background.card,
+                                            borderRadius: designSystem.borderRadius.lg,
+                                            padding: isMobile ? '16px' : '20px',
+                                            boxShadow: cardShadow,
+                                            border: cardBorder,
+                                            borderTop: `3px solid ${boat.color}`,
                                         }}
                                     >
-                                        {/* 船隻名稱 */}
                                         <h3 style={{
-                                            margin: '0 0 20px 0',
-                                            fontSize: isMobile ? '20px' : '22px',
-                                            fontWeight: 750,
+                                            margin: '0 0 16px 0',
+                                            fontSize: isMobile ? '18px' : '20px',
+                                            fontWeight: 650,
                                             color: designSystem.colors.text.primary,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '10px'
+                                            gap: '10px',
                                         }}>
                                             {boat.name}
                                             {isFacility(boat.name) && (
@@ -891,13 +914,13 @@ export function BoatManagement() {
                                         {/* 價格預覽 */}
                                         <div style={{
                                             background: designSystem.colors.secondary[50],
-                                            padding: isMobile ? '14px 16px' : '16px 18px',
+                                            padding: isMobile ? '12px 14px' : '14px 16px',
                                             borderRadius: designSystem.borderRadius.lg,
                                             marginBottom: '16px',
                                             fontSize: '13px',
-                                            color: designSystem.colors.text.secondary
+                                            color: designSystem.colors.text.secondary,
                                         }}>
-                                            <div style={{ fontWeight: '700', marginBottom: '8px', color: designSystem.colors.text.primary }}>
+                                            <div style={{ fontWeight: 600, marginBottom: '8px', color: designSystem.colors.text.primary }}>
                                                 價格預覽
                                             </div>
                                             <div style={{
@@ -941,6 +964,8 @@ export function BoatManagement() {
                         </div>
                     </>
                 )}
+
+                <Footer />
             </div>
 
             {/* 新增船隻彈窗 */}
@@ -971,7 +996,7 @@ export function BoatManagement() {
                                 width: '100%',
                                 height: '44px',
                                 padding: '4px',
-                                border: `1px solid ${designSystem.colors.border.light}`,
+                                border: cardBorder,
                                 borderRadius: designSystem.borderRadius.lg,
                                 background: designSystem.colors.secondary[50],
                                 cursor: 'pointer',

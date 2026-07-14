@@ -93,6 +93,19 @@ Remove or quiet:
 
 Keep icons functional. If the label is already clear, the icon is usually unnecessary.
 
+### Do not quiet interactive controls into invisibility
+
+Calm does **not** mean “selected looks like a button, unselected looks like plain text.”
+
+Binary / multi-choice controls (例如記帳的 **增加／減少**、表單 choice chips) must keep a **visible frame on every option**, even when not selected:
+
+- Unselected: solid white (or light) fill + readable border — never transparent-on-gray `outline` that disappears into the page background.
+- Selected: clear fill + stronger border (reuse `getBookingChoiceStyle` / booking choice tokens when appropriate).
+
+If a quiet pass makes operators ask “按鈕不見了？”, the quieting went too far. Prefer slightly more chrome on controls over decorative noise elsewhere.
+
+**Incident note (2026-07):** Transaction dialog `outline` unselected + white `secondary` selected on a light gray form made **增加** look missing while **減少** still looked like a pill. Fixed by using choice-chip chrome for both states.
+
 ## Accent Usage
 
 Accent color is scarce on most surfaces. It should only appear on:

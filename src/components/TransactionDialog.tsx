@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp, normalizeDate } from '../utils/date'
 import type { Member } from '../types/booking'
-import { designSystem, getBadgeStyle, getButtonStyle, getInputStyle } from '../styles/designSystem'
+import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getInputStyle } from '../styles/designSystem'
 import { useToast } from './ui'
 
 interface TransactionDialogProps {
@@ -669,8 +669,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                     type="button"
                     onClick={() => setAdjustType('increase')}
                     style={{
-                      ...getButtonStyle(adjustType === 'increase' ? 'secondary' : 'outline', 'medium', isMobile),
+                      ...getBookingChoiceStyle(adjustType === 'increase'),
                       width: '100%',
+                      padding: isMobile ? '12px 14px' : '12px 16px',
+                      fontSize: '15px',
+                      fontWeight: 650,
+                      cursor: 'pointer',
                     }}
                   >
                     增加
@@ -679,8 +683,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                     type="button"
                     onClick={() => setAdjustType('decrease')}
                     style={{
-                      ...getButtonStyle(adjustType === 'decrease' ? 'secondary' : 'outline', 'medium', isMobile),
+                      ...getBookingChoiceStyle(adjustType === 'decrease'),
                       width: '100%',
+                      padding: isMobile ? '12px 14px' : '12px 16px',
+                      fontSize: '15px',
+                      fontWeight: 650,
+                      cursor: 'pointer',
                     }}
                   >
                     減少
@@ -1133,8 +1141,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                   type="button"
                                   onClick={() => setEditAdjustType('increase')}
                                   style={{
-                                    ...getButtonStyle(editAdjustType === 'increase' ? 'secondary' : 'outline', 'small', isMobile),
+                                    ...getBookingChoiceStyle(editAdjustType === 'increase'),
                                     width: '100%',
+                                    padding: '10px 12px',
+                                    fontSize: '14px',
+                                    fontWeight: 650,
+                                    cursor: 'pointer',
                                   }}
                                 >
                                   增加
@@ -1143,8 +1155,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                   type="button"
                                   onClick={() => setEditAdjustType('decrease')}
                                   style={{
-                                    ...getButtonStyle(editAdjustType === 'decrease' ? 'secondary' : 'outline', 'small', isMobile),
+                                    ...getBookingChoiceStyle(editAdjustType === 'decrease'),
                                     width: '100%',
+                                    padding: '10px 12px',
+                                    fontSize: '14px',
+                                    fontWeight: 650,
+                                    cursor: 'pointer',
                                   }}
                                 >
                                   減少
