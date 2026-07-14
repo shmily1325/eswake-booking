@@ -11,15 +11,13 @@ import {
   getBadgeStyle,
   getBookingChoiceStyle,
   getButtonStyle,
+  getFontSize,
   getInputStyle,
   getLabelStyle,
   getTextStyle,
 } from '../styles/designSystem'
 
-const typeSize = (
-  variant: keyof typeof designSystem.fontSize,
-  isMobile: boolean,
-) => designSystem.fontSize[variant][isMobile ? 'mobile' : 'desktop']
+const typeSize = getFontSize
 
 /** 詳情區塊標題 */
 const getSectionHeadingStyle = (isMobile: boolean): CSSProperties => ({

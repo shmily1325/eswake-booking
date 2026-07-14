@@ -955,7 +955,7 @@ export function CoachReport({
         {!embedded && (
           <PageHeader 
             user={user} 
-            title={autoFilterByUser ? "📋 我的回報" : "📋 預約回報"}
+            title={autoFilterByUser ? "我的回報" : "回報"}
             showBaoLink={!autoFilterByUser}
             extraLinks={autoFilterByUser ? undefined : [
               { label: '回報管理 →', link: '/coach-admin' }

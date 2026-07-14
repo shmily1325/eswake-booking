@@ -565,7 +565,7 @@ export function MemberManagement() {
       }}>
         <div style={getPageContentShellStyle(isMobile)}>
           <PageHeader 
-            title="會員管理" 
+            title="會員" 
             user={user} 
             showBaoLink={isAdmin(user)} 
             extraLinks={userIsAdmin ? [{ label: '儲值', link: '/member-transaction' }] : undefined}
@@ -649,11 +649,11 @@ export function MemberManagement() {
         borderBottom: `1px solid ${designSystem.colors.border.light}`,
       }}>
         <PageHeader 
-          title="會員管理" 
+          title="會員" 
           user={user} 
           showBaoLink={isAdmin(user)} 
           extraLinks={
-            userIsAdmin ? [{ label: isMobile ? '儲值' : '會員儲值', link: '/member-transaction' }] : undefined
+            userIsAdmin ? [{ label: '儲值', link: '/member-transaction' }] : undefined
           }
         />
         {/* 搜尋欄 + 新增會員按鈕 */}
@@ -1456,7 +1456,7 @@ export function MemberManagement() {
           onClick={() => navigate('/boards')}
           style={getButtonStyle('outline', 'small', isMobile)}
         >
-          置板管理
+          置板
         </button>
       </div>
 

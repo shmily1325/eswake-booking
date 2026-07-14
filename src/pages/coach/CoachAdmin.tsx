@@ -700,10 +700,10 @@ export function CoachAdmin() {
       }}>
         <PageHeader 
           user={user!} 
-          title="💼 回報管理"
+          title="回報管理"
           showBaoLink={isAdmin(user)}
           extraLinks={[
-            { label: '← 預約回報', link: '/coach-report' }
+            { label: '← 回報', link: '/coach-report' }
           ]}
         />
         {/* 最後更新時間 */}

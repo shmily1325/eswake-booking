@@ -281,12 +281,12 @@ export function MemberTransaction() {
         borderBottom: isMobile ? undefined : `1px solid ${designSystem.colors.border.light}`,
       }}>
         <PageHeader 
-          title="會員儲值" 
+          title="儲值" 
           user={user} 
           showBaoLink={isAdmin(user)}
           extraLinks={
             isAdmin(user)
-              ? [{ label: '會員管理', link: '/members' }]
+              ? [{ label: '會員', link: '/members' }]
               : undefined
           }
         />

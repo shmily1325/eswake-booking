@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { getFontSize } from '../styles/designSystem'
 
 interface UserMenuProps {
   user: User
@@ -68,10 +69,10 @@ export function UserMenu({ user }: UserMenuProps) {
           }}
         >
           <div style={{ padding: '12px', borderBottom: '1px solid #eee' }}>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#000' }}>
+            <div style={{ fontSize: getFontSize('body', false), fontWeight: 'bold', color: '#000' }}>
               {user.user_metadata.full_name || user.email}
             </div>
-            <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+            <div style={{ fontSize: getFontSize('caption', false), color: '#666', marginTop: '4px' }}>
               {user.email}
             </div>
           </div>
@@ -86,7 +87,7 @@ export function UserMenu({ user }: UserMenuProps) {
               backgroundColor: 'transparent',
               color: '#dc3545',
               cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
+              fontSize: getFontSize('body', false),
               textAlign: 'left',
               opacity: loading ? 0.6 : 1,
             }}

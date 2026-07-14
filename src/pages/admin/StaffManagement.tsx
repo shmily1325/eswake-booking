@@ -1276,7 +1276,7 @@ export function StaffManagement() {
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
       }}>
         <div style={getPageContentShellStyle(isMobile)}>
-          <PageHeader user={user} title="人員管理" showBaoLink={isAdmin(user)} />
+          <PageHeader user={user} title="人員" showBaoLink={isAdmin(user)} />
           <div style={{
             padding: '40px',
             textAlign: 'center',
@@ -1299,7 +1299,7 @@ export function StaffManagement() {
       paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
     }}>
       <div style={getPageContentShellStyle(isMobile)}>
-        <PageHeader user={user} title="人員管理" showBaoLink={isAdmin(user)} />
+        <PageHeader user={user} title="人員" showBaoLink={isAdmin(user)} />
 
         {/* Tab 切換 */}
         <div style={{

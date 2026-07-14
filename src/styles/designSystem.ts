@@ -145,6 +145,8 @@ interface DesignSystem {
   }
 }
 
+export type FontSizeVariant = keyof DesignSystem['fontSize']
+
 export const designSystem: DesignSystem = {
   fontSize: {
     display: { mobile: '34px', desktop: '48px' },
@@ -494,12 +496,28 @@ export const getLabelStyle = (isMobile: boolean = false): React.CSSProperties =>
   color: designSystem.colors.text.primary,
 })
 
+/** 依 designSystem 字級 token 取字號（全站唯一來源） */
+export function getFontSize(
+  variant: FontSizeVariant,
+  isMobile: boolean = false,
+): string {
+  return designSystem.fontSize[variant][isMobile ? 'mobile' : 'desktop']
+}
+
+/** 需要 number（例如 canvas / 部分 lockup props）時用 */
+export function getFontSizePx(
+  variant: FontSizeVariant,
+  isMobile: boolean = false,
+): number {
+  return Number.parseInt(getFontSize(variant, isMobile), 10)
+}
+
 // 文字樣式生成器
 export const getTextStyle = (
-  variant: 'display' | 'h1' | 'h2' | 'h3' | 'body' | 'bodyLarge' | 'bodySmall' | 'caption',
+  variant: Exclude<FontSizeVariant, 'button'>,
   isMobile: boolean = false
 ): React.CSSProperties => ({
-  fontSize: designSystem.fontSize[variant][isMobile ? 'mobile' : 'desktop'],
+  fontSize: getFontSize(variant, isMobile),
   color: designSystem.colors.text.primary,
   margin: 0,
 })
@@ -514,7 +532,7 @@ export const getEmptyStateStyle = (isMobile: boolean = false): React.CSSProperti
   textAlign: 'center',
   padding: isMobile ? '40px 20px' : '60px 40px',
   color: designSystem.colors.text.secondary,
-  fontSize: designSystem.fontSize.body[isMobile ? 'mobile' : 'desktop'],
+  fontSize: getFontSize('body', isMobile),
 })
 
 // Badge 樣式
@@ -531,8 +549,8 @@ export const getBadgeStyle = (
   }
   
   const sizes = {
-    small: { padding: '2px 8px', fontSize: '11px' },
-    medium: { padding: '4px 12px', fontSize: '12px' },
+    small: { padding: '2px 8px', fontSize: getFontSize('caption', true) },
+    medium: { padding: '4px 12px', fontSize: getFontSize('caption', false) },
   }
   
   return {

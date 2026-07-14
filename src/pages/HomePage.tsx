@@ -16,7 +16,7 @@ import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
 import { ES_BRAND } from '../lib/esBrandTokens'
 import { Footer } from '../components/Footer'
 import { ExternalNavLink } from '../components/ExternalNavLink'
-import { designSystem } from '../styles/designSystem'
+import { designSystem, getFontSize } from '../styles/designSystem'
 import { useState, useEffect, type CSSProperties } from 'react'
 
 /** 首頁導航 track id（去掉 query，避免 nav_coach-time-off?month=… 每次月份不同） */
@@ -318,7 +318,7 @@ export function HomePage() {
       {label && (
         <span
           style={{
-            fontSize: isMobile ? '11px' : '12px',
+            fontSize: getFontSize('caption', isMobile),
             fontWeight: 600,
             color: 'rgba(0, 0, 0, 0.45)',
             letterSpacing: '0.12em',
@@ -356,7 +356,7 @@ export function HomePage() {
         <h2
           style={{
             margin: 0,
-            fontSize: isMobile ? '16px' : '18px',
+            fontSize: getFontSize('h3', isMobile),
             fontWeight: '600',
             color: item.disabled ? designSystem.colors.text.secondary : designSystem.colors.text.primary,
             letterSpacing: '0.5px',
@@ -369,7 +369,7 @@ export function HomePage() {
             style={{
               margin: 0,
               marginTop: item.disabled ? '2px' : 0,
-              fontSize: isMobile ? '12px' : '13px',
+              fontSize: getFontSize('bodySmall', isMobile),
               color: item.disabled ? designSystem.colors.info[700] : designSystem.colors.text.secondary,
               fontStyle: item.disabled ? 'normal' : 'italic',
               fontWeight: item.disabled ? 600 : 400,
@@ -461,11 +461,10 @@ export function HomePage() {
           />
           <h1 style={{ 
             margin: isMobile ? '0 0 12px 0' : '0 0 20px 0',
-            fontSize: isMobile ? '28px' : '42px',
+            fontSize: getFontSize('display', isMobile),
             fontWeight: '800',
             color: designSystem.colors.text.primary,
             letterSpacing: isMobile ? '1px' : '2px',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
           }}>
             {ES_BRAND.name}
           </h1>
@@ -537,7 +536,7 @@ export function HomePage() {
           color: 'white',
           padding: '10px 18px',
           borderRadius: '12px',
-          fontSize: '14px',
+          fontSize: getFontSize('body', isMobile),
           fontWeight: 'bold',
           zIndex: 9999,
           boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
@@ -546,7 +545,7 @@ export function HomePage() {
           gap: '8px',
           border: '2px solid rgba(255, 255, 255, 0.3)'
         }}>
-          <span style={{ fontSize: '18px' }}>✨</span>
+          <span style={{ fontSize: getFontSize('h3', isMobile) }}>✨</span>
           <span>V3</span>
         </div>
       )}

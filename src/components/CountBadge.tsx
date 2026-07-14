@@ -1,3 +1,5 @@
+import { getFontSizePx } from '../styles/designSystem'
+
 /** 導覽／卡片上的數字角標（待結帳等） */
 export function CountBadge({ count }: { count: number }) {
   if (count <= 0) return null
@@ -15,7 +17,7 @@ export function CountBadge({ count }: { count: number }) {
         borderRadius: 9,
         background: '#e53935',
         color: '#fff',
-        fontSize: 11,
+        fontSize: getFontSizePx('caption', true),
         fontWeight: 700,
         lineHeight: 1,
         fontVariantNumeric: 'tabular-nums',

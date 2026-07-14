@@ -6,6 +6,7 @@ import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { isEditorAsync } from '../utils/auth'
 import { useToast, ToastContainer } from '../components/ui'
+import { getFontSize } from '../styles/designSystem'
 
 export function EditorHub() {
   const user = useAuthUser()
@@ -97,18 +98,17 @@ export function EditorHub() {
           </div>
           <h1 style={{
             margin: '0 0 10px 0',
-            fontSize: isMobile ? '32px' : '42px',
+            fontSize: getFontSize('display', isMobile),
             fontWeight: '800',
             color: '#fff',
             letterSpacing: '2px',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             textShadow: '0 2px 4px rgba(0,0,0,0.2)'
           }}>
             小編工具
           </h1>
           <p style={{
             margin: '0 0 20px 0',
-            fontSize: isMobile ? '14px' : '16px',
+            fontSize: getFontSize('body', isMobile),
             color: 'rgba(255,255,255,0.8)',
             fontWeight: '500'
           }}>
@@ -128,7 +128,7 @@ export function EditorHub() {
                 color: '#fff',
                 textDecoration: 'none',
                 borderRadius: '8px',
-                fontSize: isMobile ? '13px' : '14px',
+                fontSize: getFontSize('button', isMobile),
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 fontWeight: '500',
                 transition: 'all 0.2s',
@@ -206,7 +206,7 @@ export function EditorHub() {
                 </div>
                 <h2 style={{
                   margin: 0,
-                  fontSize: isMobile ? '18px' : '20px',
+                  fontSize: getFontSize('h3', isMobile),
                   fontWeight: '700',
                   color: '#333',
                   letterSpacing: '0.5px'
@@ -215,7 +215,7 @@ export function EditorHub() {
                 </h2>
                 <p style={{
                   margin: 0,
-                  fontSize: isMobile ? '13px' : '14px',
+                  fontSize: getFontSize('button', isMobile),
                   color: '#666',
                   lineHeight: '1.4'
                 }}>

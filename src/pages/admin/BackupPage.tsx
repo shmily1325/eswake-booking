@@ -318,21 +318,19 @@ export function BackupPage() {
           >
             系統每天自動備份（台灣時間 02:00）
           </p>
-          {backupHealth.status === 'error' || backupHealth.status === 'warning' ? (
-            <p
-              style={{
-                margin: '12px 0 0 0',
-                fontSize: 14,
-                fontWeight: 500,
-                color: backupHealth.color,
-                lineHeight: 1.5,
-              }}
-            >
-              {backupHealth.status === 'error'
-                ? '請向下手動執行雲端備份，或檢查自動備份設定。'
-                : '建議確認自動備份是否正常，必要時手動備一次。'}
-            </p>
-          ) : null}
+            {(backupHealth.status === 'error' || backupHealth.status === 'warning') && (
+              <p
+                style={{
+                  margin: '12px 0 0 0',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: backupHealth.color,
+                  lineHeight: 1.5,
+                }}
+              >
+                {backupHealth.status === 'error' ? '請通知工程師' : '請手動備份'}
+              </p>
+            )}
         </section>
 
         <section style={getCardStyle(isMobile)}>
@@ -500,7 +498,7 @@ export function BackupPage() {
               onClick={backupFullDatabase}
               disabled={isAnyLoading}
               style={{
-                ...getButtonStyle('outline', 'large', isMobile),
+                ...getButtonStyle('secondary', 'large', isMobile),
                 flex: isMobile ? undefined : 1,
                 width: isMobile ? '100%' : undefined,
                 opacity: isAnyLoading ? 0.6 : 1,

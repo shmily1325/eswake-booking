@@ -894,7 +894,7 @@ export function Statistics() {
         padding: isMobile ? '16px' : '24px'
       }}>
         <PageHeader
-          title="📊 Dashboard"
+          title="Dashboard"
           user={user}
           showBaoLink={isAdmin(user)}
         />

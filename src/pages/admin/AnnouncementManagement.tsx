@@ -21,6 +21,7 @@ import {
 const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
 const cardShadow = designSystem.shadows.elevation[1]
+const checkboxAccent = designSystem.colors.primary[500]
 
 interface Announcement {
   id: number
@@ -537,7 +538,7 @@ export function AnnouncementManagement() {
                 type="checkbox"
                 checked={newShowOneDayEarly}
                 onChange={(e) => setNewShowOneDayEarly(e.target.checked)}
-                style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0 }}
+                style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
               />
               <span>提前一天顯示</span>
             </label>
@@ -571,7 +572,7 @@ export function AnnouncementManagement() {
                       setNewRestrictEndDate(newEndDate)
                     }
                   }}
-                  style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0 }}
+                  style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
                 />
                 <span>啟用預約限制</span>
               </label>
@@ -635,7 +636,7 @@ export function AnnouncementManagement() {
                       type="checkbox"
                       checked={newRestrictAllDay}
                       onChange={(e) => { setNewRestrictAllDay(e.target.checked); setNeedsRecalc(true); setImpactedBookings([]) }}
-                      style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer' }}
+                      style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', accentColor: checkboxAccent }}
                     />
                     <span>全天</span>
                   </label>
@@ -977,7 +978,7 @@ export function AnnouncementManagement() {
                               type="checkbox"
                               checked={editShowOneDayEarly}
                               onChange={(e) => setEditShowOneDayEarly(e.target.checked)}
-                              style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0 }}
+                              style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
                             />
                             <span>提前一天顯示</span>
                           </label>
@@ -997,7 +998,7 @@ export function AnnouncementManagement() {
                               type="checkbox"
                               checked={editRestrictEnabled}
                               onChange={(e) => setEditRestrictEnabled(e.target.checked)}
-                              style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0 }}
+                              style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
                             />
                             <span>啟用預約限制</span>
                           </label>
@@ -1040,7 +1041,7 @@ export function AnnouncementManagement() {
                                     type="checkbox"
                                     checked={editRestrictAllDay}
                                     onChange={(e) => setEditRestrictAllDay(e.target.checked)}
-                                    style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer' }}
+                                    style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', accentColor: checkboxAccent }}
                                   />
                                   <span>全天</span>
                                 </label>

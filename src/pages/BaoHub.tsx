@@ -10,7 +10,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { isAdmin } from '../utils/auth'
 import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
 import { ExternalNavLink } from '../components/ExternalNavLink'
-import { designSystem } from '../styles/designSystem'
+import { designSystem, getFontSize, getFontSizePx } from '../styles/designSystem'
 import { supabase } from '../lib/supabase'
 
 type BackupHealthStatus = 'ok' | 'warning' | 'error' | 'unknown'
@@ -197,7 +197,7 @@ export function BaoHub() {
 
   const titleStyle: CSSProperties = {
     margin: 0,
-    fontSize: isMobile ? '16px' : '18px',
+    fontSize: getFontSize('h3', isMobile),
     fontWeight: 600,
     color: designSystem.colors.text.primary,
     letterSpacing: '0.5px',
@@ -208,7 +208,7 @@ export function BaoHub() {
       style={{
         minHeight: '100dvh',
         background: designSystem.colors.background.main,
-        padding: isMobile ? '12px 16px' : '20px',
+        padding: isMobile ? '24px 16px' : '40px 20px',
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
         display: 'flex',
         flexDirection: 'column',
@@ -226,7 +226,7 @@ export function BaoHub() {
         <div
           style={{
             textAlign: 'center',
-            marginBottom: isMobile ? '24px' : '32px',
+            marginBottom: isMobile ? '28px' : '50px',
           }}
         >
           <EsBrandLockup
@@ -234,7 +234,8 @@ export function BaoHub() {
             subtitle="BAO"
             align="center"
             logoSize={isMobile ? 36 : 40}
-            brandFontSize={isMobile ? 17 : 18}
+            brandFontSize={getFontSizePx('bodyLarge', isMobile)}
+            isMobile={isMobile}
             style={{
               flexDirection: 'column',
               alignItems: 'center',
@@ -256,7 +257,7 @@ export function BaoHub() {
               style={{
                 color: designSystem.colors.text.secondary,
                 textDecoration: 'none',
-                fontSize: isMobile ? '13px' : '14px',
+                fontSize: getFontSize('button', isMobile),
                 fontWeight: 500,
                 letterSpacing: '0.02em',
               }}
@@ -284,7 +285,7 @@ export function BaoHub() {
                   gap: 8,
                   color: backupHealthColor(backupHealth.status),
                   textDecoration: 'none',
-                  fontSize: isMobile ? 12 : 13,
+                  fontSize: getFontSize('bodySmall', isMobile),
                   fontWeight: backupHealth.status === 'ok' ? 500 : 600,
                   letterSpacing: '0.02em',
                 }}
@@ -308,13 +309,13 @@ export function BaoHub() {
               {(backupHealth.status === 'warning' || backupHealth.status === 'error') && (
                 <span
                   style={{
-                    fontSize: isMobile ? 11 : 12,
+                    fontSize: getFontSize('caption', isMobile),
                     fontWeight: 500,
                     color: designSystem.colors.text.secondary,
                     letterSpacing: '0.01em',
                   }}
                 >
-                  請通知工程師處理備份
+                  {backupHealth.status === 'error' ? '請通知工程師' : '請手動備份'}
                 </span>
               )}
             </div>
@@ -323,14 +324,16 @@ export function BaoHub() {
 
         {/* Feature Cards by Section */}
         {baoFeatures.map((section) => (
-          <div key={section.section} style={{ marginBottom: isMobile ? '24px' : '28px' }}>
+          <div key={section.section} style={{ marginBottom: isMobile ? '32px' : '40px' }}>
             <h3
               style={{
-                margin: '0 0 12px 0',
-                fontSize: isMobile ? '13px' : '14px',
-                fontWeight: 600,
-                color: designSystem.colors.text.secondary,
-                letterSpacing: '0.06em',
+                margin: '0 0 20px 0',
+                fontSize: getFontSize('h2', isMobile),
+                fontWeight: 700,
+                color: designSystem.colors.text.primary,
+                paddingBottom: '12px',
+                borderBottom: `2px solid ${designSystem.colors.border.light}`,
+                letterSpacing: '0.5px',
               }}
             >
               {section.section}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { getEmptyStateStyle } from '../../styles/designSystem'
+import { getEmptyStateStyle, getFontSize } from '../../styles/designSystem'
 import { useResponsive } from '../../hooks/useResponsive'
 
 interface EmptyStateProps {
@@ -22,11 +22,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <div style={{ fontSize: isMobile ? '48px' : '64px', marginBottom: '16px' }}>
         {icon}
       </div>
-      <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '600', marginBottom: '8px' }}>
+      <div style={{ fontSize: getFontSize('h3', isMobile), fontWeight: '600', marginBottom: '8px' }}>
         {title}
       </div>
       {description && (
-        <div style={{ fontSize: isMobile ? '14px' : '15px', marginBottom: '16px' }}>
+        <div style={{ fontSize: getFontSize('body', isMobile), marginBottom: '16px' }}>
           {description}
         </div>
       )}

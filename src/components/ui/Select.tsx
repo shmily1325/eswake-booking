@@ -1,5 +1,5 @@
 import React from 'react'
-import { getInputStyle, getLabelStyle, getFormGroupStyle } from '../../styles/designSystem'
+import { getFontSize, getInputStyle, getLabelStyle, getFormGroupStyle } from '../../styles/designSystem'
 import { useResponsive } from '../../hooks/useResponsive'
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -31,12 +31,12 @@ export const Select: React.FC<SelectProps> = ({
         {children}
       </select>
       {error && (
-        <div style={{ color: '#f44336', fontSize: '12px', marginTop: '4px' }}>
+        <div style={{ color: '#f44336', fontSize: getFontSize('caption', isMobile), marginTop: '4px' }}>
           {error}
         </div>
       )}
       {helperText && !error && (
-        <div style={{ color: '#666', fontSize: '12px', marginTop: '4px' }}>
+        <div style={{ color: '#666', fontSize: getFontSize('caption', isMobile), marginTop: '4px' }}>
           {helperText}
         </div>
       )}

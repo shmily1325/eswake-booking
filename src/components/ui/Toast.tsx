@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { designSystem } from '../../styles/designSystem'
+import { designSystem, getFontSize } from '../../styles/designSystem'
 import { toast as globalToast } from '../../utils/toast'
 import { useResponsive } from '../../hooks/useResponsive'
 
@@ -78,14 +78,14 @@ const Toast: React.FC<ToastProps> = ({ message, onClose }) => {
   }
 
   const iconStyle: React.CSSProperties = {
-    fontSize: '20px',
+    fontSize: getFontSize('h2', isMobile),
     fontWeight: 'bold',
     flexShrink: 0,
   }
 
   const messageStyle: React.CSSProperties = {
     flex: 1,
-    fontSize: '14px',
+    fontSize: getFontSize('body', isMobile),
     lineHeight: '1.5',
     whiteSpace: 'pre-line',
   }

@@ -41,12 +41,12 @@ const NAV_LINK_TEXT: Record<string, string> = {
   '/': 'HOME',
   '/bao': 'BAO',
   '/order-settle': '訂單結帳',
-  '/products': '商品訂單',
+  '/products': '商品',
   '/products/orders': '訂單開單',
-  '/member-transaction': '會員儲值',
-  '/members': '會員管理',
+  '/member-transaction': '儲值',
+  '/members': '會員',
   '/coach-admin': '回報管理',
-  '/coach-report': '預約回報',
+  '/coach-report': '回報',
 }
 
 const LEADING_EMOJI_RE = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u
@@ -264,6 +264,7 @@ export function PageHeader({
             subtitle={displayTitle}
             variant="onDark"
             logoSize={isMobile ? 28 : 34}
+            isMobile={isMobile}
             style={{ minWidth: 0, alignItems: 'center' }}
           />
           {useTwoRowMobile && user && <UserMenu user={user} />}

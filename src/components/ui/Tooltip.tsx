@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { designSystem } from '../../styles/designSystem'
+import { designSystem, getFontSize } from '../../styles/designSystem'
 
 interface TooltipProps {
   content: string
@@ -77,7 +77,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
     color: 'white',
     padding: `${designSystem.spacing.xs} ${designSystem.spacing.sm}`,
     borderRadius: designSystem.borderRadius.sm,
-    fontSize: '12px',
+    fontSize: getFontSize('caption', false),
     lineHeight: '1.4',
     maxWidth: '200px',
     zIndex: designSystem.zIndex.tooltip,

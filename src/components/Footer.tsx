@@ -1,6 +1,7 @@
 import { useResponsive } from '../hooks/useResponsive'
 import { BrandCopyrightBlock } from './BrandCopyrightBlock'
 import { ES_BRAND } from '../lib/esBrandTokens'
+import { getFontSize } from '../styles/designSystem'
 
 export function Footer() {
   const { isMobile } = useResponsive()
@@ -12,7 +13,7 @@ export function Footer() {
       paddingTop: '30px',
       borderTop: '1px solid rgba(0, 0, 0, 0.1)',
       color: '#666',
-      fontSize: isMobile ? '12px' : '14px'
+      fontSize: getFontSize('bodySmall', isMobile),
     }}>
       <BrandCopyrightBlock
         subtitle={ES_BRAND.adminSystemLabel}

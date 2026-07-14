@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ES_BRAND } from '../lib/esBrandTokens'
+import { getFontSizePx } from '../styles/designSystem'
 
 interface EsBrandLockupProps {
   brand?: string
@@ -9,8 +10,9 @@ interface EsBrandLockupProps {
   subtitleClassName?: string
   variant?: 'onDark' | 'onLight'
   logoSize?: number
-  /** 品牌名字級（LIFF header 可略放大） */
+  /** 品牌名字級（LIFF header 可略放大）；預設 body token */
   brandFontSize?: number
+  isMobile?: boolean
   /** 點擊 logo／字標導向（Shop 首頁等） */
   brandTo?: string
   trailing?: ReactNode
@@ -26,7 +28,8 @@ export function EsBrandLockup({
   subtitleClassName,
   variant = 'onDark',
   logoSize = 32,
-  brandFontSize = 15,
+  brandFontSize,
+  isMobile = false,
   brandTo,
   trailing,
   align = 'start',
@@ -36,6 +39,8 @@ export function EsBrandLockup({
   const brandColor = onDark ? '#fff' : ES_BRAND.headerBg
   const subtitleColor = onDark ? 'rgba(255,255,255,0.78)' : '#666'
   const logoSrc = onDark ? ES_BRAND.logoWhite : ES_BRAND.logoBlack
+  const resolvedBrandSize = brandFontSize ?? getFontSizePx('body', isMobile)
+  const subtitleSize = getFontSizePx('bodySmall', isMobile)
 
   const centered = align === 'center'
 
@@ -58,7 +63,7 @@ export function EsBrandLockup({
       <div style={{ minWidth: 0, textAlign: centered ? 'center' : undefined }}>
         <div
           style={{
-            fontSize: brandFontSize,
+            fontSize: resolvedBrandSize,
             fontWeight: 700,
             color: brandColor,
             lineHeight: 1.15,
@@ -71,7 +76,7 @@ export function EsBrandLockup({
           <div
             className={subtitleClassName}
             style={{
-              fontSize: 13,
+              fontSize: subtitleSize,
               fontWeight: 600,
               color: subtitleColor,
               marginTop: 3,

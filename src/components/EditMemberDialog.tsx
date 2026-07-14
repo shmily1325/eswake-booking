@@ -6,6 +6,7 @@ import { MemoRecordCheckbox } from './MemoRecordCheckbox'
 import {
   designSystem,
   getButtonStyle,
+  getFontSize,
   getInputStyle,
   getLabelStyle,
   getTextStyle,
@@ -320,7 +321,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
 
   const inputStyle = getInputStyle(isMobile)
   const typeSize = (variant: keyof typeof designSystem.fontSize) =>
-    designSystem.fontSize[variant][isMobile ? 'mobile' : 'desktop']
+    getFontSize(variant, isMobile)
   const requiredMark = { color: designSystem.colors.danger[500] }
   const quietHint = {
     fontSize: typeSize('bodySmall'),

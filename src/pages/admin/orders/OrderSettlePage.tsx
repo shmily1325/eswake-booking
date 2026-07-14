@@ -76,12 +76,12 @@ export function OrderSettlePage() {
   return (
     <AdminPageShell>
       <PageHeader
-        title="🧾 訂單結帳"
+        title="訂單結帳"
         user={user}
         showBaoLink={isAdmin(user)}
         productHubSection="settle"
         extraLinks={[
-          { label: isMobile ? '💰' : '💰 會員儲值', link: '/member-transaction' },
+          { label: isMobile ? '💰' : '💰 儲值', link: '/member-transaction' },
         ]}
       />
 

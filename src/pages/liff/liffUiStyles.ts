@@ -1,15 +1,15 @@
 import type { CSSProperties } from 'react'
 import { ES_BRAND } from '../../lib/esBrandTokens'
-import { designSystem } from '../../styles/designSystem'
+import { designSystem, getFontSizePx } from '../../styles/designSystem'
 
 const c = designSystem.colors
 
-/** LIFF 共用字級（與預約 bookTheme 對齊；數值對應 designSystem mobile body／h3） */
+/** LIFF 共用字級（對齊 designSystem mobile scale） */
 export const LIFF_TYPE = {
-  display: 20,
-  title: 16,
-  body: 14,
-  caption: 12,
+  display: getFontSizePx('h2', true),
+  title: getFontSizePx('h3', true),
+  body: getFontSizePx('body', true),
+  caption: getFontSizePx('bodySmall', true),
 } as const
 
 /**

@@ -1,5 +1,5 @@
 import React from 'react'
-import { designSystem } from '../../styles/designSystem'
+import { designSystem, getFontSize } from '../../styles/designSystem'
 
 export type BookingStatus = 'confirmed' | 'pending' | 'checked_in' | 'completed' | 'cancelled'
 
@@ -76,7 +76,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         borderRadius: designSystem.borderRadius.full,
         background: config.bg,
         color: config.color,
-        fontSize: size === 'small' ? '11px' : '12px',
+        fontSize: size === 'small' ? getFontSize('caption', true) : getFontSize('caption', false),
         fontWeight: '600',
         border: `1px solid ${config.color}`,
       }}

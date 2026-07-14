@@ -2,6 +2,7 @@
 
 import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
+import { getFontSizePx } from '../../../styles/designSystem'
 import { displayNameForLiff } from '../../../utils/liffMemberDisplay'
 import type { Member } from '../types'
 
@@ -28,7 +29,8 @@ export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: L
       <EsBrandLockup
         subtitle={ES_BRAND.memberAreaLabel}
         logoSize={42}
-        brandFontSize={17}
+        brandFontSize={getFontSizePx('bodyLarge', true)}
+        isMobile
         trailing={(
           <button
             type="button"
@@ -51,7 +53,7 @@ export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: L
           >
             <span
               style={{
-                fontSize: 18,
+                fontSize: getFontSizePx('h3', true),
                 display: 'inline-block',
                 lineHeight: 1,
                 animation: refreshing ? 'spin 1s linear infinite' : 'none',
@@ -67,7 +69,7 @@ export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: L
         {hiName ? (
           <div
             style={{
-              fontSize: 16,
+              fontSize: getFontSizePx('h3', true),
               fontWeight: 500,
               letterSpacing: '-0.01em',
               color: 'rgba(255,255,255,0.9)',
@@ -80,7 +82,7 @@ export function LiffHeader({ member, lineDisplayName, refreshing, onRefresh }: L
         <div
           style={{
             marginTop: hiName ? 4 : 0,
-            fontSize: 13,
+            fontSize: getFontSizePx('bodySmall', false),
             fontWeight: 400,
             color: 'rgba(255,255,255,0.62)',
             lineHeight: 1.35,

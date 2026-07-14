@@ -116,7 +116,7 @@ export function ProductHub() {
 
       <PageHeader
         user={user}
-        title="📦 商品訂單"
+        title="商品"
         showBaoLink={userIsAdmin}
         productHubSection={onOrders ? 'orders' : 'inventory'}
         showOrderSettleLink={userIsAdmin}

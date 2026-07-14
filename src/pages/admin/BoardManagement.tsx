@@ -123,6 +123,10 @@ export function BoardManagement() {
     }
   }
 
+  useEffect(() => {
+    loadBoardData()
+  }, [])
+
   const getSlotInfo = (slotNumber: number): BoardSlot | null => {
     return boardSlots.find(s => s.slot_number === slotNumber) || null
   }
@@ -586,7 +590,7 @@ export function BoardManagement() {
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
       }}>
         <div style={getPageContentShellStyle(isMobile)}>
-          <PageHeader title="置板區管理" user={user} showBaoLink={isAdmin(user)} />
+          <PageHeader title="置板" user={user} showBaoLink={isAdmin(user)} />
           <div style={{
             padding: '40px',
             textAlign: 'center',
@@ -609,7 +613,7 @@ export function BoardManagement() {
       paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
     }}>
       <div style={getPageContentShellStyle(isMobile)}>
-        <PageHeader title="置板區管理" user={user} showBaoLink={isAdmin(user)} />
+        <PageHeader title="置板" user={user} showBaoLink={isAdmin(user)} />
 
       {/* 統計資訊 */}
       <div style={{

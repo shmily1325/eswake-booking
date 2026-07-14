@@ -408,7 +408,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
       }
     >
       <div style={embedded ? { maxWidth: 1100, margin: '0 auto' } : getPageContentShellStyle(isMobile)}>
-        {!embedded && <PageHeader user={user} title="商品管理" showBaoLink={isAdmin(user)} />}
+        {!embedded && <PageHeader user={user} title="商品" showBaoLink={isAdmin(user)} />}
 
         {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面 / 缺標籤 / 已售完（皆為 SKU 種數，隨搜尋變動） */}
         <InventoryDashboard

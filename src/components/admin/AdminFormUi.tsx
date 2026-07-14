@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { getFontSize } from '../../styles/designSystem'
 
 let modalKeyframesInjected = false
 
@@ -118,7 +119,7 @@ export function AdminModal({
               borderRadius: '999px',
               background: closeHover ? '#eef0f3' : 'transparent',
               color: '#a1a5b0',
-              fontSize: '20px',
+              fontSize: getFontSize('h2', false),
               lineHeight: 1,
               cursor: 'pointer',
               transition: 'background 0.15s',
@@ -145,9 +146,9 @@ export function AdminModalHeader({
   const colors = { blue: '#365d66', amber: '#7d5521', orange: '#7d5521' }
   return (
     <div style={{ marginBottom: '20px' }}>
-      <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 750, color: '#1d1d1f', letterSpacing: '-0.03em' }}>{title}</h2>
+      <h2 style={{ margin: 0, fontSize: getFontSize('h2', false), fontWeight: 750, color: '#1d1d1f', letterSpacing: '-0.03em' }}>{title}</h2>
       {subtitle && (
-        <p style={{ margin: '6px 0 0', fontSize: '14px', color: colors[accent], fontWeight: 600 }}>
+        <p style={{ margin: '6px 0 0', fontSize: getFontSize('body', false), color: colors[accent], fontWeight: 600 }}>
           {subtitle}
         </p>
       )}
@@ -167,12 +168,12 @@ export function FormFieldLabel({
       display: 'block',
       marginBottom: '8px',
       fontWeight: 600,
-      fontSize: '14px',
+      fontSize: getFontSize('body', false),
       color: '#1d1d1f',
     }}>
       {children}
       {optional && (
-        <span style={{ color: '#a1a5b0', fontWeight: 400, fontSize: '13px', marginLeft: '6px' }}>
+        <span style={{ color: '#a1a5b0', fontWeight: 400, fontSize: getFontSize('bodySmall', false), marginLeft: '6px' }}>
           （選填）
         </span>
       )}
@@ -199,7 +200,7 @@ export function PreviewBanner({ children }: { children: ReactNode }) {
       background: '#edf3f5',
       borderRadius: '16px',
       border: '1px solid rgba(95, 135, 145, 0.22)',
-      fontSize: '14px',
+      fontSize: getFontSize('body', false),
       color: '#365d66',
       lineHeight: 1.5,
     }}>
@@ -226,7 +227,7 @@ export function CrossDayToggle({
         gap: '8px',
         marginBottom: '12px',
         cursor: 'pointer',
-        fontSize: '14px',
+        fontSize: getFontSize('body', false),
         color: '#6b6f7a',
         userSelect: 'none',
       }}
@@ -337,7 +338,7 @@ export function SegmentedControl<T extends string>({
               background: selected ? activeBg : disabled ? '#f4f5f7' : 'white',
               color: selected ? activeColor : disabled ? '#a1a5b0' : '#1d1d1f',
               fontWeight: selected ? 700 : 500,
-              fontSize: '14px',
+              fontSize: getFontSize('body', false),
               cursor: disabled ? 'not-allowed' : 'pointer',
               opacity: disabled ? 0.5 : 1,
               textAlign: 'center',
@@ -348,7 +349,7 @@ export function SegmentedControl<T extends string>({
           >
             {opt.label}
             {opt.hint && (
-              <div style={{ fontSize: '11px', fontWeight: 400, marginTop: '2px', opacity: 0.85 }}>
+              <div style={{ fontSize: getFontSize('caption', true), fontWeight: 400, marginTop: '2px', opacity: 0.85 }}>
                 {opt.hint}
               </div>
             )}
@@ -409,7 +410,7 @@ export function TimeSelectField({
 export function HintBox({ children }: { children: ReactNode }) {
   return (
     <div style={{
-      fontSize: '12px',
+      fontSize: getFontSize('caption', false),
       color: '#6b6f7a',
       marginTop: '8px',
       lineHeight: 1.55,

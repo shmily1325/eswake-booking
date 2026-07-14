@@ -198,12 +198,36 @@ Use:
 - Quiet secondary text.
 - Slightly tighter letter spacing for large headings when appropriate.
 - Consistent font weight ranges.
+- **`designSystem.fontSize` / `getFontSize(variant, isMobile)` as the only size source** — do not invent one-off `12px` / `14px` / `16px` in page styles.
+
+### Type scale
+
+Implemented in `src/styles/designSystem.ts`. Mobile / desktop:
+
+| Token | Mobile | Desktop | Role |
+|-------|--------|---------|------|
+| `display` | 34 | 48 | Hero / large metrics |
+| `h1` | 24 | 32 | Page-level title (rare; header uses brand lockup) |
+| `h2` | 19 | 24 | Major section / dialog title |
+| `h3` | 16 | 18 | Section heading / menu card title |
+| `bodyLarge` | 16 | 17 | Emphasized body / key numbers in lists |
+| `body` | 14 | 15 | Default reading text |
+| `bodySmall` | 12 | 13 | Secondary / meta / nav chrome |
+| `caption` | 11 | 12 | Hints, badges, timestamps |
+| `button` | 13 | 14 | Button labels |
+
+Exceptions that may stay fixed:
+
+- Form `input` / `textarea` / `select` at **16px** on mobile (iOS zoom prevention).
+- Monospace for code / raw audit payloads.
+- Print / label export fonts (`LABEL_FONT`) when canvas measurement requires a system stack.
 
 Avoid:
 
 - Making every label bold.
 - Using color as the only hierarchy tool.
 - Small dense text inside too many bordered containers.
+- Hardcoding font sizes that duplicate the table above.
 
 ## Layout And Rhythm
 
@@ -287,5 +311,6 @@ Use this guide to decide what the UI should feel like. Use `src/styles/designSys
 - Which radius, shadow, and spacing values are available?
 - How do shared buttons, cards, badges, inputs, and page surfaces render?
 - Booking form helpers: `getBookingChoiceStyle`, `getBookingFlagBoxStyle`
+- Typography sizes: `getFontSize` / `getFontSizePx` / `designSystem.fontSize`
 
 Both files should stay aligned. If the visual direction changes, update this guide first, then adjust tokens.
