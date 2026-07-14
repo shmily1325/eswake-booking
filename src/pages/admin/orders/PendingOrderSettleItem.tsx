@@ -1,9 +1,16 @@
+/**
+ * Design thinking:
+ * Current feel: blue/gray gradients, Material settle CTA colors, and emoji chrome.
+ * Hierarchy: order identity → payment choice → lines → one primary settle action.
+ * Primary task: confirm payment method and settle pending bill lines.
+ */
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/ui'
 import { DecimalTextInput, MoneyInput } from '../../../components/ui/numericInputs'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
+import { designSystem, getButtonStyle, getBookingChoiceStyle, getFontSize } from '../../../styles/designSystem'
 import { formatAttributes } from '../products/schema'
 import { settleShopOrder, shopOrderErrorMessage } from './api'
 import {
@@ -13,6 +20,8 @@ import {
   tryParseDiscountFactor,
 } from './settleUtils'
 import type { OrderPaymentMethod, ShopOrderWithItems } from './types'
+
+const { colors, borderRadius, shadows, spacing } = designSystem
 
 interface SettleLineState {
   item_id: string
@@ -31,10 +40,10 @@ interface Props {
   onComplete: () => void
 }
 
-const PAYMENT_OPTIONS: { value: OrderPaymentMethod; label: string; icon: string }[] = [
-  { value: 'balance', label: '扣儲值', icon: '💰' },
-  { value: 'transfer', label: '匯款', icon: '🏦' },
-  { value: 'cash', label: '現金', icon: '💵' },
+const PAYMENT_OPTIONS: { value: OrderPaymentMethod; label: string }[] = [
+  { value: 'balance', label: '扣儲值' },
+  { value: 'transfer', label: '匯款' },
+  { value: 'cash', label: '現金' },
 ]
 
 function buildLineStates(order: ShopOrderWithItems): SettleLineState[] {
@@ -281,12 +290,14 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   return (
     <div
       style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '16px',
-        marginBottom: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        border: expanded ? '2px solid #4a90e2' : '1px solid #e0e0e0',
+        background: colors.background.card,
+        borderRadius: borderRadius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.md,
+        boxShadow: shadows.elevation[1],
+        border: expanded
+          ? `1.5px solid ${colors.primary[500]}`
+          : `1px solid ${colors.border.light}`,
       }}
     >
       <div
@@ -310,19 +321,41 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px', color: '#222' }}>
+          <div
+            style={{
+              fontSize: getFontSize('body', isMobile),
+              fontWeight: 600,
+              marginBottom: 6,
+              color: colors.text.primary,
+            }}
+          >
             {expanded ? '▼' : '▶'} {order.contact_name}
-            <span style={{ fontWeight: 400, color: '#999', fontSize: '12px' }}> · {order.order_no}</span>
+            <span
+              style={{
+                fontWeight: 400,
+                color: colors.text.disabled,
+                fontSize: getFontSize('caption', isMobile),
+              }}
+            >
+              {' '}
+              · {order.order_no}
+            </span>
           </div>
-          <div style={{ fontSize: '13px', color: '#666' }}>
+          <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: colors.text.secondary }}>
             {lines.length} 品項 · ${listTotal.toLocaleString()}
           </div>
         </div>
       </div>
 
       {expanded && (
-        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
-          <div style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div
+          style={{
+            marginTop: spacing.lg,
+            paddingTop: spacing.lg,
+            borderTop: `1px solid ${colors.border.light}`,
+          }}
+        >
+          <div style={{ marginBottom: spacing.lg, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {PAYMENT_OPTIONS.map((opt) => {
               const active = paymentMethod === opt.value
               return (
@@ -332,17 +365,14 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   data-track={`product_order_settle_payment_${opt.value}`}
                   onClick={() => setPaymentMethod(opt.value)}
                   style={{
+                    ...getBookingChoiceStyle(active),
                     padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: active ? '2px solid #4a90e2' : '1px solid #ddd',
-                    background: active ? '#e3f2fd' : '#fff',
-                    color: active ? '#1565c0' : '#444',
-                    fontSize: '13px',
+                    fontSize: getFontSize('bodySmall', isMobile),
                     fontWeight: active ? 600 : 500,
                     cursor: 'pointer',
                   }}
                 >
-                  {opt.icon} {opt.label}
+                  {opt.label}
                 </button>
               )
             })}
@@ -351,11 +381,13 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
           {paymentMethod === 'balance' && (
             <div
               style={{
-                marginBottom: '16px',
-                padding: '12px',
-                background: isProxyCharge ? '#fff3e0' : '#f5f5f5',
-                borderRadius: '8px',
-                border: isProxyCharge ? '2px solid #ffcc80' : '1px solid #e0e0e0',
+                marginBottom: spacing.lg,
+                padding: spacing.md,
+                background: isProxyCharge ? colors.warning[50] : colors.secondary[50],
+                borderRadius: borderRadius.md,
+                border: isProxyCharge
+                  ? `1px solid ${colors.warning[500]}`
+                  : `1px solid ${colors.border.light}`,
               }}
             >
               <div
@@ -364,28 +396,52 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   justifyContent: 'space-between',
                   alignItems: 'flex-start',
                   flexWrap: 'wrap',
-                  gap: '8px',
+                  gap: spacing.sm,
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>扣款帳戶：</div>
-                  <div style={{ fontSize: '15px', fontWeight: 600 }}>
+                  <div
+                    style={{
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      color: colors.text.secondary,
+                      marginBottom: 4,
+                    }}
+                  >
+                    扣款帳戶：
+                  </div>
+                  <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: 600 }}>
                     {isProxyCharge ? (
                       <div>
-                        <span style={{ color: '#e65100' }}>
-                          🔄 {chargeMemberName}
-                          <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px', fontWeight: 400 }}>
+                        <span style={{ color: colors.warning[700] }}>
+                          {chargeMemberName}
+                          <span
+                            style={{
+                              fontSize: getFontSize('caption', isMobile),
+                              color: colors.text.disabled,
+                              marginLeft: 8,
+                              fontWeight: 400,
+                            }}
+                          >
                             (代扣 {order.contact_name} 的費用)
                           </span>
                         </span>
                         {memberBalance !== null && (
-                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', fontWeight: 400 }}>
-                            💰 儲值 ${memberBalance.toLocaleString()}
+                          <div
+                            style={{
+                              fontSize: getFontSize('caption', isMobile),
+                              color: colors.text.secondary,
+                              marginTop: 4,
+                              fontWeight: 400,
+                            }}
+                          >
+                            儲值 ${memberBalance.toLocaleString()}
                             {projectedBalance !== null && (
                               <span
                                 style={{
                                   marginLeft: 8,
-                                  color: projectedBalanceInsufficient ? '#c62828' : '#2e7d32',
+                                  color: projectedBalanceInsufficient
+                                    ? colors.danger[700]
+                                    : colors.success[700],
                                   fontWeight: 600,
                                 }}
                               >
@@ -400,13 +456,22 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                       <div>
                         <span>{chargeMemberName || order.contact_name}</span>
                         {memberBalance !== null && (
-                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', fontWeight: 400 }}>
-                            💰 儲值 ${memberBalance.toLocaleString()}
+                          <div
+                            style={{
+                              fontSize: getFontSize('caption', isMobile),
+                              color: colors.text.secondary,
+                              marginTop: 4,
+                              fontWeight: 400,
+                            }}
+                          >
+                            儲值 ${memberBalance.toLocaleString()}
                             {projectedBalance !== null && (
                               <span
                                 style={{
                                   marginLeft: 8,
-                                  color: projectedBalanceInsufficient ? '#c62828' : '#2e7d32',
+                                  color: projectedBalanceInsufficient
+                                    ? colors.danger[700]
+                                    : colors.success[700],
                                   fontWeight: 600,
                                 }}
                               >
@@ -420,23 +485,17 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                     )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {isProxyCharge ? (
                     <button
                       type="button"
                       data-track="product_order_settle_reset_charge"
                       onClick={resetChargeToOrderMember}
                       style={{
-                        padding: '6px 12px',
-                        background: '#757575',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        cursor: 'pointer',
+                        ...getButtonStyle('secondary', 'small', isMobile),
                       }}
                     >
-                      ✕ 取消代扣
+                      取消代扣
                     </button>
                   ) : (
                     <button
@@ -444,16 +503,10 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                       data-track="product_order_settle_switch_charge"
                       onClick={() => setShowMemberSearch(true)}
                       style={{
-                        padding: '6px 12px',
-                        background: '#ff9800',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        cursor: 'pointer',
+                        ...getButtonStyle('warning', 'small', isMobile),
                       }}
                     >
-                      🔄 切換扣款會員
+                      切換扣款會員
                     </button>
                   )}
                 </div>
@@ -470,12 +523,20 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                 alignItems: 'center',
                 marginBottom: 14,
                 padding: '8px 10px',
-                background: '#f8f9fa',
-                borderRadius: 8,
-                border: '1px solid #e9ecef',
+                background: colors.secondary[50],
+                borderRadius: borderRadius.md,
+                border: `1px solid ${colors.border.light}`,
               }}
             >
-              <span style={{ fontSize: 13, color: '#333', fontWeight: 500 }}>整單</span>
+              <span
+                style={{
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  color: colors.text.primary,
+                  fontWeight: 500,
+                }}
+              >
+                整單
+              </span>
               <DecimalTextInput
                 compact
                 value={globalDiscountInput}
@@ -487,20 +548,16 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                   }
                 }}
               />
-              <span style={{ fontSize: 12, color: '#888' }}>折</span>
+              <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>
+                折
+              </span>
               <button
                 type="button"
                 data-track="product_order_settle_apply_discount"
                 onClick={applyGlobalDiscount}
                 style={{
+                  ...getButtonStyle('secondary', 'small', isMobile),
                   padding: '6px 10px',
-                  borderRadius: 6,
-                  border: '1px solid #90caf9',
-                  background: '#e3f2fd',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#1565c0',
-                  cursor: 'pointer',
                 }}
               >
                 套用
@@ -508,7 +565,16 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
             </div>
           )}
 
-          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>結帳品項：</div>
+          <div
+            style={{
+              fontSize: getFontSize('body', isMobile),
+              fontWeight: 600,
+              marginBottom: spacing.md,
+              color: colors.text.primary,
+            }}
+          >
+            結帳品項：
+          </div>
 
           {lines.map((line, idx) => (
             <SettleLineRow
@@ -525,32 +591,52 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 
           <div
             style={{
-              paddingTop: '16px',
-              marginTop: '16px',
-              borderTop: '2px solid #e0e0e0',
+              paddingTop: spacing.lg,
+              marginTop: spacing.lg,
+              borderTop: `1px solid ${colors.border.main}`,
             }}
           >
             <div
               style={{
                 marginBottom: 12,
                 padding: '12px 14px',
-                background: '#f8f9fa',
-                borderRadius: 10,
-                border: '1px solid #e9ecef',
+                background: colors.secondary[50],
+                borderRadius: borderRadius.lg,
+                border: `1px solid ${colors.border.light}`,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 gap: 12,
               }}
             >
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#444' }}>合計</span>
+              <span
+                style={{
+                  fontSize: getFontSize('body', isMobile),
+                  fontWeight: 600,
+                  color: colors.text.primary,
+                }}
+              >
+                合計
+              </span>
               <div style={{ textAlign: 'right' }}>
                 {listTotal !== total && (
-                  <div style={{ fontSize: 12, color: '#888', textDecoration: 'line-through' }}>
+                  <div
+                    style={{
+                      fontSize: getFontSize('caption', isMobile),
+                      color: colors.text.secondary,
+                      textDecoration: 'line-through',
+                    }}
+                  >
                     ${listTotal.toLocaleString()}
                   </div>
                 )}
-                <div style={{ fontSize: isMobile ? 20 : 22, fontWeight: 700, color: '#111' }}>
+                <div
+                  style={{
+                    fontSize: getFontSize('h2', isMobile),
+                    fontWeight: 700,
+                    color: colors.text.primary,
+                  }}
+                >
                   ${total.toLocaleString()}
                 </div>
               </div>
@@ -562,28 +648,28 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
               data-track="product_order_settle_confirm"
               onClick={() => void handleSettle()}
               style={{
-                width: '100%',
-                padding: '10px',
-                background:
+                ...getButtonStyle(
                   paymentMethod === 'balance'
                     ? isProxyCharge
-                      ? '#ff9800'
-                      : '#4CAF50'
-                    : '#0284c7',
-                border: 'none',
-                borderRadius: '8px',
-                color: 'white',
-                fontWeight: 600,
-                fontSize: '14px',
-                cursor: loading || (paymentMethod === 'balance' && !chargeMemberId) ? 'not-allowed' : 'pointer',
+                      ? 'warning'
+                      : 'success'
+                    : 'primary',
+                  'medium',
+                  isMobile,
+                ),
+                width: '100%',
                 opacity: loading || (paymentMethod === 'balance' && !chargeMemberId) ? 0.6 : 1,
+                cursor:
+                  loading || (paymentMethod === 'balance' && !chargeMemberId)
+                    ? 'not-allowed'
+                    : 'pointer',
               }}
             >
               {loading
                 ? '處理中…'
                 : isProxyCharge && chargeMemberName
-                  ? `✅ ${settleLabel}（${chargeMemberName}）`
-                  : `✅ ${settleLabel}`}
+                  ? `${settleLabel}（${chargeMemberName}）`
+                  : settleLabel}
             </button>
           </div>
         </div>
@@ -627,7 +713,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: '20px',
+            padding: 20,
           }}
           onClick={() => {
             setShowMemberSearch(false)
@@ -636,41 +722,56 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
         >
           <div
             style={{
-              background: 'white',
-              borderRadius: '12px',
-              maxWidth: '400px',
+              background: colors.background.card,
+              borderRadius: borderRadius.lg,
+              maxWidth: 400,
               width: '100%',
               maxHeight: '80vh',
               overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              boxShadow: shadows.elevation[3],
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div
               style={{
-                padding: '16px',
-                borderBottom: '1px solid #e0e0e0',
+                padding: spacing.lg,
+                borderBottom: `1px solid ${colors.border.light}`,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}
             >
-              <h3 style={{ margin: 0, fontSize: '16px' }}>🔄 選擇代扣會員</h3>
+              <h3 style={{ margin: 0, fontSize: getFontSize('bodyLarge', isMobile), color: colors.text.primary }}>
+                選擇代扣會員
+              </h3>
               <button
                 type="button"
                 onClick={() => {
                   setShowMemberSearch(false)
                   proxySearch.reset()
                 }}
-                style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: '#666' }}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  fontSize: getFontSize('h2', isMobile),
+                  cursor: 'pointer',
+                  color: colors.text.secondary,
+                }}
               >
                 ×
               </button>
             </div>
-            <div style={{ padding: '12px 16px', background: '#fff3e0', fontSize: '13px', color: '#e65100' }}>
+            <div
+              style={{
+                padding: '12px 16px',
+                background: colors.warning[50],
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: colors.warning[700],
+              }}
+            >
               從所選會員扣款，訂單仍記在 {order.contact_name} 名下。
             </div>
-            <div style={{ padding: '16px' }}>
+            <div style={{ padding: spacing.lg }}>
               <input
                 type="text"
                 value={proxySearch.searchTerm}
@@ -679,17 +780,25 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                 autoFocus
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
+                  padding: spacing.md,
+                  border: `1px solid ${colors.border.main}`,
+                  borderRadius: borderRadius.md,
+                  fontSize: getFontSize('bodyLarge', isMobile),
                   boxSizing: 'border-box',
+                  color: colors.text.primary,
                 }}
               />
             </div>
-            <div style={{ maxHeight: '300px', overflowY: 'auto', borderTop: '1px solid #eee' }}>
+            <div style={{ maxHeight: 300, overflowY: 'auto', borderTop: `1px solid ${colors.border.light}` }}>
               {proxySearch.filteredMembers.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#999', fontSize: '14px' }}>
+                <div
+                  style={{
+                    padding: 24,
+                    textAlign: 'center',
+                    color: colors.text.disabled,
+                    fontSize: getFontSize('body', isMobile),
+                  }}
+                >
                   {proxySearch.searchTerm.trim() ? '找不到會員' : '輸入關鍵字搜尋'}
                 </div>
               ) : (
@@ -705,14 +814,17 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                       textAlign: 'left',
                       padding: '14px 16px',
                       border: 'none',
-                      borderBottom: '1px solid #f0f0f0',
-                      background: 'white',
+                      borderBottom: `1px solid ${colors.border.light}`,
+                      background: colors.background.card,
                       cursor: 'pointer',
-                      fontSize: '15px',
+                      fontSize: getFontSize('body', isMobile),
+                      color: colors.text.primary,
                     }}
                   >
                     {memberLabel(m)}
-                    {m.phone ? <span style={{ color: '#999', marginLeft: 8 }}>{m.phone}</span> : null}
+                    {m.phone ? (
+                      <span style={{ color: colors.text.disabled, marginLeft: 8 }}>{m.phone}</span>
+                    ) : null}
                   </button>
                 ))
               )}
@@ -748,32 +860,31 @@ function SettleLineRow({
   return (
     <div
       style={{
-        background: index % 2 === 0 ? 'linear-gradient(to bottom, #f8fcff, #f0f8ff)' : 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
-        borderRadius: '12px',
-        padding: '14px',
-        marginBottom: '10px',
-        border: index % 2 === 0 ? '2px solid #bae6fd' : '2px solid #e0e0e0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        background: colors.background.card,
+        borderRadius: borderRadius.lg,
+        padding: 14,
+        marginBottom: 10,
+        border: `1px solid ${colors.border.light}`,
       }}
     >
       <div
         style={{
           display: 'flex',
           alignItems: 'flex-start',
-          gap: '10px',
-          marginBottom: '10px',
-          paddingBottom: '8px',
-          borderBottom: '1px solid #e8ecef',
+          gap: 10,
+          marginBottom: 10,
+          paddingBottom: 8,
+          borderBottom: `1px solid ${colors.border.light}`,
         }}
       >
         <span
           style={{
-            fontSize: '11px',
+            fontSize: getFontSize('caption', isMobile),
             fontWeight: 500,
-            color: '#9ca3af',
-            background: '#f3f4f6',
-            width: '20px',
-            height: '20px',
+            color: colors.text.disabled,
+            background: colors.secondary[100],
+            width: 20,
+            height: 20,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
@@ -784,8 +895,25 @@ function SettleLineRow({
           {index}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 600, lineHeight: 1.4, color: '#222' }}>{line.label}</div>
-          <div style={{ fontSize: '13px', color: '#666', marginTop: 2 }}>× {line.qty}</div>
+          <div
+            style={{
+              fontSize: getFontSize('body', isMobile),
+              fontWeight: 600,
+              lineHeight: 1.4,
+              color: colors.text.primary,
+            }}
+          >
+            {line.label}
+          </div>
+          <div
+            style={{
+              fontSize: getFontSize('bodySmall', isMobile),
+              color: colors.text.secondary,
+              marginTop: 2,
+            }}
+          >
+            × {line.qty}
+          </div>
         </div>
         {!isMobile && line.thumb_src && (
           <button
@@ -795,9 +923,9 @@ function SettleLineRow({
             style={{
               width: 34,
               height: 46,
-              border: '1px solid #ddd',
-              borderRadius: 6,
-              background: '#f6f6f7',
+              border: `1px solid ${colors.border.light}`,
+              borderRadius: borderRadius.sm,
+              background: colors.secondary[50],
               overflow: 'hidden',
               padding: 0,
               cursor: 'pointer',
@@ -814,25 +942,34 @@ function SettleLineRow({
         )}
       </div>
 
-      <div style={{ marginBottom: showDescription ? '12px' : 0 }}>
-        <div style={{ fontSize: '13px', color: '#7f8c8d', marginBottom: '8px', fontWeight: 500 }}>扣款金額：</div>
+      <div style={{ marginBottom: showDescription ? 12 : 0 }}>
+        <div
+          style={{
+            fontSize: getFontSize('bodySmall', isMobile),
+            color: colors.text.secondary,
+            marginBottom: 8,
+            fontWeight: 500,
+          }}
+        >
+          扣款金額：
+        </div>
         <MoneyInput
           value={line.line_total}
           onChange={(line_total) => onUpdate({ line_total })}
         />
         <div
           style={{
-            marginTop: '8px',
-            fontSize: '13px',
-            color: '#666',
-            background: '#f5f5f5',
+            marginTop: 8,
+            fontSize: getFontSize('bodySmall', isMobile),
+            color: colors.text.secondary,
+            background: colors.secondary[50],
             padding: '8px 12px',
-            borderRadius: '6px',
+            borderRadius: borderRadius.md,
             lineHeight: 1.5,
           }}
         >
           <div>
-            📝 ${line.unit_price.toLocaleString()} × {line.qty} = <strong>${subtotal.toLocaleString()}</strong>
+            ${line.unit_price.toLocaleString()} × {line.qty} = <strong>${subtotal.toLocaleString()}</strong>
             {hasDiscount && (
               <>
                 {' '}
@@ -842,9 +979,9 @@ function SettleLineRow({
           </div>
           <div
             style={{
-              marginTop: '8px',
-              paddingTop: '8px',
-              borderTop: '1px dashed #ddd',
+              marginTop: 8,
+              paddingTop: 8,
+              borderTop: `1px dashed ${colors.border.main}`,
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
@@ -862,20 +999,16 @@ function SettleLineRow({
                 }
               }}
             />
-            <span style={{ fontSize: 12, color: '#888' }}>折</span>
+            <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>
+              折
+            </span>
             <button
               type="button"
               data-track="product_order_settle_line_discount"
               onClick={onApplyDiscount}
               style={{
+                ...getButtonStyle('secondary', 'small', isMobile),
                 padding: '6px 10px',
-                borderRadius: 6,
-                border: '1px solid #90caf9',
-                background: '#e3f2fd',
-                fontSize: 12,
-                fontWeight: 600,
-                color: '#1565c0',
-                cursor: 'pointer',
               }}
             >
               套用
@@ -888,9 +1021,9 @@ function SettleLineRow({
         <div style={{ marginBottom: 0 }}>
           <div
             style={{
-              fontSize: '13px',
-              color: '#7f8c8d',
-              marginBottom: '8px',
+              fontSize: getFontSize('bodySmall', isMobile),
+              color: colors.text.secondary,
+              marginBottom: 8,
               fontWeight: 500,
               display: 'flex',
               justifyContent: 'space-between',
@@ -904,15 +1037,15 @@ function SettleLineRow({
               onClick={() => setIsEditingDescription((v) => !v)}
               style={{
                 padding: '4px 10px',
-                background: 'none',
-                border: '1px solid #e0e0e0',
-                borderRadius: '6px',
-                fontSize: '12px',
-                color: '#666',
+                background: colors.background.card,
+                border: `1px solid ${colors.border.light}`,
+                borderRadius: borderRadius.md,
+                fontSize: getFontSize('caption', isMobile),
+                color: colors.text.secondary,
                 cursor: 'pointer',
               }}
             >
-              {isEditingDescription ? '收起' : '✏️ 編輯'}
+              {isEditingDescription ? '收起' : '編輯'}
             </button>
           </div>
           {isEditingDescription ? (
@@ -923,25 +1056,26 @@ function SettleLineRow({
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                background: 'white',
-                border: '2px solid #e9ecef',
-                borderRadius: '8px',
-                fontSize: '14px',
+                background: colors.background.card,
+                border: `1px solid ${colors.border.main}`,
+                borderRadius: borderRadius.md,
+                fontSize: getFontSize('body', isMobile),
                 minHeight: 56,
                 resize: 'vertical',
                 fontFamily: 'inherit',
                 boxSizing: 'border-box',
+                color: colors.text.primary,
               }}
             />
           ) : (
             <div
               style={{
                 padding: '10px 12px',
-                background: '#f8f9fa',
-                border: '1px solid #e9ecef',
-                borderRadius: '8px',
-                fontSize: '14px',
-                color: '#495057',
+                background: colors.secondary[50],
+                border: `1px solid ${colors.border.light}`,
+                borderRadius: borderRadius.md,
+                fontSize: getFontSize('body', isMobile),
+                color: colors.text.secondary,
                 lineHeight: 1.45,
               }}
             >

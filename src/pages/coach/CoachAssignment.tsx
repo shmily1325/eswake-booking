@@ -1,4 +1,12 @@
-﻿import { useState, useEffect, useMemo } from 'react'
+﻿/**
+ * Design thinking (visual-only pass, docs/design.md):
+ * 1. Why it felt dashboardy: emoji chrome on save/conflict/skip, equal-weight bordered booking chips,
+ *    and rainbow left borders competing with boat color for attention.
+ * 2. Hierarchy: primary save via getButtonStyle; coach columns stay dense for ops scanning;
+ *    booking rows use quiet type + sparse status tone; decorative emoji removed from chrome.
+ * 3. Primary task: assign coach/driver per booking for a day, then save — density intentionally kept.
+ */
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -7,9 +15,10 @@ import { DailyStaffDisplay } from '../../components/DailyStaffDisplay'
 import { Footer } from '../../components/Footer'
 import { BookingDateNav } from '../../components/BookingDateNav'
 import { TodayOverview } from '../../components/TodayOverview'
+import { PageShell } from '../../components/PageShell'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useDailyStaff } from '../../hooks/useDailyStaff'
-import { designSystem, getButtonStyle, getPageContentShellStyle } from '../../styles/designSystem'
+import { designSystem, getButtonStyle, getFontSize } from '../../styles/designSystem'
 import { isAdmin, hasEditorFeatureAsync } from '../../utils/auth'
 import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
@@ -456,9 +465,9 @@ export function CoachAssignment() {
       
       if (missingPersonnel.length > 0) {
         setError(
-          '⚠️ 以下預約尚未指定駕駛：\n\n' +
+          '以下預約尚未指定駕駛：\n\n' +
           missingPersonnel.map(m => `• ${m}`).join('\n') +
-          '\n\n💡 今天先不想排這幾筆？點該預約 → 駕駛區下方有「偷懶 😏」按鈕'
+          '\n\n今天先不想排這幾筆？點該預約 → 駕駛區下方有「偷懶」按鈕'
         )
         return
       }
@@ -502,9 +511,9 @@ export function CoachAssignment() {
       
       if (driverIssues.length > 0) {
         setError(
-          '⚠️ 以下預約的駕駛配置不符合要求：\n\n' +
+          '以下預約的駕駛配置不符合要求：\n\n' +
           driverIssues.map(m => `• ${m}`).join('\n') +
-          '\n\n💡 今天先不想排這幾筆？點該預約 → 駕駛區下方有「偷懶 😏」按鈕'
+          '\n\n今天先不想排這幾筆？點該預約 → 駕駛區下方有「偷懶」按鈕'
         )
         setSaving(false)
         return
@@ -735,7 +744,7 @@ export function CoachAssignment() {
       }
       
       if (conflicts.length > 0) {
-        setError('⚠️ 教練時間衝突：\n\n' + conflicts.map(c => `• ${c}`).join('\n'))
+        setError('教練時間衝突：\n\n' + conflicts.map(c => `• ${c}`).join('\n'))
         setSaving(false)
         return
       }
@@ -777,7 +786,7 @@ export function CoachAssignment() {
       }
 
       if (pendingChanges.length === 0) {
-        setSuccess('✅ 沒有變動，無需儲存')
+        setSuccess('沒有變動，無需儲存')
         setSaving(false)
         return
       }
@@ -894,7 +903,7 @@ export function CoachAssignment() {
           return `• ${timeStr} ${contactName}\n  目前已排：${describeSnapshotSummary(dbState, coaches)}\n  您要改為：${describeSnapshotSummary(pending.userIntent, coaches)}`
         }).filter(Boolean)
 
-        const confirmMessage = `⚠️ 以下 ${overwriteConflicts.length} 筆預約在您編輯期間已被他人修改：\n\n${conflictLines.join('\n\n')}\n\n確定要覆蓋嗎？\n（按「取消」將略過這些預約，其餘變更仍會儲存）`
+        const confirmMessage = `以下 ${overwriteConflicts.length} 筆預約在您編輯期間已被他人修改：\n\n${conflictLines.join('\n\n')}\n\n確定要覆蓋嗎？\n（按「取消」將略過這些預約，其餘變更仍會儲存）`
         if (confirm(confirmMessage)) {
           const conflictItems = overwriteConflicts
             .map(item => {
@@ -913,7 +922,7 @@ export function CoachAssignment() {
       }
 
       if (toSave.length === 0) {
-        setSuccess(silentSkips.length > 0 ? '✅ 排班已由他人更新，無需儲存' : '✅ 沒有變動，無需儲存')
+        setSuccess(silentSkips.length > 0 ? '排班已由他人更新，無需儲存' : '沒有變動，無需儲存')
         if (silentSkips.length > 0) {
           toast.success('排班已由他人更新，無需儲存')
         }
@@ -1021,21 +1030,21 @@ export function CoachAssignment() {
           }
           if (data.participantsWithTx.length > 0) {
             const names = data.participantsWithTx.map((p: any) => p.participant_name).join('、')
-            details.push(`⚠️ 有交易記錄：${names}`)
+            details.push(`有交易記錄：${names}`)
             totalTransactionCount += data.participantsWithTx.length
           }
           
           affectedBookings.push(`• ${timeStr} ${contactName}\n  ${details.join('\n  ')}`)
         })
 
-        let confirmMessage = `⚠️ 以下 ${bookingsWithReports.size} 筆預約已有回報記錄：\n\n${affectedBookings.join('\n\n')}\n\n修改排班將會清除這些回報記錄！\n教練需要重新回報。\n`
+        let confirmMessage = `以下 ${bookingsWithReports.size} 筆預約已有回報記錄：\n\n${affectedBookings.join('\n\n')}\n\n修改排班將會清除這些回報記錄！\n教練需要重新回報。\n`
         
         if (totalTransactionCount > 0) {
           const namesWithTx = Array.from(bookingsWithReports.values())
             .flatMap(data => data.participantsWithTx.map((p: any) => p.participant_name))
             .filter((name, index, self) => self.indexOf(name) === index)
             .join('、')
-          confirmMessage += `\n💰 ${namesWithTx} 的交易記錄受影響\n（交易記錄會保留，請到「會員交易」檢查並處理）\n`
+          confirmMessage += `\n${namesWithTx} 的交易記錄受影響\n（交易記錄會保留，請到「會員交易」檢查並處理）\n`
         }
         
         confirmMessage += `\n確定要繼續嗎？`
@@ -1168,7 +1177,7 @@ export function CoachAssignment() {
         }
       }))
 
-      setSuccess('✅ 所有排班已儲存！')
+      setSuccess('所有排班已儲存！')
       toast.success(`已儲存 ${changedBookingIds.length} 筆排班變更`)
       setTimeout(() => {
         navigate(`/day?date=${selectedDate}`)
@@ -1225,13 +1234,11 @@ export function CoachAssignment() {
 
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
-      <div style={{
-        flex: 1,
-        padding: isMobile ? designSystem.spacing.md : designSystem.spacing.xl,
-        ...getPageContentShellStyle(isMobile),
-        ...(isMobile ? {} : { maxWidth: '1400px' }),
-      }}>
+    <PageShell
+      variant="wide"
+      mobilePadding={designSystem.spacing.md}
+      desktopPadding={designSystem.spacing.xl}
+    >
         <PageHeader user={user} title="排班" showBaoLink={isAdmin(user)} />
 
         <BookingDateNav
@@ -1281,7 +1288,6 @@ export function CoachAssignment() {
             gap: designSystem.spacing.sm,
             marginBottom: designSystem.spacing.md
           }}>
-            {/* 儲存按鈕 */}
             <button
               data-track="coach_assignment_save"
               aria-label="儲存排班"
@@ -1289,52 +1295,26 @@ export function CoachAssignment() {
               onClick={handleSaveAll}
               disabled={saving || loading}
               style={{
+                ...getButtonStyle('primary', 'medium', true),
                 flex: 1,
-                textDecoration: 'none',
                 height: '48px',
-                padding: '0 16px',
-                backgroundColor: designSystem.colors.background.card,
-                border: `1px solid ${designSystem.colors.border.main}`,
-                borderRadius: designSystem.borderRadius.lg,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: designSystem.colors.text.primary,
-                fontSize: '14px',
-                fontWeight: '500',
-                boxShadow: designSystem.shadows.sm,
-                whiteSpace: 'nowrap',
                 opacity: (saving || loading) ? 0.5 : 1,
                 cursor: (saving || loading) ? 'not-allowed' : 'pointer',
               }}
             >
-              {saving ? '儲存中...' : '💾'}
+              {saving ? '儲存中...' : '儲存'}
             </button>
 
-            {/* 回預約表按鈕 */}
             <button
               data-track="coach_assignment_day_link"
               onClick={() => navigate(`/day?date=${selectedDate}`)}
               style={{
+                ...getButtonStyle('secondary', 'medium', true),
                 flex: 1,
-                textDecoration: 'none',
                 height: '48px',
-                padding: '0 16px',
-                backgroundColor: designSystem.colors.background.card,
-                border: `1px solid ${designSystem.colors.border.main}`,
-                borderRadius: designSystem.borderRadius.lg,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: designSystem.colors.text.primary,
-                fontSize: '14px',
-                fontWeight: '500',
-                boxShadow: designSystem.shadows.sm,
-                whiteSpace: 'nowrap',
-                cursor: 'pointer',
               }}
             >
-              ← 回預約表
+              預約表
             </button>
           </div>
         )}
@@ -1348,7 +1328,7 @@ export function CoachAssignment() {
             color: designSystem.colors.success[700],
             borderRadius: designSystem.borderRadius.sm,
             fontWeight: '600',
-            fontSize: isMobile ? '14px' : '15px'
+            fontSize: getFontSize('body', isMobile),
           }}>
             {success}
           </div>
@@ -1363,7 +1343,8 @@ export function CoachAssignment() {
             color: designSystem.colors.danger[700],
             borderRadius: designSystem.borderRadius.sm,
             fontWeight: '600',
-            fontSize: isMobile ? '14px' : '15px'
+            fontSize: getFontSize('body', isMobile),
+            whiteSpace: 'pre-wrap',
           }}>
             {error}
           </div>
@@ -1490,10 +1471,10 @@ export function CoachAssignment() {
                       flexShrink: 0,
                     }}>
                       <div style={{
-                      fontSize: isMobile ? '16px' : '18px',
+                      fontSize: getFontSize('h3', isMobile),
                       fontWeight: '600',
                       color: designSystem.colors.text.primary,
-                      borderBottom: partialOffLabel ? 'none' : `2px solid ${coach.isOnTimeOff ? designSystem.colors.border.dark : designSystem.colors.primary[500]}`,
+                      borderBottom: partialOffLabel ? 'none' : `1px solid ${designSystem.colors.border.main}`,
                       paddingBottom: partialOffLabel ? '4px' : '8px',
                       padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
                       display: 'flex',
@@ -1501,14 +1482,14 @@ export function CoachAssignment() {
                       gap: '8px',
                       flexWrap: 'wrap',
                     }}>
-                      🎓 {coach.name} {coachBookings.length > 0 && `(${coachBookings.length})`}
+                      {coach.name} {coachBookings.length > 0 && `(${coachBookings.length})`}
                       {coach.isOnTimeOff && (
                         <span style={{
-                          fontSize: '12px',
+                          fontSize: getFontSize('caption', isMobile),
                           padding: '2px 8px',
                           borderRadius: designSystem.borderRadius.sm,
-                          background: designSystem.colors.secondary[500],
-                          color: 'white',
+                          background: designSystem.colors.secondary[100],
+                          color: designSystem.colors.secondary[700],
                           fontWeight: '500'
                         }}>
                           整天休假
@@ -1517,11 +1498,11 @@ export function CoachAssignment() {
                     </div>
                       {partialOffLabel && (
                         <div style={{
-                          fontSize: '12px',
-                          color: designSystem.colors.info[700],
-                          fontWeight: '600',
+                          fontSize: getFontSize('caption', isMobile),
+                          color: designSystem.colors.text.secondary,
+                          fontWeight: '500',
                           padding: isMobile ? '0 16px 8px' : '0 20px 10px',
-                          borderBottom: `2px solid ${designSystem.colors.primary[500]}`,
+                          borderBottom: `1px solid ${designSystem.colors.border.main}`,
                         }}>
                           {partialOffLabel}休假
                         </div>
@@ -1542,7 +1523,7 @@ export function CoachAssignment() {
                           textAlign: 'center',
                           color: designSystem.colors.text.disabled,
                           padding: '20px',
-                          fontSize: '14px'
+                          fontSize: getFontSize('body', isMobile),
                         }}>
                           今日無排班
                         </div>
@@ -1560,12 +1541,9 @@ export function CoachAssignment() {
                               ? designSystem.colors.info[50]
                               : designSystem.colors.background.hover,
                             borderRadius: designSystem.borderRadius.md,
-                            fontSize: isMobile ? '13px' : '14px',
+                            fontSize: getFontSize('bodySmall', isMobile),
                             position: 'relative',
-                            border: isCoachPractice
-                              ? `1px solid ${designSystem.colors.info[500]}55`
-                              : 'none',
-                            borderLeft: `3px solid ${isCoachPractice ? designSystem.colors.info[500] : (booking.boats?.color || designSystem.colors.border.dark)}`,
+                            borderLeft: `2px solid ${isCoachPractice ? designSystem.colors.info[500] : (booking.boats?.color || designSystem.colors.border.main)}`,
                           }}>
                             {/* 教練練習標識 */}
                             {isCoachPractice && (
@@ -1573,15 +1551,16 @@ export function CoachAssignment() {
                                 position: 'absolute',
                                 top: '8px',
                                 right: '8px',
-                                fontSize: '11px',
+                                fontSize: getFontSize('caption', true),
                                 fontWeight: '600',
-                                padding: '3px 8px',
-                                background: designSystem.colors.info[500],
-                                color: 'white',
+                                padding: '2px 7px',
+                                background: designSystem.colors.info[50],
+                                color: designSystem.colors.info[700],
+                                border: `1px solid ${designSystem.colors.info[500]}44`,
                                 borderRadius: designSystem.borderRadius.sm,
                                 zIndex: 10,
                               }}>
-                                🏄 教練練習
+                                教練練習
                               </div>
                             )}
                             
@@ -1603,12 +1582,12 @@ export function CoachAssignment() {
                                   style={{
                                 position: 'absolute',
                                 top: '8px',
-                                right: isCoachPractice ? '90px' : '8px',
+                                right: isCoachPractice ? '78px' : '8px',
                                 background: designSystem.colors.background.hover,
                                     border: 'none',
                                     borderRadius: designSystem.borderRadius.sm,
                                     cursor: 'pointer',
-                                fontSize: '16px',
+                                fontSize: getFontSize('bodyLarge', isMobile),
                                 color: designSystem.colors.text.disabled,
                                 padding: '2px 6px',
                                 transition: 'all 0.2s ease',
@@ -1624,18 +1603,22 @@ export function CoachAssignment() {
                             
                             {/* 預約資訊 */}
                             <div style={{ paddingRight: '24px' }}>
-                              <div style={{ fontWeight: '600', color: designSystem.colors.text.primary, fontSize: isMobile ? '13px' : '14px' }}>
+                              <div style={{ fontWeight: '600', color: designSystem.colors.text.primary, fontSize: getFontSize('bodySmall', isMobile) }}>
                                 {formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}
-                                {isDriver && !isCoach && <span style={{ 
-                                  marginLeft: '6px',
-                                  fontSize: '14px'
-                                }}>🚤</span>}
+                                {isDriver && !isCoach && (
+                                  <span style={{ 
+                                    marginLeft: '6px',
+                                    fontSize: getFontSize('caption', isMobile),
+                                    fontWeight: '500',
+                                    color: designSystem.colors.text.secondary,
+                                  }}>駕駛</span>
+                                )}
                               </div>
-                              <div style={{ color: designSystem.colors.text.secondary, fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
+                              <div style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile), marginTop: '4px' }}>
                                 {getDisplayContactName(booking)}
                                 {booking.requires_driver && (
-                                  <span style={{ marginLeft: '8px', fontSize: '14px' }}>
-                                    🚤
+                                  <span style={{ marginLeft: '8px', fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.disabled }}>
+                                    需駕駛
                                   </span>
                                 )}
                               </div>
@@ -1645,13 +1628,12 @@ export function CoachAssignment() {
                                   marginTop: '6px',
                                   padding: '6px 8px',
                                   background: designSystem.colors.danger[50],
-                                  border: `1px solid ${designSystem.colors.danger[500]}33`,
                                   borderRadius: designSystem.borderRadius.sm,
-                                  fontSize: '11px',
+                                  fontSize: getFontSize('caption', true),
                                   color: designSystem.colors.danger[700],
                                   lineHeight: '1.4'
                                 }}>
-                                  ⚠️ {assignment.conflicts.join(' / ')}
+                                  {assignment.conflicts.join(' / ')}
                                 </div>
                               )}
                             </div>
@@ -1689,10 +1671,10 @@ export function CoachAssignment() {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: '12px',
-                    fontSize: isMobile ? '16px' : '18px',
+                    fontSize: getFontSize('h3', isMobile),
                     fontWeight: '600',
-                    color: designSystem.colors.danger[700],
-                    borderBottom: `2px solid ${designSystem.colors.primary[500]}`,
+                    color: designSystem.colors.text.primary,
+                    borderBottom: `1px solid ${designSystem.colors.border.main}`,
                     padding: isMobile ? '16px 16px 8px' : '20px 20px 8px',
                     flexShrink: 0,
                   }}>
@@ -1702,9 +1684,8 @@ export function CoachAssignment() {
                       padding: '2px 8px',
                       borderRadius: designSystem.borderRadius.full,
                       background: designSystem.colors.danger[50],
-                      border: `1px solid ${designSystem.colors.danger[500]}55`,
                       color: designSystem.colors.danger[700],
-                      fontSize: '12px',
+                      fontSize: getFontSize('caption', isMobile),
                       fontWeight: '600',
                       textAlign: 'center',
                     }}>
@@ -1729,8 +1710,8 @@ export function CoachAssignment() {
                           padding: isMobile ? '8px 10px' : '10px 12px',
                           background: designSystem.colors.background.hover,
                           borderRadius: designSystem.borderRadius.md,
-                          borderLeft: `3px solid ${designSystem.colors.danger[500]}`,
-                          fontSize: isMobile ? '13px' : '14px',
+                          borderLeft: `2px solid ${designSystem.colors.danger[500]}`,
+                          fontSize: getFontSize('bodySmall', isMobile),
                           cursor: 'pointer',
                         }}
                         onClick={() => setEditingBookingId(isEditing ? null : booking.id)}
@@ -1746,23 +1727,22 @@ export function CoachAssignment() {
                             <span>{formatTimeRange(booking.start_at, booking.duration_min)} - {booking.boats?.name}</span>
                             {assignment.skipped && (
                               <span style={{
-                                fontSize: '11px',
+                                fontSize: getFontSize('caption', true),
                                 fontWeight: '600',
                                 padding: '2px 8px',
-                                background: designSystem.colors.secondary[700],
-                                color: 'white',
+                                background: designSystem.colors.secondary[100],
+                                color: designSystem.colors.secondary[700],
                                 borderRadius: designSystem.borderRadius.sm,
-                                letterSpacing: '0.5px'
                               }}>
-                                ✋ 偷懶中
+                                偷懶中
                               </span>
                             )}
                           </div>
-                          <div style={{ color: designSystem.colors.text.secondary, fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
+                          <div style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile), marginTop: '4px' }}>
                             {getDisplayContactName(booking)}
                             {booking.requires_driver && !isEditing && (
-                              <span style={{ marginLeft: '8px', color: designSystem.colors.danger[700], fontSize: '12px' }}>
-                                • 需要駕駛
+                              <span style={{ marginLeft: '8px', color: designSystem.colors.danger[700], fontSize: getFontSize('caption', isMobile) }}>
+                                · 需要駕駛
                               </span>
                             )}
                           </div>
@@ -1771,10 +1751,10 @@ export function CoachAssignment() {
                             <div style={{ 
                               marginTop: '6px',
                               color: designSystem.colors.text.secondary,
-                              fontSize: '12px',
+                              fontSize: getFontSize('caption', isMobile),
                                     fontWeight: '500'
                             }}>
-                              🎓 {coaches.filter(c => assignment.coachIds.includes(c.id)).map(c => c.name).join(', ')}
+                              {coaches.filter(c => assignment.coachIds.includes(c.id)).map(c => c.name).join(', ')}
                             </div>
                           )}
                           
@@ -1790,7 +1770,7 @@ export function CoachAssignment() {
                               borderTop: `1px solid ${designSystem.colors.border.main}`
                             }}>
                               <div style={{ marginBottom: '12px' }}>
-                                <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: designSystem.colors.text.secondary }}>
+                                <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
                                   指定駕駛：
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -1848,13 +1828,13 @@ export function CoachAssignment() {
                                             : isUnavailable
                                               ? designSystem.colors.text.disabled
                                               : designSystem.colors.text.primary,
-                                          fontSize: '12px',
+                                          fontSize: getFontSize('caption', isMobile),
                                           cursor: isUnavailable ? 'not-allowed' : 'pointer',
                                           opacity: isUnavailable ? 0.55 : 1
                                         }}
                                         disabled={isUnavailable}
                                       >
-                                        {c.name}{isOnTimeOff && !isSelected ? ' 🏖️' : ''}
+                                        {c.name}{isOnTimeOff && !isSelected ? '（休假）' : ''}
                                 </button>
                     )
                   })}
@@ -1876,13 +1856,13 @@ export function CoachAssignment() {
                                       color: currentAssignment.skipped
                                         ? 'white'
                                         : designSystem.colors.text.secondary,
-                                      fontSize: '12px',
+                                      fontSize: getFontSize('caption', isMobile),
                                       cursor: 'pointer',
                                       whiteSpace: 'nowrap'
                                     }}
                                     title={currentAssignment.skipped ? '點一下取消偷懶 (改回正常排班)' : '今天就先不排這筆，按儲存時不會被擋'}
                                   >
-                                    {currentAssignment.skipped ? '偷懶中 ✋' : '偷懶 😏'}
+                                    {currentAssignment.skipped ? '偷懶中' : '偷懶'}
                                   </button>
                               </div>
                               </div>
@@ -1893,12 +1873,11 @@ export function CoachAssignment() {
                                   marginTop: '8px',
                                   padding: '8px',
                                   background: designSystem.colors.danger[50],
-                                  border: `1px solid ${designSystem.colors.danger[500]}33`,
                                   borderRadius: designSystem.borderRadius.md,
-                                  fontSize: '12px',
+                                  fontSize: getFontSize('caption', isMobile),
                                   color: designSystem.colors.danger[700]
                                 }}>
-                                  ⚠️ {currentAssignment.conflicts.join(', ')}
+                                  {currentAssignment.conflicts.join(', ')}
                                 </div>
                               )}
                             </div>
@@ -1915,10 +1894,8 @@ export function CoachAssignment() {
           )
         })()}
 
-      </div>
-
       <Footer />
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
-    </div>
+    </PageShell>
   )
 }

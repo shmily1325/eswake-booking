@@ -1,3 +1,11 @@
+/**
+ * Design thinking:
+ * Current feel: bright blue member chips and orange guest CTA read as stock Material forms.
+ * Hierarchy: selected contact is the signal; search / guest entry stay quiet frames.
+ * Primary task: pick a member or confirm a guest name without loud accent chrome.
+ */
+import { designSystem, getFontSize, getButtonStyle } from '../../../styles/designSystem'
+
 interface MemberOption {
   id: string
   name: string
@@ -23,6 +31,8 @@ interface OrderMemberPickerProps {
   disabled?: boolean
 }
 
+const { colors, borderRadius, shadows, spacing } = designSystem
+
 export function OrderMemberPicker({
   selectedMemberId,
   selectedMemberLabel,
@@ -45,7 +55,17 @@ export function OrderMemberPicker({
 
   return (
     <div style={{ marginBottom: 16, position: 'relative' }}>
-      <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>訂購人</label>
+      <label
+        style={{
+          display: 'block',
+          marginBottom: 6,
+          fontWeight: 500,
+          fontSize: getFontSize('body', false),
+          color: colors.text.primary,
+        }}
+      >
+        訂購人
+      </label>
 
       {(hasMember || hasGuest) && (
         <div style={{ marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -53,11 +73,11 @@ export function OrderMemberPicker({
             <span
               style={{
                 padding: '6px 12px',
-                background: '#dbeafe',
-                color: '#1e40af',
-                border: '1px solid #3b82f6',
-                borderRadius: 6,
-                fontSize: 15,
+                background: colors.info[50],
+                color: colors.info[700],
+                border: `1px solid ${colors.info[500]}`,
+                borderRadius: borderRadius.md,
+                fontSize: getFontSize('body', false),
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
@@ -72,10 +92,10 @@ export function OrderMemberPicker({
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#1e40af',
+                    color: colors.info[700],
                     cursor: 'pointer',
                     padding: 0,
-                    fontSize: 18,
+                    fontSize: getFontSize('h3', false),
                     lineHeight: 1,
                   }}
                 >
@@ -88,11 +108,11 @@ export function OrderMemberPicker({
             <span
               style={{
                 padding: '6px 12px',
-                background: 'white',
-                color: '#666',
-                border: '1.5px dashed #ccc',
-                borderRadius: 6,
-                fontSize: 15,
+                background: colors.background.card,
+                color: colors.text.secondary,
+                border: `1.5px dashed ${colors.border.main}`,
+                borderRadius: borderRadius.md,
+                fontSize: getFontSize('body', false),
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
@@ -107,10 +127,10 @@ export function OrderMemberPicker({
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#999',
+                    color: colors.text.disabled,
                     cursor: 'pointer',
                     padding: 0,
-                    fontSize: 18,
+                    fontSize: getFontSize('h3', false),
                     lineHeight: 1,
                   }}
                 >
@@ -132,12 +152,14 @@ export function OrderMemberPicker({
             placeholder="搜尋會員暱稱／姓名／電話"
             style={{
               width: '100%',
-              padding: '12px',
-              border: hasMember ? '2px solid #4caf50' : '1px solid #ccc',
-              borderRadius: 8,
-              fontSize: 16,
+              padding: spacing.md,
+              border: `1px solid ${colors.border.main}`,
+              borderRadius: borderRadius.md,
+              fontSize: getFontSize('bodyLarge', false),
               boxSizing: 'border-box',
               marginBottom: 8,
+              color: colors.text.primary,
+              background: colors.background.card,
             }}
           />
           {showDropdown && filteredMembers.length > 0 && (
@@ -148,12 +170,12 @@ export function OrderMemberPicker({
                 top: '100%',
                 left: 0,
                 right: 0,
-                background: '#fff',
-                border: '1px solid #ddd',
-                borderRadius: 8,
+                background: colors.background.card,
+                border: `1px solid ${colors.border.light}`,
+                borderRadius: borderRadius.md,
                 maxHeight: 200,
                 overflowY: 'auto',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                boxShadow: shadows.elevation[1],
                 marginTop: -4,
               }}
             >
@@ -168,15 +190,20 @@ export function OrderMemberPicker({
                     textAlign: 'left',
                     padding: '10px 12px',
                     border: 'none',
-                    borderBottom: '1px solid #f0f0f0',
-                    background: '#fff',
+                    borderBottom: `1px solid ${colors.border.light}`,
+                    background: colors.background.card,
                     cursor: 'pointer',
-                    fontSize: 14,
+                    fontSize: getFontSize('body', false),
+                    color: colors.text.primary,
                   }}
                 >
                   <strong>{m.nickname || m.name}</strong>
-                  {m.nickname && <span style={{ color: '#666', marginLeft: 6 }}>({m.name})</span>}
-                  {m.phone && <span style={{ color: '#999', marginLeft: 8 }}>📱 {m.phone}</span>}
+                  {m.nickname && (
+                    <span style={{ color: colors.text.secondary, marginLeft: 6 }}>({m.name})</span>
+                  )}
+                  {m.phone && (
+                    <span style={{ color: colors.text.disabled, marginLeft: 8 }}>{m.phone}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -196,11 +223,13 @@ export function OrderMemberPicker({
               placeholder="或直接輸入姓名（非會員）"
               style={{
                 flex: 1,
-                padding: '12px',
-                border: '1px solid #ff9800',
-                borderRadius: 8,
-                fontSize: 16,
+                padding: spacing.md,
+                border: `1px solid ${colors.warning[500]}`,
+                borderRadius: borderRadius.md,
+                fontSize: getFontSize('bodyLarge', false),
                 boxSizing: 'border-box',
+                color: colors.text.primary,
+                background: colors.background.card,
               }}
             />
             <button
@@ -208,15 +237,12 @@ export function OrderMemberPicker({
               onClick={onConfirmGuest}
               disabled={!guestName.trim()}
               style={{
-                padding: '0 20px',
-                background: guestName.trim() ? '#ff9800' : '#ccc',
-                color: 'white',
-                border: 'none',
-                borderRadius: 8,
-                fontSize: 20,
-                fontWeight: 'bold',
-                cursor: guestName.trim() ? 'pointer' : 'not-allowed',
+                ...getButtonStyle(guestName.trim() ? 'warning' : 'secondary', 'medium', false),
                 minWidth: 52,
+                opacity: guestName.trim() ? 1 : 0.55,
+                cursor: guestName.trim() ? 'pointer' : 'not-allowed',
+                fontSize: getFontSize('h2', false),
+                fontWeight: 700,
               }}
             >
               +

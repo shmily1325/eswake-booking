@@ -5,6 +5,7 @@ import { PageHeader } from '../components/PageHeader'
 import { SearchBookings } from './SearchBookings'
 import { hasViewAccess } from '../utils/auth'
 import { trackClickDedupedWithin } from '../utils/trackClick'
+import { PageShell } from '../components/PageShell'
 
 export function SearchPage() {
   const user = useAuthUser()
@@ -29,18 +30,14 @@ export function SearchPage() {
   }, [user?.email])
   
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f8f9fa',
-      padding: '15px'
-    }}>
-      <div style={{
-        maxWidth: '900px',
-        margin: '0 auto'
-      }}>
-        <PageHeader title="🔍 預約查詢" user={user} />
-        <SearchBookings isEmbedded={true} />
-      </div>
-    </div>
+    <PageShell
+      variant="dashboard"
+      mobilePadding="15px"
+      desktopPadding="15px"
+      outerStyle={{ background: '#f8f9fa' }}
+    >
+      <PageHeader title="🔍 預約查詢" user={user} />
+      <SearchBookings isEmbedded={true} />
+    </PageShell>
   )
 }

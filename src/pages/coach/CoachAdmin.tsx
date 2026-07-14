@@ -11,7 +11,7 @@ import { DateRangePicker } from '../../components/DateRangePicker'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle, designSystem } from '../../styles/designSystem'
-import { AdminTabBar, AdminTabButton } from '../../components/AdminPageLayout'
+import { AdminPageShell, AdminTabBar, AdminTabButton } from '../../components/AdminPageLayout'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { fetchAllInBatches, fetchAllPaginated } from '../../utils/supabasePaginate'
 import { extractDate, extractTime } from '../../utils/formatters'
@@ -690,15 +690,7 @@ export function CoachAdmin() {
   // ============ Render ============
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
-      <div style={{ 
-        flex: 1,
-        maxWidth: '1400px', 
-        width: '100%',
-        margin: '0 auto',
-        padding: isMobile ? '16px' : '32px',
-        overflow: 'hidden'
-      }}>
+    <AdminPageShell>
         <PageHeader 
           user={user!} 
           title="回報管理"
@@ -1568,8 +1560,6 @@ export function CoachAdmin() {
           </div>
         )}
 
-      </div>
-
       <Footer />
 
       {/* 關聯會員對話框 */}
@@ -1718,7 +1708,7 @@ export function CoachAdmin() {
       )}
 
       {/* 舊版 TransactionDialog 已移除，扣款功能已整合到 PendingDeductionItem 組件中 */}
-    </div>
+    </AdminPageShell>
   )
 }
 

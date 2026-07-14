@@ -16,6 +16,7 @@ import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
 import { ES_BRAND } from '../lib/esBrandTokens'
 import { Footer } from '../components/Footer'
 import { ExternalNavLink } from '../components/ExternalNavLink'
+import { PageShell } from '../components/PageShell'
 import { designSystem, getFontSize } from '../styles/designSystem'
 import { useState, useEffect, type CSSProperties } from 'react'
 
@@ -425,20 +426,13 @@ export function HomePage() {
   }
 
   return (
-    <div style={{ 
-      minHeight: '100vh',
-      background: designSystem.colors.background.main,
-      padding: isMobile ? '24px 16px' : '40px 20px',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <div style={{ 
-        maxWidth: '600px', 
-        width: '100%',
-        margin: '0 auto'
-      }}>
+    <PageShell
+      variant="hub"
+      mobilePadding="24px 16px"
+      desktopPadding="40px 20px"
+      outerStyle={{ alignItems: 'center', justifyContent: 'center' }}
+      contentStyle={{ flex: 'unset' }}
+    >
         {/* Header with Logo */}
         <div style={{
           textAlign: 'center',
@@ -524,8 +518,6 @@ export function HomePage() {
         </div>
 
         <Footer />
-      </div>
-
       {/* Version indicator */}
       {isV2Environment && (
         <div style={{
@@ -549,7 +541,7 @@ export function HomePage() {
           <span>V3</span>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }
 

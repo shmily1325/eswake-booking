@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getWeekdayText } from '../utils/date'
 import { Footer } from '../components/Footer'
+import { PageShell } from '../components/PageShell'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
 import { hasViewAccess } from '../utils/auth'
 import { getFacilityMessageLabel } from '../utils/facility'
@@ -419,15 +420,7 @@ export function TomorrowReminder() {
   } as const
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: designSystem.colors.background.main,
-      padding: isMobile ? '12px' : '20px'
-    }}>
-      <div style={{
-        maxWidth: '900px',
-        margin: '0 auto'
-      }}>
+    <PageShell variant="content" mobilePadding="12px" desktopPadding="20px">
         <PageHeader title="明日提醒" user={user} />
 
         <div style={pageCardStyle}>
@@ -892,8 +885,7 @@ export function TomorrowReminder() {
         )}
 
         <Footer />
-      </div>
-    </div>
+    </PageShell>
   )
 }
 

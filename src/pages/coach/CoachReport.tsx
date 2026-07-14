@@ -6,7 +6,7 @@ import { Footer } from '../../components/Footer'
 import { CoachReportFormDialog } from '../../components/CoachReportFormDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
-import { getCardStyle, getFilterChipStyle, getFontSize, getReportRolePillStyle, designSystem } from '../../styles/designSystem'
+import { getCardStyle, getFilterChipStyle, getFontSize, getReportRolePillStyle, designSystem, PAGE_MAX_WIDTHS } from '../../styles/designSystem'
 import { useToast, ToastContainer } from '../../components/ui'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { extractDate, extractTime } from '../../utils/formatters'
@@ -947,7 +947,7 @@ export function CoachReport({
       <div style={{
         flex: 1,
         padding: embedded ? '0' : (isMobile ? '16px' : '24px'),
-        maxWidth: '1400px',
+        maxWidth: PAGE_MAX_WIDTHS.wide,
         margin: '0 auto',
         width: '100%',
         overflow: 'hidden'

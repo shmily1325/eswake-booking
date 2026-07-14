@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
+import { PageShell } from '../../components/PageShell'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import {
@@ -757,12 +758,7 @@ export function CoachDailyView() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: designSystem.colors.background.main }}>
-        <div style={{ 
-          maxWidth: '1400px', 
-          margin: '0 auto',
-          padding: isMobile ? '16px' : '20px' 
-        }}>
+      <PageShell variant="wide" mobilePadding="16px" desktopPadding="20px">
           <PageHeader user={user} title="今日預約" />
           {/* 日期選擇器骨架屏 */}
           <div style={{
@@ -796,18 +792,17 @@ export function CoachDailyView() {
               </div>
             </div>
           ))}
-        </div>
-      </div>
+      </PageShell>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, paddingBottom: '80px' }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: isMobile ? '16px' : '20px'
-      }}>
+    <PageShell
+      variant="wide"
+      mobilePadding="16px"
+      desktopPadding="20px"
+      outerStyle={{ paddingBottom: '80px' }}
+    >
         <PageHeader user={user} title="今日預約" />
 
         <BookingDateNav
@@ -1245,9 +1240,7 @@ export function CoachDailyView() {
         </div>
         )}
         </div>
-      </div>
-
       <Footer />
-    </div>
+    </PageShell>
   )
 }

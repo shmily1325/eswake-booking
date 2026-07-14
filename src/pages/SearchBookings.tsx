@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
 import { useResponsive } from '../hooks/useResponsive'
 import { Footer } from '../components/Footer'
+import { PageShell } from '../components/PageShell'
 import {
   designSystem,
   getBadgeStyle,
@@ -678,13 +679,13 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   }
 
   return (
-    <div style={{ 
-      padding: isEmbedded ? '0' : (isMobile ? '12px' : '20px'),
-      maxWidth: '1200px',
-      margin: '0 auto',
-      minHeight: isEmbedded ? 'auto' : '100vh',
-      backgroundColor: isEmbedded ? 'transparent' : designSystem.colors.background.main,
-    }}>
+    <PageShell
+      variant="dashboard"
+      mobilePadding={isEmbedded ? '0' : '12px'}
+      desktopPadding={isEmbedded ? '0' : '20px'}
+      outerStyle={isEmbedded ? { minHeight: 'auto', background: 'transparent' } : undefined}
+      contentStyle={isEmbedded ? { flex: 'unset' } : undefined}
+    >
       {!isEmbedded && <PageHeader title="預約查詢" user={user} />}
 
       {/* 船空檔分頁暫時停用，目前僅保留預約人搜尋 */}
@@ -2112,7 +2113,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       />
 
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
-    </div>
+    </PageShell>
   )
 }
 

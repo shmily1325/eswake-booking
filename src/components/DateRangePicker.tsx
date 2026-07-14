@@ -51,6 +51,9 @@ export function DateRangePicker({
   simplified = false
 }: DateRangePickerProps) {
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [customPickerType, setCustomPickerType] = useState<'month' | 'date'>(
+    selectedDate.length === 10 ? 'date' : 'month'
+  )
   
   const today = new Date()
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
@@ -62,7 +65,22 @@ export function DateRangePicker({
   const isToday = selectedDate === getLocalDateString() && selectedDate.length === 10
   const isCurrentMonth = selectedDate === currentMonth && selectedDate.length === 7
   const isLastMonth = selectedDate === lastMonthStr && selectedDate.length === 7
-  const isCustomDate = !isToday && !isCurrentMonth && !isLastMonth
+  const isCustomDate = (selectedDate.length === 7 || selectedDate.length === 10)
+    && !isToday
+    && !isCurrentMonth
+    && !isLastMonth
+  const customDateLabel = selectedDate.length === 10
+    ? selectedDate.replace(/-/g, '/')
+    : selectedDate.length === 7
+      ? `${selectedDate.substring(0, 4)} 年 ${Number(selectedDate.substring(5, 7))} 月`
+      : '自訂…'
+
+  const openCustomPicker = () => {
+    if (isCustomDate) {
+      setCustomPickerType(selectedDate.length === 10 ? 'date' : 'month')
+    }
+    setShowDatePicker(current => !current)
+  }
 
   return (
     <div style={{ width: '100%' }}>
@@ -82,8 +100,9 @@ export function DateRangePicker({
               setShowDatePicker(false)
             }}
             style={presetButtonStyle(isToday, isMobile)}
+            aria-pressed={isToday}
           >
-            🗓️ 今天
+            今天
           </button>
         )}
         <button
@@ -93,8 +112,9 @@ export function DateRangePicker({
             setShowDatePicker(false)
           }}
           style={presetButtonStyle(isCurrentMonth, isMobile)}
+          aria-pressed={isCurrentMonth}
         >
-          📅 本月
+          本月
         </button>
         <button
           type="button"
@@ -103,22 +123,24 @@ export function DateRangePicker({
             setShowDatePicker(false)
           }}
           style={presetButtonStyle(isLastMonth, isMobile)}
+          aria-pressed={isLastMonth}
         >
-          📆 上個月
+          上個月
         </button>
         
         {/* 簡化模式：選擇日期按鈕 */}
         {simplified && (
           <button
             type="button"
-            onClick={() => setShowDatePicker(!showDatePicker)}
+            onClick={openCustomPicker}
             style={presetButtonStyle(
               isCustomDate || showDatePicker,
               isMobile,
               { flex: isMobile ? '1 1 100%' : 'none' }
             )}
+            aria-expanded={showDatePicker}
           >
-            📌 {isCustomDate ? (selectedDate.length === 10 ? selectedDate : `${selectedDate.substring(0, 4)}年${selectedDate.substring(5, 7)}月`) : '選擇日期...'}
+            {isCustomDate ? customDateLabel : '自訂…'}
           </button>
         )}
       </div>
@@ -126,53 +148,75 @@ export function DateRangePicker({
       {/* 日期/月份選擇器 - 簡化模式需要點擊展開 */}
       {(!simplified || showDatePicker) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div>
-            <label style={{
-              ...getLabelStyle(isMobile),
-              fontSize: getFontSize('caption', isMobile),
-              marginBottom: '4px'
-            }}>
-              選擇月份
-            </label>
+          <div style={{
+            display: 'flex',
+            gap: '0',
+            padding: '4px',
+            background: designSystem.colors.background.hover,
+            borderRadius: designSystem.borderRadius.md
+          }}>
+            <button
+              type="button"
+              onClick={() => setCustomPickerType('month')}
+              style={presetButtonStyle(
+                customPickerType === 'month',
+                isMobile,
+                { flex: 1, padding: '8px 12px', border: 'none', boxShadow: 'none' }
+              )}
+              aria-pressed={customPickerType === 'month'}
+            >
+              指定月份
+            </button>
+            <button
+              type="button"
+              onClick={() => setCustomPickerType('date')}
+              style={presetButtonStyle(
+                customPickerType === 'date',
+                isMobile,
+                { flex: 1, padding: '8px 12px', border: 'none', boxShadow: 'none' }
+              )}
+              aria-pressed={customPickerType === 'date'}
+            >
+              指定日期
+            </button>
+          </div>
+
+          {customPickerType === 'month' ? (
             <input
               type="month"
               value={selectedDate.length === 7 ? selectedDate : ''}
+              aria-label="指定月份"
               onChange={(e) => {
                 onDateChange(e.target.value)
                 if (simplified) setShowDatePicker(false)
               }}
               style={getInputStyle(isMobile)}
             />
-          </div>
-          <div>
-            <label style={{
-              ...getLabelStyle(isMobile),
-              fontSize: getFontSize('caption', isMobile),
-              marginBottom: '4px'
-            }}>
-              選擇特定日期
-            </label>
-            <input
-              type="date"
-              value={selectedDate.length === 10 ? selectedDate : ''}
-              onChange={(e) => {
-                onDateChange(e.target.value)
-                if (simplified) setShowDatePicker(false)
-              }}
-              style={getInputStyle(isMobile)}
-            />
-            {selectedDate.length === 10 && (
-              <div style={{
-                marginTop: '4px',
-                fontSize: getFontSize('caption', isMobile),
-                color: designSystem.colors.text.secondary,
-                fontWeight: '500',
-                textAlign: 'center'
-              }}>
-                {getWeekdayText(selectedDate)}
-              </div>
-            )}
-          </div>
+          ) : (
+            <div>
+              <input
+                type="date"
+                value={selectedDate.length === 10 ? selectedDate : ''}
+                aria-label="指定日期"
+                onChange={(e) => {
+                  onDateChange(e.target.value)
+                  if (simplified) setShowDatePicker(false)
+                }}
+                style={getInputStyle(isMobile)}
+              />
+              {selectedDate.length === 10 && (
+                <div style={{
+                  marginTop: '4px',
+                  fontSize: getFontSize('caption', isMobile),
+                  color: designSystem.colors.text.secondary,
+                  fontWeight: '500',
+                  textAlign: 'center'
+                }}>
+                  {getWeekdayText(selectedDate)}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

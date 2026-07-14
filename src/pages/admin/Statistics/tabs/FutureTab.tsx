@@ -1,9 +1,11 @@
+/**
+ * Design thinking: future tab had KPI strip + emoji AlertCard/RankingCard.
+ * Quiet typography summary; status tone only for unassigned alert.
+ */
 import { useState } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
 import { designSystem, getFontSize } from '../../../../styles/designSystem'
 import {
-  SummaryCard,
-  SummaryCardsGrid,
   WeekdayRatioBar,
   MonthFilter,
   AlertCard,
@@ -118,31 +120,31 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
         </div>
       </div>
 
-      <SummaryCardsGrid>
-        <SummaryCard
-          label={`${monthLabel}預約`}
-          value={filteredTotalBookings}
-          unit="筆"
-          accentColor={designSystem.colors.info[500]}
-        />
-        <SummaryCard
-          label="總預約時數"
-          value={filteredTotalMinutes}
-          unit="分"
-          accentColor={designSystem.colors.success[500]}
-        />
-        <SummaryCard
-          label="教練人數"
-          value={filteredCoachCount}
-          unit="人"
-          accentColor={designSystem.colors.warning[500]}
-        />
-      </SummaryCardsGrid>
+      <div style={{
+        backgroundColor: designSystem.colors.background.card,
+        padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+        borderRadius: designSystem.borderRadius.lg,
+        border: `1px solid ${designSystem.colors.border.light}`,
+        marginBottom: designSystem.spacing.md,
+      }}>
+        <p style={{
+          margin: 0,
+          fontSize: getFontSize('bodyLarge', isMobile),
+          fontWeight: '600',
+          color: designSystem.colors.text.primary,
+          lineHeight: 1.5,
+        }}>
+          {monthLabel} {filteredTotalBookings.toLocaleString()} 筆
+          <span style={{ color: designSystem.colors.text.disabled, fontWeight: '400', margin: '0 8px' }}>·</span>
+          {filteredTotalMinutes.toLocaleString()} 分
+          <span style={{ color: designSystem.colors.text.disabled, fontWeight: '400', margin: '0 8px' }}>·</span>
+          {filteredCoachCount} 位教練
+        </p>
+      </div>
 
       {unassignedCount > 0 && unassigned && (
         <AlertCard
           variant="warning"
-          icon="⚠️"
           title={`有 ${unassignedCount} 筆預約尚未指派教練`}
           count={unassignedCount}
           minutes={unassignedMinutes}
@@ -157,7 +159,6 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
 
       <RankingCard
         title="教練時數排行"
-        icon="🎓"
         subtitle="點擊查看會員時數分布 (依時數高→低)"
         items={sortedCoaches.map(coach => ({
           id: coach.coachId,
@@ -179,12 +180,12 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
           return (
             <div>
               <div style={{
-                fontSize: '13px',
+                fontSize: getFontSize('bodySmall', isMobile),
                 color: designSystem.colors.text.secondary,
                 marginBottom: '10px',
                 fontWeight: '500'
               }}>
-                會員時數分布：
+                會員時數分布
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {contactStats.map((contact, idx) => (
@@ -194,13 +195,12 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      padding: '8px 12px',
-                      background: designSystem.colors.background.hover,
-                      borderRadius: designSystem.borderRadius.sm
+                      padding: '8px 0',
+                      borderBottom: `1px solid ${designSystem.colors.border.light}`,
                     }}
                   >
                     <span style={{
-                      fontSize: '13px',
+                      fontSize: getFontSize('bodySmall', isMobile),
                       color: designSystem.colors.text.primary
                     }}>
                       {idx + 1}. {contact.contactName}
@@ -212,8 +212,8 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
                       </span>
                     </span>
                     <span style={{
-                      fontSize: '13px',
-                      color: designSystem.colors.info[500],
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      color: designSystem.colors.text.primary,
                       fontWeight: '600',
                       flexShrink: 0,
                       marginLeft: '12px'

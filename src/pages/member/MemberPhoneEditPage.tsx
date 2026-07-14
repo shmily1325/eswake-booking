@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
+import { PageShell } from '../../components/PageShell'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
@@ -227,13 +228,11 @@ export function MemberPhoneEditPage() {
   const lineUnboundCount = members.length - lineBoundCount
 
   return (
-    <div
-      style={{
-        padding: isMobile ? '12px 16px' : '20px',
-        minHeight: '100dvh',
-        background: designSystem.colors.background.main,
-        paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-      }}
+    <PageShell
+      variant="content"
+      mobilePadding="12px 16px max(20px, env(safe-area-inset-bottom))"
+      desktopPadding="20px 20px max(20px, env(safe-area-inset-bottom))"
+      outerStyle={{ minHeight: '100dvh' }}
     >
       <PageHeader title="會員電話" user={user} showBaoLink={false} />
 
@@ -681,6 +680,6 @@ export function MemberPhoneEditPage() {
 
       <Footer />
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
-    </div>
+    </PageShell>
   )
 }

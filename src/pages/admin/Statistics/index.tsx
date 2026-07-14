@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
+import { PageShell } from '../../../components/PageShell'
 import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { getLocalDateString } from '../../../utils/date'
@@ -1068,16 +1069,12 @@ export function Statistics() {
   })
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: designSystem.colors.background.main,
-      paddingBottom: '80px'
-    }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: isMobile ? '16px' : '24px'
-      }}>
+    <PageShell
+      variant="dashboard"
+      mobilePadding="16px"
+      desktopPadding="24px"
+      outerStyle={{ paddingBottom: '80px' }}
+    >
         <PageHeader
           title="Dashboard"
           user={user}
@@ -1166,8 +1163,7 @@ export function Statistics() {
         )}
 
         <Footer />
-      </div>
-    </div>
+    </PageShell>
   )
 }
 

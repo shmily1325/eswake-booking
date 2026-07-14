@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ShopOrderItemWithVariant, ShopOrderWithItems } from '../types'
+import { getLocalDateString } from '../../../../utils/date'
 import {
   buildCancelBillingPayload,
   buildSubmitBillingConfirmMessage,
@@ -407,7 +408,7 @@ describe('cross-order reserve corner case', () => {
 
 describe('itemStockInBillableHint', () => {
   it('shows hint when recently stocked and billable', () => {
-    const today = new Date().toISOString()
+    const today = `${getLocalDateString()}T12:00:00.000Z`
     const item = mockItem({ id: 'a', qty: 2, stock: 5 })
     item.variant!.last_stock_in_at = today
     expect(itemStockInBillableHint(item)).toContain('今日入庫')

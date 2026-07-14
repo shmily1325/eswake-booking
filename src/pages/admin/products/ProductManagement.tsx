@@ -1,3 +1,9 @@
+/**
+ * Design thinking:
+ * Current feel: InventoryDashboard rainbow chips + emoji image placeholders read as admin KPI chrome.
+ * Hierarchy: search/list primary; filter chips secondary near-black; status soft tonal only.
+ * Primary task: find a SKU and open edit (or start order) without dashboard noise.
+ */
 import { useEffect, useMemo, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -24,9 +30,10 @@ import { getVariantAvailability, getVariantSellableStock } from '../../shop/lib/
 import { ProductEditView } from './ProductEditView'
 import { variantMatchesSearchTokens } from './productSearchHaystack'
 import { isMissingLabelCode } from './labelCode'
-import { designSystem, getPageContentShellStyle } from '../../../styles/designSystem'
+import { designSystem, getFontSize, getPageContentShellStyle, PAGE_MAX_WIDTHS } from '../../../styles/designSystem'
 
 const pageBg = designSystem.colors.background.main
+const { colors, borderRadius } = designSystem
 
 type ViewMode =
   | { kind: 'list' }
@@ -362,7 +369,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           style={{
             flex: 1,
             minHeight: 0,
-            maxWidth: 920,
+            maxWidth: PAGE_MAX_WIDTHS.content,
             margin: '0 auto',
             width: '100%',
             display: 'flex',
@@ -407,7 +414,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
             }
       }
     >
-      <div style={embedded ? { maxWidth: 1100, margin: '0 auto' } : getPageContentShellStyle(isMobile)}>
+      <div style={embedded ? { maxWidth: PAGE_MAX_WIDTHS.content, margin: '0 auto' } : getPageContentShellStyle(isMobile)}>
         {!embedded && <PageHeader user={user} title="商品" showBaoLink={isAdmin(user)} />}
 
         {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面 / 缺標籤 / 已售完（皆為 SKU 種數，隨搜尋變動） */}
@@ -887,11 +894,11 @@ function InventoryDashboard({
   return (
     <div
       style={{
-        background: '#fff',
-        borderRadius: 12,
+        background: colors.background.card,
+        borderRadius: borderRadius.lg,
         padding: isMobile ? '10px 12px' : '12px 16px',
         marginBottom: 12,
-        border: '1px solid #ececec',
+        border: `1px solid ${colors.border.light}`,
         display: 'flex',
         alignItems: 'center',
         gap: isMobile ? 10 : 16,
@@ -901,25 +908,60 @@ function InventoryDashboard({
       {/* 主數字：種 + 件 */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>{mainSku}</span>
-          <span style={{ fontSize: 12, color: '#888' }}>種</span>
+          <span
+            style={{
+              fontSize: getFontSize('h2', isMobile),
+              fontWeight: 700,
+              color: colors.text.primary,
+              lineHeight: 1,
+            }}
+          >
+            {mainSku}
+          </span>
+          <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>種</span>
         </div>
-        <span style={{ color: '#ddd' }}>·</span>
+        <span style={{ color: colors.border.main }}>·</span>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>{mainStock}</span>
-          <span style={{ fontSize: 12, color: '#888' }}>可售件</span>
+          <span
+            style={{
+              fontSize: getFontSize('h2', isMobile),
+              fontWeight: 700,
+              color: colors.text.primary,
+              lineHeight: 1,
+            }}
+          >
+            {mainStock}
+          </span>
+          <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>可售件</span>
         </div>
         {mainReserved > 0 && (
           <>
-            <span style={{ color: '#ddd' }}>·</span>
+            <span style={{ color: colors.border.main }}>·</span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: '#6a1b9a', lineHeight: 1 }}>{mainReserved}</span>
-              <span style={{ fontSize: 12, color: '#6a1b9a' }}>保留中</span>
+              <span
+                style={{
+                  fontSize: getFontSize('h3', isMobile),
+                  fontWeight: 700,
+                  color: colors.text.secondary,
+                  lineHeight: 1,
+                }}
+              >
+                {mainReserved}
+              </span>
+              <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>
+                保留中
+              </span>
             </div>
           </>
         )}
         {isFiltered && (
-          <span style={{ fontSize: 11, color: '#aaa', marginLeft: 4 }}>
+          <span
+            style={{
+              fontSize: getFontSize('caption', isMobile),
+              color: colors.text.disabled,
+              marginLeft: 4,
+            }}
+          >
             / {tabName} {baseSkuCount}種
           </span>
         )}
@@ -929,49 +971,45 @@ function InventoryDashboard({
         style={{
           width: 1,
           height: 22,
-          background: '#eee',
+          background: colors.border.light,
           flexShrink: 0,
           display: isMobile ? 'none' : 'block',
         }}
       />
 
-      {/* 待補：缺價 / 沒實拍 / 沒封面 / 缺標籤（可點擊 toggle） */}
+      {/* 待補：缺價 / 沒實拍 / 沒封面 / 缺標籤（可點擊 toggle）— quiet near-black chips */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <DashboardStatChip
           label="缺價"
           count={missingPriceCount}
           active={onlyMissingPrice}
           onClick={onToggleMissingPrice}
-          color="#ef6c00"
-          bgActive="#fff4e0"
           trackId="product_filter_missing_price"
+          isMobile={isMobile}
         />
         <DashboardStatChip
           label="沒實拍"
           count={missingImageCount}
           active={onlyMissingImage}
           onClick={onToggleMissingImage}
-          color="#1565c0"
-          bgActive="#e3f2fd"
           trackId="product_filter_missing_image"
+          isMobile={isMobile}
         />
         <DashboardStatChip
           label="沒封面"
           count={missingCoverCount}
           active={onlyMissingCover}
           onClick={onToggleMissingCover}
-          color="#6a1b9a"
-          bgActive="#f3e5f5"
           trackId="product_filter_missing_cover"
+          isMobile={isMobile}
         />
         <DashboardStatChip
           label="缺標籤"
           count={missingLabelCount}
           active={onlyMissingLabel}
           onClick={onToggleMissingLabel}
-          color="#2e7d32"
-          bgActive="#e8f5e9"
           trackId="product_filter_missing_label"
+          isMobile={isMobile}
         />
       </div>
 
@@ -979,21 +1017,19 @@ function InventoryDashboard({
         style={{
           width: 1,
           height: 22,
-          background: '#eee',
+          background: colors.border.light,
           flexShrink: 0,
           display: isMobile ? 'none' : 'block',
         }}
       />
 
-      {/* 已售完 archive（預設隱藏；點擊只看已售完） */}
       <DashboardStatChip
         label="已售完"
         count={soldOutCount}
         active={onlySoldOut}
         onClick={onToggleSoldOut}
-        color="#616161"
-        bgActive="#f5f5f5"
         trackId="product_filter_sold_out"
+        isMobile={isMobile}
       />
 
       <div style={{ flex: 1 }} />
@@ -1006,8 +1042,8 @@ function InventoryDashboard({
           style={{
             background: 'transparent',
             border: 'none',
-            color: '#888',
-            fontSize: 12,
+            color: colors.text.secondary,
+            fontSize: getFontSize('caption', isMobile),
             cursor: 'pointer',
             padding: 4,
             textDecoration: 'underline',
@@ -1026,11 +1062,10 @@ interface DashboardStatChipProps {
   count: number
   active: boolean
   onClick: () => void
-  color: string
-  bgActive: string
   trackId?: string
+  isMobile: boolean
 }
-function DashboardStatChip({ label, count, active, onClick, color, bgActive, trackId }: DashboardStatChipProps) {
+function DashboardStatChip({ label, count, active, onClick, trackId, isMobile }: DashboardStatChipProps) {
   const isZero = count === 0
   return (
     <button
@@ -1044,18 +1079,18 @@ function DashboardStatChip({ label, count, active, onClick, color, bgActive, tra
         alignItems: 'baseline',
         gap: 4,
         padding: '4px 10px',
-        fontSize: 12,
+        fontSize: getFontSize('caption', isMobile),
         fontWeight: active ? 700 : 500,
-        background: active ? bgActive : 'transparent',
-        color: isZero && !active ? '#bbb' : active ? color : '#555',
-        border: '1px solid ' + (active ? color : '#e6e6e6'),
-        borderRadius: 999,
+        background: active ? colors.primary[500] : colors.background.card,
+        color: isZero && !active ? colors.text.disabled : active ? '#fff' : colors.text.secondary,
+        border: `1px solid ${active ? colors.primary[500] : colors.border.light}`,
+        borderRadius: borderRadius.full,
         cursor: isZero && !active ? 'default' : 'pointer',
         flexShrink: 0,
-        transition: 'all 0.1s',
+        transition: designSystem.transitions.fast,
       }}
     >
-      <span style={{ fontSize: 14, fontWeight: 700 }}>{count}</span>
+      <span style={{ fontSize: getFontSize('body', isMobile), fontWeight: 700 }}>{count}</span>
       <span>{label}</span>
     </button>
   )
@@ -1066,7 +1101,7 @@ function shopStatusBadge(
   isPublic: boolean,
 ): { bg: string; color: string; label: string } {
   if (!isPublic) {
-    return { bg: '#eeeeee', color: '#616161', label: '未公開' }
+    return { bg: colors.secondary[100], color: colors.text.disabled, label: '未公開' }
   }
   const avail = getVariantAvailability(variant)
   const sellableStock = getVariantSellableStock(variant)
@@ -1075,20 +1110,20 @@ function shopStatusBadge(
     const label = reservedStock > 0
       ? `可售 ${sellableStock} · 留 ${reservedStock}`
       : `可售 ${sellableStock}`
-    if (sellableStock <= 2) return { bg: '#fff4e0', color: '#ef6c00', label }
-    return { bg: '#e8f5e9', color: '#2e7d32', label }
+    if (sellableStock <= 2) return { bg: colors.warning[50], color: colors.warning[700], label }
+    return { bg: colors.success[50], color: colors.success[700], label }
   }
-  if (avail === 'pre_order') return { bg: '#fff8e1', color: '#f57f17', label: '預購' }
-  return { bg: '#f5f5f5', color: '#9e9e9e', label: '已售完' }
+  if (avail === 'pre_order') return { bg: colors.warning[50], color: colors.warning[700], label: '預購' }
+  return { bg: colors.secondary[100], color: colors.text.disabled, label: '已售完' }
 }
 
 function variantCardBorder(variant: ProductVariantRow, isPublic: boolean): string {
-  if (!isPublic) return '#ececec'
+  if (!isPublic) return colors.border.light
   const avail = getVariantAvailability(variant)
-  if (avail === 'pre_order') return '#ffe082'
-  if (avail === 'in_stock' && getVariantSellableStock(variant) <= 2) return '#f5dbb6'
-  if (avail === 'sold_out') return '#eeeeee'
-  return '#ececec'
+  if (avail === 'pre_order') return colors.warning[500]
+  if (avail === 'in_stock' && getVariantSellableStock(variant) <= 2) return colors.warning[500]
+  if (avail === 'sold_out') return colors.border.light
+  return colors.border.light
 }
 
 
@@ -1108,12 +1143,12 @@ function PriceDisplay({ price, align = 'left' }: { price: number | null; align?:
       <span
         style={{
           display: 'inline-block',
-          fontSize: 12,
+          fontSize: getFontSize('caption', false),
           fontWeight: 600,
           padding: '2px 8px',
-          borderRadius: 6,
-          background: '#fff4e0',
-          color: '#ef6c00',
+          borderRadius: borderRadius.sm,
+          background: colors.warning[50],
+          color: colors.warning[700],
           letterSpacing: 0.5,
           verticalAlign: 'middle',
         }}
@@ -1124,7 +1159,7 @@ function PriceDisplay({ price, align = 'left' }: { price: number | null; align?:
     )
   }
   return (
-    <span style={{ fontWeight: 600, color: '#222', textAlign: align }}>
+    <span style={{ fontWeight: 600, color: colors.text.primary, textAlign: align }}>
       ${price.toLocaleString()}
     </span>
   )
@@ -1290,7 +1325,6 @@ interface GalleryCardProps {
 }
 function GalleryCard({ item, imageMode, onClick, onStartOrder }: GalleryCardProps) {
   const { variant, product } = item
-  const cat = getCategory(product.category)
   const status = shopStatusBadge(variant, product.is_public)
   const attrText = formatAttributes(product.category, variant.attributes)
   const cardBorder = variantCardBorder(variant, product.is_public)
@@ -1352,7 +1386,7 @@ function GalleryCard({ item, imageMode, onClick, onStartOrder }: GalleryCardProp
             loading="lazy"
           />
         ) : (
-          <ImagePlaceholder icon={cat?.icon ?? '📦'} />
+          <ImagePlaceholder />
         )}
         {/* 庫存標籤浮在右上 */}
         <span
@@ -1492,28 +1526,31 @@ function LockToggle({ locked, onToggle }: LockToggleProps) {
       aria-label={locked ? '解鎖編輯' : '鎖定編輯'}
       aria-pressed={locked}
       style={{
-        width: 34,
+        minWidth: 44,
         height: 34,
-        border: '1px solid ' + (locked ? '#ef6c00' : '#ddd'),
-        borderRadius: 8,
-        background: locked ? '#fff4e0' : '#fff',
-        color: locked ? '#ef6c00' : '#666',
+        padding: '0 8px',
+        border: `1px solid ${locked ? colors.warning[500] : colors.border.main}`,
+        borderRadius: borderRadius.md,
+        background: locked ? colors.warning[50] : colors.background.card,
+        color: locked ? colors.warning[700] : colors.text.secondary,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 16,
+        fontSize: getFontSize('caption', false),
+        fontWeight: 600,
         flexShrink: 0,
-        transition: 'all 0.15s',
+        transition: designSystem.transitions.fast,
       }}
+      data-track={locked ? 'product_unlock_edit' : 'product_lock_edit'}
     >
-      {locked ? '🔒' : '🔓'}
+      {locked ? '鎖定' : '可編'}
     </button>
   )
 }
 
-/** 缺圖時的 placeholder：淺色背景 + 大 icon，比之前單一 emoji 收斂一點 */
-function ImagePlaceholder({ icon }: { icon: string }) {
+/** 缺圖時的 placeholder：淺底＋文字，不使用分類 emoji */
+function ImagePlaceholder() {
   return (
     <div
       style={{
@@ -1522,11 +1559,27 @@ function ImagePlaceholder({ icon }: { icon: string }) {
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        color: '#bbb',
+        color: colors.text.disabled,
       }}
     >
-      <span style={{ fontSize: 40, opacity: 0.55 }}>{icon}</span>
-      <span style={{ fontSize: 10, color: '#bbb', letterSpacing: 1 }}>NO IMAGE</span>
+      <span
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: borderRadius.sm,
+          background: colors.secondary[100],
+          border: `1px solid ${colors.border.light}`,
+        }}
+      />
+      <span
+        style={{
+          fontSize: getFontSize('caption', true),
+          color: colors.text.disabled,
+          letterSpacing: 1,
+        }}
+      >
+        NO IMAGE
+      </span>
     </div>
   )
 }
@@ -1568,7 +1621,6 @@ function MobileListRow({
   onStartOrder?: (variantId: string) => void
 }) {
   const { variant, product } = item
-  const cat = getCategory(product.category)
   const status = shopStatusBadge(variant, product.is_public)
   const attrText = formatAttributes(product.category, variant.attributes)
   const cardBorder = variantCardBorder(variant, product.is_public)
@@ -1622,7 +1674,9 @@ function MobileListRow({
             loading="lazy"
           />
         ) : (
-          <span style={{ fontSize: 24, color: '#cfcfcf' }}>{cat?.icon ?? '📦'}</span>
+          <span style={{ fontSize: getFontSize('caption', true), color: colors.text.disabled, letterSpacing: 1 }}>
+            —
+          </span>
         )}
       </div>
 
@@ -1816,7 +1870,9 @@ function DesktopTable({ items, showCategoryColumn, imageMode, onRowClick, onStar
                       {imageUrl ? (
                         <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        cat?.icon ?? '📦'
+                        <span style={{ fontSize: getFontSize('caption', true), color: colors.text.disabled }}>
+                          —
+                        </span>
                       )}
                     </div>
                   </td>
@@ -1919,19 +1975,25 @@ function EmptyState({ hasAnyProduct, canCreate, onCreate }: EmptyStateProps) {
   return (
     <div
       style={{
-        background: '#fff',
-        borderRadius: 14,
+        background: colors.background.card,
+        borderRadius: borderRadius.lg,
         padding: '48px 20px',
         textAlign: 'center',
-        color: '#777',
-        border: '1px dashed #ddd',
+        color: colors.text.secondary,
+        border: `1px dashed ${colors.border.main}`,
       }}
     >
-      <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
-      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: '#333' }}>
+      <div
+        style={{
+          fontSize: getFontSize('bodyLarge', false),
+          fontWeight: 600,
+          marginBottom: 6,
+          color: colors.text.primary,
+        }}
+      >
         {hasAnyProduct ? '沒有符合的商品' : '還沒有任何商品'}
       </div>
-      <div style={{ fontSize: 13, marginBottom: 18 }}>
+      <div style={{ fontSize: getFontSize('bodySmall', false), marginBottom: 18 }}>
         {hasAnyProduct
           ? '試著清除篩選或調整關鍵字。'
           : canCreate

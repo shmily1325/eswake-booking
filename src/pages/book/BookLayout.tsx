@@ -1,8 +1,9 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { ES_BRAND } from '../../lib/esBrandTokens'
+import { PAGE_MAX_WIDTHS } from '../../styles/designSystem'
 
 /** 公開預約／行前須知：桌機置中欄寬（接近手機操作寬度） */
-export const BOOK_PUBLIC_COLUMN_MAX_WIDTH = 480
+export const BOOK_PUBLIC_COLUMN_MAX_WIDTH = Number.parseInt(PAGE_MAX_WIDTHS.mobileColumn, 10)
 
 const columnStyle: CSSProperties = {
   width: '100%',

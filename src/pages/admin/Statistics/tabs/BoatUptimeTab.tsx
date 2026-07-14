@@ -1,7 +1,12 @@
+/**
+ * Design thinking: spreadsheet + chart felt like a loud ops dashboard (hardcoded
+ * grays, colored accent bars). Quiet frames, getFontSize, keep density for scan.
+ * Data fetch / uptime math unchanged.
+ */
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { designSystem, getCardStyle } from '../../../../styles/designSystem'
+import { designSystem, getCardStyle, getFontSize } from '../../../../styles/designSystem'
 import { sortBoatsByDisplayOrder } from '../../../../utils/boatUtils'
 import {
   computeBoatsMonthlyUptime,
@@ -87,7 +92,7 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
   )
 
   /** 與歷史趨勢主色一致；100% 用綠色凸顯「當月無維修時段」 */
-  const barFill = (uptimePct: number) => (uptimePct >= 100 ? designSystem.colors.success[500] : designSystem.colors.info[500])
+  const barFill = (uptimePct: number) => (uptimePct >= 100 ? designSystem.colors.success[500] : designSystem.colors.primary[400])
 
   const quickMonths = useMemo(() => {
     const out: { value: string; label: string }[] = []
@@ -106,35 +111,35 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
   const thStyle = {
     textAlign: 'left' as const,
     padding: '10px 12px',
-    fontSize: '13px',
-    color: '#555',
-    borderBottom: '2px solid #e0e0e0',
+    fontSize: getFontSize('bodySmall', isMobile),
+    color: designSystem.colors.text.secondary,
+    borderBottom: `1px solid ${designSystem.colors.border.main}`,
     fontWeight: 600 as const,
   }
   const tdStyle = {
     padding: '10px 12px',
-    fontSize: '13px',
-    borderBottom: '1px solid #f0f0f0',
-    color: '#333',
+    fontSize: getFontSize('bodySmall', isMobile),
+    borderBottom: `1px solid ${designSystem.colors.border.light}`,
+    color: designSystem.colors.text.primary,
   }
 
   return (
     <div>
       <div
         style={{
-          backgroundColor: 'white',
+          backgroundColor: designSystem.colors.background.card,
           padding: designSystem.spacing.sm,
           borderRadius: designSystem.borderRadius.lg,
-          boxShadow: designSystem.shadows.sm,
+          border: `1px solid ${designSystem.colors.border.light}`,
           marginBottom: designSystem.spacing.md,
         }}
       >
         <div
           style={{
-            fontSize: '15px',
+            fontSize: getFontSize('body', isMobile),
             fontWeight: 600,
             marginBottom: '12px',
-            color: '#333',
+            color: designSystem.colors.text.primary,
           }}
         >
           月份
@@ -157,8 +162,8 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
                   selectedMonth === m.value
                     ? designSystem.colors.primary[500]
                     : 'white',
-                color: selectedMonth === m.value ? 'white' : '#666',
-                fontSize: isMobile ? '13px' : '14px',
+                color: selectedMonth === m.value ? 'white' : designSystem.colors.text.secondary,
+                fontSize: getFontSize('button', isMobile),
                 fontWeight: selectedMonth === m.value ? '600' : '500',
                 cursor: 'pointer',
               }}
@@ -167,7 +172,13 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
             </button>
           ))}
         </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#666' }}>
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          fontSize: getFontSize('body', isMobile),
+          color: designSystem.colors.text.secondary,
+        }}>
           其他月份
           <input
             type="month"
@@ -175,48 +186,44 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
             onChange={(e) => setSelectedMonth(e.target.value)}
             style={{
               padding: '8px 10px',
-              borderRadius: '8px',
-              border: '1px solid #e0e0e0',
-              fontSize: '16px',
+              borderRadius: designSystem.borderRadius.md,
+              border: `1px solid ${designSystem.colors.border.main}`,
+              fontSize: getFontSize('body', isMobile),
             }}
           />
         </label>
       </div>
 
       {!loading && chartData.length > 0 && (
-        <div style={getCardStyle(isMobile)}>
+        <div style={{
+          ...getCardStyle(isMobile),
+          boxShadow: 'none',
+          border: `1px solid ${designSystem.colors.border.light}`,
+        }}>
           <h3
             style={{
-              margin: '0 0 16px 0',
-              fontSize: '17px',
-              fontWeight: '700',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              color: '#333',
+              margin: '0 0 4px 0',
+              fontSize: getFontSize('h3', isMobile),
+              fontWeight: '600',
+              color: designSystem.colors.text.primary,
             }}
           >
-            <span
-              style={{
-                width: '4px',
-                height: '20px',
-                background: designSystem.colors.info[500],
-                borderRadius: '2px',
-                display: 'inline-block',
-              }}
-            />
             各船妥善率
-            <span style={{ fontSize: '12px', color: '#999', fontWeight: '400' }}>
-              （{selectedMonth} · Hover 維修時數）
-            </span>
           </h3>
+          <p style={{
+            margin: '0 0 16px 0',
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.disabled,
+          }}>
+            {selectedMonth} · Hover 看維修時數
+          </p>
           <div style={{ width: '100%', height: isMobile ? 260 : 300 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
                 margin={{ top: 8, right: 8, left: isMobile ? -8 : 0, bottom: isMobile ? 36 : 20 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke={designSystem.colors.border.light} />
                 <XAxis
                   dataKey="name"
                   tick={{ fontSize: isMobile ? 10 : 12 }}
@@ -240,20 +247,20 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
                     return (
                       <div
                         style={{
-                          backgroundColor: '#fff',
-                          border: '1px solid #ddd',
-                          borderRadius: '8px',
+                          backgroundColor: designSystem.colors.background.card,
+                          border: `1px solid ${designSystem.colors.border.main}`,
+                          borderRadius: designSystem.borderRadius.md,
                           padding: '12px 14px',
-                          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-                          fontSize: '13px',
+                          boxShadow: designSystem.shadows.sm,
+                          fontSize: getFontSize('bodySmall', isMobile),
                         }}
                       >
-                        <div style={{ fontWeight: 600, marginBottom: '8px', color: '#333' }}>{label}</div>
+                        <div style={{ fontWeight: 600, marginBottom: '8px', color: designSystem.colors.text.primary }}>{label}</div>
                         <div style={{ marginBottom: '4px' }}>
-                          <span style={{ color: designSystem.colors.info[500] }}>妥善率</span>{' '}
+                          <span style={{ color: designSystem.colors.text.secondary }}>妥善率</span>{' '}
                           <strong>{p.uptimePct}%</strong>
                         </div>
-                        <div style={{ color: '#666' }}>
+                        <div style={{ color: designSystem.colors.text.secondary }}>
                           維修 <strong>{p.downtimeHours}</strong> 小時（<strong>{p.downtimeDays}</strong> 天）
                         </div>
                       </div>
@@ -268,8 +275,13 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ marginTop: '10px', fontSize: '12px', color: '#888', lineHeight: 1.5 }}>
-            綠：妥善率 100%｜藍：未滿 100%
+          <div style={{
+            marginTop: '10px',
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.disabled,
+            lineHeight: 1.5,
+          }}>
+            綠：妥善率 100%｜灰：未滿 100%
           </div>
         </div>
       )}
@@ -277,44 +289,39 @@ export function BoatUptimeTab({ lastUpdatedKey }: BoatUptimeTabProps) {
       <div
         style={{
           ...getCardStyle(isMobile),
+          boxShadow: 'none',
+          border: `1px solid ${designSystem.colors.border.light}`,
           overflowX: 'auto',
         }}
       >
         <h3
           style={{
             margin: '0 0 8px 0',
-            fontSize: '17px',
-            fontWeight: '700',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            color: '#333',
+            fontSize: getFontSize('h3', isMobile),
+            fontWeight: '600',
+            color: designSystem.colors.text.primary,
           }}
         >
-          <span
-            style={{
-              width: '4px',
-              height: '20px',
-              background: designSystem.colors.success[500],
-              borderRadius: '2px',
-              display: 'inline-block',
-            }}
-          />
           月統計明細
         </h3>
-        <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#666', lineHeight: 1.6 }}>
+        <p style={{
+          margin: '0 0 16px 0',
+          fontSize: getFontSize('bodySmall', isMobile),
+          color: designSystem.colors.text.secondary,
+          lineHeight: 1.6,
+        }}>
           分母為當月天數 × 24 小時；分子為扣除合併後的維修／停用時段。維修天數 = 維修小時 ÷ 24。
           不含彈簧床、陸上課程；同一時段多筆維修會合併計算。
         </p>
 
         {loading ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: '#888' }}>載入中…</div>
+          <div style={{ padding: '24px', textAlign: 'center', color: designSystem.colors.text.disabled }}>載入中…</div>
         ) : chartData.length === 0 ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: '#888' }}>無船隻資料</div>
+          <div style={{ padding: '24px', textAlign: 'center', color: designSystem.colors.text.disabled }}>無船隻資料</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 520 : 640 }}>
             <thead>
-              <tr style={{ background: '#f8f9fa' }}>
+              <tr style={{ background: designSystem.colors.background.hover }}>
                 <th style={thStyle}>船隻</th>
                 <th style={{ ...thStyle, textAlign: 'right' }}>當月總小時</th>
                 <th style={{ ...thStyle, textAlign: 'right' }}>維修小時</th>

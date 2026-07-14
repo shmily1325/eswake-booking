@@ -1519,11 +1519,8 @@ export function StaffManagement() {
 
             {/* 單一 grouped list */}
             <div style={{
-              background: designSystem.colors.background.card,
-              borderRadius: designSystem.borderRadius.lg,
-              border: cardBorder,
-              boxShadow: cardShadow,
-              overflow: 'hidden',
+              display: 'grid',
+              gap: isMobile ? '10px' : '14px',
             }}>
               {(() => {
                 const filteredCoaches = coaches.filter(coach => {
@@ -1545,11 +1542,10 @@ export function StaffManagement() {
                   )
                 }
 
-                return filteredCoaches.map((coach, index) => {
+                return filteredCoaches.map((coach) => {
                 const coachTimeOffs = timeOffs.filter(t => t.coach_id === coach.id)
                 const isActive = coach.status === 'active'
                 const isArchived = coach.status === 'archived'
-                const isLast = index === filteredCoaches.length - 1
                 const statusLabel = isArchived ? '已隱藏' : (isActive ? null : '已停用')
 
                 const filteredTimeOffs = !isArchived
@@ -1559,7 +1555,7 @@ export function StaffManagement() {
                   ? mergeConsecutiveTimeOffs(filteredTimeOffs)
                   : []
                 const isExpanded = expandedCoachIds.has(coach.id)
-                const maxDisplay = 3
+                const maxDisplay = 2
                 const displayTimeOffs = isExpanded
                   ? mergedTimeOffs
                   : mergedTimeOffs.slice(0, maxDisplay)
@@ -1569,9 +1565,13 @@ export function StaffManagement() {
                   <div
                     key={coach.id}
                     style={{
-                      padding: isMobile ? '16px' : '18px 20px',
-                      borderBottom: isLast ? 'none' : `1px solid ${designSystem.colors.border.light}`,
+                      padding: isMobile ? '14px' : '16px 18px',
+                      background: designSystem.colors.background.card,
+                      border: `1px solid ${designSystem.colors.border.main}`,
+                      borderRadius: designSystem.borderRadius.lg,
+                      boxShadow: designSystem.shadows.elevation[2],
                       opacity: isArchived ? 0.72 : 1,
+                      overflow: 'hidden',
                     }}
                   >
                     <div style={{
@@ -1705,9 +1705,11 @@ export function StaffManagement() {
 
                     {!isArchived && mergedTimeOffs.length > 0 && (
                       <div style={{
-                        marginTop: designSystem.spacing.md,
-                        paddingTop: designSystem.spacing.sm,
-                        borderTop: `1px solid ${designSystem.colors.border.light}`,
+                        marginTop: '12px',
+                        padding: isMobile ? '4px 10px' : '4px 12px',
+                        background: designSystem.colors.background.main,
+                        border: `1px solid ${designSystem.colors.border.light}`,
+                        borderRadius: designSystem.borderRadius.md,
                       }}>
                         {displayTimeOffs.map((timeOff, idx) => (
                           <div
@@ -1715,10 +1717,9 @@ export function StaffManagement() {
                             style={{
                               display: 'flex',
                               justifyContent: 'space-between',
-                              alignItems: isMobile ? 'flex-start' : 'center',
-                              flexDirection: isMobile ? 'column' : 'row',
-                              padding: '10px 0',
-                              gap: isMobile ? '8px' : '12px',
+                              alignItems: 'center',
+                              padding: isMobile ? '6px 0' : '5px 0',
+                              gap: '10px',
                               borderBottom:
                                 idx === displayTimeOffs.length - 1 && !hasMore
                                   ? 'none'
@@ -1764,6 +1765,7 @@ export function StaffManagement() {
                                 size="small"
                                 data-track="staff_edit_time_off"
                                 onClick={() => openEditTimeOffDialog(coach, timeOff)}
+                                style={{ padding: isMobile ? '5px 9px' : '4px 9px' }}
                               >
                                 編輯
                               </Button>
@@ -1772,7 +1774,10 @@ export function StaffManagement() {
                                 size="small"
                                 data-track="staff_delete_time_off"
                                 onClick={() => handleDeleteTimeOff(timeOff)}
-                                style={{ color: designSystem.colors.danger[700] }}
+                                style={{
+                                  color: designSystem.colors.danger[700],
+                                  padding: isMobile ? '5px 7px' : '4px 7px',
+                                }}
                               >
                                 刪除
                               </Button>
@@ -1786,8 +1791,8 @@ export function StaffManagement() {
                             onClick={() => toggleExpandCoach(coach.id)}
                             style={{
                               width: '100%',
-                              marginTop: '4px',
-                              padding: '8px',
+                              marginTop: '2px',
+                              padding: '6px',
                               background: 'transparent',
                               color: designSystem.colors.text.secondary,
                               border: 'none',

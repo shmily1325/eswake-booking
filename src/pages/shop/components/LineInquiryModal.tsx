@@ -1,5 +1,12 @@
+/**
+ * Design thinking:
+ * Current feel: shadow-2xl and emoji copy labels make a simple desktop fallback feel heavier than needed.
+ * Hierarchy: message preview → copy → LINE deep-link CTA → quiet tip.
+ * Primary task: copy the inquiry text and open LINE OA — LINE green only on the LINE action.
+ */
 import { useEffect, useRef, useState } from 'react'
 import { buildOaHomeUrl, getOaId } from '../lib/lineDeepLink'
+import { designSystem, getFontSize } from '../../../styles/designSystem'
 
 interface LineInquiryModalProps {
   /** 預填的詢問訊息（多行文字）；falsy = 不顯示 modal */
@@ -66,28 +73,51 @@ export function LineInquiryModal({ message, onClose }: LineInquiryModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]"
+      style={{ background: 'rgba(0,0,0,0.45)' }}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="line-inquiry-title"
     >
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden"
+        className="w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden"
+        style={{
+          background: designSystem.colors.background.card,
+          borderRadius: designSystem.borderRadius.lg,
+          border: `1px solid ${designSystem.colors.border.light}`,
+          boxShadow: designSystem.shadows.md,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-3 flex items-center justify-between">
+        <div
+          className="px-5 py-3 flex items-center justify-between"
+          style={{ borderBottom: `1px solid ${designSystem.colors.border.light}` }}
+        >
           <h2
             id="line-inquiry-title"
-            className="text-base font-bold text-zinc-900"
+            style={{
+              margin: 0,
+              fontSize: getFontSize('h3', false),
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              color: designSystem.colors.text.primary,
+            }}
           >
             用 LINE 詢問
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none p-1 -m-1"
+            className="p-1 -m-1 leading-none"
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              color: designSystem.colors.text.secondary,
+              fontSize: designSystem.fontSize.h1.desktop,
+            }}
             aria-label="Close"
           >
             ×
@@ -95,38 +125,71 @@ export function LineInquiryModal({ message, onClose }: LineInquiryModalProps) {
         </div>
 
         {/* Body */}
-        <div className="px-5 pb-5 overflow-y-auto flex-1 space-y-3">
+        <div className="px-5 py-4 overflow-y-auto flex-1 space-y-3">
           <textarea
             ref={textareaRef}
             value={message}
             readOnly
             rows={Math.min(10, message.split('\n').length + 1)}
-            className="w-full text-xs border border-gray-200 rounded-md p-2 bg-gray-50 font-mono resize-none focus:outline-none focus:border-black"
+            className="w-full font-mono resize-none focus:outline-none"
+            style={{
+              fontSize: getFontSize('caption', false),
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.md,
+              padding: designSystem.spacing.sm,
+              background: designSystem.colors.background.main,
+              color: designSystem.colors.text.primary,
+            }}
           />
 
           <button
             type="button"
             onClick={handleCopy}
-            className={
-              'w-full text-sm font-medium px-3 py-2 rounded-md transition-colors ' +
-              (copied
-                ? 'bg-green-100 text-green-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
-            }
+            className="w-full transition-colors"
+            style={{
+              fontSize: getFontSize('button', false),
+              fontWeight: 500,
+              padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+              borderRadius: designSystem.borderRadius.md,
+              border: `1px solid ${designSystem.colors.border.main}`,
+              cursor: 'pointer',
+              background: copied
+                ? designSystem.colors.success[50]
+                : designSystem.colors.background.main,
+              color: copied
+                ? designSystem.colors.success[700]
+                : designSystem.colors.text.primary,
+            }}
           >
-            {copied ? '✓ 已複製' : '📋 複製訊息'}
+            {copied ? '已複製' : '複製訊息'}
           </button>
 
           <a
             href={oaHomeUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full text-center px-4 py-2.5 rounded-md bg-[#06C755] text-white font-semibold hover:bg-[#05a847] transition-colors"
+            className="block w-full text-center transition-colors hover:opacity-90"
+            style={{
+              padding: '10px 16px',
+              borderRadius: designSystem.borderRadius.md,
+              background: '#06C755',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: getFontSize('button', false),
+              textDecoration: 'none',
+            }}
           >
             開啟 LINE 對話（{oaId}）
           </a>
 
-          <p className="text-xs text-gray-500 text-center">
+          <p
+            className="text-center"
+            style={{
+              margin: 0,
+              fontSize: getFontSize('caption', false),
+              color: designSystem.colors.text.secondary,
+            }}
+          >
             加好友後，回對話框貼上訊息送出即可
           </p>
         </div>

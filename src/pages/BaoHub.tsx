@@ -9,6 +9,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { isAdmin } from '../utils/auth'
 import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
 import { ExternalNavLink } from '../components/ExternalNavLink'
+import { PageShell } from '../components/PageShell'
 import { designSystem, getFontSize } from '../styles/designSystem'
 import { supabase } from '../lib/supabase'
 
@@ -193,24 +194,13 @@ export function BaoHub() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        background: designSystem.colors.background.main,
-        padding: isMobile ? '24px 16px' : '40px 20px',
-        paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}
+    <PageShell
+      variant="hub"
+      mobilePadding="24px 16px max(20px, env(safe-area-inset-bottom))"
+      desktopPadding="40px 20px max(20px, env(safe-area-inset-bottom))"
+      outerStyle={{ minHeight: '100dvh', alignItems: 'center' }}
+      contentStyle={{ flex: 'unset' }}
     >
-      <div
-        style={{
-          maxWidth: '750px',
-          width: '100%',
-          margin: '0 auto',
-        }}
-      >
         {/* Header */}
         <div
           style={{
@@ -401,7 +391,6 @@ export function BaoHub() {
 
 
         <Footer />
-      </div>
-    </div>
+    </PageShell>
   )
 }

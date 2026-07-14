@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
+import { PageShell } from '../../components/PageShell'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
@@ -169,12 +170,7 @@ export function LineBindingStatus() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: designSystem.colors.background.main,
-      padding: isMobile ? '12px' : '20px'
-    }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <PageShell variant="content" mobilePadding="12px" desktopPadding="20px">
         <PageHeader title="📱 LINE 綁定狀態" user={user} showBaoLink={isAdmin(user)} />
         
         {/* 綁定統計 */}
@@ -521,11 +517,9 @@ export function LineBindingStatus() {
             </p>
           </div>
         </div>
-      </div>
-
       <Footer />
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
-    </div>
+    </PageShell>
   )
 }
 

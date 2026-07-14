@@ -1,6 +1,7 @@
 import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
+import { PageShell } from '../components/PageShell'
 import { useResponsive } from '../hooks/useResponsive'
 import { isAdmin } from '../utils/auth'
 
@@ -9,12 +10,12 @@ export function QuickTransaction() {
   const { isMobile } = useResponsive()
 
   return (
-    <div style={{
-      padding: isMobile ? '12px' : '20px',
-      minHeight: '100vh',
-      background: '#f5f5f5'
-    }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <PageShell
+      variant="content"
+      mobilePadding="12px"
+      desktopPadding="20px"
+      outerStyle={{ background: '#f5f5f5' }}
+    >
         <PageHeader title="儲值" user={user} showBaoLink={isAdmin(user)} />
 
         {/* 即將推出提示 */}
@@ -70,7 +71,6 @@ export function QuickTransaction() {
             }
           }
         `}</style>
-      </div>
-    </div>
+    </PageShell>
   )
 }

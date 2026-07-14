@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
+import { PageShell } from '../../components/PageShell'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString } from '../../utils/date'
 import { hasViewAccess, SUPER_ADMIN_DISPLAY_LABELS } from '../../utils/auth'
@@ -768,13 +769,7 @@ export function AuditLog() {
   }
 
   return (
-    <div style={{
-      padding: isMobile ? '10px' : '15px',
-      maxWidth: '900px',
-      margin: '0 auto',
-      minHeight: '100vh',
-      backgroundColor: designSystem.colors.background.main,
-    }}>
+    <PageShell variant="content" mobilePadding="10px" desktopPadding="15px">
       <PageHeader title="編輯記錄" user={user} />
 
       {/* 篩選區 */}
@@ -1484,6 +1479,6 @@ export function AuditLog() {
           ))}
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

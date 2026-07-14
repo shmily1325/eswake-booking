@@ -1,11 +1,16 @@
+/**
+ * Design thinking: metric tiles support a decision only when quiet —
+ * near-black/muted frame, typography hierarchy; no rainbow left borders.
+ */
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { designSystem, getCardStyle, getFontSize } from '../../../../styles/designSystem'
+import { designSystem, getFontSize } from '../../../../styles/designSystem'
 
 interface SummaryCardProps {
   label: string
   value: number | string
   unit: string
-  accentColor: string
+  /** Kept for call-site compatibility; no longer drives rainbow borders. */
+  accentColor?: string
   change?: {
     value: number
     direction: 'up' | 'down' | 'same'
@@ -19,7 +24,6 @@ export function SummaryCard({
   label,
   value,
   unit,
-  accentColor,
   change,
   subValue,
   fullWidth = false
@@ -28,30 +32,33 @@ export function SummaryCard({
 
   return (
     <div style={{
-      ...getCardStyle(isMobile),
-      borderLeft: `4px solid ${accentColor}`,
+      padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+      background: designSystem.colors.background.card,
+      borderRadius: designSystem.borderRadius.lg,
+      border: `1px solid ${designSystem.colors.border.light}`,
       marginBottom: 0,
       gridColumn: fullWidth && isMobile ? '1 / -1' : 'auto'
     }}>
       <div style={{
-        fontSize: getFontSize('bodySmall', isMobile),
+        fontSize: getFontSize('caption', isMobile),
         color: designSystem.colors.text.secondary,
-        marginBottom: '8px'
+        marginBottom: '6px'
       }}>
         {label}
       </div>
       <div style={{ 
-        fontSize: getFontSize('h1', isMobile), 
-        fontWeight: 'bold', 
+        fontSize: getFontSize('h2', isMobile), 
+        fontWeight: '600', 
         color: designSystem.colors.text.primary,
         display: 'flex',
         alignItems: 'baseline',
-        gap: '8px'
+        gap: '8px',
+        letterSpacing: '-0.02em',
       }}>
         {value}
         {change && change.direction !== 'same' && (
           <span style={{
-            fontSize: getFontSize('bodySmall', isMobile),
+            fontSize: getFontSize('caption', isMobile),
             fontWeight: '500',
             color: change.direction === 'up'
               ? designSystem.colors.success[700]
@@ -75,7 +82,8 @@ export function SummaryCard({
       </div>
       <div style={{
         fontSize: getFontSize('caption', isMobile),
-        color: designSystem.colors.text.disabled
+        color: designSystem.colors.text.disabled,
+        marginTop: '2px',
       }}>
         {unit}
       </div>
@@ -103,8 +111,8 @@ export function SummaryCardsGrid({ children }: SummaryCardsGridProps) {
     <div style={{
       display: 'grid',
       gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
-      gap: '16px',
-      marginBottom: '24px'
+      gap: designSystem.spacing.md,
+      marginBottom: designSystem.spacing.lg,
     }}>
       {children}
     </div>

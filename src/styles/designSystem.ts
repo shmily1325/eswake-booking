@@ -286,8 +286,21 @@ export const designSystem: DesignSystem = {
   },
 }
 
-/** 列表／閱讀型頁面內容最大寬（桌面置中，避免滿版掃讀吃力） */
-export const PAGE_CONTENT_MAX_WIDTH = '1100px'
+/** 各頁型的桌面內容寬度；避免頁面自行散落 magic number。 */
+export const PAGE_MAX_WIDTHS = {
+  mobileColumn: '480px',
+  hub: '640px',
+  content: '1100px',
+  dashboard: '1200px',
+  wide: '1400px',
+  shop: '1280px',
+  shopCheckout: '768px',
+} as const
+
+export type PageWidthVariant = keyof typeof PAGE_MAX_WIDTHS
+
+/** 列表／閱讀型頁面內容最大寬（保留既有 API）。 */
+export const PAGE_CONTENT_MAX_WIDTH = PAGE_MAX_WIDTHS.content
 
 /** 置中內容殼層：手機近滿寬，桌面限制行寬 */
 export const getPageContentShellStyle = (isMobile: boolean = false): React.CSSProperties => ({

@@ -6,10 +6,11 @@ import { NewBookingDialog } from '../components/NewBookingDialog'
 import { RepeatBookingDialog } from '../components/RepeatBookingDialog'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { PageHeader } from '../components/PageHeader'
+import { PageShell } from '../components/PageShell'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString } from '../utils/date'
 import { Footer } from '../components/Footer'
-import { getButtonStyle, designSystem } from '../styles/designSystem'
+import { getButtonStyle, designSystem, PAGE_MAX_WIDTHS } from '../styles/designSystem'
 import { useToast, ToastContainer, BookingListSkeleton } from '../components/ui'
 import { TodayOverview } from '../components/TodayOverview'
 import { DailyStaffDisplay } from '../components/DailyStaffDisplay'
@@ -537,7 +538,7 @@ export function DayView() {
           boxShadow: designSystem.shadows.sm,
         }}>
           <div style={{ 
-            maxWidth: '1400px', 
+            maxWidth: PAGE_MAX_WIDTHS.wide,
             margin: '0 auto',
             display: 'flex',
             justifyContent: 'space-between',
@@ -550,7 +551,7 @@ export function DayView() {
         </div>
 
         {/* 內容區骨架屏 */}
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: isMobile ? '16px' : '20px' }}>
+        <div style={{ maxWidth: PAGE_MAX_WIDTHS.wide, margin: '0 auto', padding: isMobile ? '16px' : '20px' }}>
           <BookingListSkeleton count={8} isMobile={isMobile} />
         </div>
       </div>
@@ -559,12 +560,16 @@ export function DayView() {
 
   return (
     <ErrorBoundary>
-      <div 
-        style={{
-          padding: isMobile ? '12px' : '20px',
-          height: 'auto',
+      <PageShell
+        variant="wide"
+        mobilePadding="12px"
+        desktopPadding="20px"
+        outerStyle={{
           minHeight: isMobile ? '100vh' : 'auto',
           backgroundColor: designSystem.colors.background.main,
+        }}
+        contentStyle={{
+          height: 'auto',
           position: 'relative',
           overflow: 'visible',
           display: isMobile ? 'block' : 'flex',
@@ -801,7 +806,7 @@ export function DayView() {
 
         <Footer />
         <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
-      </div >
+      </PageShell>
     </ErrorBoundary>
   )
 }

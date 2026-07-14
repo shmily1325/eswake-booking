@@ -9,6 +9,7 @@ import { StatisticsTab } from '../../components/StatisticsTab'
 import { CoachSchedulePreviewTable } from './CoachSchedulePreviewTable'
 import { AdminTabBar, AdminTabButton } from '../../components/AdminPageLayout'
 import { designSystem, getFontSize } from '../../styles/designSystem'
+import { PageShell } from '../../components/PageShell'
 
 export function MyReport() {
   const user = useAuthUser()
@@ -50,11 +51,7 @@ export function MyReport() {
   // 檢查權限中
   if (checkingAuth) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
-        <div style={{ 
-          flex: 1, 
-          padding: isMobile ? '16px' : '24px',
-        }}>
+      <PageShell variant="dashboard" mobilePadding="16px" desktopPadding="24px">
           <PageHeader 
             user={user} 
             title="教練回報"
@@ -70,20 +67,12 @@ export function MyReport() {
           }}>
             檢查權限中...
           </div>
-        </div>
-      </div>
+      </PageShell>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: designSystem.colors.background.main }}>
-      <div style={{ 
-        flex: 1, 
-        padding: isMobile ? '16px' : '24px',
-        maxWidth: '1200px',
-        margin: '0 auto',
-        width: '100%'
-      }}>
+    <PageShell variant="dashboard" mobilePadding="16px" desktopPadding="24px">
         <PageHeader 
           user={user} 
           title="教練回報"
@@ -137,8 +126,6 @@ export function MyReport() {
             <CoachSchedulePreviewTable coachId={coachId} isMobile={isMobile} />
           )}
         </div>
-      </div>
-
-    </div>
+    </PageShell>
   )
 }

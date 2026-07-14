@@ -15,7 +15,8 @@ interface RankingItem {
 
 interface RankingCardProps {
   title: string
-  icon: string
+  /** Optional; emoji decoration discouraged — prefer plain title. */
+  icon?: string
   subtitle?: string
   items: RankingItem[]
   accentColor?: string
@@ -27,10 +28,9 @@ interface RankingCardProps {
 
 export function RankingCard({
   title,
-  icon,
   subtitle,
   items,
-  accentColor = designSystem.colors.info[500],
+  accentColor = designSystem.colors.primary[500],
   warningColor = designSystem.colors.warning[500],
   renderDetail,
   emptyText = '暫無資料',
@@ -60,14 +60,7 @@ export function RankingCard({
         color: designSystem.colors.text.primary
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{
-            width: '4px',
-            height: '20px',
-            background: accentColor,
-            borderRadius: '2px',
-            display: 'inline-block'
-          }} />
-          {icon} {title}
+          {title}
         </div>
         {subtitle && (
           <span style={{

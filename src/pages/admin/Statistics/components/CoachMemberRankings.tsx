@@ -24,7 +24,6 @@ export function CoachMemberRankings({
       <>
         <RankingCard
           title="教學時數排行"
-          icon="🎓"
           subtitle="點擊查看指定學生"
           items={coachStats
             .filter(c => c.teachingMinutes > 0)
@@ -102,7 +101,6 @@ export function CoachMemberRankings({
         <div style={{ marginTop: '16px' }}>
           <RankingCard
             title="駕駛時數排行"
-            icon="🚤"
             items={coachStats
               .filter(c => c.drivingMinutes > 0)
               .sort((a, b) => b.drivingMinutes - a.drivingMinutes)
@@ -111,7 +109,6 @@ export function CoachMemberRankings({
                 name: c.coachName,
                 value: c.drivingMinutes
               }))}
-            accentColor={designSystem.colors.success[500]}
             emptyText={`${periodWord}無駕駛時數記錄`}
           />
         </div>
@@ -122,7 +119,6 @@ export function CoachMemberRankings({
   return (
     <RankingCard
       title="會員時數排行"
-      icon="👤"
       subtitle="點擊查看常用教練/船"
       items={memberStats.slice(0, 20).map(m => ({
         id: m.memberId,

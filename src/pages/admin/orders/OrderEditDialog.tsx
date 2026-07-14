@@ -1,8 +1,21 @@
+/**
+ * Design thinking:
+ * Current feel: ad-hoc #ccc / #7f8c8d / #c62828 chrome and loud orange lock banners feel like a raw admin form.
+ * Hierarchy: title → quiet lock/void note → member & lines → calm footer (outline cancel, danger void, primary save).
+ * Primary task: create/edit/void a shop order without decorative color noise competing with the form.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { MoneyInput, PrimaryNumericInput } from '../../../components/ui/numericInputs'
 import { toast as globalToast } from '../../../utils/toast'
+import {
+  designSystem,
+  getButtonStyle,
+  getFontSize,
+  getInputStyle,
+  getLabelStyle,
+} from '../../../styles/designSystem'
 import {
   fetchAllProductsWithVariants,
   fetchVariantItemByLabelCode,
@@ -332,6 +345,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   if (!open) return null
 
   const padX = isMobile ? 16 : 20
+  const inputStyle = getInputStyle(isMobile)
+  const mutedLabel = {
+    fontSize: getFontSize('bodySmall', isMobile),
+    color: designSystem.colors.text.secondary,
+    marginBottom: 6,
+    fontWeight: 500 as const,
+  }
 
   const addVariant = (item: VariantListItem) => {
     if (locked) return
@@ -469,15 +489,19 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     >
       <div
         style={{
-          background: '#fff',
+          background: designSystem.colors.background.card,
           width: '100%',
           maxWidth: 640,
           maxHeight: isMobile ? '92vh' : '90vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          borderRadius: isMobile ? '16px 16px 0 0' : 16,
+          borderRadius: isMobile
+            ? `${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg} 0 0`
+            : designSystem.borderRadius.lg,
           boxSizing: 'border-box',
+          border: `1px solid ${designSystem.colors.border.light}`,
+          boxShadow: designSystem.shadows.lg,
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -485,11 +509,17 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           style={{
             flexShrink: 0,
             padding: `${isMobile ? 'calc(12px + env(safe-area-inset-top, 0px))' : '20px'} ${padX}px 12px`,
-            borderBottom: '1px solid #eee',
-            background: '#fff',
+            borderBottom: `1px solid ${designSystem.colors.border.light}`,
+            background: designSystem.colors.background.card,
           }}
         >
-          <h2 style={{ margin: '0 0 12px', fontSize: isMobile ? 18 : 20 }}>
+          <h2 style={{
+            margin: '0 0 12px',
+            fontSize: getFontSize('h3', isMobile),
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            color: designSystem.colors.text.primary,
+          }}>
             {order
               ? isVoided
                 ? `查看訂單 ${order.order_no}`
@@ -497,31 +527,31 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               : '新增訂單'}
           </h2>
           {isVoided && order && (
-            <div
+            <p
               style={{
-                background: '#f5f5f5',
-                border: '1px solid #ccc',
-                borderRadius: 8,
-                padding: 10,
-                fontSize: 13,
-                color: '#666',
+                margin: 0,
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: designSystem.colors.text.secondary,
+                lineHeight: 1.5,
               }}
             >
               此訂單已作廢（{order.cancelled_at ? formatDateTime(order.cancelled_at) : ''}），僅供查閱。
-            </div>
+            </p>
           )}
           {!isVoided && locked && (
-            <div
+            <p
               style={{
-                background: '#fff7ed',
-                border: '1px solid #fdba74',
-                borderRadius: 8,
-                padding: 10,
-                fontSize: 13,
+                margin: 0,
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: designSystem.colors.warning[700],
+                background: designSystem.colors.warning[50],
+                borderRadius: designSystem.borderRadius.sm,
+                padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+                lineHeight: 1.5,
               }}
             >
               已送結帳或已結清，品項鎖定；僅可改備註。
-            </div>
+            </p>
           )}
         </div>
 
@@ -568,12 +598,12 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
           <label style={{ flex: 1 }}>
-            <span style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>交貨方式</span>
+            <span style={{ display: 'block', ...mutedLabel, marginBottom: 4 }}>交貨方式</span>
             <select
               value={deliveryMethod}
               disabled={locked}
               onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
-              style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #ccc' }}
+              style={inputStyle}
             >
               <option value="pickup_es">ES 面交</option>
               <option value="shipping">寄送</option>
@@ -588,25 +618,22 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             onChange={(e) => setShippingInfo(e.target.value)}
             placeholder="地址、宅配單號"
             rows={2}
-            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #ccc', boxSizing: 'border-box' }}
+            style={{ ...inputStyle, marginBottom: 12, resize: 'vertical' as const }}
           />
         )}
 
         {!locked && (
           <>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>加入商品</label>
+            <label style={{ ...getLabelStyle(isMobile), marginBottom: 6 }}>加入商品</label>
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               <input
                 value={variantSearch}
                 onChange={(e) => setVariantSearch(e.target.value)}
                 placeholder="搜尋品牌、型號、規格、貨號、標籤代碼"
                 style={{
+                  ...inputStyle,
                   flex: 1,
                   minWidth: 0,
-                  padding: 10,
-                  borderRadius: 8,
-                  border: '1px solid #ccc',
-                  boxSizing: 'border-box',
                 }}
               />
               <button
@@ -617,12 +644,8 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                   setScanOpen(true)
                 }}
                 style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
                   flexShrink: 0,
-                  padding: isMobile ? '10px 14px' : '10px 16px',
-                  borderRadius: 8,
-                  border: '1px solid #333',
-                  background: '#fff',
-                  fontWeight: 600,
                   minHeight: isMobile ? 44 : undefined,
                   whiteSpace: 'nowrap',
                 }}
@@ -631,7 +654,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               </button>
             </div>
             {filteredVariants.length > 0 && (
-              <div style={{ border: '1px solid #eee', borderRadius: 8, marginBottom: 12, maxHeight: 200, overflow: 'auto' }}>
+              <div style={{
+                border: `1px solid ${designSystem.colors.border.light}`,
+                borderRadius: designSystem.borderRadius.md,
+                marginBottom: 12,
+                maxHeight: 200,
+                overflow: 'auto',
+              }}>
                 {filteredVariants.map((v) => {
                   const meta = variantMetaLine(v.variant)
                   return (
@@ -646,17 +675,28 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                         textAlign: 'left',
                         padding: '10px 12px',
                         border: 'none',
-                        borderBottom: '1px solid #f0f0f0',
-                        background: '#fff',
+                        borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                        background: designSystem.colors.background.card,
                         cursor: 'pointer',
                       }}
                     >
-                      <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.35 }}>
+                      <div style={{
+                        fontSize: getFontSize('body', isMobile),
+                        fontWeight: 500,
+                        lineHeight: 1.35,
+                        color: designSystem.colors.text.primary,
+                      }}>
                         {v.product.brand} {v.product.model} ·{' '}
                         {formatAttributes(v.product.category, v.variant.attributes)}
                       </div>
                       {meta && (
-                        <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>{meta}</div>
+                        <div style={{
+                          fontSize: getFontSize('caption', isMobile),
+                          color: designSystem.colors.text.secondary,
+                          marginTop: 3,
+                        }}>
+                          {meta}
+                        </div>
                       )}
                     </button>
                   )
@@ -673,11 +713,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               style={{
                 padding: isMobile ? 12 : '0 0 10px',
                 marginBottom: isMobile ? 0 : 10,
-                borderRadius: isMobile ? 10 : 0,
-                background: isMobile ? '#fafafa' : 'transparent',
-                border: isMobile ? '1px solid #ececec' : 'none',
+                borderRadius: isMobile ? designSystem.borderRadius.md : 0,
+                background: isMobile ? designSystem.colors.background.main : 'transparent',
+                border: isMobile ? `1px solid ${designSystem.colors.border.light}` : 'none',
                 borderBottom:
-                  !isMobile && idx < lines.length - 1 ? '1px solid #f0f0f0' : 'none',
+                  !isMobile && idx < lines.length - 1
+                    ? `1px solid ${designSystem.colors.border.light}`
+                    : 'none',
               }}
             >
               <div
@@ -688,7 +730,15 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                   marginBottom: isMobile ? 10 : 8,
                 }}
               >
-                <span style={{ flex: 1, fontSize: 14, lineHeight: 1.4, minWidth: 0 }}>{line.label}</span>
+                <span style={{
+                  flex: 1,
+                  fontSize: getFontSize('body', isMobile),
+                  lineHeight: 1.4,
+                  minWidth: 0,
+                  color: designSystem.colors.text.primary,
+                }}>
+                  {line.label}
+                </span>
                 {!locked && isMobile && (
                   <button
                     type="button"
@@ -700,7 +750,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                       border: 'none',
                       background: 'transparent',
                       cursor: 'pointer',
-                      color: '#c62828',
+                      color: designSystem.colors.danger[700],
                       fontSize: 22,
                       lineHeight: 1,
                       minWidth: 44,
@@ -722,9 +772,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                 }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>
-                    數量
-                  </div>
+                  <div style={mutedLabel}>數量</div>
                   <PrimaryNumericInput
                     value={line.qty}
                     min={1}
@@ -733,13 +781,18 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                     onChange={(qty) => {
                       setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, qty } : l)))
                     }}
-                    suffix={<span style={{ fontSize: 14, color: '#666' }}>件</span>}
+                    suffix={
+                      <span style={{
+                        fontSize: getFontSize('body', isMobile),
+                        color: designSystem.colors.text.secondary,
+                      }}>
+                        件
+                      </span>
+                    }
                   />
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: '#7f8c8d', marginBottom: 6, fontWeight: 500 }}>
-                    單價
-                  </div>
+                  <div style={mutedLabel}>單價</div>
                   <MoneyInput
                     value={line.unit_price}
                     disabled={locked}
@@ -761,7 +814,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                       border: 'none',
                       background: 'transparent',
                       cursor: 'pointer',
-                      color: '#c62828',
+                      color: designSystem.colors.danger[700],
                       fontSize: 22,
                       minWidth: 44,
                       minHeight: 44,
@@ -780,22 +833,22 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           onChange={(e) => setCustomerNote(e.target.value)}
           placeholder="給客人看的備註（LIFF 後用）"
           rows={2}
-          style={{ width: '100%', marginBottom: 8, padding: 8, borderRadius: 8, border: '1px solid #ccc', boxSizing: 'border-box' }}
+          style={{ ...inputStyle, marginBottom: 8, resize: 'vertical' as const }}
         />
         <textarea
           value={internalNotes}
           onChange={(e) => setInternalNotes(e.target.value)}
           placeholder="店內備註"
           rows={2}
-          style={{ width: '100%', marginBottom: 0, padding: 8, borderRadius: 8, border: '1px solid #ccc', boxSizing: 'border-box' }}
+          style={{ ...inputStyle, marginBottom: 0, resize: 'vertical' as const }}
         />
         </div>
 
         <div
           style={{
             flexShrink: 0,
-            background: '#fff',
-            borderTop: '1px solid #eee',
+            background: designSystem.colors.background.card,
+            borderTop: `1px solid ${designSystem.colors.border.light}`,
             padding: isMobile
               ? `12px ${padX}px calc(12px + env(safe-area-inset-bottom, 0px))`
               : `16px ${padX}px 20px`,
@@ -810,8 +863,8 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               style={{
                 flex: '1 1 100%',
                 margin: 0,
-                fontSize: 13,
-                color: '#c62828',
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: designSystem.colors.danger[700],
               }}
             >
               {saveError}
@@ -822,10 +875,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             data-track="product_order_edit_cancel"
             onClick={onClose}
             style={{
-              padding: isMobile ? '12px 16px' : '10px 16px',
-              borderRadius: 8,
-              border: '1px solid #ccc',
-              background: '#fff',
+              ...getButtonStyle('outline', 'medium', isMobile),
               minHeight: isMobile ? 44 : undefined,
             }}
           >
@@ -838,12 +888,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               data-track="product_order_void"
               onClick={() => void handleVoid()}
               style={{
-                padding: isMobile ? '12px 16px' : '10px 16px',
-                borderRadius: 8,
-                border: '1px solid #c62828',
-                background: '#fff',
-                color: '#c62828',
+                ...getButtonStyle('outline', 'medium', isMobile),
+                color: designSystem.colors.danger[700],
+                borderColor: `${designSystem.colors.danger[500]}88`,
+                background: designSystem.colors.background.card,
                 minHeight: isMobile ? 44 : undefined,
+                opacity: saving ? 0.6 : 1,
+                cursor: saving ? 'not-allowed' : 'pointer',
               }}
             >
               作廢
@@ -856,13 +907,10 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               data-track={order ? 'product_order_save' : 'product_order_create'}
               onClick={() => void handleSave()}
               style={{
-                padding: isMobile ? '12px 20px' : '10px 20px',
-                borderRadius: 8,
-                border: 'none',
-                background: '#333',
-                color: '#fff',
+                ...getButtonStyle('primary', 'medium', isMobile),
                 minHeight: isMobile ? 44 : undefined,
-                fontWeight: 600,
+                opacity: saving ? 0.7 : 1,
+                cursor: saving ? 'not-allowed' : 'pointer',
               }}
             >
               {saving ? '儲存中…' : '儲存'}

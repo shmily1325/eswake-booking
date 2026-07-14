@@ -1,3 +1,9 @@
+/**
+ * Design thinking:
+ * Current feel: rainbow STAT_FILTERS chips, emoji empty state, and Material blues read as inbox dashboard.
+ * Hierarchy: count + status filters are secondary chrome; order list and actions stay primary.
+ * Primary task: find an order by status/search and act (edit / submit billing / void).
+ */
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -11,7 +17,7 @@ import {
 import { Button, ToastContainer, useToast } from '../../../components/ui'
 import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
-import { getButtonStyle } from '../../../styles/designSystem'
+import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../../utils/auth'
 import {
   fetchShopOrders,
@@ -50,6 +56,8 @@ import {
 } from './orderUtils'
 import type { OrderInboxTab, ShopOrderItemWithVariant, ShopOrderWithItems } from './types'
 
+const { colors, borderRadius } = designSystem
+
 /** 跟 index.css :root 一致，避免 inline style 在舊 Windows 掉回 Courier */
 const UI_SANS =
   "'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
@@ -63,12 +71,17 @@ const TAB_LABELS: Record<OrderInboxTab, string> = {
   cancelled: '已作廢',
 }
 
-const STAT_FILTERS: { id: OrderInboxTab; label: string; mobileLabel: string; color: string }[] = [
-  { id: 'waiting', label: '等貨', mobileLabel: '等貨', color: '#ef6c00' },
-  { id: 'ready', label: '可送結帳', mobileLabel: '可送', color: '#1565c0' },
-  { id: 'pending', label: '待結帳', mobileLabel: '待結', color: '#6a1b9a' },
-  { id: 'settled', label: '已結清', mobileLabel: '已結', color: '#2e7d32' },
-  { id: 'cancelled', label: '已作廢', mobileLabel: '作廢', color: '#888' },
+const STAT_FILTERS: {
+  id: OrderInboxTab
+  label: string
+  mobileLabel: string
+  color: string
+}[] = [
+  { id: 'waiting', label: '等貨', mobileLabel: '等貨', color: colors.warning[700] },
+  { id: 'ready', label: '可送結帳', mobileLabel: '可送', color: colors.info[700] },
+  { id: 'pending', label: '待結帳', mobileLabel: '待結', color: colors.secondary[700] },
+  { id: 'settled', label: '已結清', mobileLabel: '已結', color: colors.success[700] },
+  { id: 'cancelled', label: '已作廢', mobileLabel: '作廢', color: colors.text.disabled },
 ]
 
 export function OrderManagement({ embedded = false }: { embedded?: boolean } = {}) {
@@ -326,23 +339,36 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             display: 'flex',
             alignItems: 'baseline',
             gap: 8,
-            border: 'none',
-            background: tab === 'all' ? '#e3f2fd' : 'transparent',
-            borderRadius: 8,
+            border: tab === 'all' ? `1px solid ${colors.border.main}` : 'none',
+            background: tab === 'all' ? colors.secondary[100] : 'transparent',
+            borderRadius: borderRadius.md,
             padding: tab === 'all' ? '6px 10px' : '6px 4px',
             cursor: 'pointer',
             flexShrink: 0,
             minHeight: 36,
           }}
         >
-          <span style={{ fontSize: isMobile ? 18 : 20, fontWeight: 700, color: '#222', lineHeight: 1 }}>
+          <span
+            style={{
+              fontSize: getFontSize(isMobile ? 'h3' : 'h2', isMobile),
+              fontWeight: 700,
+              color: colors.text.primary,
+              lineHeight: 1,
+            }}
+          >
             {tabCounts.all}
           </span>
-          <span style={{ fontSize: 12, color: tab === 'all' ? '#1565c0' : '#888', whiteSpace: 'nowrap' }}>
+          <span
+            style={{
+              fontSize: getFontSize('caption', isMobile),
+              color: tab === 'all' ? colors.text.primary : colors.text.secondary,
+              whiteSpace: 'nowrap',
+            }}
+          >
             進行中
           </span>
         </button>
-        <span style={{ color: '#ddd', display: isMobile ? 'none' : 'inline' }}>·</span>
+        <span style={{ color: colors.border.main, display: isMobile ? 'none' : 'inline' }}>·</span>
         {STAT_FILTERS.map((f) => (
           <OrderStatChip
             key={f.id}
@@ -365,13 +391,13 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             onClick={() => void loadOlderOrders()}
             disabled={loading}
             style={{
-              border: '1px solid #ddd',
-              background: '#fff',
-              borderRadius: 8,
+              border: `1px solid ${colors.border.main}`,
+              background: colors.background.card,
+              borderRadius: borderRadius.md,
               padding: '6px 12px',
-              fontSize: 13,
+              fontSize: getFontSize('bodySmall', isMobile),
               cursor: loading ? 'not-allowed' : 'pointer',
-              color: '#1565c0',
+              color: colors.text.primary,
               fontWeight: 600,
             }}
           >
@@ -398,11 +424,12 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             style={{
               width: '100%',
               padding: isMobile ? '12px 14px 12px 36px' : '10px 14px 10px 36px',
-              fontSize: 16,
-              border: '1px solid #ddd',
-              borderRadius: 10,
+              fontSize: getFontSize('bodyLarge', isMobile),
+              border: `1px solid ${colors.border.main}`,
+              borderRadius: borderRadius.lg,
               boxSizing: 'border-box',
-              background: '#fff',
+              background: colors.background.card,
+              color: colors.text.primary,
             }}
           />
           <span
@@ -411,10 +438,11 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
               left: 12,
               top: '50%',
               transform: 'translateY(-50%)',
-              color: '#999',
+              color: colors.text.disabled,
+              fontSize: getFontSize('bodySmall', isMobile),
             }}
           >
-            🔍
+            搜
           </span>
           {search && (
             <button
@@ -429,9 +457,9 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
                 transform: 'translateY(-50%)',
                 border: 'none',
                 background: 'transparent',
-                color: '#999',
+                color: colors.text.disabled,
                 cursor: 'pointer',
-                fontSize: 16,
+                fontSize: getFontSize('bodyLarge', isMobile),
               }}
             >
               ✕
@@ -462,11 +490,11 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             style={{
               border: 'none',
               background: 'transparent',
-              color: '#1565c0',
+              color: colors.text.secondary,
               fontWeight: 600,
               cursor: 'pointer',
               padding: 0,
-              fontSize: 13,
+              fontSize: getFontSize('bodySmall', isMobile),
             }}
           >
             顯示全部
@@ -477,13 +505,18 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       {loading ? (
         <div style={adminLoadingStyle()}>載入中…</div>
       ) : loadError ? (
-        <div style={{ ...adminContentCardStyle(isMobile), color: '#c62828' }}>
+        <div style={{ ...adminContentCardStyle(isMobile), color: colors.danger[700] }}>
           載入失敗：{loadError}
         </div>
       ) : visible.length === 0 ? (
         <div style={adminContentCardStyle(isMobile)}>
-          <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.35 }}>📋</div>
-          <div style={{ fontSize: 15, color: '#666', marginBottom: 4 }}>
+          <div
+            style={{
+              fontSize: getFontSize('body', isMobile),
+              color: colors.text.secondary,
+              marginBottom: 4,
+            }}
+          >
             {search.trim()
               ? '沒有符合搜尋的訂單'
               : tab !== 'all'
@@ -497,11 +530,12 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
               style={{
                 marginTop: 8,
                 padding: '8px 14px',
-                borderRadius: 8,
-                border: '1px solid #ddd',
-                background: '#fff',
+                borderRadius: borderRadius.md,
+                border: `1px solid ${colors.border.main}`,
+                background: colors.background.card,
                 cursor: 'pointer',
-                fontSize: 13,
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: colors.text.primary,
               }}
             >
               顯示全部訂單
@@ -607,10 +641,12 @@ function OrderCard({
   return (
     <div
       style={{
-        background: highlighted ? '#e8f4fd' : '#fff',
-        borderRadius: 12,
+        background: highlighted ? colors.info[50] : colors.background.card,
+        borderRadius: borderRadius.lg,
         marginBottom: 12,
-        border: highlighted ? '1px solid #90caf9' : '1px solid #ececec',
+        border: highlighted
+          ? `1px solid ${colors.info[500]}`
+          : `1px solid ${colors.border.light}`,
         borderLeft: readyAccent ? `3px solid ${status.border}` : undefined,
         opacity: cancelled ? 0.72 : statusKey === 'settled' ? 0.88 : 1,
         overflow: 'hidden',
@@ -630,9 +666,9 @@ function OrderCard({
           <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
             <div
               style={{
-                fontSize: 17,
+                fontSize: getFontSize('bodyLarge', isMobile),
                 fontWeight: 600,
-                color: '#222',
+                color: colors.text.primary,
                 lineHeight: 1.35,
                 marginBottom: 3,
                 fontFamily: UI_SANS,
@@ -642,9 +678,9 @@ function OrderCard({
               {order.contact_name}
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: getFontSize('caption', isMobile),
                   fontWeight: 400,
-                  color: '#999',
+                  color: colors.text.disabled,
                   fontVariantNumeric: 'tabular-nums',
                   letterSpacing: '0.01em',
                 }}
@@ -655,8 +691,8 @@ function OrderCard({
             </div>
             <div
               style={{
-                fontSize: 12,
-                color: '#999',
+                fontSize: getFontSize('caption', isMobile),
+                color: colors.text.disabled,
                 lineHeight: 1.4,
                 fontFamily: UI_SANS,
               }}
@@ -676,8 +712,8 @@ function OrderCard({
 
       <div
         style={{
-          borderTop: '1px solid #f0f0f0',
-          background: '#fafafa',
+          borderTop: `1px solid ${colors.border.light}`,
+          background: colors.secondary[50],
           padding: isMobile ? '8px 12px' : '10px 18px',
         }}
       >
@@ -788,7 +824,7 @@ function OrderItemRow({
         alignItems: 'start',
         paddingTop: showDivider ? 8 : 0,
         marginTop: showDivider ? 8 : 0,
-        borderTop: showDivider ? '1px solid #eee' : 'none',
+        borderTop: showDivider ? `1px solid ${colors.border.light}` : 'none',
       }}
     >
       <OrderItemThumb
@@ -797,17 +833,35 @@ function OrderItemRow({
         onOpen={() => onOpenImagePreview(item)}
       />
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#222', lineHeight: 1.35 }}>{title}</div>
+        <div
+          style={{
+            fontSize: getFontSize('body', false),
+            fontWeight: 600,
+            color: colors.text.primary,
+            lineHeight: 1.35,
+          }}
+        >
+          {title}
+        </div>
         {subtitle && (
-          <div style={{ fontSize: 12, color: '#888', marginTop: 2, lineHeight: 1.35 }}>{subtitle}</div>
+          <div
+            style={{
+              fontSize: getFontSize('caption', false),
+              color: colors.text.secondary,
+              marginTop: 2,
+              lineHeight: 1.35,
+            }}
+          >
+            {subtitle}
+          </div>
         )}
       </div>
       {!isMobile && (
         <div
           style={{
-            fontSize: 14,
+            fontSize: getFontSize('body', false),
             fontWeight: 700,
-            color: '#333',
+            color: colors.text.primary,
             textAlign: 'center',
             paddingTop: 2,
           }}
@@ -827,7 +881,15 @@ function OrderItemRow({
           }}
         >
           {isMobile && (
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>×{item.qty}</span>
+            <span
+              style={{
+                fontSize: getFontSize('bodySmall', false),
+                fontWeight: 700,
+                color: colors.text.primary,
+              }}
+            >
+              ×{item.qty}
+            </span>
           )}
           {chips.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
@@ -860,10 +922,10 @@ function OrderItemThumb({
         style={{
           width: size,
           height: size,
-          borderRadius: 8,
-          border: '1px solid #ececec',
-          background: '#f5f5f5',
-          color: '#bbb',
+          borderRadius: borderRadius.md,
+          border: `1px solid ${colors.border.light}`,
+          background: colors.secondary[100],
+          color: colors.text.disabled,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -991,9 +1053,9 @@ function TextAction({
         background: 'transparent',
         padding: isMobile ? '10px 4px' : '6px 0',
         minHeight: isMobile ? 44 : undefined,
-        fontSize: 13,
+        fontSize: getFontSize('bodySmall', isMobile ?? false),
         fontWeight: 500,
-        color: danger ? '#c62828' : '#666',
+        color: danger ? colors.danger[700] : colors.text.secondary,
         cursor: 'pointer',
         textDecoration: 'underline',
         textUnderlineOffset: 3,
@@ -1029,17 +1091,18 @@ function OrderStatChip({
       onClick={onClick}
       disabled={!onClick}
       style={{
-        fontSize: 12,
-        color: active ? color : muted ? '#bbb' : color,
+        fontSize: getFontSize('caption', isMobile ?? false),
+        color: active ? color : muted ? colors.text.disabled : color,
         fontWeight: active || count > 0 ? 600 : 400,
-        border: active ? `1px solid ${color}` : 'none',
-        background: active ? `${color}14` : 'transparent',
-        borderRadius: 999,
-        padding: active ? '6px 10px' : isMobile ? '6px 8px' : '3px 0',
+        border: active ? `1px solid ${color}` : `1px solid ${colors.border.light}`,
+        background: active ? colors.background.card : colors.background.card,
+        borderRadius: borderRadius.full,
+        padding: active ? '6px 10px' : isMobile ? '6px 8px' : '4px 8px',
         minHeight: isMobile ? 36 : undefined,
         cursor: onClick ? 'pointer' : 'default',
         flexShrink: 0,
         whiteSpace: 'nowrap',
+        opacity: muted && !active ? 0.65 : 1,
       }}
     >
       {label} {count}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { PageHeader } from '../../components/PageHeader'
+import { PageShell } from '../../components/PageShell'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import {
@@ -130,16 +131,12 @@ export function BoatUsageHoursPage() {
   }, [user, runLoad])
 
   return (
-    <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, paddingBottom: '80px' }}>
-      <div
-        style={{
-          maxWidth: '960px',
-          margin: '0 auto',
-          padding: isMobile ? '16px' : '24px',
-          boxSizing: 'border-box',
-          width: '100%',
-        }}
-      >
+    <PageShell
+      variant="content"
+      mobilePadding="16px"
+      desktopPadding="24px"
+      outerStyle={{ paddingBottom: '80px' }}
+    >
         <PageHeader
           title="區間時數合計"
           user={user}
@@ -335,7 +332,6 @@ export function BoatUsageHoursPage() {
         )}
 
         <Footer />
-      </div>
-    </div>
+    </PageShell>
   )
 }

@@ -1,9 +1,16 @@
+/**
+ * Design thinking:
+ * Current feel: pastel 4-up KPI cards + blue accents made this a dashboard strip.
+ * Hierarchy: period/filter first, then one quiet summary row, then expandable list.
+ * Primary task: review settlement totals and drill into a row’s line items.
+ */
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DateRangePicker } from '../../../components/DateRangePicker'
 import { useToast } from '../../../components/ui'
 import { formatCurrency, formatDateTime, extractDate, extractTime } from '../../../utils/formatters'
 import { supabase } from '../../../lib/supabase'
+import { designSystem, getFontSize } from '../../../styles/designSystem'
 import { fetchSettlementsInRange } from './api'
 import { formatSettlementLineDisplay, type SettlementLineDisplay } from './settleUtils'
 import type { OrderPaymentMethod, ShopOrderSettlementWithDetails } from './types'
@@ -14,6 +21,7 @@ interface Props {
 }
 
 const PAYMENT_METHODS: OrderPaymentMethod[] = ['balance', 'transfer', 'cash']
+const { colors, borderRadius, shadows, spacing } = designSystem
 
 function dateRangeFromSelection(selectedDate: string): { start: string; end: string } {
   if (selectedDate.length === 10) {
@@ -112,11 +120,12 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
     <div>
       <div
         style={{
-          background: 'white',
-          borderRadius: 12,
+          background: colors.background.card,
+          borderRadius: borderRadius.lg,
           padding: isMobile ? 20 : 24,
           marginBottom: 24,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          border: `1px solid ${colors.border.light}`,
+          boxShadow: shadows.elevation[1],
         }}
       >
         <DateRangePicker
@@ -133,8 +142,8 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
               display: 'block',
               marginBottom: 8,
               fontWeight: 600,
-              fontSize: 15,
-              color: '#333',
+              fontSize: getFontSize('body', isMobile),
+              color: colors.text.primary,
             }}
           >
             付款方式
@@ -146,12 +155,13 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
               width: '100%',
               maxWidth: isMobile ? '100%' : 280,
               padding: '12px 14px',
-              border: '2px solid #e0e0e0',
-              borderRadius: 8,
-              fontSize: 14,
+              border: `1px solid ${colors.border.main}`,
+              borderRadius: borderRadius.md,
+              fontSize: getFontSize('body', isMobile),
               fontWeight: 500,
               cursor: 'pointer',
-              background: 'white',
+              background: colors.background.card,
+              color: colors.text.primary,
             }}
           >
             <option value="all">全部方式</option>
@@ -165,50 +175,47 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>載入中…</div>
+        <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>載入中…</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+        <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>
           {selectedDate.length === 10 ? '當日無結帳紀錄' : '當月無結帳紀錄'}
         </div>
       ) : (
         <>
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
-              gap: 12,
+              background: colors.background.card,
+              borderRadius: borderRadius.lg,
+              border: `1px solid ${colors.border.light}`,
+              padding: isMobile ? `${spacing.md} ${spacing.lg}` : `${spacing.lg} ${spacing.xl}`,
               marginBottom: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: spacing.sm,
             }}
           >
-            <SummaryCard
+            <SummaryRow
               label="結帳筆數"
-              value={String(summary.count)}
-              sub="筆"
-              accent="#ffb74d"
+              value={`${summary.count} 筆`}
               isMobile={isMobile}
             />
-            <SummaryCard
+            <SummaryRow
               label="結帳總額"
               value={formatCurrency(summary.grandTotal, false)}
-              sub="元"
-              accent="#90caf9"
               isMobile={isMobile}
+              emphasize
             />
-            <SummaryCard
+            <SummaryRow
               label="扣儲值"
-              value={formatCurrency(summary.byMethod.balance.total, false)}
-              sub={`${summary.byMethod.balance.count} 筆`}
-              accent="#7e57c2"
+              value={`${formatCurrency(summary.byMethod.balance.total, false)} · ${summary.byMethod.balance.count} 筆`}
               isMobile={isMobile}
             />
-            <SummaryCard
+            <SummaryRow
               label="匯款＋現金"
-              value={formatCurrency(
+              value={`${formatCurrency(
                 summary.byMethod.transfer.total + summary.byMethod.cash.total,
                 false,
-              )}
-              sub={`${summary.byMethod.transfer.count + summary.byMethod.cash.count} 筆`}
-              accent="#66bb6a"
+              )} · ${summary.byMethod.transfer.count + summary.byMethod.cash.count} 筆`}
               isMobile={isMobile}
             />
           </div>
@@ -216,40 +223,28 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
           <h2
             style={{
               margin: '0 0 16px',
-              fontSize: 18,
-              fontWeight: 700,
-              color: '#333',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
+              fontSize: getFontSize('h3', isMobile),
+              fontWeight: 600,
+              color: colors.text.primary,
             }}
           >
-            <span
-              style={{
-                display: 'inline-block',
-                width: 4,
-                height: 22,
-                background: '#ffb74d',
-                borderRadius: 2,
-              }}
-            />
             結帳細帳
           </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {filtered.map((row) => {
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {filtered.map((row, idx) => {
               const expanded = expandedId === row.id
+              const isLast = idx === filtered.length - 1
               return (
                 <div
                   key={row.id}
                   style={{
-                    background: 'white',
-                    borderRadius: 12,
+                    background: colors.background.card,
+                    borderRadius: idx === 0 ? `${borderRadius.lg} ${borderRadius.lg} 0 0` : isLast && !expanded ? `0 0 ${borderRadius.lg} ${borderRadius.lg}` : 0,
                     padding: isMobile ? 16 : 20,
-                    boxShadow: expanded
-                      ? '0 4px 16px rgba(144, 202, 249, 0.25)'
-                      : '0 2px 8px rgba(0,0,0,0.06)',
-                    border: expanded ? '2px solid #90caf9' : 'none',
+                    border: `1px solid ${colors.border.light}`,
+                    borderTopWidth: idx === 0 ? 1 : 0,
+                    boxShadow: expanded ? shadows.xs : 'none',
                   }}
                 >
                   <div
@@ -276,9 +271,9 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                           data-track="product_order_settle_stat_order_link"
                           title="在訂單開單搜尋此訂單"
                           style={{
-                            fontWeight: 700,
-                            fontSize: 16,
-                            color: '#1565c0',
+                            fontWeight: 600,
+                            fontSize: getFontSize('bodyLarge', isMobile),
+                            color: colors.text.primary,
                             textDecoration: 'none',
                           }}
                         >
@@ -286,26 +281,32 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                         </Link>
                         <span
                           style={{
-                            fontSize: 12,
+                            fontSize: getFontSize('caption', isMobile),
                             padding: '2px 8px',
-                            borderRadius: 6,
-                            background: '#e3f2fd',
-                            color: '#1565c0',
-                            fontWeight: 600,
+                            borderRadius: borderRadius.sm,
+                            background: colors.secondary[100],
+                            color: colors.text.secondary,
+                            fontWeight: 500,
                           }}
                         >
                           {PAYMENT_METHOD_LABELS[row.payment_method]}
                         </span>
                       </div>
-                      <div style={{ fontSize: 14, color: '#555', marginBottom: 4 }}>
+                      <div
+                        style={{
+                          fontSize: getFontSize('body', isMobile),
+                          color: colors.text.secondary,
+                          marginBottom: 4,
+                        }}
+                      >
                         {row.contact_name}
                         {row.charge_member_name && row.payment_method === 'balance' && (
-                          <span style={{ color: '#888', marginLeft: 8 }}>
+                          <span style={{ color: colors.text.disabled, marginLeft: 8 }}>
                             扣款：{row.charge_member_name}
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 13, color: '#999' }}>
+                      <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: colors.text.disabled }}>
                         {extractDate(row.settled_at)} {extractTime(row.settled_at)}
                       </div>
                     </div>
@@ -324,19 +325,23 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                         cursor: 'pointer',
                       }}
                     >
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#2e7d32' }}>
+                      <div
+                        style={{
+                          fontSize: getFontSize('h3', isMobile),
+                          fontWeight: 700,
+                          color: colors.text.primary,
+                        }}
+                      >
                         {formatCurrency(row.amount_total)}
                       </div>
                       <div
                         style={{
-                          fontSize: 18,
-                          color: '#90caf9',
+                          fontSize: getFontSize('bodySmall', isMobile),
+                          color: colors.text.disabled,
                           marginTop: 4,
-                          transform: expanded ? 'rotate(90deg)' : 'none',
-                          transition: 'transform 0.2s',
                         }}
                       >
-                        ▶
+                        {expanded ? '收合' : '明細'}
                       </div>
                     </button>
                   </div>
@@ -346,7 +351,7 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                       style={{
                         marginTop: 16,
                         paddingTop: 16,
-                        borderTop: '1px solid #eee',
+                        borderTop: `1px solid ${colors.border.light}`,
                         overflowX: 'auto',
                       }}
                     >
@@ -354,11 +359,11 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                         style={{
                           width: '100%',
                           borderCollapse: 'collapse',
-                          fontSize: 13,
+                          fontSize: getFontSize('bodySmall', isMobile),
                         }}
                       >
                         <thead>
-                          <tr style={{ background: '#f5f5f5' }}>
+                          <tr style={{ background: colors.secondary[50] }}>
                             <th style={thStyle()}>品項</th>
                             <th style={thStyle('center')}>數量</th>
                             <th style={thStyle('right')}>單價</th>
@@ -366,30 +371,45 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                           </tr>
                         </thead>
                         <tbody>
-                          {row.items_snapshot.map((line, idx) => {
+                          {row.items_snapshot.map((line, lineIdx) => {
                             const display =
                               variantDisplay[line.variant_id] ??
                               formatSettlementLineDisplay(line, null)
                             return (
-                            <tr key={`${line.item_id}-${idx}`} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                              <td style={tdStyle()}>
-                                <div style={{ fontWeight: 600, color: '#222', lineHeight: 1.35 }}>
-                                  {display.title}
-                                </div>
-                                {display.subtitle && (
-                                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-                                    {display.subtitle}
+                              <tr
+                                key={`${line.item_id}-${lineIdx}`}
+                                style={{ borderBottom: `1px solid ${colors.border.light}` }}
+                              >
+                                <td style={tdStyle()}>
+                                  <div
+                                    style={{
+                                      fontWeight: 600,
+                                      color: colors.text.primary,
+                                      lineHeight: 1.35,
+                                    }}
+                                  >
+                                    {display.title}
                                   </div>
-                                )}
-                              </td>
-                              <td style={tdStyle('center')}>{line.qty}</td>
-                              <td style={tdStyle('right')}>
-                                {formatCurrency(line.unit_price, false)}
-                              </td>
-                              <td style={tdStyle('right')}>
-                                <strong>{formatCurrency(line.line_total, false)}</strong>
-                              </td>
-                            </tr>
+                                  {display.subtitle && (
+                                    <div
+                                      style={{
+                                        fontSize: getFontSize('caption', isMobile),
+                                        color: colors.text.disabled,
+                                        marginTop: 2,
+                                      }}
+                                    >
+                                      {display.subtitle}
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={tdStyle('center')}>{line.qty}</td>
+                                <td style={tdStyle('right')}>
+                                  {formatCurrency(line.unit_price, false)}
+                                </td>
+                                <td style={tdStyle('right')}>
+                                  <strong>{formatCurrency(line.line_total, false)}</strong>
+                                </td>
+                              </tr>
                             )
                           })}
                         </tbody>
@@ -398,18 +418,36 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
                             <td colSpan={3} style={{ ...tdStyle('right'), fontWeight: 600 }}>
                               合計
                             </td>
-                            <td style={{ ...tdStyle('right'), fontWeight: 700, color: '#2e7d32' }}>
+                            <td
+                              style={{
+                                ...tdStyle('right'),
+                                fontWeight: 700,
+                                color: colors.text.primary,
+                              }}
+                            >
                               {formatCurrency(row.amount_total, false)}
                             </td>
                           </tr>
                         </tfoot>
                       </table>
                       {row.notes && (
-                        <p style={{ margin: '12px 0 0', fontSize: 13, color: '#666' }}>
+                        <p
+                          style={{
+                            margin: '12px 0 0',
+                            fontSize: getFontSize('bodySmall', isMobile),
+                            color: colors.text.secondary,
+                          }}
+                        >
                           備註：{row.notes}
                         </p>
                       )}
-                      <p style={{ margin: '8px 0 0', fontSize: 12, color: '#aaa' }}>
+                      <p
+                        style={{
+                          margin: '8px 0 0',
+                          fontSize: getFontSize('caption', isMobile),
+                          color: colors.text.disabled,
+                        }}
+                      >
                         結帳時間：{formatDateTime(row.settled_at)}
                       </p>
                     </div>
@@ -424,32 +462,47 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
   )
 }
 
-function SummaryCard({
+function SummaryRow({
   label,
   value,
-  sub,
-  accent,
   isMobile,
+  emphasize,
 }: {
   label: string
   value: string
-  sub: string
-  accent: string
   isMobile: boolean
+  emphasize?: boolean
 }) {
   return (
     <div
       style={{
-        padding: isMobile ? 16 : 20,
-        background: 'white',
-        borderRadius: 12,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-        borderLeft: `4px solid ${accent}`,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        gap: 12,
+        padding: `${spacing.xs} 0`,
+        borderBottom: `1px solid ${colors.border.light}`,
       }}
     >
-      <div style={{ fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 500 }}>{label}</div>
-      <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#333' }}>{value}</div>
-      <div style={{ fontSize: 13, color: '#999', marginTop: 4 }}>{sub}</div>
+      <span
+        style={{
+          fontSize: getFontSize('bodySmall', isMobile),
+          color: colors.text.secondary,
+          fontWeight: 500,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: emphasize ? getFontSize('h3', isMobile) : getFontSize('body', isMobile),
+          fontWeight: emphasize ? 700 : 600,
+          color: colors.text.primary,
+          textAlign: 'right',
+        }}
+      >
+        {value}
+      </span>
     </div>
   )
 }
@@ -458,12 +511,12 @@ function thStyle(align: 'left' | 'center' | 'right' = 'left') {
   return {
     padding: 10,
     textAlign: align,
-    borderBottom: '2px solid #e0e0e0',
+    borderBottom: `1px solid ${colors.border.main}`,
     fontWeight: 600,
-    color: '#666',
+    color: colors.text.secondary,
   } as const
 }
 
 function tdStyle(align: 'left' | 'center' | 'right' = 'left') {
-  return { padding: 10, textAlign: align } as const
+  return { padding: 10, textAlign: align, color: colors.text.primary } as const
 }

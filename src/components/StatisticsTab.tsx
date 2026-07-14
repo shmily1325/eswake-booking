@@ -1,3 +1,11 @@
+/**
+ * Design thinking (visual-only pass, docs/design.md):
+ * 1. Why it felt dashboardy: 3-up KPI cards with rainbow left borders + emoji labels,
+ *    dual chart cards with colored accent bars, badge chips in the coach list.
+ * 2. Hierarchy: one quiet typography summary first; comparison bars stay for scan;
+ *    coach detail list uses type weight over colored pills.
+ * 3. Primary task: review teaching/driving hours for a period — props/API unchanged.
+ */
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllPaginated } from '../utils/supabasePaginate'
@@ -319,97 +327,59 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         </div>
       ) : (
         <>
-          {/* 統計摘要 */}
+          {/* 統計摘要 — 平靜排版，非 KPI 卡片牆 */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-            gap: '16px',
-            marginBottom: '24px'
+            marginBottom: designSystem.spacing.xl,
+            paddingBottom: designSystem.spacing.md,
+            borderBottom: `1px solid ${designSystem.colors.border.light}`,
           }}>
-            <div style={{
-              padding: '24px',
-              background: designSystem.colors.background.card,
-              borderRadius: designSystem.borderRadius.xl,
-              boxShadow: designSystem.shadows.sm,
-              borderLeft: `4px solid ${designSystem.colors.success[500]}`
+            <p style={{
+              margin: 0,
+              fontSize: getFontSize('bodyLarge', isMobile),
+              color: designSystem.colors.text.primary,
+              fontWeight: '600',
+              lineHeight: 1.5,
             }}>
-              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: '8px', fontWeight: '500' }}>
-                🎓 教學時數
-              </div>
-              <div style={{ fontSize: getFontSize('h1', isMobile), fontWeight: 'bold', color: designSystem.colors.text.primary, marginBottom: '4px' }}>
-                {totalTeachingMinutes}
-              </div>
-              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.disabled }}>
-                分鐘 ({(totalTeachingMinutes / 60).toFixed(1)} 小時)
-              </div>
-            </div>
-
-            <div style={{
-              padding: '24px',
-              background: designSystem.colors.background.card,
-              borderRadius: designSystem.borderRadius.xl,
-              boxShadow: designSystem.shadows.sm,
-              borderLeft: `4px solid ${designSystem.colors.info[500]}`
+              教學 {totalTeachingMinutes} 分
+              <span style={{ color: designSystem.colors.text.disabled, fontWeight: '400' }}>
+                {' '}（{(totalTeachingMinutes / 60).toFixed(1)} 小時）
+              </span>
+              <span style={{ color: designSystem.colors.text.disabled, margin: '0 10px' }}>·</span>
+              駕駛 {totalDrivingMinutes} 分
+              <span style={{ color: designSystem.colors.text.disabled, fontWeight: '400' }}>
+                {' '}（{(totalDrivingMinutes / 60).toFixed(1)} 小時）
+              </span>
+            </p>
+            <p style={{
+              margin: `${designSystem.spacing.xs} 0 0`,
+              fontSize: getFontSize('bodySmall', isMobile),
+              color: designSystem.colors.text.secondary,
             }}>
-              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: '8px', fontWeight: '500' }}>
-                🚤 駕駛時數
-              </div>
-              <div style={{ fontSize: getFontSize('h1', isMobile), fontWeight: 'bold', color: designSystem.colors.text.primary, marginBottom: '4px' }}>
-                {totalDrivingMinutes}
-              </div>
-              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.disabled }}>
-                分鐘 ({(totalDrivingMinutes / 60).toFixed(1)} 小時)
-              </div>
-            </div>
-
-            <div style={{
-              padding: '24px',
-              background: designSystem.colors.background.card,
-              borderRadius: designSystem.borderRadius.xl,
-              boxShadow: designSystem.shadows.sm,
-              borderLeft: `4px solid ${designSystem.colors.warning[500]}`
-            }}>
-              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, marginBottom: '8px', fontWeight: '500' }}>
-                總預約數
-              </div>
-              <div style={{ fontSize: getFontSize('h1', isMobile), fontWeight: 'bold', color: designSystem.colors.text.primary, marginBottom: '4px' }}>
-                {totalBookings}
-              </div>
-              <div style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.disabled }}>
-                筆記錄
-              </div>
-            </div>
+              {totalBookings} 筆預約
+            </p>
           </div>
 
           {/* 圖表區 */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-            gap: '16px',
-            marginBottom: '24px'
+            gap: designSystem.spacing.lg,
+            marginBottom: designSystem.spacing.xl,
           }}>
             {/* 教學時數圖表 */}
             <div style={{
-              ...getCardStyle(isMobile),
-              marginBottom: 0
+              padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
+              border: `1px solid ${designSystem.colors.border.light}`,
             }}>
               <h3 style={{ 
-                margin: '0 0 20px 0', 
+                margin: '0 0 16px 0', 
                 fontSize: getFontSize('h3', isMobile), 
-                fontWeight: '700', 
+                fontWeight: '600', 
                 color: designSystem.colors.text.primary,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
               }}>
-                <span style={{ 
-                  display: 'inline-block',
-                  width: '4px',
-                  height: '20px',
-                  background: designSystem.colors.success[500],
-                  borderRadius: '2px'
-                }}></span>
-                🎓 教學時數對比
+                教學時數對比
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {coachStats.map(stat => (
@@ -424,28 +394,20 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                     </div>
                     <div style={{
                       width: '100%',
-                      height: '24px',
-                      background: designSystem.colors.success[50],
-                      borderRadius: designSystem.borderRadius.md,
+                      height: '8px',
+                      background: designSystem.colors.background.hover,
+                      borderRadius: designSystem.borderRadius.full,
                       overflow: 'hidden'
                     }}>
                       <div
                         style={{
                           width: `${(stat.teachingMinutes / Math.max(...coachStats.map(s => s.teachingMinutes), 1)) * 100}%`,
                           height: '100%',
-                          background: designSystem.colors.success[500],
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          paddingRight: '8px',
-                          color: 'white',
-                          fontSize: getFontSize('caption', true),
-                          fontWeight: '600',
+                          background: designSystem.colors.primary[500],
+                          borderRadius: designSystem.borderRadius.full,
                           transition: 'width 0.3s'
                         }}
-                      >
-                        {stat.teachingMinutes > 0 && `${stat.teachingMinutes}分`}
-                      </div>
+                      />
                     </div>
                   </div>
                 ))}
@@ -454,26 +416,18 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
             {/* 駕駛時數圖表 */}
             <div style={{
-              ...getCardStyle(isMobile),
-              marginBottom: 0
+              padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
+              border: `1px solid ${designSystem.colors.border.light}`,
             }}>
               <h3 style={{ 
-                margin: '0 0 20px 0', 
+                margin: '0 0 16px 0', 
                 fontSize: getFontSize('h3', isMobile), 
-                fontWeight: '700', 
+                fontWeight: '600', 
                 color: designSystem.colors.text.primary,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
               }}>
-                <span style={{ 
-                  display: 'inline-block',
-                  width: '4px',
-                  height: '20px',
-                  background: designSystem.colors.info[500],
-                  borderRadius: '2px'
-                }}></span>
-                🚤 駕駛時數對比
+                駕駛時數對比
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {coachStats.map(stat => (
@@ -488,28 +442,20 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                     </div>
                     <div style={{
                       width: '100%',
-                      height: '24px',
-                      background: designSystem.colors.info[50],
-                      borderRadius: designSystem.borderRadius.md,
+                      height: '8px',
+                      background: designSystem.colors.background.hover,
+                      borderRadius: designSystem.borderRadius.full,
                       overflow: 'hidden'
                     }}>
                       <div
                         style={{
                           width: `${(stat.drivingMinutes / Math.max(...coachStats.map(s => s.drivingMinutes), 1)) * 100}%`,
                           height: '100%',
-                          background: designSystem.colors.info[500],
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          paddingRight: '8px',
-                          color: 'white',
-                          fontSize: getFontSize('caption', true),
-                          fontWeight: '600',
+                          background: designSystem.colors.secondary[500],
+                          borderRadius: designSystem.borderRadius.full,
                           transition: 'width 0.3s'
                         }}
-                      >
-                        {stat.drivingMinutes > 0 && `${stat.drivingMinutes}分`}
-                      </div>
+                      />
                     </div>
                   </div>
                 ))}
@@ -518,23 +464,24 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           </div>
 
           {/* 教練列表（可展開細帳） */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.md }}>
             <h2 style={{ 
-              margin: '0 0 16px 0', 
-              fontSize: getFontSize('h2', isMobile), 
-              fontWeight: '700', 
+              margin: 0, 
+              fontSize: getFontSize('h3', isMobile), 
+              fontWeight: '600', 
               color: designSystem.colors.text.primary,
             }}>
               教練細帳
             </h2>
             {coachStats.map(stat => (
               <div key={stat.coachId} style={{
-                ...getCardStyle(isMobile),
-                marginBottom: 0,
+                padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+                background: designSystem.colors.background.card,
+                borderRadius: designSystem.borderRadius.lg,
                 border: expandedCoachId === stat.coachId
-                  ? `1.5px solid ${designSystem.colors.primary[500]}`
+                  ? `1px solid ${designSystem.colors.border.dark}`
                   : `1px solid ${designSystem.colors.border.light}`,
-                transition: 'all 0.2s'
+                transition: 'border-color 0.2s'
               }}>
                 {/* 教練標題 */}
                 <div
@@ -544,52 +491,39 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     cursor: 'pointer',
-                    padding: '8px 0',
+                    padding: '4px 0',
                     userSelect: 'none'
                   }}
                 >
                   <div style={{ flex: 1 }}>
                     <h3 style={{ 
                       margin: 0, 
-                      fontSize: getFontSize('h3', isMobile), 
-                      fontWeight: '700', 
+                      fontSize: getFontSize('bodyLarge', isMobile), 
+                      fontWeight: '600', 
                       color: designSystem.colors.text.primary,
-                      marginBottom: '8px'
+                      marginBottom: '6px'
                     }}>
-                      🎓 {stat.coachName}
+                      {stat.coachName}
                     </h3>
                     <div style={{ 
-                      fontSize: getFontSize('body', isMobile), 
+                      fontSize: getFontSize('bodySmall', isMobile), 
                       color: designSystem.colors.text.secondary,
                       display: 'flex',
-                      gap: '16px',
+                      gap: '12px',
                       flexWrap: 'wrap'
                     }}>
-                      <span style={{ 
-                        padding: '4px 12px', 
-                        background: designSystem.colors.success[50],
-                        color: designSystem.colors.success[700],
-                        border: `1px solid ${designSystem.colors.success[500]}33`,
-                        borderRadius: designSystem.borderRadius.md,
-                        fontWeight: '500'
-                      }}>
-                        🎓 {stat.teachingMinutes}分 ({stat.teachingCount}筆)
+                      <span>
+                        教學 {stat.teachingMinutes}分 ({stat.teachingCount}筆)
                       </span>
-                      <span style={{ 
-                        padding: '4px 12px', 
-                        background: designSystem.colors.info[50],
-                        color: designSystem.colors.info[700],
-                        border: `1px solid ${designSystem.colors.info[500]}33`,
-                        borderRadius: designSystem.borderRadius.md,
-                        fontWeight: '500'
-                      }}>
-                        🚤 {stat.drivingMinutes}分 ({stat.drivingCount}筆)
+                      <span style={{ color: designSystem.colors.text.disabled }}>·</span>
+                      <span>
+                        駕駛 {stat.drivingMinutes}分 ({stat.drivingCount}筆)
                       </span>
                     </div>
                   </div>
                   <div style={{ 
-                    fontSize: getFontSize('h3', isMobile),
-                    color: designSystem.colors.text.secondary,
+                    fontSize: getFontSize('caption', isMobile),
+                    color: designSystem.colors.text.disabled,
                     marginLeft: '16px',
                     transition: 'transform 0.2s',
                     transform: expandedCoachId === stat.coachId ? 'rotate(90deg)' : 'rotate(0deg)'
@@ -631,7 +565,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                                   {detail.participants.map((p, pIdx) => (
                                     <div key={pIdx}>
                                       {p.memberName ? (
-                                        <span style={{ color: designSystem.colors.info[700], fontWeight: '600' }}>{p.memberName}</span>
+                                        <span style={{ color: designSystem.colors.text.primary, fontWeight: '600' }}>{p.memberName}</span>
                                       ) : (
                                         <span style={{ color: designSystem.colors.text.primary }}>{p.name}</span>
                                       )}
@@ -647,7 +581,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                             </td>
                             <td style={{ padding: '10px', textAlign: 'center' }}>
                               {detail.participants.length > 0 ? (
-                                <span style={{ color: designSystem.colors.success[700], fontWeight: '600' }}>
+                                <span style={{ color: designSystem.colors.text.primary, fontWeight: '600' }}>
                                   {detail.participants.reduce((sum, p) => sum + p.duration, 0)}分
                                 </span>
                               ) : (
@@ -656,7 +590,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                             </td>
                             <td style={{ padding: '10px', textAlign: 'center' }}>
                               {detail.driverDuration ? (
-                                <span style={{ color: designSystem.colors.info[700], fontWeight: '600' }}>{detail.driverDuration}分</span>
+                                <span style={{ color: designSystem.colors.text.primary, fontWeight: '600' }}>{detail.driverDuration}分</span>
                               ) : (
                                 <span style={{ color: designSystem.colors.text.disabled }}>-</span>
                               )}

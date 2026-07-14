@@ -1,7 +1,13 @@
+/**
+ * Design thinking:
+ * Current feel: gradient save CTA and tight bordered section cards feel like Material form chrome.
+ * Hierarchy: product fields → SKU list → save; section frames stay quiet hairlines.
+ * Primary task: edit product / SKU and save without loud decorative CTAs.
+ */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Badge, useToast, ConfirmModal } from '../../../components/ui'
 import { NumericTextInput } from '../../../components/ui/numericInputs'
-import { getInputStyle } from '../../../styles/designSystem'
+import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../../../styles/designSystem'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { CoverImageEditor } from './CoverImageEditor'
 import { ImageUploader } from './ImageUploader'
@@ -651,22 +657,38 @@ export function ProductEditView({
 
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>載入中…</div>
+      <div
+        style={{
+          padding: 40,
+          textAlign: 'center',
+          color: designSystem.colors.text.secondary,
+          fontSize: getFontSize('body', isMobile),
+        }}
+      >
+        載入中…
+      </div>
     )
   }
 
   const labelStyle: React.CSSProperties = {
     display: 'block',
-    fontSize: 13,
+    fontSize: getFontSize('bodySmall', isMobile),
     fontWeight: 600,
-    color: '#444',
+    color: designSystem.colors.text.secondary,
     marginBottom: 6,
   }
   const inputStyle: React.CSSProperties = {
     ...getInputStyle(isMobile),
     width: '100%',
     boxSizing: 'border-box',
-    background: '#fff',
+    background: designSystem.colors.background.card,
+  }
+  const sectionStyle: React.CSSProperties = {
+    background: designSystem.colors.background.card,
+    borderRadius: designSystem.borderRadius.lg,
+    padding: isMobile ? 16 : 20,
+    marginBottom: 16,
+    border: `1px solid ${designSystem.colors.border.light}`,
   }
 
   /** 與 AddMemberDialog / NewBookingDialog 相同：手機版底部按鈕欄（flex 底欄，非 fixed） */
@@ -676,8 +698,8 @@ export function ProductEditView({
         style={{
           padding: '12px 0 0',
           paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-          borderTop: '1px solid #e0e0e0',
-          background: '#f5f6f8',
+          borderTop: `1px solid ${designSystem.colors.border.light}`,
+          background: designSystem.colors.background.main,
           display: 'flex',
           gap: 8,
           flexShrink: 0,
@@ -689,16 +711,10 @@ export function ProductEditView({
           onClick={handleCancel}
           disabled={saving}
           style={{
+            ...getButtonStyle('outline', 'large', isMobile),
             flex: 1,
-            padding: '14px',
-            borderRadius: 8,
-            border: '1px solid #ccc',
-            backgroundColor: '#fff',
-            color: '#333',
-            fontSize: 16,
-            fontWeight: 500,
-            cursor: saving ? 'not-allowed' : 'pointer',
             opacity: saving ? 0.5 : 1,
+            cursor: saving ? 'not-allowed' : 'pointer',
             touchAction: 'manipulation',
             minHeight: 48,
           }}
@@ -711,17 +727,15 @@ export function ProductEditView({
           onClick={() => void handleSave()}
           disabled={saving}
           style={{
+            ...getButtonStyle('primary', 'large', isMobile),
             flex: 2,
-            padding: '14px',
-            borderRadius: 8,
-            border: 'none',
-            background: saving ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-            color: '#fff',
-            fontSize: 16,
-            fontWeight: 600,
+            opacity: saving ? 0.7 : 1,
             cursor: saving ? 'not-allowed' : 'pointer',
             touchAction: 'manipulation',
             minHeight: 48,
+            background: saving
+              ? designSystem.colors.secondary[300]
+              : designSystem.colors.primary[500],
           }}
         >
           {saving ? '儲存中…' : '儲存'}
@@ -744,10 +758,24 @@ export function ProductEditView({
         <Button variant="outline" size="small" data-track="product_edit_back" onClick={handleCancel} disabled={saving}>
           ← 返回
         </Button>
-        <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, flex: 1 }}>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: getFontSize('h2', isMobile),
+            flex: 1,
+            color: designSystem.colors.text.primary,
+          }}
+        >
           {readOnly ? '查看商品' : isNew ? '新增商品' : '編輯商品'}
           {original && (
-            <span style={{ fontSize: 13, color: '#888', marginLeft: 8, fontWeight: 400 }}>
+            <span
+              style={{
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: designSystem.colors.text.secondary,
+                marginLeft: 8,
+                fontWeight: 400,
+              }}
+            >
               {original.brand} {original.model}
             </span>
           )}
@@ -760,16 +788,17 @@ export function ProductEditView({
       </div>
 
       {/* 商品基本資訊 */}
-      <section
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          padding: isMobile ? 16 : 20,
-          marginBottom: 16,
-          border: '1px solid #eee',
-        }}
-      >
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 15, fontWeight: 700 }}>商品資訊</h3>
+      <section style={sectionStyle}>
+        <h3
+          style={{
+            margin: '0 0 16px 0',
+            fontSize: getFontSize('body', isMobile),
+            fontWeight: 700,
+            color: designSystem.colors.text.primary,
+          }}
+        >
+          商品資訊
+        </h3>
         <div style={{ display: 'grid', gap: 14, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
           <div>
             <label style={labelStyle}>類別 *</label>
@@ -838,9 +867,13 @@ export function ProductEditView({
                 alignItems: 'center',
                 gap: 10,
                 padding: '12px 14px',
-                background: isPublic ? '#fff7ed' : '#fafafa',
-                border: `1px solid ${isPublic ? '#fdba74' : '#e5e7eb'}`,
-                borderRadius: 8,
+                background: isPublic
+                  ? designSystem.colors.warning[50]
+                  : designSystem.colors.secondary[50],
+                border: `1px solid ${
+                  isPublic ? designSystem.colors.warning[500] : designSystem.colors.border.light
+                }`,
+                borderRadius: designSystem.borderRadius.md,
                 cursor: readOnly || saving ? 'not-allowed' : 'pointer',
                 userSelect: 'none',
               }}
@@ -850,7 +883,12 @@ export function ProductEditView({
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
                 disabled={saving || readOnly}
-                style={{ width: 18, height: 18, cursor: 'inherit', accentColor: '#f97316' }}
+                style={{
+                  width: 18,
+                  height: 18,
+                  cursor: 'inherit',
+                  accentColor: designSystem.colors.warning[500],
+                }}
               />
               <div
                 style={{
@@ -862,7 +900,13 @@ export function ProductEditView({
                   gap: 8,
                 }}
               >
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
+                <span
+                  style={{
+                    fontSize: getFontSize('body', isMobile),
+                    fontWeight: 600,
+                    color: designSystem.colors.text.primary,
+                  }}
+                >
                   上架 Shop
                 </span>
                 <ShopVisibilityPill isPublic={isPublic} />
@@ -873,16 +917,19 @@ export function ProductEditView({
       </section>
 
       {/* SKU 列表 */}
-      <section
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          padding: isMobile ? 16 : 20,
-          border: '1px solid #eee',
-        }}
-      >
+      <section style={sectionStyle}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, flex: 1 }}>規格與庫存 (SKU)</h3>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: getFontSize('body', isMobile),
+              fontWeight: 700,
+              flex: 1,
+              color: designSystem.colors.text.primary,
+            }}
+          >
+            規格與庫存 (SKU)
+          </h3>
           <Badge variant="info" size="small">
             {drafts.filter((d) => !d.pendingDelete).length}
           </Badge>
@@ -939,17 +986,30 @@ export function ProductEditView({
       {!isNew && !readOnly && (
         <section
           style={{
-            background: '#fff',
-            borderRadius: 12,
-            padding: isMobile ? 16 : 20,
+            ...sectionStyle,
             marginTop: 16,
-            border: '1px solid #f3d6d6',
+            marginBottom: 0,
+            border: `1px solid ${designSystem.colors.danger[50]}`,
           }}
         >
-          <h3 style={{ margin: '0 0 12px 0', fontSize: 15, fontWeight: 700, color: '#c62828' }}>
+          <h3
+            style={{
+              margin: '0 0 12px 0',
+              fontSize: getFontSize('body', isMobile),
+              fontWeight: 700,
+              color: designSystem.colors.danger[700],
+            }}
+          >
             危險區
             {!isMobile && (
-              <span style={{ fontSize: 12, fontWeight: 400, color: '#888', marginLeft: 8 }}>
+              <span
+                style={{
+                  fontSize: getFontSize('caption', isMobile),
+                  fontWeight: 400,
+                  color: designSystem.colors.text.secondary,
+                  marginLeft: 8,
+                }}
+              >
                 軟刪除，可恢復
               </span>
             )}
@@ -1085,11 +1145,17 @@ function VariantBlock({
     .join(' / ')
 
   const blockStyle: React.CSSProperties = {
-    border: focused ? '2px solid #2563eb' : '1px solid #ececec',
-    borderRadius: 12,
+    border: focused
+      ? `1.5px solid ${designSystem.colors.primary[500]}`
+      : `1px solid ${designSystem.colors.border.light}`,
+    borderRadius: designSystem.borderRadius.lg,
     padding: isMobile ? 12 : 16,
     marginBottom: 12,
-    background: draft.pendingDelete ? '#fafafa' : focused ? '#f8fbff' : '#fff',
+    background: draft.pendingDelete
+      ? designSystem.colors.secondary[50]
+      : focused
+        ? designSystem.colors.secondary[50]
+        : designSystem.colors.background.card,
     opacity: draft.pendingDelete ? 0.55 : 1,
     position: 'relative',
     scrollMarginTop: isMobile ? 12 : 24,
@@ -1098,9 +1164,14 @@ function VariantBlock({
     ...getInputStyle(isMobile),
     width: '100%',
     boxSizing: 'border-box',
-    background: '#fff',
+    background: designSystem.colors.background.card,
   }
-  const labelStyle: React.CSSProperties = { fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }
+  const labelStyle: React.CSSProperties = {
+    fontSize: getFontSize('caption', isMobile),
+    color: designSystem.colors.text.secondary,
+    marginBottom: 4,
+    display: 'block',
+  }
 
   /** 手機才允許 collapse；點 header 切換 */
   const headerClickable = isMobile && !draft.pendingDelete
@@ -1140,7 +1211,7 @@ function VariantBlock({
         <span style={{ fontSize: 14, color: '#666', flexShrink: 0 }}>件</span>
       </div>
       {draft.reserved_qty > 0 && (
-        <p style={{ fontSize: 12, color: '#6a1b9a', margin: '4px 0 0' }}>
+        <p style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.secondary[700], margin: '4px 0 0' }}>
           其中 {draft.reserved_qty} 件已送結帳保留 · 可售 {Math.max(0, (Number(draft.stock) || 0) - draft.reserved_qty)} 件
         </p>
       )}
@@ -1211,7 +1282,7 @@ function VariantBlock({
         <div key={f.key}>
           <label style={labelStyle}>
             {f.label}
-            {f.required && <span style={{ color: '#c62828' }}> *</span>}
+            {f.required && <span style={{ color: designSystem.colors.danger[700] }}> *</span>}
           </label>
           {f.type === 'select' ? (
             <select
@@ -1307,7 +1378,10 @@ function VariantBlock({
         <div
           style={{
             fontSize: 12,
-            color: draft.label_code.length >= LABEL_CODE_MAX_LEN ? '#c62828' : '#aaa',
+            color:
+              draft.label_code.length >= LABEL_CODE_MAX_LEN
+                ? designSystem.colors.danger[700]
+                : designSystem.colors.text.disabled,
             flexShrink: 0,
           }}
         >
@@ -1398,7 +1472,14 @@ function VariantBlock({
             </p>
           )}
           {draft.id && isLabelCodeDirty(draft.label_code, draft.savedLabelCode) && (
-            <p style={{ fontSize: 12, color: '#2563eb', margin: '6px 0 0', textAlign: isMobile ? 'center' : 'left' }}>
+            <p
+              style={{
+                fontSize: getFontSize('caption', isMobile),
+                color: designSystem.colors.info[700],
+                margin: '6px 0 0',
+                textAlign: isMobile ? 'center' : 'left',
+              }}
+            >
               標籤代碼尚未儲存
             </p>
           )}
@@ -1434,7 +1515,7 @@ function VariantBlock({
           padding: '4px 0',
           border: 'none',
           background: 'transparent',
-          color: '#2563eb',
+          color: designSystem.colors.info[700],
           fontSize: 12,
           cursor: disabled || draft.pendingDelete ? 'not-allowed' : 'pointer',
         }}
@@ -1495,7 +1576,7 @@ function VariantBlock({
           <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>相簿／URL</div>
         )}
       </div>
-      <span style={{ fontSize: 12, color: '#2563eb', flexShrink: 0 }}>展開 ▾</span>
+      <span style={{ fontSize: 12, color: designSystem.colors.info[700], flexShrink: 0 }}>展開 ▾</span>
     </button>
   )
 
@@ -1536,7 +1617,7 @@ function VariantBlock({
         )}
         {!effectiveCollapsed && <span style={{ flex: 1 }} />}
         {draft.pendingDelete ? (
-          <span style={{ color: '#c62828', fontSize: 12 }}>（將刪除）</span>
+          <span style={{ color: designSystem.colors.danger[700], fontSize: 12 }}>（將刪除）</span>
         ) : null}
         {headerClickable && (
           <span
@@ -1572,7 +1653,7 @@ function VariantBlock({
               border: 'none',
               background: 'transparent',
               fontSize: 18,
-              color: '#c62828',
+              color: designSystem.colors.danger[700],
               cursor: disabled ? 'not-allowed' : 'pointer',
               padding: '4px 8px',
               opacity: disabled ? 0.4 : 1,

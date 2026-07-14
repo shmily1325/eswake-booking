@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type CSSPr
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
+import { PageShell } from '../components/PageShell'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { supabase } from '../lib/supabase'
 import { hasViewAccess } from '../utils/auth'
 import { addDaysToDate, getLocalDateString } from '../utils/date'
 import { trackClickDedupedWithin } from '../utils/trackClick'
-import { designSystem, getButtonStyle, getInputStyle, getPageContentShellStyle } from '../styles/designSystem'
+import { designSystem, getButtonStyle, getInputStyle } from '../styles/designSystem'
 import {
   getTimeOffCellLabel,
   getTimeOffCellTooltip,
@@ -376,8 +377,7 @@ export function CoachTimeOffPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: designSystem.colors.background.main, padding: isMobile ? '18px' : '28px' }}>
-      <div style={getPageContentShellStyle(isMobile)}>
+    <PageShell variant="content" mobilePadding="18px" desktopPadding="28px">
         <PageHeader title="教練休假" user={user} />
 
         {!isMobile && (
@@ -544,7 +544,6 @@ export function CoachTimeOffPage() {
         </div>
 
         <Footer />
-      </div>
-    </div>
+    </PageShell>
   )
 }

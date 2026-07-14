@@ -1,6 +1,15 @@
+/**
+ * Design thinking:
+ * Current feel: status meta used bright Material blues/oranges/purples and emoji stock hints.
+ * Hierarchy: status keys unchanged; presentation uses quiet designSystem tonal scales.
+ * Primary task: scan order/item state without rainbow chrome competing with actions.
+ */
 import type { ShopOrderItemWithVariant, ShopOrderWithItems } from './types'
 import { formatAttributes } from '../products/schema'
 import { getLocalDateString } from '../../../utils/date'
+import { designSystem } from '../../../styles/designSystem'
+
+const c = designSystem.colors
 
 /** 尚未送結帳的訂購量 */
 export function qtyOpen(item: ShopOrderItemWithVariant): number {
@@ -30,9 +39,9 @@ export function itemStockInBillableHint(item: ShopOrderItemWithVariant): string 
   const todayMs = new Date(`${today}T12:00:00`).getTime()
   const days = Math.round((todayMs - inMs) / 86400000)
   if (days < 0 || days > STOCK_IN_HINT_DAYS) return null
-  if (days === 0) return '📦 今日入庫 · 可送結帳'
-  if (days === 1) return '📦 昨日入庫 · 可送結帳'
-  return `📦 ${days} 天前入庫 · 可送結帳`
+  if (days === 0) return '今日入庫 · 可送結帳'
+  if (days === 1) return '昨日入庫 · 可送結帳'
+  return `${days} 天前入庫 · 可送結帳`
 }
 
 export function orderHasWaitingStock(order: ShopOrderWithItems): boolean {
@@ -190,13 +199,13 @@ const ORDER_STATUS_META: Record<
   OrderStatusKey,
   { label: string; color: string; bg: string; border: string }
 > = {
-  cancelled: { label: '已作廢', color: '#888', bg: '#f5f5f5', border: '#bbb' },
-  ready: { label: '可送結帳', color: '#1565c0', bg: '#e3f2fd', border: '#1565c0' },
-  partial: { label: '部分待結', color: '#6a1b9a', bg: '#f3e5f5', border: '#7b1fa2' },
-  waiting: { label: '等貨', color: '#ef6c00', bg: '#fff4e0', border: '#ef6c00' },
-  pending: { label: '待結帳', color: '#6a1b9a', bg: '#f3e5f5', border: '#6a1b9a' },
-  settled: { label: '已結清', color: '#2e7d32', bg: '#e8f5e9', border: '#2e7d32' },
-  open: { label: '進行中', color: '#666', bg: '#f0f0f0', border: '#ccc' },
+  cancelled: { label: '已作廢', color: c.text.disabled, bg: c.secondary[100], border: c.border.main },
+  ready: { label: '可送結帳', color: c.info[700], bg: c.info[50], border: c.info[500] },
+  partial: { label: '部分待結', color: c.secondary[700], bg: c.secondary[100], border: c.secondary[400] },
+  waiting: { label: '等貨', color: c.warning[700], bg: c.warning[50], border: c.warning[500] },
+  pending: { label: '待結帳', color: c.secondary[700], bg: c.secondary[100], border: c.secondary[500] },
+  settled: { label: '已結清', color: c.success[700], bg: c.success[50], border: c.success[500] },
+  open: { label: '進行中', color: c.text.secondary, bg: c.secondary[50], border: c.border.main },
 }
 
 /** 卡片主狀態（單一 badge，依可執行動作優先） */
@@ -241,15 +250,15 @@ export function itemQtyChips(item: ShopOrderItemWithVariant): ItemQtyChip[] {
   const open = qtyOpen(item)
   const billable = qtyBillable(item)
   if (item.qty_paid > 0) {
-    chips.push({ label: `已付 ${item.qty_paid}`, color: '#2e7d32', bg: '#e8f5e9' })
+    chips.push({ label: `已付 ${item.qty_paid}`, color: c.success[700], bg: c.success[50] })
   }
   if (item.qty_pending_bill > 0) {
-    chips.push({ label: `待結 ${item.qty_pending_bill}`, color: '#6a1b9a', bg: '#f3e5f5' })
+    chips.push({ label: `待結 ${item.qty_pending_bill}`, color: c.secondary[700], bg: c.secondary[100] })
   }
   if (open > 0 && billable === 0) {
-    chips.push({ label: `等貨 ${open}`, color: '#ef6c00', bg: '#fff4e0' })
+    chips.push({ label: `等貨 ${open}`, color: c.warning[700], bg: c.warning[50] })
   } else if (billable > 0) {
-    chips.push({ label: `可送 ${billable}`, color: '#1565c0', bg: '#e3f2fd' })
+    chips.push({ label: `可送 ${billable}`, color: c.info[700], bg: c.info[50] })
   }
   return chips
 }

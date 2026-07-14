@@ -1,9 +1,23 @@
+/**
+ * Design thinking:
+ * Current feel: solid danger header, ⚠️ title, and a large yellow warning block read as stock admin/Bootstrap chrome.
+ * Hierarchy: title + count → quiet irreversible note → filled-by + confirm → danger confirm CTA.
+ * Primary task: confirm irreversible batch delete with filled-by accountability — danger only on the confirm action.
+ */
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
 import { logAction } from '../utils/auditLog'
 import { getFilledByName } from '../utils/filledByHelper'
+import {
+  designSystem,
+  getButtonStyle,
+  getFontSize,
+  getInputStyle,
+  getLabelStyle,
+  getTextStyle,
+} from '../styles/designSystem'
 
 interface BatchDeleteConfirmDialogProps {
   isOpen: boolean
@@ -233,14 +247,9 @@ export function BatchDeleteConfirmDialog({
   }
   
   if (!isOpen) return null
-  
-  const inputStyle = {
-    width: '100%',
-    padding: isMobile ? '12px' : '10px',
-    border: '2px solid #e0e0e0',
-    borderRadius: '8px',
-    fontSize: isMobile ? '16px' : '14px',
-  }
+
+  const canDelete = Boolean(filledBy.trim() && confirmed)
+  const inputStyle = getInputStyle(isMobile, !filledBy.trim())
   
   return (
     <div style={{
@@ -249,7 +258,7 @@ export function BatchDeleteConfirmDialog({
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'rgba(0,0,0,0.6)',
+      background: 'rgba(0,0,0,0.5)',
       display: 'flex',
       alignItems: isMobile ? 'flex-end' : 'center',
       justifyContent: 'center',
@@ -257,121 +266,117 @@ export function BatchDeleteConfirmDialog({
       padding: isMobile ? '0' : '20px',
     }}>
       <div style={{
-        background: 'white',
-        borderRadius: isMobile ? '12px 12px 0 0' : '12px',
+        background: designSystem.colors.background.card,
+        borderRadius: isMobile
+          ? `${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg} 0 0`
+          : designSystem.borderRadius.lg,
         maxWidth: isMobile ? '100%' : '450px',
         width: '100%',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        boxShadow: designSystem.shadows.lg,
+        border: `1px solid ${designSystem.colors.border.light}`,
+        overflow: 'hidden',
       }}>
         {/* 標題 */}
         <div style={{
-          padding: '20px',
-          borderBottom: '1px solid #e0e0e0',
+          padding: isMobile ? '20px 20px 16px' : '20px',
+          borderBottom: `1px solid ${designSystem.colors.border.light}`,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backgroundColor: '#dc3545',
-          borderRadius: isMobile ? '12px 12px 0 0' : '12px 12px 0 0',
+          background: designSystem.colors.background.card,
         }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
-              ⚠️ 批次刪除預約
+            <h2 style={{
+              margin: 0,
+              ...getTextStyle('h3', isMobile),
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+            }}>
+              批次刪除預約
             </h2>
-            <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)', marginTop: '4px' }}>
+            <div style={{
+              fontSize: getFontSize('bodySmall', isMobile),
+              color: designSystem.colors.text.secondary,
+              marginTop: designSystem.spacing.xs,
+            }}>
               即將刪除 {bookingIds.length} 筆預約
             </div>
           </div>
           <button
             onClick={handleClose}
+            type="button"
+            aria-label="關閉"
             style={{
               border: 'none',
               background: 'none',
-              fontSize: '24px',
+              fontSize: designSystem.fontSize.h1.desktop,
               cursor: 'pointer',
-              color: 'white',
-              padding: '0',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              color: designSystem.colors.text.secondary,
+              padding: '0 8px',
+              lineHeight: 1,
             }}
           >
             ×
           </button>
         </div>
         
-        {/* 警告訊息 */}
-        <div style={{ padding: isMobile ? '16px' : '20px' }}>
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#fff3cd',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            border: '2px solid #ffc107',
+        <div style={{ padding: isMobile ? '16px 20px' : '20px' }}>
+          <p style={{
+            margin: `0 0 ${designSystem.spacing.lg}`,
+            fontSize: getFontSize('bodySmall', isMobile),
+            color: designSystem.colors.warning[700],
+            lineHeight: 1.5,
           }}>
-            <div style={{ 
-              fontSize: '16px', 
-              fontWeight: 'bold', 
-              color: '#856404',
-              marginBottom: '8px'
-            }}>
-              ⚠️ 此操作無法復原！
-            </div>
-            <div style={{ fontSize: '14px', color: '#856404' }}>
-              預約將被永久刪除，無法恢復。請確認您要刪除的預約正確無誤。
-            </div>
-          </div>
+            此操作無法復原。預約將永久刪除，請確認要刪除的預約正確無誤。
+          </p>
           
           {/* 填表人 */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{
-              display: 'block',
-              fontWeight: '600',
-              fontSize: '14px',
-              marginBottom: '6px',
-              color: '#333',
-            }}>
-              ✍️ 填表人 <span style={{ color: '#dc3545' }}>*</span>
+          <div style={{ marginBottom: designSystem.spacing.lg }}>
+            <label style={getLabelStyle(isMobile)}>
+              填表人 <span style={{ color: designSystem.colors.danger[500] }}>*</span>
             </label>
             <input
               type="text"
               value={filledBy}
               onChange={(e) => setFilledBy(e.target.value)}
               placeholder="請輸入填表人姓名"
-              style={{
-                ...inputStyle,
-                borderColor: filledBy.trim() ? '#28a745' : '#dc3545',
-              }}
+              style={inputStyle}
             />
           </div>
           
           {/* 確認勾選 */}
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: designSystem.spacing.sm }}>
             <label style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              padding: '16px',
-              backgroundColor: confirmed ? '#f8d7da' : '#f8f9fa',
-              borderRadius: '8px',
+              gap: designSystem.spacing.md,
+              padding: designSystem.spacing.md,
+              backgroundColor: confirmed
+                ? designSystem.colors.danger[50]
+                : designSystem.colors.background.main,
+              borderRadius: designSystem.borderRadius.lg,
               cursor: 'pointer',
-              border: confirmed ? '2px solid #dc3545' : '1px solid #e0e0e0',
+              border: confirmed
+                ? `1px solid ${designSystem.colors.danger[500]}55`
+                : `1px solid ${designSystem.colors.border.light}`,
             }}>
               <input
                 type="checkbox"
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
                 style={{ 
-                  width: '24px', 
-                  height: '24px',
+                  width: '20px', 
+                  height: '20px',
                   cursor: 'pointer',
+                  flexShrink: 0,
                 }}
               />
               <span style={{ 
-                fontSize: '15px', 
-                fontWeight: '600',
-                color: confirmed ? '#dc3545' : '#333',
+                fontSize: getFontSize('body', isMobile), 
+                fontWeight: 500,
+                color: confirmed
+                  ? designSystem.colors.danger[700]
+                  : designSystem.colors.text.primary,
               }}>
                 我確認要刪除這 {bookingIds.length} 筆預約
               </span>
@@ -382,23 +387,20 @@ export function BatchDeleteConfirmDialog({
         {/* 底部按鈕 */}
         <div style={{
           padding: isMobile ? '16px 20px 30px' : '16px 20px',
-          borderTop: '1px solid #e0e0e0',
+          borderTop: `1px solid ${designSystem.colors.border.light}`,
           display: 'flex',
-          gap: '12px',
+          gap: designSystem.spacing.md,
           justifyContent: 'flex-end',
+          background: designSystem.colors.background.card,
         }}>
           <button
             type="button"
             onClick={handleClose}
             disabled={loading}
             style={{
-              padding: '12px 24px',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              background: 'white',
+              ...getButtonStyle('outline', 'large', isMobile),
+              opacity: loading ? 0.5 : 1,
               cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: '15px',
-              fontWeight: '500',
             }}
           >
             取消
@@ -406,44 +408,17 @@ export function BatchDeleteConfirmDialog({
           <button
             type="button"
             onClick={handleDelete}
-            disabled={loading || !filledBy.trim() || !confirmed}
+            disabled={loading || !canDelete}
             style={{
-              padding: '14px 28px',
-              border: 'none',
-              borderRadius: '8px',
-              background: (loading || !filledBy.trim() || !confirmed) ? '#ccc' : '#dc3545',
-              color: 'white',
-              cursor: (loading || !filledBy.trim() || !confirmed) ? 'not-allowed' : 'pointer',
-              fontSize: '16px',
-              fontWeight: '600',
-              transition: 'all 0.15s',
-              transform: 'scale(1)',
-              opacity: loading ? 0.7 : 1,
-            }}
-            onTouchStart={(e) => {
-              if (!loading && filledBy.trim() && confirmed) {
-                e.currentTarget.style.transform = 'scale(0.95)'
-                e.currentTarget.style.opacity = '0.8'
-              }
-            }}
-            onTouchEnd={(e) => {
-              e.currentTarget.style.transform = 'scale(1)'
-              e.currentTarget.style.opacity = '1'
-            }}
-            onMouseDown={(e) => {
-              if (!loading && filledBy.trim() && confirmed) {
-                e.currentTarget.style.transform = 'scale(0.95)'
-              }
-            }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.transform = 'scale(1)'
+              ...getButtonStyle('danger', 'large', isMobile),
+              opacity: loading || !canDelete ? 0.5 : 1,
+              cursor: loading || !canDelete ? 'not-allowed' : 'pointer',
             }}
           >
-            {loading ? '🔄 刪除中...' : `🗑️ 確認刪除 (${bookingIds.length} 筆)`}
+            {loading ? '刪除中...' : `確認刪除 (${bookingIds.length} 筆)`}
           </button>
         </div>
       </div>
     </div>
   )
 }
-

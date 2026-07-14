@@ -54,6 +54,7 @@ export function BoatManagement() {
     const [unavailableLoading, setUnavailableLoading] = useState(false)
     const [editingUnavailableId, setEditingUnavailableId] = useState<number | null>(null)
     const [unavailableMultiDay, setUnavailableMultiDay] = useState(false)
+    const [expandedBoatIds, setExpandedBoatIds] = useState<Set<number>>(() => new Set())
     const { isMobile } = useResponsive()
     
     // 月份篩選
@@ -567,11 +568,8 @@ export function BoatManagement() {
                         </div>
 
                         <div style={{
-                            background: designSystem.colors.background.card,
-                            borderRadius: designSystem.borderRadius.lg,
-                            border: cardBorder,
-                            boxShadow: cardShadow,
-                            overflow: 'hidden',
+                            display: 'grid',
+                            gap: isMobile ? '10px' : '14px',
                         }}>
                             {boats.length === 0 ? (
                                 <div style={{
@@ -582,20 +580,29 @@ export function BoatManagement() {
                                 }}>
                                     尚無船隻
                                 </div>
-                            ) : boats.map((boat, index) => {
+                            ) : boats.map((boat) => {
                                 const boatAllUnavailable = unavailableDates.filter(d => d.boat_id === boat.id)
                                 const boatUnavailable = filterUnavailableByMonth(boatAllUnavailable, selectedMonth)
                                 const isActive = boat.is_active
                                 const showMaintenance = !isLandCourse(boat.name)
-                                const isLast = index === boats.length - 1
+                                const isExpanded = expandedBoatIds.has(boat.id)
+                                const maxDisplay = 2
+                                const displayUnavailable = isExpanded
+                                    ? boatUnavailable
+                                    : boatUnavailable.slice(0, maxDisplay)
+                                const hasMore = boatUnavailable.length > maxDisplay
 
                                 return (
                                     <div
                                         key={boat.id}
                                         style={{
-                                            padding: isMobile ? '16px' : '18px 20px',
-                                            borderBottom: isLast ? 'none' : `1px solid ${designSystem.colors.border.light}`,
+                                            padding: isMobile ? '14px' : '16px 18px',
+                                            background: designSystem.colors.background.card,
+                                            border: `1px solid ${designSystem.colors.border.main}`,
+                                            borderRadius: designSystem.borderRadius.lg,
+                                            boxShadow: designSystem.shadows.elevation[2],
                                             opacity: isActive ? 1 : 0.72,
+                                            overflow: 'hidden',
                                         }}
                                     >
                                         <div style={{
@@ -676,22 +683,23 @@ export function BoatManagement() {
 
                                         {showMaintenance && boatUnavailable.length > 0 && (
                                             <div style={{
-                                                marginTop: designSystem.spacing.md,
-                                                paddingTop: designSystem.spacing.sm,
-                                                borderTop: `1px solid ${designSystem.colors.border.light}`,
+                                                marginTop: '12px',
+                                                padding: isMobile ? '4px 10px' : '4px 12px',
+                                                background: designSystem.colors.background.main,
+                                                border: `1px solid ${designSystem.colors.border.light}`,
+                                                borderRadius: designSystem.borderRadius.md,
                                             }}>
-                                                {boatUnavailable.map((record, idx) => (
+                                                {displayUnavailable.map((record, idx) => (
                                                     <div
                                                         key={record.id}
                                                         style={{
                                                             display: 'flex',
                                                             justifyContent: 'space-between',
-                                                            alignItems: isMobile ? 'flex-start' : 'center',
-                                                            flexDirection: isMobile ? 'column' : 'row',
-                                                            padding: '10px 0',
-                                                            gap: isMobile ? '8px' : '12px',
+                                                            alignItems: 'center',
+                                                            padding: isMobile ? '6px 0' : '5px 0',
+                                                            gap: '10px',
                                                             borderBottom:
-                                                                idx === boatUnavailable.length - 1
+                                                                idx === displayUnavailable.length - 1 && !hasMore
                                                                     ? 'none'
                                                                     : `1px solid ${designSystem.colors.border.light}`,
                                                         }}
@@ -743,6 +751,7 @@ export function BoatManagement() {
                                                                 size="small"
                                                                 data-track="boat_edit_unavailable"
                                                                 onClick={() => openEditUnavailableDialog(boat, record)}
+                                                                style={{ padding: isMobile ? '5px 9px' : '4px 9px' }}
                                                             >
                                                                 編輯
                                                             </Button>
@@ -751,13 +760,46 @@ export function BoatManagement() {
                                                                 size="small"
                                                                 data-track="boat_delete_unavailable"
                                                                 onClick={() => handleDeleteUnavailable(record)}
-                                                                style={{ color: designSystem.colors.danger[700] }}
+                                                                style={{
+                                                                    color: designSystem.colors.danger[700],
+                                                                    padding: isMobile ? '5px 7px' : '4px 7px',
+                                                                }}
                                                             >
                                                                 刪除
                                                             </Button>
                                                         </div>
                                                     </div>
                                                 ))}
+                                                {hasMore && (
+                                                    <button
+                                                        type="button"
+                                                        data-track="boat_unavailable_expand"
+                                                        onClick={() => {
+                                                            setExpandedBoatIds(current => {
+                                                                const next = new Set(current)
+                                                                if (next.has(boat.id)) next.delete(boat.id)
+                                                                else next.add(boat.id)
+                                                                return next
+                                                            })
+                                                        }}
+                                                        style={{
+                                                            width: '100%',
+                                                            marginTop: '2px',
+                                                            padding: '6px',
+                                                            background: 'transparent',
+                                                            color: designSystem.colors.text.secondary,
+                                                            border: 'none',
+                                                            fontSize: getFontSize('bodySmall', isMobile),
+                                                            fontWeight: 500,
+                                                            cursor: 'pointer',
+                                                            textAlign: 'center',
+                                                        }}
+                                                    >
+                                                        {isExpanded
+                                                            ? '收起'
+                                                            : `查看全部 ${boatUnavailable.length} 筆`}
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>

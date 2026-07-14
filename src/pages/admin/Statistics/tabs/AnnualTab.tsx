@@ -1,9 +1,11 @@
+/**
+ * Design thinking: year view had dual rainbow SummaryCardsGrid strips.
+ * Prefer one calm typography summary for finance + ops totals; rankings stay below.
+ */
 import { useState } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
 import { designSystem, getFontSize } from '../../../../styles/designSystem'
 import {
-  SummaryCard,
-  SummaryCardsGrid,
   WeekdayRatioBar,
   CoachMemberRankings,
   getCoachMemberSubTabStyle,
@@ -96,7 +98,7 @@ export function AnnualTab({
                 color: selectedYear === year
                   ? 'white'
                   : designSystem.colors.text.secondary,
-                fontSize: isMobile ? '13px' : '14px',
+                fontSize: getFontSize('button', isMobile),
                 fontWeight: selectedYear === year ? '600' : '500',
                 cursor: 'pointer',
                 boxShadow: selectedYear === year ? designSystem.shadows.sm : 'none',
@@ -106,7 +108,7 @@ export function AnnualTab({
               {year === currentYear && (
                 <span style={{
                   marginLeft: '4px',
-                  fontSize: isMobile ? '9px' : '10px',
+                  fontSize: getFontSize('caption', true),
                   opacity: 0.8
                 }}>
                   今年
@@ -128,54 +130,42 @@ export function AnnualTab({
         </div>
       </div>
 
-      {/* 年度摘要 */}
-      <SummaryCardsGrid>
-        <SummaryCard
-          label={`${selectedYear} 已結帳`}
-          value={totalBookings}
-          unit="筆"
-          accentColor={designSystem.colors.info[500]}
-        />
-        <SummaryCard
-          label="已扣款時數"
-          value={totalMinutes}
-          unit="分"
-          accentColor={designSystem.colors.success[500]}
-        />
-        <SummaryCard
-          label="月均已結帳"
-          value={avgBookings}
-          unit="筆/月"
-          accentColor={designSystem.colors.warning[500]}
-        />
-      </SummaryCardsGrid>
-
-      <SummaryCardsGrid>
-        <SummaryCard
-          label="儲值消耗"
-          value={`$${financeTotals.balanceUsed.toLocaleString()}`}
-          unit=""
-          accentColor={designSystem.colors.info[500]}
-        />
-        <SummaryCard
-          label="VIP 消耗"
-          value={`$${financeTotals.vipUsed.toLocaleString()}`}
-          unit=""
-          accentColor={designSystem.colors.warning[500]}
-        />
-        <SummaryCard
-          label="G23 船券"
-          value={financeTotals.g23Used}
-          unit="分"
-          accentColor={designSystem.colors.success[500]}
-        />
-        <SummaryCard
-          label="G21/黑豹船券"
-          value={financeTotals.g21Used}
-          unit="分"
-          accentColor={designSystem.colors.primary[500]}
-        />
-      </SummaryCardsGrid>
+      {/* 年度摘要 — 平靜文字，非雙排 KPI 卡片 */}
+      <div style={{
+        backgroundColor: designSystem.colors.background.card,
+        padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+        borderRadius: designSystem.borderRadius.lg,
+        border: `1px solid ${designSystem.colors.border.light}`,
+        marginBottom: designSystem.spacing.md,
+      }}>
+        <p style={{
+          margin: 0,
+          fontSize: getFontSize('bodyLarge', isMobile),
+          fontWeight: '600',
+          color: designSystem.colors.text.primary,
+          lineHeight: 1.5,
+        }}>
+          {selectedYear} 已結帳 {totalBookings.toLocaleString()} 筆
+          <span style={{ color: designSystem.colors.text.disabled, fontWeight: '400', margin: '0 8px' }}>·</span>
+          已扣款 {totalMinutes.toLocaleString()} 分
+          <span style={{ color: designSystem.colors.text.disabled, fontWeight: '400', margin: '0 8px' }}>·</span>
+          月均 {avgBookings.toLocaleString()} 筆
+        </p>
+        <p style={{
+          margin: `${designSystem.spacing.sm} 0 0`,
+          fontSize: getFontSize('bodySmall', isMobile),
+          color: designSystem.colors.text.secondary,
+          lineHeight: 1.6,
+        }}>
+          儲值 ${financeTotals.balanceUsed.toLocaleString()}
+          <span style={{ margin: '0 8px', color: designSystem.colors.text.disabled }}>·</span>
+          VIP ${financeTotals.vipUsed.toLocaleString()}
+          <span style={{ margin: '0 8px', color: designSystem.colors.text.disabled }}>·</span>
+          G23 {financeTotals.g23Used.toLocaleString()} 分
+          <span style={{ margin: '0 8px', color: designSystem.colors.text.disabled }}>·</span>
+          G21/黑豹 {financeTotals.g21Used.toLocaleString()} 分
+        </p>
+      </div>
 
       {/* 教練／會員切換 */}
       <div style={{

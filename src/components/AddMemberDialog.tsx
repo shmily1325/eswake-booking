@@ -1,9 +1,22 @@
+/**
+ * Design thinking:
+ * Current feel: emoji titles, green gradient CTAs, and loud nested board cards feel like a Material form kit.
+ * Hierarchy: identity fields → membership → quiet gift hint → board slots → primary save.
+ * Primary task: create a member (and optional boards) with calm chrome — no decorative emoji or gradients.
+ */
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalTimestamp } from '../utils/date'
 import { useToast } from './ui'
-import { designSystem } from '../styles/designSystem'
+import {
+  designSystem,
+  getButtonStyle,
+  getFontSize,
+  getInputStyle,
+  getLabelStyle,
+  getTextStyle,
+} from '../styles/designSystem'
 
 /** 入會贈送提醒（需人工判斷後至會員儲值記帳，不會自動加） */
 const MEMBERSHIP_GIFT_CREDIT_HINT =
@@ -88,25 +101,13 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     setBoards(newBoards)
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: isMobile ? '12px' : '10px',
-    border: '2px solid #e0e0e0',
-    borderRadius: '8px',
-    fontSize: '16px',  // iOS 需要至少 16px 避免自動縮放
-    transition: 'border-color 0.2s',
-    boxSizing: 'border-box',
-    minWidth: 0,
-    touchAction: 'manipulation',
+  const inputStyle = getInputStyle(isMobile)
+  const quietHint = {
+    fontSize: getFontSize('bodySmall', isMobile),
+    color: designSystem.colors.text.disabled,
+    fontWeight: 400 as const,
   }
-
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = '#5a5a5a'
-  }
-
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = '#e0e0e0'
-  }
+  const requiredMark = { color: designSystem.colors.danger[500] }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -282,42 +283,52 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
       overflowY: isMobile ? 'hidden' : 'auto',
     }}>
       <div style={{
-        background: 'white',
-        borderRadius: isMobile ? '16px 16px 0 0' : '12px',
+        background: designSystem.colors.background.card,
+        borderRadius: isMobile
+          ? `${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg} 0 0`
+          : designSystem.borderRadius.lg,
         maxWidth: isMobile ? '100%' : '600px',
         width: '100%',
         maxHeight: isMobile ? '80vh' : '90vh',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+        boxShadow: designSystem.shadows.lg,
+        border: `1px solid ${designSystem.colors.border.light}`,
         margin: isMobile ? 'auto 0 0 0' : 'auto',
       }}>
         {/* 標題欄 */}
         <div style={{
           padding: isMobile ? '20px 20px 16px' : '20px',
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: `1px solid ${designSystem.colors.border.light}`,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexShrink: 0,
-          background: 'white',
+          background: designSystem.colors.background.card,
         }}>
-          <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '20px', fontWeight: 'bold' }}>
-            ➕ 新增會員
+          <h2 style={{
+            margin: 0,
+            ...getTextStyle('h3', isMobile),
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+          }}>
+            新增會員
           </h2>
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
+            aria-label="關閉"
             style={{
               border: 'none',
               background: 'none',
-              fontSize: '28px',
+              fontSize: designSystem.fontSize.h1.desktop,
               cursor: loading ? 'not-allowed' : 'pointer',
-              color: '#666',
+              color: designSystem.colors.text.secondary,
               padding: '0 8px',
               opacity: loading ? 0.5 : 1,
+              lineHeight: 1,
             }}
           >
             ×
@@ -328,14 +339,14 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: isMobile ? '20px' : '20px',
+          padding: '20px',
           WebkitOverflowScrolling: 'touch',
         }}>
           <form onSubmit={handleSubmit} id="add-member-form">
             {/* 姓名 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                姓名 <span style={{ color: 'red' }}>*</span>
+              <label style={getLabelStyle(isMobile)}>
+                姓名 <span style={requiredMark}>*</span>
               </label>
               <input
                 type="text"
@@ -343,16 +354,14 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="請輸入姓名"
                 style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
                 required
               />
             </div>
 
             {/* 暱稱 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                暱稱 <span style={{ fontSize: '13px' }}>（選填，可輸入多個）</span>
+              <label style={getLabelStyle(isMobile)}>
+                暱稱 <span style={quietHint}>（選填，可輸入多個）</span>
               </label>
               <input
                 type="text"
@@ -361,32 +370,28 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 placeholder="請輸入暱稱"
                 maxLength={100}
                 style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
               />
             </div>
 
             {/* 生日 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                生日 <span style={{ fontSize: '13px' }}>（選填）</span>
+              <label style={getLabelStyle(isMobile)}>
+                生日 <span style={quietHint}>（選填）</span>
               </label>
               <div style={{ display: 'flex' }}>
                 <input
                   type="date"
                   value={formData.birthday}
                   onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-                  style={{...inputStyle, flex: 1}}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
+                  style={{ ...inputStyle, flex: 1 }}
                 />
               </div>
             </div>
 
             {/* 電話 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                電話 <span style={{ fontSize: '13px' }}>（選填）</span>
+              <label style={getLabelStyle(isMobile)}>
+                電話 <span style={quietHint}>（選填）</span>
               </label>
               <input
                 type="tel"
@@ -394,22 +399,18 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="請輸入電話"
                 style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
               />
             </div>
 
             {/* 會籍類型 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                會籍類型 <span style={{ color: 'red' }}>*</span>
+              <label style={getLabelStyle(isMobile)}>
+                會籍類型 <span style={requiredMark}>*</span>
               </label>
               <select
                 value={formData.membership_type}
                 onChange={(e) => setFormData({ ...formData, membership_type: e.target.value })}
                 style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
                 required
               >
                 <option value="general">會員</option>
@@ -424,25 +425,16 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 role="note"
                 style={{
                   marginBottom: '16px',
-                  padding: '12px 14px',
-                  background: designSystem.colors.warning[50],
-                  border: `1px solid ${designSystem.colors.warning[500]}55`,
-                  borderRadius: '10px',
+                  padding: `${designSystem.spacing.sm} 0`,
                   color: designSystem.colors.warning[700],
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  lineHeight: 1.5,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  lineHeight: 1.55,
                 }}
               >
-                <div style={{ marginBottom: '8px' }}>入會贈送提醒</div>
-                <div style={{ fontWeight: 700, fontSize: '14px' }}>
-                  ▶︎ 30分鐘指定課程
-                </div>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>
-                  ▶︎ 40分鐘大船時數
-                </div>
-                <div style={{ marginTop: '8px', fontWeight: 500, fontSize: '12px', opacity: 0.9 }}>
-                  這裡不會自動加額度，請至「會員儲值」記帳
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>入會贈送提醒</div>
+                <div>30分鐘指定課程、40分鐘大船時數</div>
+                <div style={{ marginTop: 4, color: designSystem.colors.text.secondary }}>
+                  不會自動加額度，請至「會員儲值」記帳
                 </div>
               </div>
             )}
@@ -456,34 +448,30 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
             }}>
               {/* 會員開始日期 */}
               <div style={{ minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                  會員開始日期 <span style={{ fontSize: '13px' }}>（選填）</span>
+                <label style={getLabelStyle(isMobile)}>
+                  會員開始日期 <span style={quietHint}>（選填）</span>
                 </label>
                 <div style={{ display: 'flex' }}>
                   <input
                     type="date"
                     value={formData.membership_start_date}
                     onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
-                    style={{...inputStyle, flex: 1}}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
+                    style={{ ...inputStyle, flex: 1 }}
                   />
                 </div>
               </div>
 
               {/* 會員截止日期 */}
               <div style={{ minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                  會員截止日期 <span style={{ fontSize: '13px' }}>（選填）</span>
+                <label style={getLabelStyle(isMobile)}>
+                  會員截止日期 <span style={quietHint}>（選填）</span>
                 </label>
                 <div style={{ display: 'flex' }}>
                   <input
                     type="date"
                     value={formData.membership_end_date}
                     onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
-                    style={{...inputStyle, flex: 1}}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
+                    style={{ ...inputStyle, flex: 1 }}
                   />
                 </div>
               </div>
@@ -492,15 +480,13 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
             {/* 配對會員 - 只在選擇「雙人會籍」時顯示 */}
             {formData.membership_type === 'dual' && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#2196F3' }}>
-                  🔗 配對會員 <span style={{ fontSize: '13px' }}>（選填）</span>
+                <label style={getLabelStyle(isMobile)}>
+                  配對會員 <span style={quietHint}>（選填）</span>
                 </label>
                 <select
                   value={formData.membership_partner_id}
                   onChange={(e) => setFormData({ ...formData, membership_partner_id: e.target.value })}
                   style={inputStyle}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
                 >
                   <option value="">請選擇配對會員</option>
                   {allMembers.map(member => (
@@ -509,7 +495,11 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                     </option>
                   ))}
                 </select>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                <div style={{
+                  fontSize: getFontSize('caption', isMobile),
+                  color: designSystem.colors.text.secondary,
+                  marginTop: designSystem.spacing.xs,
+                }}>
                   選擇後將自動建立雙向配對關係
                 </div>
               </div>
@@ -518,26 +508,29 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
             {/* 置板服務 */}
             <div style={{ 
               marginBottom: '16px',
-              padding: '16px',
-              background: '#f8f9fa',
-              borderRadius: '8px',
-              border: '2px solid #e0e0e0'
+              padding: designSystem.spacing.lg,
+              background: designSystem.colors.background.main,
+              borderRadius: designSystem.borderRadius.lg,
+              border: `1px solid ${designSystem.colors.border.light}`,
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: boards.length > 0 ? '16px' : '0' }}>
-                <span style={{ fontWeight: '500', fontSize: '15px' }}>🏄 置板服務</span>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: boards.length > 0 ? designSystem.spacing.lg : 0,
+                gap: designSystem.spacing.sm,
+              }}>
+                <span style={{
+                  fontWeight: 600,
+                  fontSize: getFontSize('body', isMobile),
+                  color: designSystem.colors.text.primary,
+                }}>
+                  置板服務
+                </span>
                 <button
                   type="button"
                   onClick={addBoard}
-                  style={{
-                    padding: '6px 12px',
-                    background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
+                  style={getButtonStyle('outline', 'small', isMobile)}
                 >
                   + 新增置板
                 </button>
@@ -546,25 +539,33 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               {/* 置板列表 */}
               {boards.map((board, index) => (
                 <div key={index} style={{
-                  marginTop: index > 0 ? '12px' : '0',
-                  padding: '12px',
-                  background: 'white',
-                  borderRadius: '8px',
-                  border: '1px solid #e0e0e0'
+                  marginTop: index > 0 ? designSystem.spacing.md : 0,
+                  padding: designSystem.spacing.md,
+                  background: designSystem.colors.background.card,
+                  borderRadius: designSystem.borderRadius.md,
+                  border: `1px solid ${designSystem.colors.border.light}`,
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ fontWeight: '500', fontSize: '14px' }}>置板 #{index + 1}</span>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: designSystem.spacing.md,
+                    gap: designSystem.spacing.sm,
+                  }}>
+                    <span style={{
+                      fontWeight: 500,
+                      fontSize: getFontSize('bodySmall', isMobile),
+                    }}>
+                      置板 #{index + 1}
+                    </span>
                     <button
                       type="button"
                       onClick={() => removeBoard(index)}
                       style={{
-                        padding: '4px 10px',
-                        background: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        cursor: 'pointer'
+                        ...getButtonStyle('outline', 'small', isMobile),
+                        color: designSystem.colors.danger[700],
+                        borderColor: `${designSystem.colors.danger[500]}66`,
+                        background: designSystem.colors.danger[50],
                       }}
                     >
                       刪除
@@ -572,10 +573,10 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                   </div>
 
                   {/* 格位編號 */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px' }}>
-                      格位編號 <span style={{ color: 'red' }}>*</span>
-                      <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>（1-145）</span>
+                  <div style={{ marginBottom: designSystem.spacing.md }}>
+                    <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px' }}>
+                      格位編號 <span style={requiredMark}>*</span>
+                      <span style={{ ...quietHint, marginLeft: designSystem.spacing.sm }}>（1-145）</span>
                     </label>
                     <input
                       type="text"
@@ -589,51 +590,51 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                         }
                       }}
                       placeholder="請輸入格位編號"
-                      style={{...inputStyle}}
+                      style={inputStyle}
                     />
                   </div>
 
                   {/* 置板開始 */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#666' }}>
-                      置板開始 <span style={{ fontSize: '12px' }}>（選填）</span>
+                  <div style={{ marginBottom: designSystem.spacing.md }}>
+                    <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px' }}>
+                      置板開始 <span style={quietHint}>（選填）</span>
                     </label>
                     <div style={{ display: 'flex' }}>
                       <input
                         type="date"
                         value={board.start_date}
                         onChange={(e) => updateBoard(index, 'start_date', e.target.value)}
-                        style={{...inputStyle, flex: 1}}
+                        style={{ ...inputStyle, flex: 1 }}
                       />
                     </div>
                   </div>
 
                   {/* 置板到期 */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#666' }}>
-                      置板到期 <span style={{ fontSize: '12px' }}>（選填）</span>
+                  <div style={{ marginBottom: designSystem.spacing.md }}>
+                    <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px' }}>
+                      置板到期 <span style={quietHint}>（選填）</span>
                     </label>
                     <div style={{ display: 'flex' }}>
                       <input
                         type="date"
                         value={board.expires_at}
                         onChange={(e) => updateBoard(index, 'expires_at', e.target.value)}
-                        style={{...inputStyle, flex: 1}}
+                        style={{ ...inputStyle, flex: 1 }}
                       />
                     </div>
                   </div>
 
                   {/* 置板備註 */}
                   <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#666' }}>
-                      置板備註 <span style={{ fontSize: '12px' }}>（選填）</span>
+                    <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px' }}>
+                      置板備註 <span style={quietHint}>（選填）</span>
                     </label>
                     <input
                       type="text"
                       value={board.notes}
                       onChange={(e) => updateBoard(index, 'notes', e.target.value)}
                       placeholder="例如：有三格"
-                      style={{...inputStyle}}
+                      style={inputStyle}
                     />
                   </div>
                 </div>
@@ -645,12 +646,14 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
         {/* 底部按鈕欄 - 固定底部 */}
         <div style={{
-          padding: isMobile ? '12px 20px' : '20px 24px',
-          borderTop: '1px solid #e0e0e0',
-          background: 'white',
+          padding: isMobile ? '12px 20px' : '16px 20px',
+          borderTop: `1px solid ${designSystem.colors.border.light}`,
+          background: designSystem.colors.background.card,
           display: 'flex',
           gap: isMobile ? '8px' : '12px',
-          paddingBottom: isMobile ? 'max(20px, env(safe-area-inset-bottom))' : '20px',
+          paddingBottom: isMobile
+            ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
+            : '16px',
           flexShrink: 0,
         }}>
           <button
@@ -658,17 +661,10 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
             onClick={onClose}
             disabled={loading}
             style={{
+              ...getButtonStyle('outline', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
-              borderRadius: '8px',
-              border: '1px solid #ccc',
-              backgroundColor: 'white',
-              color: '#333',
-              fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '500',
-              cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.5 : 1,
-              touchAction: 'manipulation',
+              cursor: loading ? 'not-allowed' : 'pointer',
               minHeight: isMobile ? '48px' : '44px',
             }}
           >
@@ -679,40 +675,17 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
             form="add-member-form"
             disabled={loading}
             style={{
+              ...getButtonStyle('primary', 'large', isMobile),
               flex: 1,
-              padding: isMobile ? '14px' : '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              background: loading ? '#ccc' : 'linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%)',
-              color: 'white',
-              fontSize: isMobile ? '16px' : '15px',
-              fontWeight: '600',
+              opacity: loading ? 0.7 : 1,
               cursor: loading ? 'not-allowed' : 'pointer',
-              touchAction: 'manipulation',
               minHeight: isMobile ? '48px' : '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
             }}
           >
-            {loading ? (
-              <>
-                <span style={{ 
-                  display: 'inline-block',
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderTop: '2px solid white',
-                  borderRadius: '50%',
-                }} />
-                新增中...
-              </>
-            ) : '✅ 確認新增'}
+            {loading ? '新增中...' : '確認新增'}
           </button>
         </div>
       </div>
     </div>
   )
 }
-

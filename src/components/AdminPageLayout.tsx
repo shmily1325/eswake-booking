@@ -1,14 +1,18 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useResponsive } from '../hooks/useResponsive'
-import { designSystem, getFontSize } from '../styles/designSystem'
+import { designSystem, getFontSize, PAGE_MAX_WIDTHS } from '../styles/designSystem'
+import { PageShell } from './PageShell'
 
 /** 商品管理 / 訂單 Hub 外層（跟 ProductManagement 一致） */
 export function productHubOuterStyle(): CSSProperties {
   return { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f6f8' }
 }
 
-export function productHubInnerStyle(isMobile: boolean, maxWidth = 1100): CSSProperties {
+export function productHubInnerStyle(
+  isMobile: boolean,
+  maxWidth: CSSProperties['maxWidth'] = PAGE_MAX_WIDTHS.content,
+): CSSProperties {
   return {
     flex: 1,
     maxWidth,
@@ -23,7 +27,10 @@ export function adminPageOuterStyle(): CSSProperties {
   return { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f4f5f7' }
 }
 
-export function adminPageInnerStyle(isMobile: boolean, maxWidth = 1400): CSSProperties {
+export function adminPageInnerStyle(
+  isMobile: boolean,
+  maxWidth: CSSProperties['maxWidth'] = PAGE_MAX_WIDTHS.wide,
+): CSSProperties {
   return {
     flex: 1,
     maxWidth,
@@ -146,31 +153,41 @@ export function adminTabBadgeStyle(active: boolean): CSSProperties {
 
 export function ProductHubShell({
   children,
-  maxWidth = 1100,
+  maxWidth,
 }: {
   children: ReactNode
-  maxWidth?: number
+  maxWidth?: CSSProperties['maxWidth']
 }) {
-  const { isMobile } = useResponsive()
   return (
-    <div style={productHubOuterStyle()}>
-      <div style={productHubInnerStyle(isMobile, maxWidth)}>{children}</div>
-    </div>
+    <PageShell
+      variant="content"
+      mobilePadding="12px"
+      desktopPadding="20px"
+      outerStyle={{ background: '#f5f6f8' }}
+      contentStyle={maxWidth == null ? undefined : { maxWidth }}
+    >
+      {children}
+    </PageShell>
   )
 }
 
 export function AdminPageShell({
   children,
-  maxWidth = 1400,
+  maxWidth,
 }: {
   children: ReactNode
-  maxWidth?: number
+  maxWidth?: CSSProperties['maxWidth']
 }) {
-  const { isMobile } = useResponsive()
   return (
-    <div style={adminPageOuterStyle()}>
-      <div style={adminPageInnerStyle(isMobile, maxWidth)}>{children}</div>
-    </div>
+    <PageShell
+      variant="wide"
+      mobilePadding="16px"
+      desktopPadding="32px"
+      outerStyle={{ background: '#f4f5f7' }}
+      contentStyle={{ overflow: 'hidden', ...(maxWidth == null ? {} : { maxWidth }) }}
+    >
+      {children}
+    </PageShell>
   )
 }
 
