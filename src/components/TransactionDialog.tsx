@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp, normalizeDate } from '../utils/date'
 import type { Member } from '../types/booking'
-import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
+import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { useToast } from './ui'
 
 interface TransactionDialogProps {
@@ -559,7 +559,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
         </div>
 
         {/* Tabs */}
-        <div style={{
+        <div
+          role="tablist"
+          aria-label="記帳與交易"
+          style={{
           display: 'flex',
           gap: designSystem.spacing.sm,
           padding: `${designSystem.spacing.sm} ${isMobile ? '16px' : '20px'}`,
@@ -568,18 +571,26 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
           flexShrink: 0,
         }}>
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'transaction'}
             onClick={() => setActiveTab('transaction')}
             style={{
-              ...getButtonStyle(activeTab === 'transaction' ? 'secondary' : 'outline', 'small', isMobile),
+              ...getButtonStyle('outline', 'small', isMobile),
+              ...getFilterChipStyle(activeTab === 'transaction', 'info'),
               flex: 1,
             }}
           >
             記帳
           </button>
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'history'}
             onClick={() => setActiveTab('history')}
             style={{
-              ...getButtonStyle(activeTab === 'history' ? 'secondary' : 'outline', 'small', isMobile),
+              ...getButtonStyle('outline', 'small', isMobile),
+              ...getFilterChipStyle(activeTab === 'history', 'info'),
               flex: 1,
             }}
           >
@@ -613,27 +624,27 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 fontSize: getFontSize('bodySmall', isMobile),
               }}>
                 <div>
-                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>儲值</div>
+                  <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>儲值</div>
                   <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>${(member.balance ?? 0).toLocaleString()}</div>
                 </div>
                 <div>
-                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>VIP票券</div>
+                  <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>VIP票券</div>
                   <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>${(member.vip_voucher_amount ?? 0).toLocaleString()}</div>
                 </div>
                 <div>
-                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>指定課</div>
+                  <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>指定課</div>
                   <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.designated_lesson_minutes ?? 0).toLocaleString()}分</div>
                 </div>
                 <div>
-                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>G23船券</div>
+                  <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G23船券</div>
                   <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.boat_voucher_g23_minutes ?? 0).toLocaleString()}分</div>
                 </div>
                 <div>
-                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>G21/黑豹船券</div>
+                  <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G21/黑豹船券</div>
                   <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.boat_voucher_g21_panther_minutes ?? 0).toLocaleString()}分</div>
                 </div>
                 <div>
-                  <div style={{ color: designSystem.colors.text.disabled, marginBottom: '4px' }}>贈送大船</div>
+                  <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>贈送大船</div>
                   <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.gift_boat_hours ?? 0).toLocaleString()}分</div>
                 </div>
               </div>
@@ -885,8 +896,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               </label>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
+                  type="button"
                   onClick={() => setSelectedMonth('')}
-                  style={getButtonStyle(selectedMonth === '' ? 'secondary' : 'outline', 'small', isMobile)}
+                  style={{
+                    ...getButtonStyle('outline', 'small', isMobile),
+                    ...getFilterChipStyle(selectedMonth === '', 'info'),
+                  }}
                 >
                   全部
                 </button>
@@ -912,16 +927,24 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 flexWrap: 'wrap',
               }}>
                 <button
+                  type="button"
                   onClick={() => setCategoryFilter('all')}
-                  style={getButtonStyle(categoryFilter === 'all' ? 'secondary' : 'outline', 'small', isMobile)}
+                  style={{
+                    ...getButtonStyle('outline', 'small', isMobile),
+                    ...getFilterChipStyle(categoryFilter === 'all', 'info'),
+                  }}
                 >
                   全部
                 </button>
                 {CATEGORIES.filter(cat => cat.type === 'amount').map(cat => (
                   <button
+                    type="button"
                     key={cat.value}
                     onClick={() => setCategoryFilter(cat.value)}
-                    style={getButtonStyle(categoryFilter === cat.value ? 'secondary' : 'outline', 'small', isMobile)}
+                    style={{
+                      ...getButtonStyle('outline', 'small', isMobile),
+                      ...getFilterChipStyle(categoryFilter === cat.value, 'info'),
+                    }}
                   >
                     {cat.label}
                   </button>
@@ -935,9 +958,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               }}>
                 {CATEGORIES.filter(cat => cat.type === 'minutes').map(cat => (
                   <button
+                    type="button"
                     key={cat.value}
                     onClick={() => setCategoryFilter(cat.value)}
-                    style={getButtonStyle(categoryFilter === cat.value ? 'secondary' : 'outline', 'small', isMobile)}
+                    style={{
+                      ...getButtonStyle('outline', 'small', isMobile),
+                      ...getFilterChipStyle(categoryFilter === cat.value, 'info'),
+                    }}
                   >
                     {cat.label}
                   </button>

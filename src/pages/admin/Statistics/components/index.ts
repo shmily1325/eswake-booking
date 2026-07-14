@@ -5,4 +5,7 @@ export { MonthFilter } from './MonthFilter'
 export { AlertCard } from './AlertCard'
 export { LoadingSkeleton } from './LoadingSkeleton'
 export { LastUpdated } from './LastUpdated'
-
+export {
+  CoachMemberRankings,
+  getCoachMemberSubTabStyle,
+} from './CoachMemberRankings'

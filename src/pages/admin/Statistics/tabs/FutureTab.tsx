@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { designSystem, getCardStyle } from '../../../../styles/designSystem'
+import { designSystem, getFontSize } from '../../../../styles/designSystem'
 import {
   SummaryCard,
   SummaryCardsGrid,
@@ -36,7 +36,6 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
   const { isMobile } = useResponsive()
   const [monthFilter, setMonthFilter] = useState<string>('all')
 
-  // 取得月份選項
   const monthOptions = futureBookings[0]?.bookings.map(b => ({
     value: b.month,
     label: getMonthLabel(b.month),
@@ -46,7 +45,6 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
   })) || []
   const allLabel = getThreeMonthRangeLabel(monthOptions.map(m => m.value))
 
-  // 根據月份篩選計算數據
   const getFilteredValue = (coach: CoachFutureBooking, key: 'count' | 'minutes') => {
     if (monthFilter === 'all') {
       return key === 'count' ? coach.totalCount : coach.totalMinutes
@@ -55,7 +53,6 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
     return key === 'count' ? (monthData?.count || 0) : (monthData?.minutes || 0)
   }
 
-  // 篩選後的統計
   const filteredTotalBookings = monthFilter === 'all'
     ? futureBookings.reduce((sum, c) => sum + c.totalCount, 0)
     : futureBookings.reduce((sum, c) => sum + (c.bookings.find(b => b.month === monthFilter)?.count || 0), 0)
@@ -68,17 +65,14 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
     ? futureBookings.filter(c => c.coachId !== 'unassigned').length
     : futureBookings.filter(c => c.coachId !== 'unassigned' && (c.bookings.find(b => b.month === monthFilter)?.count || 0) > 0).length
 
-  // 未指派數據
   const unassigned = futureBookings.find(c => c.coachId === 'unassigned')
   const unassignedCount = unassigned ? getFilteredValue(unassigned, 'count') : 0
   const unassignedMinutes = unassigned ? getFilteredValue(unassigned, 'minutes') : 0
 
-  // 有資料的教練（排除未指派，按篩選後的時數排序）
   const sortedCoaches = futureBookings
     .filter(c => c.coachId !== 'unassigned' && getFilteredValue(c, 'minutes') > 0)
     .sort((a, b) => getFilteredValue(b, 'minutes') - getFilteredValue(a, 'minutes'))
 
-  // 篩選後每位教練的「參與人次」（與展開的會員時數分布加總一致）
   const getFilteredContactCount = (coach: CoachFutureBooking) => {
     const contactStats = monthFilter === 'all'
       ? coach.contactStats
@@ -86,14 +80,44 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
     return contactStats.reduce((sum, c) => sum + c.count, 0)
   }
 
-  // 月份標籤
   const monthLabel = monthFilter === 'all'
     ? '未來3個月'
     : getMonthLabel(monthFilter)
 
+  const rangeNote = monthFilter === 'all'
+    ? `未來三個月未回報預約 · ${allLabel}`
+    : `${monthLabel}未回報預約`
+
   return (
     <>
-      {/* 摘要卡片 */}
+      {/* 期間選擇 — 與月報／年報同骨架 */}
+      <div style={{
+        backgroundColor: designSystem.colors.background.card,
+        padding: designSystem.spacing.sm,
+        borderRadius: designSystem.borderRadius.lg,
+        boxShadow: designSystem.shadows.sm,
+        marginBottom: designSystem.spacing.md
+      }}>
+        <MonthFilter
+          options={monthOptions}
+          selected={monthFilter}
+          onSelect={setMonthFilter}
+          allLabel={allLabel}
+          allCount={futureBookings.reduce((sum, c) => sum + c.totalCount, 0)}
+        />
+        <p style={{
+          margin: `${designSystem.spacing.sm} 0 0`,
+          fontSize: getFontSize('caption', isMobile),
+          color: designSystem.colors.text.secondary,
+          lineHeight: 1.5
+        }}>
+          {rangeNote}
+        </p>
+        <div style={{ marginTop: designSystem.spacing.sm }}>
+          <WeekdayRatioBar stats={futureWeekdayStats} compact />
+        </div>
+      </div>
+
       <SummaryCardsGrid>
         <SummaryCard
           label={`${monthLabel}預約`}
@@ -113,10 +137,8 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
           unit="人"
           accentColor={designSystem.colors.warning[500]}
         />
-        <WeekdayRatioBar stats={futureWeekdayStats} />
       </SummaryCardsGrid>
 
-      {/* 未指派警告 */}
       {unassignedCount > 0 && unassigned && (
         <AlertCard
           variant="warning"
@@ -133,29 +155,6 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
         />
       )}
 
-      {/* 月份篩選 */}
-      <div style={{
-        ...getCardStyle(isMobile),
-        marginBottom: '24px'
-      }}>
-        <label style={{
-          display: 'block',
-          marginBottom: '8px',
-          fontWeight: '600',
-          fontSize: '15px'
-        }}>
-          篩選月份
-        </label>
-        <MonthFilter
-          options={monthOptions}
-          selected={monthFilter}
-          onSelect={setMonthFilter}
-          allLabel={allLabel}
-          allCount={futureBookings.reduce((sum, c) => sum + c.totalCount, 0)}
-        />
-      </div>
-
-      {/* 教練時數排行 */}
       <RankingCard
         title="教練時數排行"
         icon="🎓"
@@ -166,7 +165,6 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
           value: getFilteredValue(coach, 'minutes'),
           count: getFilteredContactCount(coach)
         }))}
-        
         emptyText="目前沒有未來預約"
         renderDetail={(item) => {
           const coach = futureBookings.find(c => c.coachId === item.id)
@@ -182,11 +180,11 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
             <div>
               <div style={{
                 fontSize: '13px',
-                color: '#666',
+                color: designSystem.colors.text.secondary,
                 marginBottom: '10px',
                 fontWeight: '500'
               }}>
-                👥 會員時數分布：
+                會員時數分布：
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {contactStats.map((contact, idx) => (
@@ -197,13 +195,19 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '8px 12px',
-                      background: '#fafafa',
-                      borderRadius: '6px'
+                      background: designSystem.colors.background.hover,
+                      borderRadius: designSystem.borderRadius.sm
                     }}
                   >
-                    <span style={{ fontSize: '13px', color: '#333' }}>
+                    <span style={{
+                      fontSize: '13px',
+                      color: designSystem.colors.text.primary
+                    }}>
                       {idx + 1}. {contact.contactName}
-                      <span style={{ color: '#999', marginLeft: '8px' }}>
+                      <span style={{
+                        color: designSystem.colors.text.disabled,
+                        marginLeft: '8px'
+                      }}>
                         ({contact.count} 筆)
                       </span>
                     </span>
@@ -226,4 +230,3 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
     </>
   )
 }
-

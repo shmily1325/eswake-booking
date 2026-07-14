@@ -14,6 +14,7 @@ import {
   getBadgeStyle,
   getButtonStyle,
   getEmptyStateStyle,
+  getFilterChipStyle,
   getFontSize,
   getInputStyle,
   getPageContentShellStyle,
@@ -584,12 +585,12 @@ export function MemberTransaction() {
               ].map(type => (
                 <button
                   key={type.value}
+                  type="button"
                   onClick={() => setMembershipTypeFilter(type.value)}
-                  style={getButtonStyle(
-                    membershipTypeFilter === type.value ? 'secondary' : 'outline',
-                    'small',
-                    false
-                  )}
+                  style={{
+                    ...getButtonStyle('outline', 'small', false),
+                    ...getFilterChipStyle(membershipTypeFilter === type.value, 'info'),
+                  }}
                 >
                   {type.label} ({type.count})
                 </button>
@@ -603,17 +604,25 @@ export function MemberTransaction() {
               alignItems: 'center',
             }}>
               <button
+                type="button"
                 data-track="member_filter_line_bound"
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
-                style={getButtonStyle(lineBindingFilter === 'bound' ? 'secondary' : 'outline', 'small', false)}
+                style={{
+                  ...getButtonStyle('outline', 'small', false),
+                  ...getFilterChipStyle(lineBindingFilter === 'bound', 'info'),
+                }}
               >
                 LINE 已綁定 ({members.filter(m => m.is_line_bound).length})
               </button>
 
               <button
+                type="button"
                 data-track="member_filter_line_unbound"
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
-                style={getButtonStyle(lineBindingFilter === 'unbound' ? 'secondary' : 'outline', 'small', false)}
+                style={{
+                  ...getButtonStyle('outline', 'small', false),
+                  ...getFilterChipStyle(lineBindingFilter === 'unbound', 'info'),
+                }}
               >
                 LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
               </button>

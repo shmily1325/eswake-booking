@@ -1,5 +1,5 @@
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { designSystem, getCardStyle } from '../../../../styles/designSystem'
+import { designSystem, getCardStyle, getFontSize } from '../../../../styles/designSystem'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line
@@ -175,18 +175,6 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             label: 'vs 上月'
           } : undefined}
         />
-        <SummaryCard
-          label="6個月平均（已結帳）"
-          value={Math.round(monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0) / Math.max(monthlyStats.length, 1))}
-          unit="筆/月"
-          accentColor={designSystem.colors.warning[500]}
-        />
-        <SummaryCard
-          label="6個月總計（已結帳）"
-          value={monthlyStats.reduce((sum, m) => sum + m.bookingCount, 0)}
-          unit="筆"
-          accentColor={designSystem.colors.primary[500]}
-        />
       </SummaryCardsGrid>
 
       {/* 預約量折線圖 — 卡片預設 overflow:hidden 會裁切 Hover Tooltip，此處放開 */}
@@ -197,11 +185,12 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
       }}>
         <h3 style={{
           margin: '0 0 20px 0',
-          fontSize: '17px',
+          fontSize: getFontSize('h3', isMobile),
           fontWeight: '700',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '8px',
+          color: designSystem.colors.text.primary
         }}>
           <span style={{
             width: '4px',
@@ -210,10 +199,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             borderRadius: '2px',
             display: 'inline-block'
           }} />
-          近6個月已結帳趨勢
-          <span style={{ fontSize: '12px', color: '#999', fontWeight: '400' }}>
-            （已扣款、不含教練練習 · Hover 詳情）
-          </span>
+          歷史月趨勢
         </h3>
         <div
           className="trend-line-chart-unclip"
@@ -228,7 +214,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={monthlyStats} margin={{ top: 36, right: 8, left: 0, bottom: 8 }}>
               <Legend verticalAlign="top" wrapperStyle={{ fontSize: 12 }} />
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={designSystem.colors.border.light} />
               <XAxis dataKey="label" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip
@@ -265,16 +251,17 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
         </div>
       </div>
 
-      {/* 月份數據表格 - 桌面版 */}
+      {/* 月份數據明細 — 各船欄；圖表 Hover 也有，但表格方便對帳 */}
       {!isMobile && (
-        <div style={getCardStyle(isMobile)}>
+        <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
           <h3 style={{
             margin: '0 0 20px 0',
-            fontSize: '17px',
+            fontSize: getFontSize('h3', isMobile),
             fontWeight: '700',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            color: designSystem.colors.text.primary
           }}>
             <span style={{
               width: '4px',
@@ -284,9 +271,6 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               display: 'inline-block'
             }} />
             月份數據明細
-            <span style={{ fontSize: '12px', color: '#999', fontWeight: '400' }}>
-              （已結帳／已扣款）
-            </span>
           </h3>
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{
@@ -297,26 +281,26 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               tableLayout: 'auto'
             }}>
               <thead>
-                <tr style={{ background: '#f8f9fa' }}>
+                <tr style={{ background: designSystem.colors.background.hover }}>
                   <th style={{
                     padding: '12px 16px 12px 12px',
                     textAlign: 'left',
-                    borderBottom: '2px solid #e0e0e0',
+                    borderBottom: `2px solid ${designSystem.colors.border.main}`,
                     whiteSpace: 'nowrap',
                     verticalAlign: 'middle'
                   }}>月份</th>
                   <th style={{
                     padding: '12px 16px',
                     textAlign: 'right',
-                    borderBottom: '2px solid #e0e0e0',
+                    borderBottom: `2px solid ${designSystem.colors.border.main}`,
                     whiteSpace: 'nowrap',
                     verticalAlign: 'middle'
                   }} title="每筆已結帳預約計一次">已結帳筆數</th>
                   <th style={{
                     padding: '12px 20px 12px 16px',
                     textAlign: 'right',
-                    borderBottom: '2px solid #e0e0e0',
-                    borderRight: '1px solid #e0e0e0',
+                    borderBottom: `2px solid ${designSystem.colors.border.main}`,
+                    borderRight: `1px solid ${designSystem.colors.border.main}`,
                     whiteSpace: 'nowrap',
                     verticalAlign: 'middle'
                   }} title="已結帳參與者回報分鐘加總">總時數</th>
@@ -324,12 +308,12 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                     <th key={boat.boatId} style={{
                       padding: '12px 10px',
                       textAlign: 'right',
-                      borderBottom: '2px solid #e0e0e0',
+                      borderBottom: `2px solid ${designSystem.colors.border.main}`,
                       whiteSpace: 'nowrap',
                       verticalAlign: 'middle',
                       fontSize: '13px',
                       fontWeight: '600',
-                      color: '#444'
+                      color: designSystem.colors.text.secondary
                     }}>
                       {boat.boatName}
                     </th>
@@ -339,7 +323,9 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               <tbody>
                 {monthlyStats.map((stat, idx) => (
                   <tr key={stat.month} style={{
-                    background: idx === monthlyStats.length - 1 ? designSystem.colors.info[50] : 'white'
+                    background: idx === monthlyStats.length - 1
+                      ? designSystem.colors.info[50]
+                      : 'white'
                   }}>
                     <td style={{
                       padding: '12px 16px 12px 12px',
@@ -361,7 +347,7 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                     <td style={{
                       padding: '12px 20px 12px 16px',
                       textAlign: 'right',
-                      borderRight: '1px solid #e0e0e0',
+                      borderRight: `1px solid ${designSystem.colors.border.main}`,
                       whiteSpace: 'nowrap',
                       verticalAlign: 'middle',
                       fontVariantNumeric: 'tabular-nums'
@@ -379,7 +365,9 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                           verticalAlign: 'middle',
                           fontVariantNumeric: 'tabular-nums',
                           fontSize: '13px',
-                          color: minutes > 0 ? designSystem.colors.info[700] : '#9e9e9e'
+                          color: minutes > 0
+                            ? designSystem.colors.info[700]
+                            : designSystem.colors.text.disabled
                         }}>
                           {formatDuration(minutes)}
                         </td>
@@ -393,16 +381,16 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
         </div>
       )}
 
-      {/* 月份數據 - 手機版卡片 */}
       {isMobile && (
-        <div style={getCardStyle(isMobile)}>
+        <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
           <h3 style={{
             margin: '0 0 16px 0',
-            fontSize: '15px',
+            fontSize: getFontSize('h3', isMobile),
             fontWeight: '700',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            color: designSystem.colors.text.primary
           }}>
             <span style={{
               width: '4px',
@@ -412,7 +400,6 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
               display: 'inline-block'
             }} />
             月份數據明細
-            <span style={{ fontSize: '11px', color: '#999', fontWeight: '400' }}>（已結帳）</span>
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {monthlyStats.slice().reverse().map((stat, idx) => (
@@ -420,8 +407,10 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                 key={stat.month}
                 style={{
                   padding: '14px',
-                  background: idx === 0 ? designSystem.colors.info[50] : '#f8f9fa',
-                  borderRadius: '10px'
+                  background: idx === 0
+                    ? designSystem.colors.info[50]
+                    : designSystem.colors.background.hover,
+                  borderRadius: designSystem.borderRadius.md
                 }}
               >
                 <div style={{
@@ -429,8 +418,16 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                   justifyContent: 'space-between',
                   marginBottom: '8px'
                 }}>
-                  <span style={{ fontWeight: '600', color: '#333' }}>{stat.month}</span>
-                  <span style={{ color: designSystem.colors.info[500], fontWeight: '600' }}>
+                  <span style={{
+                    fontWeight: '600',
+                    color: designSystem.colors.text.primary
+                  }}>
+                    {stat.month}
+                  </span>
+                  <span style={{
+                    color: designSystem.colors.info[500],
+                    fontWeight: '600'
+                  }}>
                     {stat.bookingCount} 筆 · {formatDuration(stat.totalMinutes)}
                   </span>
                 </div>
@@ -439,14 +436,14 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                     display: 'flex',
                     flexWrap: 'wrap',
                     gap: '8px',
-                    fontSize: '12px',
-                    color: '#666'
+                    fontSize: getFontSize('caption', true),
+                    color: designSystem.colors.text.secondary
                   }}>
                     {stat.boatMinutes.map(boat => (
                       <span key={boat.boatId} style={{
-                        background: 'white',
+                        background: designSystem.colors.background.card,
                         padding: '4px 8px',
-                        borderRadius: '4px'
+                        borderRadius: designSystem.borderRadius.sm
                       }}>
                         {boat.boatName}: {formatDuration(boat.minutes)}
                       </span>
@@ -459,15 +456,16 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
         </div>
       )}
 
-      {/* 預約月結算 */}
+      {/* 財務月結算（按月明細；年報為年度合計） */}
       <div style={{ ...getCardStyle(isMobile), marginTop: '24px' }}>
         <h3 style={{
           margin: '0 0 20px 0',
-          fontSize: isMobile ? '15px' : '17px',
+          fontSize: getFontSize('h3', isMobile),
           fontWeight: '700',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '8px',
+          color: designSystem.colors.text.primary
         }}>
           <span style={{
             width: '4px',
@@ -476,17 +474,42 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
             borderRadius: '2px',
             display: 'inline-block'
           }} />
-          📊 預約月結算
+          財務月結算
         </h3>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', tableLayout: 'fixed' }}>
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: '14px',
+            tableLayout: 'fixed'
+          }}>
             <thead>
-              <tr style={{ background: '#f8f9fa' }}>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>月份</th>
-                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>💰 儲值</th>
-                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>💎 VIP</th>
-                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>🚤 G23船券</th>
-                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #e0e0e0' }}>⛵ G21/黑豹船券</th>
+              <tr style={{ background: designSystem.colors.background.hover }}>
+                <th style={{
+                  padding: '12px',
+                  textAlign: 'left',
+                  borderBottom: `2px solid ${designSystem.colors.border.main}`
+                }}>月份</th>
+                <th style={{
+                  padding: '12px',
+                  textAlign: 'right',
+                  borderBottom: `2px solid ${designSystem.colors.border.main}`
+                }}>儲值</th>
+                <th style={{
+                  padding: '12px',
+                  textAlign: 'right',
+                  borderBottom: `2px solid ${designSystem.colors.border.main}`
+                }}>VIP</th>
+                <th style={{
+                  padding: '12px',
+                  textAlign: 'right',
+                  borderBottom: `2px solid ${designSystem.colors.border.main}`
+                }}>G23船券</th>
+                <th style={{
+                  padding: '12px',
+                  textAlign: 'right',
+                  borderBottom: `2px solid ${designSystem.colors.border.main}`
+                }}>G21/黑豹</th>
               </tr>
             </thead>
             <tbody>
@@ -501,21 +524,42 @@ export function TrendTab({ monthlyStats, financeStats, allBoatsData }: TrendTabP
                 }
                 return (
                   <tr key={stat.month} style={{
-                    background: idx === financeStats.length - 1 ? '#fff3e0' : 'white'
+                    background: idx === financeStats.length - 1
+                      ? designSystem.colors.warning[50]
+                      : 'white'
                   }}>
-                    <td style={{ padding: '12px', fontWeight: idx === financeStats.length - 1 ? '600' : '400' }}>
+                    <td style={{
+                      padding: '12px',
+                      fontWeight: idx === financeStats.length - 1 ? '600' : '400'
+                    }}>
                       {stat.month}
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right', color: designSystem.colors.info[500] }}>
+                    <td style={{
+                      padding: '12px',
+                      textAlign: 'right',
+                      color: designSystem.colors.info[500]
+                    }}>
                       ${stat.balanceUsed.toLocaleString()}{getArrow(stat.balanceUsed, prev?.balanceUsed ?? null)}
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right', color: '#9c27b0' }}>
+                    <td style={{
+                      padding: '12px',
+                      textAlign: 'right',
+                      color: designSystem.colors.warning[700]
+                    }}>
                       ${stat.vipUsed.toLocaleString()}{getArrow(stat.vipUsed, prev?.vipUsed ?? null)}
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right', color: designSystem.colors.success[500] }}>
+                    <td style={{
+                      padding: '12px',
+                      textAlign: 'right',
+                      color: designSystem.colors.success[500]
+                    }}>
                       {stat.g23Used} 分{getArrow(stat.g23Used, prev?.g23Used ?? null)}
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right', color: designSystem.colors.warning[500] }}>
+                    <td style={{
+                      padding: '12px',
+                      textAlign: 'right',
+                      color: designSystem.colors.warning[500]
+                    }}>
                       {stat.g21Used} 分{getArrow(stat.g21Used, prev?.g21Used ?? null)}
                     </td>
                   </tr>

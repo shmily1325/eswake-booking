@@ -7,7 +7,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { trackClickDedupedWithin } from '../../utils/trackClick'
-import { Button, Badge, useToast, ToastContainer, ConfirmModal } from '../../components/ui'
+import { Button, useToast, ToastContainer, ConfirmModal } from '../../components/ui'
 import {
   AdminModal,
   AdminModalHeader,
@@ -41,6 +41,7 @@ import {
 } from '../../utils/coachTimeOff'
 import {
   designSystem,
+  getFontSize,
   getPageContentShellStyle,
 } from '../../styles/designSystem'
 
@@ -728,16 +729,6 @@ export function StaffManagement() {
     )
   }, [timeOffMode, timeOffStartDate, timeOffEndDate, timeOffCustomStartTime, timeOffCustomEndTime])
 
-  const timeOffPeriodPillStyle = (kind: TimeOffPeriodKind) => {
-    if (kind === 'fullday') {
-      return { background: designSystem.colors.warning[50], color: designSystem.colors.warning[700], border: `1px solid ${designSystem.colors.warning[500]}28` }
-    }
-    if (kind === 'custom') {
-      return { background: designSystem.colors.info[50], color: designSystem.colors.info[700], border: `1px solid ${designSystem.colors.info[500]}28` }
-    }
-    return { background: '#f8f1e7', color: designSystem.colors.warning[700], border: `1px solid ${designSystem.colors.warning[500]}20` }
-  }
-
   const timeOffModeOptions = useMemo(() => ([
     { value: 'fullday' as const, label: '整天', hint: '預設', trackId: 'staff_time_off_mode_fullday' },
     { value: 'morning' as const, label: '上午', hint: '～12:00', disabled: isTimeOffCrossDay, trackId: 'staff_time_off_mode_morning' },
@@ -1320,9 +1311,9 @@ export function StaffManagement() {
               border: 'none',
               borderRadius: designSystem.borderRadius.lg,
               boxShadow: activeTab === 'coaches' ? designSystem.shadows.xs : 'none',
-              color: activeTab === 'coaches' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+              color: activeTab === 'coaches' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
               fontWeight: activeTab === 'coaches' ? 600 : 500,
-              fontSize: isMobile ? '13px' : '14px',
+              fontSize: getFontSize('bodySmall', isMobile),
               cursor: 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap'
@@ -1339,9 +1330,9 @@ export function StaffManagement() {
               border: 'none',
               borderRadius: designSystem.borderRadius.lg,
               boxShadow: activeTab === 'accounts' ? designSystem.shadows.xs : 'none',
-              color: activeTab === 'accounts' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+              color: activeTab === 'accounts' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
               fontWeight: activeTab === 'accounts' ? 600 : 500,
-              fontSize: isMobile ? '13px' : '14px',
+              fontSize: getFontSize('bodySmall', isMobile),
               cursor: 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap'
@@ -1358,9 +1349,9 @@ export function StaffManagement() {
               border: 'none',
               borderRadius: designSystem.borderRadius.lg,
               boxShadow: activeTab === 'pricing' ? designSystem.shadows.xs : 'none',
-              color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+              color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
               fontWeight: activeTab === 'pricing' ? 600 : 500,
-              fontSize: isMobile ? '13px' : '14px',
+              fontSize: getFontSize('bodySmall', isMobile),
               cursor: 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap'
@@ -1377,9 +1368,9 @@ export function StaffManagement() {
               border: 'none',
               borderRadius: designSystem.borderRadius.lg,
               boxShadow: activeTab === 'permissions' ? designSystem.shadows.xs : 'none',
-              color: activeTab === 'permissions' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+              color: activeTab === 'permissions' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
               fontWeight: activeTab === 'permissions' ? 600 : 500,
-              fontSize: isMobile ? '13px' : '14px',
+              fontSize: getFontSize('bodySmall', isMobile),
               cursor: 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap'
@@ -1389,83 +1380,68 @@ export function StaffManagement() {
           </button>
         </div>
 
-        {/* 說明提示 - 可展開收起 */}
-        {activeTab === 'coaches' && (
-          <div style={{
-            background: showHelp ? designSystem.colors.background.card : 'transparent',
-            padding: showHelp ? '14px 16px' : '4px 0',
-            borderRadius: designSystem.borderRadius.lg,
-            marginBottom: showHelp ? '20px' : '12px',
-            fontSize: '14px',
-            color: designSystem.colors.text.secondary,
-            border: showHelp ? cardBorder : 'none',
-            boxShadow: showHelp ? cardShadow : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onClick={() => setShowHelp(!showHelp)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{
-                fontWeight: 500,
-                fontSize: '13px',
-                color: showHelp ? designSystem.colors.text.secondary : designSystem.colors.text.disabled,
-              }}>
-                {showHelp ? '功能說明' : '說明'}
-              </span>
-              <span style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>{showHelp ? '收起' : '展開'}</span>
-            </div>
-            {showHelp && (
-              <div style={{ marginTop: '12px', lineHeight: '1.7' }}>
-                <div style={{ marginBottom: '4px' }}>
-                  <strong>啟用／停用</strong>：啟用 = 可選擇、停用 = 暫不上班
-                </div>
-                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
-                  <strong>休假</strong>：可設定整天、上午／下午或自訂時段；排班時依預約時間判斷是否重疊
-                </div>
-                <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
-                  <strong>隱藏</strong>：長期不在，資料保留可恢復
-                </div>
-                <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                  <strong>刪除</strong>：永久刪除（僅限無預約的隱藏教練）
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 統計資訊 - 緊湊版 */}
-        {activeTab === 'coaches' && !isMobile && (
-          <div style={{
-            display: 'flex',
-            gap: '16px',
-            marginBottom: '16px',
-            fontSize: '14px',
-            color: designSystem.colors.text.secondary
-          }}>
-            <span>共 <strong style={{ color: designSystem.colors.text.primary }}>{coaches.length}</strong> 位</span>
-            <span>啟用 <strong style={{ color: designSystem.colors.success[700] }}>{coaches.filter(c => c.status === 'active').length}</strong></span>
-            {coaches.filter(c => c.status === 'inactive').length > 0 && (
-              <span>停用 <strong style={{ color: designSystem.colors.warning[700] }}>{coaches.filter(c => c.status === 'inactive').length}</strong></span>
-            )}
-            {coaches.filter(c => c.status === 'archived').length > 0 && (
-              <span>隱藏 <strong style={{ color: designSystem.colors.text.disabled }}>{coaches.filter(c => c.status === 'archived').length}</strong></span>
-            )}
-          </div>
-        )}
-
         {/* 教練管理 Tab */}
         {activeTab === 'coaches' && (
           <>
-            {/* 控制列：新增 + 顯示已隱藏 + 月份 */}
+            {/* 說明 — 展開也不變重 card */}
+            <div
+              style={{
+                marginBottom: designSystem.spacing.md,
+                cursor: 'pointer',
+              }}
+              onClick={() => setShowHelp(!showHelp)}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+              }}>
+                <span style={{
+                  fontWeight: 500,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  color: designSystem.colors.text.disabled,
+                }}>
+                  {showHelp ? '功能說明' : '說明'}
+                </span>
+                <span style={{
+                  fontSize: getFontSize('caption', isMobile),
+                  color: designSystem.colors.text.disabled,
+                }}>
+                  {showHelp ? '收起' : '展開'}
+                </span>
+              </div>
+              {showHelp && (
+                <div style={{
+                  marginTop: designSystem.spacing.sm,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  color: designSystem.colors.text.secondary,
+                  lineHeight: 1.7,
+                }}>
+                  <div style={{ marginBottom: '4px' }}>
+                    啟用／停用：啟用 = 可選擇、停用 = 暫不上班
+                  </div>
+                  <div style={{ marginBottom: '4px' }}>
+                    休假：可設定整天、上午／下午或自訂時段；排班時依預約時間判斷是否重疊
+                  </div>
+                  <div style={{ marginBottom: '4px' }}>
+                    隱藏：長期不在，資料保留可恢復
+                  </div>
+                  <div>
+                    刪除：永久刪除（僅限無預約的隱藏教練）
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 控制列 */}
             <div style={{
-              marginBottom: '16px',
+              marginBottom: designSystem.spacing.md,
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              flexWrap: 'wrap'
+              flexWrap: 'wrap',
             }}>
-              {/* 新增按鈕 */}
               <Button
                 variant="primary"
                 size="medium"
@@ -1475,65 +1451,44 @@ export function StaffManagement() {
                 新增教練
               </Button>
 
-              {/* 間隔 */}
               <div style={{ flex: 1 }} />
 
-              {/* 狀態篩選按鈕組 */}
               <div style={{
                 display: 'flex',
                 background: designSystem.colors.secondary[100],
                 borderRadius: designSystem.borderRadius.lg,
                 padding: '4px',
-                gap: '2px'
+                gap: '2px',
               }}>
-                <button
-                  onClick={() => setStatusFilter('active')}
-                  style={{
-                    padding: '6px 12px',
-                    border: 'none',
-                    borderRadius: designSystem.borderRadius.lg,
-                    background: statusFilter === 'active' ? 'white' : 'transparent',
-                    color: statusFilter === 'active' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-                    fontSize: '13px',
-                    fontWeight: statusFilter === 'active' ? '600' : '400',
-                    cursor: 'pointer',
-                    boxShadow: statusFilter === 'active' ? designSystem.shadows.xs : 'none'
-                  }}
-                >
-                  啟用中
-                </button>
-                <button
-                  onClick={() => setStatusFilter('all')}
-                  style={{
-                    padding: '6px 12px',
-                    border: 'none',
-                    borderRadius: designSystem.borderRadius.lg,
-                    background: statusFilter === 'all' ? 'white' : 'transparent',
-                    color: statusFilter === 'all' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-                    fontSize: '13px',
-                    fontWeight: statusFilter === 'all' ? '600' : '400',
-                    cursor: 'pointer',
-                    boxShadow: statusFilter === 'all' ? designSystem.shadows.xs : 'none'
-                  }}
-                >
-                  全部
-                </button>
-                <button
-                  onClick={() => setStatusFilter('archived')}
-                  style={{
-                    padding: '6px 12px',
-                    border: 'none',
-                    borderRadius: designSystem.borderRadius.lg,
-                    background: statusFilter === 'archived' ? 'white' : 'transparent',
-                    color: statusFilter === 'archived' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-                    fontSize: '13px',
-                    fontWeight: statusFilter === 'archived' ? '600' : '400',
-                    cursor: 'pointer',
-                    boxShadow: statusFilter === 'archived' ? designSystem.shadows.xs : 'none'
-                  }}
-                >
-                  已隱藏
-                </button>
+                {([
+                  { key: 'active' as const, label: '啟用中' },
+                  { key: 'all' as const, label: '全部' },
+                  { key: 'archived' as const, label: '已隱藏' },
+                ]).map(opt => {
+                  const selected = statusFilter === opt.key
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setStatusFilter(opt.key)}
+                      style={{
+                        padding: '6px 12px',
+                        border: 'none',
+                        borderRadius: designSystem.borderRadius.md,
+                        background: selected ? designSystem.colors.background.card : 'transparent',
+                        color: selected
+                          ? designSystem.colors.text.primary
+                          : designSystem.colors.text.secondary,
+                        fontSize: getFontSize('bodySmall', isMobile),
+                        fontWeight: selected ? 600 : 500,
+                        cursor: 'pointer',
+                        boxShadow: selected ? designSystem.shadows.xs : 'none',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
               </div>
 
               <input
@@ -1550,479 +1505,399 @@ export function StaffManagement() {
                 style={{
                   flex: 1,
                   minWidth: 0,
-                  padding: '12px 14px',
-                  border: `1px solid ${designSystem.colors.border.light}`,
+                  maxWidth: isMobile ? '100%' : '180px',
+                  padding: '10px 12px',
+                  border: cardBorder,
                   borderRadius: designSystem.borderRadius.lg,
                   fontSize: '16px',
                   cursor: 'pointer',
-                  background: 'white',
-                  boxShadow: designSystem.shadows.xs,
-                  boxSizing: 'border-box'
+                  background: designSystem.colors.background.card,
+                  boxSizing: 'border-box',
                 }}
               />
             </div>
 
-            {/* 教練列表 */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
-          gap: isMobile ? '16px' : '20px' 
-        }}>
-          {coaches.filter(coach => {
-            if (statusFilter === 'active') return coach.status === 'active'
-            if (statusFilter === 'archived') return coach.status === 'archived'
-            return true // 'all'
-          }).map(coach => {
-            const coachTimeOffs = timeOffs.filter(t => t.coach_id === coach.id)
-            const isActive = coach.status === 'active'
-            const isArchived = coach.status === 'archived'
-            
-            // 狀態顯示
-            let statusBg, statusColor, statusText, borderColor
-            if (isArchived) {
-              statusBg = designSystem.colors.secondary[100]
-              statusColor = designSystem.colors.text.disabled
-              statusText = '已歸檔'
-              borderColor = designSystem.colors.border.light
-            } else if (isActive) {
-              statusBg = designSystem.colors.success[50]
-              statusColor = designSystem.colors.success[700]
-              statusText = '啟用中'
-              borderColor = `${designSystem.colors.success[500]}28`
-            } else {
-              statusBg = designSystem.colors.warning[50]
-              statusColor = designSystem.colors.warning[700]
-              statusText = '已停用'
-              borderColor = `${designSystem.colors.warning[500]}28`
-            }
+            {/* 單一 grouped list */}
+            <div style={{
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
+              border: cardBorder,
+              boxShadow: cardShadow,
+              overflow: 'hidden',
+            }}>
+              {(() => {
+                const filteredCoaches = coaches.filter(coach => {
+                  if (statusFilter === 'active') return coach.status === 'active'
+                  if (statusFilter === 'archived') return coach.status === 'archived'
+                  return true
+                })
 
-            return (
-              <div
-                key={coach.id}
-                style={{
-                  background: 'white',
-                  borderRadius: designSystem.borderRadius.xl,
-                  padding: isMobile ? '20px' : '24px',
-                  boxShadow: cardShadow,
-                  border: `1px solid ${borderColor}`,
-                  opacity: isArchived ? 0.7 : 1,
-                  transition: 'all 0.2s'
-                }}
-              >
-                {/* 教練名稱 + 狀態 */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '16px',
-                  gap: '12px'
-                }}>
-                  <div style={{ 
-                    flex: 1
-                  }}>
-                    <h3 style={{ 
-                      margin: 0, 
-                      fontSize: isMobile ? '20px' : '22px',
-                      fontWeight: 750,
-                      color: designSystem.colors.text.primary,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px'
-                    }}>
-                      {coach.name}
-                      <Badge
-                        variant={isArchived ? 'default' : (isActive ? 'success' : 'warning')}
-                        size="small"
-                        style={{ background: statusBg, color: statusColor }}
-                      >
-                        {statusText}
-                      </Badge>
-                    </h3>
-                  </div>
-                  
-                  {/* 操作按鈕 */}
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '8px',
-                    alignItems: 'center'
-                  }}>
-                    {isArchived ? (
-                      // 已隱藏：顯示恢復按鈕 + 刪除按鈕
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={() => handleRestoreCoach(coach)}
-                          style={{
-                            padding: '8px 16px',
-                            background: designSystem.colors.success[500],
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: designSystem.borderRadius.lg,
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          恢復
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCoach(coach)}
-                          style={{
-                            padding: '8px 16px',
-                            background: designSystem.colors.danger[500],
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: designSystem.borderRadius.lg,
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          刪除
-                        </button>
-                      </div>
-                    ) : (
-                      // 未隱藏：顯示啟用/停用按鈕 + 隱藏按鈕
-                      <>
-                        {/* 啟用/停用按鈕組 */}
-                        <div style={{
-                          display: 'flex',
-                          background: designSystem.colors.secondary[100],
-                          borderRadius: designSystem.borderRadius.full,
-                          padding: '4px',
-                          gap: '4px'
-                        }}>
-                          <button
-                            onClick={() => !isActive && handleToggleStatus(coach)}
-                            style={{
-                              padding: '6px 14px',
-                              background: isActive ? 'white' : 'transparent',
-                              color: isActive ? designSystem.colors.success[700] : designSystem.colors.text.disabled,
-                              border: 'none',
-                              borderRadius: designSystem.borderRadius.full,
-                              fontSize: '14px',
-                              fontWeight: '600',
-                              cursor: isActive ? 'default' : 'pointer',
-                              whiteSpace: 'nowrap',
-                              transition: 'all 0.2s',
-                              boxShadow: isActive ? designSystem.shadows.xs : 'none'
-                            }}
-                          >
-                            啟用
-                          </button>
-                          <button
-                            onClick={() => isActive && handleToggleStatus(coach)}
-                            style={{
-                              padding: '6px 14px',
-                              background: !isActive ? 'white' : 'transparent',
-                              color: !isActive ? designSystem.colors.warning[700] : designSystem.colors.text.disabled,
-                              border: 'none',
-                              borderRadius: designSystem.borderRadius.full,
-                              fontSize: '14px',
-                              fontWeight: '600',
-                              cursor: !isActive ? 'default' : 'pointer',
-                              whiteSpace: 'nowrap',
-                              transition: 'all 0.2s',
-                              boxShadow: !isActive ? designSystem.shadows.xs : 'none'
-                            }}
-                          >
-                            停用
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => handleArchiveCoach(coach)}
-                          style={{
-                            padding: '8px 16px',
-                            background: designSystem.colors.secondary[100],
-                            color: designSystem.colors.text.secondary,
-                            border: 'none',
-                            borderRadius: designSystem.borderRadius.lg,
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.2s',
-                            minWidth: '80px'
-                          }}
-                        >
-                          隱藏
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* 休假紀錄 */}
-                {!isArchived && coachTimeOffs.length > 0 && (() => {
-                  const filteredTimeOffs = filterTimeOffsByMonth(coachTimeOffs, selectedMonth)
-                  if (filteredTimeOffs.length === 0) return null
-
-                  const mergedTimeOffs = mergeConsecutiveTimeOffs(filteredTimeOffs)
-                  const isExpanded = expandedCoachIds.has(coach.id)
-                  const maxDisplay = 3
-                  const displayTimeOffs = isExpanded ? mergedTimeOffs : mergedTimeOffs.slice(0, maxDisplay)
-                  const hasMore = mergedTimeOffs.length > maxDisplay
-
+                if (filteredCoaches.length === 0) {
                   return (
                     <div style={{
-                      marginBottom: '14px',
-                      padding: isMobile ? '14px' : '16px',
-                      background: designSystem.colors.warning[50],
-                      borderRadius: designSystem.borderRadius.lg,
-                      border: `1px solid ${designSystem.colors.warning[500]}22`
+                      padding: '40px 20px',
+                      textAlign: 'center',
+                      fontSize: getFontSize('body', isMobile),
+                      color: designSystem.colors.text.disabled,
                     }}>
-                      {displayTimeOffs.map((timeOff, idx) => (
-                        <div
-                          key={timeOff.mergedRecordIds.join('-')}
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: isMobile ? 'flex-start' : 'center',
-                            flexDirection: isMobile ? 'column' : 'row',
-                            padding: '8px 0',
-                            fontSize: '13px',
-                            gap: isMobile ? '8px' : '12px',
-                            borderBottom: idx === displayTimeOffs.length - 1 && !hasMore ? 'none' : `1px solid ${designSystem.colors.warning[500]}18`
-                          }}
-                        >
-                          <span style={{
-                            flex: 1,
-                            lineHeight: '1.4',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            flexWrap: 'wrap',
-                          }}>
-                            <span style={{ fontWeight: 700, fontSize: '14px', color: designSystem.colors.text.primary }}>
-                              {timeOff.dateLabel}
-                            </span>
-                            <span style={{
-                              padding: '3px 10px',
-                              borderRadius: '999px',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              letterSpacing: '0.02em',
-                              ...timeOffPeriodPillStyle(timeOff.periodKind),
-                            }}>
-                              {timeOff.periodLabel}
-                            </span>
-                            {timeOff.reason && (
-                              <span style={{
-                                padding: '3px 10px',
-                                background: '#fff',
-                                borderRadius: designSystem.borderRadius.full,
-                                fontSize: '12px',
-                                color: designSystem.colors.text.secondary,
-                                fontWeight: '500',
-                                border: `1px solid ${designSystem.colors.border.light}`,
-                              }}>
-                                {timeOff.reason}
-                              </span>
-                            )}
-                          </span>
+                      {statusFilter === 'archived' ? '沒有已隱藏的教練' : '沒有符合的教練'}
+                    </div>
+                  )
+                }
+
+                return filteredCoaches.map((coach, index) => {
+                const coachTimeOffs = timeOffs.filter(t => t.coach_id === coach.id)
+                const isActive = coach.status === 'active'
+                const isArchived = coach.status === 'archived'
+                const isLast = index === filteredCoaches.length - 1
+                const statusLabel = isArchived ? '已隱藏' : (isActive ? null : '已停用')
+
+                const filteredTimeOffs = !isArchived
+                  ? filterTimeOffsByMonth(coachTimeOffs, selectedMonth)
+                  : []
+                const mergedTimeOffs = filteredTimeOffs.length > 0
+                  ? mergeConsecutiveTimeOffs(filteredTimeOffs)
+                  : []
+                const isExpanded = expandedCoachIds.has(coach.id)
+                const maxDisplay = 3
+                const displayTimeOffs = isExpanded
+                  ? mergedTimeOffs
+                  : mergedTimeOffs.slice(0, maxDisplay)
+                const hasMore = mergedTimeOffs.length > maxDisplay
+
+                return (
+                  <div
+                    key={coach.id}
+                    style={{
+                      padding: isMobile ? '16px' : '18px 20px',
+                      borderBottom: isLast ? 'none' : `1px solid ${designSystem.colors.border.light}`,
+                      opacity: isArchived ? 0.72 : 1,
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: isMobile ? 'stretch' : 'center',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      gap: '12px',
+                    }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{
+                          fontSize: getFontSize('h3', isMobile),
+                          fontWeight: 600,
+                          color: designSystem.colors.text.primary,
+                          lineHeight: 1.3,
+                        }}>
+                          {coach.name}
+                        </div>
+                        {statusLabel && (
                           <div style={{
-                            display: 'flex',
-                            gap: '8px',
-                            alignSelf: isMobile ? 'flex-start' : 'center',
-                            flexShrink: 0,
+                            marginTop: '4px',
+                            fontSize: getFontSize('caption', isMobile),
+                            color: designSystem.colors.text.disabled,
                           }}>
-                            <button
-                              type="button"
-                              data-track="staff_edit_time_off"
-                              onClick={() => openEditTimeOffDialog(coach, timeOff)}
-                              style={{
-                                padding: '6px 12px',
-                                background: '#fff',
-                                color: designSystem.colors.text.primary,
-                                border: `1px solid ${designSystem.colors.border.light}`,
-                                borderRadius: designSystem.borderRadius.full,
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                              }}
+                            {statusLabel}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        flexShrink: 0,
+                      }}>
+                        {isArchived ? (
+                          <>
+                            <Button
+                              variant="primary"
+                              size="small"
+                              onClick={() => handleRestoreCoach(coach)}
                             >
-                              編輯
-                            </button>
-                            <button
-                              type="button"
-                              data-track="staff_delete_time_off"
-                              onClick={() => handleDeleteTimeOff(timeOff)}
+                              恢復
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="small"
+                              onClick={() => handleDeleteCoach(coach)}
                               style={{
-                                padding: '6px 12px',
-                                background: designSystem.colors.danger[500],
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: designSystem.borderRadius.full,
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                boxShadow: designSystem.shadows.xs,
+                                color: designSystem.colors.danger[700],
+                                borderColor: `${designSystem.colors.danger[500]}55`,
                               }}
                             >
                               刪除
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      {hasMore && (
-                        <button
-                          type="button"
-                          data-track="staff_time_off_expand"
-                          onClick={() => toggleExpandCoach(coach.id)}
-                          style={{
-                            width: '100%',
-                            marginTop: '8px',
-                            padding: '6px',
-                            background: 'transparent',
-                            color: designSystem.colors.warning[700],
-                            border: `1px solid ${designSystem.colors.warning[500]}24`,
-                            borderRadius: designSystem.borderRadius.full,
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          {isExpanded ? `收起 ▲` : `查看全部 ${mergedTimeOffs.length} 筆 ▼`}
-                        </button>
-                      )}
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{
+                              display: 'flex',
+                              background: designSystem.colors.secondary[100],
+                              borderRadius: designSystem.borderRadius.lg,
+                              padding: '3px',
+                              gap: '2px',
+                            }}>
+                              <button
+                                type="button"
+                                onClick={() => !isActive && handleToggleStatus(coach)}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: isActive
+                                    ? designSystem.colors.background.card
+                                    : 'transparent',
+                                  color: isActive
+                                    ? designSystem.colors.text.primary
+                                    : designSystem.colors.text.secondary,
+                                  border: 'none',
+                                  borderRadius: designSystem.borderRadius.md,
+                                  fontSize: getFontSize('bodySmall', isMobile),
+                                  fontWeight: isActive ? 600 : 500,
+                                  cursor: isActive ? 'default' : 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  boxShadow: isActive ? designSystem.shadows.xs : 'none',
+                                }}
+                              >
+                                啟用
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => isActive && handleToggleStatus(coach)}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: !isActive
+                                    ? designSystem.colors.background.card
+                                    : 'transparent',
+                                  color: !isActive
+                                    ? designSystem.colors.text.primary
+                                    : designSystem.colors.text.secondary,
+                                  border: 'none',
+                                  borderRadius: designSystem.borderRadius.md,
+                                  fontSize: getFontSize('bodySmall', isMobile),
+                                  fontWeight: !isActive ? 600 : 500,
+                                  cursor: !isActive ? 'default' : 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  boxShadow: !isActive ? designSystem.shadows.xs : 'none',
+                                }}
+                              >
+                                停用
+                              </button>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="small"
+                              data-track="staff_time_off_dialog"
+                              onClick={() => openTimeOffDialog(coach)}
+                            >
+                              設定休假
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="small"
+                              onClick={() => handleArchiveCoach(coach)}
+                            >
+                              隱藏
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  )
-                })()}
 
-                {!isArchived && (
-                  <button
-                    type="button"
-                    data-track="staff_time_off_dialog"
-                    onClick={() => openTimeOffDialog(coach)}
-                    style={{
-                      width: '100%',
-                      padding: isMobile ? '12px' : '14px',
-                      background: '#ffffff',
-                      color: designSystem.colors.text.primary,
-                      border: `1px solid ${designSystem.colors.border.light}`,
-                      borderRadius: designSystem.borderRadius.lg,
-                      fontSize: isMobile ? '14px' : '15px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: designSystem.shadows.xs
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = designSystem.colors.secondary[50]
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#ffffff'
-                    }}
-                  >
-                    設定休假
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
+                    {!isArchived && mergedTimeOffs.length > 0 && (
+                      <div style={{
+                        marginTop: designSystem.spacing.md,
+                        paddingTop: designSystem.spacing.sm,
+                        borderTop: `1px solid ${designSystem.colors.border.light}`,
+                      }}>
+                        {displayTimeOffs.map((timeOff, idx) => (
+                          <div
+                            key={timeOff.mergedRecordIds.join('-')}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: isMobile ? 'flex-start' : 'center',
+                              flexDirection: isMobile ? 'column' : 'row',
+                              padding: '10px 0',
+                              gap: isMobile ? '8px' : '12px',
+                              borderBottom:
+                                idx === displayTimeOffs.length - 1 && !hasMore
+                                  ? 'none'
+                                  : `1px solid ${designSystem.colors.border.light}`,
+                            }}
+                          >
+                            <div style={{
+                              flex: 1,
+                              minWidth: 0,
+                              lineHeight: 1.45,
+                            }}>
+                              <span style={{
+                                fontSize: getFontSize('body', isMobile),
+                                fontWeight: 500,
+                                color: designSystem.colors.text.primary,
+                              }}>
+                                {timeOff.dateLabel}
+                              </span>
+                              <span style={{
+                                marginLeft: '8px',
+                                fontSize: getFontSize('bodySmall', isMobile),
+                                color: designSystem.colors.text.secondary,
+                              }}>
+                                {timeOff.periodLabel}
+                              </span>
+                              {timeOff.reason && (
+                                <span style={{
+                                  marginLeft: '8px',
+                                  fontSize: getFontSize('bodySmall', isMobile),
+                                  color: designSystem.colors.text.disabled,
+                                }}>
+                                  {timeOff.reason}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              gap: '8px',
+                              flexShrink: 0,
+                            }}>
+                              <Button
+                                variant="outline"
+                                size="small"
+                                data-track="staff_edit_time_off"
+                                onClick={() => openEditTimeOffDialog(coach, timeOff)}
+                              >
+                                編輯
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="small"
+                                data-track="staff_delete_time_off"
+                                onClick={() => handleDeleteTimeOff(timeOff)}
+                                style={{ color: designSystem.colors.danger[700] }}
+                              >
+                                刪除
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        {hasMore && (
+                          <button
+                            type="button"
+                            data-track="staff_time_off_expand"
+                            onClick={() => toggleExpandCoach(coach.id)}
+                            style={{
+                              width: '100%',
+                              marginTop: '4px',
+                              padding: '8px',
+                              background: 'transparent',
+                              color: designSystem.colors.text.secondary,
+                              border: 'none',
+                              fontSize: getFontSize('bodySmall', isMobile),
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {isExpanded
+                              ? '收起'
+                              : `查看全部 ${mergedTimeOffs.length} 筆`}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+              })()}
+            </div>
           </>
         )}
 
         {/* 帳號配對 Tab */}
         {activeTab === 'accounts' && (
           <>
-            {/* 說明提示 */}
             <div style={{
-              marginBottom: '20px',
-              fontSize: '14px',
+              marginBottom: designSystem.spacing.lg,
+              fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
-              lineHeight: '1.6',
+              lineHeight: 1.6,
             }}>
               <div style={{ marginBottom: '4px' }}>
-                帳號配對：設定教練對應的登入帳號
+                設定教練對應的登入帳號
               </div>
-              <div style={{ fontSize: '13px', color: designSystem.colors.text.disabled }}>
-                配對後，教練可以在「我的回報」看到自己需要回報的預約
+              <div style={{ color: designSystem.colors.text.disabled }}>
+                配對後可在「我的回報」看到自己需要回報的預約
               </div>
             </div>
 
-            {/* 帳號配對列表 */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
-              gap: '15px' 
+            <div style={{
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
+              border: cardBorder,
+              boxShadow: cardShadow,
+              overflow: 'hidden',
             }}>
-              {coaches.filter(c => c.status === 'active').map(coach => (
-                <div
-                  key={coach.id}
-                  style={{
-                    background: designSystem.colors.background.card,
-                    borderRadius: designSystem.borderRadius.lg,
-                    padding: isMobile ? '16px' : '20px',
-                    boxShadow: cardShadow,
-                    border: coach.user_email
-                      ? `1px solid ${designSystem.colors.success[500]}44`
-                      : cardBorder,
-                  }}
-                >
-                  <div style={{
-                    fontSize: isMobile ? '18px' : '20px',
-                    fontWeight: 650,
-                    marginBottom: '12px',
-                    color: designSystem.colors.text.primary,
-                  }}>
-                    {coach.name}
-                  </div>
-
-                  {coach.user_email ? (
+              {(() => {
+                const activeCoaches = coaches.filter(c => c.status === 'active')
+                if (activeCoaches.length === 0) {
+                  return (
                     <div style={{
-                      background: designSystem.colors.success[50],
-                      padding: '12px',
-                      borderRadius: designSystem.borderRadius.lg,
-                      marginBottom: '12px',
-                      border: `1px solid ${designSystem.colors.success[500]}24`,
+                      padding: '40px 20px',
+                      textAlign: 'center',
+                      fontSize: getFontSize('body', isMobile),
+                      color: designSystem.colors.text.disabled,
                     }}>
-                      <div style={{
-                        fontSize: '12px',
-                        color: designSystem.colors.text.secondary,
-                        marginBottom: '4px',
-                      }}>
-                        已配對帳號
-                      </div>
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        color: designSystem.colors.success[700],
-                        wordBreak: 'break-all',
-                      }}>
-                        {coach.user_email}
-                      </div>
+                      沒有啟用中的教練
                     </div>
-                  ) : (
-                    <div style={{
-                      background: designSystem.colors.warning[50],
-                      padding: '12px',
-                      borderRadius: designSystem.borderRadius.lg,
-                      marginBottom: '12px',
-                      fontSize: '14px',
-                      color: designSystem.colors.warning[700],
-                      border: `1px solid ${designSystem.colors.warning[500]}24`,
-                    }}>
-                      尚未配對帳號
+                  )
+                }
+                return activeCoaches.map((coach, index) => {
+                  const paired = Boolean(coach.user_email)
+                  const isLast = index === activeCoaches.length - 1
+                  return (
+                    <div
+                      key={coach.id}
+                      style={{
+                        padding: isMobile ? '16px' : '18px 20px',
+                        borderBottom: isLast ? 'none' : `1px solid ${designSystem.colors.border.light}`,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: isMobile ? 'stretch' : 'center',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{
+                          fontSize: getFontSize('h3', isMobile),
+                          fontWeight: 600,
+                          color: designSystem.colors.text.primary,
+                          lineHeight: 1.3,
+                        }}>
+                          {coach.name}
+                        </div>
+                        <div style={{
+                          marginTop: '4px',
+                          fontSize: getFontSize('bodySmall', isMobile),
+                          color: paired
+                            ? designSystem.colors.text.secondary
+                            : designSystem.colors.text.disabled,
+                          wordBreak: 'break-all',
+                        }}>
+                          {paired ? coach.user_email : '尚未配對'}
+                        </div>
+                      </div>
+                      <Button
+                        variant={paired ? 'outline' : 'primary'}
+                        size="small"
+                        onClick={() => openAccountDialog(coach)}
+                        style={{ alignSelf: isMobile ? 'stretch' : 'center' }}
+                      >
+                        {paired ? '修改帳號' : '設定帳號'}
+                      </Button>
                     </div>
-                  )}
-
-                  <Button
-                    variant={coach.user_email ? 'outline' : 'primary'}
-                    size="medium"
-                    fullWidth
-                    onClick={() => openAccountDialog(coach)}
-                  >
-                    {coach.user_email ? '修改帳號' : '設定帳號'}
-                  </Button>
-                </div>
-              ))}
+                  )
+                })
+              })()}
             </div>
           </>
         )}
@@ -2030,113 +1905,117 @@ export function StaffManagement() {
         {/* 指定課價格 Tab */}
         {activeTab === 'pricing' && (
           <>
-            {/* 說明提示 */}
             <div style={{
-              marginBottom: '20px',
-              fontSize: '14px',
+              marginBottom: designSystem.spacing.lg,
+              fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
-              lineHeight: '1.6',
+              lineHeight: 1.6,
             }}>
               <div style={{ marginBottom: '4px' }}>
-                指定課價格：設定每位教練 30 分鐘指定課的價格
+                設定每位教練 30 分鐘指定課價格
               </div>
-              <div style={{ fontSize: '13px', color: designSystem.colors.text.disabled }}>
-                扣款時若為該教練指定課會自動帶入價格（其他時長按比例換算、無條件進位）。未設定則顯示自訂輸入框。
+              <div style={{ color: designSystem.colors.text.disabled }}>
+                扣款時自動帶入；其他時長按比例換算。未設定則顯示自訂輸入框。
               </div>
             </div>
 
-            {/* 指定課價格列表 */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', 
-              gap: '15px' 
+            <div style={{
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
+              border: cardBorder,
+              boxShadow: cardShadow,
+              overflow: 'hidden',
             }}>
-              {coaches.filter(c => c.status === 'active').map(coach => (
-                <div
-                  key={coach.id}
-                  style={{
-                    background: designSystem.colors.background.card,
-                    borderRadius: designSystem.borderRadius.lg,
-                    padding: isMobile ? '16px' : '20px',
-                    boxShadow: cardShadow,
-                    border: coach.designated_lesson_price_30min
-                      ? `1px solid ${designSystem.colors.warning[500]}44`
-                      : cardBorder,
-                  }}
-                >
-                  <div style={{
-                    fontSize: isMobile ? '18px' : '20px',
-                    fontWeight: 650,
-                    marginBottom: '12px',
-                    color: designSystem.colors.text.primary,
-                  }}>
-                    {coach.name}
-                  </div>
-
-                  {coach.designated_lesson_price_30min ? (
+              {(() => {
+                const activeCoaches = coaches.filter(c => c.status === 'active')
+                if (activeCoaches.length === 0) {
+                  return (
                     <div style={{
-                      background: designSystem.colors.secondary[50],
-                      padding: '12px',
-                      borderRadius: designSystem.borderRadius.lg,
-                      marginBottom: '12px',
-                      border: cardBorder,
+                      padding: '40px 20px',
+                      textAlign: 'center',
+                      fontSize: getFontSize('body', isMobile),
+                      color: designSystem.colors.text.disabled,
                     }}>
-                      <div style={{
-                        fontSize: '12px',
-                        color: designSystem.colors.text.secondary,
-                        marginBottom: '4px',
-                      }}>
-                        30分鐘指定課價格
-                      </div>
-                      <div style={{
-                        fontSize: '24px',
-                        fontWeight: 650,
-                        color: designSystem.colors.text.primary,
-                      }}>
-                        ${coach.designated_lesson_price_30min}
-                      </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: designSystem.colors.text.disabled,
-                        marginTop: '6px',
-                      }}>
-                        其他時長自動換算（無條件捨去）：
-                      </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: designSystem.colors.text.secondary,
-                        marginTop: '4px',
-                      }}>
-                        20分=${Math.floor(coach.designated_lesson_price_30min * 20 / 30)} / 
-                        40分=${Math.floor(coach.designated_lesson_price_30min * 40 / 30)} / 
-                        60分=${Math.floor(coach.designated_lesson_price_30min * 60 / 30)} / 
-                        90分=${Math.floor(coach.designated_lesson_price_30min * 90 / 30)}
-                      </div>
+                      沒有啟用中的教練
                     </div>
-                  ) : (
-                    <div style={{
-                      background: designSystem.colors.secondary[50],
-                      padding: '12px',
-                      borderRadius: designSystem.borderRadius.lg,
-                      marginBottom: '12px',
-                      fontSize: '14px',
-                      color: designSystem.colors.text.secondary,
-                      border: cardBorder,
-                    }}>
-                      未設定價格
+                  )
+                }
+                return activeCoaches.map((coach, index) => {
+                  const price = coach.designated_lesson_price_30min
+                  const isLast = index === activeCoaches.length - 1
+                  return (
+                    <div
+                      key={coach.id}
+                      style={{
+                        padding: isMobile ? '16px' : '18px 20px',
+                        borderBottom: isLast ? 'none' : `1px solid ${designSystem.colors.border.light}`,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: isMobile ? 'stretch' : 'center',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{
+                          fontSize: getFontSize('h3', isMobile),
+                          fontWeight: 600,
+                          color: designSystem.colors.text.primary,
+                          lineHeight: 1.3,
+                        }}>
+                          {coach.name}
+                        </div>
+                        {price ? (
+                          <>
+                            <div style={{
+                              marginTop: '4px',
+                              fontSize: getFontSize('bodyLarge', isMobile),
+                              fontWeight: 600,
+                              color: designSystem.colors.text.primary,
+                            }}>
+                              ${price}
+                              <span style={{
+                                marginLeft: '8px',
+                                fontSize: getFontSize('caption', isMobile),
+                                fontWeight: 500,
+                                color: designSystem.colors.text.disabled,
+                              }}>
+                                / 30 分
+                              </span>
+                            </div>
+                            <div style={{
+                              marginTop: '4px',
+                              fontSize: getFontSize('caption', isMobile),
+                              color: designSystem.colors.text.disabled,
+                            }}>
+                              20分 ${Math.floor(price * 20 / 30)}
+                              {' · '}40分 ${Math.floor(price * 40 / 30)}
+                              {' · '}60分 ${Math.floor(price * 60 / 30)}
+                              {' · '}90分 ${Math.floor(price * 90 / 30)}
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{
+                            marginTop: '4px',
+                            fontSize: getFontSize('bodySmall', isMobile),
+                            color: designSystem.colors.text.disabled,
+                          }}>
+                            未設定價格
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        variant={price ? 'outline' : 'primary'}
+                        size="small"
+                        onClick={() => openPricingDialog(coach)}
+                        style={{ alignSelf: isMobile ? 'stretch' : 'center' }}
+                      >
+                        {price ? '修改價格' : '設定價格'}
+                      </Button>
                     </div>
-                  )}
-
-                  <Button
-                    variant={coach.designated_lesson_price_30min ? 'outline' : 'primary'}
-                    size="medium"
-                    fullWidth
-                    onClick={() => openPricingDialog(coach)}
-                  >
-                    {coach.designated_lesson_price_30min ? '修改價格' : '設定價格'}
-                  </Button>
-                </div>
-              ))}
+                  )
+                })
+              })()}
             </div>
           </>
         )}
@@ -2145,77 +2024,109 @@ export function StaffManagement() {
         {activeTab === 'permissions' && (
           <>
             <div style={{
-              marginBottom: '20px',
-              fontSize: '14px',
+              marginBottom: designSystem.spacing.lg,
+              fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
-              lineHeight: 1.75,
+              lineHeight: 1.7,
             }}>
-              <div style={{ fontWeight: 600, marginBottom: '6px', color: designSystem.colors.text.primary }}>以一張表管理：</div>
-              <div>登入 — 能使用本系統，僅能看到今日預約</div>
-              <div>一般 — 預約表／查詢／提醒等，以及各項功能</div>
-              <div>勾選下層時，上層會自動帶出打勾、反灰不可改；勾選任一小編功能前須有登入＋一般</div>
-              <div>取消「登入」或「刪除整列」時，會一併清除下層權限</div>
+              <div style={{ marginBottom: '4px' }}>
+                登入：能使用本系統，僅能看到今日預約
+              </div>
+              <div style={{ marginBottom: '4px' }}>
+                一般：預約表／查詢／提醒等，以及各項功能
+              </div>
+              <div style={{ color: designSystem.colors.text.disabled }}>
+                勾選下層時上層會自動帶出且反灰；勾選小編功能前須有登入＋一般。取消登入或刪除整列會一併清除下層權限。
+              </div>
             </div>
+
             <div style={{
               background: designSystem.colors.background.card,
               borderRadius: designSystem.borderRadius.lg,
               padding: isMobile ? '16px' : '20px',
               boxShadow: cardShadow,
               border: cardBorder,
-              marginBottom: '8px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '6px' }}>
-                <h3 style={{ margin: 0, fontSize: isMobile ? '17px' : '18px', fontWeight: 600, color: designSystem.colors.text.primary }}>人員權限</h3>
-                <Badge variant="info" size="small">{permissionMatrixRows.length} 帳號</Badge>
-                {matrixMissingLoginCount > 0 && (
-                  <span title="有列有下層權限但尚未有登入名單，開啟此分頁會自動同步，同步前以底色與圖示標示">
-                    <Badge variant="warning" size="small" style={{ fontWeight: 600 }}>
-                      {matrixMissingLoginCount} 筆
-                    </Badge>
-                  </span>
-                )}
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                flexWrap: 'wrap',
+                gap: '8px 12px',
+                marginBottom: designSystem.spacing.sm,
+              }}>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: getFontSize('h3', isMobile),
+                  fontWeight: 600,
+                  color: designSystem.colors.text.primary,
+                }}>
+                  人員權限
+                </h3>
+                <span style={{
+                  fontSize: getFontSize('caption', isMobile),
+                  color: designSystem.colors.text.disabled,
+                }}>
+                  {permissionMatrixRows.length} 帳號
+                  {matrixMissingLoginCount > 0 && (
+                    <> · {matrixMissingLoginCount} 筆缺登入</>
+                  )}
+                </span>
               </div>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '16px', lineHeight: 1.5 }}>
-                依權限由少到多排列：僅登入／一般優先，小編功能勾選愈多愈靠下；同分依帳號字序。
+              <div style={{
+                fontSize: getFontSize('caption', isMobile),
+                color: designSystem.colors.text.disabled,
+                marginBottom: designSystem.spacing.md,
+                lineHeight: 1.5,
+              }}>
+                依權限由少到多排列；同分依帳號字序。
               </div>
+
               <div style={{
                 display: 'flex',
                 gap: '10px',
                 flexDirection: isMobile ? 'column' : 'row',
-                marginBottom: '16px',
-                alignItems: isMobile ? 'stretch' : 'flex-end'
+                marginBottom: designSystem.spacing.md,
+                alignItems: isMobile ? 'stretch' : 'flex-end',
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Email（小寫）</div>
+                  <div style={{
+                    fontSize: getFontSize('caption', isMobile),
+                    color: designSystem.colors.text.disabled,
+                    marginBottom: '4px',
+                  }}>
+                    Email（小寫）
+                  </div>
                   <input
                     type="email"
                     value={newAllowedEmail}
                     onChange={(e) => setNewAllowedEmail(e.target.value)}
                     placeholder="例：name@gmail.com"
                     style={{
-                      width: '100%',
+                      ...adminTextInputStyle,
                       padding: '10px 12px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '15px',
-                      boxSizing: 'border-box'
+                      borderRadius: designSystem.borderRadius.lg,
+                      fontSize: '16px',
                     }}
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>名稱（選填）</div>
+                  <div style={{
+                    fontSize: getFontSize('caption', isMobile),
+                    color: designSystem.colors.text.disabled,
+                    marginBottom: '4px',
+                  }}>
+                    名稱（選填）
+                  </div>
                   <input
                     type="text"
                     value={newAllowedNotes}
                     onChange={(e) => setNewAllowedNotes(e.target.value)}
                     placeholder=""
                     style={{
-                      width: '100%',
+                      ...adminTextInputStyle,
                       padding: '10px 12px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '15px',
-                      boxSizing: 'border-box'
+                      borderRadius: designSystem.borderRadius.lg,
+                      fontSize: '16px',
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddAllowedUser()
@@ -2228,7 +2139,7 @@ export function StaffManagement() {
                   onClick={handleAddAllowedUser}
                   disabled={addingAllowed}
                 >
-                  {addingAllowed ? '新增中...' : '➕ 加入並顯示於下表'}
+                  {addingAllowed ? '新增中...' : '加入'}
                 </Button>
               </div>
 
@@ -2236,9 +2147,9 @@ export function StaffManagement() {
                 style={{
                   width: '100%',
                   overflowX: 'auto',
-                  border: '1px solid #e8e8e8',
-                  borderRadius: '10px',
-                  background: '#fff'
+                  border: cardBorder,
+                  borderRadius: designSystem.borderRadius.lg,
+                  background: designSystem.colors.background.card,
                 }}
               >
                 <table
@@ -2246,21 +2157,21 @@ export function StaffManagement() {
                     width: '100%',
                     borderCollapse: 'separate',
                     borderSpacing: 0,
-                    fontSize: isMobile ? '12px' : '13px',
-                    minWidth: isMobile ? '560px' : '620px'
+                    fontSize: getFontSize('bodySmall', isMobile),
+                    minWidth: isMobile ? '560px' : '620px',
                   }}
                 >
                   <thead>
-                    <tr style={{ background: '#f5f7fa' }}>
+                    <tr style={{ background: designSystem.colors.secondary[50] }}>
                       <th
                         style={{
                           textAlign: 'left',
                           padding: '11px 12px',
-                          color: '#333',
+                          color: designSystem.colors.text.secondary,
                           fontWeight: 600,
-                          fontSize: '12px',
-                          borderBottom: '1px solid #e8e8e8',
-                          minWidth: '200px'
+                          fontSize: getFontSize('caption', isMobile),
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                          minWidth: '200px',
                         }}
                       >
                         帳號＋顯示名稱
@@ -2269,12 +2180,12 @@ export function StaffManagement() {
                         style={{
                           textAlign: 'center',
                           padding: '11px 8px',
-                          color: '#b45309',
+                          color: designSystem.colors.text.secondary,
                           fontWeight: 600,
-                          fontSize: '12px',
-                          borderBottom: '1px solid #e8e8e8',
+                          fontSize: getFontSize('caption', isMobile),
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
                           whiteSpace: 'nowrap',
-                          width: 52
+                          width: 52,
                         }}
                         title="allowed_users，可登入"
                       >
@@ -2284,12 +2195,12 @@ export function StaffManagement() {
                         style={{
                           textAlign: 'center',
                           padding: '11px 8px',
-                          color: '#1d6f42',
+                          color: designSystem.colors.text.secondary,
                           fontWeight: 600,
-                          fontSize: '12px',
-                          borderBottom: '1px solid #e8e8e8',
+                          fontSize: getFontSize('caption', isMobile),
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
                           whiteSpace: 'nowrap',
-                          width: 52
+                          width: 52,
                         }}
                         title="view_users"
                       >
@@ -2301,13 +2212,13 @@ export function StaffManagement() {
                           style={{
                             textAlign: 'center',
                             padding: '11px 6px',
-                            color: '#1565c0',
+                            color: designSystem.colors.text.secondary,
                             maxWidth: '96px',
                             lineHeight: 1.25,
                             fontWeight: 600,
-                            fontSize: '11px',
-                            borderBottom: '1px solid #e8e8e8',
-                            borderLeft: i === 0 ? '1px solid #e8e8e8' : undefined
+                            fontSize: getFontSize('caption', true),
+                            borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                            borderLeft: i === 0 ? `1px solid ${designSystem.colors.border.light}` : undefined,
                           }}
                           title={EDITOR_FEATURE_LABELS[key]}
                         >
@@ -2318,12 +2229,12 @@ export function StaffManagement() {
                         style={{
                           textAlign: 'center',
                           padding: '11px 6px',
-                          color: '#1565c0',
+                          color: designSystem.colors.text.secondary,
                           maxWidth: '90px',
                           lineHeight: 1.25,
                           fontWeight: 600,
-                          fontSize: '11px',
-                          borderBottom: '1px solid #e8e8e8'
+                          fontSize: getFontSize('caption', true),
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
                         }}
                         title="重複預約"
                       >
@@ -2333,12 +2244,12 @@ export function StaffManagement() {
                         style={{
                           textAlign: 'right',
                           padding: '11px 12px',
-                          color: '#666',
+                          color: designSystem.colors.text.secondary,
                           fontWeight: 600,
-                          fontSize: '12px',
-                          borderBottom: '1px solid #e8e8e8',
+                          fontSize: getFontSize('caption', isMobile),
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
                           width: 88,
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         操作
@@ -2350,7 +2261,13 @@ export function StaffManagement() {
                       <tr>
                         <td
                           colSpan={3 + matrixFeatureColumnCount + 1}
-                          style={{ padding: '32px 12px', textAlign: 'center', color: '#999', borderBottom: 'none' }}
+                          style={{
+                            padding: '32px 12px',
+                            textAlign: 'center',
+                            color: designSystem.colors.text.disabled,
+                            borderBottom: 'none',
+                            fontSize: getFontSize('body', isMobile),
+                          }}
                         >
                           尚無可列帳號。請在上方新增 Email，或於資料庫有 view／editor 列者會自動出現。
                         </td>
@@ -2367,18 +2284,24 @@ export function StaffManagement() {
                         const viewChecked = !!row.view || hasEd
                         const viewDisabled = busy || hasEd
                         const displayName = getMatrixRowDisplayName(row)
+                        const rowBorder = `1px solid ${designSystem.colors.border.light}`
                         return (
                           <tr
                             key={row.email}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.background = needsLogin ? '#fff4e0' : '#f8fafc'
+                              e.currentTarget.style.background = needsLogin
+                                ? designSystem.colors.warning[50]
+                                : designSystem.colors.secondary[50]
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = needsLogin ? '#fffbf0' : '#fff'
+                              e.currentTarget.style.background = needsLogin
+                                ? designSystem.colors.warning[50]
+                                : designSystem.colors.background.card
                             }}
                             style={{
-                              background: needsLogin ? '#fffbf0' : '#fff',
-                              boxShadow: needsLogin ? 'inset 3px 0 0 #ff9800' : undefined
+                              background: needsLogin
+                                ? designSystem.colors.warning[50]
+                                : designSystem.colors.background.card,
                             }}
                           >
                             <td
@@ -2386,30 +2309,38 @@ export function StaffManagement() {
                                 padding: '12px',
                                 wordBreak: 'break-word',
                                 verticalAlign: 'top',
-                                borderBottom: '1px solid #f0f0f0',
-                                minWidth: 0
+                                borderBottom: rowBorder,
+                                minWidth: 0,
                               }}
                             >
-                              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 8px' }}>
-                                {needsLogin && (
-                                  <span
-                                    style={{ color: '#e65100', fontSize: '15px', lineHeight: 1, flexShrink: 0 }}
-                                    title="有一般或小編，但此帳未在登入名單"
-                                    aria-hidden
-                                  >
-                                    ⚠
-                                  </span>
-                                )}
+                              <div style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
+                                gap: '6px 8px',
+                              }}>
                                 <span
                                   style={{
                                     fontWeight: 600,
-                                    color: '#222',
-                                    fontSize: isMobile ? '12px' : '13px',
-                                    lineHeight: 1.4
+                                    color: designSystem.colors.text.primary,
+                                    fontSize: getFontSize('bodySmall', isMobile),
+                                    lineHeight: 1.4,
                                   }}
                                 >
                                   {row.email}
                                 </span>
+                                {needsLogin && (
+                                  <span
+                                    style={{
+                                      fontSize: getFontSize('caption', isMobile),
+                                      color: designSystem.colors.warning[700],
+                                      fontWeight: 500,
+                                    }}
+                                    title="有一般或小編，但此帳未在登入名單"
+                                  >
+                                    缺登入
+                                  </span>
+                                )}
                               </div>
                               {editingMatrixNameForEmail === row.email ? (
                                 <div
@@ -2418,7 +2349,7 @@ export function StaffManagement() {
                                     flexWrap: 'wrap',
                                     gap: '8px',
                                     alignItems: 'center',
-                                    marginTop: '8px'
+                                    marginTop: '8px',
                                   }}
                                 >
                                   <input
@@ -2430,10 +2361,10 @@ export function StaffManagement() {
                                       flex: 1,
                                       minWidth: '120px',
                                       padding: '7px 10px',
-                                      border: '1px solid #b3d4fc',
-                                      borderRadius: '6px',
-                                      fontSize: '12px',
-                                      boxSizing: 'border-box'
+                                      border: cardBorder,
+                                      borderRadius: designSystem.borderRadius.md,
+                                      fontSize: getFontSize('bodySmall', isMobile),
+                                      boxSizing: 'border-box',
                                     }}
                                     autoFocus
                                     onKeyDown={(e) => {
@@ -2459,16 +2390,18 @@ export function StaffManagement() {
                                     flexWrap: 'wrap',
                                     alignItems: 'center',
                                     gap: '6px',
-                                    marginTop: '6px'
+                                    marginTop: '6px',
                                   }}
                                 >
                                   <span
                                     style={{
-                                      color: displayName ? '#5c5c5c' : '#bbb',
-                                      fontSize: '12px',
+                                      color: displayName
+                                        ? designSystem.colors.text.secondary
+                                        : designSystem.colors.text.disabled,
+                                      fontSize: getFontSize('caption', isMobile),
                                       lineHeight: 1.4,
                                       flex: 1,
-                                      minWidth: 0
+                                      minWidth: 0,
                                     }}
                                   >
                                     {displayName || '未設定顯示名稱'}
@@ -2488,16 +2421,18 @@ export function StaffManagement() {
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      border: '1px solid #e0e0e0',
-                                      borderRadius: 8,
-                                      background: '#fff',
+                                      border: cardBorder,
+                                      borderRadius: designSystem.borderRadius.md,
+                                      background: designSystem.colors.background.card,
                                       cursor: busy ? 'not-allowed' : 'pointer',
-                                      fontSize: 14,
+                                      fontSize: getFontSize('bodySmall', isMobile),
                                       lineHeight: 1,
-                                      color: busy ? '#bbb' : '#1976d2',
+                                      color: busy
+                                        ? designSystem.colors.text.disabled
+                                        : designSystem.colors.text.secondary,
                                       padding: 0,
                                       flexShrink: 0,
-                                      opacity: busy ? 0.5 : 1
+                                      opacity: busy ? 0.5 : 1,
                                     }}
                                   >
                                     ✎
@@ -2510,10 +2445,8 @@ export function StaffManagement() {
                                 padding: '8px 6px',
                                 textAlign: 'center',
                                 verticalAlign: 'middle',
-                                borderBottom: '1px solid #f0f0f0',
-                                borderRadius: needsLogin ? '4px' : undefined,
-                                background: needsLogin ? 'rgba(255, 193, 7, 0.1)' : undefined,
-                                opacity: loginImplied && !needsLogin ? 0.6 : 1
+                                borderBottom: rowBorder,
+                                opacity: loginImplied && !needsLogin ? 0.6 : 1,
                               }}
                             >
                               <input
@@ -2534,8 +2467,8 @@ export function StaffManagement() {
                                 padding: '10px 6px',
                                 textAlign: 'center',
                                 verticalAlign: 'middle',
-                                borderBottom: '1px solid #f0f0f0',
-                                opacity: hasEd ? 0.6 : 1
+                                borderBottom: rowBorder,
+                                opacity: hasEd ? 0.6 : 1,
                               }}
                             >
                               <input
@@ -2552,8 +2485,6 @@ export function StaffManagement() {
                               />
                             </td>
                             {MATRIX_SINGLE_FEATURE_KEYS.map((key) => {
-                              // 「商品瀏覽」被「商品管理」隱含：勾了「商品管理」時，
-                              // 「商品瀏覽」顯示為打勾且反灰（不可改）。
                               const lockedByEdit = key === 'can_products_view' && f.can_products
                               const cellChecked = lockedByEdit ? true : f[key]
                               const cellDisabled = busy || lockedByEdit
@@ -2561,8 +2492,6 @@ export function StaffManagement() {
                                 ? `${EDITOR_FEATURE_LABELS[key]}（已包含於商品管理權限）`
                                 : EDITOR_FEATURE_LABELS[key]
                               const onCellChange = (next: boolean) => {
-                                // 勾「商品管理」時連同「商品瀏覽」一起寫入 DB，
-                                // 之後若取消勾「商品管理」，「商品瀏覽」仍會保留（一般 view 已記在 DB）。
                                 if (key === 'can_products' && next) {
                                   void setMatrixEditorFeatureFields(row, { can_products: true, can_products_view: true })
                                 } else {
@@ -2576,7 +2505,7 @@ export function StaffManagement() {
                                     padding: '10px 6px',
                                     textAlign: 'center',
                                     verticalAlign: 'middle',
-                                    borderBottom: '1px solid #f0f0f0',
+                                    borderBottom: rowBorder,
                                     opacity: lockedByEdit ? 0.55 : 1,
                                   }}
                                 >
@@ -2592,7 +2521,12 @@ export function StaffManagement() {
                               )
                             })}
                             <td
-                              style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'middle', borderBottom: '1px solid #f0f0f0' }}
+                              style={{
+                                padding: '10px 6px',
+                                textAlign: 'center',
+                                verticalAlign: 'middle',
+                                borderBottom: rowBorder,
+                              }}
                             >
                               <input
                                 type="checkbox"
@@ -2604,14 +2538,20 @@ export function StaffManagement() {
                               />
                             </td>
                             <td
-                              style={{ padding: '8px 12px', textAlign: 'right', verticalAlign: 'middle', borderBottom: '1px solid #f0f0f0' }}
+                              style={{
+                                padding: '8px 12px',
+                                textAlign: 'right',
+                                verticalAlign: 'middle',
+                                borderBottom: rowBorder,
+                              }}
                             >
                               {editingMatrixNameForEmail !== row.email && (
                                 <Button
-                                  variant="danger"
+                                  variant="ghost"
                                   size="small"
                                   onClick={() => { setPermissionMatrixConfirm({ kind: 'deleteRow', row }) }}
                                   disabled={busy}
+                                  style={{ color: designSystem.colors.danger[700] }}
                                 >
                                   刪除
                                 </Button>

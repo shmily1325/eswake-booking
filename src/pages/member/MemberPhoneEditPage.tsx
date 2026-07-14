@@ -13,6 +13,7 @@ import {
   getBadgeStyle,
   getButtonStyle,
   getEmptyStateStyle,
+  getFilterChipStyle,
   getFontSize,
   getInputStyle,
 } from '../../styles/designSystem'
@@ -282,7 +283,8 @@ export function MemberPhoneEditPage() {
             type="button"
             onClick={() => setLineBindingFilter('all')}
             style={{
-              ...getButtonStyle(lineBindingFilter === 'all' ? 'secondary' : 'outline', 'small', isMobile),
+              ...getButtonStyle('outline', 'small', isMobile),
+              ...getFilterChipStyle(lineBindingFilter === 'all', 'info'),
               minHeight: 44,
               padding: '8px 10px',
             }}
@@ -293,7 +295,8 @@ export function MemberPhoneEditPage() {
             type="button"
             onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
             style={{
-              ...getButtonStyle(lineBindingFilter === 'bound' ? 'secondary' : 'outline', 'small', isMobile),
+              ...getButtonStyle('outline', 'small', isMobile),
+              ...getFilterChipStyle(lineBindingFilter === 'bound', 'info'),
               minHeight: 44,
               padding: '8px 10px',
             }}
@@ -304,7 +307,8 @@ export function MemberPhoneEditPage() {
             type="button"
             onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
             style={{
-              ...getButtonStyle(lineBindingFilter === 'unbound' ? 'secondary' : 'outline', 'small', isMobile),
+              ...getButtonStyle('outline', 'small', isMobile),
+              ...getFilterChipStyle(lineBindingFilter === 'unbound', 'info'),
               minHeight: 44,
               padding: '8px 10px',
             }}

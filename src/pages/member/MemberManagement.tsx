@@ -22,6 +22,7 @@ import {
   getBadgeStyle,
   getButtonStyle,
   getEmptyStateStyle,
+  getFilterChipStyle,
   getFontSize,
   getInputStyle,
   getPageContentShellStyle,
@@ -922,15 +923,18 @@ export function MemberManagement() {
               ].map(type => (
                 <button
                   key={type.value}
+                  type="button"
                   onClick={() => {
                     setMembershipTypeFilter(type.value)
                     setExpiringFilter('none')
                   }}
-                  style={getButtonStyle(
-                    membershipTypeFilter === type.value && expiringFilter === 'none' ? 'secondary' : 'outline',
-                    'small',
-                    false
-                  )}
+                  style={{
+                    ...getButtonStyle('outline', 'small', false),
+                    ...getFilterChipStyle(
+                      membershipTypeFilter === type.value && expiringFilter === 'none',
+                      'info'
+                    ),
+                  }}
                 >
                   {type.label} ({type.count})
                 </button>
@@ -944,13 +948,15 @@ export function MemberManagement() {
               alignItems: 'center',
             }}>
               <button
+                type="button"
                 onClick={() => {
                   setExpiringFilter(expiringFilter === 'membership' ? 'none' : 'membership')
                   if (expiringFilter !== 'membership') setMembershipTypeFilter('all')
                 }}
                 disabled={expiringMemberships.length === 0}
                 style={{
-                  ...getButtonStyle(expiringFilter === 'membership' ? 'warning' : 'outline', 'small', false),
+                  ...getButtonStyle('outline', 'small', false),
+                  ...getFilterChipStyle(expiringFilter === 'membership', 'warning'),
                   opacity: expiringMemberships.length === 0 ? 0.5 : 1,
                   cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
                 }}
@@ -959,13 +965,15 @@ export function MemberManagement() {
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   setExpiringFilter(expiringFilter === 'board' ? 'none' : 'board')
                   if (expiringFilter !== 'board') setMembershipTypeFilter('all')
                 }}
                 disabled={expiringBoards.length === 0}
                 style={{
-                  ...getButtonStyle(expiringFilter === 'board' ? 'info' : 'outline', 'small', false),
+                  ...getButtonStyle('outline', 'small', false),
+                  ...getFilterChipStyle(expiringFilter === 'board', 'info'),
                   opacity: expiringBoards.length === 0 ? 0.5 : 1,
                   cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
                 }}
@@ -974,17 +982,25 @@ export function MemberManagement() {
               </button>
 
               <button
+                type="button"
                 data-track="member_filter_line_bound"
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
-                style={getButtonStyle(lineBindingFilter === 'bound' ? 'secondary' : 'outline', 'small', false)}
+                style={{
+                  ...getButtonStyle('outline', 'small', false),
+                  ...getFilterChipStyle(lineBindingFilter === 'bound', 'info'),
+                }}
               >
                 LINE 已綁定 ({members.filter(m => m.is_line_bound).length})
               </button>
 
               <button
+                type="button"
                 data-track="member_filter_line_unbound"
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
-                style={getButtonStyle(lineBindingFilter === 'unbound' ? 'secondary' : 'outline', 'small', false)}
+                style={{
+                  ...getButtonStyle('outline', 'small', false),
+                  ...getFilterChipStyle(lineBindingFilter === 'unbound', 'info'),
+                }}
               >
                 LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
               </button>

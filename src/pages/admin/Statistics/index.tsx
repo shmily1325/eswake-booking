@@ -88,9 +88,9 @@ export function Statistics() {
   })
 
   // Tab 配置（重新命名）
-  const tabs: { key: TabType; label: string }[] = [
-    { key: 'trend', label: '歷史趨勢' },
-    { key: 'monthly', label: '月報分析' },
+  const tabs: { key: TabType; label: string; shortLabel?: string }[] = [
+    { key: 'trend', label: '歷史月趨勢' },
+    { key: 'monthly', label: '月報' },
     { key: 'annual', label: '年報' },
     { key: 'future', label: '排程預覽' },
   ]
@@ -1136,13 +1136,6 @@ export function Statistics() {
                 memberStats={memberStats}
                 weekdayStats={weekdayStats}
                 coachPracticeSessions={monthlyCoachPracticeSessions}
-                coachPracticeNote={(() => {
-                  const range = getMonthlyDateRange()
-                  if (!range) {
-                    return '此月份尚無可統計之區間（例如本月第一天）。'
-                  }
-                  return `${range.startDate} ~ ${range.endDateStr}；僅實際船隻。與本月其他月報相同：當月僅統計至昨日。`
-                })()}
               />
             )}
 
@@ -1155,7 +1148,6 @@ export function Statistics() {
                   setSelectedYear={setSelectedYear}
                   monthlyStats={annualMonthlyStats}
                   financeStats={annualFinanceStats}
-                  allBoatsData={allBoatsData}
                   coachStats={annualCoachStats}
                   memberStats={annualMemberStats}
                   weekdayStats={annualWeekdayStats}

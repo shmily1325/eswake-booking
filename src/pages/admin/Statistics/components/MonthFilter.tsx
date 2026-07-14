@@ -1,4 +1,4 @@
-import { getFilterChipStyle, getFontSize, designSystem } from '../../../../styles/designSystem'
+import { getFontSize, designSystem } from '../../../../styles/designSystem'
 
 interface MonthOption {
   value: string
@@ -15,6 +15,42 @@ interface MonthFilterProps {
   allCount?: number
 }
 
+/** Dashboard 期間 chip：選中近黑，與月報／年報一致 */
+function chipStyle(isActive: boolean) {
+  return {
+    padding: '8px 16px',
+    borderRadius: designSystem.borderRadius.md,
+    border: isActive
+      ? 'none'
+      : `1px solid ${designSystem.colors.border.main}`,
+    background: isActive
+      ? designSystem.colors.primary[500]
+      : designSystem.colors.background.card,
+    color: isActive ? '#ffffff' : designSystem.colors.text.secondary,
+    fontSize: getFontSize('button', false),
+    fontWeight: isActive ? 600 : 500,
+    cursor: 'pointer' as const,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '4px',
+    transition: 'all 0.2s',
+    boxShadow: isActive ? designSystem.shadows.sm : 'none',
+  }
+}
+
+function countBadgeStyle(isActive: boolean) {
+  return {
+    fontSize: getFontSize('caption', true),
+    fontWeight: 700 as const,
+    background: isActive
+      ? 'rgba(255,255,255,0.2)'
+      : designSystem.colors.background.hover,
+    color: isActive ? '#ffffff' : designSystem.colors.text.secondary,
+    padding: '1px 5px',
+    borderRadius: designSystem.borderRadius.sm,
+  }
+}
+
 export function MonthFilter({
   options,
   selected,
@@ -23,38 +59,18 @@ export function MonthFilter({
   allLabel = '全部',
   allCount
 }: MonthFilterProps) {
-  const buttonStyle = (isActive: boolean) => ({
-    ...getFilterChipStyle(isActive, 'info'),
-    padding: '8px 16px',
-    fontSize: getFontSize('button', false),
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '4px',
-    transition: 'all 0.2s'
-  })
-
   return (
     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
       {showAll && (
         <button
+          type="button"
           data-track="dashboard_filter_all"
           onClick={() => onSelect('all')}
-          style={buttonStyle(selected === 'all')}
+          style={chipStyle(selected === 'all')}
         >
           {allLabel}
           {allCount !== undefined && (
-            <span style={{ 
-              fontSize: getFontSize('caption', true), 
-              fontWeight: 700,
-              background: selected === 'all'
-                ? `${designSystem.colors.info[500]}22`
-                : designSystem.colors.background.hover,
-              color: selected === 'all'
-                ? designSystem.colors.info[700]
-                : designSystem.colors.text.secondary,
-              padding: '1px 5px',
-              borderRadius: designSystem.borderRadius.sm
-            }}>
+            <span style={countBadgeStyle(selected === 'all')}>
               {allCount}
             </span>
           )}
@@ -62,25 +78,15 @@ export function MonthFilter({
       )}
       {options.map(option => (
         <button
+          type="button"
           key={option.value}
           data-track={`dashboard_filter_${option.value}`}
           onClick={() => onSelect(option.value)}
-          style={buttonStyle(selected === option.value)}
+          style={chipStyle(selected === option.value)}
         >
           {option.label}
           {option.count !== undefined && (
-            <span style={{ 
-              fontSize: getFontSize('caption', true), 
-              fontWeight: 700,
-              background: selected === option.value
-                ? `${designSystem.colors.info[500]}22`
-                : designSystem.colors.background.hover,
-              color: selected === option.value
-                ? designSystem.colors.info[700]
-                : designSystem.colors.text.secondary,
-              padding: '1px 5px',
-              borderRadius: designSystem.borderRadius.sm
-            }}>
+            <span style={countBadgeStyle(selected === option.value)}>
               {option.count}
             </span>
           )}

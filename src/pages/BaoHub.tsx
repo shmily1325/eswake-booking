@@ -132,27 +132,15 @@ export function BaoHub() {
     }>
   }> = [
     {
-      section: '預約',
+      section: '櫃台',
       items: [
         { title: '排班', icon: '📅', link: '/coach-assignment' },
         { title: '回報', icon: '📝', link: '/coach-report' },
         { title: '回報管理', icon: '💼', link: '/coach-admin' },
-      ],
-    },
-    {
-      section: '會員',
-      items: [
+        { title: '訂單', icon: '🧾', link: '/order-settle' },
         { title: '會員', icon: '👥', link: '/members' },
         { title: '儲值', icon: '💰', link: '/member-transaction' },
         { title: '置板', icon: '🏄', link: '/boards' },
-      ],
-    },
-    {
-      section: '商品',
-      items: [
-        { title: '商品', icon: '📦', link: '/products' },
-        { title: '訂單結帳', icon: '🧾', link: '/order-settle' },
-        { title: 'ES SHOP', icon: '🛒', link: getPublicShopHomeUrl() },
       ],
     },
     {
@@ -162,6 +150,8 @@ export function BaoHub() {
         { title: '公告', icon: '📢', link: '/announcements' },
         { title: '人員', icon: '🎓', link: '/staff' },
         { title: '船隻', icon: '🚤', link: '/boats' },
+        { title: '商品', icon: '📦', link: '/products' },
+        { title: 'ES SHOP', icon: '🛒', link: getPublicShopHomeUrl() },
       ],
     },
   ]

@@ -40,7 +40,7 @@ const NAV_LINK_ICONS: Record<string, string> = {
 const NAV_LINK_TEXT: Record<string, string> = {
   '/': 'HOME',
   '/bao': 'BAO',
-  '/order-settle': '訂單結帳',
+  '/order-settle': '訂單',
   '/products': '商品',
   '/products/orders': '訂單開單',
   '/member-transaction': '儲值',
@@ -186,23 +186,23 @@ export function PageHeader({
           <Link
             to="/order-settle"
             style={navButtonStyle}
-            aria-label="訂單結帳"
-            title="訂單結帳"
+            aria-label="訂單"
+            title="訂單"
             data-track="header_order_settle"
           >
-            {renderNavLabel('🧾 訂單結帳', '/order-settle')}
+            {renderNavLabel('訂單', '/order-settle')}
             <CountBadge count={pendingSettleCount} />
           </Link>
         )}
       {productHubSection === 'settle' && (
         <Link
-          to="/products/orders"
+          to="/products"
           style={navButtonStyle}
-          aria-label="訂單開單"
-          title="訂單開單"
-          data-track="header_product_orders"
+          aria-label="商品"
+          title="商品"
+          data-track="header_products"
         >
-          {renderNavLabel('📋 訂單開單', '/products/orders')}
+          {renderNavLabel('商品', '/products')}
         </Link>
       )}
       {showBaoLink && (

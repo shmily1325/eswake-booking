@@ -1,30 +1,59 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
 import { Footer } from '../../../components/Footer'
-import { AdminPageShell, adminContentCardStyle, adminLoadingStyle } from '../../../components/AdminPageLayout'
+import {
+  AdminPageShell,
+  AdminPillButton,
+  AdminPillRow,
+  adminContentCardStyle,
+  adminLoadingStyle,
+} from '../../../components/AdminPageLayout'
 import { ToastContainer, useToast } from '../../../components/ui'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { isAdmin } from '../../../utils/auth'
+import { designSystem } from '../../../styles/designSystem'
 import { fetchPendingBillOrders } from './api'
 import { usePendingBillOrderCount } from '../../../hooks/usePendingBillOrderCount'
 import { PendingOrderSettleItem } from './PendingOrderSettleItem'
 import { ShopSettlementStatisticsTab } from './ShopSettlementStatisticsTab'
+import { OrderManagement } from './OrderManagement'
 import type { ShopOrderWithItems } from './types'
 
-type SettleTab = 'pending' | 'statistics'
+type SettleTab = 'create' | 'pending' | 'statistics'
+
+function parseSettleTab(raw: string | null): SettleTab | null {
+  if (raw === 'create' || raw === 'pending' || raw === 'statistics') return raw
+  return null
+}
 
 export function OrderSettlePage() {
   const user = useAuthUser()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
   const { isMobile } = useResponsive()
-  const [activeTab, setActiveTab] = useState<SettleTab>('pending')
+  const activeTab: SettleTab = parseSettleTab(searchParams.get('tab')) ?? 'create'
   const [orders, setOrders] = useState<ShopOrderWithItems[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const { refresh: refreshPendingCount } = usePendingBillOrderCount(true)
+  const { count: pendingCount, refresh: refreshPendingCount } = usePendingBillOrderCount(true)
+
+  const setTab = useCallback(
+    (tab: SettleTab) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (tab === 'create') next.delete('tab')
+          else next.set('tab', tab)
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
 
   const reloadOrders = useCallback(async () => {
     try {
@@ -73,59 +102,60 @@ export function OrderSettlePage() {
 
   if (!isAdmin(user)) return null
 
+  const pendingBadge = pendingCount > 0 ? pendingCount : undefined
+
   return (
     <AdminPageShell>
       <PageHeader
-        title="訂單結帳"
+        title="訂單"
         user={user}
         showBaoLink={isAdmin(user)}
         productHubSection="settle"
-        extraLinks={[
-          { label: isMobile ? '💰' : '💰 儲值', link: '/member-transaction' },
-        ]}
+        extraLinks={[{ label: isMobile ? '💰' : '儲值', link: '/member-transaction' }]}
       />
 
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          marginBottom: 24,
-          borderBottom: '2px solid #e0e0e0',
-          flexWrap: 'wrap',
-        }}
-      >
-        <TabButton
+      <AdminPillRow style={{ marginBottom: isMobile ? 16 : 20 }}>
+        <AdminPillButton
+          active={activeTab === 'create'}
+          data-track="order_hub_tab_create"
+          onClick={() => setTab('create')}
+        >
+          開單
+        </AdminPillButton>
+        <AdminPillButton
           active={activeTab === 'pending'}
-          trackId="product_order_settle_tab_pending"
-          onClick={() => setActiveTab('pending')}
-          isMobile={isMobile}
-          badge={orders.length > 0 ? orders.length : undefined}
+          data-track="order_hub_tab_pending"
+          onClick={() => setTab('pending')}
+          badge={pendingBadge}
         >
-          📋 待結帳
-        </TabButton>
-        <TabButton
+          待結帳
+        </AdminPillButton>
+        <AdminPillButton
           active={activeTab === 'statistics'}
-          trackId="product_order_settle_tab_statistics"
-          onClick={() => setActiveTab('statistics')}
-          isMobile={isMobile}
+          data-track="order_hub_tab_statistics"
+          onClick={() => setTab('statistics')}
         >
-          📊 已結帳統計
-        </TabButton>
-      </div>
+          已結帳統計
+        </AdminPillButton>
+      </AdminPillRow>
+
+      {activeTab === 'create' && <OrderManagement embedded />}
 
       {activeTab === 'pending' && (
         <>
           {loading ? (
             <div style={adminLoadingStyle()}>載入中…</div>
           ) : loadError ? (
-            <div style={{ ...adminContentCardStyle(isMobile), color: '#c62828' }}>
+            <div
+              style={{
+                ...adminContentCardStyle(isMobile),
+                color: designSystem.colors.danger[700],
+              }}
+            >
               載入失敗：{loadError}
             </div>
           ) : orders.length === 0 ? (
-            <div style={adminContentCardStyle(isMobile)}>
-              <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.35 }}>🧾</div>
-              目前沒有待結帳訂單
-            </div>
+            <div style={adminContentCardStyle(isMobile)}>目前沒有待結帳訂單</div>
           ) : (
             orders.map((order) => (
               <PendingOrderSettleItem
@@ -139,66 +169,10 @@ export function OrderSettlePage() {
         </>
       )}
 
-      {activeTab === 'statistics' && (
-        <ShopSettlementStatisticsTab isMobile={isMobile} />
-      )}
+      {activeTab === 'statistics' && <ShopSettlementStatisticsTab isMobile={isMobile} />}
 
       <Footer />
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </AdminPageShell>
-  )
-}
-
-function TabButton({
-  active,
-  onClick,
-  isMobile,
-  children,
-  badge,
-  trackId,
-}: {
-  active: boolean
-  onClick: () => void
-  isMobile: boolean
-  children: ReactNode
-  badge?: number
-  trackId?: string
-}) {
-  return (
-    <button
-      type="button"
-      data-track={trackId}
-      onClick={onClick}
-      style={{
-        padding: '12px 24px',
-        background: active ? '#2196f3' : 'transparent',
-        color: active ? 'white' : '#666',
-        border: 'none',
-        borderBottom: active ? '3px solid #2196f3' : 'none',
-        borderRadius: '8px 8px 0 0',
-        cursor: 'pointer',
-        fontSize: isMobile ? 14 : 16,
-        fontWeight: 600,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-      }}
-    >
-      {children}
-      {badge != null && badge > 0 && (
-        <span
-          style={{
-            background: active ? 'white' : '#2196f3',
-            color: active ? '#2196f3' : 'white',
-            borderRadius: 12,
-            padding: '2px 8px',
-            fontSize: 12,
-            fontWeight: 'bold',
-          }}
-        >
-          {badge}
-        </span>
-      )}
-    </button>
   )
 }

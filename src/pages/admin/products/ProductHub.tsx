@@ -13,6 +13,7 @@ import {
   AdminPillRow,
   ProductHubShell,
   adminLoadingStyle,
+  adminPillButtonStyle,
 } from '../../../components/AdminPageLayout'
 import { useResponsive } from '../../../hooks/useResponsive'
 
@@ -23,6 +24,7 @@ import { usePendingBillOrderCount } from '../../../hooks/usePendingBillOrderCoun
 
 import { useToast } from '../../../components/ui'
 import { getPublicShopHomeUrl } from '../../../lib/shopPublicUrl'
+import { ExternalNavLink } from '../../../components/ExternalNavLink'
 
 import { ProductManagement } from './ProductManagement'
 
@@ -121,19 +123,27 @@ export function ProductHub() {
         productHubSection={onOrders ? 'orders' : 'inventory'}
         showOrderSettleLink={userIsAdmin}
         pendingSettleCount={pendingSettleCount}
-        extraLinks={[{ label: '🛒 ES SHOP', link: getPublicShopHomeUrl() }]}
       />
 
-      {canEdit && (
-        <AdminPillRow style={{ marginBottom: isMobile ? 12 : 16 }}>
-          <AdminPillLink to="/products" end active={!onOrders}>
-            庫存
-          </AdminPillLink>
-          <AdminPillLink to="/products/orders" active={onOrders}>
-            訂單開單
-          </AdminPillLink>
-        </AdminPillRow>
-      )}
+      <AdminPillRow style={{ marginBottom: isMobile ? 12 : 16 }}>
+        {canEdit && (
+          <>
+            <AdminPillLink to="/products" end active={!onOrders}>
+              庫存
+            </AdminPillLink>
+            <AdminPillLink to="/products/orders" active={onOrders}>
+              訂單開單
+            </AdminPillLink>
+          </>
+        )}
+        <ExternalNavLink
+          href={getPublicShopHomeUrl()}
+          data-track="products_es_shop"
+          style={adminPillButtonStyle(false)}
+        >
+          ES SHOP
+        </ExternalNavLink>
+      </AdminPillRow>
 
       <Routes>
 

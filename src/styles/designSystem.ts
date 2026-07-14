@@ -340,9 +340,10 @@ export const getButtonStyle = (
       boxShadow: '0 10px 24px rgba(31, 27, 23, 0.16)',
     },
     secondary: {
-      background: '#ffffff',
+      // 與 outline 必須可辨：淺底＋較深邊框（勿再用 secondary 當「選中」；選中請用 getFilterChipStyle）
+      background: designSystem.colors.background.hover,
       color: designSystem.colors.text.primary,
-      border: `1px solid ${designSystem.colors.border.light}`,
+      border: `1.5px solid ${designSystem.colors.border.dark}`,
       boxShadow: designSystem.shadows.xs,
     },
     success: {
@@ -372,8 +373,8 @@ export const getButtonStyle = (
     },
     outline: {
       background: 'transparent',
-      color: designSystem.colors.text.primary,
-      border: `1px solid ${designSystem.colors.border.light}`,
+      color: designSystem.colors.text.secondary,
+      border: `1px solid ${designSystem.colors.border.main}`,
     },
   }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -7,9 +7,10 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import type { Boat, BoatUnavailableDate } from '../../types/booking'
-import { Button, Badge, useToast, ToastContainer } from '../../components/ui'
+import { Button, useToast, ToastContainer } from '../../components/ui'
 import {
   designSystem,
+  getFontSize,
   getPageContentShellStyle,
 } from '../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../utils/auth'
@@ -63,6 +64,7 @@ export function BoatManagement() {
     // 價格設定狀態
     const [editingPrices, setEditingPrices] = useState<{[key: string]: {balance: string, vip: string}}>({})
     const [savingPrices, setSavingPrices] = useState<{[key: string]: boolean}>({})
+    const [pricePreviewOpen, setPricePreviewOpen] = useState<Set<number>>(() => new Set())
     
     // 說明展開狀態
     const [showHelp, setShowHelp] = useState(false)
@@ -164,7 +166,7 @@ export function BoatManagement() {
 
             if (error) throw error
 
-            toast.success(boat.is_active ? '💣船隻已燒毀' : '船隻已啟用')
+            toast.success(boat.is_active ? '船隻已燒毀' : '船隻已啟用')
             loadData()
         } catch (error) {
             toast.error('更新狀態失敗：' + (error as Error).message)
@@ -448,9 +450,9 @@ export function BoatManagement() {
                                 border: 'none',
                                 borderRadius: designSystem.borderRadius.md,
                                 boxShadow: activeTab === 'boats' ? designSystem.shadows.xs : 'none',
-                                color: activeTab === 'boats' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+                                color: activeTab === 'boats' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                                 fontWeight: activeTab === 'boats' ? 600 : 500,
-                                fontSize: isMobile ? '13px' : '14px',
+                                fontSize: getFontSize('bodySmall', isMobile),
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
                                 whiteSpace: 'nowrap',
@@ -467,9 +469,9 @@ export function BoatManagement() {
                                 border: 'none',
                                 borderRadius: designSystem.borderRadius.md,
                                 boxShadow: activeTab === 'pricing' ? designSystem.shadows.xs : 'none',
-                                color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+                                color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
                                 fontWeight: activeTab === 'pricing' ? 600 : 500,
-                                fontSize: isMobile ? '13px' : '14px',
+                                fontSize: getFontSize('bodySmall', isMobile),
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
                                 whiteSpace: 'nowrap',
@@ -496,35 +498,36 @@ export function BoatManagement() {
                     <>
                         <div
                             style={{
-                                background: showHelp ? designSystem.colors.background.card : 'transparent',
-                                padding: showHelp ? '14px 16px' : '4px 0',
-                                borderRadius: designSystem.borderRadius.lg,
-                                marginBottom: showHelp ? '20px' : '12px',
-                                fontSize: '14px',
-                                color: designSystem.colors.text.secondary,
-                                border: showHelp ? cardBorder : 'none',
-                                boxShadow: showHelp ? cardShadow : 'none',
+                                marginBottom: designSystem.spacing.md,
                                 cursor: 'pointer',
-                                transition: 'all 0.2s',
                             }}
                             data-track="boat_help_toggle"
                             onClick={() => setShowHelp(!showHelp)}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                                 <span style={{
                                     fontWeight: 500,
-                                    color: showHelp ? designSystem.colors.text.secondary : designSystem.colors.text.disabled,
+                                    fontSize: getFontSize('bodySmall', isMobile),
+                                    color: designSystem.colors.text.disabled,
                                 }}>
                                     {showHelp ? '功能說明' : '說明'}
                                 </span>
-                                <span style={{ fontSize: '12px', color: designSystem.colors.text.disabled }}>
+                                <span style={{
+                                    fontSize: getFontSize('caption', isMobile),
+                                    color: designSystem.colors.text.disabled,
+                                }}>
                                     {showHelp ? '收起' : '展開'}
                                 </span>
                             </div>
                             {showHelp && (
-                                <div style={{ marginTop: '12px', lineHeight: '1.7' }}>
+                                <div style={{
+                                    marginTop: designSystem.spacing.sm,
+                                    fontSize: getFontSize('bodySmall', isMobile),
+                                    color: designSystem.colors.text.secondary,
+                                    lineHeight: 1.7,
+                                }}>
                                     <div>維修/停用：設定特定日期或時段船隻不可預約。</div>
-                                    <div style={{ fontSize: '13px', marginTop: '4px', color: designSystem.colors.text.disabled }}>
+                                    <div style={{ marginTop: '4px', color: designSystem.colors.text.disabled }}>
                                         若不指定時間，則視為全天停用。若指定時間（例如 10:00–12:00），則該時段外仍可預約。
                                     </div>
                                 </div>
@@ -532,13 +535,17 @@ export function BoatManagement() {
                         </div>
 
                         <div style={{
-                            marginBottom: '16px',
+                            marginBottom: designSystem.spacing.md,
                             display: 'flex',
                             alignItems: 'center',
                             gap: '12px',
+                            flexWrap: 'wrap',
                         }}>
-                            <span style={{ fontSize: '14px', color: designSystem.colors.text.secondary }}>
-                                查看維修記錄
+                            <span style={{
+                                fontSize: getFontSize('bodySmall', isMobile),
+                                color: designSystem.colors.text.secondary,
+                            }}>
+                                維修月份
                             </span>
                             <input
                                 type="month"
@@ -547,417 +554,464 @@ export function BoatManagement() {
                                 style={{
                                     flex: 1,
                                     minWidth: 0,
-                                    padding: '12px 14px',
+                                    maxWidth: isMobile ? '100%' : '180px',
+                                    padding: '10px 12px',
                                     border: cardBorder,
                                     borderRadius: designSystem.borderRadius.lg,
                                     fontSize: '16px',
                                     cursor: 'pointer',
                                     background: designSystem.colors.background.card,
-                                    boxShadow: 'none',
                                     boxSizing: 'border-box',
                                 }}
                             />
                         </div>
-                    </>
-                )}
 
-                {/* 船隻列表 */}
-                {activeTab === 'boats' && (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-                        gap: isMobile ? '12px' : '16px',
-                    }}>
-                        {boats.map(boat => {
-                        // 先過濾該船的維修記錄，再按月份過濾
-                        const boatAllUnavailable = unavailableDates.filter(d => d.boat_id === boat.id)
-                        const boatUnavailable = filterUnavailableByMonth(boatAllUnavailable, selectedMonth)
-                        const isActive = boat.is_active
-                        const showMaintenance = !isLandCourse(boat.name)
-
-                        return (
-                            <div
-                                key={boat.id}
-                                style={{
-                                    background: designSystem.colors.background.card,
-                                    borderRadius: designSystem.borderRadius.lg,
-                                    padding: isMobile ? '16px' : '20px',
-                                    boxShadow: cardShadow,
-                                    border: cardBorder,
-                                    borderTop: `3px solid ${boat.color}`,
-                                    opacity: isActive ? 1 : 0.8,
-                                    transition: 'all 0.2s',
-                                }}
-                            >
-                                {/* 船隻名稱 + 狀態 */}
+                        <div style={{
+                            background: designSystem.colors.background.card,
+                            borderRadius: designSystem.borderRadius.lg,
+                            border: cardBorder,
+                            boxShadow: cardShadow,
+                            overflow: 'hidden',
+                        }}>
+                            {boats.length === 0 ? (
                                 <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'flex-start',
-                                    marginBottom: '16px',
-                                    gap: '12px',
+                                    padding: '40px 20px',
+                                    textAlign: 'center',
+                                    fontSize: getFontSize('body', isMobile),
+                                    color: designSystem.colors.text.disabled,
                                 }}>
-                                    <div style={{ flex: 1 }}>
-                                        <h3 style={{
-                                            margin: 0,
-                                            fontSize: isMobile ? '18px' : '20px',
-                                            fontWeight: 650,
-                                            color: designSystem.colors.text.primary,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '10px',
-                                        }}>
-                                            {boat.name}
-                                            {!isActive && (
-                                                <Badge variant="danger" size="small">
-                                                    已燒毀
-                                                </Badge>
-                                            )}
-                                        </h3>
-                                    </div>
-
-                                    {/* 操作按鈕 */}
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        <Button
-                                            variant={isActive ? 'danger' : 'success'}
-                                            size="small"
-                                            data-track="boat_toggle_status"
-                                            onClick={() => handleToggleStatus(boat)}
-                                            style={isActive ? { background: '#fff', color: designSystem.colors.danger[700], border: `1px solid ${designSystem.colors.danger[500]}55`, boxShadow: 'none' } : {}}
-                                        >
-                                            {isActive ? '燒毀' : '啟用'}
-                                        </Button>
-                                    </div>
+                                    尚無船隻
                                 </div>
+                            ) : boats.map((boat, index) => {
+                                const boatAllUnavailable = unavailableDates.filter(d => d.boat_id === boat.id)
+                                const boatUnavailable = filterUnavailableByMonth(boatAllUnavailable, selectedMonth)
+                                const isActive = boat.is_active
+                                const showMaintenance = !isLandCourse(boat.name)
+                                const isLast = index === boats.length - 1
 
-                                {/* 維修/停用記錄 */}
-                                {showMaintenance && boatUnavailable.length > 0 && (
-                                    <div style={{
-                                        marginBottom: '14px',
-                                        padding: isMobile ? '14px' : '16px',
-                                        background: designSystem.colors.warning[50],
-                                        borderRadius: designSystem.borderRadius.lg,
-                                        border: `1px solid ${designSystem.colors.warning[500]}24`
-                                    }}>
+                                return (
+                                    <div
+                                        key={boat.id}
+                                        style={{
+                                            padding: isMobile ? '16px' : '18px 20px',
+                                            borderBottom: isLast ? 'none' : `1px solid ${designSystem.colors.border.light}`,
+                                            opacity: isActive ? 1 : 0.72,
+                                        }}
+                                    >
                                         <div style={{
-                                            fontSize: '14px',
-                                            fontWeight: '600',
-                                            marginBottom: '10px',
-                                            color: designSystem.colors.warning[700]
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: isMobile ? 'stretch' : 'center',
+                                            flexDirection: isMobile ? 'column' : 'row',
+                                            gap: '12px',
                                         }}>
-                                            維修/停用排程
-                                        </div>
-                                        {boatUnavailable.map(record => (
-                                            <div
-                                                key={record.id}
-                                                style={{
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: isMobile ? 'flex-start' : 'center',
-                                                    flexDirection: isMobile ? 'column' : 'row',
-                                                    padding: '8px 0',
-                                                    fontSize: '13px',
-                                                    gap: isMobile ? '8px' : '12px',
-                                                    borderBottom: `1px solid ${designSystem.colors.warning[500]}18`
-                                                }}
-                                            >
-                                                <span style={{
-                                                    flex: 1,
-                                                    color: designSystem.colors.text.secondary,
-                                                    lineHeight: '1.4'
-                                                }}>
-                                                    {/* 顯示日期和時間 */}
-                                                    {record.start_date === record.end_date ? (
-                                                        // 單日維修
-                                                        <>
-                                                            <span style={{ fontWeight: 700, color: designSystem.colors.warning[700] }}>
-                                                                {record.start_date}
-                                                                {record.start_time && record.end_time && (
-                                                                    <> {record.start_time}-{record.end_time}</>
-                                                                )}
-                                                            </span>
-                                                        </>
-                                                    ) : (
-                                                        // 跨日維修
-                                                        <>
-                                                            {record.start_time ? (
-                                                                // 有指定時間：顯示完整的起止日期時間
-                                                                <>
-                                                                    <span style={{ fontWeight: 700, color: designSystem.colors.warning[700] }}>
-                                                                        {record.start_date} {record.start_time}
-                                                                    </span>
-                                                                    <span style={{ margin: '0 4px' }}>~</span>
-                                                                    <span style={{ fontWeight: 700, color: designSystem.colors.warning[700] }}>
-                                                                        {record.end_date} {record.end_time}
-                                                                    </span>
-                                                                </>
-                                                            ) : (
-                                                                // 無指定時間：只顯示日期範圍（全天）
-                                                                `${record.start_date} ~ ${record.end_date}`
-                                                            )}
-                                                        </>
-                                                    )}
-                                                    <span style={{
-                                                        marginLeft: '8px',
-                                                        padding: '3px 9px',
-                                                        background: '#fff',
-                                                        borderRadius: designSystem.borderRadius.full,
-                                                        fontSize: '12px',
-                                                        color: designSystem.colors.text.secondary,
-                                                        boxShadow: designSystem.shadows.xs
+                                            <div style={{
+                                                minWidth: 0,
+                                                flex: 1,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                            }}>
+                                                <span
+                                                    aria-hidden
+                                                    style={{
+                                                        width: 8,
+                                                        height: 8,
+                                                        borderRadius: '50%',
+                                                        background: boat.color || defaultBoatColor,
+                                                        flexShrink: 0,
+                                                    }}
+                                                />
+                                                <div style={{ minWidth: 0 }}>
+                                                    <div style={{
+                                                        fontSize: getFontSize('h3', isMobile),
+                                                        fontWeight: 600,
+                                                        color: designSystem.colors.text.primary,
+                                                        lineHeight: 1.3,
                                                     }}>
-                                                        {record.reason}
-                                                    </span>
-                                                </span>
-                                                <div style={{
-                                                    display: 'flex',
-                                                    gap: '8px',
-                                                    flexShrink: 0,
-                                                    alignSelf: isMobile ? 'flex-start' : 'center'
-                                                }}>
+                                                        {boat.name}
+                                                    </div>
+                                                    {!isActive && (
+                                                        <div style={{
+                                                            marginTop: '4px',
+                                                            fontSize: getFontSize('caption', isMobile),
+                                                            color: designSystem.colors.text.disabled,
+                                                        }}>
+                                                            已燒毀
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div style={{
+                                                display: 'flex',
+                                                gap: '8px',
+                                                alignItems: 'center',
+                                                flexWrap: 'wrap',
+                                                flexShrink: 0,
+                                            }}>
+                                                {showMaintenance && (
                                                     <Button
                                                         variant="outline"
                                                         size="small"
-                                                        data-track="boat_edit_unavailable"
-                                                        onClick={() => openEditUnavailableDialog(boat, record)}
+                                                        data-track="boat_unavailable_dialog"
+                                                        onClick={() => openUnavailableDialog(boat)}
                                                     >
-                                                        編輯
+                                                        設定維修
                                                     </Button>
-                                                    <Button
-                                                        variant="danger"
-                                                        size="small"
-                                                        data-track="boat_delete_unavailable"
-                                                        onClick={() => handleDeleteUnavailable(record)}
-                                                    >
-                                                        刪除
-                                                    </Button>
-                                                </div>
+                                                )}
+                                                <Button
+                                                    variant={isActive ? 'ghost' : 'primary'}
+                                                    size="small"
+                                                    data-track="boat_toggle_status"
+                                                    onClick={() => handleToggleStatus(boat)}
+                                                    style={isActive ? {
+                                                        color: designSystem.colors.danger[700],
+                                                    } : undefined}
+                                                >
+                                                    {isActive ? '燒毀' : '啟用'}
+                                                </Button>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
+                                        </div>
 
-                                {/* 設定維修按鈕 */}
-                                {showMaintenance && (
-                                    <Button
-                                        variant="outline"
-                                        size="medium"
-                                        data-track="boat_unavailable_dialog"
-                                        onClick={() => openUnavailableDialog(boat)}
-                                        fullWidth
-                                        style={{
-                                            background: '#ffffff',
-                                            color: designSystem.colors.text.primary,
-                                            border: `1px solid ${designSystem.colors.border.light}`,
-                                            boxShadow: designSystem.shadows.xs,
-                                        }}
-                                    >
-                                        設定維修/停用
-                                    </Button>
-                                )}
-                            </div>
-                        )
-                    })}
-                    </div>
+                                        {showMaintenance && boatUnavailable.length > 0 && (
+                                            <div style={{
+                                                marginTop: designSystem.spacing.md,
+                                                paddingTop: designSystem.spacing.sm,
+                                                borderTop: `1px solid ${designSystem.colors.border.light}`,
+                                            }}>
+                                                {boatUnavailable.map((record, idx) => (
+                                                    <div
+                                                        key={record.id}
+                                                        style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: isMobile ? 'flex-start' : 'center',
+                                                            flexDirection: isMobile ? 'column' : 'row',
+                                                            padding: '10px 0',
+                                                            gap: isMobile ? '8px' : '12px',
+                                                            borderBottom:
+                                                                idx === boatUnavailable.length - 1
+                                                                    ? 'none'
+                                                                    : `1px solid ${designSystem.colors.border.light}`,
+                                                        }}
+                                                    >
+                                                        <div style={{
+                                                            flex: 1,
+                                                            minWidth: 0,
+                                                            lineHeight: 1.45,
+                                                        }}>
+                                                            <span style={{
+                                                                fontSize: getFontSize('body', isMobile),
+                                                                fontWeight: 500,
+                                                                color: designSystem.colors.text.primary,
+                                                            }}>
+                                                                {record.start_date === record.end_date ? (
+                                                                    <>
+                                                                        {record.start_date}
+                                                                        {record.start_time && record.end_time && (
+                                                                            <> {record.start_time}-{record.end_time}</>
+                                                                        )}
+                                                                    </>
+                                                                ) : record.start_time ? (
+                                                                    <>
+                                                                        {record.start_date} {record.start_time}
+                                                                        <span style={{ margin: '0 4px', fontWeight: 400, color: designSystem.colors.text.disabled }}>~</span>
+                                                                        {record.end_date} {record.end_time}
+                                                                    </>
+                                                                ) : (
+                                                                    `${record.start_date} ~ ${record.end_date}`
+                                                                )}
+                                                            </span>
+                                                            {record.reason && (
+                                                                <span style={{
+                                                                    marginLeft: '8px',
+                                                                    fontSize: getFontSize('bodySmall', isMobile),
+                                                                    color: designSystem.colors.text.disabled,
+                                                                }}>
+                                                                    {record.reason}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            gap: '8px',
+                                                            flexShrink: 0,
+                                                        }}>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="small"
+                                                                data-track="boat_edit_unavailable"
+                                                                onClick={() => openEditUnavailableDialog(boat, record)}
+                                                            >
+                                                                編輯
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="small"
+                                                                data-track="boat_delete_unavailable"
+                                                                onClick={() => handleDeleteUnavailable(record)}
+                                                                style={{ color: designSystem.colors.danger[700] }}
+                                                            >
+                                                                刪除
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </>
                 )}
 
                 {/* 價格設定 Tab */}
                 {activeTab === 'pricing' && (
                     <>
                         <div style={{
-                            marginBottom: '20px',
-                            fontSize: '14px',
+                            marginBottom: designSystem.spacing.lg,
+                            fontSize: getFontSize('bodySmall', isMobile),
                             color: designSystem.colors.text.secondary,
-                            lineHeight: '1.6',
+                            lineHeight: 1.6,
                         }}>
                             <div style={{ marginBottom: '4px' }}>
-                                價格計算：實際金額 = Math.floor(每小時價格 × 分鐘數 / 60)
+                                實際金額 = 每小時價格 × 分鐘數 ÷ 60（無條件捨去）
                             </div>
-                            <div style={{ fontSize: '13px', color: designSystem.colors.text.disabled }}>
-                                例如：$10800/小時 × 30分鐘 / 60 = $5400。儲值價格用於扣儲值；VIP 票券價格用於 VIP 票券。
+                            <div style={{ color: designSystem.colors.text.disabled }}>
+                                例如：$10800/小時 × 30 分 ÷ 60 = $5400。儲值與 VIP 票券各自獨立。
                             </div>
                         </div>
 
                         <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr',
-                            gap: isMobile ? '12px' : '16px',
+                            background: designSystem.colors.background.card,
+                            borderRadius: designSystem.borderRadius.lg,
+                            border: cardBorder,
+                            boxShadow: cardShadow,
+                            overflow: 'hidden',
                         }}>
-                            {boats.map(boat => {
+                            {boats.length === 0 ? (
+                                <div style={{
+                                    padding: '40px 20px',
+                                    textAlign: 'center',
+                                    fontSize: getFontSize('body', isMobile),
+                                    color: designSystem.colors.text.disabled,
+                                }}>
+                                    尚無船隻
+                                </div>
+                            ) : boats.map((boat, index) => {
                                 initEditingPrice(boat)
                                 const editing = editingPrices[boat.id] || { balance: '', vip: '' }
                                 const saving = savingPrices[boat.id] || false
                                 const balancePrice = editing.balance ? parseInt(editing.balance) : null
                                 const vipPrice = editing.vip ? parseInt(editing.vip) : null
+                                const isLast = index === boats.length - 1
+                                const facility = isFacility(boat.name)
+                                const previewOpen = pricePreviewOpen.has(boat.id)
+
+                                const priceInputStyle: CSSProperties = {
+                                    flex: 1,
+                                    padding: '10px 12px',
+                                    borderRadius: designSystem.borderRadius.lg,
+                                    border: cardBorder,
+                                    fontSize: '16px',
+                                    outline: 'none',
+                                    background: designSystem.colors.background.card,
+                                    boxSizing: 'border-box',
+                                }
 
                                 return (
                                     <div
                                         key={boat.id}
                                         style={{
-                                            background: designSystem.colors.background.card,
-                                            borderRadius: designSystem.borderRadius.lg,
-                                            padding: isMobile ? '16px' : '20px',
-                                            boxShadow: cardShadow,
-                                            border: cardBorder,
-                                            borderTop: `3px solid ${boat.color}`,
+                                            padding: isMobile ? '16px' : '18px 20px',
+                                            borderBottom: isLast ? 'none' : `1px solid ${designSystem.colors.border.light}`,
                                         }}
                                     >
-                                        <h3 style={{
-                                            margin: '0 0 16px 0',
-                                            fontSize: isMobile ? '18px' : '20px',
-                                            fontWeight: 650,
-                                            color: designSystem.colors.text.primary,
+                                        <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '10px',
+                                            marginBottom: designSystem.spacing.md,
                                         }}>
-                                            {boat.name}
-                                            {isFacility(boat.name) && (
-                                                <Badge variant="info" size="small">
+                                            <span
+                                                aria-hidden
+                                                style={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: '50%',
+                                                    background: boat.color || defaultBoatColor,
+                                                    flexShrink: 0,
+                                                }}
+                                            />
+                                            <div style={{
+                                                fontSize: getFontSize('h3', isMobile),
+                                                fontWeight: 600,
+                                                color: designSystem.colors.text.primary,
+                                                lineHeight: 1.3,
+                                            }}>
+                                                {boat.name}
+                                            </div>
+                                            {facility && (
+                                                <span style={{
+                                                    fontSize: getFontSize('caption', isMobile),
+                                                    color: designSystem.colors.text.disabled,
+                                                }}>
                                                     不收船費
-                                                </Badge>
+                                                </span>
                                             )}
-                                        </h3>
+                                        </div>
 
-                                        {/* 價格輸入 */}
                                         <div style={{
                                             display: 'grid',
                                             gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-                                            gap: '16px',
-                                            marginBottom: '16px'
+                                            gap: '12px',
+                                            marginBottom: designSystem.spacing.md,
                                         }}>
-                                            {/* 儲值價格 */}
                                             <div>
                                                 <label style={{
                                                     display: 'block',
-                                                    marginBottom: '8px',
-                                                    fontSize: '14px',
-                                                    fontWeight: '600',
-                                                    color: designSystem.colors.text.secondary
+                                                    marginBottom: '6px',
+                                                    fontSize: getFontSize('bodySmall', isMobile),
+                                                    fontWeight: 500,
+                                                    color: designSystem.colors.text.secondary,
                                                 }}>
-                                                    儲值價格（每小時）
+                                                    儲值（每小時）
                                                 </label>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <span style={{ fontSize: '16px', color: designSystem.colors.text.secondary }}>$</span>
+                                                    <span style={{
+                                                        fontSize: getFontSize('body', isMobile),
+                                                        color: designSystem.colors.text.disabled,
+                                                    }}>$</span>
                                                     <input
                                                         type="text"
                                                         inputMode="numeric"
                                                         value={editing.balance}
                                                         onChange={(e) => {
-                                                            const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                                                            const numValue = e.target.value.replace(/\D/g, '')
                                                             setEditingPrices(prev => ({
                                                                 ...prev,
-                                                                [boat.id]: { ...editing, balance: numValue }
+                                                                [boat.id]: { ...editing, balance: numValue },
                                                             }))
                                                         }}
                                                         placeholder="未設定"
-                                                        style={{
-                                                            flex: 1,
-                                                            padding: '12px 14px',
-                                                            borderRadius: designSystem.borderRadius.lg,
-                                                            border: `1px solid ${designSystem.colors.border.light}`,
-                                                            fontSize: '16px',
-                                                            outline: 'none',
-                                                            background: '#fff',
-                                                            transition: 'border-color 0.2s, box-shadow 0.2s',
-                                                            boxShadow: designSystem.shadows.xs
-                                                        }}
-                                                        onFocus={(e) => e.target.style.borderColor = designSystem.colors.primary[400]}
-                                                        onBlur={(e) => e.target.style.borderColor = designSystem.colors.border.light}
+                                                        style={priceInputStyle}
                                                     />
                                                 </div>
                                             </div>
-
-                                            {/* VIP 票券價格 */}
                                             <div>
                                                 <label style={{
                                                     display: 'block',
-                                                    marginBottom: '8px',
-                                                    fontSize: '14px',
-                                                    fontWeight: '600',
-                                                    color: designSystem.colors.text.secondary
+                                                    marginBottom: '6px',
+                                                    fontSize: getFontSize('bodySmall', isMobile),
+                                                    fontWeight: 500,
+                                                    color: designSystem.colors.text.secondary,
                                                 }}>
-                                                    VIP 票券價格（每小時）
+                                                    VIP 票券（每小時）
                                                 </label>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <span style={{ fontSize: '16px', color: designSystem.colors.text.secondary }}>$</span>
+                                                    <span style={{
+                                                        fontSize: getFontSize('body', isMobile),
+                                                        color: designSystem.colors.text.disabled,
+                                                    }}>$</span>
                                                     <input
                                                         type="text"
                                                         inputMode="numeric"
                                                         value={editing.vip}
                                                         onChange={(e) => {
-                                                            const numValue = e.target.value.replace(/\D/g, '') // 只允許數字
+                                                            const numValue = e.target.value.replace(/\D/g, '')
                                                             setEditingPrices(prev => ({
                                                                 ...prev,
-                                                                [boat.id]: { ...editing, vip: numValue }
+                                                                [boat.id]: { ...editing, vip: numValue },
                                                             }))
                                                         }}
                                                         placeholder="未設定"
-                                                        style={{
-                                                            flex: 1,
-                                                            padding: '12px 14px',
-                                                            borderRadius: designSystem.borderRadius.lg,
-                                                            border: `1px solid ${designSystem.colors.border.light}`,
-                                                            fontSize: '16px',
-                                                            outline: 'none',
-                                                            background: '#fff',
-                                                            transition: 'border-color 0.2s, box-shadow 0.2s',
-                                                            boxShadow: designSystem.shadows.xs
-                                                        }}
-                                                        onFocus={(e) => e.target.style.borderColor = designSystem.colors.primary[400]}
-                                                        onBlur={(e) => e.target.style.borderColor = designSystem.colors.border.light}
+                                                        style={priceInputStyle}
                                                     />
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* 價格預覽 */}
                                         <div style={{
-                                            background: designSystem.colors.secondary[50],
-                                            padding: isMobile ? '12px 14px' : '14px 16px',
-                                            borderRadius: designSystem.borderRadius.lg,
-                                            marginBottom: '16px',
-                                            fontSize: '13px',
-                                            color: designSystem.colors.text.secondary,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            flexWrap: 'wrap',
                                         }}>
-                                            <div style={{ fontWeight: 600, marginBottom: '8px', color: designSystem.colors.text.primary }}>
-                                                價格預覽
-                                            </div>
-                                            <div style={{
-                                                display: 'grid',
-                                                gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-                                                gap: '12px'
-                                            }}>
-                                                <div>
-                                                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>儲值價格</div>
-                                                    <div>20分: {calculatePrice(balancePrice, 20)}</div>
-                                                    <div>30分: {calculatePrice(balancePrice, 30)}</div>
-                                                    <div>40分: {calculatePrice(balancePrice, 40)}</div>
-                                                    <div>60分: {calculatePrice(balancePrice, 60)}</div>
-                                                    <div>90分: {calculatePrice(balancePrice, 90)}</div>
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>VIP 票券價格</div>
-                                                    <div>20分: {calculatePrice(vipPrice, 20)}</div>
-                                                    <div>30分: {calculatePrice(vipPrice, 30)}</div>
-                                                    <div>40分: {calculatePrice(vipPrice, 40)}</div>
-                                                    <div>60分: {calculatePrice(vipPrice, 60)}</div>
-                                                    <div>90分: {calculatePrice(vipPrice, 90)}</div>
-                                                </div>
-                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPricePreviewOpen(prev => {
+                                                        const next = new Set(prev)
+                                                        if (next.has(boat.id)) next.delete(boat.id)
+                                                        else next.add(boat.id)
+                                                        return next
+                                                    })
+                                                }}
+                                                style={{
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    padding: 0,
+                                                    cursor: 'pointer',
+                                                    fontSize: getFontSize('bodySmall', isMobile),
+                                                    color: designSystem.colors.text.disabled,
+                                                    fontWeight: 500,
+                                                }}
+                                            >
+                                                {previewOpen ? '收起預覽' : '價格預覽'}
+                                            </button>
+                                            <div style={{ flex: 1 }} />
+                                            <Button
+                                                variant="primary"
+                                                size="small"
+                                                data-track="boat_save_price"
+                                                onClick={() => handleUpdatePrice(boat)}
+                                                disabled={saving}
+                                            >
+                                                {saving ? '儲存中...' : '儲存'}
+                                            </Button>
                                         </div>
 
-                                        {/* 儲存按鈕 */}
-                                        <Button
-                                            variant="primary"
-                                            size="medium"
-                                            data-track="boat_save_price"
-                                            onClick={() => handleUpdatePrice(boat)}
-                                            disabled={saving}
-                                            fullWidth
-                                        >
-                                            {saving ? '儲存中...' : '儲存價格'}
-                                        </Button>
+                                        {previewOpen && (
+                                            <div style={{
+                                                marginTop: designSystem.spacing.md,
+                                                paddingTop: designSystem.spacing.sm,
+                                                borderTop: `1px solid ${designSystem.colors.border.light}`,
+                                                display: 'grid',
+                                                gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+                                                gap: '12px',
+                                                fontSize: getFontSize('bodySmall', isMobile),
+                                                color: designSystem.colors.text.secondary,
+                                            }}>
+                                                <div>
+                                                    <div style={{
+                                                        marginBottom: '4px',
+                                                        color: designSystem.colors.text.disabled,
+                                                    }}>
+                                                        儲值
+                                                    </div>
+                                                    <div>20分 {calculatePrice(balancePrice, 20)}</div>
+                                                    <div>30分 {calculatePrice(balancePrice, 30)}</div>
+                                                    <div>40分 {calculatePrice(balancePrice, 40)}</div>
+                                                    <div>60分 {calculatePrice(balancePrice, 60)}</div>
+                                                    <div>90分 {calculatePrice(balancePrice, 90)}</div>
+                                                </div>
+                                                <div>
+                                                    <div style={{
+                                                        marginBottom: '4px',
+                                                        color: designSystem.colors.text.disabled,
+                                                    }}>
+                                                        VIP 票券
+                                                    </div>
+                                                    <div>20分 {calculatePrice(vipPrice, 20)}</div>
+                                                    <div>30分 {calculatePrice(vipPrice, 30)}</div>
+                                                    <div>40分 {calculatePrice(vipPrice, 40)}</div>
+                                                    <div>60分 {calculatePrice(vipPrice, 60)}</div>
+                                                    <div>90分 {calculatePrice(vipPrice, 90)}</div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )
                             })}
