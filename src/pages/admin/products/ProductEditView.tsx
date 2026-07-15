@@ -859,60 +859,6 @@ export function ProductEditView({
               disabled={saving || readOnly}
             />
           </div>
-          {/* 上架到商城 toggle（is_public） */}
-          <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '12px 14px',
-                background: isPublic
-                  ? designSystem.colors.warning[50]
-                  : designSystem.colors.secondary[50],
-                border: `1px solid ${
-                  isPublic ? designSystem.colors.warning[500] : designSystem.colors.border.light
-                }`,
-                borderRadius: designSystem.borderRadius.md,
-                cursor: readOnly || saving ? 'not-allowed' : 'pointer',
-                userSelect: 'none',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                disabled={saving || readOnly}
-                style={{
-                  width: 18,
-                  height: 18,
-                  cursor: 'inherit',
-                  accentColor: designSystem.colors.warning[500],
-                }}
-              />
-              <div
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: getFontSize('body', isMobile),
-                    fontWeight: 600,
-                    color: designSystem.colors.text.primary,
-                  }}
-                >
-                  上架 Shop
-                </span>
-                <ShopVisibilityPill isPublic={isPublic} />
-              </div>
-            </label>
-          </div>
         </div>
       </section>
 
@@ -980,6 +926,86 @@ export function ProductEditView({
             )}
           </div>
         )}
+
+        {/* 商城顯示：保留在同一個建檔群組中，作為完成規格後的次要設定 */}
+        <div
+          style={{
+            marginTop: designSystem.spacing.lg,
+            paddingTop: designSystem.spacing.lg,
+            borderTop: `1px solid ${designSystem.colors.border.light}`,
+          }}
+        >
+        <h3
+          style={{
+            margin: `0 0 ${designSystem.spacing.md} 0`,
+            fontSize: getFontSize('body', isMobile),
+            fontWeight: 700,
+            color: designSystem.colors.text.primary,
+          }}
+        >
+          Shop 上架
+        </h3>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '12px 14px',
+            background: isPublic
+              ? designSystem.colors.warning[50]
+              : designSystem.colors.secondary[50],
+            border: `1px solid ${
+              isPublic ? designSystem.colors.warning[500] : designSystem.colors.border.light
+            }`,
+            borderRadius: designSystem.borderRadius.md,
+            cursor: readOnly || saving ? 'not-allowed' : 'pointer',
+            userSelect: 'none',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.target.checked)}
+            disabled={saving || readOnly}
+            style={{
+              width: 18,
+              height: 18,
+              cursor: 'inherit',
+              accentColor: designSystem.colors.warning[500],
+            }}
+          />
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+            }}
+          >
+            <span
+              style={{
+                fontSize: getFontSize('body', isMobile),
+                fontWeight: 600,
+                color: designSystem.colors.text.primary,
+              }}
+            >
+              上架 Shop
+            </span>
+            <ShopVisibilityPill isPublic={isPublic} />
+          </div>
+        </label>
+        <p
+          style={{
+            margin: '10px 2px 0',
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary,
+          }}
+        >
+          每個 SKU 的 Shop 封面可在上方規格卡底部展開設定。
+        </p>
+        </div>
       </section>
 
       {/* 危險區（編輯模式才有；唯讀模式隱藏） */}
@@ -1104,6 +1130,23 @@ interface VariantBlockProps {
   onGenerateLabelCode?: () => void
 }
 
+function SectionLabel({ children, isMobile }: { children: React.ReactNode; isMobile: boolean }) {
+  return (
+    <div
+      style={{
+        margin: '14px 0 8px',
+        paddingTop: 12,
+        borderTop: `1px solid ${designSystem.colors.border.light}`,
+        fontSize: getFontSize('bodySmall', isMobile),
+        fontWeight: 700,
+        color: designSystem.colors.text.secondary,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
 function VariantBlock({
   index,
   draft,
@@ -1192,7 +1235,7 @@ function VariantBlock({
 
   const stockField = (
     <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
-      <label style={labelStyle}>庫存 *</label>
+      <label style={labelStyle}>現有庫存 *</label>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
         <NumericTextInput
           variant="course"
@@ -1208,15 +1251,24 @@ function VariantBlock({
             })
           }
         />
-        <span style={{ fontSize: 14, color: '#666', flexShrink: 0 }}>件</span>
+        <span style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>
+          件
+        </span>
       </div>
       {draft.reserved_qty > 0 && (
         <p style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.secondary[700], margin: '4px 0 0' }}>
-          其中 {draft.reserved_qty} 件已送結帳保留 · 可售 {Math.max(0, (Number(draft.stock) || 0) - draft.reserved_qty)} 件
+          待結帳保留 {draft.reserved_qty} 件 · 可售現貨{' '}
+          {Math.max(0, (Number(draft.stock) || 0) - draft.reserved_qty)} 件
         </p>
       )}
       {draft.last_stock_in_at && (
-        <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>
+        <p
+          style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary,
+            margin: '4px 0 0',
+          }}
+        >
           最近入庫：{formatDateTime(draft.last_stock_in_at)}
         </p>
       )}
@@ -1239,7 +1291,7 @@ function VariantBlock({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 8,
-            fontSize: 14,
+            fontSize: getFontSize('body', isMobile),
             cursor: disabled || draft.pendingDelete ? 'default' : 'pointer',
           }}
         >
@@ -1258,7 +1310,7 @@ function VariantBlock({
       </div>
     )
 
-  const fieldsGrid = (
+  const specFieldsGrid = (
     <div
       style={{
         display: 'grid',
@@ -1266,8 +1318,6 @@ function VariantBlock({
         gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
       }}
     >
-      {stockField}
-      {preOrderField}
       <div style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>
         <label style={labelStyle}>貨號</label>
         <input
@@ -1315,10 +1365,25 @@ function VariantBlock({
           )}
         </div>
       ))}
+    </div>
+  )
+
+  const inventoryFieldsGrid = (
+    <div
+      style={{
+        display: 'grid',
+        gap: 8,
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
+      }}
+    >
+      {stockField}
+      {preOrderField}
       <div>
         <label style={labelStyle}>
           售價
-          <span style={{ color: '#999', fontWeight: 400, marginLeft: 4 }}>(留空＝待補)</span>
+          <span style={{ color: designSystem.colors.text.disabled, fontWeight: 400, marginLeft: 4 }}>
+            (留空＝待補)
+          </span>
         </label>
         <NumericTextInput
           variant="course"
@@ -1362,7 +1427,7 @@ function VariantBlock({
       style={{
         marginTop: 16,
         paddingTop: 16,
-        borderTop: '1px solid #eee',
+        borderTop: `1px solid ${designSystem.colors.border.light}`,
       }}
     >
       <div
@@ -1374,10 +1439,18 @@ function VariantBlock({
           marginBottom: 4,
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>標籤代碼</div>
         <div
           style={{
-            fontSize: 12,
+            fontSize: getFontSize('bodySmall', isMobile),
+            fontWeight: 600,
+            color: designSystem.colors.text.primary,
+          }}
+        >
+          標籤代碼
+        </div>
+        <div
+          style={{
+            fontSize: getFontSize('caption', isMobile),
             color:
               draft.label_code.length >= LABEL_CODE_MAX_LEN
                 ? designSystem.colors.danger[700]
@@ -1388,7 +1461,14 @@ function VariantBlock({
           {draft.label_code.length}/{LABEL_CODE_MAX_LEN}
         </div>
       </div>
-      <div style={{ fontSize: 11, color: '#999', marginBottom: 10, lineHeight: 1.4 }}>
+      <div
+        style={{
+          fontSize: getFontSize('caption', isMobile),
+          color: designSystem.colors.text.disabled,
+          marginBottom: 10,
+          lineHeight: 1.4,
+        }}
+      >
         {LABEL_CODE_RULE_HINT}
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
@@ -1420,10 +1500,10 @@ function VariantBlock({
               flexShrink: 0,
               padding: '0 14px',
               borderRadius: 8,
-              border: '1px solid #333',
-              background: '#fff',
-              color: '#333',
-              fontSize: 13,
+              border: `1px solid ${designSystem.colors.primary[500]}`,
+              background: designSystem.colors.background.card,
+              color: designSystem.colors.primary[500],
+              fontSize: getFontSize('button', isMobile),
               fontWeight: 600,
               whiteSpace: 'nowrap',
               cursor:
@@ -1467,7 +1547,14 @@ function VariantBlock({
             {labelCodeSaving ? '儲存中…' : '儲存標籤'}
           </Button>
           {!draft.id && (
-            <p style={{ fontSize: 12, color: '#888', margin: '8px 0 0', textAlign: isMobile ? 'center' : 'left' }}>
+            <p
+              style={{
+                fontSize: getFontSize('caption', isMobile),
+                color: designSystem.colors.text.secondary,
+                margin: '8px 0 0',
+                textAlign: isMobile ? 'center' : 'left',
+              }}
+            >
               新建 SKU：可修改代碼後，與商品一起按「儲存」
             </p>
           )}
@@ -1516,7 +1603,7 @@ function VariantBlock({
           border: 'none',
           background: 'transparent',
           color: designSystem.colors.info[700],
-          fontSize: 12,
+          fontSize: getFontSize('caption', isMobile),
           cursor: disabled || draft.pendingDelete ? 'not-allowed' : 'pointer',
         }}
       >
@@ -1536,9 +1623,9 @@ function VariantBlock({
         alignItems: 'center',
         gap: 10,
         padding: '10px 12px',
-        border: '1px solid #e5e7eb',
-        borderRadius: 10,
-        background: '#fafafa',
+        border: `1px solid ${designSystem.colors.border.light}`,
+        borderRadius: designSystem.borderRadius.sm,
+        background: designSystem.colors.secondary[50],
         cursor: disabled || draft.pendingDelete ? 'not-allowed' : 'pointer',
         textAlign: 'left',
       }}
@@ -1550,12 +1637,12 @@ function VariantBlock({
           flexShrink: 0,
           borderRadius: 8,
           overflow: 'hidden',
-          background: '#eee',
+          background: designSystem.colors.secondary[100],
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 11,
-          color: '#999',
+          fontSize: getFontSize('caption', isMobile),
+          color: designSystem.colors.text.disabled,
         }}
       >
         {draft.cover_image_url ? (
@@ -1569,14 +1656,30 @@ function VariantBlock({
         )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#444' }}>
+        <div
+          style={{
+            fontSize: getFontSize('bodySmall', isMobile),
+            fontWeight: 600,
+            color: designSystem.colors.text.primary,
+          }}
+        >
           {draft.cover_image_url ? '封面 ✓' : '封面 未設'}
         </div>
         {!isMobile && (
-          <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>相簿／URL</div>
+          <div
+            style={{
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.text.secondary,
+              marginTop: 2,
+            }}
+          >
+            相簿／URL
+          </div>
         )}
       </div>
-      <span style={{ fontSize: 12, color: designSystem.colors.info[700], flexShrink: 0 }}>展開 ▾</span>
+      <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.info[700], flexShrink: 0 }}>
+        展開 ▾
+      </span>
     </button>
   )
 
@@ -1593,7 +1696,14 @@ function VariantBlock({
           userSelect: 'none',
         }}
       >
-        <span style={{ fontWeight: 600, fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>
+        <span
+          style={{
+            fontWeight: 600,
+            fontSize: getFontSize('bodySmall', isMobile),
+            color: designSystem.colors.text.secondary,
+            whiteSpace: 'nowrap',
+          }}
+        >
           SKU #{index + 1}
         </span>
         {/* 折疊狀態下顯示摘要：規格 + 庫存 / 貨號 */}
@@ -1602,29 +1712,31 @@ function VariantBlock({
             style={{
               flex: 1,
               minWidth: 0,
-              fontSize: 12,
-              color: '#777',
+              fontSize: getFontSize('bodySmall', isMobile),
+              color: designSystem.colors.text.secondary,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}
           >
             {summary || draft.vendor_code || '（空白）'}
-            <span style={{ marginLeft: 8, color: '#999' }}>
+            <span style={{ marginLeft: 8, color: designSystem.colors.text.disabled }}>
               ·庫存 {draft.stock.trim() !== '' ? draft.stock : '未填'}
             </span>
           </span>
         )}
         {!effectiveCollapsed && <span style={{ flex: 1 }} />}
         {draft.pendingDelete ? (
-          <span style={{ color: designSystem.colors.danger[700], fontSize: 12 }}>（將刪除）</span>
+          <span style={{ color: designSystem.colors.danger[700], fontSize: getFontSize('bodySmall', isMobile) }}>
+            （將刪除）
+          </span>
         ) : null}
         {headerClickable && (
           <span
             aria-hidden
             style={{
-              fontSize: 11,
-              color: '#aaa',
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.text.disabled,
               transition: 'transform 0.15s',
               transform: effectiveCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
             }}
@@ -1666,8 +1778,11 @@ function VariantBlock({
 
       {effectiveCollapsed ? null : (
         <>
-          {fieldsGrid}
+          <SectionLabel isMobile={isMobile}>規格資料</SectionLabel>
+          {specFieldsGrid}
           {productPhotoSection}
+          <SectionLabel isMobile={isMobile}>庫存與售價</SectionLabel>
+          {inventoryFieldsGrid}
           {labelCodeSection}
           {collapsibleCoverSection}
         </>

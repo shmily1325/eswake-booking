@@ -129,10 +129,10 @@ export function ProductHub() {
         {canEdit && (
           <>
             <AdminPillLink to="/products" end active={!onOrders}>
-              庫存
+              商品與庫存
             </AdminPillLink>
             <AdminPillLink to="/products/orders" active={onOrders}>
-              訂單開單
+              訂單整理
             </AdminPillLink>
           </>
         )}
