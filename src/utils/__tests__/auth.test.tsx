@@ -10,7 +10,9 @@ import {
   clearPermissionCache,
   useRequireAdmin,
   hasViewAccess,
+  hasProductsAccessAsync,
   hasEditorFeatureAsync,
+  canPreviewProductsReadOnly,
   getEditorFeatureFlags
 } from '../auth'
 import { supabase } from '../../lib/supabase'
@@ -110,6 +112,15 @@ describe('auth.ts - 權限驗證', () => {
     it('沒有 email 的用戶應該不是管理員', () => {
       const user = { ...createMockUser('test@example.com'), email: undefined }
       expect(isAdmin(user as User)).toBe(false)
+    })
+  })
+
+  describe('canPreviewProductsReadOnly', () => {
+    it('只允許指定管理員使用商品唯讀預覽', () => {
+      expect(canPreviewProductsReadOnly(createMockUser('minlin1325@gmail.com'))).toBe(true)
+      expect(canPreviewProductsReadOnly(createMockUser('pjpan0511@gmail.com'))).toBe(true)
+      expect(canPreviewProductsReadOnly(createMockUser('callumbao1122@gmail.com'))).toBe(false)
+      expect(canPreviewProductsReadOnly(null)).toBe(false)
     })
   })
 
@@ -334,6 +345,40 @@ describe('auth.ts - 權限驗證', () => {
 
       const regularUser = createMockUser('regular@example.com')
       expect(await hasViewAccess(regularUser)).toBe(false)
+    })
+  })
+
+  describe('hasProductsAccessAsync', () => {
+    it('一般權限用戶可以唯讀進入商品頁', async () => {
+      vi.mocked(supabase.from).mockImplementation(((table: string) => ({
+        select: vi.fn(() => Promise.resolve({
+          data: table === 'view_users' ? [{ email: 'viewer@example.com' }] : [],
+          error: null,
+        })),
+      })) as unknown as typeof supabase.from)
+
+      expect(await hasProductsAccessAsync(createMockUser('viewer@example.com'))).toBe(true)
+    })
+
+    it('沒有一般權限的用戶不能進入商品頁', async () => {
+      vi.mocked(supabase.from).mockImplementation((() => ({
+        select: vi.fn(() => Promise.resolve({ data: [], error: null })),
+      })) as unknown as typeof supabase.from)
+
+      expect(await hasProductsAccessAsync(createMockUser('nobody@example.com'))).toBe(false)
+    })
+
+    it('商品頁瀏覽權限不會自動授予商品編輯權限', async () => {
+      vi.mocked(supabase.from).mockImplementation(((table: string) => ({
+        select: vi.fn(() => Promise.resolve({
+          data: table === 'view_users' ? [{ email: 'viewer@example.com' }] : [],
+          error: null,
+        })),
+      })) as unknown as typeof supabase.from)
+
+      const user = createMockUser('viewer@example.com')
+      expect(await hasProductsAccessAsync(user)).toBe(true)
+      expect(await hasEditorFeatureAsync(user, 'can_products')).toBe(false)
     })
   })
 

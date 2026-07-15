@@ -116,8 +116,6 @@ export function MemberManagement() {
   const [expiringFilter, setExpiringFilter] = useState<string>('none') // 'none', 'membership', 'board'
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
   const [showExpiringDetails, setShowExpiringDetails] = useState(false) // 收合/展開到期詳情
-  const [sortBy, setSortBy] = useState<string>('updated_at') // 預設依會員資料最近更新時間排序
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc') // 最新更新顯示在最上方
   const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false)
   /** 列表備忘錄展開的會員 id（預設收合，只顯示最近幾則） */
   const [expandedMemoMemberIds, setExpandedMemoMemberIds] = useState<Set<string>>(() => new Set())
@@ -497,59 +495,21 @@ export function MemberManagement() {
       result = result.filter(m => !m.is_line_bound)
     }
 
-    // 排序
+    // 固定依最近更新排序；同時間或未更新時依暱稱穩定排列
     result = [...result].sort((a, b) => {
-      let comparison = 0
-      switch (sortBy) {
-        case 'updated_at':
-          // 只依會員資料的實際更新時間排序，不受備忘錄活動日期影響
-          const dateA = a.updated_at
-          const dateB = b.updated_at
-          // 空值永遠排最後
-          if (!dateA && !dateB) return 0
-          if (!dateA) return 1
-          if (!dateB) return -1
-          comparison = dateA.localeCompare(dateB)
-          break
-        case 'membership_end_date':
-          const dateA_end = normalizeDate(a.membership_end_date)
-          const dateB_end = normalizeDate(b.membership_end_date)
-          // 空值永遠排最後（沒有會籍的排最後）
-          if (!dateA_end && !dateB_end) return 0
-          if (!dateA_end) return 1
-          if (!dateB_end) return -1
-          comparison = dateA_end.localeCompare(dateB_end)
-          break
-        case 'board_expiry':
-          // 取會員最早的置板到期日
-          const getEarliestBoardExpiry = (member: Member) => {
-            if (!member.board_slots || member.board_slots.length === 0) return null
-            const expiryDates = member.board_slots
-              .map(slot => normalizeDate(slot.expires_at))
-              .filter((d): d is string => d !== null)
-            if (expiryDates.length === 0) return null
-            return expiryDates.sort()[0] // 取最早的到期日
-          }
-          const boardA = getEarliestBoardExpiry(a)
-          const boardB = getEarliestBoardExpiry(b)
-          // 空值永遠排最後（沒有置板的排最後）
-          if (!boardA && !boardB) return 0
-          if (!boardA) return 1
-          if (!boardB) return -1
-          comparison = boardA.localeCompare(boardB)
-          break
-        case 'nickname':
-        default:
-          const nameA = (a.nickname || a.name || '').toLowerCase()
-          const nameB = (b.nickname || b.name || '').toLowerCase()
-          comparison = nameA.localeCompare(nameB, 'zh-TW')
-          break
+      const compareNickname = () => {
+        const nameA = (a.nickname || a.name || '').toLowerCase()
+        const nameB = (b.nickname || b.name || '').toLowerCase()
+        return nameA.localeCompare(nameB, 'zh-TW')
       }
-      return sortOrder === 'desc' ? -comparison : comparison
+      if (!a.updated_at && !b.updated_at) return compareNickname()
+      if (!a.updated_at) return 1
+      if (!b.updated_at) return -1
+      return b.updated_at.localeCompare(a.updated_at) || compareNickname()
     })
     
     return result
-  }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards, sortBy, sortOrder])
+  }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards])
 
 
   if (loading) {
@@ -751,8 +711,8 @@ export function MemberManagement() {
               }}
             >
               {mobileFiltersExpanded
-                ? '收合篩選與排序'
-                : `篩選與排序（類型、LINE、排序）${filtersActive ? ' · 已套用' : ''}`}
+                ? '收合篩選'
+                : `篩選（類型、到期、LINE）${filtersActive ? ' · 已套用' : ''}`}
             </button>
               )
             })()}
@@ -794,8 +754,6 @@ export function MemberManagement() {
                 >
                   <option value="all">全部 ({members.length})</option>
                   <option value="member">會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
-                  <option value="general">一般 ({members.filter(m => m.membership_type === 'general').length})</option>
-                  <option value="dual">雙人 ({members.filter(m => m.membership_type === 'dual').length})</option>
                   <option value="guest">非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
                   <option value="es">ES ({members.filter(m => m.membership_type === 'es').length})</option>
                   {expiringMemberships.length > 0 && (
@@ -830,45 +788,6 @@ export function MemberManagement() {
                   <option value="bound">LINE 已綁定 ({members.filter(m => m.is_line_bound).length})</option>
                   <option value="unbound">LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})</option>
                 </select>
-              </div>
-
-              {/* 排序下拉選單 + 方向按鈕 */}
-              <div style={{ width: '100%', display: 'flex', gap: '6px' }}>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    flex: 1,
-                    minWidth: 0,
-                    paddingRight: '32px',
-                    appearance: 'none',
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 12px center',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: getFontSize('body', isMobile),
-                  }}
-                >
-                  <option value="nickname">暱稱</option>
-                  <option value="updated_at">最近更新</option>
-                  <option value="membership_end_date">會籍到期</option>
-                  <option value="board_expiry">置板到期</option>
-                </select>
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  style={{
-                    ...getButtonStyle('outline', 'medium', isMobile),
-                    minWidth: '44px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  title={sortOrder === 'asc' ? '升序（點擊切換）' : '降序（點擊切換）'}
-                >
-                  {sortOrder === 'asc' ? '▲' : '▼'}
-                </button>
               </div>
 
               {/* 包含已隱藏 checkbox */}
@@ -917,8 +836,6 @@ export function MemberManagement() {
               {[
                 { value: 'all', label: '全部', count: members.length },
                 { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
-                { value: 'general', label: '一般', count: members.filter(m => m.membership_type === 'general').length },
-                { value: 'dual', label: '雙人', count: members.filter(m => m.membership_type === 'dual').length },
                 { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
                 { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
               ].map(type => (
@@ -977,13 +894,15 @@ export function MemberManagement() {
                 disabled={expiringBoards.length === 0}
                 style={{
                   ...getButtonStyle('outline', 'small', false),
-                  ...getFilterChipStyle(expiringFilter === 'board', 'info'),
+                  ...getFilterChipStyle(expiringFilter === 'board', 'warning'),
                   opacity: expiringBoards.length === 0 ? 0.5 : 1,
                   cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
                 }}
               >
                 置板到期 ({expiringBoards.length})
               </button>
+
+              <div style={{ width: '1px', height: '22px', background: designSystem.colors.border.light, margin: '0 2px' }} />
 
               <button
                 type="button"
@@ -1007,45 +926,6 @@ export function MemberManagement() {
                 }}
               >
                 LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
-              </button>
-
-              <div style={{ width: '1px', height: '22px', background: designSystem.colors.border.light, margin: '0 2px' }} />
-
-              <select
-                value={sortBy}
-                onChange={(e) => {
-                  setSortBy(e.target.value)
-                  setSortOrder('asc')
-                }}
-                aria-label="排序欄位"
-                style={{
-                  ...getInputStyle(false),
-                  width: 'auto',
-                  minWidth: '120px',
-                  padding: '7px 28px 7px 12px',
-                  appearance: 'none',
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 10px center',
-                  cursor: 'pointer',
-                  fontSize: getFontSize('button', isMobile),
-                }}
-              >
-                <option value="nickname">暱稱</option>
-                <option value="updated_at">最近更新</option>
-                <option value="membership_end_date">會籍到期</option>
-                <option value="board_expiry">置板到期</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                style={{
-                  ...getButtonStyle('outline', 'small', false),
-                  minWidth: '40px',
-                }}
-                title={sortOrder === 'asc' ? '升序（點擊切換）' : '降序（點擊切換）'}
-              >
-                {sortOrder === 'asc' ? '▲' : '▼'}
               </button>
 
               <label style={{

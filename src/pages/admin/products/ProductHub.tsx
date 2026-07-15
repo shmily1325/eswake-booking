@@ -19,7 +19,12 @@ import { useResponsive } from '../../../hooks/useResponsive'
 
 import { Footer } from '../../../components/Footer'
 
-import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../../utils/auth'
+import {
+  canPreviewProductsReadOnly,
+  hasEditorFeatureAsync,
+  hasProductsAccessAsync,
+  isAdmin,
+} from '../../../utils/auth'
 import { usePendingBillOrderCount } from '../../../hooks/usePendingBillOrderCount'
 
 import { useToast } from '../../../components/ui'
@@ -46,6 +51,9 @@ export function ProductHub() {
 
   const [canEdit, setCanEdit] = useState(false)
   const userIsAdmin = isAdmin(user)
+  const forceReadOnly =
+    canPreviewProductsReadOnly(user) &&
+    new URLSearchParams(location.search).get('mode') === 'readonly'
   const { count: pendingSettleCount } = usePendingBillOrderCount(userIsAdmin)
   const { isMobile } = useResponsive()
 
@@ -72,7 +80,8 @@ export function ProductHub() {
       }
 
       const editable =
-        (await hasEditorFeatureAsync(user, 'can_products')) || isAdmin(user)
+        !forceReadOnly &&
+        ((await hasEditorFeatureAsync(user, 'can_products')) || isAdmin(user))
 
       if (cancelled) return
 
@@ -88,7 +97,7 @@ export function ProductHub() {
 
     }
 
-  }, [user.id, navigate, toast])
+  }, [user, navigate, toast, forceReadOnly])
 
 
 
@@ -118,23 +127,25 @@ export function ProductHub() {
 
       <PageHeader
         user={user}
-        title="商品"
-        showBaoLink={userIsAdmin}
+        title={canEdit ? '商品管理' : '商品查詢'}
+        showBaoLink={userIsAdmin && !forceReadOnly}
         productHubSection={onOrders ? 'orders' : 'inventory'}
-        showOrderSettleLink={userIsAdmin}
+        showOrderSettleLink={userIsAdmin && !forceReadOnly}
         pendingSettleCount={pendingSettleCount}
       />
 
       <AdminPillRow style={{ marginBottom: isMobile ? 12 : 16 }}>
+        <AdminPillLink
+          to={forceReadOnly ? '/products?mode=readonly' : '/products'}
+          end
+          active={!onOrders}
+        >
+          商品與庫存
+        </AdminPillLink>
         {canEdit && (
-          <>
-            <AdminPillLink to="/products" end active={!onOrders}>
-              商品與庫存
-            </AdminPillLink>
-            <AdminPillLink to="/products/orders" active={onOrders}>
-              訂單整理
-            </AdminPillLink>
-          </>
+          <AdminPillLink to="/products/orders" active={onOrders}>
+            訂單整理
+          </AdminPillLink>
         )}
         <ExternalNavLink
           href={getPublicShopHomeUrl()}
@@ -147,7 +158,16 @@ export function ProductHub() {
 
       <Routes>
 
-        <Route index element={<ProductManagement embedded />} />
+        <Route
+          index
+          element={
+            <ProductManagement
+              key={forceReadOnly ? 'readonly-preview' : 'products'}
+              embedded
+              readOnly={forceReadOnly}
+            />
+          }
+        />
 
         {canEdit && <Route path="orders" element={<OrderManagement embedded />} />}
 

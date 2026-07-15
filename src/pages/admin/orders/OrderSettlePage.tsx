@@ -98,7 +98,7 @@ export function OrderSettlePage() {
     return () => {
       cancelled = true
     }
-  }, [user.id, activeTab, toast])
+  }, [user, activeTab, toast])
 
   if (!isAdmin(user)) return null
 
@@ -107,7 +107,7 @@ export function OrderSettlePage() {
   return (
     <AdminPageShell>
       <PageHeader
-        title="訂單"
+        title="商品訂單"
         user={user}
         showBaoLink={isAdmin(user)}
         productHubSection="settle"

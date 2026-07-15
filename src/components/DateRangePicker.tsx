@@ -10,6 +10,8 @@ interface DateRangePickerProps {
   showTodayButton?: boolean
   label?: string
   simplified?: boolean  // 簡化模式：隱藏日期選擇器，用按鈕展開
+  /** 額外顯示今年累計／去年，selectedDate 以 YYYY 表示整年 */
+  showYearButtons?: boolean
 }
 
 /** 快捷鈕：選中近黑，未選中白底描邊（不使用亮綠／亮藍） */
@@ -47,7 +49,8 @@ export function DateRangePicker({
   isMobile,
   showTodayButton = true,
   label = '查詢期間',
-  simplified = false
+  simplified = false,
+  showYearButtons = false,
 }: DateRangePickerProps) {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [customPickerType, setCustomPickerType] = useState<'month' | 'date'>(
@@ -58,8 +61,12 @@ export function DateRangePicker({
   const currentMonth = venueToday.slice(0, 7)
   const [currentYear, currentMonthNumber] = currentMonth.split('-').map(Number)
   const lastMonthStr = getCalendarDateString(currentYear, currentMonthNumber - 2, 1).slice(0, 7)
+  const currentYearStr = String(currentYear)
+  const lastYearStr = String(currentYear - 1)
 
   const isToday = selectedDate === getVenueDateString() && selectedDate.length === 10
+  const isCurrentYear = selectedDate === currentYearStr
+  const isLastYear = selectedDate === lastYearStr
   const isCurrentMonth = selectedDate === currentMonth && selectedDate.length === 7
   const isLastMonth = selectedDate === lastMonthStr && selectedDate.length === 7
   const isCustomDate = (selectedDate.length === 7 || selectedDate.length === 10)
@@ -89,6 +96,32 @@ export function DateRangePicker({
       
       {/* 快捷按鈕 */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: simplified && !showDatePicker ? '0' : '12px' }}>
+        {showYearButtons && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                onDateChange(currentYearStr)
+                setShowDatePicker(false)
+              }}
+              style={presetButtonStyle(isCurrentYear, isMobile)}
+              aria-pressed={isCurrentYear}
+            >
+              今年累計
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onDateChange(lastYearStr)
+                setShowDatePicker(false)
+              }}
+              style={presetButtonStyle(isLastYear, isMobile)}
+              aria-pressed={isLastYear}
+            >
+              去年
+            </button>
+          </>
+        )}
         {showTodayButton && (
           <button
             type="button"

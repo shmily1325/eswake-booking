@@ -1,17 +1,18 @@
 /**
  * Design thinking:
- * Current feel: pastel 4-up KPI cards + blue accents made this a dashboard strip.
- * Hierarchy: period/filter first, then one quiet summary row, then expandable list.
- * Primary task: review settlement totals and drill into a row’s line items.
+ * Current feel: sparse monthly data split into category cards reads like raw report output.
+ * Hierarchy: period first, quiet totals second, then a ranked grouped list before settlement detail.
+ * Primary task: understand which brands/categories drive sales, then audit individual settlements.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DateRangePicker } from '../../../components/DateRangePicker'
 import { useToast } from '../../../components/ui'
+import { getVenueDateString } from '../../../utils/date'
 import { formatCurrency, formatDateTime, extractDate, extractTime } from '../../../utils/formatters'
 import { supabase } from '../../../lib/supabase'
-import { designSystem, getFontSize } from '../../../styles/designSystem'
-import { getAllCategories, getCategory, getCategoryShopName } from '../products/schema'
+import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
+import { getCategory, getCategoryShopName } from '../products/schema'
 import { fetchSettlementsInRange } from './api'
 import { formatSettlementLineDisplay, type SettlementLineDisplay } from './settleUtils'
 import type { OrderPaymentMethod, ShopOrderSettlementWithDetails } from './types'
@@ -24,6 +25,13 @@ interface Props {
 const { colors, borderRadius, shadows, spacing } = designSystem
 
 function dateRangeFromSelection(selectedDate: string): { start: string; end: string } {
+  if (selectedDate.length === 4) {
+    const currentYear = getVenueDateString().slice(0, 4)
+    return {
+      start: `${selectedDate}-01-01`,
+      end: selectedDate === currentYear ? getVenueDateString() : `${selectedDate}-12-31`,
+    }
+  }
   if (selectedDate.length === 10) {
     return { start: selectedDate, end: selectedDate }
   }
@@ -35,17 +43,22 @@ function dateRangeFromSelection(selectedDate: string): { start: string; end: str
   }
 }
 
+type SalesGroupBy = 'brand' | 'category'
+
+interface VariantSalesMeta {
+  brand: string
+  category: string
+}
+
 export function ShopSettlementStatisticsTab({ isMobile }: Props) {
   const toast = useToast()
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [selectedDate, setSelectedDate] = useState(() => getVenueDateString().slice(0, 4))
+  const [salesGroupBy, setSalesGroupBy] = useState<SalesGroupBy>('brand')
   const [loading, setLoading] = useState(false)
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [variantDisplay, setVariantDisplay] = useState<Record<string, SettlementLineDisplay>>({})
-  const [variantCategory, setVariantCategory] = useState<Record<string, string>>({})
+  const [variantSalesMeta, setVariantSalesMeta] = useState<Record<string, VariantSalesMeta>>({})
 
   useEffect(() => {
     setSettlements([])
@@ -71,7 +84,7 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
           .in('id', variantIds)
         if (variantErr) throw variantErr
         const labels: Record<string, SettlementLineDisplay> = {}
-        const categories: Record<string, string> = {}
+        const salesMeta: Record<string, VariantSalesMeta> = {}
         variants?.forEach((v) => {
           const row = v as {
             id: string
@@ -83,13 +96,18 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
             { item_id: '', variant_id: row.id, qty: 0, unit_price: 0, line_total: 0 },
             row,
           )
-          if (row.product?.category) categories[row.id] = row.product.category
+          if (row.product) {
+            salesMeta[row.id] = {
+              brand: row.product.brand.trim() || '其他品牌',
+              category: row.product.category || 'other',
+            }
+          }
         })
         setVariantDisplay(labels)
-        setVariantCategory(categories)
+        setVariantSalesMeta(salesMeta)
       } else {
         setVariantDisplay({})
-        setVariantCategory({})
+        setVariantSalesMeta({})
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '載入失敗'
@@ -115,14 +133,12 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
     return { count: settlements.length, grandTotal, byMethod }
   }, [settlements])
 
-  const salesByCategory = useMemo(() => {
-    const categoryOrder = new Map(
-      getAllCategories().map((category, index) => [category.id, index]),
-    )
+  const salesGroups = useMemo(() => {
     const grouped = new Map<
       string,
       {
-        categoryId: string
+        id: string
+        name: string
         qty: number
         total: number
         items: Map<
@@ -134,9 +150,18 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
 
     for (const settlement of settlements) {
       for (const line of settlement.items_snapshot) {
-        const categoryId = variantCategory[line.variant_id] ?? 'other'
-        const category = grouped.get(categoryId) ?? {
-          categoryId,
+        const meta = variantSalesMeta[line.variant_id]
+        const groupId = salesGroupBy === 'brand'
+          ? meta?.brand ?? '其他品牌'
+          : meta?.category ?? 'other'
+        const groupName = salesGroupBy === 'brand'
+          ? groupId
+          : getCategory(groupId)
+            ? getCategoryShopName(getCategory(groupId)!)
+            : '其他'
+        const group = grouped.get(groupId) ?? {
+          id: groupId,
+          name: groupName,
           qty: 0,
           total: 0,
           items: new Map(),
@@ -144,35 +169,35 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
         const display =
           variantDisplay[line.variant_id] ?? formatSettlementLineDisplay(line, null)
         const itemKey = line.variant_id || `${display.title}\u0000${display.subtitle}`
-        const item = category.items.get(itemKey) ?? {
+        const item = group.items.get(itemKey) ?? {
           ...display,
           qty: 0,
           total: 0,
         }
 
-        category.qty += line.qty
-        category.total += line.line_total
+        group.qty += line.qty
+        group.total += line.line_total
         item.qty += line.qty
         item.total += line.line_total
-        category.items.set(itemKey, item)
-        grouped.set(categoryId, category)
+        group.items.set(itemKey, item)
+        grouped.set(groupId, group)
       }
     }
 
     return Array.from(grouped.values())
-      .sort(
-        (a, b) =>
-          (categoryOrder.get(a.categoryId) ?? Number.MAX_SAFE_INTEGER) -
-          (categoryOrder.get(b.categoryId) ?? Number.MAX_SAFE_INTEGER),
-      )
-      .map((category) => ({
-        ...category,
-        name: getCategory(category.categoryId)
-          ? getCategoryShopName(getCategory(category.categoryId)!)
-          : '其他',
-        items: Array.from(category.items.values()).sort((a, b) => b.qty - a.qty),
+      .sort((a, b) => b.total - a.total || b.qty - a.qty || a.name.localeCompare(b.name))
+      .map((group) => ({
+        ...group,
+        items: Array.from(group.items.values()).sort(
+          (a, b) => b.total - a.total || b.qty - a.qty || a.title.localeCompare(b.title),
+        ),
       }))
-  }, [settlements, variantCategory, variantDisplay])
+  }, [salesGroupBy, settlements, variantDisplay, variantSalesMeta])
+
+  const maxSalesItemTotal = useMemo(
+    () => Math.max(0, ...salesGroups.flatMap((group) => group.items.map((item) => item.total))),
+    [salesGroups],
+  )
 
   return (
     <div>
@@ -193,6 +218,7 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
           showTodayButton={!isMobile}
           label="查詢期間"
           simplified
+          showYearButtons
         />
       </div>
 
@@ -200,7 +226,11 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
         <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>載入中…</div>
       ) : settlements.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>
-          {selectedDate.length === 10 ? '當日無結帳紀錄' : '當月無結帳紀錄'}
+          {selectedDate.length === 10
+            ? '當日無結帳紀錄'
+            : selectedDate.length === 4
+              ? '此年度尚無結帳紀錄'
+              : '當月無結帳紀錄'}
         </div>
       ) : (
         <>
@@ -242,95 +272,193 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
             />
           </div>
 
-          <h2
-            style={{
-              margin: '0 0 16px',
-              fontSize: getFontSize('h3', isMobile),
-              fontWeight: 600,
-              color: colors.text.primary,
-            }}
-          >
-            售出商品
-          </h2>
-
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: spacing.md,
+              background: colors.background.card,
+              border: `1px solid ${colors.border.light}`,
+              borderRadius: borderRadius.lg,
+              overflow: 'hidden',
               marginBottom: 24,
             }}
           >
-            {salesByCategory.map((category) => (
-              <section
-                key={category.categoryId}
-                style={{
-                  background: colors.background.card,
-                  border: `1px solid ${colors.border.light}`,
-                  borderRadius: borderRadius.lg,
-                  overflow: 'hidden',
-                }}
-              >
-                <div
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                justifyContent: 'space-between',
+                gap: spacing.md,
+                padding: isMobile ? '16px' : '18px 20px',
+                borderBottom: `1px solid ${colors.border.light}`,
+              }}
+            >
+              <div>
+                <h2
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    padding: isMobile ? '12px 16px' : '14px 20px',
-                    background: colors.background.hover,
-                    borderBottom: `1px solid ${colors.border.light}`,
+                    margin: 0,
+                    fontSize: getFontSize('h3', isMobile),
+                    fontWeight: 600,
+                    color: colors.text.primary,
                   }}
                 >
-                  <strong style={{ color: colors.text.primary }}>{category.name}</strong>
-                  <span style={{ color: colors.text.secondary }}>
-                    {category.qty} 件 · {formatCurrency(category.total, false)}
-                  </span>
-                </div>
-                {category.items.map((item, index) => (
+                  售出商品排行
+                </h2>
+                <p
+                  style={{
+                    margin: `${spacing.xs} 0 0`,
+                    fontSize: getFontSize('caption', isMobile),
+                    color: colors.text.secondary,
+                  }}
+                >
+                  依銷售金額排序
+                </p>
+              </div>
+              <div
+                role="group"
+                aria-label="商品排行分組方式"
+                style={{
+                  display: 'flex',
+                  gap: spacing.sm,
+                }}
+              >
+                {([
+                  ['brand', '品牌'],
+                  ['category', '分類'],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={salesGroupBy === value}
+                    onClick={() => setSalesGroupBy(value)}
+                    style={{
+                      ...getButtonStyle(
+                        salesGroupBy === value ? 'primary' : 'secondary',
+                        'small',
+                        isMobile,
+                      ),
+                      flex: isMobile ? 1 : undefined,
+                      boxShadow: 'none',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {salesGroups.map((group, groupIndex) => {
+              const share = summary.grandTotal > 0
+                ? Math.round((group.total / summary.grandTotal) * 100)
+                : 0
+              return (
+                <section
+                  key={group.id}
+                  style={{
+                    borderTop: groupIndex === 0 ? 'none' : `1px solid ${colors.border.main}`,
+                  }}
+                >
                   <div
-                    key={`${item.title}-${item.subtitle}`}
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: isMobile ? '12px 16px' : '12px 20px',
-                      borderTop:
-                        index === 0 ? 'none' : `1px solid ${colors.border.light}`,
+                      alignItems: 'baseline',
+                      gap: spacing.md,
+                      padding: isMobile ? '12px 16px' : '13px 20px',
+                      background: colors.secondary[50],
                     }}
                   >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, color: colors.text.primary }}>
-                        {item.title}
-                      </div>
-                      {item.subtitle && (
-                        <div
-                          style={{
-                            marginTop: 2,
-                            fontSize: getFontSize('caption', isMobile),
-                            color: colors.text.disabled,
-                          }}
-                        >
-                          {item.subtitle}
-                        </div>
-                      )}
+                    <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: spacing.sm }}>
+                      <span
+                        style={{
+                          fontSize: getFontSize('caption', isMobile),
+                          color: colors.text.disabled,
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {String(groupIndex + 1).padStart(2, '0')}
+                      </span>
+                      <strong style={{ color: colors.text.primary }}>{group.name}</strong>
                     </div>
-                    <div
+                    <span
                       style={{
                         flexShrink: 0,
-                        textAlign: 'right',
                         color: colors.text.secondary,
+                        fontSize: getFontSize('bodySmall', isMobile),
+                        fontVariantNumeric: 'tabular-nums',
                       }}
                     >
-                      <div>{item.qty} 件</div>
-                      <div style={{ fontSize: getFontSize('caption', isMobile) }}>
-                        {formatCurrency(item.total, false)}
-                      </div>
-                    </div>
+                      {group.qty} 件 · {formatCurrency(group.total, false)} · {share}%
+                    </span>
                   </div>
-                ))}
-              </section>
-            ))}
+                  {group.items.map((item, itemIndex) => {
+                    const width = maxSalesItemTotal > 0
+                      ? Math.max(3, (item.total / maxSalesItemTotal) * 100)
+                      : 0
+                    return (
+                      <div
+                        key={`${item.title}-${item.subtitle}`}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'minmax(0, 1fr) auto',
+                          alignItems: 'center',
+                          gap: spacing.lg,
+                          padding: isMobile ? '12px 16px' : '12px 20px',
+                          borderTop: `1px solid ${colors.border.light}`,
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: itemIndex === 0 ? 600 : 500, color: colors.text.primary }}>
+                            {item.title}
+                          </div>
+                          {item.subtitle && (
+                            <div
+                              style={{
+                                marginTop: 2,
+                                fontSize: getFontSize('caption', isMobile),
+                                color: colors.text.disabled,
+                              }}
+                            >
+                              {item.subtitle}
+                            </div>
+                          )}
+                        <div
+                          style={{
+                            height: 3,
+                            marginTop: spacing.sm,
+                            background: colors.secondary[100],
+                            borderRadius: borderRadius.full,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${width}%`,
+                              height: '100%',
+                              background: colors.secondary[400],
+                              borderRadius: borderRadius.full,
+                            }}
+                          />
+                        </div>
+                      </div>
+                        <div
+                          style={{
+                            flexShrink: 0,
+                            textAlign: 'right',
+                            color: colors.text.secondary,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          <div>{item.qty} 件</div>
+                          <div style={{ fontSize: getFontSize('caption', isMobile), marginTop: 2 }}>
+                            {formatCurrency(item.total, false)}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </section>
+              )
+            })}
           </div>
 
           <h2

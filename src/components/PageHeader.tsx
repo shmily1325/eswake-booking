@@ -40,7 +40,7 @@ const NAV_LINK_ICONS: Record<string, string> = {
 const NAV_LINK_TEXT: Record<string, string> = {
   '/': 'HOME',
   '/bao': 'BAO',
-  '/order-settle': '訂單',
+  '/order-settle': '商品訂單',
   '/products': '商品',
   '/products/orders': '訂單開單',
   '/member-transaction': '儲值',
@@ -186,11 +186,11 @@ export function PageHeader({
           <Link
             to="/order-settle"
             style={navButtonStyle}
-            aria-label="訂單"
-            title="訂單"
+            aria-label="商品訂單"
+            title="商品訂單"
             data-track="header_order_settle"
           >
-            {renderNavLabel('訂單', '/order-settle')}
+            {renderNavLabel('商品訂單', '/order-settle')}
             <CountBadge count={pendingSettleCount} />
           </Link>
         )}

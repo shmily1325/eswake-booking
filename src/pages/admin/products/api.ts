@@ -30,11 +30,36 @@ export interface FetchProductsOptions {
 export async function fetchAllProductsWithVariants(
   options: FetchProductsOptions = {},
 ): Promise<ProductWithVariants[]> {
-  let query = supabase
+  // 商城只讀公開商品時用 embedded relation 一次取回商品與 SKU，
+  // 避免首屏必須等待兩次循序 Supabase round trip。
+  if (options.publicOnly) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*, product_variants(*)')
+      .eq('is_active', true)
+      .eq('is_public', true)
+      .eq('product_variants.is_active', true)
+      .order('brand', { ascending: true })
+      .order('model', { ascending: true })
+      .order('updated_at', {
+        referencedTable: 'product_variants',
+        ascending: false,
+      })
+    if (error) throw error
+
+    const rows = (data ?? []) as unknown as Array<
+      ProductRow & { product_variants?: ProductVariantRow[] | null }
+    >
+    return rows.map(({ product_variants, ...product }) => ({
+      ...(product as ProductRow),
+      variants: product_variants ?? [],
+    }))
+  }
+
+  const query = supabase
     .from('products')
     .select('*')
     .eq('is_active', true)
-  if (options.publicOnly) query = query.eq('is_public', true)
   const { data: products, error: pe } = await query
     .order('brand', { ascending: true })
     .order('model', { ascending: true })

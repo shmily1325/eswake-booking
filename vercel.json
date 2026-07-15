@@ -1,4 +1,15 @@
 {
+  "headers": [
+    {
+      "source": "/shop/heroes/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/offline",

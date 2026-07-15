@@ -40,6 +40,18 @@ export const SUPER_ADMIN_DISPLAY_LABELS: Record<string, string> = {
   'minlin1325@gmail.com': 'Ming',
 }
 
+/** 可從首頁切換至商品唯讀模式，方便管理員驗證一般員工畫面。 */
+export const PRODUCT_READONLY_PREVIEW_EMAILS = [
+  'pjpan0511@gmail.com',
+  'minlin1325@gmail.com',
+] as const
+
+export function canPreviewProductsReadOnly(user: User | null): boolean {
+  if (!user?.email) return false
+  const email = user.email.toLowerCase()
+  return PRODUCT_READONLY_PREVIEW_EMAILS.some((allowed) => allowed.toLowerCase() === email)
+}
+
 function parseCommaSeparatedEmails(raw: string | undefined): string[] {
   if (!raw) return []
   return raw
@@ -321,17 +333,11 @@ export async function getEditorFeatureFlags(user: User | null): Promise<Record<E
 }
 
 /**
- * 是否能進入商品管理頁
- * = 超級管理員 || can_products
+ * 是否能進入商品頁。
+ * 一般權限可唯讀瀏覽；商品修改仍須另外檢查 can_products。
  */
 export async function hasProductsAccessAsync(user: User | null): Promise<boolean> {
-  if (!user?.email) return false
-  if (isSuperAdminEmail(user.email)) return true
-  const n = user.email.toLowerCase()
-  const rows = await loadEditorRows()
-  const row = rows.find((e) => e.email.toLowerCase() === n)
-  if (!row) return false
-  return row.can_products === true
+  return hasViewAccess(user)
 }
 
 /**

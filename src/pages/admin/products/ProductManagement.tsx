@@ -2,7 +2,7 @@
  * Design thinking:
  * Current feel: InventoryDashboard rainbow chips + emoji image placeholders read as admin KPI chrome.
  * Hierarchy: search/list primary; filter chips secondary near-black; status soft tonal only.
- * Primary task: find a SKU and open edit (or start order) without dashboard noise.
+ * Primary task: find or scan a SKU to inspect stock/price; editors can continue into edit or order.
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
@@ -24,10 +24,15 @@ import {
   getCategoryShopName,
   type ShopGroup,
 } from './schema'
-import { fetchAllProductsWithVariants, flattenToVariantItems } from './api'
+import {
+  fetchAllProductsWithVariants,
+  fetchVariantItemByLabelCode,
+  flattenToVariantItems,
+} from './api'
 import type { ProductWithVariants, ProductVariantRow, VariantListItem } from './types'
 import { getVariantAvailability, getVariantSellableStock } from '../../shop/lib/productAvailability'
 import { ProductEditView } from './ProductEditView'
+import { LabelCodeCameraScanner } from './LabelCodeCameraScanner'
 import { variantMatchesSearchTokens } from './productSearchHaystack'
 import { isMissingLabelCode } from './labelCode'
 import { designSystem, getFontSize, getPageContentShellStyle, PAGE_MAX_WIDTHS } from '../../../styles/designSystem'
@@ -44,7 +49,13 @@ function openProductEdit(productId: string, variantId: string): ViewMode {
   return { kind: 'edit', productId, focusVariantId: variantId }
 }
 
-export function ProductManagement({ embedded = false }: { embedded?: boolean } = {}) {
+export function ProductManagement({
+  embedded = false,
+  readOnly = false,
+}: {
+  embedded?: boolean
+  readOnly?: boolean
+} = {}) {
   const user = useAuthUser()
   const navigate = useNavigate()
   const toast = useToast()
@@ -66,6 +77,10 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
   const [activeSubCat, setActiveSubCat] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>({ kind: 'list' })
+  const [stockScannerOpen, setStockScannerOpen] = useState(false)
+  const [stockScannerBusy, setStockScannerBusy] = useState(false)
+  const [stockScannerStatus, setStockScannerStatus] = useState<string | null>(null)
+  const [scannedItem, setScannedItem] = useState<VariantListItem | null>(null)
 
   // 篩選狀態：缺價 / 沒實拍 / 沒封面 / 缺標籤（從頂部儀表板點擊切換）
   const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
@@ -163,7 +178,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     let cancelled = false
     const check = async () => {
       if (!user) return
-      // 商品頁只開放 can_products；不再提供唯讀商品權限
+      // 一般權限可唯讀瀏覽；can_products 才能修改與開單
       const allowed = await hasProductsAccessAsync(user)
       if (cancelled) return
       if (!allowed) {
@@ -171,7 +186,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
         navigate('/')
         return
       }
-      const editable = await hasEditorFeatureAsync(user, 'can_products')
+      const editable = !readOnly && await hasEditorFeatureAsync(user, 'can_products')
       if (cancelled) return
       setCanEdit(editable)
       setHasAccess(true)
@@ -184,7 +199,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [user, readOnly])
 
   const loadData = async () => {
     setLoading(true)
@@ -196,6 +211,27 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
       toast.error('載入商品失敗')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleStockLabelScan = async (labelCode: string) => {
+    setStockScannerBusy(true)
+    setStockScannerStatus(`查詢 ${labelCode}…`)
+    try {
+      const item = await fetchVariantItemByLabelCode(labelCode)
+      if (!item) {
+        setStockScannerStatus(`找不到標籤 ${labelCode}`)
+        return
+      }
+      setScannedItem(item)
+      setStockScannerStatus(null)
+      setStockScannerOpen(false)
+      trackClick('product_stock_scan_found', user?.email ?? undefined)
+    } catch (error) {
+      console.error('[ProductManagement] label lookup failed', error)
+      setStockScannerStatus('查詢失敗，請再試一次')
+    } finally {
+      setStockScannerBusy(false)
     }
   }
 
@@ -333,7 +369,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
   }
 
   // ====== 編輯/新增 view：直接交給子元件 ======
-  if (view.kind !== 'list') {
+  if (view.kind === 'edit' || (view.kind === 'create' && canEdit)) {
     return (
       <div
         style={{
@@ -367,6 +403,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
             productId={view.kind === 'edit' ? view.productId : null}
             focusVariantId={view.kind === 'edit' ? view.focusVariantId : undefined}
             defaultCategory={view.kind === 'create' ? view.defaultCategory : undefined}
+            readOnly={!canEdit}
             existingProducts={products.map((p) => ({ category: p.category, brand: p.brand, model: p.model }))}
             currentUserEmail={user?.email ?? null}
             onClose={(changed) => {
@@ -491,6 +528,16 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
               width: isMobile ? '100%' : undefined,
             }}
           >
+            <Button
+              variant="secondary"
+              data-track="product_stock_scan_open"
+              onClick={() => {
+                setStockScannerStatus(null)
+                setStockScannerOpen(true)
+              }}
+            >
+              掃碼查庫存
+            </Button>
             {canEdit && (
               <Button
                 variant="primary"
@@ -504,6 +551,18 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
             )}
           </div>
         </div>
+
+        {scannedItem && (
+          <StockCheckResult
+            item={scannedItem}
+            isMobile={isMobile}
+            onClose={() => setScannedItem(null)}
+            onOpenProduct={() => {
+              setView(openProductEdit(scannedItem.product.id, scannedItem.variant.id))
+              setScannedItem(null)
+            }}
+          />
+        )}
 
         {/* 系列與分類只負責篩選，不混入排序與顯示控制 */}
         <div
@@ -674,7 +733,157 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
 
         {!embedded && <Footer />}
       </div>
+      <LabelCodeCameraScanner
+        open={stockScannerOpen}
+        mode="stock-check"
+        busy={stockScannerBusy}
+        statusMessage={stockScannerStatus}
+        onScan={handleStockLabelScan}
+        onClose={() => setStockScannerOpen(false)}
+      />
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
+    </div>
+  )
+}
+
+function StockCheckResult({
+  item,
+  isMobile,
+  onClose,
+  onOpenProduct,
+}: {
+  item: VariantListItem
+  isMobile: boolean
+  onClose: () => void
+  onOpenProduct: () => void
+}) {
+  const { product, variant } = item
+  const status = inventoryStatusBadge(variant, product.is_public)
+  const attributeText = formatAttributes(product.category, variant.attributes)
+  const reserved = variant.reserved_qty ?? 0
+  const sellable = getVariantSellableStock(variant)
+
+  return (
+    <section
+      aria-live="polite"
+      style={{
+        background: colors.background.card,
+        border: `1px solid ${colors.border.main}`,
+        borderRadius: borderRadius.lg,
+        padding: isMobile ? 16 : 18,
+        marginBottom: 14,
+        boxShadow: designSystem.shadows.xs,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: getFontSize('h3', isMobile),
+              fontWeight: 700,
+              color: colors.text.primary,
+            }}
+          >
+            {product.brand} {product.model}
+          </div>
+          <div
+            style={{
+              marginTop: 3,
+              fontSize: getFontSize('bodySmall', isMobile),
+              color: colors.text.secondary,
+            }}
+          >
+            {[attributeText, variant.vendor_code ? `#${variant.vendor_code}` : null]
+              .filter(Boolean)
+              .join(' · ') || '未填規格'}
+          </div>
+        </div>
+        <span
+          style={{
+            flexShrink: 0,
+            padding: '4px 10px',
+            borderRadius: borderRadius.full,
+            background: status.bg,
+            color: status.color,
+            fontSize: getFontSize('caption', isMobile),
+            fontWeight: 600,
+          }}
+        >
+          {status.label}
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(0, 1fr))',
+          borderTop: `1px solid ${colors.border.light}`,
+          borderBottom: `1px solid ${colors.border.light}`,
+        }}
+      >
+        <StockCheckValue label="售價" isMobile={isMobile}>
+          <PriceDisplay price={variant.price} />
+        </StockCheckValue>
+        <StockCheckValue label="現有庫存" isMobile={isMobile}>{variant.stock}</StockCheckValue>
+        <StockCheckValue label="待結帳保留" isMobile={isMobile}>{reserved}</StockCheckValue>
+        <StockCheckValue label="可售現貨" isMobile={isMobile} emphasize>{sellable}</StockCheckValue>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 8,
+          marginTop: 14,
+        }}
+      >
+        <Button variant="secondary" onClick={onClose}>關閉</Button>
+        <Button variant="primary" onClick={onOpenProduct}>查看商品</Button>
+      </div>
+    </section>
+  )
+}
+
+function StockCheckValue({
+  label,
+  children,
+  isMobile,
+  emphasize = false,
+}: {
+  label: string
+  children: ReactNode
+  isMobile: boolean
+  emphasize?: boolean
+}) {
+  return (
+    <div style={{ padding: '10px 8px' }}>
+      <div
+        style={{
+          fontSize: getFontSize('caption', isMobile),
+          color: colors.text.secondary,
+          marginBottom: 3,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: getFontSize('bodyLarge', isMobile),
+          fontWeight: emphasize ? 700 : 600,
+          color: colors.text.primary,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {children}
+      </div>
     </div>
   )
 }

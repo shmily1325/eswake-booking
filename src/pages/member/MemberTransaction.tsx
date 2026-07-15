@@ -50,8 +50,7 @@ export function MemberTransaction() {
   // 新增的 state
   /** 手機：篩選下拉預設收合，避免佔滿螢幕又與 sticky 疊加難以瀏覽列表 */
   const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false)
-  const [sortBy, setSortBy] = useState<'nickname' | 'balance' | 'vip' | 'g23' | 'g21' | 'lastTransaction' | 'updatedAt'>('updatedAt')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [sortBy, setSortBy] = useState<'updatedAt' | 'lastLiffLogin'>('updatedAt')
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
 
@@ -192,46 +191,30 @@ export function MemberTransaction() {
 
     // 排序
     result = [...result].sort((a, b) => {
-      let comparison = 0
+      const compareNickname = () => {
+        const nameA = (a.nickname || a.name || '').toLowerCase()
+        const nameB = (b.nickname || b.name || '').toLowerCase()
+        return nameA.localeCompare(nameB, 'zh-TW')
+      }
+
       switch (sortBy) {
-        case 'balance':
-          comparison = (a.balance || 0) - (b.balance || 0)
-          break
-        case 'vip':
-          comparison = (a.vip_voucher_amount || 0) - (b.vip_voucher_amount || 0)
-          break
-        case 'g23':
-          comparison = (a.boat_voucher_g23_minutes || 0) - (b.boat_voucher_g23_minutes || 0)
-          break
-        case 'g21':
-          comparison = (a.boat_voucher_g21_panther_minutes || 0) - (b.boat_voucher_g21_panther_minutes || 0)
-          break
-        case 'lastTransaction':
-          // 空值排最後
-          if (!a.lastTransactionDate && !b.lastTransactionDate) return 0
-          if (!a.lastTransactionDate) return 1
-          if (!b.lastTransactionDate) return -1
-          comparison = a.lastTransactionDate.localeCompare(b.lastTransactionDate)
-          break
+        case 'lastLiffLogin':
+          if (!a.last_liff_login_at && !b.last_liff_login_at) return compareNickname()
+          if (!a.last_liff_login_at) return 1
+          if (!b.last_liff_login_at) return -1
+          return b.last_liff_login_at.localeCompare(a.last_liff_login_at) || compareNickname()
         case 'updatedAt':
-          // 用最新交易的 created_at 排序，空值排最後
-          if (!a.lastTransactionCreatedAt && !b.lastTransactionCreatedAt) return 0
+        default:
+          // 最新交易異動優先；沒有異動或時間相同時依暱稱穩定排序
+          if (!a.lastTransactionCreatedAt && !b.lastTransactionCreatedAt) return compareNickname()
           if (!a.lastTransactionCreatedAt) return 1
           if (!b.lastTransactionCreatedAt) return -1
-          comparison = a.lastTransactionCreatedAt.localeCompare(b.lastTransactionCreatedAt)
-          break
-        case 'nickname':
-        default:
-          const nameA = (a.nickname || a.name || '').toLowerCase()
-          const nameB = (b.nickname || b.name || '').toLowerCase()
-          comparison = nameA.localeCompare(nameB, 'zh-TW')
-          break
+          return b.lastTransactionCreatedAt.localeCompare(a.lastTransactionCreatedAt) || compareNickname()
       }
-      return sortOrder === 'desc' ? -comparison : comparison
     })
 
     return result
-  }, [members, searchTerm, sortBy, sortOrder, membershipTypeFilter, lineBindingFilter])
+  }, [members, searchTerm, sortBy, membershipTypeFilter, lineBindingFilter])
 
   const handleMemberClick = (member: Member) => {
     setSelectedMember(member)
@@ -405,8 +388,6 @@ export function MemberTransaction() {
                 >
                   <option value="all">全部 ({members.length})</option>
                   <option value="member">會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
-                  <option value="general">一般 ({members.filter(m => m.membership_type === 'general').length})</option>
-                  <option value="dual">雙人 ({members.filter(m => m.membership_type === 'dual').length})</option>
                   <option value="guest">非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
                   <option value="es">ES ({members.filter(m => m.membership_type === 'es').length})</option>
                 </select>
@@ -437,46 +418,26 @@ export function MemberTransaction() {
                 </select>
               </div>
 
-              {/* 排序下拉選單 + 方向按鈕 */}
-              <div style={{ width: '100%', display: 'flex', gap: '6px' }}>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    flex: 1,
-                    minWidth: 0,
-                    paddingRight: '32px',
-                    appearance: 'none',
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 12px center',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: getFontSize('body', isMobile),
-                  }}
-                >
-                  <option value="nickname">暱稱</option>
-                  <option value="balance">儲值</option>
-                  <option value="vip">VIP</option>
-                  <option value="g23">G23</option>
-                  <option value="g21">黑豹/G21</option>
-                  <option value="lastTransaction">交易日期</option>
-                  <option value="updatedAt">更新日期</option>
-                </select>
+              {/* 精簡排序切換 */}
+              <div style={{ width: '100%', display: 'flex', gap: '8px' }}>
+                {([
+                  { value: 'updatedAt', label: '最近異動' },
+                  { value: 'lastLiffLogin', label: 'LINE 登入' },
+                ] as const).map(option => (
                 <button
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  key={option.value}
+                  type="button"
+                  onClick={() => setSortBy(option.value)}
                   style={{
                     ...getButtonStyle('outline', 'medium', isMobile),
-                    minWidth: '44px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    ...getFilterChipStyle(sortBy === option.value, 'info'),
+                    flex: 1,
+                    minWidth: 0,
                   }}
-                  title={sortOrder === 'asc' ? '升序（點擊切換）' : '降序（點擊切換）'}
                 >
-                  {sortOrder === 'asc' ? '▲' : '▼'}
+                  {option.label}
                 </button>
+                ))}
               </div>
             </div>
             )}
@@ -505,8 +466,6 @@ export function MemberTransaction() {
               {[
                 { value: 'all', label: '全部', count: members.length },
                 { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
-                { value: 'general', label: '一般', count: members.filter(m => m.membership_type === 'general').length },
-                { value: 'dual', label: '雙人', count: members.filter(m => m.membership_type === 'dual').length },
                 { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
                 { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
               ].map(type => (
@@ -556,46 +515,22 @@ export function MemberTransaction() {
 
               <div style={{ width: '1px', height: '22px', background: designSystem.colors.border.light, margin: '0 2px' }} />
 
-              <select
-                value={sortBy}
-                onChange={(e) => {
-                  const key = e.target.value as typeof sortBy
-                  setSortBy(key)
-                  setSortOrder(key === 'nickname' ? 'asc' : 'desc')
-                }}
-                aria-label="排序欄位"
-                style={{
-                  ...getInputStyle(false),
-                  width: 'auto',
-                  minWidth: '120px',
-                  padding: '7px 28px 7px 12px',
-                  appearance: 'none',
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 10px center',
-                  cursor: 'pointer',
-                  fontSize: getFontSize('button', false),
-                }}
-              >
-                <option value="nickname">暱稱</option>
-                <option value="balance">儲值</option>
-                <option value="vip">VIP</option>
-                <option value="g23">G23</option>
-                <option value="g21">黑豹/G21</option>
-                <option value="lastTransaction">交易日期</option>
-                <option value="updatedAt">更新日期</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                style={{
-                  ...getButtonStyle('outline', 'small', false),
-                  minWidth: '40px',
-                }}
-                title={sortOrder === 'asc' ? '升序（點擊切換）' : '降序（點擊切換）'}
-              >
-                {sortOrder === 'asc' ? '▲' : '▼'}
-              </button>
+              {([
+                { value: 'updatedAt', label: '最近異動' },
+                { value: 'lastLiffLogin', label: 'LINE 登入' },
+              ] as const).map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setSortBy(option.value)}
+                  style={{
+                    ...getButtonStyle('outline', 'small', false),
+                    ...getFilterChipStyle(sortBy === option.value, 'info'),
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
         )}

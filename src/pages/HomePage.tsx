@@ -9,6 +9,7 @@ import {
   getEditorFeatureFlags,
   hasViewAccess,
   isMemberPhoneOnlyEditor,
+  PRODUCT_READONLY_PREVIEW_EMAILS,
   type EditorFeatureKey
 } from '../utils/auth'
 import { supabase } from '../lib/supabase'
@@ -190,7 +191,7 @@ export function HomePage() {
     }
   ]
 
-  /** 分隔線下方：排班 / 船隻管理 / 商品管理 / ES SHOP / 會員電話 / BAO */
+  /** 分隔線下方：排班 / 船隻管理 / 商品查詢或管理 / ES SHOP / 會員電話 / BAO */
   const menuItemsTools: HomeMenuItem[] = [
     {
       title: '排班',
@@ -207,11 +208,17 @@ export function HomePage() {
       hideFromHomeForSuperAdmin: true
     },
     {
-      title: '商品管理',
+      title: editorFeatureFlags?.can_products ? '商品管理' : '商品查詢',
       icon: '📦',
       link: '/products',
-      editorFeature: 'can_products',
+      requiresViewAccess: true,
       hideFromHomeForSuperAdmin: true
+    },
+    {
+      title: '商品查詢',
+      icon: '📦',
+      link: '/products?mode=readonly',
+      visibleForEmails: PRODUCT_READONLY_PREVIEW_EMAILS
     },
     {
       title: 'ES SHOP',
@@ -264,9 +271,9 @@ export function HomePage() {
       }
       if (item.isAdmin && !userIsAdmin) return false
       if (item.isCoach && !isCoach) return false
+      if (item.hideFromHomeForSuperAdmin && userIsAdmin) return false
       if (item.editorFeature) {
         if (userIsAdmin) {
-          if (item.hideFromHomeForSuperAdmin) return false
           return true
         }
         if (!editorFeatureFlags) return false
@@ -364,7 +371,7 @@ export function HomePage() {
     const inner = (
       <>
         <div style={{ marginBottom: '5px' }}>
-          <span style={{ fontSize: isMobile ? '36px' : '42px' }}>{item.icon}</span>
+          <span style={{ fontSize: isMobile ? '30px' : '32px' }}>{item.icon}</span>
         </div>
         <h2
           style={{
@@ -448,16 +455,16 @@ export function HomePage() {
         {/* Header with Logo */}
         <div style={{
           textAlign: 'center',
-          marginBottom: isMobile ? '28px' : '50px',
+          marginBottom: isMobile ? '20px' : '30px',
         }}>
           <img
             src="/logo_circle (black).png"
             alt={`${ES_BRAND.name} Logo`}
             style={{
-              width: isMobile ? '100px' : '140px',
-              height: isMobile ? '100px' : '140px',
+              width: isMobile ? '76px' : '96px',
+              height: isMobile ? '76px' : '96px',
               objectFit: 'contain',
-              marginBottom: isMobile ? '12px' : '20px',
+              marginBottom: isMobile ? '10px' : '14px',
               borderRadius: '50%',
               boxShadow: designSystem.shadows.sm,
               display: 'block',

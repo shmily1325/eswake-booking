@@ -21,14 +21,14 @@ export type ShopHeroImageConfig = {
 
 export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
   catalog: {
-    src: '/shop/heroes/catalog.jpg',
+    src: '/shop/heroes/catalog.webp',
     objectPosition: '38% 48%',
     // 意象照 #8：Nautique + 人物，焦點略左保留船名與人
     objectPositionClass:
       'object-[38%_52%] sm:object-[36%_50%] md:object-[34%_48%] lg:object-[32%_46%]',
   },
   Wakeboarding: {
-    src: '/shop/heroes/wakeboarding.jpg',
+    src: '/shop/heroes/wakeboarding.webp',
     objectPosition: 'center 40%',
     // 意象照 #1：滑手置中、船與水花在下；略低 Y 保留跳躍＋船尾情境
     objectPositionClass:
@@ -41,7 +41,7 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     heroScaleClass: 'max-sm:scale-[1.12] sm:scale-[1.03]',
   },
   Wakesurfing: {
-    src: '/shop/heroes/wakesurfing.jpg',
+    src: '/shop/heroes/wakesurfing.webp',
     objectPosition: 'center 28%',
     // 意象照 #5：直幅動作照，焦點在上段滑手與板
     objectPositionClass:
@@ -55,7 +55,7 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
       'sm:min-h-[220px] md:min-h-[248px] lg:aspect-[2.4/1] lg:max-h-[320px] lg:min-h-0',
   },
   Essentials: {
-    src: '/shop/heroes/essentials.jpg',
+    src: '/shop/heroes/essentials.webp',
     objectPosition: 'center 42%',
     // 意象照 #17：背心特寫，人物置中
     objectPositionClass:
@@ -72,7 +72,7 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
 /** 子分類專用 hero（選 Boards / Boots 等時覆蓋上層 group 圖） */
 export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> = {
   ws_board: {
-    src: '/shop/heroes/ws-board.jpg',
+    src: '/shop/heroes/ws-board.webp',
     objectPosition: 'center 24%',
     // 意象照 #28：滑手跳躍，焦點再往上保留整人
     objectPositionClass:
@@ -84,7 +84,7 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     heroScaleClass: 'max-sm:scale-[1.10] sm:scale-[1.04] md:scale-[1.12] lg:scale-[1.14]',
   },
   wb_board: {
-    src: '/shop/heroes/wb-board.jpg',
+    src: '/shop/heroes/wb-board.webp',
     objectPosition: 'center 38%',
     objectPositionClass:
       'object-[center_36%] sm:object-[center_38%] md:object-[center_40%]',
@@ -95,7 +95,7 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.05]',
   },
   wb_fin: {
-    src: '/shop/heroes/wb-fin.jpg',
+    src: '/shop/heroes/wb-fin.webp',
     objectPosition: 'center 30%',
     // 意象照 #20：滑手空中，焦點在人（板／繩在畫面內）
     objectPositionClass:
@@ -107,7 +107,7 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     heroScaleClass: 'max-sm:scale-[1.10] sm:scale-[1.05] md:scale-[1.08]',
   },
   wb_boots: {
-    src: '/shop/heroes/wb-boots.jpg',
+    src: '/shop/heroes/wb-boots.webp',
     objectPosition: 'center 58%',
     objectPositionClass:
       'object-[center_60%] sm:object-[50%_58%] md:object-[48%_55%]',
@@ -119,7 +119,7 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     tallCollectionBand: true,
   },
   apparel: {
-    src: '/shop/heroes/apparel.jpg',
+    src: '/shop/heroes/apparel.webp',
     objectPosition: '72% 32%',
     // 意象照 #11：帽後 ES WAKE 標，焦點偏右上方
     objectPositionClass:
@@ -131,7 +131,7 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.02] md:scale-[1.0]',
   },
   wetsuit: {
-    src: '/shop/heroes/wetsuit.jpg',
+    src: '/shop/heroes/wetsuit.webp',
     objectPosition: '42% 50%',
     // 意象照 #23：背心與人物，焦點偏下
     objectPositionClass:
@@ -143,7 +143,7 @@ export const SHOP_SUBCATEGORY_HERO_IMAGES: Record<string, ShopHeroImageConfig> =
     heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.04] md:scale-[1.02]',
   },
   lifejacket: {
-    src: '/shop/heroes/lifejacket.jpg',
+    src: '/shop/heroes/lifejacket.webp',
     objectPosition: 'center 45%',
     objectPositionClass:
       'object-[center_48%] sm:object-[42%_45%] md:object-[38%_42%] lg:object-[35%_40%]',

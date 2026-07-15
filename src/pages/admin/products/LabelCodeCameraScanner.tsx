@@ -16,6 +16,7 @@ interface LabelCodeCameraScannerProps {
   onScan: (labelCode: string) => void | Promise<void>
   busy?: boolean
   statusMessage?: string | null
+  mode?: 'order' | 'stock-check'
 }
 
 export function LabelCodeCameraScanner({
@@ -24,6 +25,7 @@ export function LabelCodeCameraScanner({
   onScan,
   busy = false,
   statusMessage = null,
+  mode = 'order',
 }: LabelCodeCameraScannerProps) {
   const { isMobile } = useResponsive()
   const regionId = useId().replace(/:/g, '')
@@ -152,11 +154,17 @@ export function LabelCodeCameraScanner({
 
   if (!open) return null
 
+  const stockCheck = mode === 'stock-check'
+  const dialogTitle = stockCheck ? '掃描標籤查庫存' : '掃描標籤條碼'
+  const hintText = stockCheck
+    ? '對準商品標籤上的 Code128 條碼；掃描後會顯示售價與目前庫存。'
+    : '對準商品標籤上的 Code128 條碼；掃到會自動加入訂單，可連續掃多項。'
+
   return createPortal(
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="掃描商品標籤條碼"
+      aria-label={dialogTitle}
       style={{
         position: 'fixed',
         inset: 0,
@@ -191,7 +199,7 @@ export function LabelCodeCameraScanner({
             borderBottom: '1px solid #eee',
           }}
         >
-          <h3 style={{ margin: 0, fontSize: isMobile ? 17 : 18 }}>掃描標籤條碼</h3>
+          <h3 style={{ margin: 0, fontSize: isMobile ? 17 : 18 }}>{dialogTitle}</h3>
           <button
             type="button"
             onClick={onClose}
@@ -213,7 +221,7 @@ export function LabelCodeCameraScanner({
 
         <div style={{ padding: '12px 16px 16px' }}>
           <p style={{ margin: '0 0 10px', fontSize: 13, color: '#666', lineHeight: 1.45 }}>
-            對準商品標籤上的 Code128 條碼；掃到會自動加入訂單，可連續掃多項。
+            {hintText}
           </p>
 
           <div

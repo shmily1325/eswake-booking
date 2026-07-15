@@ -138,7 +138,7 @@ export function BaoHub() {
         { title: '排班', icon: '📅', link: '/coach-assignment' },
         { title: '回報', icon: '📝', link: '/coach-report' },
         { title: '回報管理', icon: '💼', link: '/coach-admin' },
-        { title: '訂單', icon: '🧾', link: '/order-settle' },
+        { title: '商品訂單', icon: '🧾', link: '/order-settle' },
         { title: '會員', icon: '👥', link: '/members' },
         { title: '儲值', icon: '💰', link: '/member-transaction' },
         { title: '置板', icon: '🏄', link: '/boards' },
@@ -149,9 +149,9 @@ export function BaoHub() {
       items: [
         { title: 'Dashboard', icon: '📊', link: '/statistics' },
         { title: '公告', icon: '📢', link: '/announcements' },
-        { title: '人員', icon: '🎓', link: '/staff' },
-        { title: '船隻', icon: '🚤', link: '/boats' },
-        { title: '商品', icon: '📦', link: '/products' },
+        { title: '人員管理', icon: '🎓', link: '/staff' },
+        { title: '船隻管理', icon: '🚤', link: '/boats' },
+        { title: '商品管理', icon: '📦', link: '/products' },
         { title: 'ES SHOP', icon: '🛒', link: getPublicShopHomeUrl() },
       ],
     },
@@ -205,14 +205,23 @@ export function BaoHub() {
         <div
           style={{
             textAlign: 'center',
-            marginBottom: isMobile ? '28px' : '50px',
+            marginBottom: isMobile ? '20px' : '30px',
           }}
         >
           <div
             style={{
-              fontSize: isMobile ? '100px' : '140px',
-              marginBottom: isMobile ? '12px' : '20px',
+              width: isMobile ? '76px' : '96px',
+              height: isMobile ? '76px' : '96px',
+              margin: `0 auto ${isMobile ? '10px' : '14px'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: isMobile ? '44px' : '56px',
               lineHeight: 1,
+              borderRadius: '50%',
+              background: designSystem.colors.background.card,
+              border: `1px solid ${designSystem.colors.border.light}`,
+              boxShadow: designSystem.shadows.sm,
             }}
             aria-hidden
           >
@@ -268,6 +277,7 @@ export function BaoHub() {
               <Link
                 to="/backup"
                 data-track="bao_backup_status"
+                aria-label={`查看備份頁面：${backupHealth.message}`}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -275,8 +285,25 @@ export function BaoHub() {
                   color: backupHealthColor(backupHealth.status),
                   textDecoration: 'none',
                   fontSize: getFontSize('bodySmall', isMobile),
-                  fontWeight: backupHealth.status === 'ok' ? 500 : 600,
+                  fontWeight: 600,
                   letterSpacing: '0.02em',
+                  padding: '8px 12px',
+                  background: designSystem.colors.background.card,
+                  border: `1px solid ${designSystem.colors.border.light}`,
+                  borderRadius: '999px',
+                  boxShadow: designSystem.shadows.xs,
+                  cursor: 'pointer',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.boxShadow = designSystem.shadows.sm
+                  e.currentTarget.style.borderColor = backupHealthColor(backupHealth.status)
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = designSystem.shadows.xs
+                  e.currentTarget.style.borderColor = designSystem.colors.border.light
                 }}
               >
                 <span
@@ -294,6 +321,9 @@ export function BaoHub() {
                   }}
                 />
                 {backupHealth.message}
+                <span aria-hidden style={{ fontSize: '1.15em', lineHeight: 1 }}>
+                  ›
+                </span>
               </Link>
               {(backupHealth.status === 'warning' || backupHealth.status === 'error') && (
                 <span
@@ -339,7 +369,7 @@ export function BaoHub() {
                 const inner = (
                   <>
                     <div style={{ marginBottom: '5px' }}>
-                      <span style={{ fontSize: isMobile ? '36px' : '42px' }}>{feature.icon}</span>
+                      <span style={{ fontSize: isMobile ? '30px' : '32px' }}>{feature.icon}</span>
                     </div>
                     <h2
                       style={{
