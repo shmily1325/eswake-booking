@@ -116,8 +116,8 @@ export function MemberManagement() {
   const [expiringFilter, setExpiringFilter] = useState<string>('none') // 'none', 'membership', 'board'
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
   const [showExpiringDetails, setShowExpiringDetails] = useState(false) // 收合/展開到期詳情
-  const [sortBy, setSortBy] = useState<string>('nickname') // 'nickname', 'balance', 'membership_end_date'
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc') // 升冪/降冪
+  const [sortBy, setSortBy] = useState<string>('updated_at') // 預設依會員資料最近更新時間排序
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc') // 最新更新顯示在最上方
   const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false)
   /** 列表備忘錄展開的會員 id（預設收合，只顯示最近幾則） */
   const [expandedMemoMemberIds, setExpandedMemoMemberIds] = useState<Set<string>>(() => new Set())
@@ -852,7 +852,7 @@ export function MemberManagement() {
                   }}
                 >
                   <option value="nickname">暱稱</option>
-                  <option value="updated_at">更新日期</option>
+                  <option value="updated_at">最近更新</option>
                   <option value="membership_end_date">會籍到期</option>
                   <option value="board_expiry">置板到期</option>
                 </select>
@@ -958,6 +958,9 @@ export function MemberManagement() {
                 style={{
                   ...getButtonStyle('outline', 'small', false),
                   ...getFilterChipStyle(expiringFilter === 'membership', 'warning'),
+                  background: expiringFilter === 'membership'
+                    ? designSystem.colors.warning[500]
+                    : designSystem.colors.background.card,
                   opacity: expiringMemberships.length === 0 ? 0.5 : 1,
                   cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
                 }}

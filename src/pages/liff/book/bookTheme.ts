@@ -1,4 +1,4 @@
-import { designSystem } from '../../../styles/designSystem'
+import { designSystem, getFontSizePx } from '../../../styles/designSystem'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { LIFF_THEME, LIFF_TYPE } from '../liffUiStyles'
 
@@ -14,6 +14,10 @@ export const BOOK_TYPE = {
   body: LIFF_TYPE.body,
   /** 提示、副標、pill、metadata */
   caption: LIFF_TYPE.caption,
+  /** 極小提示、badge、次要 metadata */
+  micro: getFontSizePx('caption', true),
+  /** 展開／導覽等功能 icon */
+  icon: getFontSizePx('h2', true),
 } as const
 
 /** 預約表單視覺 token（繼承 LIFF_THEME，估價卡用 info 色階） */
@@ -28,6 +32,8 @@ export const BOOK_THEME = {
   cardBorder: LIFF_THEME.cardBorder,
   cardShadow: LIFF_THEME.cardShadow,
   cardRadius: LIFF_THEME.cardRadius,
+  controlRadius: LIFF_THEME.controlRadius,
+  smallRadius: designSystem.borderRadius.sm,
   surfaceMuted: c.secondary[50],
   surfaceInset: LIFF_THEME.surfaceInset,
   lineGreen: LIFF_THEME.lineGreen,
@@ -41,4 +47,7 @@ export const BOOK_THEME = {
   estimateBorder: c.secondary[200],
   estimateAccent: c.info[700],
   estimateDetailInk: c.info[700],
+  warningBg: c.warning[50],
+  warningBorder: c.warning[500],
+  warningText: c.warning[700],
 } as const

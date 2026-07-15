@@ -4,7 +4,7 @@ import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { liffPrimaryBtn, LIFF_TYPE } from '../liffUiStyles'
 import { useBookLocale } from './BookLocaleContext'
 import { bookPage } from './bookStyles'
-import { BOOK_THEME as T } from './bookTheme'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 export type BookBootPhase = 'chunk' | 'init' | 'login'
 
@@ -61,13 +61,13 @@ export function BookBootScreen({ phase = 'init', onRetry, liffOpenUrl }: BookBoo
         {phaseLabel}
       </div>
       {slow && !stuck && (
-        <div style={{ fontSize: 12, color: T.mutedLight, marginTop: 10, lineHeight: 1.5 }}>
+        <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 10, lineHeight: 1.5 }}>
           {s.boot.slow}
         </div>
       )}
       {stuck && liffOpenUrl && (
         <div style={{ marginTop: 16, maxWidth: 280 }}>
-          <div style={{ fontSize: 12, color: T.muted, marginBottom: 12, lineHeight: 1.55 }}>
+          <div style={{ fontSize: ty.caption, color: T.muted, marginBottom: 12, lineHeight: 1.55 }}>
             {s.boot.loginFallback}
           </div>
           <a
@@ -75,10 +75,10 @@ export function BookBootScreen({ phase = 'init', onRetry, liffOpenUrl }: BookBoo
             style={{
               display: 'inline-block',
               padding: '12px 24px',
-              borderRadius: 12,
+              borderRadius: T.controlRadius,
               background: T.lineGreen,
               color: 'white',
-              fontSize: 15,
+              fontSize: ty.body,
               fontWeight: 600,
               textDecoration: 'none',
             }}
@@ -89,7 +89,7 @@ export function BookBootScreen({ phase = 'init', onRetry, liffOpenUrl }: BookBoo
       )}
       {stuck && (
         <div style={{ marginTop: 16, maxWidth: 280 }}>
-          <div style={{ fontSize: 12, color: T.muted, marginBottom: 12, lineHeight: 1.55 }}>
+          <div style={{ fontSize: ty.caption, color: T.muted, marginBottom: 12, lineHeight: 1.55 }}>
             {s.boot.stuck}
           </div>
           <button

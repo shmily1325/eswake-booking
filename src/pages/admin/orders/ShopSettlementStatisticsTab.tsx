@@ -11,6 +11,7 @@ import { useToast } from '../../../components/ui'
 import { formatCurrency, formatDateTime, extractDate, extractTime } from '../../../utils/formatters'
 import { supabase } from '../../../lib/supabase'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
+import { getAllCategories, getCategory, getCategoryShopName } from '../products/schema'
 import { fetchSettlementsInRange } from './api'
 import { formatSettlementLineDisplay, type SettlementLineDisplay } from './settleUtils'
 import type { OrderPaymentMethod, ShopOrderSettlementWithDetails } from './types'
@@ -44,6 +45,7 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [variantDisplay, setVariantDisplay] = useState<Record<string, SettlementLineDisplay>>({})
+  const [variantCategory, setVariantCategory] = useState<Record<string, string>>({})
 
   useEffect(() => {
     setSettlements([])
@@ -69,6 +71,7 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
           .in('id', variantIds)
         if (variantErr) throw variantErr
         const labels: Record<string, SettlementLineDisplay> = {}
+        const categories: Record<string, string> = {}
         variants?.forEach((v) => {
           const row = v as {
             id: string
@@ -80,10 +83,13 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
             { item_id: '', variant_id: row.id, qty: 0, unit_price: 0, line_total: 0 },
             row,
           )
+          if (row.product?.category) categories[row.id] = row.product.category
         })
         setVariantDisplay(labels)
+        setVariantCategory(categories)
       } else {
         setVariantDisplay({})
+        setVariantCategory({})
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '載入失敗'
@@ -108,6 +114,65 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
     }
     return { count: settlements.length, grandTotal, byMethod }
   }, [settlements])
+
+  const salesByCategory = useMemo(() => {
+    const categoryOrder = new Map(
+      getAllCategories().map((category, index) => [category.id, index]),
+    )
+    const grouped = new Map<
+      string,
+      {
+        categoryId: string
+        qty: number
+        total: number
+        items: Map<
+          string,
+          SettlementLineDisplay & { qty: number; total: number }
+        >
+      }
+    >()
+
+    for (const settlement of settlements) {
+      for (const line of settlement.items_snapshot) {
+        const categoryId = variantCategory[line.variant_id] ?? 'other'
+        const category = grouped.get(categoryId) ?? {
+          categoryId,
+          qty: 0,
+          total: 0,
+          items: new Map(),
+        }
+        const display =
+          variantDisplay[line.variant_id] ?? formatSettlementLineDisplay(line, null)
+        const itemKey = line.variant_id || `${display.title}\u0000${display.subtitle}`
+        const item = category.items.get(itemKey) ?? {
+          ...display,
+          qty: 0,
+          total: 0,
+        }
+
+        category.qty += line.qty
+        category.total += line.line_total
+        item.qty += line.qty
+        item.total += line.line_total
+        category.items.set(itemKey, item)
+        grouped.set(categoryId, category)
+      }
+    }
+
+    return Array.from(grouped.values())
+      .sort(
+        (a, b) =>
+          (categoryOrder.get(a.categoryId) ?? Number.MAX_SAFE_INTEGER) -
+          (categoryOrder.get(b.categoryId) ?? Number.MAX_SAFE_INTEGER),
+      )
+      .map((category) => ({
+        ...category,
+        name: getCategory(category.categoryId)
+          ? getCategoryShopName(getCategory(category.categoryId)!)
+          : '其他',
+        items: Array.from(category.items.values()).sort((a, b) => b.qty - a.qty),
+      }))
+  }, [settlements, variantCategory, variantDisplay])
 
   return (
     <div>
@@ -175,6 +240,97 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
               )} · ${summary.byMethod.transfer.count + summary.byMethod.cash.count} 筆`}
               isMobile={isMobile}
             />
+          </div>
+
+          <h2
+            style={{
+              margin: '0 0 16px',
+              fontSize: getFontSize('h3', isMobile),
+              fontWeight: 600,
+              color: colors.text.primary,
+            }}
+          >
+            售出商品
+          </h2>
+
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: spacing.md,
+              marginBottom: 24,
+            }}
+          >
+            {salesByCategory.map((category) => (
+              <section
+                key={category.categoryId}
+                style={{
+                  background: colors.background.card,
+                  border: `1px solid ${colors.border.light}`,
+                  borderRadius: borderRadius.lg,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: isMobile ? '12px 16px' : '14px 20px',
+                    background: colors.background.hover,
+                    borderBottom: `1px solid ${colors.border.light}`,
+                  }}
+                >
+                  <strong style={{ color: colors.text.primary }}>{category.name}</strong>
+                  <span style={{ color: colors.text.secondary }}>
+                    {category.qty} 件 · {formatCurrency(category.total, false)}
+                  </span>
+                </div>
+                {category.items.map((item, index) => (
+                  <div
+                    key={`${item.title}-${item.subtitle}`}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: isMobile ? '12px 16px' : '12px 20px',
+                      borderTop:
+                        index === 0 ? 'none' : `1px solid ${colors.border.light}`,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, color: colors.text.primary }}>
+                        {item.title}
+                      </div>
+                      {item.subtitle && (
+                        <div
+                          style={{
+                            marginTop: 2,
+                            fontSize: getFontSize('caption', isMobile),
+                            color: colors.text.disabled,
+                          }}
+                        >
+                          {item.subtitle}
+                        </div>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        textAlign: 'right',
+                        color: colors.text.secondary,
+                      }}
+                    >
+                      <div>{item.qty} 件</div>
+                      <div style={{ fontSize: getFontSize('caption', isMobile) }}>
+                        {formatCurrency(item.total, false)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </section>
+            ))}
           </div>
 
           <h2

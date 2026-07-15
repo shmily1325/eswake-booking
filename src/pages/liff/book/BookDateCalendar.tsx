@@ -94,7 +94,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
         >
           ‹
         </button>
-        <div style={{ fontSize: ty.title, fontWeight: 700, color: '#222' }}>
+        <div style={{ fontSize: ty.title, fontWeight: 700, color: T.ink }}>
           {cal.monthLabel(viewYear, viewMonth)}
         </div>
         <button
@@ -111,12 +111,12 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
       {bookability === 'closed' && (
         <div style={{
           fontSize: ty.caption,
-          color: '#888',
+          color: T.muted,
           textAlign: 'center',
           padding: '10px 8px',
           marginBottom: 8,
-          background: '#f5f5f5',
-          borderRadius: 10,
+          background: T.surfaceMuted,
+          borderRadius: T.smallRadius,
         }}>
           {cal.notOpen}
         </div>
@@ -129,7 +129,7 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
         textAlign: 'center',
       }}>
         {weekHeader.map((wd, i) => (
-          <div key={`${wd}-${i}`} style={{ fontSize: ty.caption, fontWeight: 600, color: '#999', padding: '4px 0' }}>
+          <div key={`${wd}-${i}`} style={{ fontSize: ty.caption, fontWeight: 600, color: T.mutedLight, padding: '4px 0' }}>
             {wd}
           </div>
         ))}
@@ -152,9 +152,9 @@ export function BookDateCalendar({ value, blockedDates, onChange }: BookDateCale
                 aspectRatio: '1',
                 minHeight: 40,
                 border: selected ? `2px solid ${T.accent}` : `1px solid ${T.borderSubtle}`,
-                borderRadius: 10,
+                borderRadius: T.smallRadius,
                 background: selected ? T.accent : disabled ? T.surfaceMuted : T.cardBg,
-                color: selected ? '#fff' : disabled ? T.mutedLight : T.inkSoft,
+                color: selected ? T.cardBg : disabled ? T.mutedLight : T.inkSoft,
                 fontSize: ty.body,
                 fontWeight: selected ? 700 : 500,
                 cursor: disabled ? 'not-allowed' : 'pointer',
@@ -180,10 +180,10 @@ function navBtn(disabled: boolean) {
     width: 36,
     height: 36,
     border: `1px solid ${T.borderSubtle}`,
-    borderRadius: 10,
+    borderRadius: T.smallRadius,
     background: disabled ? T.surfaceMuted : T.cardBg,
     color: disabled ? T.mutedLight : T.inkSoft,
-    fontSize: 20,
+    fontSize: ty.icon,
     lineHeight: 1,
     cursor: disabled ? 'not-allowed' as const : 'pointer' as const,
   }

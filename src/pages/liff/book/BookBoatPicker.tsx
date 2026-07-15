@@ -98,7 +98,7 @@ export function BookBoatPicker({ value, onChange, aboard = 0 }: BookBoatPickerPr
           label={boat.introVideoLabel}
         />
         {locale === 'en' ? (
-          <div style={{ fontSize: ty.caption, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
+          <div style={{ fontSize: ty.caption, color: T.mutedLight, marginTop: 6, textAlign: 'center' }}>
             {s.step1.videoMandarinNote}
           </div>
         ) : null}

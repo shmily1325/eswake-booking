@@ -21,7 +21,7 @@ export function BookAccordion({ items, defaultOpenId }: BookAccordionProps) {
             key={item.id}
             style={{
               border: `1px solid ${T.borderSubtle}`,
-              borderRadius: 10,
+              borderRadius: T.smallRadius,
               overflow: 'hidden',
               background: T.cardBg,
             }}
@@ -49,7 +49,7 @@ export function BookAccordion({ items, defaultOpenId }: BookAccordionProps) {
               }}
             >
               <span>{item.question}</span>
-              <span style={{ color: T.mutedLight, fontSize: 18, lineHeight: 1 }}>{open ? '−' : '+'}</span>
+              <span style={{ color: T.mutedLight, fontSize: ty.icon, lineHeight: 1 }}>{open ? '−' : '+'}</span>
             </button>
             {open && (
               <div

@@ -59,8 +59,8 @@ export const choiceBtn = (selected: boolean): CSSProperties => ({
   width: '100%',
   padding: '16px',
   border: selected ? `2px solid ${T.accent}` : `2px solid ${T.borderSubtle}`,
-  borderRadius: '14px',
-  background: selected ? T.surfaceMuted : 'white',
+  borderRadius: T.cardRadius,
+  background: selected ? T.surfaceMuted : T.cardBg,
   textAlign: 'left' as const,
   cursor: 'pointer',
   marginBottom: '10px',
@@ -70,9 +70,9 @@ export const choiceBtn = (selected: boolean): CSSProperties => ({
 
 export const chipBtn = (selected: boolean): CSSProperties => ({
   padding: '10px 16px',
-  border: selected ? `2px solid ${T.accent}` : '1px solid #ddd',
+  border: selected ? `2px solid ${T.accent}` : `1px solid ${T.borderSubtle}`,
   borderRadius: '999px',
-  background: selected ? T.accent : 'white',
+  background: selected ? T.accent : T.cardBg,
   color: selected ? 'white' : T.inkSoft,
   fontSize: ty.body,
   fontWeight: selected ? 600 : 400,
@@ -85,8 +85,8 @@ export const experienceChipBtn = (selected: boolean): CSSProperties => ({
   minWidth: 0,
   padding: '12px 8px',
   border: selected ? `2px solid ${T.accent}` : `1px solid ${T.borderSubtle}`,
-  borderRadius: 14,
-  background: selected ? T.accent : '#fff',
+  borderRadius: T.cardRadius,
+  background: selected ? T.accent : T.cardBg,
   color: selected ? 'white' : T.inkSoft,
   textAlign: 'center',
   cursor: 'pointer',
@@ -99,7 +99,7 @@ export const experienceChipTitle: CSSProperties = {
 }
 
 export const experienceChipNote = (selected: boolean): CSSProperties => ({
-  fontSize: 11,
+  fontSize: ty.micro,
   fontWeight: 400,
   marginTop: 6,
   lineHeight: 1.5,
@@ -110,7 +110,7 @@ export const experienceChipNote = (selected: boolean): CSSProperties => ({
 export const infoBox: CSSProperties = {
   background: T.surfaceMuted,
   border: `1px solid ${T.borderSubtle}`,
-  borderRadius: '12px',
+  borderRadius: T.controlRadius,
   padding: '12px 14px',
   fontSize: ty.body,
   color: T.inkSoft,
@@ -123,7 +123,7 @@ export const reminderBox: CSSProperties = {
   background: T.estimateBg,
   border: `1px solid ${T.estimateBorder}`,
   borderLeft: `3px solid ${T.estimateAccent}`,
-  borderRadius: '12px',
+  borderRadius: T.controlRadius,
   padding: '12px 14px',
   fontSize: ty.body,
   color: T.estimateDetailInk,
@@ -136,7 +136,7 @@ export const estimateBox: CSSProperties = {
   background: T.estimateBg,
   border: `1px solid ${T.estimateBorder}`,
   borderLeft: `3px solid ${T.estimateAccent}`,
-  borderRadius: '12px',
+  borderRadius: T.controlRadius,
   padding: '12px 14px',
   fontSize: ty.body,
   color: T.estimateDetailInk,
@@ -158,14 +158,14 @@ export const estimateDetailPanel: CSSProperties = {
   marginTop: 12,
   padding: '10px 12px',
   background: T.cardBg,
-  borderRadius: 10,
+  borderRadius: T.smallRadius,
   border: `1px solid ${T.estimateBorder}`,
 }
 
 /** 選填區塊（跟船等） */
 export const optionalPanel: CSSProperties = {
-  border: '1px dashed #ddd',
-  borderRadius: 10,
+  border: `1px dashed ${T.borderSubtle}`,
+  borderRadius: T.smallRadius,
   overflow: 'hidden',
   background: T.surfaceMuted,
 }
@@ -183,13 +183,13 @@ export const estimateInsetHighlight: CSSProperties = {
 }
 
 export const warnBox: CSSProperties = {
-  background: '#fffbe6',
-  border: '1px solid #ffe58f',
-  borderLeft: '3px solid #faad14',
-  borderRadius: '12px',
+  background: T.surfaceMuted,
+  border: `1px solid ${T.borderSubtle}`,
+  borderLeft: `3px solid ${T.warningBorder}`,
+  borderRadius: T.controlRadius,
   padding: '12px 14px',
   fontSize: ty.body,
-  color: '#614700',
+  color: T.warningText,
   lineHeight: 1.5,
   marginTop: '12px',
 }
@@ -200,7 +200,7 @@ export const stickyFooter: CSSProperties = {
   background: T.cardBg,
   borderTop: `1px solid ${T.borderSubtle}`,
   padding: '10px 16px',
-  paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+  paddingBottom: 'max(40px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
   display: 'flex',
   gap: '10px',
   zIndex: 20,
@@ -261,9 +261,9 @@ export const bigActivityBtn = (selected: boolean): CSSProperties => ({
   flex: 1,
   minWidth: 0,
   padding: '12px 10px',
-  border: selected ? `3px solid ${T.accent}` : '2px solid #e0e0e0',
-  borderRadius: 16,
-  background: selected ? T.surfaceMuted : 'white',
+  border: selected ? `3px solid ${T.accent}` : `2px solid ${T.borderSubtle}`,
+  borderRadius: T.cardRadius,
+  background: selected ? T.surfaceMuted : T.cardBg,
   textAlign: 'center' as const,
   display: 'flex',
   flexDirection: 'column',
@@ -322,7 +322,7 @@ export const optionalSectionFlat: CSSProperties = {
 /** 各步必填表單分組 */
 export const bookFieldGroup: CSSProperties = {
   padding: '14px 14px 4px',
-  borderRadius: 12,
+  borderRadius: T.controlRadius,
   background: T.cardBg,
   border: `1px solid ${T.borderSubtle}`,
   marginBottom: 16,
@@ -343,21 +343,20 @@ export const listItemRow: CSSProperties = {
   gap: 8,
   padding: '10px 12px',
   background: T.surfaceMuted,
-  borderRadius: 10,
+  borderRadius: T.smallRadius,
   fontSize: ty.body,
 }
 
 export const footerBlockHint: CSSProperties = {
   width: '100%',
   fontSize: ty.caption,
-  color: '#b45309',
+  color: T.warningText,
   textAlign: 'center',
   lineHeight: 1.45,
   marginBottom: 10,
-  padding: '8px 10px',
-  borderRadius: 8,
-  background: '#fffbeb',
-  border: '1px solid #fde68a',
+  padding: '4px 8px',
+  borderRadius: T.smallRadius,
+  background: T.surfaceMuted,
 }
 
 /** 步驟內／footer 輕提示（非 error 語意） */
@@ -400,7 +399,7 @@ export const bookNotesInput: CSSProperties = {
   width: '100%',
   padding: 14,
   border: `1px solid ${T.borderSubtle}`,
-  borderRadius: 12,
+  borderRadius: T.controlRadius,
   fontSize: ty.body,
   lineHeight: 1.5,
   boxSizing: 'border-box',
@@ -432,8 +431,8 @@ export const fieldHint: CSSProperties = {
 export const bookInput: CSSProperties = {
   width: '100%',
   padding: 14,
-  border: '1px solid #e0e0e0',
-  borderRadius: 12,
+  border: `1px solid ${T.borderSubtle}`,
+  borderRadius: T.controlRadius,
   fontSize: ty.title,
   boxSizing: 'border-box',
   background: T.surfaceMuted,
@@ -452,9 +451,9 @@ export const dateChip = (selected: boolean, disabled: boolean): CSSProperties =>
   flexShrink: 0,
   width: 56,
   padding: '10px 6px',
-  border: selected ? `2px solid ${T.accent}` : '1px solid #ddd',
-  borderRadius: 12,
-  background: selected ? T.accent : 'white',
+  border: selected ? `2px solid ${T.accent}` : `1px solid ${T.borderSubtle}`,
+  borderRadius: T.controlRadius,
+  background: selected ? T.accent : T.cardBg,
   color: selected ? 'white' : disabled ? T.mutedLight : T.inkSoft,
   cursor: disabled ? 'not-allowed' : 'pointer',
   textAlign: 'center' as const,
@@ -470,7 +469,7 @@ export const priceBanner: CSSProperties = {
   marginBottom: 14,
   textAlign: 'center',
   padding: '8px 10px',
-  borderRadius: 10,
+  borderRadius: T.smallRadius,
   background: T.surfaceMuted,
   border: `1px solid ${T.borderSubtle}`,
 }
@@ -488,8 +487,8 @@ export const segmentBtn = (selected: boolean): CSSProperties => ({
   position: 'relative',
   padding: '14px 10px 12px',
   border: selected ? `2px solid ${T.ctaBg}` : `1px solid ${T.borderSubtle}`,
-  borderRadius: 14,
-  background: selected ? T.accentSoft : '#fff',
+  borderRadius: T.cardRadius,
+  background: selected ? T.accentSoft : T.cardBg,
   cursor: 'pointer',
   textAlign: 'center',
   lineHeight: 1.35,
@@ -504,8 +503,8 @@ export const segmentCheck: CSSProperties = {
   height: 18,
   borderRadius: 999,
   background: T.ctaBg,
-  color: '#fff',
-  fontSize: 11,
+  color: T.cardBg,
+  fontSize: ty.micro,
   fontWeight: 700,
   display: 'flex',
   alignItems: 'center',
@@ -521,7 +520,7 @@ export const segmentZh: CSSProperties = {
 }
 
 export const segmentEn: CSSProperties = {
-  fontSize: 11,
+  fontSize: ty.micro,
   fontWeight: 500,
   color: T.muted,
   marginTop: 4,
@@ -533,9 +532,9 @@ export const segmentEn: CSSProperties = {
 /** Step 1 選中後的詳情區 */
 export const detailPanel = (active: boolean): CSSProperties => ({
   padding: '14px 14px 12px',
-  borderRadius: 14,
-  border: active ? `1px solid #e0e0e0` : '1px dashed #ddd',
-  background: active ? '#fff' : T.surfaceMuted,
+  borderRadius: T.cardRadius,
+  border: active ? `1px solid ${T.borderSubtle}` : `1px dashed ${T.borderSubtle}`,
+  background: active ? T.cardBg : T.surfaceMuted,
   borderLeft: active ? `3px solid ${T.accent}` : undefined,
 })
 
@@ -596,7 +595,7 @@ export const stepperBtn: CSSProperties = {
   height: 44,
   borderRadius: 999,
   border: `1px solid ${T.borderSubtle}`,
-  background: '#fff',
+  background: T.cardBg,
   fontSize: ty.title,
   fontWeight: 600,
   color: T.ink,
@@ -630,7 +629,7 @@ export const step2SummaryLine: CSSProperties = {
   padding: '10px 12px',
   background: T.estimateBg,
   border: `1px solid ${T.estimateBorder}`,
-  borderRadius: 10,
+  borderRadius: T.smallRadius,
   fontSize: ty.caption,
   fontWeight: 600,
   color: T.ink,
@@ -658,7 +657,7 @@ export const step1Summary: CSSProperties = {
 }
 
 export const segmentMeta: CSSProperties = {
-  fontSize: 11,
+  fontSize: ty.micro,
   fontWeight: 500,
   color: T.muted,
   marginTop: 5,
@@ -699,7 +698,7 @@ export const segmentPriceReturningLine: CSSProperties = {
 }
 
 export const segmentPriceMemberNote: CSSProperties = {
-  fontSize: 10,
+  fontSize: ty.micro,
   fontWeight: 500,
   color: T.muted,
   marginTop: 2,
@@ -713,8 +712,8 @@ export const bothSegmentBtn = (selected: boolean): CSSProperties => ({
   position: 'relative',
   padding: '14px 10px 12px',
   border: selected ? `2px solid ${T.ctaBg}` : `1px solid ${T.borderSubtle}`,
-  borderRadius: 14,
-  background: selected ? T.accentSoft : '#fff',
+  borderRadius: T.cardRadius,
+  background: selected ? T.accentSoft : T.cardBg,
   cursor: 'pointer',
   textAlign: 'center',
   lineHeight: 1.35,
@@ -820,7 +819,7 @@ export const guideFooterLink: CSSProperties = {
 export const guideNoteBox: CSSProperties = {
   background: T.estimateBg,
   border: `1px solid ${T.estimateBorder}`,
-  borderRadius: 10,
+  borderRadius: T.smallRadius,
   padding: '10px 12px',
   fontSize: ty.caption,
   color: T.estimateDetailInk,

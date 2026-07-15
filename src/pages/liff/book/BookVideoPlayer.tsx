@@ -4,6 +4,7 @@ import { isMobileDevice } from '../../shop/lib/lineDeepLink'
 import { useBookLocale } from './BookLocaleContext'
 import { openYoutubeVideo, youtubeEmbedUrl, youtubeThumbnailUrl } from './bookMedia'
 import { BOOK_PUBLIC_COLUMN_MAX_WIDTH } from '../../book/BookLayout'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 const overlay: CSSProperties = {
   position: 'fixed',
@@ -24,7 +25,7 @@ const sheet: CSSProperties = {
   position: 'relative',
   width: '100%',
   maxWidth: BOOK_PUBLIC_COLUMN_MAX_WIDTH,
-  background: '#111',
+  background: T.ink,
   borderRadius: '16px 16px 0 0',
   padding: '12px 12px calc(12px + env(safe-area-inset-bottom, 0px))',
   maxHeight: '88vh',
@@ -41,7 +42,7 @@ const closeBtn: CSSProperties = {
   borderRadius: '50%',
   background: 'rgba(0, 0, 0, 0.55)',
   color: 'white',
-  fontSize: 18,
+  fontSize: ty.icon,
   lineHeight: 1,
   cursor: 'pointer',
 }
@@ -50,9 +51,9 @@ const embedWrap: CSSProperties = {
   position: 'relative',
   paddingBottom: '56.25%',
   height: 0,
-  borderRadius: 10,
+  borderRadius: T.smallRadius,
   overflow: 'hidden',
-  background: '#000',
+  background: T.headerBg,
 }
 
 const fallbackLink: CSSProperties = {
@@ -62,8 +63,8 @@ const fallbackLink: CSSProperties = {
   padding: 0,
   border: 'none',
   background: 'none',
-  color: '#aaa',
-  fontSize: 12,
+  color: T.mutedLight,
+  fontSize: ty.caption,
   textAlign: 'center',
   textDecoration: 'underline',
   cursor: 'pointer',
@@ -76,10 +77,10 @@ const compactThumb: CSSProperties = {
   marginTop: 0,
   padding: 0,
   border: 'none',
-  borderRadius: 12,
+  borderRadius: T.controlRadius,
   overflow: 'hidden',
   cursor: 'pointer',
-  background: '#fff',
+  background: T.cardBg,
   boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
 }
 
@@ -91,7 +92,7 @@ const playBadge: CSSProperties = {
   justifyContent: 'center',
   background: 'rgba(0, 0, 0, 0.28)',
   color: 'white',
-  fontSize: 22,
+  fontSize: ty.icon,
 }
 
 interface BookVideoPlayerProps {
@@ -159,8 +160,8 @@ export function BookVideoPlayer({
             padding: 0,
             border: 'none',
             background: 'none',
-            color: '#666',
-            fontSize: 13,
+            color: T.muted,
+            fontSize: ty.caption,
             cursor: 'pointer',
             textDecoration: 'underline',
           }}
@@ -176,7 +177,7 @@ export function BookVideoPlayer({
             <button type="button" style={closeBtn} aria-label={s.video.close} onClick={() => setOpen(false)}>
               ×
             </button>
-            <div style={{ color: 'white', fontSize: 14, fontWeight: 600, marginBottom: 8, paddingRight: 36 }}>
+            <div style={{ color: 'white', fontSize: ty.body, fontWeight: 600, marginBottom: 8, paddingRight: 36 }}>
               {title}
             </div>
             <div style={embedWrap}>

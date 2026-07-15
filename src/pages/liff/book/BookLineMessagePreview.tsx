@@ -24,7 +24,7 @@ const toggleBtn: CSSProperties = {
 const messageBox: CSSProperties = {
   marginTop: 10,
   padding: '12px 14px',
-  borderRadius: 10,
+  borderRadius: T.smallRadius,
   background: T.surfaceMuted,
   fontSize: ty.caption,
   lineHeight: 1.55,

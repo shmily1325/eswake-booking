@@ -6,7 +6,7 @@ import {
   type BookI18nStrings,
   type BookLocale,
 } from './liffBookingI18n'
-import { BOOK_TYPE as ty } from './bookTheme'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 interface BookLocaleContextValue {
   locale: BookLocale
@@ -64,7 +64,7 @@ export function BookLocaleToggle({ style, surface = 'header' }: BookLocaleToggle
       ? onCard ? 'rgba(74,74,74,0.12)' : 'rgba(255,255,255,0.28)'
       : 'transparent',
     color: active
-      ? onCard ? '#333' : '#fff'
+      ? onCard ? T.ink : T.cardBg
       : onCard ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.65)',
     boxShadow: active
       ? onCard ? 'inset 0 0 0 1px rgba(0,0,0,0.08)' : 'inset 0 0 0 1px rgba(255,255,255,0.2)'
@@ -78,7 +78,8 @@ export function BookLocaleToggle({ style, surface = 'header' }: BookLocaleToggle
         gap: 2,
         padding: 2,
         borderRadius: 999,
-        background: onCard ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.12)',
+        background: onCard ? T.surfaceMuted : 'rgba(255,255,255,0.08)',
+        border: onCard ? `1px solid ${T.borderSubtle}` : '1px solid rgba(255,255,255,0.2)',
         ...style,
       }}
       role="group"

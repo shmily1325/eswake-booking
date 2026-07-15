@@ -131,9 +131,9 @@ export function NotEnabledView() {
   return (
     <div style={{ ...bookPage, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ ...bookCard, maxWidth: 360, textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 12, fontWeight: 700, color: '#444' }}>ES</div>
-        <h1 style={{ fontSize: 18, margin: '0 0 8px' }}>{s.notEnabled.title}</h1>
-        <p style={{ fontSize: 14, color: '#666', margin: 0 }}>{s.notEnabled.body}</p>
+        <div style={{ fontSize: ty.display, marginBottom: 12, fontWeight: 700, color: T.inkSoft }}>ES</div>
+        <h1 style={{ fontSize: ty.title, color: T.ink, margin: '0 0 8px' }}>{s.notEnabled.title}</h1>
+        <p style={{ fontSize: ty.body, color: T.muted, margin: 0 }}>{s.notEnabled.body}</p>
       </div>
     </div>
   )
@@ -666,14 +666,14 @@ export function BookWizardCore({
                   value={form.contactName}
                   onChange={e => setForm(prev => ({ ...prev, contactName: e.target.value }))}
                   placeholder={s.step4.namePh}
-                  style={{ ...bookInput, marginBottom: 10, background: '#fff' }}
+                  style={{ ...bookInput, marginBottom: 10, background: T.cardBg }}
                 />
                 <input
                   type="tel"
                   value={form.contactPhone}
                   onChange={e => setForm(prev => ({ ...prev, contactPhone: e.target.value }))}
                   placeholder={s.step4.phonePh}
-                  style={{ ...bookInput, marginBottom: 10, background: '#fff' }}
+                  style={{ ...bookInput, marginBottom: 10, background: T.cardBg }}
                 />
                 <textarea
                   value={form.notes}

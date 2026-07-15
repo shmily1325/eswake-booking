@@ -25,7 +25,7 @@ export function BookContextTips({ step, form, pickTimePref }: BookContextTipsPro
       <div
         style={{
           fontSize: ty.caption,
-          color: hasWarn ? '#b45309' : T.muted,
+          color: hasWarn ? T.warningText : T.muted,
           textAlign: 'center',
           lineHeight: 1.55,
           marginTop: 12,

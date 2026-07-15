@@ -4,13 +4,13 @@ import { liffTrack } from '../track'
 import { useBookLocale } from './BookLocaleContext'
 import type { CoachOption, LiffBookingFormState, TimePreference } from './types'
 import { buildStaffHelpMessage, openStaffHelp } from './bookStaffHelp'
-import { BOOK_TYPE as ty } from './bookTheme'
+import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 const wrap: CSSProperties = {
   textAlign: 'center',
   margin: '14px 0 0',
   fontSize: ty.caption,
-  color: '#999',
+  color: T.mutedLight,
   lineHeight: 1.65,
 }
 
@@ -20,7 +20,7 @@ const textLinkBtn: CSSProperties = {
   margin: 0,
   border: 'none',
   background: 'none',
-  color: '#009900',
+  color: T.lineGreen,
   fontSize: 'inherit',
   fontWeight: 600,
   cursor: 'pointer',
@@ -75,7 +75,7 @@ export function BookStaffHint({
     if (!showSplit) return null
     return (
       <div style={{ ...wrap, margin: '14px 0 6px' }}>
-        <div style={{ fontSize: ty.caption, color: '#aaa' }}>
+        <div style={{ fontSize: ty.caption, color: T.mutedLight }}>
           {s.staff.splitActivity}
         </div>
         <button type="button" onClick={handleAsk} style={textLinkBtn}>

@@ -60,7 +60,7 @@ export function BookFollowBoatPanel({ riders, value, onChange, flat = false }: B
           </span>
         ) : null}
       </span>
-      <span style={{ color: T.mutedLight, fontSize: 18, lineHeight: 1 }}>{open ? '−' : '+'}</span>
+      <span style={{ color: T.mutedLight, fontSize: ty.icon, lineHeight: 1 }}>{open ? '−' : '+'}</span>
     </button>
   )
 
