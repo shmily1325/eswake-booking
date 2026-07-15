@@ -13,7 +13,7 @@ import {
 import { ToastContainer, useToast } from '../../../components/ui'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { isAdmin } from '../../../utils/auth'
-import { designSystem } from '../../../styles/designSystem'
+import { designSystem, PAGE_MAX_WIDTHS } from '../../../styles/designSystem'
 import { fetchPendingBillOrders } from './api'
 import { usePendingBillOrderCount } from '../../../hooks/usePendingBillOrderCount'
 import { PendingOrderSettleItem } from './PendingOrderSettleItem'
@@ -105,7 +105,7 @@ export function OrderSettlePage() {
   const pendingBadge = pendingCount > 0 ? pendingCount : undefined
 
   return (
-    <AdminPageShell>
+    <AdminPageShell maxWidth={PAGE_MAX_WIDTHS.content}>
       <PageHeader
         title="商品訂單"
         user={user}

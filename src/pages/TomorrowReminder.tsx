@@ -12,7 +12,7 @@ import {
 } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { PageShell } from '../components/PageShell'
-import { designSystem, getButtonStyle } from '../styles/designSystem'
+import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../styles/designSystem'
 import { hasViewAccess } from '../utils/auth'
 import { getFacilityMessageLabel } from '../utils/facility'
 import { displayCoachNameForTomorrowMessage } from '../utils/tomorrowReminderDisplay'
@@ -423,90 +423,55 @@ export function TomorrowReminder() {
   } as const
 
   return (
-    <PageShell variant="content" mobilePadding="12px" desktopPadding="20px">
+    <PageShell variant="focused" mobilePadding="12px" desktopPadding="20px">
         <PageHeader title="明日提醒" user={user} />
 
         <div style={pageCardStyle}>
           <label style={{
             display: 'block',
-            fontSize: isMobile ? '13px' : '14px',
+            fontSize: getFontSize('bodySmall', isMobile),
             fontWeight: '600',
             marginBottom: '8px',
             color: designSystem.colors.text.primary
           }}>
             選擇日期
           </label>
-          {isMobile ? (
-            // 手機版：和預約查詢一樣的樣式
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: '10px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                  touchAction: 'manipulation'
-                }}
-              />
-              {/* 星期幾徽章 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{
+                ...getInputStyle(isMobile),
+                flex: isMobile ? '1 1 180px' : '0 1 210px',
+                minWidth: 0,
+                width: 'auto',
+                cursor: 'pointer',
+                touchAction: 'manipulation'
+              }}
+            />
+            <span style={{
+              padding: '10px 14px',
+              borderRadius: designSystem.borderRadius.md,
+              background: designSystem.colors.primary[500],
+              color: 'white',
+              fontSize: getFontSize('button', isMobile),
+              fontWeight: '600',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}>
+              {getWeekdayText(selectedDate)}
+            </span>
+            {loading && (
               <span style={{
-                padding: '10px 14px',
-                borderRadius: designSystem.borderRadius.md,
-                background: designSystem.colors.primary[500],
-                color: 'white',
-                fontSize: '14px',
-                fontWeight: '600',
-                whiteSpace: 'nowrap',
+                color: designSystem.colors.text.secondary,
+                fontSize: getFontSize('bodySmall', isMobile),
                 flexShrink: 0
               }}>
-                {getWeekdayText(selectedDate)}
+                載入中...
               </span>
-              {loading && (
-                <span style={{ color: '#666', fontSize: '13px', flexShrink: 0 }}>載入中...</span>
-              )}
-            </div>
-          ) : (
-            // 電腦版：簡潔樣式
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={{
-                  padding: '10px 14px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  cursor: 'pointer'
-                }}
-              />
-              {/* 星期幾徽章 */}
-              <span style={{
-                padding: '10px 14px',
-                borderRadius: designSystem.borderRadius.md,
-                background: designSystem.colors.primary[500],
-                color: 'white',
-                fontSize: '14px',
-                fontWeight: '600',
-              }}>
-                {getWeekdayText(selectedDate)}
-              </span>
-              {loading && (
-                <span style={{ 
-                  color: '#666', 
-                  fontSize: '14px' 
-                }}>
-                  載入中...
-                </span>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Text Templates */}

@@ -57,6 +57,8 @@ type SalesGroupBy = 'brand' | 'category'
 interface VariantSalesMeta {
   brand: string
   category: string
+  productId: string
+  productName: string
 }
 
 export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: Props) {
@@ -67,6 +69,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedSalesGroupId, setExpandedSalesGroupId] = useState<string | null>(null)
+  const [expandedSalesItemId, setExpandedSalesItemId] = useState<string | null>(null)
   const [variantDisplay, setVariantDisplay] = useState<Record<string, SettlementLineDisplay>>({})
   const [variantSalesMeta, setVariantSalesMeta] = useState<Record<string, VariantSalesMeta>>({})
 
@@ -89,7 +92,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
         const { data: variants, error: variantErr } = await supabase
           .from('product_variants')
           .select(
-            'id, vendor_code, attributes, product:products(brand, model, category)',
+            'id, vendor_code, attributes, product:products(id, brand, model, category)',
           )
           .in('id', variantIds)
         if (variantErr) throw variantErr
@@ -100,7 +103,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
             id: string
             vendor_code: string | null
             attributes: Record<string, unknown> | null
-            product: { brand: string; model: string; category: string } | null
+            product: { id: string; brand: string; model: string; category: string } | null
           }
           labels[row.id] = formatSettlementLineDisplay(
             { item_id: '', variant_id: row.id, qty: 0, unit_price: 0, line_total: 0 },
@@ -110,6 +113,8 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
             salesMeta[row.id] = {
               brand: row.product.brand.trim() || '其他品牌',
               category: row.product.category || 'other',
+              productId: row.product.id,
+              productName: `${row.product.brand} ${row.product.model}`.trim(),
             }
           }
         })
@@ -153,7 +158,15 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
         total: number
         items: Map<
           string,
-          SettlementLineDisplay & { qty: number; total: number }
+          SettlementLineDisplay & {
+            id: string
+            qty: number
+            total: number
+            details: Map<
+              string,
+              SettlementLineDisplay & { id: string; qty: number; total: number }
+            >
+          }
         >
       }
     >()
@@ -191,6 +204,19 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
           : display
         const item = group.items.get(itemKey) ?? {
           ...itemDisplay,
+          id: itemKey,
+          qty: 0,
+          total: 0,
+          details: new Map(),
+        }
+        const detailKey = meta?.productId
+          ?? (line.variant_id || `${display.title}\u0000${display.subtitle}`)
+        const detailDisplay = meta
+          ? { title: meta.productName, subtitle: '' }
+          : display
+        const detail = item.details.get(detailKey) ?? {
+          ...detailDisplay,
+          id: detailKey,
           qty: 0,
           total: 0,
         }
@@ -199,6 +225,9 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
         group.total += line.line_total
         item.qty += line.qty
         item.total += line.line_total
+        detail.qty += line.qty
+        detail.total += line.line_total
+        item.details.set(detailKey, detail)
         group.items.set(itemKey, item)
         grouped.set(groupId, group)
       }
@@ -208,9 +237,14 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
       .sort((a, b) => b.total - a.total || b.qty - a.qty || a.name.localeCompare(b.name))
       .map((group) => ({
         ...group,
-        items: Array.from(group.items.values()).sort(
-          (a, b) => b.total - a.total || b.qty - a.qty || a.title.localeCompare(b.title),
-        ),
+        items: Array.from(group.items.values())
+          .sort((a, b) => b.total - a.total || b.qty - a.qty || a.title.localeCompare(b.title))
+          .map((item) => ({
+            ...item,
+            details: Array.from(item.details.values()).sort(
+              (a, b) => b.total - a.total || b.qty - a.qty || a.title.localeCompare(b.title),
+            ),
+          })),
       }))
   }, [salesGroupBy, settlements, variantDisplay, variantSalesMeta])
 
@@ -349,6 +383,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                     onClick={() => {
                       setSalesGroupBy(value)
                       setExpandedSalesGroupId(null)
+                      setExpandedSalesItemId(null)
                     }}
                     style={{
                       ...getButtonStyle(
@@ -381,7 +416,10 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                   <button
                     type="button"
                     aria-expanded={expanded}
-                    onClick={() => setExpandedSalesGroupId(expanded ? null : group.id)}
+                    onClick={() => {
+                      setExpandedSalesGroupId(expanded ? null : group.id)
+                      setExpandedSalesItemId(null)
+                    }}
                     style={{
                       width: '100%',
                       display: 'grid',
@@ -465,77 +503,130 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                       </span>
                     </div>
                   </button>
-                  {expanded && group.items.map((item, itemIndex) => (
-                    <div
-                      key={`${item.title}-${item.subtitle}`}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0, 1fr) auto',
-                        alignItems: 'center',
-                        gap: spacing.md,
-                        margin: isMobile
-                          ? `4px 14px ${itemIndex === group.items.length - 1 ? '8px' : '0'} 39px`
-                          : `5px 20px ${itemIndex === group.items.length - 1 ? '10px' : '0'} 52px`,
-                        padding: isMobile ? '7px 9px' : '8px 10px',
-                        background: colors.secondary[100],
-                        borderRadius: borderRadius.md,
-                      }}
-                    >
+                  {expanded && group.items.map((item, itemIndex) => {
+                    const itemExpansionId = `${group.id}\u0000${item.id}`
+                    const itemExpanded = expandedSalesItemId === itemExpansionId
+                    return (
                       <div
+                        key={item.id}
                         style={{
-                          minWidth: 0,
-                          display: 'flex',
-                          alignItems: 'baseline',
-                          gap: spacing.sm,
+                          margin: isMobile
+                            ? `4px 14px ${itemIndex === group.items.length - 1 ? '8px' : '0'} 39px`
+                            : `5px 20px ${itemIndex === group.items.length - 1 ? '10px' : '0'} 52px`,
                         }}
                       >
-                        <span
+                        <button
+                          type="button"
+                          aria-expanded={itemExpanded}
+                          onClick={() => setExpandedSalesItemId(itemExpanded ? null : itemExpansionId)}
                           style={{
-                            flexShrink: 0,
-                            fontSize: getFontSize('caption', isMobile),
-                            color: colors.text.disabled,
-                            fontVariantNumeric: 'tabular-nums',
+                            width: '100%',
+                            display: 'grid',
+                            gridTemplateColumns: 'minmax(0, 1fr) auto',
+                            alignItems: 'center',
+                            gap: spacing.md,
+                            padding: isMobile ? '7px 9px' : '8px 10px',
+                            background: colors.secondary[100],
+                            border: 0,
+                            borderRadius: borderRadius.md,
+                            color: 'inherit',
+                            cursor: 'pointer',
+                            textAlign: 'left',
                           }}
                         >
-                          {itemIndex + 1}.
-                        </span>
-                        <div
-                          style={{
-                            minWidth: 0,
-                            fontSize: getFontSize('bodySmall', isMobile),
-                            fontWeight: 500,
-                            color: colors.text.primary,
-                            lineHeight: 1.35,
-                            overflowWrap: 'anywhere',
-                          }}
-                        >
-                          {item.title}
-                        </div>
-                        {item.subtitle && (
                           <div
                             style={{
-                              marginTop: 2,
-                              fontSize: getFontSize('caption', isMobile),
-                              color: colors.text.disabled,
+                              minWidth: 0,
+                              display: 'flex',
+                              alignItems: 'baseline',
+                              gap: spacing.sm,
                             }}
                           >
-                            {item.subtitle}
+                            <span
+                              style={{
+                                flexShrink: 0,
+                                fontSize: getFontSize('caption', isMobile),
+                                color: colors.text.disabled,
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              {itemIndex + 1}.
+                            </span>
+                            <span
+                              style={{
+                                minWidth: 0,
+                                fontSize: getFontSize('bodySmall', isMobile),
+                                fontWeight: 500,
+                                color: colors.text.primary,
+                                lineHeight: 1.35,
+                                overflowWrap: 'anywhere',
+                              }}
+                            >
+                              {item.title}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              flexShrink: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              color: colors.text.secondary,
+                              fontSize: getFontSize('bodySmall', isMobile),
+                              fontVariantNumeric: 'tabular-nums',
+                              textAlign: 'right',
+                            }}
+                          >
+                            <span>{item.qty} 件 · {formatCurrency(item.total, false)}</span>
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                fontSize: getFontSize('caption', isMobile),
+                                color: colors.text.disabled,
+                                transform: itemExpanded ? 'rotate(180deg)' : 'none',
+                                transition: 'transform 160ms ease',
+                              }}
+                            >
+                              ▾
+                            </span>
+                          </div>
+                        </button>
+                        {itemExpanded && (
+                          <div style={{ padding: '3px 8px 1px' }}>
+                            {item.details.map((detail, detailIndex) => (
+                              <div
+                                key={detail.id}
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'minmax(0, 1fr) auto',
+                                  gap: spacing.sm,
+                                  padding: '4px 2px',
+                                  borderTop:
+                                    detailIndex > 0 ? `1px solid ${colors.border.light}` : 'none',
+                                  color: colors.text.disabled,
+                                  fontSize: getFontSize('caption', isMobile),
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                                  {detail.title}
+                                </span>
+                                <span
+                                  style={{
+                                    flexShrink: 0,
+                                    fontVariantNumeric: 'tabular-nums',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {detail.qty} 件 · {formatCurrency(detail.total, false)}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
-                      <div
-                        style={{
-                          flexShrink: 0,
-                          textAlign: 'right',
-                          color: colors.text.secondary,
-                          fontSize: getFontSize('bodySmall', isMobile),
-                          fontVariantNumeric: 'tabular-nums',
-                        }}
-                      >
-                        {item.qty} 件 · {formatCurrency(item.total, false)}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </section>
               )
             })}

@@ -12,6 +12,7 @@ import {
   getButtonStyle,
   getCardStyle,
   getPageContentShellStyle,
+  PAGE_MAX_WIDTHS,
 } from '../../styles/designSystem'
 
 interface BackupLog {
@@ -249,7 +250,7 @@ export function BackupPage() {
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
       }}
     >
-      <div style={getPageContentShellStyle(isMobile)}>
+      <div style={getPageContentShellStyle(isMobile, PAGE_MAX_WIDTHS.focused)}>
         <PageHeader title="備份" user={user} showBaoLink={isAdmin(user)} />
 
         <section style={{ marginBottom: isMobile ? 28 : 36 }}>

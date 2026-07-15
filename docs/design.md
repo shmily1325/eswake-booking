@@ -240,6 +240,18 @@ Spacing should do most of the grouping work.
 - On mobile, favor iOS-style grouped sections and clear touch targets.
 - On desktop, preserve scanning efficiency without reverting to spreadsheet aesthetics.
 
+### Choose page width by task
+
+Page widths are not meant to be globally identical. Pick the narrowest width that supports the page's primary task:
+
+- `hub`: launchers such as Home and BAO.
+- `focused`: search, reading, editing, and single-column card workflows.
+- `content`: standard management lists, product/member workflows, and medium-density tables.
+- `dashboard`: pages that need simultaneous comparison across several summary columns.
+- `wide`: schedules, assignments, and dense operational matrices.
+
+Related pages in the same workflow should not visibly jump in width without a functional reason. Do not widen a page simply because more screen space is available, and do not narrow schedules or matrices that genuinely benefit from horizontal space. Use `PageShell` and `PAGE_MAX_WIDTHS` rather than one-off `maxWidth` values.
+
 ## Component Consistency
 
 Reuse existing visual patterns.

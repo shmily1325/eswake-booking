@@ -292,6 +292,7 @@ export const PAGE_MAX_WIDTHS = {
   hub: '600px',
   // 4 欄 hub 保持與 3 欄 hub 相同的卡片寬度
   hubWide: '792px',
+  focused: '960px',
   content: '1100px',
   dashboard: '1200px',
   wide: '1400px',
@@ -305,9 +306,12 @@ export type PageWidthVariant = keyof typeof PAGE_MAX_WIDTHS
 export const PAGE_CONTENT_MAX_WIDTH = PAGE_MAX_WIDTHS.content
 
 /** 置中內容殼層：手機近滿寬，桌面限制行寬 */
-export const getPageContentShellStyle = (isMobile: boolean = false): React.CSSProperties => ({
+export const getPageContentShellStyle = (
+  isMobile: boolean = false,
+  maxWidth: React.CSSProperties['maxWidth'] = PAGE_CONTENT_MAX_WIDTH,
+): React.CSSProperties => ({
   width: '100%',
-  maxWidth: isMobile ? undefined : PAGE_CONTENT_MAX_WIDTH,
+  maxWidth: isMobile ? undefined : maxWidth,
   marginLeft: 'auto',
   marginRight: 'auto',
   boxSizing: 'border-box',

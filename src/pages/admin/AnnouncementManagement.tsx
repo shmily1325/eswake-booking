@@ -17,6 +17,7 @@ import {
   getFontSize,
   getInputStyle,
   getPageContentShellStyle,
+  PAGE_MAX_WIDTHS,
 } from '../../styles/designSystem'
 
 const pageBg = designSystem.colors.background.main
@@ -432,7 +433,7 @@ export function AnnouncementManagement() {
       background: pageBg,
       paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
     }}>
-      <div style={getPageContentShellStyle(isMobile)}>
+      <div style={getPageContentShellStyle(isMobile, PAGE_MAX_WIDTHS.focused)}>
         <PageHeader title="公告" user={user} showBaoLink={isAdmin(user)} />
 
         {/* 新增表單 */}

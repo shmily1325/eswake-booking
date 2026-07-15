@@ -132,7 +132,7 @@ export function BoatUsageHoursPage() {
 
   return (
     <PageShell
-      variant="content"
+      variant="focused"
       mobilePadding="16px"
       desktopPadding="24px"
       outerStyle={{ paddingBottom: '80px' }}

@@ -947,9 +947,10 @@ export function CoachReport({
       <div style={{
         flex: 1,
         padding: embedded ? '0' : (isMobile ? '16px' : '24px'),
-        maxWidth: PAGE_MAX_WIDTHS.wide,
+        maxWidth: PAGE_MAX_WIDTHS.focused,
         margin: '0 auto',
         width: '100%',
+        boxSizing: 'border-box',
         overflow: 'hidden'
       }}>
         {!embedded && (

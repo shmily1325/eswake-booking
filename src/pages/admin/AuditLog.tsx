@@ -759,7 +759,7 @@ export function AuditLog() {
   }
 
   return (
-    <PageShell variant="content" mobilePadding="10px" desktopPadding="15px">
+    <PageShell variant="focused" mobilePadding="10px" desktopPadding="15px">
       <PageHeader title="編輯記錄" user={user} />
 
       {/* 篩選區 */}

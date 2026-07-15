@@ -341,7 +341,7 @@ export function BaoHub() {
             <h3
               style={{
                 margin: '0 0 20px 0',
-                fontSize: getFontSize('h2', isMobile),
+                fontSize: getFontSize('h3', isMobile),
                 fontWeight: 700,
                 color: designSystem.colors.text.primary,
                 paddingBottom: '12px',

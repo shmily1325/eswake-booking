@@ -28,7 +28,6 @@ const OrderSettlePage = lazy(() => import('./pages/admin/orders/OrderSettlePage'
 const QuickTransaction = lazy(() => import('./pages/QuickTransaction').then(module => ({ default: module.QuickTransaction })))
 const MemberTransaction = lazy(() => import('./pages/member/MemberTransaction').then(module => ({ default: module.MemberTransaction })))
 const AnnouncementManagement = lazy(() => import('./pages/admin/AnnouncementManagement').then(module => ({ default: module.AnnouncementManagement })))
-const LineBindingStatus = lazy(() => import('./pages/admin/LineBindingStatus').then(module => ({ default: module.LineBindingStatus })))
 const BackupPage = lazy(() => import('./pages/admin/BackupPage').then(module => ({ default: module.BackupPage })))
 const Statistics = lazy(() => import('./pages/admin/Statistics').then(module => ({ default: module.Statistics })))
 const BoatUsageHoursPage = lazy(() => import('./pages/admin/BoatUsageHoursPage').then(module => ({ default: module.BoatUsageHoursPage })))
@@ -142,7 +141,6 @@ function AdminAppContent() {
             <Route path="/boards" element={<BoardManagement />} />
             <Route path="/staff" element={<StaffManagement />} />
             <Route path="/announcements" element={<AnnouncementManagement />} />
-            <Route path="/line-binding" element={<LineBindingStatus />} />
             <Route path="/backup" element={<BackupPage />} />
             <Route path="/coach-daily" element={<CoachDailyView />} />
             <Route path="/coach-time-off" element={<CoachTimeOffPage />} />

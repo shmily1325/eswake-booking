@@ -229,7 +229,7 @@ export function MemberPhoneEditPage() {
 
   return (
     <PageShell
-      variant="content"
+      variant="focused"
       mobilePadding="12px 16px max(20px, env(safe-area-inset-bottom))"
       desktopPadding="20px 20px max(20px, env(safe-area-inset-bottom))"
       outerStyle={{ minHeight: '100dvh' }}

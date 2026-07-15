@@ -424,8 +424,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
   return (
     <PageShell
-      variant="dashboard"
-      mobilePadding={isEmbedded ? '0' : '12px'}
+      variant="focused"
+      mobilePadding={isEmbedded ? '0' : '12px 16px'}
       desktopPadding={isEmbedded ? '0' : '20px'}
       outerStyle={isEmbedded ? { minHeight: 'auto', background: 'transparent' } : undefined}
       contentStyle={isEmbedded ? { flex: 'unset' } : undefined}
