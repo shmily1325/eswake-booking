@@ -19,13 +19,13 @@ function getMonthCells(month: string): Array<string | null> {
 export function TimeOffBatchCalendar({
   month,
   onMonthChange,
-  selectedDates,
+  draftDateLabels,
   existingDateLabels,
   onToggleDate,
 }: {
   month: string
   onMonthChange: (month: string) => void
-  selectedDates: Set<string>
+  draftDateLabels: Map<string, string>
   existingDateLabels: Map<string, string>
   onToggleDate: (date: string) => void
 }) {
@@ -56,7 +56,7 @@ export function TimeOffBatchCalendar({
         marginBottom: '10px',
       }}>
         <span style={{ fontSize: getFontSize('body', false), fontWeight: 600 }}>
-          選擇休假日期
+          點日期套用時段
         </span>
         <input
           type="month"
@@ -99,7 +99,8 @@ export function TimeOffBatchCalendar({
         {cells.map((date, index) => {
           if (!date) return <div key={`empty-${index}`} aria-hidden />
 
-          const selected = selectedDates.has(date)
+          const draftLabel = draftDateLabels.get(date)
+          const selected = Boolean(draftLabel)
           const existingLabel = existingDateLabels.get(date)
           const disabled = Boolean(existingLabel)
           const day = Number(date.slice(-2))
@@ -111,7 +112,11 @@ export function TimeOffBatchCalendar({
               data-track="staff_time_off_batch_date"
               aria-pressed={selected}
               disabled={disabled}
-              title={disabled ? `已有休假：${existingLabel}` : undefined}
+              title={disabled
+                ? `已有休假：${existingLabel}`
+                : draftLabel
+                  ? `本次設定：${draftLabel}`
+                  : '點一下套用目前時段'}
               onClick={() => onToggleDate(date)}
               style={{
                 ...cellBase,
@@ -145,7 +150,7 @@ export function TimeOffBatchCalendar({
                 fontSize: '10px',
                 lineHeight: 1.1,
               }}>
-                {selected ? '已選' : existingLabel || ''}
+                {draftLabel || existingLabel || ''}
               </span>
             </button>
           )
@@ -158,7 +163,7 @@ export function TimeOffBatchCalendar({
         fontSize: getFontSize('caption', false),
         lineHeight: 1.5,
       }}>
-        可一次選多天並套用相同時段。灰色日期已有休假，請從列表編輯。
+        可切換時段後繼續點其他日期；同一日期再點一次即可取消。灰色日期請從列表編輯。
       </div>
     </div>
   )

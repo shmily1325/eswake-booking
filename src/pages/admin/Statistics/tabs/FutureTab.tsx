@@ -6,17 +6,15 @@ import { useState } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
 import { designSystem, getFontSize } from '../../../../styles/designSystem'
 import {
-  WeekdayRatioBar,
   MonthFilter,
   AlertCard,
   RankingCard
 } from '../components'
-import type { CoachFutureBooking, WeekdayStats } from '../types'
+import type { CoachFutureBooking } from '../types'
 import { formatDuration, getMonthLabel } from '../utils'
 
 interface FutureTabProps {
   futureBookings: CoachFutureBooking[]
-  futureWeekdayStats: WeekdayStats
 }
 
 function getThreeMonthRangeLabel(monthKeys: string[]): string {
@@ -34,7 +32,7 @@ function getThreeMonthRangeLabel(monthKeys: string[]): string {
     : `${firstYear}年${firstMonth}月-${lastYear}年${lastMonth}月`
 }
 
-export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps) {
+export function FutureTab({ futureBookings }: FutureTabProps) {
   const { isMobile } = useResponsive()
   const [monthFilter, setMonthFilter] = useState<string>('all')
 
@@ -115,9 +113,6 @@ export function FutureTab({ futureBookings, futureWeekdayStats }: FutureTabProps
         }}>
           {rangeNote}
         </p>
-        <div style={{ marginTop: designSystem.spacing.sm }}>
-          <WeekdayRatioBar stats={futureWeekdayStats} compact />
-        </div>
       </div>
 
       <div style={{

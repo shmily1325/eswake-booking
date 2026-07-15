@@ -18,7 +18,7 @@ import { splitMinutesEqually } from '../../../utils/teachingMinutesAllocation'
 import { fetchAllInBatches, fetchAllPaginated } from '../../../utils/supabasePaginate'
 
 import { LoadingSkeleton, LastUpdated } from './components'
-import { TrendTab, MonthlyTab, FutureTab, AnnualTab } from './tabs'
+import { FutureTab, OperationsTab, type OperationsPeriodMode } from './tabs'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
 import {
   getYearDateRange,
@@ -34,7 +34,7 @@ import type {
   BoatData
 } from './types'
 
-type TabType = 'trend' | 'monthly' | 'annual' | 'future'
+type TabType = 'operations' | 'future'
 
 export function Statistics() {
   const user = useAuthUser()
@@ -50,16 +50,17 @@ export function Statistics() {
     }
   }, [user, navigate])
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
-  const [activeTab, setActiveTab] = useState<TabType>('trend')
+  const [activeTab, setActiveTab] = useState<TabType>('operations')
+  const [operationsPeriod, setOperationsPeriod] = useState<OperationsPeriodMode>('monthly')
 
   // 趨勢數據
-  const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([])
-  const [financeStats, setFinanceStats] = useState<FinanceStats[]>([])
-  const [allBoatsData, setAllBoatsData] = useState<BoatData[]>([])
+  const [, setMonthlyStats] = useState<MonthlyStats[]>([])
+  const [, setFinanceStats] = useState<FinanceStats[]>([])
+  const [, setAllBoatsData] = useState<BoatData[]>([])
 
   // 未來預約數據
   const [futureBookings, setFutureBookings] = useState<CoachFutureBooking[]>([])
-  const [futureWeekdayStats, setFutureWeekdayStats] = useState<WeekdayStats>({
+  const [, setFutureWeekdayStats] = useState<WeekdayStats>({
     weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0
   })
 
@@ -70,7 +71,7 @@ export function Statistics() {
   const [weekdayStats, setWeekdayStats] = useState<WeekdayStats>({
     weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0
   })
-  const [monthlyCoachPracticeSessions, setMonthlyCoachPracticeSessions] = useState<
+  const [, setMonthlyCoachPracticeSessions] = useState<
     CoachPracticeSessionRow[]
   >([])
 
@@ -78,19 +79,17 @@ export function Statistics() {
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
   const [annualLoading, setAnnualLoading] = useState(false)
   const [annualMonthlyStats, setAnnualMonthlyStats] = useState<MonthlyStats[]>([])
-  const [annualFinanceStats, setAnnualFinanceStats] = useState<FinanceStats[]>([])
+  const [, setAnnualFinanceStats] = useState<FinanceStats[]>([])
   const [annualCoachStats, setAnnualCoachStats] = useState<CoachStats[]>([])
   const [annualMemberStats, setAnnualMemberStats] = useState<MemberStats[]>([])
-  const [annualWeekdayStats, setAnnualWeekdayStats] = useState<WeekdayStats>({
+  const [, setAnnualWeekdayStats] = useState<WeekdayStats>({
     weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0
   })
 
-  // Tab 配置（重新命名）
+  // 主導覽只區分已發生的營運數據與未來排程。
   const tabs: { key: TabType; label: string; shortLabel?: string }[] = [
-    { key: 'trend', label: '歷史月趨勢' },
-    { key: 'monthly', label: '月報' },
-    { key: 'annual', label: '年報' },
-    { key: 'future', label: '排程預覽' },
+    { key: 'operations', label: '營運報表' },
+    { key: 'future', label: '未來排程' },
   ]
 
   // 載入所有船隻
@@ -1012,18 +1011,18 @@ export function Statistics() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPeriod])
 
-  // 年報懶載入：僅在切到年報或換年時載入
+  // 年度資料懶載入：僅在營運報表切到按年時載入
   useEffect(() => {
-    if (activeTab !== 'annual') return
+    if (activeTab !== 'operations' || operationsPeriod !== 'annual') return
     loadAnnualData(selectedYear)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, selectedYear])
+  }, [activeTab, operationsPeriod, selectedYear])
 
   // 重新整理
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      if (activeTab === 'annual') {
+      if (activeTab === 'operations' && operationsPeriod === 'annual') {
         await loadAnnualData(selectedYear)
       } else {
         await Promise.all([
@@ -1111,45 +1110,27 @@ export function Statistics() {
           <LoadingSkeleton />
         ) : (
           <div>
-            {activeTab === 'trend' && (
-              <TrendTab
-                monthlyStats={monthlyStats}
-                financeStats={financeStats}
-                allBoatsData={allBoatsData}
-              />
-            )}
-
-            {activeTab === 'monthly' && (
-              <MonthlyTab
+            {activeTab === 'operations' && (
+              <OperationsTab
+                periodMode={operationsPeriod}
+                setPeriodMode={setOperationsPeriod}
                 selectedPeriod={selectedPeriod}
                 setSelectedPeriod={setSelectedPeriod}
-                coachStats={coachStats}
-                memberStats={memberStats}
-                weekdayStats={weekdayStats}
-                coachPracticeSessions={monthlyCoachPracticeSessions}
+                monthlyCoachStats={coachStats}
+                monthlyMemberStats={memberStats}
+                monthlyWeekdayStats={weekdayStats}
+                selectedYear={selectedYear}
+                setSelectedYear={setSelectedYear}
+                annualMonthlyStats={annualMonthlyStats}
+                annualCoachStats={annualCoachStats}
+                annualMemberStats={annualMemberStats}
+                annualLoading={annualLoading}
               />
-            )}
-
-            {activeTab === 'annual' && (
-              annualLoading ? (
-                <LoadingSkeleton />
-              ) : (
-                <AnnualTab
-                  selectedYear={selectedYear}
-                  setSelectedYear={setSelectedYear}
-                  monthlyStats={annualMonthlyStats}
-                  financeStats={annualFinanceStats}
-                  coachStats={annualCoachStats}
-                  memberStats={annualMemberStats}
-                  weekdayStats={annualWeekdayStats}
-                />
-              )
             )}
 
             {activeTab === 'future' && (
               <FutureTab
                 futureBookings={futureBookings}
-                futureWeekdayStats={futureWeekdayStats}
               />
             )}
 

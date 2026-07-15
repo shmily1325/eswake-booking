@@ -85,6 +85,12 @@ type TimeOffDisplayRow = TimeOff & {
   mergedRecordIds: number[]
 }
 
+type TimeOffDraft = {
+  mode: TimeOffMode
+  customStartTime: string
+  customEndTime: string
+}
+
 /** 功能權限名單（表 editor_users）＋ 各模組布林 */
 interface EditorUser {
   id: string
@@ -233,9 +239,8 @@ export function StaffManagement() {
   /** 編輯模式：對應 DB 列 id（合併顯示列可能含多 id） */
   const [editingTimeOffIds, setEditingTimeOffIds] = useState<number[] | null>(null)
   const [timeOffMultiDay, setTimeOffMultiDay] = useState(false)
-  const [timeOffEntryMode, setTimeOffEntryMode] = useState<'calendar' | 'range'>('calendar')
   const [timeOffCalendarMonth, setTimeOffCalendarMonth] = useState(currentMonth)
-  const [selectedTimeOffDates, setSelectedTimeOffDates] = useState<Set<string>>(new Set())
+  const [draftTimeOffDates, setDraftTimeOffDates] = useState<Map<string, TimeOffDraft>>(new Map())
   
   // 設定教練帳號
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
@@ -522,15 +527,11 @@ export function StaffManagement() {
 
   const handleSaveTimeOff = async () => {
     if (!selectedCoach) return
-    const isBatchCreate = !editingTimeOffIds?.length && timeOffEntryMode === 'calendar'
+    const isBatchCreate = !editingTimeOffIds?.length
 
     if (isBatchCreate) {
-      if (selectedTimeOffDates.size === 0) {
+      if (draftTimeOffDates.size === 0) {
         toast.warning('請至少選擇一個日期')
-        return
-      }
-      if (timeOffMode === 'custom' && !timeOffCustomStartTime && !timeOffCustomEndTime) {
-        toast.warning('請填寫開始或結束時間，或改選「整天」')
         return
       }
     } else {
@@ -567,7 +568,8 @@ export function StaffManagement() {
       timeOffCustomStartTime &&
       timeOffCustomEndTime &&
       timeOffCustomEndTime <= timeOffCustomStartTime &&
-      (isBatchCreate || timeOffStartDate === timeOffEndDate)
+      !isBatchCreate &&
+      timeOffStartDate === timeOffEndDate
     ) {
       toast.warning('結束時間需晚於開始時間')
       return
@@ -590,17 +592,24 @@ export function StaffManagement() {
       }
 
       if (isBatchCreate) {
-        const rows = [...selectedTimeOffDates]
-          .sort()
-          .map(date => ({
+        const rows = [...draftTimeOffDates.entries()]
+          .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+          .map(([date, draft]) => {
+            const draftTimes = timeOffModeToDbFields(
+              draft.mode,
+              draft.customStartTime,
+              draft.customEndTime
+            )
+            return {
             coach_id: selectedCoach.id,
             start_date: date,
             end_date: date,
-            start_time,
-            end_time,
+            start_time: draftTimes.start_time,
+            end_time: draftTimes.end_time,
             reason: reasonVal,
             created_at: getLocalTimestamp(),
-          }))
+            }
+          })
         const { error } = await supabase.from('coach_time_off').insert(rows)
         if (error) throw error
         toast.success(`已設定 ${rows.length} 天休假`)
@@ -674,9 +683,8 @@ export function StaffManagement() {
   const openTimeOffDialog = (coach: Coach) => {
     setSelectedCoach(coach)
     setEditingTimeOffIds(null)
-    setTimeOffEntryMode('calendar')
     setTimeOffCalendarMonth(selectedMonth)
-    setSelectedTimeOffDates(new Set())
+    setDraftTimeOffDates(new Map())
     setTimeOffMultiDay(false)
     const today = getLocalDateString()
     const dateStr = today.startsWith(`${selectedMonth}-`) ? today : `${selectedMonth}-01`
@@ -692,9 +700,8 @@ export function StaffManagement() {
   const openEditTimeOffDialog = (coach: Coach, row: TimeOffDisplayRow) => {
     setSelectedCoach(coach)
     setEditingTimeOffIds(row.mergedRecordIds)
-    setTimeOffEntryMode('range')
     setTimeOffCalendarMonth(row.start_date.slice(0, 7))
-    setSelectedTimeOffDates(new Set())
+    setDraftTimeOffDates(new Map())
     setTimeOffMultiDay(row.start_date !== row.end_date)
     setTimeOffStartDate(row.start_date)
     setTimeOffEndDate(row.end_date)
@@ -716,8 +723,7 @@ export function StaffManagement() {
     setTimeOffDialogOpen(false)
     setSelectedCoach(null)
     setEditingTimeOffIds(null)
-    setTimeOffEntryMode('calendar')
-    setSelectedTimeOffDates(new Set())
+    setDraftTimeOffDates(new Map())
     setTimeOffMultiDay(false)
     setTimeOffStartDate('')
     setTimeOffEndDate('')
@@ -795,11 +801,53 @@ export function StaffManagement() {
     return labels
   }, [selectedCoach, timeOffCalendarMonth, timeOffs])
 
-  const toggleSelectedTimeOffDate = (date: string) => {
-    setSelectedTimeOffDates(current => {
-      const next = new Set(current)
-      if (next.has(date)) next.delete(date)
-      else next.add(date)
+  const draftTimeOffDateLabels = useMemo(() => {
+    const labels = new Map<string, string>()
+    draftTimeOffDates.forEach((draft, date) => {
+      if (draft.mode === 'fullday') labels.set(date, '整天')
+      else if (draft.mode === 'morning') labels.set(date, '上午')
+      else if (draft.mode === 'afternoon') labels.set(date, '下午')
+      else if (draft.customStartTime && draft.customEndTime) {
+        labels.set(date, `${draft.customStartTime}–${draft.customEndTime}`)
+      } else if (draft.customStartTime) {
+        labels.set(date, `${draft.customStartTime}起`)
+      } else {
+        labels.set(date, `～${draft.customEndTime}`)
+      }
+    })
+    return labels
+  }, [draftTimeOffDates])
+
+  const toggleDraftTimeOffDate = (date: string) => {
+    if (timeOffMode === 'custom') {
+      if (!timeOffCustomStartTime && !timeOffCustomEndTime) {
+        toast.warning('請先設定自訂時間，再點選日期')
+        return
+      }
+      if (
+        timeOffCustomStartTime &&
+        timeOffCustomEndTime &&
+        timeOffCustomEndTime <= timeOffCustomStartTime
+      ) {
+        toast.warning('結束時間需晚於開始時間')
+        return
+      }
+    }
+
+    const nextDraft: TimeOffDraft = {
+      mode: timeOffMode,
+      customStartTime: timeOffMode === 'custom' ? timeOffCustomStartTime : '',
+      customEndTime: timeOffMode === 'custom' ? timeOffCustomEndTime : '',
+    }
+
+    setDraftTimeOffDates(current => {
+      const next = new Map(current)
+      const existing = next.get(date)
+      const isSameDraft = existing?.mode === nextDraft.mode
+        && existing.customStartTime === nextDraft.customStartTime
+        && existing.customEndTime === nextDraft.customEndTime
+      if (isSameDraft) next.delete(date)
+      else next.set(date, nextDraft)
       return next
     })
   }
@@ -2654,7 +2702,7 @@ export function StaffManagement() {
       {timeOffDialogOpen && selectedCoach && (
         <AdminModal
           isMobile={isMobile}
-          maxWidth={timeOffEntryMode === 'calendar' ? 520 : 440}
+          maxWidth={editingTimeOffIds?.length ? 440 : 520}
           onClose={() => { if (!timeOffLoading) resetTimeOffDialog() }}
         >
           <AdminModalHeader
@@ -2663,60 +2711,28 @@ export function StaffManagement() {
             accent="amber"
           />
 
-          {!editingTimeOffIds?.length && (
-            <div style={{ marginBottom: '16px' }}>
-              <SegmentedControl
-                options={[
-                  {
-                    value: 'calendar' as const,
-                    label: '月曆多選',
-                    hint: '一次選多天',
-                    trackId: 'staff_time_off_entry_calendar',
-                  },
-                  {
-                    value: 'range' as const,
-                    label: '日期區間',
-                    hint: '連續長假',
-                    trackId: 'staff_time_off_entry_range',
-                  },
-                ]}
-                value={timeOffEntryMode}
-                onChange={setTimeOffEntryMode}
-                accent="amber"
+          {editingTimeOffIds?.length ? (
+            <>
+              <DateRangeFields
+                startDate={timeOffStartDate}
+                endDate={timeOffEndDate}
+                onStartChange={handleTimeOffStartChange}
+                onEndChange={handleTimeOffEndChange}
+                multiDay={timeOffMultiDay}
+                onMultiDayChange={handleTimeOffMultiDayChange}
+                trackPrefix="staff_time_off"
               />
-            </div>
-          )}
-
-          {timeOffEntryMode === 'calendar' && !editingTimeOffIds?.length ? (
-            <TimeOffBatchCalendar
-              month={timeOffCalendarMonth}
-              onMonthChange={month => {
-                setTimeOffCalendarMonth(month)
-                setSelectedTimeOffDates(new Set())
-              }}
-              selectedDates={selectedTimeOffDates}
-              existingDateLabels={existingTimeOffDateLabels}
-              onToggleDate={toggleSelectedTimeOffDate}
-            />
+              {timeOffPreviewText && (
+                <PreviewBanner>
+                  <strong>預覽：</strong>{timeOffPreviewText}
+                </PreviewBanner>
+              )}
+            </>
           ) : (
-            <DateRangeFields
-              startDate={timeOffStartDate}
-              endDate={timeOffEndDate}
-              onStartChange={handleTimeOffStartChange}
-              onEndChange={handleTimeOffEndChange}
-              multiDay={timeOffMultiDay}
-              onMultiDayChange={handleTimeOffMultiDayChange}
-              trackPrefix="staff_time_off"
-            />
+            <HintBox>先選時段，再點日期；切換時段後可繼續設定其他日期。</HintBox>
           )}
 
-          {timeOffEntryMode === 'range' && timeOffPreviewText && (
-            <PreviewBanner>
-              <strong>預覽：</strong>{timeOffPreviewText}
-            </PreviewBanner>
-          )}
-
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginTop: editingTimeOffIds?.length ? 0 : '16px', marginBottom: '16px' }}>
             <FormFieldLabel>時段</FormFieldLabel>
             <SegmentedControl
               options={timeOffModeOptions}
@@ -2724,7 +2740,7 @@ export function StaffManagement() {
               onChange={setTimeOffMode}
               accent="amber"
             />
-            {timeOffEntryMode === 'range' && isTimeOffCrossDay && (
+            {editingTimeOffIds?.length && isTimeOffCrossDay && (
               <HintBox>跨多日僅支援「整天」或「自訂時間」</HintBox>
             )}
           </div>
@@ -2735,18 +2751,33 @@ export function StaffManagement() {
                 <TimeSelectField
                   value={timeOffCustomStartTime}
                   onChange={setTimeOffCustomStartTime}
-                  label={isTimeOffSingleDay ? '開始時間' : '第一天時間'}
+                  label={editingTimeOffIds?.length && !isTimeOffSingleDay ? '第一天時間' : '開始時間'}
                 />
                 <TimeSelectField
                   value={timeOffCustomEndTime}
                   onChange={setTimeOffCustomEndTime}
-                  label={isTimeOffSingleDay ? '結束時間' : '最後一天時間'}
+                  label={editingTimeOffIds?.length && !isTimeOffSingleDay ? '最後一天時間' : '結束時間'}
                 />
               </div>
               <HintBox>
-                時間留空表示該端為整天；跨日時中間日期視為整天休假。
+                {editingTimeOffIds?.length && !isTimeOffSingleDay
+                  ? '時間留空表示該端為整天；中間日期視為整天休假。'
+                  : '設定時間後，再點月曆日期套用。'}
               </HintBox>
             </div>
+          )}
+
+          {!editingTimeOffIds?.length && (
+            <TimeOffBatchCalendar
+              month={timeOffCalendarMonth}
+              onMonthChange={month => {
+                setTimeOffCalendarMonth(month)
+                setDraftTimeOffDates(new Map())
+              }}
+              draftDateLabels={draftTimeOffDateLabels}
+              existingDateLabels={existingTimeOffDateLabels}
+              onToggleDate={toggleDraftTimeOffDate}
+            />
           )}
 
           <div style={{ marginBottom: '20px' }}>
@@ -2783,8 +2814,8 @@ export function StaffManagement() {
                 ? (editingTimeOffIds?.length ? '儲存中…' : '新增中…')
                 : editingTimeOffIds?.length
                   ? '儲存'
-                  : timeOffEntryMode === 'calendar' && selectedTimeOffDates.size > 0
-                    ? `新增 ${selectedTimeOffDates.size} 天`
+                  : draftTimeOffDates.size > 0
+                    ? `新增 ${draftTimeOffDates.size} 天`
                     : '新增'}
             </Button>
           </div>
