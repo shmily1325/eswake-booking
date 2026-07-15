@@ -1342,41 +1342,41 @@ export function CoachAdmin() {
         {activeTab === 'billing' && (
           <div style={{ ...getCardStyle(isMobile) }}>
             <div style={{
-              background: designSystem.colors.warning[50],
+              background: designSystem.colors.background.hover,
               borderRadius: designSystem.borderRadius.lg,
-              border: `1px solid ${designSystem.colors.warning[500]}33`,
-              padding: isMobile ? '11px 13px' : '12px 16px',
+              border: `1px solid ${designSystem.colors.border.light}`,
+              padding: isMobile ? '12px 14px' : '14px 16px',
               marginBottom: isMobile ? '16px' : '20px',
-              fontSize: getFontSize('bodySmall', isMobile),
-              color: designSystem.colors.warning[700],
+              fontSize: getFontSize('body', isMobile),
+              color: designSystem.colors.text.secondary,
               lineHeight: 1.55
             }}>
-              <strong>說明：</strong>設定後，參與者的款項會自動改由指定會員支付。
+              設定後，參與者的款項會自動由指定會員支付。
               <br />例如「火腿 → Mandy」，火腿的款項會從 Mandy 的帳戶扣除。
             </div>
 
             {/* 新增代扣關係表單 */}
             <div style={{
-              background: designSystem.colors.background.hover,
-              borderRadius: designSystem.borderRadius.xl,
-              padding: isMobile ? '16px' : '20px',
-              marginBottom: '24px',
-              border: `1.5px dashed ${designSystem.colors.border.main}`
+              background: designSystem.colors.background.card,
+              borderRadius: designSystem.borderRadius.lg,
+              padding: isMobile ? '14px' : '18px',
+              marginBottom: isMobile ? '20px' : '24px',
+              border: `1px solid ${designSystem.colors.border.light}`
             }}>
               <h3 style={{ 
-                fontSize: getFontSize('h3', isMobile),
+                fontSize: getFontSize('bodyLarge', isMobile),
                 fontWeight: '600',
-                marginBottom: '16px',
+                margin: `0 0 ${isMobile ? '14px' : '16px'}`,
                 color: designSystem.colors.text.primary
               }}>
-                ➕ 新增代扣關係
+                新增代扣關係
               </h3>
               
               <div style={{ 
                 display: 'grid',
                 gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-                gap: '16px',
-                marginBottom: '16px'
+                gap: isMobile ? '12px' : '16px',
+                marginBottom: isMobile ? '12px' : '16px'
               }}>
                 {/* 參與者名稱 */}
                 <div>
@@ -1500,7 +1500,7 @@ export function CoachAdmin() {
               </div>
               
               {/* 備註 */}
-              <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: isMobile ? '14px' : '16px' }}>
                 <label style={getLabelStyle(isMobile)}>備註（選填）</label>
                 <input
                   type="text"
@@ -1518,23 +1518,24 @@ export function CoachAdmin() {
                 onClick={addBillingRelation}
                 disabled={addingBillingRelation || !newParticipantName.trim() || !newBillingMemberId}
                 style={{
-                  ...getButtonStyle('success', 'medium', isMobile),
+                  ...getButtonStyle('primary', 'medium', isMobile),
+                  width: isMobile ? '100%' : 'auto',
                   opacity: (!newParticipantName.trim() || !newBillingMemberId) ? 0.5 : 1,
                   cursor: (!newParticipantName.trim() || !newBillingMemberId) ? 'not-allowed' : 'pointer'
                 }}
               >
-                {addingBillingRelation ? '新增中...' : '✅ 新增代扣關係'}
+                {addingBillingRelation ? '新增中...' : '新增代扣關係'}
               </button>
             </div>
 
             {/* 代扣關係列表 */}
             <h3 style={{ 
-              fontSize: getFontSize('h3', isMobile),
+              fontSize: getFontSize('bodyLarge', isMobile),
               fontWeight: '600',
-              marginBottom: '16px',
+              margin: `0 0 ${isMobile ? '12px' : '16px'}`,
               color: designSystem.colors.text.primary
             }}>
-              📋 現有代扣關係 ({billingRelations.length})
+              現有代扣關係（{billingRelations.length}）
             </h3>
             
             {billingRelations.length === 0 ? (
@@ -1559,7 +1560,7 @@ export function CoachAdmin() {
                     style={{
                       background: 'white',
                       borderRadius: designSystem.borderRadius.lg,
-                      padding: '16px',
+                      padding: isMobile ? '13px 14px' : '16px',
                       border: `1px solid ${designSystem.colors.border.light}`,
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -1568,20 +1569,20 @@ export function CoachAdmin() {
                       gap: '12px'
                     }}
                   >
-                    <div style={{ flex: 1, minWidth: '200px' }}>
+                    <div style={{ flex: 1, minWidth: isMobile ? '160px' : '200px' }}>
                       <div style={{ 
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
                         marginBottom: '4px'
                       }}>
-                        <span style={{ fontWeight: '600', fontSize: getFontSize('bodyLarge', isMobile) }}>
+                        <span style={{ fontWeight: '600', fontSize: getFontSize('body', isMobile) }}>
                           {relation.participant_name}
                         </span>
                         <span style={{ color: designSystem.colors.text.disabled }}>→</span>
                         <span style={{ 
                           fontWeight: '600',
-                          fontSize: getFontSize('bodyLarge', isMobile),
+                          fontSize: getFontSize('body', isMobile),
                           color: designSystem.colors.warning[700]
                         }}>
                           {relation.billing_member_nickname || relation.billing_member_name}
@@ -1596,12 +1597,12 @@ export function CoachAdmin() {
                     <button
                       onClick={() => deleteBillingRelation(relation.id, relation.participant_name)}
                       style={{
-                        ...getButtonStyle('outline', 'medium', isMobile),
+                        ...getButtonStyle('outline', 'small', isMobile),
                         color: designSystem.colors.danger[700],
                         border: `1px solid ${designSystem.colors.danger[500]}`,
                       }}
                     >
-                      🗑️ 刪除
+                      刪除
                     </button>
                   </div>
                 ))}

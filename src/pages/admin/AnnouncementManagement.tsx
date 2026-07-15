@@ -54,6 +54,8 @@ export function AnnouncementManagement() {
   const [newStartDate, setNewStartDate] = useState(getLocalDateString())
   const [newEndDate, setNewEndDate] = useState(getLocalDateString())
   const [newShowOneDayEarly, setNewShowOneDayEarly] = useState(false)
+  const [showNewAdvanced, setShowNewAdvanced] = useState(false)
+  const [showNewRestrictionCustom, setShowNewRestrictionCustom] = useState(false)
   // 預約限制（新增）
   const [newRestrictEnabled, setNewRestrictEnabled] = useState(false)
   const [newRestrictAllDay, setNewRestrictAllDay] = useState(true)
@@ -61,17 +63,6 @@ export function AnnouncementManagement() {
   const [newRestrictStartTime, setNewRestrictStartTime] = useState('13:00')
   const [newRestrictEndDate, setNewRestrictEndDate] = useState(newEndDate)
   const [newRestrictEndTime, setNewRestrictEndTime] = useState('14:00')
-  // 受影響清單（新增表單用試算）
-  const [impactLoading, setImpactLoading] = useState(false)
-  const [impactedBookings, setImpactedBookings] = useState<Array<{
-    id: number
-    start_at: string
-    duration_min: number
-    contact_name: string
-    boat_name?: string
-    coach_names?: string
-  }>>([])
-  const [needsRecalc, setNeedsRecalc] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [editStartDate, setEditStartDate] = useState('')
   const [editEndDate, setEditEndDate] = useState('')
@@ -195,9 +186,9 @@ export function AnnouncementManagement() {
       toast.error('請先登入')
       return
     }
-    const validation = validateRequired(newContent, '交辦事項內容')
+    const validation = validateRequired(newContent, '公告內容')
     if (!validation.valid) {
-      toast.warning(validation.error || '請填寫交辦事項內容')
+      toast.warning(validation.error || '請填寫公告內容')
       return
     }
 
@@ -239,13 +230,15 @@ export function AnnouncementManagement() {
       },
       {
         successMessage: '新增成功',
-        errorContext: '新增交辦事項',
+        errorContext: '新增公告',
         onComplete: () => {
           setNewContent('')
           const today = getLocalDateString()
           setNewStartDate(today)
           setNewEndDate(today)
           setNewShowOneDayEarly(false)
+          setShowNewAdvanced(false)
+          setShowNewRestrictionCustom(false)
           // reset 限制欄位
           setNewRestrictEnabled(false)
           setNewRestrictAllDay(true)
@@ -300,7 +293,7 @@ export function AnnouncementManagement() {
       },
       {
         successMessage: '更新成功',
-        errorContext: '更新交辦事項',
+        errorContext: '更新公告',
         onComplete: () => {
           setEditingId(null)
           loadAnnouncements()
@@ -310,7 +303,7 @@ export function AnnouncementManagement() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('確定要刪除這個交辦事項嗎？')) return
+    if (!confirm('確定要刪除這則公告嗎？')) return
 
     await executeAsync(
       async () => {
@@ -323,7 +316,7 @@ export function AnnouncementManagement() {
       },
       {
         successMessage: '刪除成功',
-        errorContext: '刪除交辦事項',
+        errorContext: '刪除公告',
         onComplete: () => {
           loadAnnouncements()
         }
@@ -452,7 +445,7 @@ export function AnnouncementManagement() {
             fontWeight: 600,
             color: designSystem.colors.text.primary,
           }}>
-            新增交辦事項
+            新增公告
           </h2>
           <div style={{ marginBottom: '12px' }}>
             <label style={{
@@ -462,12 +455,12 @@ export function AnnouncementManagement() {
               marginBottom: '6px',
               fontWeight: '500',
             }}>
-              內容
+              公告內容
             </label>
             <textarea
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
-              placeholder="輸入交辦事項..."
+              placeholder="輸入公告內容..."
               rows={3}
               style={{
                 ...getInputStyle(isMobile),
@@ -485,12 +478,16 @@ export function AnnouncementManagement() {
               marginBottom: '8px',
               fontWeight: '500',
             }}>
-              事項日期
+              顯示日期
             </label>
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                gridTemplateColumns: isMobile
+                  ? '1fr'
+                  : showNewAdvanced
+                    ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
+                    : 'minmax(0, 1fr) auto',
                 alignItems: 'end',
                 gap: '8px',
               }}
@@ -498,7 +495,7 @@ export function AnnouncementManagement() {
               <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
                 {isMobile && (
                   <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
-                    開始日期
+                    {showNewAdvanced ? '開始日期' : '日期'}
                   </span>
                 )}
                 <input
@@ -507,17 +504,22 @@ export function AnnouncementManagement() {
                   value={newStartDate}
                   onChange={(e) => {
                     setNewStartDate(e.target.value)
-                    if (e.target.value > newEndDate) setNewEndDate(e.target.value)
+                    if (!showNewAdvanced || e.target.value > newEndDate) setNewEndDate(e.target.value)
+                    if (newRestrictEnabled && !showNewRestrictionCustom) {
+                      setNewRestrictStartDate(e.target.value)
+                      setNewRestrictEndDate(e.target.value)
+                    }
                   }}
                   style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
                 />
               </label>
-              {!isMobile && (
+              {showNewAdvanced && !isMobile && (
                 <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', false), paddingBottom: 13 }}>
                   ～
                 </span>
               )}
-              <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
+              {showNewAdvanced && (
+                <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
                 {isMobile && (
                   <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                     結束日期
@@ -527,14 +529,20 @@ export function AnnouncementManagement() {
                   type="date"
                   data-track="announcement_end_date"
                   value={newEndDate}
-                  onChange={(e) => setNewEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setNewEndDate(e.target.value)
+                    if (newRestrictEnabled && !showNewRestrictionCustom) {
+                      setNewRestrictEndDate(e.target.value)
+                    }
+                  }}
                   min={newStartDate}
                   style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
                 />
               </label>
+              )}
               <span style={{
-                gridColumn: '1 / -1',
-                width: '100%',
+                gridColumn: showNewAdvanced || isMobile ? '1 / -1' : undefined,
+                width: showNewAdvanced || isMobile ? '100%' : 'auto',
                 boxSizing: 'border-box',
                 padding: '8px 12px',
                 borderRadius: designSystem.borderRadius.md,
@@ -543,7 +551,7 @@ export function AnnouncementManagement() {
                 fontSize: getFontSize('bodySmall', isMobile),
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
-                textAlign: isMobile ? 'left' : 'center',
+                textAlign: showNewAdvanced ? 'center' : 'left',
               }}>
                 {newStartDate === newEndDate 
                   ? getWeekdayText(newStartDate)
@@ -553,7 +561,7 @@ export function AnnouncementManagement() {
             </div>
           </div>
 
-          <div style={{ marginBottom: '15px' }}>
+          <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'flex',
               alignItems: 'center',
@@ -575,6 +583,26 @@ export function AnnouncementManagement() {
             </label>
           </div>
 
+          <button
+            type="button"
+            data-track="announcement_advanced_toggle"
+            aria-expanded={showNewAdvanced}
+            onClick={() => setShowNewAdvanced((current) => !current)}
+            style={{
+              ...getButtonStyle('outline', 'small', isMobile),
+              width: isMobile ? '100%' : 'auto',
+              marginBottom: showNewAdvanced ? '12px' : '16px',
+            }}
+          >
+            {showNewAdvanced
+              ? '收起更多設定'
+              : newEndDate !== newStartDate || newRestrictEnabled
+                ? '更多設定（已設定）'
+                : '更多設定'}
+          </button>
+
+          {showNewAdvanced && (
+            <>
           {/* 預約限制（簡易） */}
           <div style={{ marginBottom: '12px', borderTop: `1px dashed ${designSystem.colors.border.light}`, paddingTop: '12px' }}>
             <div style={{ display: 'grid', gap: '4px' }}>
@@ -596,8 +624,7 @@ export function AnnouncementManagement() {
                   onChange={(e) => {
                     const enabled = e.target.checked
                     setNewRestrictEnabled(enabled)
-                  setNeedsRecalc(true)
-                  setImpactedBookings([])
+                    setShowNewRestrictionCustom(false)
                     if (enabled) {
                       // 預設直接帶入公告日期
                       setNewRestrictStartDate(newStartDate)
@@ -608,14 +635,36 @@ export function AnnouncementManagement() {
                 />
                 <span>啟用預約限制</span>
               </label>
-              {newRestrictEnabled && (
-                <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
-                  設定後，此時段內將禁止建立/編輯預約
-                </div>
-              )}
             </div>
 
             {newRestrictEnabled && (
+              <div style={{
+                marginTop: '8px',
+                display: 'flex',
+                alignItems: isMobile ? 'stretch' : 'center',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                gap: '8px',
+                padding: '8px 10px',
+                background: designSystem.colors.background.main,
+                borderRadius: designSystem.borderRadius.md,
+              }}>
+                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
+                  {newRestrictAllDay ? '全天' : '指定時段'} · {newRestrictStartDate}
+                  {newRestrictStartDate !== newRestrictEndDate ? ` ～ ${newRestrictEndDate}` : ''}
+                </span>
+                <button
+                  type="button"
+                  data-track="announcement_restriction_custom_toggle"
+                  onClick={() => setShowNewRestrictionCustom((current) => !current)}
+                  style={getButtonStyle('outline', 'small', isMobile)}
+                >
+                  {showNewRestrictionCustom ? '收起自訂時段' : '自訂限制時段'}
+                </button>
+              </div>
+            )}
+
+            {newRestrictEnabled && showNewRestrictionCustom && (
               <div style={{ marginTop: '8px', display: 'grid', gap: '10px' }}>
                 <div style={{
                   display: 'grid',
@@ -632,8 +681,6 @@ export function AnnouncementManagement() {
                     value={newRestrictStartDate}
                     onChange={(e) => {
                       setNewRestrictStartDate(e.target.value)
-                      setNeedsRecalc(true)
-                      setImpactedBookings([])
                       if (e.target.value > newRestrictEndDate) setNewRestrictEndDate(e.target.value)
                     }}
                     style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
@@ -642,7 +689,7 @@ export function AnnouncementManagement() {
                     <input
                       type="time"
                       value={newRestrictStartTime}
-                      onChange={(e) => { setNewRestrictStartTime(e.target.value); setNeedsRecalc(true); setImpactedBookings([]) }}
+                      onChange={(e) => setNewRestrictStartTime(e.target.value)}
                       style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                     />
                   )}
@@ -652,7 +699,7 @@ export function AnnouncementManagement() {
                   <input
                     type="date"
                     value={newRestrictEndDate}
-                    onChange={(e) => { setNewRestrictEndDate(e.target.value); setNeedsRecalc(true); setImpactedBookings([]) }}
+                    onChange={(e) => setNewRestrictEndDate(e.target.value)}
                     min={newRestrictStartDate}
                     style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                   />
@@ -660,7 +707,7 @@ export function AnnouncementManagement() {
                     <input
                       type="time"
                       value={newRestrictEndTime}
-                      onChange={(e) => { setNewRestrictEndTime(e.target.value); setNeedsRecalc(true); setImpactedBookings([]) }}
+                      onChange={(e) => setNewRestrictEndTime(e.target.value)}
                       style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                     />
                   )}
@@ -678,7 +725,7 @@ export function AnnouncementManagement() {
                     <input
                       type="checkbox"
                       checked={newRestrictAllDay}
-                      onChange={(e) => { setNewRestrictAllDay(e.target.checked); setNeedsRecalc(true); setImpactedBookings([]) }}
+                      onChange={(e) => setNewRestrictAllDay(e.target.checked)}
                       style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', accentColor: checkboxAccent }}
                     />
                     <span>全天</span>
@@ -695,119 +742,7 @@ export function AnnouncementManagement() {
             )}
           </div>
 
-          {newRestrictEnabled && (
-            <div style={{ marginBottom: '12px' }}>
-              <button
-                data-track="announcement_restriction_preview"
-                onClick={async () => {
-                  try {
-                    setImpactLoading(true)
-                    setImpactedBookings([])
-                    setNeedsRecalc(false)
-                    // 組合限制起訖時間（ISO 字串）
-                    const startIso = `${newRestrictStartDate}T${newRestrictAllDay ? '00:00:00' : `${newRestrictStartTime}:00`}`
-                    const endIso = `${newRestrictEndDate}T${newRestrictAllDay ? '23:59:59' : `${newRestrictEndTime}:00`}`
-
-                    // 取回這段日期內的候選預約（粗範圍，交由前端計算重疊）
-                    const { data } = await supabase
-                      .from('bookings')
-                      .select('id, start_at, duration_min, contact_name, boats:boat_id(name), booking_coaches ( coaches(name) )')
-                      .gte('start_at', `${newRestrictStartDate}T00:00:00`)
-                      .lte('start_at', `${newRestrictEndDate}T23:59:59`)
-
-                    const overlaps = (bk: any) => {
-                      const bkStart = new Date(bk.start_at).getTime()
-                      const bkEnd = bkStart + (bk.duration_min || 0) * 60 * 1000
-                      const rStart = new Date(startIso).getTime()
-                      const rEnd = new Date(endIso).getTime()
-                      return !(bkEnd <= rStart || bkStart >= rEnd)
-                    }
-
-                    const list = (data || [])
-                      .filter(overlaps)
-                      .map((bk: any) => ({
-                        id: bk.id,
-                        start_at: bk.start_at,
-                        duration_min: bk.duration_min,
-                        contact_name: bk.contact_name,
-                        boat_name: bk.boats?.name,
-                        coach_names: Array.isArray(bk.booking_coaches)
-                          ? bk.booking_coaches.map((c: any) => c.coaches?.name).filter(Boolean).join('、')
-                          : undefined
-                      }))
-                      .sort((a: any, b: any) => a.start_at.localeCompare(b.start_at))
-
-                    setImpactedBookings(list)
-                  } finally {
-                    setImpactLoading(false)
-                  }
-                }}
-                style={{
-                  ...getButtonStyle('secondary', 'medium', isMobile),
-                  minHeight: isMobile ? 44 : undefined,
-                  width: isMobile ? '100%' : undefined,
-                }}
-              >
-                試算
-              </button>
-
-              {/* 清單 */}
-              <div style={{
-                marginTop: '10px',
-                background: designSystem.colors.background.main,
-                border: cardBorder,
-                borderRadius: designSystem.borderRadius.md,
-                padding: '10px',
-              }}>
-                {needsRecalc && (
-                  <div style={{ background: designSystem.colors.warning[50], border: `1px solid ${designSystem.colors.warning[500]}33`, color: designSystem.colors.warning[700], padding: '6px 10px', borderRadius: designSystem.borderRadius.sm, fontSize: getFontSize('caption', isMobile), marginBottom: 8 }}>
-                    設定已變更，請重新試算
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.primary, fontWeight: 600 }}>
-                    受影響預約
-                  </div>
-                  <div style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
-                    {impactLoading ? '載入中…' : `共 ${impactedBookings.length} 筆`}
-                  </div>
-                </div>
-                {impactedBookings.length === 0 && !impactLoading && (
-                  <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>此時段沒有受影響的預約</div>
-                )}
-                {impactedBookings.length > 0 && (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary, padding: '4px 0' }}>
-                      {!isMobile && <div>時間</div>}
-                      <div>聯絡人 / 船</div>
-                      {!isMobile && <div>教練</div>}
-                    </div>
-                    <div style={{ display: 'grid', rowGap: '6px' }}>
-                      {impactedBookings.map(item => (
-                        <div key={item.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, alignItems: 'baseline' }}>
-                          {!isMobile && (
-                            <div style={{ color: designSystem.colors.info[700], fontWeight: 600 }}>
-                              {new Date(item.start_at).toLocaleString()}
-                            </div>
-                          )}
-                          <div>
-                            <span style={{ color: designSystem.colors.text.primary, fontWeight: 600 }}>{item.contact_name}</span>
-                            {item.boat_name ? <span style={{ color: designSystem.colors.text.secondary }}>{` · 船：${item.boat_name}`}</span> : null}
-                            {isMobile && (
-                              <>
-                                <div style={{ color: designSystem.colors.info[700] }}>{new Date(item.start_at).toLocaleString()}</div>
-                                <div style={{ color: designSystem.colors.text.secondary }}>教練：{item.coach_names || '-'}</div>
-                              </>
-                            )}
-                          </div>
-                          {!isMobile && <div style={{ color: designSystem.colors.text.secondary }}>{item.coach_names || '-'}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+            </>
           )}
 
           <button
@@ -819,7 +754,7 @@ export function AnnouncementManagement() {
               minHeight: isMobile ? 48 : undefined,
             }}
           >
-            新增
+            建立公告
           </button>
         </div>
 
@@ -847,7 +782,7 @@ export function AnnouncementManagement() {
               color: designSystem.colors.text.primary,
               flexShrink: 0,
             }}>
-              所有交辦事項 ({announcements.filter(a => 
+              公告列表 ({announcements.filter(a =>
                 searchText ? a.content.toLowerCase().includes(searchText.toLowerCase()) : true
               ).length})
             </h2>
@@ -906,7 +841,7 @@ export function AnnouncementManagement() {
 
           {!loading && announcements.length === 0 && !searchText && (
             <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile) }}>
-              目前沒有交辦事項
+              目前沒有公告
             </div>
           )}
 
@@ -1063,6 +998,21 @@ export function AnnouncementManagement() {
                             <span>提前一天顯示</span>
                           </label>
                         </div>
+                        <details
+                          open={editRestrictEnabled ? true : undefined}
+                          style={{ marginBottom: '10px' }}
+                        >
+                          <summary
+                            style={{
+                              cursor: 'pointer',
+                              fontSize: getFontSize('bodySmall', isMobile),
+                              fontWeight: 600,
+                              color: designSystem.colors.text.secondary,
+                              padding: '8px 0',
+                            }}
+                          >
+                            預約限制
+                          </summary>
                         {/* 預約限制（編輯） */}
                         <div style={{ marginBottom: '10px', borderTop: `1px dashed ${designSystem.colors.border.light}`, paddingTop: '10px' }}>
                           <label style={{
@@ -1140,6 +1090,7 @@ export function AnnouncementManagement() {
                             </div>
                           )}
                         </div>
+                        </details>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             data-track="announcement_edit"
