@@ -9,6 +9,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import type { Member } from '../../types/booking'
 import { useToast } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
+import { getVenueDateString } from '../../utils/date'
 import {
   designSystem,
   getBadgeStyle,
@@ -822,9 +823,9 @@ export function MemberTransaction() {
                     )}
                     {/* 本月壽星標記 */}
                     {member.birthday && (() => {
-                      const today = new Date()
-                      const birthMonth = new Date(member.birthday).getMonth()
-                      return birthMonth === today.getMonth()
+                      const currentMonth = Number(getVenueDateString().slice(5, 7))
+                      const birthMonth = Number(member.birthday.slice(5, 7))
+                      return birthMonth === currentMonth
                     })() && (
                       <span style={{ ...getBadgeStyle('warning', 'small'), fontWeight: 500 }}>
                         本月壽星

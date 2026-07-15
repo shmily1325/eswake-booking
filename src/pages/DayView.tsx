@@ -8,7 +8,7 @@ import { EditBookingDialog } from '../components/EditBookingDialog'
 import { PageHeader } from '../components/PageHeader'
 import { PageShell } from '../components/PageShell'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString } from '../utils/date'
+import { addDaysToDate, getVenueDateString } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { getButtonStyle, designSystem, PAGE_MAX_WIDTHS } from '../styles/designSystem'
 import { useToast, ToastContainer, BookingListSkeleton } from '../components/ui'
@@ -58,7 +58,7 @@ export function DayView() {
   const navigate = useNavigate()
   const toast = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
-  const dateParam = searchParams.get('date') || getLocalDateString()
+  const dateParam = searchParams.get('date') || getVenueDateString()
   const { isMobile } = useResponsive()
 
   // 權限檢查：需要一般權限
@@ -121,15 +121,11 @@ export function DayView() {
   }, [user])
 
   const changeDate = (offset: number) => {
-    const [year, month, day] = dateParam.split('-').map(Number)
-    const currentDate = new Date(year, month - 1, day)
-    currentDate.setDate(currentDate.getDate() + offset)
-    const newDate = getLocalDateString(currentDate)
-    setSearchParams({ date: newDate })
+    setSearchParams({ date: addDaysToDate(dateParam, offset) })
   }
 
   const goToToday = () => {
-    const today = getLocalDateString()
+    const today = getVenueDateString()
     setSearchParams({ date: today })
   }
 
@@ -166,7 +162,7 @@ export function DayView() {
           .from('bookings')
           .select(`*, boats(*), booking_members(member_id, members(id, name, nickname))`)
           .gte('start_at', `${dateParam}T00:00:00`)
-          .lt('start_at', `${dateParam}T23:59:59`)
+          .lt('start_at', `${addDaysToDate(dateParam, 1)}T00:00:00`)
           .order('start_at')
       ])
 

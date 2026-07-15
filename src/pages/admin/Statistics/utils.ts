@@ -1,6 +1,6 @@
 // Statistics Dashboard 共用工具函數
 
-import { getLocalDateString } from '../../../utils/date'
+import { addDaysToDate, getVenueDateString } from '../../../utils/date'
 
 export type MonthRangeMeta = {
   monthStr: string
@@ -19,18 +19,18 @@ export function getCalendarMonthRange(
 ): MonthRangeMeta | null {
   const monthStr = `${year}-${String(month).padStart(2, '0')}`
   const startDate = `${monthStr}-01`
-  const lastDayOfMonth = new Date(year, month, 0).getDate()
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  const yesterdayStr = getLocalDateString(yesterday)
+  const lastDayOfMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  const venueToday = getVenueDateString(now)
+  const [currentYear, currentMonth] = venueToday.split('-').map(Number)
+  const yesterdayStr = addDaysToDate(venueToday, -1)
 
   const isFutureMonth =
-    year > now.getFullYear() ||
-    (year === now.getFullYear() && month > now.getMonth() + 1)
+    year > currentYear ||
+    (year === currentYear && month > currentMonth)
   if (isFutureMonth) return null
 
   const isCurrentMonth =
-    year === now.getFullYear() && month === now.getMonth() + 1
+    year === currentYear && month === currentMonth
   if (isCurrentMonth) {
     if (yesterdayStr < startDate) return null
     return { monthStr, month, startDate, endDateStr: yesterdayStr }
@@ -63,13 +63,12 @@ export function getYearDateRange(
   now: Date = new Date()
 ): { startDate: string; endDateStr: string } | null {
   const startDate = `${year}-01-01`
-  if (year > now.getFullYear()) return null
+  const venueToday = getVenueDateString(now)
+  const currentYear = Number(venueToday.slice(0, 4))
+  if (year > currentYear) return null
+  const yesterdayStr = addDaysToDate(venueToday, -1)
 
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  const yesterdayStr = getLocalDateString(yesterday)
-
-  if (year === now.getFullYear()) {
+  if (year === currentYear) {
     if (yesterdayStr < startDate) return null
     return { startDate, endDateStr: yesterdayStr }
   }
@@ -116,10 +115,10 @@ export function calculateChange(current: number, previous: number): {
  */
 export function getMonthLabel(monthStr: string): string {
   const [year, month] = monthStr.split('-')
-  const now = new Date()
+  const currentYear = Number(getVenueDateString().slice(0, 4))
   const monthNum = parseInt(month)
   
-  if (parseInt(year) !== now.getFullYear()) {
+  if (parseInt(year) !== currentYear) {
     return `${year.slice(2)}年${monthNum}月`
   }
   return `${monthNum}月`

@@ -14,6 +14,7 @@ import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
 import { scheduleCoachTimeOffReminderToast } from '../utils/coachTimeOffWarning'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
+import { getVenueTimestamp } from '../utils/date'
 
 interface NewBookingDialogProps {
   isOpen: boolean
@@ -230,16 +231,7 @@ export function NewBookingDialog({
         is_coach_practice: isCoachPractice,       // 教練練習標記
           status: 'confirmed',
           created_by: user.id,
-          created_at: (() => {
-            const now = new Date()
-            const year = now.getFullYear()
-            const month = String(now.getMonth() + 1).padStart(2, '0')
-            const day = String(now.getDate()).padStart(2, '0')
-            const hour = String(now.getHours()).padStart(2, '0')
-            const minute = String(now.getMinutes()).padStart(2, '0')
-            const second = String(now.getSeconds()).padStart(2, '0')
-            return `${year}-${month}-${day}T${hour}:${minute}:${second}`
-          })(),
+          created_at: getVenueTimestamp(),
         }
 
         const { data: insertedBooking, error: insertError } = await supabase
@@ -281,19 +273,10 @@ export function NewBookingDialog({
       // 插入會員關聯
         if (selectedMemberIds.length > 0 && insertedBooking) {
           const bookingMembersToInsert = selectedMemberIds.map(memberId => {
-            const now = new Date()
-            const year = now.getFullYear()
-            const month = String(now.getMonth() + 1).padStart(2, '0')
-            const day = String(now.getDate()).padStart(2, '0')
-            const hour = String(now.getHours()).padStart(2, '0')
-            const minute = String(now.getMinutes()).padStart(2, '0')
-            const second = String(now.getSeconds()).padStart(2, '0')
-            const createdAt = `${year}-${month}-${day}T${hour}:${minute}:${second}`
-
             return {
               booking_id: insertedBooking.id,
               member_id: memberId,
-              created_at: createdAt
+              created_at: getVenueTimestamp()
             }
           })
 

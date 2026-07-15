@@ -102,6 +102,18 @@ function formatLogTime(iso: string | null): string {
   })
 }
 
+async function getBackupRequestHeaders(): Promise<Record<string, string>> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) throw new Error('請先登入')
+
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${session.access_token}`,
+  }
+}
+
 export function BackupPage() {
   const user = useAuthUser()
   const navigate = useNavigate()
@@ -151,9 +163,10 @@ export function BackupPage() {
   const backupFullDatabase = async () => {
     setFullBackupLoading(true)
     try {
+      const headers = await getBackupRequestHeaders()
       const response = await fetch('/api/backup-full-database', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       })
 
       if (!response.ok) {
@@ -182,9 +195,10 @@ export function BackupPage() {
   const backupToCloudDrive = async () => {
     setCloudBackupLoading(true)
     try {
+      const headers = await getBackupRequestHeaders()
       const response = await fetch('/api/backup-to-cloud-drive', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       })
 
       if (!response.ok) {
@@ -468,7 +482,7 @@ export function BackupPage() {
               lineHeight: 1.5,
             }}
           >
-            雲端備份會上傳到 Google Drive；下載則保存完整 SQL 到本機。
+            雲端備份會上傳到 Google Drive；下載則保存完整 SQL 到本機，可載入離線查詢工具。
           </p>
           <div
             style={{
@@ -506,6 +520,17 @@ export function BackupPage() {
               }}
             >
               {fullBackupLoading ? '備份中…' : '下載完整資料庫 (SQL)'}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.open('/offline', '_blank', 'noopener,noreferrer')}
+              style={{
+                ...getButtonStyle('secondary', 'large', isMobile),
+                flex: isMobile ? undefined : 1,
+                width: isMobile ? '100%' : undefined,
+              }}
+            >
+              開啟離線查詢
             </button>
           </div>
         </section>

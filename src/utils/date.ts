@@ -21,7 +21,7 @@ export function getVenueTimeParts(date: Date = new Date()): {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
   }).formatToParts(date)
   const pick = (type: string) => Number(parts.find(p => p.type === type)?.value ?? 0)
   return { hours: pick('hour'), minutes: pick('minute'), seconds: pick('second') }
@@ -34,6 +34,12 @@ export function getVenueTimestamp(date: Date = new Date()): string {
   const ymd = getVenueDateString(date)
   const { hours, minutes, seconds } = getVenueTimeParts(date)
   return `${ymd}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+/** 由日曆年月日組成純日期；monthIndex 採 JavaScript 的 0–11，並支援日期溢位。 */
+export function getCalendarDateString(year: number, monthIndex: number, day: number): string {
+  const date = new Date(Date.UTC(year, monthIndex, day))
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
 }
 
 /** HH:mm → 自 00:00 起算的分鐘數 */
@@ -130,9 +136,38 @@ export function addDaysToDate(dateStr: string, days: number): string {
   if (parts.length !== 3) return dateStr
   const [y, m, d] = parts.map(Number)
   if (isNaN(y) || isNaN(m) || isNaN(d)) return dateStr
-  const date = new Date(y, m - 1, d + days)
+  const date = new Date(Date.UTC(y, m - 1, d + days))
   if (isNaN(date.getTime())) return dateStr
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
+}
+
+/**
+ * 純日期增加年數；若目標年沒有該日期（例如 2/29），取該月最後一天。
+ */
+export function addYearsToDate(dateStr: string, years: number): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr)
+  if (!match) return dateStr
+
+  const year = Number(match[1]) + years
+  const month = Number(match[2])
+  const day = Number(match[3])
+  if (month < 1 || month > 12 || day < 1) return dateStr
+
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  return `${year}-${String(month).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`
+}
+
+/** 以純日期計算相差天數，避免瀏覽器時區與夏令時間影響。 */
+export function daysBetweenDates(fromDate: string, toDate: string): number | null {
+  const parse = (value: string) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+    if (!match) return null
+    return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  }
+  const from = parse(fromDate)
+  const to = parse(toDate)
+  if (from === null || to === null) return null
+  return Math.round((to - from) / (24 * 60 * 60 * 1000))
 }
 
 /**

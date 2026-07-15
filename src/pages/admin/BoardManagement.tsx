@@ -5,7 +5,12 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { EXPIRING_SOON_DAYS } from '../../utils/date'
+import {
+  addYearsToDate,
+  daysBetweenDates,
+  EXPIRING_SOON_DAYS,
+  getVenueDateString,
+} from '../../utils/date'
 import type { MemberBasic } from '../../types/common'
 import { useToast, ToastContainer } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
@@ -276,7 +281,7 @@ export function BoardManagement() {
 
       if (error) throw error
 
-      const today = new Date().toISOString().split('T')[0]
+      const today = getVenueDateString()
 
       // 如果更換了會員，新增備忘錄到兩個會員
       if (newMemberForChange && newMemberId !== oldMemberId && oldMemberId) {
@@ -324,10 +329,8 @@ export function BoardManagement() {
 
   // 快速延長一年
   const handleExtendOneYear = () => {
-    const currentExpiry = editForm.expires_at ? new Date(editForm.expires_at) : new Date()
-    const newExpiry = new Date(currentExpiry)
-    newExpiry.setFullYear(newExpiry.getFullYear() + 1)
-    setEditForm({ ...editForm, expires_at: newExpiry.toISOString().split('T')[0] })
+    const currentExpiry = editForm.expires_at || getVenueDateString()
+    setEditForm({ ...editForm, expires_at: addYearsToDate(currentExpiry, 1) })
   }
 
   const handleDeleteBoard = async () => {
@@ -347,7 +350,7 @@ export function BoardManagement() {
 
       // 新增備忘錄
       if (selectedSlot.member_id) {
-        const today = new Date().toISOString().split('T')[0]
+        const today = getVenueDateString()
         // @ts-ignore
         await supabase.from('member_notes').insert([{
           member_id: selectedSlot.member_id,
@@ -429,7 +432,7 @@ export function BoardManagement() {
       if (error) throw error
 
       // 新增備忘錄
-      const today = new Date().toISOString().split('T')[0]
+      const today = getVenueDateString()
       const expiryInfo = newBoardForm.expires_at ? `，至 ${newBoardForm.expires_at}` : ''
       // @ts-ignore
       await supabase.from('member_notes').insert([{
@@ -473,9 +476,8 @@ export function BoardManagement() {
     // 計算到期狀態
     const getExpiryStatus = () => {
       if (!slotInfo?.expires_at) return 'normal'
-      const today = new Date()
-      const expiryDate = new Date(slotInfo.expires_at)
-      const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      const daysUntilExpiry = daysBetweenDates(getVenueDateString(), slotInfo.expires_at)
+      if (daysUntilExpiry === null) return 'normal'
       
       if (daysUntilExpiry < 0) return 'expired'
       if (daysUntilExpiry <= EXPIRING_SOON_DAYS) return 'expiring'

@@ -9,7 +9,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
 import {
-  getLocalDateString,
+  getVenueDateString,
   normalizeDate,
   isDateExpired,
   isEndDateInExpiryReminderWindow,
@@ -356,7 +356,7 @@ export function MemberManagement() {
 
       if (!member) throw new Error('找不到會員')
 
-      const today = new Date().toISOString().split('T')[0]
+      const today = getVenueDateString()
       const hasPartner = member.membership_type === 'dual' && member.membership_partner_id
 
       // 1. 如果有配對，解除配對關係
@@ -429,7 +429,7 @@ export function MemberManagement() {
       if (error) throw error
 
       // 新增備忘錄
-      const today = new Date().toISOString().split('T')[0]
+      const today = getVenueDateString()
       // @ts-ignore
       await supabase.from('member_notes').insert([{
         member_id: memberId,
@@ -496,20 +496,9 @@ export function MemberManagement() {
       let comparison = 0
       switch (sortBy) {
         case 'updated_at':
-          // 取 updated_at 和 member_notes 最新日期中較新的
-          const getLatestDate = (member: Member) => {
-            const dates: string[] = []
-            if (member.updated_at) dates.push(member.updated_at)
-            if (member.member_notes && member.member_notes.length > 0) {
-              const latestNote = member.member_notes
-                .filter(n => n.event_date)
-                .sort((x, y) => (y.event_date || '').localeCompare(x.event_date || ''))[0]
-              if (latestNote?.event_date) dates.push(latestNote.event_date)
-            }
-            return dates.length > 0 ? dates.sort((x, y) => y.localeCompare(x))[0] : null
-          }
-          const dateA = getLatestDate(a)
-          const dateB = getLatestDate(b)
+          // 只依會員資料的實際更新時間排序，不受備忘錄活動日期影響
+          const dateA = a.updated_at
+          const dateB = b.updated_at
           // 空值永遠排最後
           if (!dateA && !dateB) return 0
           if (!dateA) return 1
@@ -1136,7 +1125,7 @@ export function MemberManagement() {
               })()}
               
               {expiringBoards.length > 0 && (() => {
-                const today = getLocalDateString()
+                const today = getVenueDateString()
                 const expiredBoards = expiringBoards.filter((b: any) => b.expires_at < today)
                 const upcomingBoards = expiringBoards.filter((b: any) => b.expires_at >= today)
                 return (
@@ -1251,9 +1240,9 @@ export function MemberManagement() {
                       <span style={getBadgeStyle('default', 'small')}>已隱藏</span>
                     )}
                     {member.birthday && (() => {
-                      const today = new Date()
-                      const birthMonth = new Date(member.birthday).getMonth()
-                      return birthMonth === today.getMonth()
+                      const currentMonth = Number(getVenueDateString().slice(5, 7))
+                      const birthMonth = Number(member.birthday.slice(5, 7))
+                      return birthMonth === currentMonth
                     })() && (
                       <span style={{ ...getBadgeStyle('warning', 'small'), fontWeight: 500 }}>
                         本月壽星

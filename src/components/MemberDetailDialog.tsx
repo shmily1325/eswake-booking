@@ -4,7 +4,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { EditMemberDialog } from './EditMemberDialog'
 import { TransactionDialog } from './TransactionDialog'
 import { useToast } from './ui'
-import { normalizeDate } from '../utils/date'
+import { addYearsToDate, getVenueDateString, isDateExpired, normalizeDate } from '../utils/date'
 import { MemoRecordCheckbox } from './MemoRecordCheckbox'
 import {
   designSystem,
@@ -512,7 +512,7 @@ export function MemberDetailDialog({
   const handleAddNote = () => {
     setEditingNote(null)
     setNoteFormData({ 
-      event_date: new Date().toISOString().split('T')[0], 
+      event_date: getVenueDateString(), 
       event_type: '備註', 
       description: '' 
     })
@@ -542,7 +542,7 @@ export function MemberDetailDialog({
           .eq('id', member.membership_partner_id)
         
         // 幫配對會員加一則備忘錄
-        const today = new Date().toISOString().split('T')[0]
+        const today = getVenueDateString()
         // @ts-ignore
         await supabase.from('member_notes').insert([{
           member_id: member.membership_partner_id,
@@ -566,7 +566,7 @@ export function MemberDetailDialog({
       if (updateError) throw updateError
 
       // 3. 新增備忘錄
-      const today = new Date().toISOString().split('T')[0]
+      const today = getVenueDateString()
       const oldEndDate = member.membership_end_date ? `（原到期：${member.membership_end_date}）` : ''
       // @ts-ignore
       await supabase
@@ -598,7 +598,7 @@ export function MemberDetailDialog({
     const isGuest = member.membership_type === 'guest'
     const isDual = member.membership_type === 'dual'
     const hasPartner = isDual && member.membership_partner_id && member.partner
-    const today = new Date().toISOString().split('T')[0]
+    const today = getVenueDateString()
 
     try {
       // 1. 更新會員資料
@@ -746,7 +746,7 @@ export function MemberDetailDialog({
       }
 
       // 新增備忘錄
-      const today = new Date().toISOString().split('T')[0]
+      const today = getVenueDateString()
       const expiryInfo = boardFormData.expires_at ? `，至 ${boardFormData.expires_at}` : ''
       // @ts-ignore
       await supabase.from('member_notes').insert([{
@@ -783,7 +783,7 @@ export function MemberDetailDialog({
       if (error) throw error
 
       // 新增備忘錄
-      const today = new Date().toISOString().split('T')[0]
+      const today = getVenueDateString()
       // @ts-ignore
       await supabase.from('member_notes').insert([{
         member_id: memberId,
@@ -804,10 +804,7 @@ export function MemberDetailDialog({
 
   // 打開置板續約對話框
   const openBoardRenewDialog = (boardId: number, slotNumber: number, currentExpiry: string | null) => {
-    const currentDate = currentExpiry ? new Date(currentExpiry) : new Date()
-    const newExpiry = new Date(currentDate)
-    newExpiry.setFullYear(newExpiry.getFullYear() + 1)
-    setBoardRenewEndDate(newExpiry.toISOString().split('T')[0])
+    setBoardRenewEndDate(addYearsToDate(currentExpiry || getVenueDateString(), 1))
     setRenewingBoard({ id: boardId, slot_number: slotNumber, expires_at: currentExpiry })
     setBoardRenewDialogOpen(true)
   }
@@ -828,7 +825,7 @@ export function MemberDetailDialog({
       if (error) throw error
 
       // 新增備忘錄
-      const today = new Date().toISOString().split('T')[0]
+      const today = getVenueDateString()
       // @ts-ignore
       await supabase.from('member_notes').insert([{
         member_id: memberId,
@@ -896,7 +893,7 @@ export function MemberDetailDialog({
 
         // 有日期變更或有自訂文字時，新增備忘錄
         if (changes.length > 0 || boardEditForm.memoText.trim()) {
-          const today = new Date().toISOString().split('T')[0]
+          const today = getVenueDateString()
           let description = ''
           
           if (changes.length > 0) {
@@ -1173,12 +1170,8 @@ export function MemberDetailDialog({
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             <button
                               onClick={() => {
-                                const currentEnd = member.membership_end_date 
-                                  ? new Date(member.membership_end_date) 
-                                  : new Date()
-                                const newEnd = new Date(currentEnd)
-                                newEnd.setFullYear(newEnd.getFullYear() + 1)
-                                setRenewEndDate(newEnd.toISOString().split('T')[0])
+                                const currentEnd = member.membership_end_date || getVenueDateString()
+                                setRenewEndDate(addYearsToDate(currentEnd, 1))
                                 setRenewDialogOpen(true)
                               }}
                               style={getButtonStyle('primary', 'small', isMobile)}
@@ -1206,10 +1199,7 @@ export function MemberDetailDialog({
                           </div>
                           <button
                             onClick={() => {
-                              const today = new Date()
-                              const endDate = new Date(today)
-                              endDate.setFullYear(endDate.getFullYear() + 1)
-                              setRenewEndDate(endDate.toISOString().split('T')[0])
+                              setRenewEndDate(addYearsToDate(getVenueDateString(), 1))
                               setRenewDialogOpen(true)
                             }}
                             style={getButtonStyle('primary', 'small', isMobile)}
@@ -2052,9 +2042,7 @@ function getMembershipTypeLabel(type: string): string {
 }
 
 function isExpired(dateString: string): boolean {
-  const expiryDate = new Date(dateString)
-  const today = new Date()
-  return expiryDate < today
+  return isDateExpired(dateString)
 }
 
 // 統一日期格式為 YYYY-MM-DD

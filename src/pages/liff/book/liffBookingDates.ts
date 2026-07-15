@@ -1,4 +1,4 @@
-import { addDaysToDate, getLocalDateString, getVenueDateString } from '../../../utils/date'
+import { addDaysToDate, getCalendarDateString, getVenueDateString } from '../../../utils/date'
 
 export interface RestrictionDateRow {
   start_date: string
@@ -24,7 +24,7 @@ export function buildAllDayBlockedDates(restrictions: RestrictionDateRow[]): Set
 /** 可預約截止日：當月 1 日起可約到「次月底」（例：6/1～7/31） */
 export function bookingLastDate(todayStr: string = getVenueDateString()): string {
   const [y, m] = todayStr.split('-').map(Number)
-  return getLocalDateString(new Date(y, m + 1, 0))
+  return getCalendarDateString(y, m + 1, 0)
 }
 
 export type DateAvailability = 'past' | 'blocked' | 'closed' | 'open'
@@ -48,8 +48,8 @@ export function monthBookability(
   monthIndex: number,
   todayStr: string = getVenueDateString(),
 ): MonthBookability {
-  const firstStr = getLocalDateString(new Date(year, monthIndex, 1))
-  const lastStr = getLocalDateString(new Date(year, monthIndex + 1, 0))
+  const firstStr = getCalendarDateString(year, monthIndex, 1)
+  const lastStr = getCalendarDateString(year, monthIndex + 1, 0)
   const lastBookable = bookingLastDate(todayStr)
 
   if (lastStr < todayStr) return 'past'
@@ -80,7 +80,7 @@ export function buildMonthGrid(year: number, monthIndex: number): Array<{
     cells.push({ ymd: null, inMonth: false })
   }
   for (let day = 1; day <= daysInMonth; day++) {
-    const ymd = getLocalDateString(new Date(year, monthIndex, day))
+    const ymd = getCalendarDateString(year, monthIndex, day)
     cells.push({ ymd, inMonth: true })
   }
   while (cells.length % 7 !== 0) {

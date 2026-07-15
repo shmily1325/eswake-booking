@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
 import { MemoRecordCheckbox } from './MemoRecordCheckbox'
+import { getVenueDateString } from '../utils/date'
 import {
   designSystem,
   getButtonStyle,
@@ -287,7 +288,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
 
         // 有日期變更或有自訂文字時，新增備忘錄
         if (changes.length > 0 || memoText.trim()) {
-          const today = new Date().toISOString().split('T')[0]
+          const today = getVenueDateString()
           let description = ''
           
           if (changes.length > 0) {

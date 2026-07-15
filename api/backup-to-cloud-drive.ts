@@ -1,48 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
-
-// 需要备份的所有表（按依赖顺序）
-// ⚠️ 重要：新增資料表時請務必同步更新此列表！
-const TABLES_TO_BACKUP = [
-  // === 基礎資料表（無外鍵依賴）===
-  'members',
-  'coaches',
-  'boats',
-  
-  // === 權限相關表 ===
-  'admin_users',        // ⭐ 管理員用戶
-  'allowed_users',      // ⭐ 允許登入用戶
-  'editor_users',       // ⭐ 小編權限用戶
-  'view_users',         // ⭐ 一般權限用戶
-  
-  // === 會員相關 ===
-  'member_notes',       // ⭐ 會員備註/事件記錄
-  'billing_relations',  // ⭐ 代扣關係表
-  'board_storage',
-  
-  // === 船隻與教練相關 ===
-  'boat_unavailable_dates',
-  'coach_time_off',
-  
-  // === 預約相關（有外鍵依賴）===
-  'bookings',
-  'booking_members',
-  'booking_coaches',
-  'booking_drivers',    // 駕駛資料
-  'coach_reports',
-  'booking_participants',
-  
-  // === 財務相關 ===
-  'transactions',
-  
-  // === 系統相關 ===
-  'daily_announcements',
-  'audit_log',
-  'system_settings',
-  'line_bindings',
-  'backup_logs',        // 備份記錄
-];
+import { authorizeBackupRequest } from './backup-auth';
+import { fetchBackupData, generateSqlBackup } from './backup-data';
 
 function getLocalTimestamp(date: Date = new Date()): string {
   const year = date.getFullYear();
@@ -67,6 +27,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const requestAuth = await authorizeBackupRequest(req);
+    if (requestAuth.ok === false) {
+      return res.status(requestAuth.status).json({ error: requestAuth.error });
+    }
+
     logStep('1. 開始備份流程');
     
     // 获取环境变量
@@ -159,107 +124,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     logStep('5. 開始生成完整資料庫備份');
     
-    // 生成 SQL 备份内容
-    let sqlContent = `-- =============================================\n`;
-    sqlContent += `-- ESWake 預約系統 - 完整資料庫備份\n`;
-    sqlContent += `-- 備份時間: ${getLocalTimestamp()}\n`;
-    sqlContent += `-- =============================================\n\n`;
-
-    const backupStats: { [table: string]: number } = {};
-
-    // 备份每个表
-    for (const tableName of TABLES_TO_BACKUP) {
-      try {
-        // 使用分頁查詢取得所有資料（Supabase 預設限制 1000 筆）
-        const PAGE_SIZE = 1000;
-        let allData: any[] = [];
-        let offset = 0;
-        let hasMore = true;
-
-        while (hasMore) {
-          const { data, error } = await supabase
-            .from(tableName)
-            .select('*')
-            .order('id', { ascending: true })
-            .range(offset, offset + PAGE_SIZE - 1);
-
-          if (error) {
-            console.error(`查詢表 ${tableName} 失敗:`, error);
-            sqlContent += `-- ⚠️ 表 ${tableName} 備份失敗: ${error.message}\n`;
-            hasMore = false;
-            break;
-          }
-
-          if (data && data.length > 0) {
-            allData = allData.concat(data);
-            offset += PAGE_SIZE;
-            hasMore = data.length === PAGE_SIZE;
-          } else {
-            hasMore = false;
-          }
-        }
-
-        const data = allData;
-
-        if (!data || data.length === 0) {
-          sqlContent += `-- 表 ${tableName} 無資料\n\n`;
-          backupStats[tableName] = 0;
-          continue;
-        }
-
-        sqlContent += `-- =============================================\n`;
-        sqlContent += `-- 表: ${tableName} (${data.length} 筆記錄)\n`;
-        sqlContent += `-- =============================================\n\n`;
-        sqlContent += `-- 刪除表 ${tableName} 的現有資料\n`;
-        sqlContent += `DELETE FROM ${tableName};\n\n`;
-
-        // 生成 INSERT 语句
-        for (const row of data) {
-          const columns = Object.keys(row).join(', ');
-          const values = Object.values(row).map((val: any) => {
-            if (val === null) return 'NULL';
-            if (typeof val === 'string') {
-              const escaped = val.replace(/'/g, "''");
-              return `'${escaped}'`;
-            }
-            if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
-            if (Array.isArray(val)) {
-              const arrayValues = val.map(v => {
-                if (typeof v === 'string') {
-                  return `'${v.replace(/'/g, "''")}'`;
-                }
-                return String(v);
-              }).join(', ');
-              return `ARRAY[${arrayValues}]`;
-            }
-            return String(val);
-          }).join(', ');
-
-          sqlContent += `INSERT INTO ${tableName} (${columns}) VALUES (${values});\n`;
-        }
-
-        sqlContent += `\n`;
-        backupStats[tableName] = data.length;
-        console.log(`✓ 表 ${tableName}: ${data.length} 筆記錄`);
-      } catch (error: any) {
-        console.error(`備份表 ${tableName} 時出錯:`, error);
-        sqlContent += `-- ⚠️ 表 ${tableName} 備份出錯: ${error.message}\n\n`;
-      }
-    }
-
-    // 添加备份统计
-    sqlContent += `-- =============================================\n`;
-    sqlContent += `-- 備份統計\n`;
-    sqlContent += `-- =============================================\n`;
-    sqlContent += `-- 備份時間: ${getLocalTimestamp()}\n`;
-    sqlContent += `-- 總表數: ${TABLES_TO_BACKUP.length}\n`;
-    const totalRecords = Object.values(backupStats).reduce((sum, count) => sum + count, 0);
-    sqlContent += `-- 總記錄數: ${totalRecords}\n\n`;
-    sqlContent += `-- 各表記錄數:\n`;
-    for (const [table, count] of Object.entries(backupStats)) {
-      sqlContent += `--   ${table}: ${count}\n`;
-    }
-    sqlContent += `-- =============================================\n`;
+    const backupTime = getLocalTimestamp();
+    const { data, stats, totalRecords } = await fetchBackupData(supabase);
+    const sqlContent = generateSqlBackup(data, stats, backupTime);
 
     logStep('6. 備份 SQL 內容生成完成', { 
       totalRecords,

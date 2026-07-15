@@ -313,7 +313,14 @@
         // 全域變數 - 使用 IndexedDB 作為資料庫
         let db = null;
         const DB_NAME = 'eswake-offline';
-        const DB_VERSION = 2;
+        const DB_VERSION = 3;
+        const REQUIRED_SHOP_STORES = [
+            'products',
+            'product_variants',
+            'shop_orders',
+            'shop_order_items',
+            'shop_order_settlements'
+        ];
         
         // 選單項目配置
         const menuItems = [
@@ -442,7 +449,12 @@
                                 'audit_log': { keyPath: 'id', autoIncrement: true },
                                 'transactions': { keyPath: 'id', autoIncrement: true },
                                 'board_storage': { keyPath: 'id', autoIncrement: true },
-                                'member_notes': { keyPath: 'id', autoIncrement: true }
+                                'member_notes': { keyPath: 'id', autoIncrement: true },
+                                'products': { keyPath: 'id', autoIncrement: false },
+                                'product_variants': { keyPath: 'id', autoIncrement: false },
+                                'shop_orders': { keyPath: 'id', autoIncrement: false },
+                                'shop_order_items': { keyPath: 'id', autoIncrement: false },
+                                'shop_order_settlements': { keyPath: 'id', autoIncrement: false }
                             };
                             
                             // 創建現有表
@@ -489,11 +501,26 @@
         }
         
         // 初始化 IndexedDB
+        async function getCurrentDatabaseVersion() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    const current = request.result;
+                    const version = current.version;
+                    current.close();
+                    resolve(Math.max(version, DB_VERSION));
+                };
+            });
+        }
+
         async function initDatabase() {
             if (db) return db;
-            
+
+            // SQL 匯入器可能動態提高 DB version；永遠以現有或最低版本中較高者開啟。
+            const targetVersion = await getCurrentDatabaseVersion();
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                const request = indexedDB.open(DB_NAME, targetVersion);
                 
                 request.onerror = (event) => {
                     const error = request.error || event.target?.error;
@@ -504,9 +531,23 @@
                     reject(new Error(errorMessage));
                 };
                 
-                request.onsuccess = () => {
+                request.onsuccess = async () => {
                     db = request.result;
                     console.log('✅ 資料庫已開啟');
+                    const missingShopStores = REQUIRED_SHOP_STORES.filter(
+                        storeName => !db.objectStoreNames.contains(storeName)
+                    );
+                    if (missingShopStores.length > 0) {
+                        missingShopStores.forEach(storeName => {
+                            pendingTables.set(storeName, { keyPath: 'id', autoIncrement: false });
+                        });
+                        try {
+                            await createAllPendingTables();
+                        } catch (error) {
+                            reject(error);
+                            return;
+                        }
+                    }
                     resolve(db);
                 };
                 
@@ -555,6 +596,21 @@
                         }
                         if (!database.objectStoreNames.contains('member_notes')) {
                             database.createObjectStore('member_notes', { keyPath: 'id', autoIncrement: true });
+                        }
+                        if (!database.objectStoreNames.contains('products')) {
+                            database.createObjectStore('products', { keyPath: 'id' });
+                        }
+                        if (!database.objectStoreNames.contains('product_variants')) {
+                            database.createObjectStore('product_variants', { keyPath: 'id' });
+                        }
+                        if (!database.objectStoreNames.contains('shop_orders')) {
+                            database.createObjectStore('shop_orders', { keyPath: 'id' });
+                        }
+                        if (!database.objectStoreNames.contains('shop_order_items')) {
+                            database.createObjectStore('shop_order_items', { keyPath: 'id' });
+                        }
+                        if (!database.objectStoreNames.contains('shop_order_settlements')) {
+                            database.createObjectStore('shop_order_settlements', { keyPath: 'id' });
                         }
                         
                         console.log('✅ 資料表已建立');
@@ -623,7 +679,7 @@
         async function clearDatabase() {
             if (!db) await initDatabase();
             
-            const storeNames = ['members', 'boats', 'coaches', 'bookings', 'booking_coaches', 'booking_drivers', 'booking_members', 'daily_announcements', 'coach_time_off', 'audit_log', 'transactions', 'board_storage', 'member_notes'];
+            const storeNames = ['members', 'boats', 'coaches', 'bookings', 'booking_coaches', 'booking_drivers', 'booking_members', 'daily_announcements', 'coach_time_off', 'audit_log', 'transactions', 'board_storage', 'member_notes', 'products', 'product_variants', 'shop_orders', 'shop_order_items', 'shop_order_settlements'];
             
             for (const storeName of storeNames) {
                 try {
@@ -1073,10 +1129,13 @@
                                     const values = rawValues.map(v => {
                                         v = v.trim();
                                         if (!v || v === 'NULL' || v === 'null') return null;
+
+                                        // 移除 PostgreSQL 型別轉換（例如 ::jsonb）
+                                        v = v.replace(/::[a-z_][a-z0-9_]*(?:\[\])?$/i, '').trim();
                                         
                                         // 處理字串值
                                         if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
-                                            return v.slice(1, -1)
+                                            const decoded = v.slice(1, -1)
                                                 .replace(/''/g, "'")
                                                 .replace(/""/g, '"')
                                                 .replace(/\\'/g, "'")
@@ -1084,6 +1143,15 @@
                                                 .replace(/\\n/g, '\n')
                                                 .replace(/\\t/g, '\t')
                                                 .replace(/\\\\/g, '\\');
+                                            if ((decoded.startsWith('{') && decoded.endsWith('}')) ||
+                                                (decoded.startsWith('[') && decoded.endsWith(']'))) {
+                                                try {
+                                                    return JSON.parse(decoded);
+                                                } catch {
+                                                    // 非 JSON 字串維持原值
+                                                }
+                                            }
+                                            return decoded;
                                         }
                                         
                                         // 處理布林值
@@ -1361,7 +1429,7 @@
         async function showCoachDailyView(dateParam) {
             const mainContent = document.getElementById('main-content');
             const appContainer = document.getElementById('app');
-            const selectedDate = dateParam || new Date().toISOString().split('T')[0];
+            const selectedDate = dateParam || getVenueDateString();
             
             // 移除 container 的寬度限制，讓表格可以全寬顯示
             appContainer.style.maxWidth = '100%';
@@ -1417,7 +1485,7 @@
         }
         
         // 全域變數：當前選中的日期和教練
-        let currentDate = new Date().toISOString().split('T')[0];
+        let currentDate = getVenueDateString();
         let selectedCoachId = '';
         
         // 返回首頁
@@ -1512,6 +1580,23 @@
                             <div class="menu-item" onclick="showBoardManagement()">
                                 <div class="menu-icon">🏄</div>
                                 <h2 class="menu-title">置板管理</h2>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 商品相關區塊 -->
+                    <div style="margin-bottom: 40px;">
+                        <h3 style="margin: 0 0 20px 0; font-size: 20px; font-weight: 700; color: #333; padding-bottom: 12px; border-bottom: 2px solid rgba(0, 0, 0, 0.1); letter-spacing: 0.5px;">
+                            📦 商品相關
+                        </h3>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                            <div class="menu-item" onclick="showProductInventory()">
+                                <div class="menu-icon">📦</div>
+                                <h2 class="menu-title">商品庫存</h2>
+                            </div>
+                            <div class="menu-item" onclick="showUnsettledOrders()">
+                                <div class="menu-icon">🧾</div>
+                                <h2 class="menu-title">未結訂單</h2>
                             </div>
                         </div>
                     </div>
@@ -1966,10 +2051,46 @@
             return new Intl.DateTimeFormat('en-CA', { timeZone: VENUE_TIMEZONE }).format(d);
         }
 
+        function getVenueTimeParts(date) {
+            var d = date || new Date();
+            var parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: VENUE_TIMEZONE,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hourCycle: 'h23'
+            }).formatToParts(d);
+            var pick = function(type) {
+                var part = parts.find(function(item) { return item.type === type; });
+                return Number(part ? part.value : 0);
+            };
+            return { hours: pick('hour'), minutes: pick('minute'), seconds: pick('second') };
+        }
+
+        function getVenueTimestamp(date) {
+            var time = getVenueTimeParts(date);
+            return getVenueDateString(date) + 'T' +
+                String(time.hours).padStart(2, '0') + ':' +
+                String(time.minutes).padStart(2, '0') + ':' +
+                String(time.seconds).padStart(2, '0');
+        }
+
         function addDaysToDateStr(dateStr, days) {
             var parts = dateStr.split('-').map(Number);
-            var d = new Date(parts[0], parts[1] - 1, parts[2] + days);
-            return getLocalDateString(d);
+            var d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days));
+            return d.getUTCFullYear() + '-' +
+                String(d.getUTCMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getUTCDate()).padStart(2, '0');
+        }
+
+        function addYearsToDateStr(dateStr, years) {
+            var parts = dateStr.split('-').map(Number);
+            var year = parts[0] + years;
+            var month = parts[1];
+            var lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+            return year + '-' +
+                String(month).padStart(2, '0') + '-' +
+                String(Math.min(parts[2], lastDay)).padStart(2, '0');
         }
 
         function parseDbTime(startAt) {
@@ -2061,6 +2182,124 @@
                 request.onsuccess = () => resolve(request.result || []);
                 request.onerror = () => reject(request.error);
             });
+        }
+
+        const PRODUCT_CATEGORY_LABELS = {
+            lifejacket: '救生衣',
+            wetsuit: '防寒衣',
+            apparel: '服飾',
+            wb_board: 'WB 板',
+            wb_boots: 'WB 鞋'
+        };
+
+        function parseOfflineJson(value) {
+            if (value == null) return {};
+            if (typeof value === 'object') return value;
+            try {
+                return JSON.parse(String(value));
+            } catch {
+                return {};
+            }
+        }
+
+        async function safeGetAllFromStore(storeName) {
+            try {
+                return await getAllFromStore(storeName);
+            } catch {
+                return [];
+            }
+        }
+
+        function formatProductAttributes(value) {
+            const attributes = parseOfflineJson(value);
+            return Object.values(attributes)
+                .filter(item => item != null && String(item).trim())
+                .map(item => String(item))
+                .join(' / ') || '—';
+        }
+
+        function variantSellableStock(variant) {
+            return Math.max(0, (Number(variant.stock) || 0) - (Number(variant.reserved_qty) || 0));
+        }
+
+        function variantAvailabilityLabel(variant) {
+            const sellable = variantSellableStock(variant);
+            if (variant.availability === 'pre_order' && sellable <= 0) return '預購';
+            if (variant.availability === 'sold_out' || sellable <= 0) return '已售完';
+            return '現貨';
+        }
+
+        function orderItemOpenQty(item) {
+            return Math.max(0,
+                (Number(item.qty) || 0) -
+                (Number(item.qty_pending_bill) || 0) -
+                (Number(item.qty_paid) || 0)
+            );
+        }
+
+        function orderItemBillableQty(item) {
+            const open = orderItemOpenQty(item);
+            const available = item.variant ? variantSellableStock(item.variant) : 0;
+            return Math.min(open, available);
+        }
+
+        function isUnsettledOfflineOrder(order) {
+            if (order.cancelled_at || order.items.length === 0) return false;
+            return !order.items.every(item =>
+                Number(item.qty_paid) >= Number(item.qty) &&
+                Number(item.qty_pending_bill) === 0
+            );
+        }
+
+        function offlineOrderStatus(order) {
+            const hasReady = order.items.some(item => orderItemBillableQty(item) > 0);
+            const hasPending = order.items.some(item => Number(item.qty_pending_bill) > 0);
+            const hasWaiting = order.items.some(item =>
+                orderItemOpenQty(item) > 0 && orderItemBillableQty(item) === 0
+            );
+            if (hasReady) return { key: 'ready', label: '可送結帳', color: '#1565c0', bg: '#e3f2fd' };
+            if (hasPending && hasWaiting) return { key: 'partial', label: '部分待結', color: '#6a1b9a', bg: '#f3e5f5' };
+            if (hasPending) return { key: 'pending', label: '待結帳', color: '#6a1b9a', bg: '#f3e5f5' };
+            if (hasWaiting) return { key: 'waiting', label: '等貨', color: '#a05a00', bg: '#fff3e0' };
+            return { key: 'open', label: '進行中', color: '#555', bg: '#f2f2f2' };
+        }
+
+        async function loadOfflineShopData() {
+            if (!db) await initDatabase();
+            const [products, variants, orders, items, settlements] = await Promise.all([
+                safeGetAllFromStore('products'),
+                safeGetAllFromStore('product_variants'),
+                safeGetAllFromStore('shop_orders'),
+                safeGetAllFromStore('shop_order_items'),
+                safeGetAllFromStore('shop_order_settlements')
+            ]);
+            const productMap = {};
+            products.forEach(product => { productMap[product.id] = product; });
+            const variantMap = {};
+            variants.forEach(variant => {
+                variantMap[variant.id] = {
+                    ...variant,
+                    attributes: parseOfflineJson(variant.attributes),
+                    product: productMap[variant.product_id] || null
+                };
+            });
+            const itemsByOrder = {};
+            items.forEach(item => {
+                if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
+                itemsByOrder[item.order_id].push({
+                    ...item,
+                    variant: variantMap[item.variant_id] || null
+                });
+            });
+            return {
+                products,
+                variants: Object.values(variantMap),
+                orders: orders.map(order => ({
+                    ...order,
+                    items: itemsByOrder[order.id] || []
+                })),
+                settlements
+            };
         }
         
         // 獲取預約的教練
@@ -3246,12 +3485,10 @@
         // 明日提醒預設日期：凌晨 3 點前算今天，之後算明天
         function getTomorrowDefaultDate() {
             var now = new Date();
-            if (now.getHours() < 3) {
-                return getLocalDateString(now);
+            if (getVenueTimeParts(now).hours < 3) {
+                return getVenueDateString(now);
             }
-            var tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            return getLocalDateString(tomorrow);
+            return addDaysToDateStr(getVenueDateString(now), 1);
         }
         
         // 載入指定日期的預約（排除教練練習），並組合教練/駕駛/會員，更新 contact_name
@@ -3949,7 +4186,7 @@
             
             const isExpired = (dateStr) => {
                 if (!dateStr) return false;
-                return new Date(dateStr) < new Date();
+                return dateStr.split('T')[0] < getVenueDateString();
             };
             
             return `
@@ -4410,11 +4647,10 @@
             // 計算到期狀態
             let expiryStatus = 'empty';
             if (isOccupied && board.expires_at) {
-                const today = new Date();
-                const expiryDate = new Date(board.expires_at);
-                const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                if (daysUntilExpiry < 0) expiryStatus = 'expired';
-                else if (daysUntilExpiry <= 30) expiryStatus = 'expiring';
+                const today = getVenueDateString();
+                const expiryDate = board.expires_at.split('T')[0];
+                if (expiryDate < today) expiryStatus = 'expired';
+                else if (expiryDate <= addDaysToDateStr(today, 30)) expiryStatus = 'expiring';
                 else expiryStatus = 'normal';
             }
             
@@ -4534,13 +4770,241 @@
                 const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                const today = new Date().toISOString().split('T')[0];
+                const today = getVenueDateString();
                 link.download = `置板資料_${today}.csv`;
                 link.click();
             } catch (error) {
                 console.error('匯出失敗:', error);
                 alert('匯出失敗：' + error.message);
             }
+        }
+
+        // ==================== 商品與訂單唯讀查詢 ====================
+
+        let offlineProductRows = [];
+        let offlineOrderRows = [];
+        let offlineOrderSettlements = [];
+
+        function showOfflineShopPage(title, icon, controlsHtml, contentId) {
+            const mainContent = document.getElementById('main-content');
+            const appContainer = document.getElementById('app');
+            appContainer.style.maxWidth = '1200px';
+            appContainer.style.padding = '24px 16px';
+            appContainer.classList.add('full-width');
+            mainContent.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px;">
+                    <div>
+                        <h1 style="margin:0; font-size:28px;">${icon} ${title}</h1>
+                        <div style="font-size:13px; color:#777; margin-top:6px;">離線備份唯讀查詢</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button onclick="showBaoHub()" style="padding:10px 16px; border:1px solid #ccc; border-radius:8px; background:white; cursor:pointer;">← BAO</button>
+                        <button onclick="showHomePage()" style="padding:10px 16px; border:1px solid #ccc; border-radius:8px; background:white; cursor:pointer;">HOME</button>
+                    </div>
+                </div>
+                <div style="background:white; border:1px solid #e0e0e0; border-radius:12px; padding:16px; margin-bottom:16px;">
+                    ${controlsHtml}
+                </div>
+                <div id="${contentId}">
+                    <div style="padding:40px; text-align:center; color:#777;">載入中...</div>
+                </div>
+            `;
+        }
+
+        async function showProductInventory() {
+            showOfflineShopPage(
+                '商品庫存',
+                '📦',
+                `<div style="display:grid; grid-template-columns:minmax(220px, 1fr) 180px; gap:12px;">
+                    <input id="offline-product-search" oninput="renderOfflineProducts()" placeholder="搜尋品牌、型號、規格、標籤碼" style="padding:11px 12px; border:1px solid #ccc; border-radius:8px; font-size:15px;">
+                    <select id="offline-product-category" onchange="renderOfflineProducts()" style="padding:11px 12px; border:1px solid #ccc; border-radius:8px; background:white;">
+                        <option value="">全部分類</option>
+                    </select>
+                </div>`,
+                'offline-product-content'
+            );
+            try {
+                const shop = await loadOfflineShopData();
+                offlineProductRows = shop.variants
+                    .filter(variant => variant.is_active !== false && variant.product?.is_active !== false)
+                    .sort((a, b) => {
+                        const aName = `${a.product?.category || ''} ${a.product?.brand || ''} ${a.product?.model || ''}`;
+                        const bName = `${b.product?.category || ''} ${b.product?.brand || ''} ${b.product?.model || ''}`;
+                        return aName.localeCompare(bName, 'zh-TW');
+                    });
+
+                const categories = [...new Set(
+                    offlineProductRows.map(row => row.product?.category).filter(Boolean)
+                )].sort();
+                const select = document.getElementById('offline-product-category');
+                categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = PRODUCT_CATEGORY_LABELS[category] || category;
+                    select.appendChild(option);
+                });
+                renderOfflineProducts();
+            } catch (error) {
+                document.getElementById('offline-product-content').innerHTML =
+                    `<div class="alert alert-error">商品資料載入失敗：${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        function renderOfflineProducts() {
+            const container = document.getElementById('offline-product-content');
+            if (!container) return;
+            const query = (document.getElementById('offline-product-search')?.value || '').trim().toLowerCase();
+            const category = document.getElementById('offline-product-category')?.value || '';
+            const rows = offlineProductRows.filter(variant => {
+                const product = variant.product || {};
+                const haystack = [
+                    product.brand,
+                    product.model,
+                    product.category,
+                    variant.vendor_code,
+                    variant.label_code,
+                    formatProductAttributes(variant.attributes)
+                ].filter(Boolean).join(' ').toLowerCase();
+                return (!category || product.category === category) && (!query || haystack.includes(query));
+            });
+
+            const totalStock = rows.reduce((sum, row) => sum + (Number(row.stock) || 0), 0);
+            const totalReserved = rows.reduce((sum, row) => sum + (Number(row.reserved_qty) || 0), 0);
+            const lowStock = rows.filter(row => variantSellableStock(row) <= 2).length;
+
+            if (offlineProductRows.length === 0) {
+                container.innerHTML = `<div style="padding:36px; text-align:center; background:white; border-radius:12px; color:#777;">備份中沒有商品資料，請重新下載最新備份。</div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div style="display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr)); gap:10px; margin-bottom:14px;">
+                    ${[
+                        ['SKU', rows.length],
+                        ['庫存', totalStock],
+                        ['保留', totalReserved],
+                        ['低庫存', lowStock]
+                    ].map(item => `<div style="background:white; border:1px solid #e0e0e0; border-radius:10px; padding:14px;"><div style="font-size:12px; color:#777;">${item[0]}</div><div style="font-size:24px; font-weight:700; margin-top:4px;">${item[1]}</div></div>`).join('')}
+                </div>
+                <div style="overflow-x:auto; background:white; border:1px solid #e0e0e0; border-radius:12px;">
+                    <table style="width:100%; border-collapse:collapse; min-width:900px;">
+                        <thead><tr style="background:#f6f6f6; text-align:left;">
+                            ${['分類', '商品', '規格', '貨號／標籤', '庫存', '保留', '可售', '狀態', '售價'].map(label => `<th style="padding:12px; border-bottom:1px solid #ddd;">${label}</th>`).join('')}
+                        </tr></thead>
+                        <tbody>
+                            ${rows.map(variant => {
+                                const product = variant.product || {};
+                                const sellable = variantSellableStock(variant);
+                                const availability = variantAvailabilityLabel(variant);
+                                const price = variant.price == null ? '待補' : `$${Number(variant.price).toLocaleString()}`;
+                                return `<tr>
+                                    <td style="padding:11px; border-bottom:1px solid #eee;">${escapeHtml(PRODUCT_CATEGORY_LABELS[product.category] || product.category || '—')}</td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee;"><strong>${escapeHtml(product.brand || '—')} ${escapeHtml(product.model || '')}</strong></td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee;">${escapeHtml(formatProductAttributes(variant.attributes))}</td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee; font-size:13px;">${escapeHtml(variant.vendor_code || variant.label_code || '—')}</td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee;">${Number(variant.stock) || 0}</td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee;">${Number(variant.reserved_qty) || 0}</td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee; font-weight:700;">${sellable}</td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee;">${availability}</td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee;">${price}</td>
+                                </tr>`;
+                            }).join('') || `<tr><td colspan="9" style="padding:30px; text-align:center; color:#777;">沒有符合條件的商品</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function showUnsettledOrders() {
+            showOfflineShopPage(
+                '未結訂單',
+                '🧾',
+                `<div style="display:grid; grid-template-columns:minmax(220px, 1fr) 180px; gap:12px;">
+                    <input id="offline-order-search" oninput="renderOfflineOrders()" placeholder="搜尋訂單號、聯絡人或商品" style="padding:11px 12px; border:1px solid #ccc; border-radius:8px; font-size:15px;">
+                    <select id="offline-order-status" onchange="renderOfflineOrders()" style="padding:11px 12px; border:1px solid #ccc; border-radius:8px; background:white;">
+                        <option value="">全部未結</option>
+                        <option value="waiting">等貨</option>
+                        <option value="ready">可送結帳</option>
+                        <option value="pending">待結帳</option>
+                        <option value="partial">部分待結</option>
+                    </select>
+                </div>`,
+                'offline-order-content'
+            );
+            try {
+                const shop = await loadOfflineShopData();
+                offlineOrderRows = shop.orders
+                    .filter(isUnsettledOfflineOrder)
+                    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+                offlineOrderSettlements = shop.settlements;
+                renderOfflineOrders();
+            } catch (error) {
+                document.getElementById('offline-order-content').innerHTML =
+                    `<div class="alert alert-error">訂單資料載入失敗：${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        function renderOfflineOrders() {
+            const container = document.getElementById('offline-order-content');
+            if (!container) return;
+            const query = (document.getElementById('offline-order-search')?.value || '').trim().toLowerCase();
+            const statusFilter = document.getElementById('offline-order-status')?.value || '';
+            const orders = offlineOrderRows.filter(order => {
+                const status = offlineOrderStatus(order);
+                const productText = order.items.map(item => {
+                    const product = item.variant?.product || {};
+                    return `${product.brand || ''} ${product.model || ''} ${formatProductAttributes(item.variant?.attributes)}`;
+                }).join(' ');
+                const haystack = `${order.order_no || ''} ${order.contact_name || ''} ${productText}`.toLowerCase();
+                return (!statusFilter || status.key === statusFilter) && (!query || haystack.includes(query));
+            });
+
+            if (offlineOrderRows.length === 0) {
+                container.innerHTML = `<div style="padding:36px; text-align:center; background:white; border-radius:12px; color:#777;">目前沒有未完成／未結清訂單。</div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div style="margin-bottom:12px; color:#666; font-size:14px;">共 ${orders.length} 張訂單</div>
+                <div style="display:grid; gap:12px;">
+                    ${orders.map(order => {
+                        const status = offlineOrderStatus(order);
+                        const settlementCount = offlineOrderSettlements.filter(item => item.order_id === order.id).length;
+                        return `<div style="background:white; border:1px solid #ddd; border-radius:12px; padding:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                                <div>
+                                    <div style="font-size:18px; font-weight:700;">${escapeHtml(order.order_no || '未編號')}</div>
+                                    <div style="font-size:14px; color:#666; margin-top:5px;">${escapeHtml(order.contact_name || '未填聯絡人')} · ${order.delivery_method === 'shipping' ? '寄送' : 'ES 面交'}</div>
+                                </div>
+                                <span style="padding:5px 10px; border-radius:999px; font-size:13px; font-weight:700; color:${status.color}; background:${status.bg};">${status.label}</span>
+                            </div>
+                            <div style="margin-top:14px; border-top:1px solid #eee;">
+                                ${order.items.map(item => {
+                                    const product = item.variant?.product || {};
+                                    const paid = Number(item.qty_paid) || 0;
+                                    const pending = Number(item.qty_pending_bill) || 0;
+                                    const open = orderItemOpenQty(item);
+                                    const billable = orderItemBillableQty(item);
+                                    return `<div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #f0f0f0;">
+                                        <div>
+                                            <strong>${escapeHtml(`${product.brand || '商品'} ${product.model || ''}`)}</strong>
+                                            <div style="font-size:13px; color:#777; margin-top:3px;">${escapeHtml(formatProductAttributes(item.variant?.attributes))}</div>
+                                        </div>
+                                        <div style="font-size:13px; text-align:right; white-space:nowrap;">
+                                            訂 ${Number(item.qty) || 0}
+                                            ${paid ? ` · 已付 ${paid}` : ''}
+                                            ${pending ? ` · 待結 ${pending}` : ''}
+                                            ${billable ? ` · 可送 ${billable}` : (open ? ` · 等貨 ${open}` : '')}
+                                        </div>
+                                    </div>`;
+                                }).join('')}
+                            </div>
+                            ${(order.customer_note || order.internal_notes) ? `<div style="margin-top:12px; padding:10px; background:#fafafa; border-radius:8px; font-size:13px; color:#555;">${escapeHtml(order.customer_note || order.internal_notes)}</div>` : ''}
+                            <div style="font-size:12px; color:#888; margin-top:10px;">更新：${escapeHtml(order.updated_at ? new Date(order.updated_at).toLocaleString('zh-TW') : '未知')} · 結帳紀錄 ${settlementCount} 筆</div>
+                        </div>`;
+                    }).join('') || `<div style="padding:30px; text-align:center; background:white; border-radius:12px; color:#777;">沒有符合條件的訂單</div>`}
+                </div>
+            `;
         }
         
         // ==================== 對話框函數 ====================
@@ -4653,7 +5117,7 @@
                     boat_voucher_g21_panther_minutes: 0,
                     gift_boat_hours: 0,
                     status: 'active',
-                    created_at: new Date().toISOString(),
+                    created_at: getVenueTimestamp(),
                     updated_at: null
                 };
                 
@@ -4750,7 +5214,7 @@
                 
                 const isExpired = (dateStr) => {
                     if (!dateStr) return false;
-                    return new Date(dateStr) < new Date();
+                    return dateStr.split('T')[0] < getVenueDateString();
                 };
                 
                 const membershipTypeLabel = member.membership_type === 'dual' ? '雙人會員' : 
@@ -5061,7 +5525,7 @@
                     membership_type: membershipType,
                     membership_start_date: membershipStartDate || null,
                     membership_end_date: membershipEndDate || null,
-                    updated_at: new Date().toISOString()
+                    updated_at: getVenueTimestamp()
                 };
                 
                 // 更新到 IndexedDB
@@ -5111,7 +5575,7 @@
                     ...member,
                     status: 'inactive',
                     membership_partner_id: null, // 清除配對關係
-                    updated_at: new Date().toISOString()
+                    updated_at: getVenueTimestamp()
                 };
                 
                 const transaction = db.transaction(['members'], 'readwrite');
@@ -5123,7 +5587,7 @@
                 });
                 
                 // 新增備忘錄
-                const today = new Date().toISOString().split('T')[0];
+                const today = getVenueDateString();
                 try {
                     await createTableIfNotExists('member_notes', 'id', true);
                     const notesTransaction = db.transaction(['member_notes'], 'readwrite');
@@ -5170,7 +5634,7 @@
                 const updatedMember = {
                     ...member,
                     status: 'active',
-                    updated_at: new Date().toISOString()
+                    updated_at: getVenueTimestamp()
                 };
                 
                 const transaction = db.transaction(['members'], 'readwrite');
@@ -5182,7 +5646,7 @@
                 });
                 
                 // 新增備忘錄
-                const today = new Date().toISOString().split('T')[0];
+                const today = getVenueDateString();
                 try {
                     await createTableIfNotExists('member_notes', 'id', true);
                     const notesTransaction = db.transaction(['member_notes'], 'readwrite');
@@ -5336,7 +5800,7 @@
                         }
                         
                         member.membership_end_date = newEndDate;
-                        member.updated_at = new Date().toISOString();
+                        member.updated_at = getVenueTimestamp();
                         
                         const updateRequest = store.put(member);
                         updateRequest.onsuccess = () => resolve();
@@ -5353,7 +5817,7 @@
                     await new Promise((resolve, reject) => {
                         const request = notesStore.add({
                             member_id: memberId,
-                            event_date: new Date().toISOString().split('T')[0],
+                            event_date: getVenueDateString(),
                             event_type: '續約',
                             description: `續約至 ${newEndDate}`
                         });
@@ -5433,7 +5897,7 @@
                     await new Promise((resolve, reject) => {
                         const request = notesStore.add({
                             member_id: memberId,
-                            event_date: startDate || new Date().toISOString().split('T')[0],
+                            event_date: startDate || getVenueDateString(),
                             event_type: '備註',
                             description: `置板開始 #${slotNumber}${expiresAt ? '，至 ' + expiresAt : ''}`
                         });
@@ -5464,7 +5928,7 @@
         
         // 續約置板
         async function renewBoard(boardId, slotNumber, currentExpiry) {
-            const newEndDate = prompt('請輸入新的到期日（YYYY-MM-DD）：', currentExpiry ? new Date(new Date(currentExpiry).setFullYear(new Date(currentExpiry).getFullYear() + 1)).toISOString().split('T')[0] : '');
+            const newEndDate = prompt('請輸入新的到期日（YYYY-MM-DD）：', currentExpiry ? addYearsToDateStr(currentExpiry.split('T')[0], 1) : '');
             if (!newEndDate) return;
             
             try {
@@ -5499,7 +5963,7 @@
                     await new Promise((resolve, reject) => {
                         const request = notesStore.add({
                             member_id: board.member_id,
-                            event_date: new Date().toISOString().split('T')[0],
+                            event_date: getVenueDateString(),
                             event_type: '續約置板',
                             description: `置板續約 #${slotNumber}，至 ${newEndDate}`
                         });
@@ -5524,7 +5988,7 @@
         
         // 開啟新增備忘錄對話框
         function openAddNoteDialog(memberId) {
-            const eventDate = prompt('請輸入事件日期（YYYY-MM-DD）：', new Date().toISOString().split('T')[0]);
+            const eventDate = prompt('請輸入事件日期（YYYY-MM-DD）：', getVenueDateString());
             if (!eventDate) return;
             
             const eventType = prompt('請輸入事件類型（續約/購買/贈送/使用/入會/備註）：', '備註');
@@ -5678,7 +6142,7 @@
                             </div>
                             <div style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">交易日期 *</label>
-                                <input type="date" id="tx-date" required value="${new Date().toISOString().split('T')[0]}" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
+                                <input type="date" id="tx-date" required value="${getVenueDateString()}" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
                             </div>
                             <div style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">說明 *</label>
@@ -5840,7 +6304,7 @@
                         }
                         
                         member[categoryConfig.field] = (member[categoryConfig.field] || 0) + delta;
-                        member.updated_at = new Date().toISOString();
+                        member.updated_at = getVenueTimestamp();
                         
                         const updateRequest = store.put(member);
                         updateRequest.onsuccess = () => resolve();
@@ -5865,7 +6329,7 @@
                         description: description,
                         notes: notes || null,
                         transaction_date: transactionDate,
-                        created_at: new Date().toISOString()
+                        created_at: getVenueTimestamp()
                     });
                     request.onsuccess = () => resolve();
                     request.onerror = () => reject(request.error);
@@ -6063,7 +6527,7 @@
                     await new Promise((resolve, reject) => {
                         const request = notesStore.add({
                             member_id: memberId,
-                            event_date: new Date().toISOString().split('T')[0],
+                            event_date: getVenueDateString(),
                             event_type: '備註',
                             description: `移除置板 #${slotNumber}`
                         });

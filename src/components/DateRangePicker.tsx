@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
-import { getLocalDateString } from '../utils/formatters'
-import { getWeekdayText } from '../utils/date'
+import { getCalendarDateString, getVenueDateString, getWeekdayText } from '../utils/date'
 import { designSystem, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 
 interface DateRangePickerProps {
@@ -55,14 +54,12 @@ export function DateRangePicker({
     selectedDate.length === 10 ? 'date' : 'month'
   )
   
-  const today = new Date()
-  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-  
-  const lastMonth = new Date()
-  lastMonth.setMonth(lastMonth.getMonth() - 1)
-  const lastMonthStr = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`
+  const venueToday = getVenueDateString()
+  const currentMonth = venueToday.slice(0, 7)
+  const [currentYear, currentMonthNumber] = currentMonth.split('-').map(Number)
+  const lastMonthStr = getCalendarDateString(currentYear, currentMonthNumber - 2, 1).slice(0, 7)
 
-  const isToday = selectedDate === getLocalDateString() && selectedDate.length === 10
+  const isToday = selectedDate === getVenueDateString() && selectedDate.length === 10
   const isCurrentMonth = selectedDate === currentMonth && selectedDate.length === 7
   const isLastMonth = selectedDate === lastMonthStr && selectedDate.length === 7
   const isCustomDate = (selectedDate.length === 7 || selectedDate.length === 10)
@@ -96,7 +93,7 @@ export function DateRangePicker({
           <button
             type="button"
             onClick={() => {
-              onDateChange(getLocalDateString())
+              onDateChange(getVenueDateString())
               setShowDatePicker(false)
             }}
             style={presetButtonStyle(isToday, isMobile)}

@@ -12,6 +12,8 @@ import {
   addMinutesToTime,
   isSlotInBookingRange,
   addDaysToDate,
+  addYearsToDate,
+  daysBetweenDates,
 } from '../date'
 
 describe('date.ts - 日期時間工具函數', () => {
@@ -114,6 +116,23 @@ describe('date.ts - 日期時間工具函數', () => {
     it('應正確加減日期', () => {
       expect(addDaysToDate('2026-06-15', 1)).toBe('2026-06-16')
       expect(addDaysToDate('2026-06-15', -1)).toBe('2026-06-14')
+    })
+
+    it('應正確跨月份與年份', () => {
+      expect(addDaysToDate('2026-12-31', 1)).toBe('2027-01-01')
+      expect(addDaysToDate('2026-03-01', -1)).toBe('2026-02-28')
+    })
+  })
+
+  describe('addYearsToDate / daysBetweenDates', () => {
+    it('續約一年不應受時區影響', () => {
+      expect(addYearsToDate('2026-07-15', 1)).toBe('2027-07-15')
+      expect(addYearsToDate('2024-02-29', 1)).toBe('2025-02-28')
+    })
+
+    it('應以純日期計算天數', () => {
+      expect(daysBetweenDates('2026-07-15', '2026-07-15')).toBe(0)
+      expect(daysBetweenDates('2026-07-15', '2026-07-16')).toBe(1)
     })
   })
 

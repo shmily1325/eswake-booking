@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'node:path'
 
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
@@ -14,6 +15,10 @@ export default defineConfig(({ mode }) => ({
   build: {
     chunkSizeWarningLimit: 2000, // 提高到 2000 KB
     rollupOptions: {
+      input: {
+        app: resolve(process.cwd(), 'index.html'),
+        offline: resolve(process.cwd(), 'offline.html'),
+      },
       output: {
         // 使用更簡單的方法：只分離 React 核心庫，其他都在一起
         manualChunks(id) {

@@ -4,7 +4,12 @@ import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString, getWeekdayText } from '../utils/date'
+import {
+  addDaysToDate,
+  getVenueDateString,
+  getVenueTimeParts,
+  getWeekdayText,
+} from '../utils/date'
 import { Footer } from '../components/Footer'
 import { PageShell } from '../components/PageShell'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
@@ -49,15 +54,13 @@ export function TomorrowReminder() {
   }, [user, navigate])
   
   const getDefaultDate = () => {
-    const now = new Date()
-    const hour = now.getHours()
+    const today = getVenueDateString()
+    const { hours } = getVenueTimeParts()
     
-    if (hour < 3) {
-      return getLocalDateString(now)
+    if (hours < 3) {
+      return today
     } else {
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      return getLocalDateString(tomorrow)
+      return addDaysToDate(today, 1)
     }
   }
   

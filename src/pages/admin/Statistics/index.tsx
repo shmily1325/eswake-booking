@@ -6,7 +6,7 @@ import { PageHeader } from '../../../components/PageHeader'
 import { PageShell } from '../../../components/PageShell'
 import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
-import { getLocalDateString } from '../../../utils/date'
+import { addDaysToDate, getCalendarDateString, getVenueDateString } from '../../../utils/date'
 import { sortBoatsByDisplayOrder } from '../../../utils/boatUtils'
 import { isAdmin } from '../../../utils/auth'
 import { loadPaidOperationalParticipantsForRange } from '../../../utils/settledNonPracticeBookings'
@@ -64,10 +64,7 @@ export function Statistics() {
   })
 
   // 月度統計數據
-  const [selectedPeriod, setSelectedPeriod] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [selectedPeriod, setSelectedPeriod] = useState(() => getVenueDateString().slice(0, 7))
   const [coachStats, setCoachStats] = useState<CoachStats[]>([])
   const [memberStats, setMemberStats] = useState<MemberStats[]>([])
   const [weekdayStats, setWeekdayStats] = useState<WeekdayStats>({
@@ -107,7 +104,8 @@ export function Statistics() {
 
   // 載入過去6個月的預約趨勢（歷史資料，不含未來）
   const loadMonthlyTrend = async () => {
-    const now = new Date()
+    const today = getVenueDateString()
+    const [currentYear, currentMonth] = today.split('-').map(Number)
 
     // 先計算每個月的查詢區間（保留原本 continue 略過當月的邏輯），
     // 再以 Promise.all 並行送出 6 次查詢，最後依原本順序聚合。
@@ -120,9 +118,9 @@ export function Statistics() {
     const ranges: RangeMeta[] = []
 
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const year = date.getFullYear()
-      const month = date.getMonth() + 1
+      const date = new Date(Date.UTC(currentYear, currentMonth - 1 - i, 1))
+      const year = date.getUTCFullYear()
+      const month = date.getUTCMonth() + 1
       const monthStr = `${year}-${String(month).padStart(2, '0')}`
       const startDate = `${monthStr}-01`
 
@@ -132,9 +130,7 @@ export function Statistics() {
 
       if (i === 0) {
         // 當月：只統計到昨天（不含今天及未來）
-        const yesterday = new Date(now)
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yesterdayStr = getLocalDateString(yesterday)
+        const yesterdayStr = addDaysToDate(today, -1)
         // 如果昨天還在上個月，則當月沒有歷史資料
         if (yesterdayStr < startDate) {
           continue // 跳過當月（月初第一天時沒有歷史資料）
@@ -210,16 +206,17 @@ export function Statistics() {
 
   // 載入財務統計
   const loadFinanceStats = async () => {
-    const now = new Date()
+    const today = getVenueDateString()
+    const [currentYear, currentMonth] = today.split('-').map(Number)
 
     // 與 loadMonthlyTrend 相同模式：先算範圍 → 並行查 → 依序聚合
     type RangeMeta = { monthStr: string; startDate: string; endDateStr: string }
     const ranges: RangeMeta[] = []
 
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const year = date.getFullYear()
-      const month = date.getMonth() + 1
+      const date = new Date(Date.UTC(currentYear, currentMonth - 1 - i, 1))
+      const year = date.getUTCFullYear()
+      const month = date.getUTCMonth() + 1
       const monthStr = `${year}-${String(month).padStart(2, '0')}`
       const startDate = `${monthStr}-01`
 
@@ -229,9 +226,7 @@ export function Statistics() {
 
       if (i === 0) {
         // 當月：只統計到昨天
-        const yesterday = new Date(now)
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yesterdayStr = getLocalDateString(yesterday)
+        const yesterdayStr = addDaysToDate(today, -1)
         // 如果昨天還在上個月，則當月沒有歷史資料
         if (yesterdayStr < startDate) {
           continue
@@ -284,17 +279,16 @@ export function Statistics() {
 
   // 載入未來預約
   const loadFutureBookings = async () => {
-    const today = getLocalDateString()
+    const today = getVenueDateString()
+    const [currentYear, currentMonth] = today.split('-').map(Number)
     const futureMonthsList: string[] = []
-    const now = new Date()
 
     for (let i = 0; i < 3; i++) {
-      const date = new Date(now.getFullYear(), now.getMonth() + i, 1)
-      futureMonthsList.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`)
+      const date = new Date(Date.UTC(currentYear, currentMonth - 1 + i, 1))
+      futureMonthsList.push(`${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`)
     }
 
-    const endDate = new Date(now.getFullYear(), now.getMonth() + 3, 0)
-    const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
+    const endDateStr = getCalendarDateString(currentYear, currentMonth + 2, 0)
 
     // 未來三個月預約量通常遠低於 1000；維持單次查詢，避免嵌套 select + range 在 PostgREST 出錯
     const [bookingsResult, reportedBookingsResult] = await Promise.all([
@@ -306,7 +300,7 @@ export function Statistics() {
           booking_members(member_id, members(id, name, nickname))
         `)
         .gte('start_at', `${today}T00:00:00`)
-        .lte('start_at', `${endDateStr}T23:59:59`)
+        .lt('start_at', `${addDaysToDate(endDateStr, 1)}T00:00:00`)
         .neq('status', 'cancelled')
         .or('is_coach_practice.is.null,is_coach_practice.eq.false')
         .order('start_at', { ascending: true }),
@@ -314,7 +308,7 @@ export function Statistics() {
         .from('coach_reports')
         .select('booking_id, bookings!inner(start_at)')
         .gte('bookings.start_at', `${today}T00:00:00`)
-        .lte('bookings.start_at', `${endDateStr}T23:59:59`),
+        .lt('bookings.start_at', `${addDaysToDate(endDateStr, 1)}T00:00:00`),
     ])
 
     if (bookingsResult.error) {
@@ -352,7 +346,7 @@ export function Statistics() {
       bookings: futureMonthsList.map(m => {
         const [year, monthStr] = m.split('-')
         const monthNum = parseInt(monthStr)
-        const label = parseInt(year) !== now.getFullYear()
+        const label = parseInt(year) !== currentYear
           ? `${year.slice(2)}年${monthNum}月`
           : `${monthNum}月`
         return {
@@ -491,10 +485,10 @@ export function Statistics() {
   const getMonthlyDateRange = () => {
     const [year, month] = selectedPeriod.split('-')
     const startDate = `${selectedPeriod}-01`
-    const now = new Date()
-    const isCurrentMonth = parseInt(year) === now.getFullYear() && parseInt(month) === now.getMonth() + 1
+    const today = getVenueDateString()
+    const isCurrentMonth = selectedPeriod === today.slice(0, 7)
     if (isCurrentMonth) {
-      const yesterday = getLocalDateString(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))
+      const yesterday = addDaysToDate(today, -1)
       if (yesterday < startDate) return null
       return { startDate, endDateStr: yesterday }
     }

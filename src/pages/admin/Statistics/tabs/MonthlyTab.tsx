@@ -12,6 +12,7 @@ import type { CoachStats, MemberStats, WeekdayStats } from '../types'
 import type { CoachPracticeSessionRow } from '../../../../utils/boatUsageRangeStats'
 import { getCalendarMonthRange } from '../utils'
 import { CoachPracticeSessionsTable } from '../../../../components/CoachPracticeSessionsTable'
+import { getCalendarDateString, getVenueDateString } from '../../../../utils/date'
 
 interface MonthlyTabProps {
   selectedPeriod: string
@@ -35,12 +36,10 @@ export function MonthlyTab({
 
   const getQuickMonths = () => {
     const months = []
-    const now = new Date()
-    const currentYear = now.getFullYear()
+    const [currentYear, currentMonth] = getVenueDateString().split('-').map(Number)
     for (let i = 0; i < 6; i++) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const year = date.getFullYear()
-      const month = date.getMonth() + 1
+      const monthDate = getCalendarDateString(currentYear, currentMonth - 1 - i, 1)
+      const [year, month] = monthDate.split('-').map(Number)
       const label = year !== currentYear
         ? `${year}/${month}月`
         : `${month}月`
@@ -61,8 +60,8 @@ export function MonthlyTab({
   const monthRange = getCalendarMonthRange(year, month)
   const isSelectedCurrentMonth = isCurrentMonthChip(selectedPeriod)
   const rangeNote = monthRange
-    ? `${monthRange.startDate} ~ ${monthRange.endDateStr}；已結帳／已處理口徑${
-        isSelectedCurrentMonth ? '（當月僅統計至昨日）' : ''
+    ? `${monthRange.startDate} ~ ${monthRange.endDateStr}；已結帳／已處理${
+        isSelectedCurrentMonth ? '（至昨日）' : ''
       }`
     : '此月份尚無可統計之區間（例如本月第一天）'
 
@@ -139,10 +138,11 @@ export function MonthlyTab({
             }}
           >
             {Array.from({ length: 24 }, (_, i) => {
-              const date = new Date()
-              date.setMonth(date.getMonth() - i)
-              const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-              const label = `${date.getFullYear()}年${date.getMonth() + 1}月`
+              const [currentYear, currentMonth] = getVenueDateString().split('-').map(Number)
+              const monthDate = getCalendarDateString(currentYear, currentMonth - 1 - i, 1)
+              const [year, month] = monthDate.split('-').map(Number)
+              const value = `${year}-${String(month).padStart(2, '0')}`
+              const label = `${year}年${month}月`
               return <option key={value} value={value}>{label}</option>
             })}
           </select>
