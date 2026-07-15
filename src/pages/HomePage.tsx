@@ -198,7 +198,7 @@ export function HomePage() {
   const menuItemsTools: HomeMenuItem[] = [
     {
       title: '排班',
-      icon: '📆',
+      icon: '📅',
       link: '/coach-assignment',
       editorFeature: 'can_schedule',
       hideFromHomeForSuperAdmin: true

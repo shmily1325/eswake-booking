@@ -17,6 +17,7 @@ export interface BookingDateNavProps {
   prevTrackId?: string
   nextTrackId?: string
   todayTrackId?: string
+  dateTrackId?: string
   scheduleTrackId?: string
   trailing?: ReactNode
   marginBottom?: string
@@ -68,6 +69,7 @@ export function BookingDateNav({
   prevTrackId = 'day_prev',
   nextTrackId = 'day_next',
   todayTrackId = 'day_today',
+  dateTrackId,
   scheduleTrackId = 'day_to_assignment',
   trailing,
   marginBottom = designSystem.spacing.lg,
@@ -123,6 +125,7 @@ export function BookingDateNav({
       <div style={{ flex: isMobile ? 1 : undefined, position: 'relative', minWidth: isMobile ? 0 : undefined }}>
         <input
           type="date"
+          data-track={dateTrackId}
           value={date}
           onChange={onDateChange}
           style={dateInputStyle(isMobile)}

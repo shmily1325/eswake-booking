@@ -148,7 +148,7 @@ export function AdminModalHeader({
   const colors = { blue: '#365d66', amber: '#7d5521', orange: '#7d5521' }
   return (
     <div style={{ marginBottom: '20px' }}>
-      <h2 style={{ margin: 0, fontSize: getFontSize('h2', isMobile), fontWeight: 750, color: '#1d1d1f', letterSpacing: '-0.03em' }}>{title}</h2>
+      <h2 style={{ margin: 0, fontSize: getFontSize('h2', isMobile), fontWeight: 700, color: '#1d1d1f', letterSpacing: '-0.03em' }}>{title}</h2>
       {subtitle && (
         <p style={{ margin: '6px 0 0', fontSize: getFontSize('body', isMobile), color: colors[accent], fontWeight: 600 }}>
           {subtitle}
@@ -191,6 +191,7 @@ export const adminTextInputStyle: CSSProperties = {
   border: '1px solid #eceef2',
   borderRadius: '16px',
   fontSize: '16px',
+  fontFamily: 'inherit',
   boxSizing: 'border-box',
   background: '#ffffff',
   boxShadow: '0 1px 2px rgba(31, 27, 23, 0.03)',

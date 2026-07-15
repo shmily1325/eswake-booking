@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
           display: 'flex',
           flexDirection: 'column',
           background: ES_BRAND.pageBg,
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          fontFamily: "var(--font-ui, 'PingFang TC', 'Microsoft JhengHei UI', 'Microsoft JhengHei', system-ui, sans-serif)"
         }}>
           <header style={{
             background: ES_BRAND.headerBg,

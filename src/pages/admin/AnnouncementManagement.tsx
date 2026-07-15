@@ -440,7 +440,7 @@ export function AnnouncementManagement() {
         <div style={{
           background: designSystem.colors.background.card,
           borderRadius: designSystem.borderRadius.lg,
-          padding: isMobile ? designSystem.spacing.xl : '20px',
+          padding: isMobile ? '16px' : '20px',
           marginBottom: designSystem.spacing.lg,
           border: cardBorder,
           boxShadow: cardShadow,
@@ -479,34 +479,51 @@ export function AnnouncementManagement() {
             }}>
               事項日期
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <input
-                type="date"
-                value={newStartDate}
-                onChange={(e) => {
-                  setNewStartDate(e.target.value)
-                  if (e.target.value > newEndDate) setNewEndDate(e.target.value)
-                }}
-                style={{
-                  ...getInputStyle(isMobile),
-                  flex: '1 1 120px',
-                  minWidth: 0,
-                  width: 'auto',
-                }}
-              />
-              <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile), flexShrink: 0 }}>～</span>
-              <input
-                type="date"
-                value={newEndDate}
-                onChange={(e) => setNewEndDate(e.target.value)}
-                min={newStartDate}
-                style={{
-                  ...getInputStyle(isMobile),
-                  flex: '1 1 120px',
-                  minWidth: 0,
-                  width: 'auto',
-                }}
-              />
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) auto minmax(0, 1fr) auto',
+                alignItems: 'end',
+                gap: '8px',
+              }}
+            >
+              <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
+                {isMobile && (
+                  <span style={{ fontSize: getFontSize('caption', true), color: designSystem.colors.text.secondary }}>
+                    開始日期
+                  </span>
+                )}
+                <input
+                  type="date"
+                  data-track="announcement_start_date"
+                  value={newStartDate}
+                  onChange={(e) => {
+                    setNewStartDate(e.target.value)
+                    if (e.target.value > newEndDate) setNewEndDate(e.target.value)
+                  }}
+                  style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
+                />
+              </label>
+              {!isMobile && (
+                <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', false), paddingBottom: 13 }}>
+                  ～
+                </span>
+              )}
+              <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
+                {isMobile && (
+                  <span style={{ fontSize: getFontSize('caption', true), color: designSystem.colors.text.secondary }}>
+                    結束日期
+                  </span>
+                )}
+                <input
+                  type="date"
+                  data-track="announcement_end_date"
+                  value={newEndDate}
+                  onChange={(e) => setNewEndDate(e.target.value)}
+                  min={newStartDate}
+                  style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
+                />
+              </label>
               <span style={{
                 padding: '10px 14px',
                 borderRadius: designSystem.borderRadius.md,
@@ -516,6 +533,7 @@ export function AnnouncementManagement() {
                 fontWeight: '600',
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
+                justifySelf: 'start',
               }}>
                 {newStartDate === newEndDate 
                   ? getWeekdayText(newStartDate)
@@ -538,6 +556,7 @@ export function AnnouncementManagement() {
             }}>
               <input
                 type="checkbox"
+                data-track="announcement_one_day_early"
                 checked={newShowOneDayEarly}
                 onChange={(e) => setNewShowOneDayEarly(e.target.checked)}
                 style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
@@ -562,6 +581,7 @@ export function AnnouncementManagement() {
               }}>
                 <input
                   type="checkbox"
+                  data-track="announcement_restriction_toggle"
                   checked={newRestrictEnabled}
                   onChange={(e) => {
                     const enabled = e.target.checked
@@ -782,7 +802,7 @@ export function AnnouncementManagement() {
         <div style={{
           background: designSystem.colors.background.card,
           borderRadius: designSystem.borderRadius.lg,
-          padding: isMobile ? designSystem.spacing.xl : '20px',
+          padding: isMobile ? '16px' : '20px',
           border: cardBorder,
           boxShadow: cardShadow,
           minHeight: '200px',
@@ -790,10 +810,11 @@ export function AnnouncementManagement() {
         }}>
           <div style={{
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'stretch' : 'center',
             marginBottom: '15px',
             gap: '8px',
-            flexWrap: 'wrap'
+            flexWrap: isMobile ? 'nowrap' : 'wrap'
           }}>
             <h2 style={{
               margin: 0,
@@ -808,13 +829,14 @@ export function AnnouncementManagement() {
             </h2>
             <input
               type="month"
+              data-track="announcement_month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               style={{
-                flex: '1 1 140px',
+                flex: isMobile ? undefined : '1 1 140px',
                 minWidth: 0,
                 ...getInputStyle(isMobile),
-                width: 'auto',
+                width: isMobile ? '100%' : 'auto',
                 cursor: 'pointer',
               }}
             />
@@ -823,12 +845,12 @@ export function AnnouncementManagement() {
           {/* 搜尋和排序控制 */}
           <div style={{
             marginBottom: '15px',
-            display: 'flex',
+            display: 'grid',
+            gridTemplateColumns: isMobile ? 'minmax(0, 1fr) auto' : 'minmax(200px, 1fr) auto',
             gap: '10px',
-            flexWrap: isMobile ? 'wrap' : 'nowrap'
           }}>
             {/* 搜尋框 */}
-            <div style={{ flex: 1, minWidth: isMobile ? '100%' : '200px' }}>
+            <div style={{ minWidth: 0 }}>
               <input
                 type="text"
                 placeholder="搜尋內容..."
@@ -935,34 +957,51 @@ export function AnnouncementManagement() {
                         />
                         <div style={{ marginBottom: '10px' }}>
                           <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '6px' }}>事項日期</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <input
-                              type="date"
-                              value={editStartDate}
-                              onChange={(e) => {
-                                setEditStartDate(e.target.value)
-                                if (e.target.value > editEndDate) setEditEndDate(e.target.value)
-                              }}
-                              style={{
-                                ...getInputStyle(isMobile),
-                                flex: '1 1 120px',
-                                minWidth: 0,
-                                width: 'auto',
-                              }}
-                            />
-                            <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile), flexShrink: 0 }}>～</span>
-                            <input
-                              type="date"
-                              value={editEndDate}
-                              onChange={(e) => setEditEndDate(e.target.value)}
-                              min={editStartDate}
-                              style={{
-                                ...getInputStyle(isMobile),
-                                flex: '1 1 120px',
-                                minWidth: 0,
-                                width: 'auto',
-                              }}
-                            />
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                              alignItems: 'end',
+                              gap: '8px',
+                            }}
+                          >
+                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
+                              {isMobile && (
+                                <span style={{ fontSize: getFontSize('caption', true), color: designSystem.colors.text.secondary }}>
+                                  開始日期
+                                </span>
+                              )}
+                              <input
+                                type="date"
+                                data-track="announcement_edit_start_date"
+                                value={editStartDate}
+                                onChange={(e) => {
+                                  setEditStartDate(e.target.value)
+                                  if (e.target.value > editEndDate) setEditEndDate(e.target.value)
+                                }}
+                                style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
+                              />
+                            </label>
+                            {!isMobile && (
+                              <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', false), paddingBottom: 13 }}>
+                                ～
+                              </span>
+                            )}
+                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
+                              {isMobile && (
+                                <span style={{ fontSize: getFontSize('caption', true), color: designSystem.colors.text.secondary }}>
+                                  結束日期
+                                </span>
+                              )}
+                              <input
+                                type="date"
+                                data-track="announcement_edit_end_date"
+                                value={editEndDate}
+                                onChange={(e) => setEditEndDate(e.target.value)}
+                                min={editStartDate}
+                                style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
+                              />
+                            </label>
                           </div>
                         </div>
                         <div style={{ marginBottom: '10px' }}>

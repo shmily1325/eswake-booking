@@ -751,57 +751,70 @@ export function CoachAdmin() {
               marginBottom: '24px'
             }}>
               {/* 查看模式切換 */}
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{
+              <div>
+                <div style={{
                   color: designSystem.colors.text.secondary,
                   fontSize: getFontSize('bodySmall', isMobile),
                   fontWeight: 600,
-                  marginRight: '4px',
+                  marginBottom: '10px',
                 }}>
-                  日期
-                </span>
-                {/* 全部待處理按鈕 */}
-                <button
-                  onClick={() => setPendingViewMode('all')}
+                  篩選日期
+                </div>
+                <div
                   style={{
-                    ...getFilterChipStyle(pendingViewMode === 'all', 'warning'),
-                    padding: '10px 20px',
-                    fontSize: getFontSize('button', isMobile),
-                    transition: 'all 0.2s'
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, auto)',
+                    gap: '8px',
+                    justifyContent: isMobile ? 'stretch' : 'start',
                   }}
                 >
-                  ⚠️ 全部待處理
-                </button>
+                  {/* 全部待處理按鈕 */}
+                  <button
+                    data-track="coach_admin_pending_all"
+                    onClick={() => setPendingViewMode('all')}
+                    style={{
+                      ...getFilterChipStyle(pendingViewMode === 'all', 'warning'),
+                      padding: '10px 14px',
+                      fontSize: getFontSize('button', isMobile),
+                      transition: 'all 0.2s',
+                      width: '100%',
+                    }}
+                  >
+                    ⚠️ 全部待處理
+                  </button>
 
-                {/* 日期按鈕 */}
-                {[
-                  { label: '今天', offset: 0 },
-                  { label: '昨天', offset: -1 },
-                  { label: '前天', offset: -2 }
-                ].map(({ label, offset }) => {
-                  const targetDate = new Date()
-                  targetDate.setDate(targetDate.getDate() + offset)
-                  const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
-                  const isSelected = pendingViewMode === 'date' && selectedDate === targetDateStr
+                  {/* 日期按鈕 */}
+                  {[
+                    { label: '今天', offset: 0 },
+                    { label: '昨天', offset: -1 },
+                    { label: '前天', offset: -2 }
+                  ].map(({ label, offset }) => {
+                    const targetDate = new Date()
+                    targetDate.setDate(targetDate.getDate() + offset)
+                    const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
+                    const isSelected = pendingViewMode === 'date' && selectedDate === targetDateStr
                   
-                  return (
-                    <button
-                      key={offset}
-                      onClick={() => {
-                        setPendingViewMode('date')
-                        setSelectedDate(targetDateStr)
-                      }}
-                      style={{
-                        ...getFilterChipStyle(isSelected, 'info'),
-                        padding: '10px 20px',
-                        fontSize: getFontSize('button', isMobile),
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
+                    return (
+                      <button
+                        key={offset}
+                        data-track={`coach_admin_pending_date_${offset}`}
+                        onClick={() => {
+                          setPendingViewMode('date')
+                          setSelectedDate(targetDateStr)
+                        }}
+                        style={{
+                          ...getFilterChipStyle(isSelected, 'info'),
+                          padding: '10px 14px',
+                          fontSize: getFontSize('button', isMobile),
+                          transition: 'all 0.2s',
+                          width: '100%',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
 
@@ -815,8 +828,8 @@ export function CoachAdmin() {
                 {pendingReports.length > 0 && (
                   <>
                     <h2 style={{ 
-                      fontSize: getFontSize('h2', isMobile),
-                      fontWeight: '600',
+                      fontSize: getFontSize('h3', isMobile),
+                      fontWeight: '700',
                       marginBottom: '16px',
                       color: designSystem.colors.text.primary
                     }}>
@@ -862,8 +875,8 @@ export function CoachAdmin() {
                 {Object.keys(groupedNonMemberReports).length > 0 && (
                   <>
                     <h2 style={{ 
-                      fontSize: getFontSize('h2', isMobile),
-                      fontWeight: '600',
+                      fontSize: getFontSize('h3', isMobile),
+                      fontWeight: '700',
                       marginBottom: '16px',
                       color: designSystem.colors.text.primary
                     }}>

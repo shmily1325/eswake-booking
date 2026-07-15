@@ -803,6 +803,8 @@ export function AuditLog() {
             />
             {bookingDateFilter && (
               <button
+                type="button"
+                data-track="audit_booking_date_clear"
                 onClick={() => setBookingDateFilter('')}
                 style={{
                   ...getButtonStyle('outline', 'medium', isMobile),
@@ -1047,6 +1049,7 @@ export function AuditLog() {
 
                       {/* 卡片 */}
                       <div
+                        data-track="audit_log_card_expand"
                         onClick={() => toggleExpand(log.id)}
                         style={{
                           background: designSystem.colors.background.card,
@@ -1161,6 +1164,8 @@ export function AuditLog() {
                               }}>
                                 {parsed.boat && (
                                   <button
+                                    type="button"
+                                    data-track="audit_tag_filter_boat"
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.boat!) }}
                                     style={{
                                       ...getBadgeStyle('info'),
@@ -1173,6 +1178,8 @@ export function AuditLog() {
                                 )}
                                 {parsed.member && (
                                   <button
+                                    type="button"
+                                    data-track="audit_tag_filter_member"
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.member!) }}
                                     style={{
                                       ...getBadgeStyle('info'),
@@ -1185,6 +1192,8 @@ export function AuditLog() {
                                 )}
                                 {parsed.coach && (
                                   <button
+                                    type="button"
+                                    data-track="audit_tag_filter_coach"
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.coach!) }}
                                     style={{
                                       ...getBadgeStyle('warning'),
@@ -1197,6 +1206,8 @@ export function AuditLog() {
                                 )}
                                 {parsed.driver && (
                                   <button
+                                    type="button"
+                                    data-track="audit_tag_filter_driver"
                                     onClick={(e) => { e.stopPropagation(); setSearchQuery(parsed.driver!) }}
                                     style={{
                                       ...getBadgeStyle('info'),
@@ -1209,6 +1220,8 @@ export function AuditLog() {
                                 )}
                                 {parsed.time && (
                                   <button
+                                    type="button"
+                                    data-track="audit_tag_filter_booking_date"
                                     onClick={(e) => { 
                                       e.stopPropagation()
                                       if (parsed.bookingDate) setBookingDateFilter(parsed.bookingDate)
@@ -1304,6 +1317,8 @@ export function AuditLog() {
                                     return (
                                       <button
                                         key={idx}
+                                        type="button"
+                                        data-track="audit_tag_filter_booking_date"
                                         onClick={(e) => { 
                                           e.stopPropagation()
                                           if (date) setBookingDateFilter(date)

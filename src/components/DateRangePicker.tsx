@@ -12,6 +12,8 @@ interface DateRangePickerProps {
   simplified?: boolean  // 簡化模式：隱藏日期選擇器，用按鈕展開
   /** 額外顯示今年累計／去年，selectedDate 以 YYYY 表示整年 */
   showYearButtons?: boolean
+  /** 點擊追蹤前綴；設定後會區分各快捷鈕與自訂選擇器 */
+  trackPrefix?: string
 }
 
 /** 快捷鈕：選中近黑，未選中白底描邊（不使用亮綠／亮藍） */
@@ -51,6 +53,7 @@ export function DateRangePicker({
   label = '查詢期間',
   simplified = false,
   showYearButtons = false,
+  trackPrefix,
 }: DateRangePickerProps) {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [customPickerType, setCustomPickerType] = useState<'month' | 'date'>(
@@ -100,6 +103,7 @@ export function DateRangePicker({
           <>
             <button
               type="button"
+              data-track={trackPrefix ? `${trackPrefix}_current_year` : undefined}
               onClick={() => {
                 onDateChange(currentYearStr)
                 setShowDatePicker(false)
@@ -111,6 +115,7 @@ export function DateRangePicker({
             </button>
             <button
               type="button"
+              data-track={trackPrefix ? `${trackPrefix}_last_year` : undefined}
               onClick={() => {
                 onDateChange(lastYearStr)
                 setShowDatePicker(false)
@@ -125,6 +130,7 @@ export function DateRangePicker({
         {showTodayButton && (
           <button
             type="button"
+            data-track={trackPrefix ? `${trackPrefix}_today` : undefined}
             onClick={() => {
               onDateChange(getVenueDateString())
               setShowDatePicker(false)
@@ -137,6 +143,7 @@ export function DateRangePicker({
         )}
         <button
           type="button"
+          data-track={trackPrefix ? `${trackPrefix}_current_month` : undefined}
           onClick={() => {
             onDateChange(currentMonth)
             setShowDatePicker(false)
@@ -148,6 +155,7 @@ export function DateRangePicker({
         </button>
         <button
           type="button"
+          data-track={trackPrefix ? `${trackPrefix}_last_month` : undefined}
           onClick={() => {
             onDateChange(lastMonthStr)
             setShowDatePicker(false)
@@ -162,6 +170,7 @@ export function DateRangePicker({
         {simplified && (
           <button
             type="button"
+            data-track={trackPrefix ? `${trackPrefix}_custom_toggle` : undefined}
             onClick={openCustomPicker}
             style={presetButtonStyle(
               isCustomDate || showDatePicker,
@@ -187,6 +196,7 @@ export function DateRangePicker({
           }}>
             <button
               type="button"
+              data-track={trackPrefix ? `${trackPrefix}_custom_month_mode` : undefined}
               onClick={() => setCustomPickerType('month')}
               style={presetButtonStyle(
                 customPickerType === 'month',
@@ -199,6 +209,7 @@ export function DateRangePicker({
             </button>
             <button
               type="button"
+              data-track={trackPrefix ? `${trackPrefix}_custom_date_mode` : undefined}
               onClick={() => setCustomPickerType('date')}
               style={presetButtonStyle(
                 customPickerType === 'date',
@@ -214,6 +225,7 @@ export function DateRangePicker({
           {customPickerType === 'month' ? (
             <input
               type="month"
+              data-track={trackPrefix ? `${trackPrefix}_custom_month` : undefined}
               value={selectedDate.length === 7 ? selectedDate : ''}
               aria-label="指定月份"
               onChange={(e) => {
@@ -226,6 +238,7 @@ export function DateRangePicker({
             <div>
               <input
                 type="date"
+                data-track={trackPrefix ? `${trackPrefix}_custom_date` : undefined}
                 value={selectedDate.length === 10 ? selectedDate : ''}
                 aria-label="指定日期"
                 onChange={(e) => {

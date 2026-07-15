@@ -10,7 +10,7 @@ export function PublicBootScreen({ label = '載入中…' }: { label?: string })
         background: '#f4f5f7',
         color: '#666',
         fontSize: 14,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', sans-serif",
+        fontFamily: "var(--font-ui, 'PingFang TC', 'Microsoft JhengHei UI', 'Microsoft JhengHei', system-ui, sans-serif)",
       }}
     >
       {label}

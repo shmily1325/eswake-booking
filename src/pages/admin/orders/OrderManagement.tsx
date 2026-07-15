@@ -59,9 +59,8 @@ import type { OrderInboxTab, ShopOrderItemWithVariant, ShopOrderWithItems } from
 
 const { colors, borderRadius } = designSystem
 
-/** 跟 index.css :root 一致，避免 inline style 在舊 Windows 掉回 Courier */
-const UI_SANS =
-  "'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+/** 沿用全站 UI 字型，避免 inline style 與中英文 fallback 漂移 */
+const UI_SANS = 'var(--font-ui)'
 
 const TAB_LABELS: Record<OrderInboxTab, string> = {
   all: '全部',
@@ -400,29 +399,6 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         ))}
       </div>
 
-      {!includeOlderOrders && (
-        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            data-track="product_order_load_older"
-            onClick={() => void loadOlderOrders()}
-            disabled={loading}
-            style={{
-              border: `1px solid ${colors.border.main}`,
-              background: colors.background.card,
-              borderRadius: borderRadius.md,
-              padding: '6px 12px',
-              fontSize: getFontSize('bodySmall', isMobile),
-              cursor: loading ? 'not-allowed' : 'pointer',
-              color: colors.text.primary,
-              fontWeight: 600,
-            }}
-          >
-            載入更早訂單
-          </button>
-        </div>
-      )}
-
       <div
         style={{
           display: 'flex',
@@ -487,18 +463,48 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             </button>
           )}
         </div>
-        {canEdit && (
-          <Button
-            variant="primary"
-            fullWidth={isMobile}
-            data-track="product_order_add"
-            onClick={() => {
-              setEditOrder(null)
-              setDialogOpen(true)
+        {(!includeOlderOrders || canEdit) && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns:
+                !includeOlderOrders && canEdit
+                  ? isMobile
+                    ? '1fr 1fr'
+                    : 'auto auto'
+                  : isMobile
+                    ? '1fr'
+                    : 'auto',
+              gap: 8,
+              flexShrink: 0,
+              width: isMobile ? '100%' : 'auto',
             }}
           >
-            + 新增訂單
-          </Button>
+            {!includeOlderOrders && (
+              <Button
+                variant="outline"
+                fullWidth={isMobile}
+                data-track="product_order_load_older"
+                onClick={() => void loadOlderOrders()}
+                disabled={loading}
+              >
+                載入更早訂單
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="primary"
+                fullWidth={isMobile}
+                data-track="product_order_add"
+                onClick={() => {
+                  setEditOrder(null)
+                  setDialogOpen(true)
+                }}
+              >
+                + 新增訂單
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
@@ -600,6 +606,12 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
         confirmText={billingConfirmation?.kind === 'cancel' ? '確認撤回' : '確認送結帳'}
         variant={billingConfirmation?.kind === 'cancel' ? 'warning' : 'default'}
         isLoading={billingBusyOrderId !== null}
+        confirmTrackId={
+          billingConfirmation?.kind === 'cancel'
+            ? 'product_order_billing_cancel_confirm'
+            : 'product_order_billing_submit_confirm'
+        }
+        cancelTrackId="product_order_billing_confirmation_cancel"
       />
 
       {previewSrc && (

@@ -834,7 +834,6 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       background: designSystem.colors.background.card,
       borderRadius: designSystem.borderRadius.xl,
       padding: '16px',
-      marginBottom: '12px',
       boxShadow: designSystem.shadows.sm,
       border: isExpanded
         ? `1.5px solid ${designSystem.colors.primary[500]}`
@@ -842,7 +841,16 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
     }}>
       {/* 標題列 */}
       <div 
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        data-track="deduction_expand"
         onClick={handleToggle}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return
+          event.preventDefault()
+          handleToggle()
+        }}
         style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -927,18 +935,6 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
             </span>
           </div>
         </div>
-        {!isExpanded && (
-          <div style={{
-            padding: '6px 12px',
-            background: designSystem.colors.background.hover,
-            borderRadius: designSystem.borderRadius.md,
-            border: `1px solid ${designSystem.colors.border.light}`,
-            fontSize: getFontSize('body', isMobile),
-            color: designSystem.colors.text.secondary
-          }}>
-            點擊展開
-          </div>
-        )}
       </div>
 
       {/* 展開內容 */}

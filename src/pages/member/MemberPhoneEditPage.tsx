@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -226,6 +227,26 @@ export function MemberPhoneEditPage() {
 
   const lineBoundCount = members.filter((m) => m.is_line_bound).length
   const lineUnboundCount = members.length - lineBoundCount
+  const memberMetaRowStyle: CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: isMobile ? '64px minmax(0, 1fr)' : '72px minmax(0, 1fr)',
+    alignItems: 'baseline',
+    columnGap: '8px',
+    minWidth: 0,
+    lineHeight: 1.45,
+  }
+  const memberMetaLabelStyle: CSSProperties = {
+    color: designSystem.colors.text.secondary,
+    fontSize: getFontSize('bodySmall', isMobile),
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+  }
+  const memberMetaValueStyle: CSSProperties = {
+    minWidth: 0,
+    color: designSystem.colors.text.primary,
+    fontSize: getFontSize('body', isMobile),
+    overflowWrap: 'anywhere',
+  }
 
   return (
     <PageShell
@@ -258,6 +279,7 @@ export function MemberPhoneEditPage() {
       >
         <input
           type="text"
+          data-track="member_phone_search"
           placeholder="搜尋（姓名、暱稱、手機）"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -280,6 +302,7 @@ export function MemberPhoneEditPage() {
         >
           <button
             type="button"
+            data-track="member_phone_filter_all"
             onClick={() => setLineBindingFilter('all')}
             style={{
               ...getButtonStyle('outline', 'small', isMobile),
@@ -292,6 +315,7 @@ export function MemberPhoneEditPage() {
           </button>
           <button
             type="button"
+            data-track="member_phone_filter_bound"
             onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
             style={{
               ...getButtonStyle('outline', 'small', isMobile),
@@ -304,6 +328,7 @@ export function MemberPhoneEditPage() {
           </button>
           <button
             type="button"
+            data-track="member_phone_filter_unbound"
             onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
             style={{
               ...getButtonStyle('outline', 'small', isMobile),
@@ -347,27 +372,28 @@ export function MemberPhoneEditPage() {
                   style={{
                     display: 'grid',
                     gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-                    gap: '8px 16px',
-                    fontSize: getFontSize('body', isMobile),
-                    marginBottom: '12px',
+                    gap: isMobile ? '9px' : '8px 20px',
+                    marginBottom: isMobile ? '14px' : '12px',
                   }}
                 >
-                  <div>
-                    <span style={{ color: designSystem.colors.text.secondary }}>姓名：</span>
-                    {m.name}
+                  <div style={memberMetaRowStyle}>
+                    <span style={memberMetaLabelStyle}>姓名</span>
+                    <span style={memberMetaValueStyle}>{m.name}</span>
                   </div>
-                  <div>
-                    <span style={{ color: designSystem.colors.text.secondary }}>暱稱：</span>
-                    {m.nickname?.trim() || '—'}
+                  <div style={memberMetaRowStyle}>
+                    <span style={memberMetaLabelStyle}>暱稱</span>
+                    <span style={memberMetaValueStyle}>{m.nickname?.trim() || '—'}</span>
                   </div>
-                  <div>
-                    <span style={{ color: designSystem.colors.text.secondary }}>生日：</span>
-                    {normalizeDate(m.birthday) || '—'}
+                  <div style={memberMetaRowStyle}>
+                    <span style={memberMetaLabelStyle}>生日</span>
+                    <span style={memberMetaValueStyle}>{normalizeDate(m.birthday) || '—'}</span>
                   </div>
-                  <div>
-                    <span style={{ color: designSystem.colors.text.secondary }}>會員類型：</span>
-                    {membershipLabel(m.membership_type)}
-                    {partnerLine ? `（配對：${partnerLine}）` : ''}
+                  <div style={memberMetaRowStyle}>
+                    <span style={memberMetaLabelStyle}>會員類型</span>
+                    <span style={memberMetaValueStyle}>
+                      {membershipLabel(m.membership_type)}
+                      {partnerLine ? `（配對：${partnerLine}）` : ''}
+                    </span>
                   </div>
                 </div>
 
@@ -393,8 +419,9 @@ export function MemberPhoneEditPage() {
                     <span
                       style={{
                         color: designSystem.colors.text.secondary,
-                        fontSize: isMobile ? getFontSize('bodyLarge', isMobile) : getFontSize('body', isMobile),
+                        fontSize: getFontSize('body', isMobile),
                         fontWeight: 600,
+                        lineHeight: 1.35,
                       }}
                     >
                       手機
@@ -457,6 +484,7 @@ export function MemberPhoneEditPage() {
                         >
                           <button
                             type="button"
+                            data-track="member_phone_save"
                             onClick={() => savePhone(m.id)}
                             disabled={saveDisabled}
                             style={{
@@ -470,6 +498,7 @@ export function MemberPhoneEditPage() {
                           </button>
                           <button
                             type="button"
+                            data-track="member_phone_cancel"
                             disabled={savingId === m.id}
                             onClick={() => {
                               setPhoneDrafts((prev) => ({ ...prev, [m.id]: m.phone || '' }))
@@ -500,6 +529,7 @@ export function MemberPhoneEditPage() {
                       >
                         <span
                           role="button"
+                          data-track="member_phone_edit"
                           tabIndex={0}
                           onClick={() => {
                             setPhoneDrafts((prev) => ({ ...prev, [m.id]: m.phone || '' }))
@@ -531,6 +561,7 @@ export function MemberPhoneEditPage() {
                         </span>
                         <button
                           type="button"
+                          data-track="member_phone_edit"
                           onClick={() => {
                             setPhoneDrafts((prev) => ({ ...prev, [m.id]: m.phone || '' }))
                             setEditingMemberIds((prev) => new Set(prev).add(m.id))
@@ -583,6 +614,7 @@ export function MemberPhoneEditPage() {
                       ) : (
                         <span
                           role="button"
+                          data-track="member_phone_edit"
                           tabIndex={0}
                           onClick={() => {
                             setPhoneDrafts((prev) => ({ ...prev, [m.id]: m.phone || '' }))
@@ -616,6 +648,7 @@ export function MemberPhoneEditPage() {
                         <>
                           <button
                             type="button"
+                            data-track="member_phone_save"
                             onClick={() => savePhone(m.id)}
                             disabled={saveDisabled}
                             style={{
@@ -630,6 +663,7 @@ export function MemberPhoneEditPage() {
                           </button>
                           <button
                             type="button"
+                            data-track="member_phone_cancel"
                             disabled={savingId === m.id}
                             onClick={() => {
                               setPhoneDrafts((prev) => ({ ...prev, [m.id]: m.phone || '' }))
@@ -652,6 +686,7 @@ export function MemberPhoneEditPage() {
                       ) : (
                         <button
                           type="button"
+                          data-track="member_phone_edit"
                           onClick={() => {
                             setPhoneDrafts((prev) => ({ ...prev, [m.id]: m.phone || '' }))
                             setEditingMemberIds((prev) => new Set(prev).add(m.id))

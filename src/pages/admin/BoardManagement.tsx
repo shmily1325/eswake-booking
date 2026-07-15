@@ -549,7 +549,7 @@ export function BoardManagement() {
       >
         <div style={{ 
           fontSize: isMobile ? '10px' : '11px', 
-          fontWeight: 650,
+          fontWeight: 600,
           opacity: 0.7,
           marginBottom: '3px'
         }}>
@@ -638,7 +638,7 @@ export function BoardManagement() {
         <h3 style={{ 
           margin: '0 0 12px 0', 
           fontSize: isMobile ? '15px' : '16px', 
-          fontWeight: 650,
+          fontWeight: 600,
           color: designSystem.colors.text.primary,
           letterSpacing: '-0.01em',
         }}>
@@ -744,19 +744,19 @@ export function BoardManagement() {
       }}>
         <div>
           <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總格位</div>
-          <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+          <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 700, color: designSystem.colors.text.primary }}>
             145
           </div>
         </div>
         <div>
           <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>已使用</div>
-          <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+          <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 700, color: designSystem.colors.text.primary }}>
             {boardSlots.length}
           </div>
         </div>
         <div>
           <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '4px' }}>空位</div>
-          <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 750, color: designSystem.colors.text.primary }}>
+          <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 700, color: designSystem.colors.text.primary }}>
             {145 - boardSlots.length}
           </div>
         </div>
@@ -984,7 +984,7 @@ export function BoardManagement() {
                         <div style={getQuietLabelStyle(isMobile)}>會員</div>
                         <div style={{
                           ...getTextStyle('bodyLarge', isMobile),
-                          fontWeight: 650,
+                          fontWeight: 600,
                           letterSpacing: '-0.01em',
                         }}>
                           {selectedSlot.member_nickname || selectedSlot.member_name}

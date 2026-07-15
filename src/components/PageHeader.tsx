@@ -41,7 +41,7 @@ const NAV_LINK_TEXT: Record<string, string> = {
   '/': 'HOME',
   '/bao': 'BAO',
   '/order-settle': '商品訂單',
-  '/products': '商品',
+  '/products': '商品管理',
   '/products/orders': '訂單開單',
   '/member-transaction': '儲值',
   '/members': '會員',
@@ -198,11 +198,11 @@ export function PageHeader({
         <Link
           to="/products"
           style={navButtonStyle}
-          aria-label="商品"
-          title="商品"
+          aria-label="商品管理"
+          title="商品管理"
           data-track="header_products"
         >
-          {renderNavLabel('商品', '/products')}
+          {renderNavLabel('商品管理', '/products')}
         </Link>
       )}
       {showBaoLink && (

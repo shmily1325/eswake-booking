@@ -637,7 +637,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                 <h3 style={{
                   margin: 0,
                   ...getTextStyle('body', isMobile),
-                  fontWeight: 650,
+                  fontWeight: 600,
                 }}>
                   置板資訊
                 </h3>

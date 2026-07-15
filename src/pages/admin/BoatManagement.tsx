@@ -175,7 +175,7 @@ export function BoatManagement() {
 
             if (error) throw error
 
-            toast.success(boat.is_active ? '船隻已燒毀' : '船隻已啟用')
+            toast.success(boat.is_active ? '船隻已停用' : '船隻已啟用')
             loadData()
         } catch (error) {
             toast.error('更新狀態失敗：' + (error as Error).message)
@@ -418,7 +418,7 @@ export function BoatManagement() {
                 paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
             }}>
                 <div style={getPageContentShellStyle(isMobile)}>
-                    <PageHeader user={user!} title="船隻" showBaoLink={isAdmin(user)} />
+                    <PageHeader user={user!} title="船隻管理" showBaoLink={isAdmin(user)} />
                     <div style={{
                         padding: '40px',
                         textAlign: 'center',
@@ -433,6 +433,9 @@ export function BoatManagement() {
         )
     }
 
+    // 陸上課程不是可維修／停用的實體設施，不列入船隻管理清單。
+    const manageableBoats = boats.filter(boat => !isLandCourse(boat.name))
+
     return (
         <div style={{
             padding: isMobile ? '12px 16px' : '20px',
@@ -441,7 +444,7 @@ export function BoatManagement() {
             paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
         }}>
             <div style={getPageContentShellStyle(isMobile)}>
-                <PageHeader user={user!} title="船隻" showBaoLink={isAdmin(user)} />
+                <PageHeader user={user!} title="船隻管理" showBaoLink={isAdmin(user)} />
 
                 {/* Tab + primary action */}
                 <div style={{
@@ -590,7 +593,7 @@ export function BoatManagement() {
                             display: 'grid',
                             gap: isMobile ? '10px' : '14px',
                         }}>
-                            {boats.length === 0 ? (
+                            {manageableBoats.length === 0 ? (
                                 <div style={{
                                     padding: '40px 20px',
                                     textAlign: 'center',
@@ -599,7 +602,7 @@ export function BoatManagement() {
                                 }}>
                                     尚無船隻
                                 </div>
-                            ) : boats.map((boat) => {
+                            ) : manageableBoats.map((boat) => {
                                 const boatAllUnavailable = unavailableDates.filter(d => d.boat_id === boat.id)
                                 const boatUnavailable = filterUnavailableByMonth(boatAllUnavailable, selectedMonth)
                                 const isActive = boat.is_active
@@ -663,7 +666,7 @@ export function BoatManagement() {
                                                             fontSize: getFontSize('caption', isMobile),
                                                             color: designSystem.colors.text.disabled,
                                                         }}>
-                                                            已燒毀
+                                                            已停用
                                                         </div>
                                                     )}
                                                 </div>
@@ -687,15 +690,17 @@ export function BoatManagement() {
                                                     </Button>
                                                 )}
                                                 <Button
-                                                    variant={isActive ? 'ghost' : 'primary'}
+                                                    variant={isActive ? 'outline' : 'primary'}
                                                     size="small"
                                                     data-track="boat_toggle_status"
                                                     onClick={() => handleToggleStatus(boat)}
                                                     style={isActive ? {
                                                         color: designSystem.colors.danger[700],
+                                                        borderColor: designSystem.colors.danger[500],
+                                                        background: designSystem.colors.danger[50],
                                                     } : undefined}
                                                 >
-                                                    {isActive ? '燒毀' : '啟用'}
+                                                    {isActive ? '停用' : '啟用'}
                                                 </Button>
                                             </div>
                                         </div>
@@ -775,13 +780,15 @@ export function BoatManagement() {
                                                                 編輯
                                                             </Button>
                                                             <Button
-                                                                variant="ghost"
+                                                                variant="outline"
                                                                 size="small"
                                                                 data-track="boat_delete_unavailable"
                                                                 onClick={() => handleDeleteUnavailable(record)}
                                                                 style={{
                                                                     color: designSystem.colors.danger[700],
-                                                                    padding: isMobile ? '5px 7px' : '4px 7px',
+                                                                    borderColor: designSystem.colors.danger[500],
+                                                                    background: designSystem.colors.danger[50],
+                                                                    padding: isMobile ? '5px 9px' : '4px 9px',
                                                                 }}
                                                             >
                                                                 刪除

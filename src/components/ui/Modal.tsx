@@ -242,6 +242,8 @@ interface ConfirmModalProps {
   cancelText?: string
   variant?: 'default' | 'danger' | 'warning'
   isLoading?: boolean
+  confirmTrackId?: string
+  cancelTrackId?: string
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -254,6 +256,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   cancelText = '取消',
   variant = 'default',
   isLoading = false,
+  confirmTrackId,
+  cancelTrackId,
 }) => {
   const confirmVariant = variant === 'danger' ? 'danger' : variant === 'warning' ? 'warning' : 'primary'
 
@@ -265,13 +269,19 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       size="small"
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isLoading}
+            data-track={cancelTrackId}
+          >
             {cancelText}
           </Button>
           <Button
             variant={confirmVariant}
             onClick={onConfirm}
             isLoading={isLoading}
+            data-track={confirmTrackId}
           >
             {confirmText}
           </Button>

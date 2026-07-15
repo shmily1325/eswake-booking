@@ -564,7 +564,7 @@ export function MemberTransaction() {
                     <h3 style={{
                       margin: 0,
                       fontSize: getFontSize('h3', isMobile),
-                      fontWeight: 750,
+                      fontWeight: 700,
                       color: designSystem.colors.text.primary,
                       letterSpacing: '-0.025em',
                     }}>
@@ -683,42 +683,42 @@ export function MemberTransaction() {
                 }}>
                     <div>
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>儲值餘額</div>
-                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
                         ${(member.balance || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>VIP票券</div>
-                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
                         ${(member.vip_voucher_amount || 0).toLocaleString()}
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>指定課</div>
-                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
                         {(member.designated_lesson_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G23船券</div>
-                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
                         {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>黑豹/G21</div>
-                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
                         {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
                       </div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>贈送大船</div>
-                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
+                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
                         {(member.gift_boat_hours || 0).toLocaleString()}分
                       </div>
                     </div>

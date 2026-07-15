@@ -684,7 +684,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                       width: '100%',
                       padding: isMobile ? '12px 14px' : '12px 16px',
                       fontSize: getFontSize('bodyLarge', isMobile),
-                      fontWeight: 650,
+                      fontWeight: 600,
                       cursor: 'pointer',
                     }}
                   >
@@ -698,7 +698,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                       width: '100%',
                       padding: isMobile ? '12px 14px' : '12px 16px',
                       fontSize: getFontSize('bodyLarge', isMobile),
-                      fontWeight: 650,
+                      fontWeight: 600,
                       cursor: 'pointer',
                     }}
                   >
@@ -1172,7 +1172,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                     width: '100%',
                                     padding: '10px 12px',
                                     fontSize: getFontSize('body', isMobile),
-                                    fontWeight: 650,
+                                    fontWeight: 600,
                                     cursor: 'pointer',
                                   }}
                                 >
@@ -1186,7 +1186,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                     width: '100%',
                                     padding: '10px 12px',
                                     fontSize: getFontSize('body', isMobile),
-                                    fontWeight: 650,
+                                    fontWeight: 600,
                                     cursor: 'pointer',
                                   }}
                                 >

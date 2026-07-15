@@ -11,7 +11,7 @@ import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
 import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
-import { Button, Badge, useToast, ToastContainer } from '../../../components/ui'
+import { Button, useToast, ToastContainer } from '../../../components/ui'
 import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../../utils/auth'
 import { trackClick, trackClickDedupedWithin } from '../../../utils/trackClick'
 import { formatDateTime } from '../../../utils/formatters'
@@ -441,7 +441,7 @@ export function ProductManagement({
       }
     >
       <div style={embedded ? { maxWidth: PAGE_MAX_WIDTHS.content, margin: '0 auto' } : getPageContentShellStyle(isMobile)}>
-        {!embedded && <PageHeader user={user} title="商品" showBaoLink={isAdmin(user)} />}
+        {!embedded && <PageHeader user={user} title="商品管理" showBaoLink={isAdmin(user)} />}
 
         {/* 主要操作：搜尋與新增商品 */}
         <div
@@ -2055,7 +2055,7 @@ function MobileListRow({
         <div style={{ minWidth: 0 }}>
           <div
             style={{
-              fontSize: getFontSize('caption', true),
+              fontSize: getFontSize('bodySmall', true),
               color: colors.text.disabled,
               fontWeight: 500,
               textTransform: 'uppercase',
@@ -2084,7 +2084,7 @@ function MobileListRow({
           {attrText && (
             <div
               style={{
-                fontSize: getFontSize('caption', true),
+                fontSize: getFontSize('bodySmall', true),
                 color: colors.text.secondary,
                 marginTop: 2,
                 whiteSpace: 'nowrap',
@@ -2099,7 +2099,7 @@ function MobileListRow({
           {variant.vendor_code && (
             <div
               style={{
-                fontSize: getFontSize('caption', true),
+                fontSize: getFontSize('bodySmall', true),
                 color: colors.text.disabled,
                 marginTop: 2,
                 whiteSpace: 'nowrap',
@@ -2114,7 +2114,7 @@ function MobileListRow({
             <div
               title={product.description}
               style={{
-                fontSize: getFontSize('caption', true),
+                fontSize: getFontSize('bodySmall', true),
                 color: colors.text.secondary,
                 marginTop: 2,
                 whiteSpace: 'nowrap',
@@ -2158,7 +2158,7 @@ function MobileListRow({
               <PriceDisplay price={variant.price} />
               <span
                 style={{
-                  fontSize: getFontSize('caption', true),
+                  fontSize: getFontSize('bodySmall', true),
                   fontWeight: 500,
                   padding: '2px 8px',
                   borderRadius: 999,
@@ -2191,7 +2191,7 @@ function MobileListRow({
               <EditProductButton label="編輯" wide onClick={onClick} />
             </div>
             {formatStockInAt(variant.last_stock_in_at) && (
-              <div style={{ marginTop: 4, fontSize: getFontSize('caption', true), color: colors.text.secondary }}>
+              <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', true), color: colors.text.secondary }}>
                 入庫 {formatStockInAt(variant.last_stock_in_at)}
               </div>
             )}
@@ -2417,7 +2417,7 @@ function StockMetric({ label, value, bordered = false }: { label: string; value:
         borderLeft: bordered ? `1px solid ${colors.border.light}` : undefined,
       }}
     >
-      <div style={{ fontSize: getFontSize('caption', true), color: colors.text.secondary }}>{label}</div>
+      <div style={{ fontSize: getFontSize('bodySmall', true), color: colors.text.secondary }}>{label}</div>
       <div style={{ marginTop: 1, fontSize: getFontSize('bodyLarge', true), fontWeight: 700, color: colors.text.primary }}>
         {value}
       </div>
@@ -2526,11 +2526,6 @@ function EmptyState({ hasAnyProduct, canCreate, isMobile, onCreate }: EmptyState
           + 新增商品
         </Button>
       )}
-      <div style={{ marginTop: 16 }}>
-        <Badge variant="info" size="small">
-          Phase 1 · 商品 + 規格 + 庫存
-        </Badge>
-      </div>
     </div>
   )
 }

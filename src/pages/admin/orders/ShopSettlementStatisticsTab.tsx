@@ -69,7 +69,9 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedSalesGroupId, setExpandedSalesGroupId] = useState<string | null>(null)
-  const [expandedSalesItemId, setExpandedSalesItemId] = useState<string | null>(null)
+  const [expandedSalesItemIds, setExpandedSalesItemIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [variantDisplay, setVariantDisplay] = useState<Record<string, SettlementLineDisplay>>({})
   const [variantSalesMeta, setVariantSalesMeta] = useState<Record<string, VariantSalesMeta>>({})
 
@@ -249,7 +251,13 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
   }, [salesGroupBy, settlements, variantDisplay, variantSalesMeta])
 
   return (
-    <div>
+    <div
+      style={{
+        color: colors.text.primary,
+        fontSize: getFontSize('body', isMobile),
+        lineHeight: 1.45,
+      }}
+    >
       <div
         style={{
           background: colors.background.card,
@@ -268,6 +276,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
           label="查詢期間"
           simplified
           showYearButtons
+          trackPrefix="product_order_settle_stat_period"
         />
       </div>
 
@@ -348,7 +357,8 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                   style={{
                     margin: 0,
                     fontSize: getFontSize('h3', isMobile),
-                    fontWeight: 600,
+                    fontWeight: 700,
+                    lineHeight: 1.35,
                     color: colors.text.primary,
                   }}
                 >
@@ -358,6 +368,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                   style={{
                     margin: `${spacing.xs} 0 0`,
                     fontSize: getFontSize('caption', isMobile),
+                    lineHeight: 1.4,
                     color: colors.text.secondary,
                   }}
                 >
@@ -379,11 +390,12 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                   <button
                     key={value}
                     type="button"
+                    data-track={`product_order_settle_stat_group_${value}`}
                     aria-pressed={salesGroupBy === value}
                     onClick={() => {
                       setSalesGroupBy(value)
                       setExpandedSalesGroupId(null)
-                      setExpandedSalesItemId(null)
+                      setExpandedSalesItemIds(new Set())
                     }}
                     style={{
                       ...getButtonStyle(
@@ -415,10 +427,19 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                 >
                   <button
                     type="button"
+                    data-track="product_order_settle_stat_rank_group_expand"
                     aria-expanded={expanded}
+                    aria-label={`${expanded ? '收合' : '展開'}第 ${groupIndex + 1} 名全部明細`}
                     onClick={() => {
-                      setExpandedSalesGroupId(expanded ? null : group.id)
-                      setExpandedSalesItemId(null)
+                      if (expanded) {
+                        setExpandedSalesGroupId(null)
+                        setExpandedSalesItemIds(new Set())
+                        return
+                      }
+                      setExpandedSalesGroupId(group.id)
+                      setExpandedSalesItemIds(
+                        new Set(group.items.map((item) => `${group.id}\u0000${item.id}`)),
+                      )
                     }}
                     style={{
                       width: '100%',
@@ -449,6 +470,8 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                         <strong
                           style={{
                             minWidth: 0,
+                            fontSize: getFontSize('body', isMobile),
+                            fontWeight: 600,
                             color: colors.text.primary,
                             lineHeight: 1.35,
                             overflowWrap: 'anywhere',
@@ -505,7 +528,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                   </button>
                   {expanded && group.items.map((item, itemIndex) => {
                     const itemExpansionId = `${group.id}\u0000${item.id}`
-                    const itemExpanded = expandedSalesItemId === itemExpansionId
+                    const itemExpanded = expandedSalesItemIds.has(itemExpansionId)
                     return (
                       <div
                         key={item.id}
@@ -517,8 +540,16 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                       >
                         <button
                           type="button"
+                          data-track="product_order_settle_stat_rank_item_expand"
                           aria-expanded={itemExpanded}
-                          onClick={() => setExpandedSalesItemId(itemExpanded ? null : itemExpansionId)}
+                          onClick={() => {
+                            setExpandedSalesItemIds((current) => {
+                              const next = new Set(current)
+                              if (next.has(itemExpansionId)) next.delete(itemExpansionId)
+                              else next.add(itemExpansionId)
+                              return next
+                            })
+                          }}
                           style={{
                             width: '100%',
                             display: 'grid',
@@ -638,7 +669,8 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                 style={{
                   margin: '0 0 16px',
                   fontSize: getFontSize('h3', isMobile),
-                  fontWeight: 600,
+                  fontWeight: 700,
+                  lineHeight: 1.35,
                   color: colors.text.primary,
                 }}
               >
@@ -695,7 +727,8 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                           title="在訂單中搜尋此訂單"
                           style={{
                             fontWeight: 600,
-                            fontSize: getFontSize('bodyLarge', isMobile),
+                            fontSize: getFontSize('body', isMobile),
+                            lineHeight: 1.4,
                             color: colors.text.primary,
                             textDecoration: 'none',
                           }}
@@ -757,8 +790,9 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                     >
                       <span
                         style={{
-                          fontSize: getFontSize('h3', isMobile),
+                          fontSize: getFontSize('body', isMobile),
                           fontWeight: 700,
+                          lineHeight: 1.4,
                           fontVariantNumeric: 'tabular-nums',
                           whiteSpace: 'nowrap',
                         }}
@@ -1009,19 +1043,22 @@ function SummaryRow({
     >
       <span
         style={{
-          fontSize: getFontSize('bodySmall', isMobile),
+          fontSize: getFontSize('body', isMobile),
           color: colors.text.secondary,
           fontWeight: 500,
+          lineHeight: 1.4,
         }}
       >
         {label}
       </span>
       <span
         style={{
-          fontSize: emphasize ? getFontSize('h3', isMobile) : getFontSize('body', isMobile),
+          fontSize: getFontSize('body', isMobile),
           fontWeight: emphasize ? 700 : 600,
           color: colors.text.primary,
           textAlign: 'right',
+          lineHeight: 1.4,
+          fontVariantNumeric: 'tabular-nums',
         }}
       >
         {value}

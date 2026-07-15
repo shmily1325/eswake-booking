@@ -141,6 +141,7 @@ export const liffInput = (hasError = false): CSSProperties => ({
     : `2px solid ${LIFF_THEME.inputBorder}`,
   borderRadius: LIFF_THEME.controlRadius,
   fontSize: LIFF_TYPE.title,
+  fontFamily: 'inherit',
   boxSizing: 'border-box',
   outline: 'none',
 })
@@ -151,6 +152,7 @@ export const liffSelect: CSSProperties = {
   border: `2px solid ${LIFF_THEME.inputBorder}`,
   borderRadius: LIFF_THEME.controlRadius,
   fontSize: LIFF_TYPE.title,
+  fontFamily: 'inherit',
   boxSizing: 'border-box',
   outline: 'none',
   background: LIFF_THEME.cardBg,

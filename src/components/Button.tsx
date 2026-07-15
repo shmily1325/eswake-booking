@@ -13,6 +13,7 @@ interface ButtonProps {
   icon?: React.ReactNode
   iconPosition?: 'left' | 'right'
   fullWidth?: boolean
+  'data-track'?: string
 }
 
 export function Button({
@@ -27,6 +28,7 @@ export function Button({
   icon,
   iconPosition = 'left',
   fullWidth = false,
+  'data-track': dataTrack,
 }: ButtonProps) {
   const { isMobile } = useResponsive()
   
@@ -73,6 +75,7 @@ export function Button({
   return (
     <button
       type={type}
+      data-track={dataTrack}
       onClick={isDisabled ? undefined : onClick}
       disabled={isDisabled}
       style={buttonStyle}

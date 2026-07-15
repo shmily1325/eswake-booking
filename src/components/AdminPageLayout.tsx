@@ -109,13 +109,16 @@ export function adminContentCardStyle(isMobile: boolean): CSSProperties {
 }
 
 /** Tab 列容器（CoachAdmin 同款，其他 admin 頁仍可用） */
-export function adminTabBarStyle(): CSSProperties {
+export function adminTabBarStyle(isMobile: boolean = false): CSSProperties {
   return {
     display: 'flex',
     gap: '8px',
     marginBottom: '24px',
     borderBottom: `1px solid ${designSystem.colors.border.light}`,
-    flexWrap: 'wrap',
+    flexWrap: isMobile ? 'nowrap' : 'wrap',
+    overflowX: isMobile ? 'auto' : 'visible',
+    WebkitOverflowScrolling: 'touch',
+    scrollbarWidth: 'none',
   }
 }
 
@@ -136,6 +139,8 @@ export function adminTabButtonStyle(active: boolean, isMobile: boolean): CSSProp
     display: 'inline-flex',
     alignItems: 'center',
     gap: '8px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
     textDecoration: 'none',
   }
 }
@@ -248,7 +253,8 @@ export function AdminPillLink({
 }
 
 export function AdminTabBar({ children }: { children: ReactNode }) {
-  return <div style={adminTabBarStyle()}>{children}</div>
+  const { isMobile } = useResponsive()
+  return <div style={adminTabBarStyle(isMobile)}>{children}</div>
 }
 
 export function AdminTabButton({

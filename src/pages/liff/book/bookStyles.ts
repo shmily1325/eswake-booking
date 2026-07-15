@@ -434,6 +434,7 @@ export const bookInput: CSSProperties = {
   border: `1px solid ${T.borderSubtle}`,
   borderRadius: T.controlRadius,
   fontSize: ty.title,
+  fontFamily: 'inherit',
   boxSizing: 'border-box',
   background: T.surfaceMuted,
   outline: 'none',

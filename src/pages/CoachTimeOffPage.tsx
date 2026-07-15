@@ -176,7 +176,7 @@ function CoachTimeOffWeekGrid({
         >
           ←
         </button>
-        <span style={{ fontWeight: 750, fontSize: '15px', color: designSystem.colors.text.primary, letterSpacing: '-0.02em' }}>
+        <span style={{ fontWeight: 700, fontSize: '15px', color: designSystem.colors.text.primary, letterSpacing: '-0.02em' }}>
           {formatWeekRange(weekDays)}
         </span>
         <button

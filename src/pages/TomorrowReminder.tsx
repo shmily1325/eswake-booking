@@ -8,10 +8,10 @@ import {
   addDaysToDate,
   getVenueDateString,
   getVenueTimeParts,
-  getWeekdayText,
 } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { PageShell } from '../components/PageShell'
+import { BookingDateNav } from '../components/BookingDateNav'
 import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../styles/designSystem'
 import { hasViewAccess } from '../utils/auth'
 import { getFacilityMessageLabel } from '../utils/facility'
@@ -436,49 +436,51 @@ export function TomorrowReminder() {
           }}>
             選擇日期
           </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+          <BookingDateNav
+            date={selectedDate}
+            onDateChange={(event) => setSelectedDate(event.target.value)}
+            onPrevDate={() => setSelectedDate(addDaysToDate(selectedDate, -1))}
+            onNextDate={() => setSelectedDate(addDaysToDate(selectedDate, 1))}
+            onGoToToday={() => setSelectedDate(getVenueDateString())}
+            isMobile={isMobile}
+            todayDisabled={selectedDate === getVenueDateString()}
+            prevTrackId="tomorrow_date_prev"
+            nextTrackId="tomorrow_date_next"
+            todayTrackId="tomorrow_date_today"
+            dateTrackId="tomorrow_date_pick"
+            marginBottom="0"
+            trailing={
+              loading ? (
+                <span
+                  style={{
+                    color: designSystem.colors.text.secondary,
+                    fontSize: getFontSize('bodySmall', false),
+                  }}
+                >
+                  載入中...
+                </span>
+              ) : null
+            }
+          />
+          {loading && isMobile && (
+            <div
               style={{
-                ...getInputStyle(isMobile),
-                flex: isMobile ? '1 1 180px' : '0 1 210px',
-                minWidth: 0,
-                width: 'auto',
-                cursor: 'pointer',
-                touchAction: 'manipulation'
-              }}
-            />
-            <span style={{
-              padding: '10px 14px',
-              borderRadius: designSystem.borderRadius.md,
-              background: designSystem.colors.primary[500],
-              color: 'white',
-              fontSize: getFontSize('button', isMobile),
-              fontWeight: '600',
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}>
-              {getWeekdayText(selectedDate)}
-            </span>
-            {loading && (
-              <span style={{
+                marginTop: 8,
                 color: designSystem.colors.text.secondary,
-                fontSize: getFontSize('bodySmall', isMobile),
-                flexShrink: 0
-              }}>
-                載入中...
-              </span>
-            )}
-          </div>
+                fontSize: getFontSize('bodySmall', true),
+              }}
+            >
+              載入中...
+            </div>
+          )}
         </div>
 
         {/* Text Templates */}
         <div style={pageCardStyle}>
           <h2 style={{
-            fontSize: isMobile ? '15px' : '16px',
-            fontWeight: '600',
+            fontSize: getFontSize('h3', isMobile),
+            fontWeight: '700',
+            lineHeight: 1.35,
             color: designSystem.colors.text.primary,
             marginBottom: isMobile ? '12px' : '15px'
           }}>
@@ -497,12 +499,13 @@ export function TomorrowReminder() {
               display: 'flex',
               alignItems: 'center',
               cursor: 'pointer',
-              fontSize: isMobile ? '14px' : '14px',
+              fontSize: getFontSize('body', isMobile),
               fontWeight: '500',
               gap: '10px'
             }}>
               <input
                 type="checkbox"
+                data-track="tomorrow_weather_toggle"
                 checked={includeWeatherWarning}
                 onChange={(e) => setIncludeWeatherWarning(e.target.checked)}
                 style={{
@@ -519,7 +522,7 @@ export function TomorrowReminder() {
           <div style={{ marginBottom: isMobile ? '12px' : '15px' }}>
             <label style={{
               display: 'block',
-              fontSize: isMobile ? '12px' : '13px',
+              fontSize: getFontSize('bodySmall', isMobile),
               fontWeight: '600',
               marginBottom: '6px',
               color: '#555'
@@ -530,12 +533,9 @@ export function TomorrowReminder() {
               value={weatherWarning}
               onChange={(e) => setWeatherWarning(e.target.value)}
               style={{
+                ...getInputStyle(isMobile),
                 width: '100%',
                 minHeight: isMobile ? '100px' : '80px',
-                padding: isMobile ? '12px' : '10px',
-                border: '1px solid #dee2e6',
-                borderRadius: '4px',
-                fontSize: isMobile ? '15px' : '14px',
                 fontFamily: 'inherit',
                 resize: 'vertical',
                 touchAction: 'manipulation',
@@ -550,7 +550,7 @@ export function TomorrowReminder() {
           <div>
             <label style={{
               display: 'block',
-              fontSize: isMobile ? '12px' : '13px',
+              fontSize: getFontSize('bodySmall', isMobile),
               fontWeight: '600',
               marginBottom: '6px',
               color: '#555'
@@ -561,12 +561,9 @@ export function TomorrowReminder() {
               value={footerText}
               onChange={(e) => setFooterText(e.target.value)}
               style={{
+                ...getInputStyle(isMobile),
                 width: '100%',
                 minHeight: isMobile ? '180px' : '140px',
-                padding: isMobile ? '12px' : '10px',
-                border: '1px solid #dee2e6',
-                borderRadius: '4px',
-                fontSize: isMobile ? '15px' : '14px',
                 fontFamily: 'inherit',
                 resize: 'vertical',
                 touchAction: 'manipulation',
@@ -580,7 +577,7 @@ export function TomorrowReminder() {
             padding: isMobile ? '10px' : '12px',
             background: designSystem.colors.success[50],
             borderRadius: designSystem.borderRadius.md,
-            fontSize: isMobile ? '12px' : '13px',
+            fontSize: getFontSize('bodySmall', isMobile),
             color: designSystem.colors.success[700],
             display: 'flex',
             alignItems: 'center',
@@ -604,7 +601,7 @@ export function TomorrowReminder() {
               textAlign: 'center',
               color: designSystem.colors.text.secondary
             }}>
-              <div style={{ fontSize: isMobile ? '15px' : '16px', fontWeight: '500' }}>
+              <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '500' }}>
                 選擇的日期沒有預約記錄
               </div>
             </div>
@@ -613,8 +610,9 @@ export function TomorrowReminder() {
           <>
           <div style={pageCardStyle}>
             <h2 style={{
-              fontSize: isMobile ? '15px' : '16px',
-              fontWeight: '600',
+              fontSize: getFontSize('h3', isMobile),
+              fontWeight: '700',
+              lineHeight: 1.35,
               color: designSystem.colors.text.primary,
               marginBottom: isMobile ? '12px' : '15px'
             }}>
@@ -666,7 +664,7 @@ export function TomorrowReminder() {
                     >
                       <div style={{ flex: 1 }}>
                         <div style={{
-                          fontSize: isMobile ? '15px' : '16px',
+                          fontSize: getFontSize('bodyLarge', isMobile),
                           fontWeight: '600',
                           color: designSystem.colors.text.primary,
                           marginBottom: '4px'
@@ -674,7 +672,7 @@ export function TomorrowReminder() {
                           {studentName}
                         </div>
                         <div style={{
-                          fontSize: isMobile ? '12px' : '13px',
+                          fontSize: getFontSize('bodySmall', isMobile),
                           color: designSystem.colors.text.secondary
                         }}>
                           {uniqueBookingCount} 個預約
@@ -682,7 +680,7 @@ export function TomorrowReminder() {
                       </div>
                       
                       <div style={{
-                        fontSize: isMobile ? '20px' : '18px',
+                        fontSize: getFontSize('bodyLarge', isMobile),
                         color: designSystem.colors.text.disabled,
                         transition: 'transform 0.2s',
                         transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
@@ -705,7 +703,7 @@ export function TomorrowReminder() {
                           borderRadius: designSystem.borderRadius.md,
                           border: `1px solid ${designSystem.colors.border.light}`,
                           whiteSpace: 'pre-wrap',
-                          fontSize: isMobile ? '13px' : '14px',
+                          fontSize: getFontSize('body', isMobile),
                           lineHeight: '1.6',
                           color: designSystem.colors.text.primary,
                           fontFamily: 'inherit',
@@ -740,8 +738,9 @@ export function TomorrowReminder() {
           {coachReminderBlocks.length > 0 && (
             <div style={pageCardStyle}>
               <h2 style={{
-                fontSize: isMobile ? '15px' : '16px',
-                fontWeight: '600',
+                fontSize: getFontSize('h3', isMobile),
+                fontWeight: '700',
+                lineHeight: 1.35,
                 color: designSystem.colors.text.primary,
                 marginBottom: isMobile ? '12px' : '15px'
               }}>
@@ -780,7 +779,7 @@ export function TomorrowReminder() {
                       >
                         <div style={{ flex: 1 }}>
                           <div style={{
-                            fontSize: isMobile ? '15px' : '16px',
+                            fontSize: getFontSize('bodyLarge', isMobile),
                             fontWeight: '600',
                             color: designSystem.colors.text.primary,
                             marginBottom: '4px'
@@ -788,14 +787,14 @@ export function TomorrowReminder() {
                             {coach}
                           </div>
                           <div style={{
-                            fontSize: isMobile ? '12px' : '13px',
+                            fontSize: getFontSize('bodySmall', isMobile),
                             color: designSystem.colors.text.secondary
                           }}>
                             {lines.length} 筆預約
                           </div>
                         </div>
                         <div style={{
-                          fontSize: isMobile ? '20px' : '18px',
+                          fontSize: getFontSize('bodyLarge', isMobile),
                           color: designSystem.colors.text.disabled,
                           transition: 'transform 0.2s',
                           transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
@@ -815,7 +814,7 @@ export function TomorrowReminder() {
                             borderRadius: designSystem.borderRadius.md,
                             border: `1px solid ${designSystem.colors.border.light}`,
                             whiteSpace: 'pre-wrap',
-                            fontSize: isMobile ? '13px' : '14px',
+                            fontSize: getFontSize('body', isMobile),
                             lineHeight: '1.6',
                             color: designSystem.colors.text.primary,
                             fontFamily: 'inherit',

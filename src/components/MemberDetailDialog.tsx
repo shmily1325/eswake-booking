@@ -1001,7 +1001,7 @@ export function MemberDetailDialog({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span style={{
                             ...getTextStyle('h3', isMobile),
-                            fontWeight: 750,
+                            fontWeight: 700,
                             letterSpacing: '-0.025em',
                           }}>
                             {member.nickname?.trim() ? member.nickname : member.name}
@@ -1334,7 +1334,7 @@ export function MemberDetailDialog({
                                     }}>
                                       <span style={{
                                         fontSize: typeSize('caption', isMobile),
-                                        fontWeight: 650,
+                                        fontWeight: 600,
                                         color: eventType.color,
                                       }}>
                                         {eventType.label}
@@ -1418,7 +1418,7 @@ export function MemberDetailDialog({
                               <div style={{ fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
                                 {item.label}
                               </div>
-                              <div style={{ fontSize: typeSize('bodyLarge', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
+                              <div style={{ fontSize: typeSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
                                 {item.value}
                               </div>
                             </div>

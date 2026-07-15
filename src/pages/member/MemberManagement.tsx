@@ -993,7 +993,7 @@ export function MemberManagement() {
             >
               <div style={{ position: 'relative', minWidth: 0, maxWidth: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                    <h3 style={{ margin: 0, fontSize: getFontSize('h3', isMobile), fontWeight: 750, color: designSystem.colors.text.primary, letterSpacing: '-0.025em' }}>
+                    <h3 style={{ margin: 0, fontSize: getFontSize('h3', isMobile), fontWeight: 700, color: designSystem.colors.text.primary, letterSpacing: '-0.025em' }}>
                       {member.nickname && member.nickname.trim() ? member.nickname : member.name}
                     </h3>
                     {member.nickname && member.nickname.trim() && (
@@ -1153,7 +1153,7 @@ export function MemberManagement() {
                       gap: '8px',
                       marginBottom: '10px',
                     }}>
-                      <div style={{ fontSize: getFontSize('button', isMobile), color: designSystem.colors.text.primary, fontWeight: 650 }}>
+                      <div style={{ fontSize: getFontSize('button', isMobile), color: designSystem.colors.text.primary, fontWeight: 600 }}>
                         備忘錄 ({member.member_notes.length})
                       </div>
                       {allNotes.length > previewCount && (
@@ -1199,7 +1199,7 @@ export function MemberManagement() {
                             )}
                             <span style={{
                               color: eventColor,
-                              fontWeight: 650,
+                              fontWeight: 600,
                               fontSize: getFontSize('bodySmall', isMobile),
                               marginRight: '8px',
                             }}>

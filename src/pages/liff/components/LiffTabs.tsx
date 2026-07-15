@@ -46,11 +46,11 @@ export function LiffTabs({ activeTab, setActiveTab }: LiffTabsProps) {
               background: 'transparent',
               color: active ? LIFF_THEME.tabActive : LIFF_THEME.tabInactive,
               fontWeight: active ? 700 : 400,
-              fontSize: active ? getFontSizePx('body', true) : getFontSizePx('button', true),
+              fontSize: getFontSizePx('body', true),
               letterSpacing: active ? '0.01em' : '0.02em',
               cursor: 'pointer',
               borderBottom: active ? `2.5px solid ${LIFF_THEME.tabActive}` : '2.5px solid transparent',
-              transition: 'color 0.15s, border-color 0.15s, font-size 0.15s',
+              transition: 'color 0.15s, border-color 0.15s',
             }}
           >
             {label}
