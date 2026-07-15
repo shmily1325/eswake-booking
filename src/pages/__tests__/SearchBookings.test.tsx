@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { SearchBookings } from '../SearchBookings'
 
@@ -29,34 +29,12 @@ function tableMock(table: string) {
       }),
     }
   }
-  if (table === 'boats') {
-    return {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockResolvedValue({
-        data: [
-          { id: 1, name: 'G21', color: '#111' },
-          { id: 2, name: '彈簧床', color: '#ccc' },
-        ],
-        error: null,
-      }),
-    }
-  }
   if (table === 'bookings') {
     return {
       select: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
       gte: vi.fn().mockReturnThis(),
       lte: vi.fn().mockResolvedValue({ data: [], error: null }),
-    }
-  }
-  if (table === 'boat_unavailable_dates') {
-    return {
-      select: vi.fn().mockReturnThis(),
-      in: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      lte: vi.fn().mockReturnThis(),
-      gte: vi.fn().mockResolvedValue({ data: [], error: null }),
     }
   }
   return {
@@ -82,50 +60,6 @@ describe('SearchBookings', () => {
     render(<SearchBookings isEmbedded />)
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/搜尋會員/)).toBeInTheDocument()
-    })
-  })
-
-  it('船空檔分頁暫時停用，不應顯示船空檔切換按鈕', () => {
-    render(<SearchBookings isEmbedded />)
-    expect(screen.queryByRole('button', { name: /船空檔/ })).not.toBeInTheDocument()
-  })
-
-  // 船空檔搜尋功能暫時停用（ENABLE_BOAT_SLOT_SEARCH = false in SearchBookings.tsx）。
-  // 下列測試保留供未來恢復功能時參考，暫時 skip。
-  it.skip('船空檔：選船、日期後搜尋可顯示結果行', async () => {
-    render(<SearchBookings isEmbedded />)
-
-    fireEvent.click(screen.getByRole('button', { name: /船空檔/ }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /^G21$/ })).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^G21$/ }))
-
-    const dateInputs = document.querySelectorAll('input[type="date"]')
-    expect(dateInputs.length).toBeGreaterThanOrEqual(2)
-    fireEvent.change(dateInputs[0], { target: { value: '2026-06-02' } })
-    fireEvent.change(dateInputs[1], { target: { value: '2026-06-02' } })
-
-    const submit = screen.getByRole('button', { name: /^🔍 搜尋$/ })
-    expect(submit).not.toBeDisabled()
-    fireEvent.click(submit)
-
-    await waitFor(() => {
-      expect(document.body.textContent).toMatch(/共\s*\d+\s*行結果/)
-    })
-    await waitFor(() => {
-      const t = document.body.textContent ?? ''
-      expect(t).toContain('6/2')
-      expect(t).toContain('G21')
-    })
-  })
-
-  it.skip('未選船時搜尋按鈕為停用', async () => {
-    render(<SearchBookings isEmbedded />)
-    fireEvent.click(screen.getByRole('button', { name: /船空檔/ }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /^🔍 搜尋$/ })).toBeDisabled()
     })
   })
 })

@@ -14,7 +14,8 @@ import {
   adminLoadingStyle,
   adminStatsBarStyle,
 } from '../../../components/AdminPageLayout'
-import { Button, ConfirmModal, ToastContainer, useToast } from '../../../components/ui'
+import { Button, ToastContainer, useToast } from '../../../components/ui'
+import { ConfirmModal } from '../../../components/ui/Modal'
 import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
@@ -449,7 +450,11 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isMobile ? '搜尋姓名、品名、訂單號…' : '搜尋訂單號、訂購人、品牌、品名、貨號、規格…'}
+            placeholder={
+              isMobile
+                ? '搜尋姓名、品名、訂單號、標籤碼…'
+                : '搜尋訂單號、訂購人、品牌、品名、貨號、標籤碼、規格…'
+            }
             style={{
               width: '100%',
               padding: isMobile ? '12px 14px 12px 36px' : '10px 14px 10px 36px',

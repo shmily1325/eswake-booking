@@ -63,23 +63,9 @@ export interface MemberStats {
   boats: { boatName: string; minutes: number }[]
 }
 
-export interface FinanceStats {
-  month: string
-  balanceUsed: number
-  vipUsed: number
-  g23Used: number
-  g21Used: number
-}
-
 export interface WeekdayStats {
   weekdayCount: number
   weekdayMinutes: number
   weekendCount: number
   weekendMinutes: number
 }
-
-export interface BoatData {
-  boatId: number
-  boatName: string
-}
-

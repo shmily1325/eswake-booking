@@ -79,7 +79,6 @@ export function isMemberPhoneOnlyEditor(user: User | null): boolean {
 export const EDITOR_FEATURE_KEYS = [
   'can_schedule',
   'can_boats',
-  'can_products_view',
   'can_products',
   'can_repeat_booking',
   'can_search_batch',
@@ -89,7 +88,6 @@ export type EditorFeatureKey = (typeof EDITOR_FEATURE_KEYS)[number]
 export const EDITOR_FEATURE_LABELS: Record<EditorFeatureKey, string> = {
   can_schedule: '排班',
   can_boats: '船隻管理',
-  can_products_view: '商品瀏覽',
   can_products: '商品管理',
   can_repeat_booking: '重複預約（預約表）',
   can_search_batch: '預約查詢·批次',
@@ -100,14 +98,12 @@ type EditorUserRow = {
   can_schedule: boolean
   can_boats: boolean
   can_products: boolean
-  can_products_view: boolean
   can_repeat_booking: boolean
   can_search_batch: boolean
 }
 
 // 權限緩存
 let allowedEmailsCache: string[] | null = null
-let editorEmailsCache: string[] | null = null
 /** 功能權限列（表 editor_users；產品面稱功能權限，不再使用「小編」語意） */
 let editorRowsCache: EditorUserRow[] | null = null
 let viewUsersCache: string[] | null = null
@@ -123,20 +119,18 @@ const DEFAULT_FEATURE_FLAGS: Record<EditorFeatureKey, boolean> = {
   can_schedule: true,
   can_boats: true,
   can_products: true,
-  can_products_view: true,
   can_repeat_booking: true,
   can_search_batch: true,
 }
 
-function editorRowFromDb(r: { email: string; can_schedule?: boolean; can_boats?: boolean; can_products?: boolean; can_products_view?: boolean; can_repeat_booking?: boolean; can_search_batch?: boolean }): EditorUserRow {
+function editorRowFromDb(r: { email: string; can_schedule?: boolean; can_boats?: boolean; can_products?: boolean; can_repeat_booking?: boolean; can_search_batch?: boolean }): EditorUserRow {
   // 欄位尚未遷移或為 null 時，預設 true（與 migration 104 DEFAULT 及舊行為一致，降低上線風險）
-  // 例外：can_products / can_products_view 為新功能，欄位預設 false，需明確勾選才開啟
+  // 例外：can_products 欄位預設 false，需明確勾選才開啟
   return {
     email: r.email,
     can_schedule: r.can_schedule !== false,
     can_boats: r.can_boats !== false,
     can_products: r.can_products === true,
-    can_products_view: r.can_products_view === true,
     can_repeat_booking: r.can_repeat_booking !== false,
     can_search_batch: r.can_search_batch !== false,
   }
@@ -147,22 +141,22 @@ function editorRowFromDb(r: { email: string; can_schedule?: boolean; can_boats?:
  */
 async function loadAllowedEmails(): Promise<string[]> {
   const now = Date.now()
-  
+
   // 使用緩存
   if (allowedEmailsCache && (now - cacheTimestamp < CACHE_DURATION)) {
     return allowedEmailsCache
   }
-  
+
   try {
     const { data, error } = await supabase
       .from('allowed_users')
       .select('email')
-    
+
     if (error) {
       logger.error('Failed to load allowed emails:', error)
       return mergeAllowedListWithDb([])
     }
-    
+
     const emails = data?.map(row => row.email) || []
     allowedEmailsCache = mergeAllowedListWithDb(emails)
     cacheTimestamp = Date.now()
@@ -186,13 +180,11 @@ async function loadEditorRows(): Promise<EditorUserRow[]> {
     if (error) {
       logger.error('Failed to load editor_users:', error)
       editorRowsCache = []
-      editorEmailsCache = []
       cacheTimestamp = Date.now()
       return []
     }
     const rows: EditorUserRow[] = (data || []).map((row: any) => editorRowFromDb(row))
     editorRowsCache = rows
-    editorEmailsCache = rows.map((r) => r.email)
     cacheTimestamp = Date.now()
     return rows
   } catch (err) {
@@ -211,22 +203,22 @@ async function loadEditorEmails(): Promise<string[]> {
  */
 async function loadViewUsers(): Promise<string[]> {
   const now = Date.now()
-  
+
   // 使用緩存
   if (viewUsersCache && (now - cacheTimestamp < CACHE_DURATION)) {
     return viewUsersCache
   }
-  
+
   try {
     const { data, error } = await (supabase as any)
       .from('view_users')
       .select('email')
-    
+
     if (error) {
       logger.error('Failed to load view users:', error)
       return []
     }
-    
+
     const emails: string[] = data?.map((row: any) => row.email) || []
     viewUsersCache = emails
     cacheTimestamp = Date.now()
@@ -242,7 +234,6 @@ async function loadViewUsers(): Promise<string[]> {
  */
 export function clearPermissionCache() {
   allowedEmailsCache = null
-  editorEmailsCache = null
   editorRowsCache = null
   viewUsersCache = null
   cacheTimestamp = 0
@@ -278,70 +269,21 @@ export async function isAllowedUser(user: User | null): Promise<boolean> {
 }
 
 /**
- * 檢查用戶是否為管理員（異步版本）
- * 注意：目前管理員等同於超級管理員（硬編碼列表）
- */
-export async function isAdminAsync(user: User | null): Promise<boolean> {
-  if (!user || !user.email) return false
-  
-  // 管理員 = 超級管理員（硬編碼列表）
-  return isSuperAdminEmail(user.email)
-}
-
-/**
- * Hook: 舊版佔位用；登入名單實際由 App 內的 isAllowedUser 檢查
- */
-export function useCheckAllowedUser(_user: User | null) {
-  return { isAllowed: true, checking: false }
-}
-
-/**
  * Hook: 要求管理員權限，否則重定向（僅檢查硬編碼列表，不查詢資料庫）
  */
 export function useRequireAdmin(user: User | null) {
   const navigate = useNavigate()
   const toast = useToast()
   const userIsAdmin = isAdmin(user)
-  
+
   useEffect(() => {
     if (!userIsAdmin) {
       toast.error('您沒有權限訪問此頁面')
       navigate('/')
     }
   }, [userIsAdmin, navigate, toast])
-  
+
   return userIsAdmin
-}
-
-/**
- * 檢查用戶是否有權限訪問特定功能
- */
-export function hasPermission(user: User | null, permission: 'admin' | 'coach' | 'staff'): boolean {
-  if (!user) return false
-  
-  switch (permission) {
-    case 'admin':
-      return isAdmin(user)
-    case 'coach':
-      // 未來可以擴展：檢查用戶是否為教練
-      return true
-    case 'staff':
-      // 未來可以擴展：檢查用戶是否為員工
-      return true
-    default:
-      return false
-  }
-}
-
-/**
- * 是否在功能權限名單（editor_users 列）內。超級管理員：true（等同擁有全部模組；僅用於顯示／相容）
- */
-export async function isEditorAsync(user: User | null): Promise<boolean> {
-  if (!user || !user.email) return false
-  if (isSuperAdminEmail(user.email)) return true
-  const n = user.email.toLowerCase()
-  const rows = await loadEditorRows()
-  return rows.some((e) => e.email.toLowerCase() === n)
 }
 
 /**
@@ -373,15 +315,14 @@ export async function getEditorFeatureFlags(user: User | null): Promise<Record<E
     can_schedule: row.can_schedule,
     can_boats: row.can_boats,
     can_products: row.can_products,
-    can_products_view: row.can_products_view,
     can_repeat_booking: row.can_repeat_booking,
     can_search_batch: row.can_search_batch,
   }
 }
 
 /**
- * 是否能進入商品管理頁（不論是改還是只看）
- * = 超級管理員 || can_products || can_products_view
+ * 是否能進入商品管理頁
+ * = 超級管理員 || can_products
  */
 export async function hasProductsAccessAsync(user: User | null): Promise<boolean> {
   if (!user?.email) return false
@@ -390,19 +331,7 @@ export async function hasProductsAccessAsync(user: User | null): Promise<boolean
   const rows = await loadEditorRows()
   const row = rows.find((e) => e.email.toLowerCase() === n)
   if (!row) return false
-  return row.can_products === true || row.can_products_view === true
-}
-
-/**
- * 功能權限名單成員（同步、依緩存；首次載入前可能為 false）
- */
-export function isEditor(user: User | null): boolean {
-  if (!user || !user.email) return false
-  if (isSuperAdminEmail(user.email)) return true
-  const n = user.email.toLowerCase()
-  if (editorRowsCache && editorRowsCache.some((e) => e.email.toLowerCase() === n)) return true
-  if (editorEmailsCache && editorEmailsCache.some((e) => e.toLowerCase() === n)) return true
-  return false
+  return row.can_products === true
 }
 
 /**
@@ -426,4 +355,3 @@ export async function hasViewAccess(user: User | null): Promise<boolean> {
   const viewUsers = await loadViewUsers()
   return viewUsers.some((e) => e.toLowerCase() === n)
 }
-

@@ -32,5 +32,3 @@ function checkDailyRefresh() {
     }
   } catch { /* ignore */ }
 }
-
-export { isLiffPathname, resolveAppEntry } from './lib/appEntry'

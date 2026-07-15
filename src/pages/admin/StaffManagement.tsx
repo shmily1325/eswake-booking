@@ -7,7 +7,8 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
 import { trackClickDedupedWithin } from '../../utils/trackClick'
-import { Button, useToast, ToastContainer, ConfirmModal } from '../../components/ui'
+import { Button, useToast, ToastContainer } from '../../components/ui'
+import { ConfirmModal } from '../../components/ui/Modal'
 import {
   AdminModal,
   AdminModalHeader,
@@ -52,7 +53,7 @@ const cardBorder = `1px solid ${designSystem.colors.border.light}`
 const cardShadow = designSystem.shadows.elevation[1]
 
 /** 人員權限表上顯示的「小編」欄位：重複預約＋批次合併為一格（寫庫仍為兩欄同值） */
-const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats', 'can_products_view', 'can_products'] as const
+const MATRIX_SINGLE_FEATURE_KEYS = ['can_schedule', 'can_boats', 'can_products'] as const
 const matrixFeatureColumnCount = MATRIX_SINGLE_FEATURE_KEYS.length + 1
 
 interface Coach {
@@ -102,7 +103,6 @@ interface EditorUser {
   can_schedule?: boolean
   can_boats?: boolean
   can_products?: boolean
-  can_products_view?: boolean
   can_repeat_booking?: boolean
   can_search_batch?: boolean
 }
@@ -189,7 +189,7 @@ export function StaffManagement() {
   const [timeOffs, setTimeOffs] = useState<TimeOff[]>([])
   const [editorUsers, setEditorUsers] = useState<EditorUser[]>([])
   const [loading, setLoading] = useState(true)
-  
+
   // 權限檢查：只有管理員可以進入
   useEffect(() => {
     if (user && !isAdmin(user)) {
@@ -200,7 +200,7 @@ export function StaffManagement() {
   const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'archived'>('active') // 狀態篩選
   const [activeTab, setActiveTab] = useState<'coaches' | 'accounts' | 'pricing' | 'permissions'>('coaches') // Tab 切換
   const [expandedCoachIds, setExpandedCoachIds] = useState<Set<string>>(new Set())
-  
+
   // 系統登入名單（最上層）
   const [allowedUsers, setAllowedUsers] = useState<AllowedUser[]>([])
   const [newAllowedEmail, setNewAllowedEmail] = useState('')
@@ -213,19 +213,19 @@ export function StaffManagement() {
   // 一般權限管理（併入單一權限表，仍從此 state 載入）
   const [viewUsers, setViewUsers] = useState<ViewUser[]>([])
   const [savingMatrixEmail, setSavingMatrixEmail] = useState<string | null>(null)
-  
+
   // 月份篩選
   const today = new Date()
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
-  
+
   // 新增教練
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [newCoachName, setNewCoachName] = useState('')
   const [newCoachEmail, setNewCoachEmail] = useState('')
   const [newCoachPrice, setNewCoachPrice] = useState('')
   const [addLoading, setAddLoading] = useState(false)
-  
+
   // 設定不在期間
   const [timeOffDialogOpen, setTimeOffDialogOpen] = useState(false)
   const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null)
@@ -241,13 +241,13 @@ export function StaffManagement() {
   const [timeOffMultiDay, setTimeOffMultiDay] = useState(false)
   const [timeOffCalendarMonth, setTimeOffCalendarMonth] = useState(currentMonth)
   const [draftTimeOffDates, setDraftTimeOffDates] = useState<Map<string, TimeOffDraft>>(new Map())
-  
+
   // 設定教練帳號
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
   const [selectedAccountCoach, setSelectedAccountCoach] = useState<Coach | null>(null)
   const [accountEmail, setAccountEmail] = useState('')
   const [accountLoading, setAccountLoading] = useState(false)
-  
+
   // 設定指定課價格
   const [pricingDialogOpen, setPricingDialogOpen] = useState(false)
   const [selectedPricingCoach, setSelectedPricingCoach] = useState<Coach | null>(null)
@@ -333,8 +333,8 @@ export function StaffManagement() {
     setLoading(true)
     try {
       const [
-        coachesResult, 
-        timeOffsResult, 
+        coachesResult,
+        timeOffsResult,
         editorsResult,
         viewUsersResult,
         allowedUsersResult
@@ -861,10 +861,10 @@ export function StaffManagement() {
 
   const handleSetAccount = async (emailOverride?: string) => {
     if (!selectedAccountCoach) return
-    
+
     // 使用參數覆蓋值（用於清除時），否則使用狀態值
     const email = emailOverride !== undefined ? emailOverride : (accountEmail || '').trim()
-    
+
     // 驗證 email 格式
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast.error('請輸入有效的 email 格式')
@@ -1073,7 +1073,7 @@ export function StaffManagement() {
   }
 
   // ========== 一般權限（仍由矩陣勾選驅動）==========
-  
+
   /** 刪除 view_users 一列；保留 allowed_users。先將目前畫面顯示名寫入 allowed.notes，避免刪 view 後名稱被 editor 帶跑 */
   const runRemoveViewUserRow = async (row: PermissionMatrixRow) => {
     if (!row.view) return
@@ -1098,7 +1098,7 @@ export function StaffManagement() {
       setSavingMatrixEmail(null)
     }
   }
-  
+
   const isSuperAdminEmail = (em: string) =>
     SUPER_ADMINS.some((a) => a.toLowerCase() === em.trim().toLowerCase())
 
@@ -1115,7 +1115,6 @@ export function StaffManagement() {
         can_schedule: false,
         can_boats: false,
         can_products: false,
-        can_products_view: false,
         can_repeat_booking: false,
         can_search_batch: false
       }
@@ -1123,9 +1122,8 @@ export function StaffManagement() {
     return {
       can_schedule: ed.can_schedule !== false,
       can_boats: ed.can_boats !== false,
-      // can_products / can_products_view 為新功能，需明確勾選才開啟（不採用「未設定 = true」的舊欄位行為）
+      // can_products 需明確勾選才開啟（不採用「未設定 = true」的舊欄位行為）
       can_products: ed.can_products === true,
-      can_products_view: ed.can_products_view === true,
       can_repeat_booking: ed.can_repeat_booking !== false,
       can_search_batch: ed.can_search_batch !== false
     }
@@ -1186,7 +1184,6 @@ export function StaffManagement() {
             can_schedule: flags.can_schedule,
             can_boats: flags.can_boats,
             can_products: flags.can_products,
-            can_products_view: flags.can_products_view,
             can_repeat_booking: flags.can_repeat_booking,
             can_search_batch: flags.can_search_batch
           })
@@ -1200,7 +1197,6 @@ export function StaffManagement() {
                 can_schedule: flags.can_schedule,
                 can_boats: flags.can_boats,
                 can_products: flags.can_products,
-                can_products_view: flags.can_products_view,
                 can_repeat_booking: flags.can_repeat_booking,
                 can_search_batch: flags.can_search_batch
               })
@@ -1219,7 +1215,6 @@ export function StaffManagement() {
             can_schedule: flags.can_schedule,
             can_boats: flags.can_boats,
             can_products: flags.can_products,
-            can_products_view: flags.can_products_view,
             can_repeat_booking: flags.can_repeat_booking,
             can_search_batch: flags.can_search_batch
           })
@@ -2491,18 +2486,11 @@ export function StaffManagement() {
                               />
                             </td>
                             {MATRIX_SINGLE_FEATURE_KEYS.map((key) => {
-                              const lockedByEdit = key === 'can_products_view' && f.can_products
-                              const cellChecked = lockedByEdit ? true : f[key]
-                              const cellDisabled = busy || lockedByEdit
-                              const cellTitle = lockedByEdit
-                                ? `${EDITOR_FEATURE_LABELS[key]}（已包含於商品管理權限）`
-                                : EDITOR_FEATURE_LABELS[key]
+                              const cellChecked = f[key]
+                              const cellDisabled = busy
+                              const cellTitle = EDITOR_FEATURE_LABELS[key]
                               const onCellChange = (next: boolean) => {
-                                if (key === 'can_products' && next) {
-                                  void setMatrixEditorFeatureFields(row, { can_products: true, can_products_view: true })
-                                } else {
-                                  void setMatrixEditorFeature(row, key, next)
-                                }
+                                void setMatrixEditorFeature(row, key, next)
                               }
                               return (
                                 <td
@@ -2512,7 +2500,6 @@ export function StaffManagement() {
                                     textAlign: 'center',
                                     verticalAlign: 'middle',
                                     borderBottom: rowBorder,
-                                    opacity: lockedByEdit ? 0.55 : 1,
                                   }}
                                 >
                                   <input
@@ -2599,7 +2586,7 @@ export function StaffManagement() {
             width: '100%'
           }}>
             <h2 style={{ marginTop: 0, fontSize: '20px' }}>新增教練</h2>
-            
+
             {/* 教練名稱（必填） */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>

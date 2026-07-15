@@ -14,6 +14,11 @@ vi.mock('../../lib/supabase', () => ({
   }
 }))
 
+function AuthenticatedHookGate({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
+  return !loading && user ? children : null
+}
+
 describe('AuthContext', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -95,7 +100,7 @@ describe('AuthContext', () => {
     it('應該在 unmount 時取消訂閱', () => {
       const mockUnsubscribe = vi.fn()
       const mockSubscription = { unsubscribe: mockUnsubscribe }
-      
+
       vi.mocked(supabase.auth.getSession).mockResolvedValue({
         data: { session: null },
         error: null
@@ -136,7 +141,7 @@ describe('AuthContext', () => {
       console.error = vi.fn()
 
       let thrownError: Error | null = null
-      
+
       try {
         const { result } = renderHook(() => useAuthUser(), { wrapper })
         await waitFor(() => {
@@ -172,33 +177,18 @@ describe('AuthContext', () => {
       } as any)
 
       const wrapper = ({ children }: { children: ReactNode }) => (
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <AuthenticatedHookGate>{children}</AuthenticatedHookGate>
+        </AuthProvider>
       )
 
-      // Use a combined hook that waits for auth then calls useAuthUser
-      const { result } = renderHook(() => {
-        const auth = useAuth()
-        // Only call useAuthUser after user is loaded
-        if (auth.loading) {
-          return { loading: true, user: null }
-        }
-        if (!auth.user) {
-          return { loading: false, user: null }
-        }
-        const user = useAuthUser()
-        return { loading: false, user }
-      }, { wrapper })
+      const { result } = renderHook(() => useAuthUser(), { wrapper })
 
-      // Wait for loading to finish
       await waitFor(() => {
-        expect(result.current.loading).toBe(false)
+        expect(result.current?.email).toBe('test@example.com')
       })
 
-      // Verify user is set
-      expect(result.current.user).toBeTruthy()
-      expect(result.current.user?.email).toBe('test@example.com')
-      expect(result.current.user?.id).toBe('test-user-id')
+      expect(result.current.id).toBe('test-user-id')
     })
   })
 })
-

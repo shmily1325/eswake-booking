@@ -32,19 +32,3 @@ export function triggerHaptic(type: HapticType = 'light'): void {
     console.debug('Haptic feedback failed:', error)
   }
 }
-
-/**
- * 為按鈕添加觸覺回饋的輔助函數
- * @param callback - 原始的點擊回調
- * @param hapticType - 觸覺回饋類型
- */
-export function withHaptic<T extends (...args: any[]) => any>(
-  callback: T,
-  hapticType: HapticType = 'light'
-): T {
-  return ((...args: any[]) => {
-    triggerHaptic(hapticType)
-    return callback(...args)
-  }) as T
-}
-

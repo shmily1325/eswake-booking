@@ -7,13 +7,8 @@ import {
   SUPER_ADMINS,
   isAdmin,
   isAllowedUser,
-  isAdminAsync,
   clearPermissionCache,
-  hasPermission,
   useRequireAdmin,
-  useCheckAllowedUser,
-  isEditorAsync,
-  isEditor,
   hasViewAccess,
   hasEditorFeatureAsync,
   getEditorFeatureFlags
@@ -162,25 +157,6 @@ describe('auth.ts - 權限驗證', () => {
     })
   })
 
-  describe('isAdminAsync', () => {
-    it('超級管理員應該是管理員', async () => {
-      const user = createMockUser('minlin1325@gmail.com')
-      const result = await isAdminAsync(user)
-      expect(result).toBe(true)
-    })
-
-    it('非超級管理員應該不是管理員', async () => {
-      const user = createMockUser('notadmin@example.com')
-      const result = await isAdminAsync(user)
-      expect(result).toBe(false)
-    })
-
-    it('null 用戶應該不是管理員', async () => {
-      const result = await isAdminAsync(null)
-      expect(result).toBe(false)
-    })
-  })
-
   describe('clearPermissionCache', () => {
     it('應該清除緩存', async () => {
       mockSupabaseResponse([{ email: 'test@example.com' }])
@@ -197,34 +173,6 @@ describe('auth.ts - 權限驗證', () => {
       // 再次查詢應該重新從資料庫載入
       await isAllowedUser(user)
       expect(supabase.from).toHaveBeenCalledTimes(2)
-    })
-  })
-
-  describe('hasPermission', () => {
-    it('管理員應該有 admin 權限', () => {
-      const user = createMockUser('callumbao1122@gmail.com')
-      expect(hasPermission(user, 'admin')).toBe(true)
-    })
-
-    it('非管理員應該沒有 admin 權限', () => {
-      const user = createMockUser('regular@example.com')
-      expect(hasPermission(user, 'admin')).toBe(false)
-    })
-
-    it('任何用戶都應該有 coach 權限（未來擴展）', () => {
-      const user = createMockUser('anyone@example.com')
-      expect(hasPermission(user, 'coach')).toBe(true)
-    })
-
-    it('任何用戶都應該有 staff 權限（未來擴展）', () => {
-      const user = createMockUser('anyone@example.com')
-      expect(hasPermission(user, 'staff')).toBe(true)
-    })
-
-    it('null 用戶應該沒有任何權限', () => {
-      expect(hasPermission(null, 'admin')).toBe(false)
-      expect(hasPermission(null, 'coach')).toBe(false)
-      expect(hasPermission(null, 'staff')).toBe(false)
     })
   })
 
@@ -257,84 +205,6 @@ describe('auth.ts - 權限驗證', () => {
         expect(mockToastError).toHaveBeenCalled()
         expect(mockNavigate).toHaveBeenCalledWith('/')
       })
-    })
-  })
-
-  describe('useCheckAllowedUser', () => {
-    it('應該始終返回允許（白名單已關閉）', () => {
-      const user = createMockUser('anyone@example.com')
-      const { result } = renderHook(() => useCheckAllowedUser(user))
-
-      expect(result.current.isAllowed).toBe(true)
-      expect(result.current.checking).toBe(false)
-    })
-
-    it('null 用戶也應該返回允許', () => {
-      const { result } = renderHook(() => useCheckAllowedUser(null))
-
-      expect(result.current.isAllowed).toBe(true)
-      expect(result.current.checking).toBe(false)
-    })
-  })
-
-  describe('isEditorAsync', () => {
-    it('✅ 超級管理員應該有小編權限', async () => {
-      const user = createMockUser('callumbao1122@gmail.com')
-      const result = await isEditorAsync(user)
-      expect(result).toBe(true)
-    })
-
-    it('✅ editor_users 中的用戶應該有小編權限', async () => {
-      mockSupabaseResponse([{ email: 'editor@example.com' }])
-
-      const user = createMockUser('editor@example.com')
-      const result = await isEditorAsync(user)
-      expect(result).toBe(true)
-    })
-
-    it('✅ 非小編用戶不應該有小編權限', async () => {
-      mockSupabaseResponse([{ email: 'editor@example.com' }])
-
-      const user = createMockUser('regular@example.com')
-      const result = await isEditorAsync(user)
-      expect(result).toBe(false)
-    })
-
-    it('✅ null 用戶不應該有小編權限', async () => {
-      const result = await isEditorAsync(null)
-      expect(result).toBe(false)
-    })
-
-    it('✅ 沒有 email 的用戶不應該有小編權限', async () => {
-      const user = { ...createMockUser('test@example.com'), email: undefined }
-      const result = await isEditorAsync(user as User)
-      expect(result).toBe(false)
-    })
-
-    it('✅ 資料庫錯誤時應該只允許超級管理員', async () => {
-      mockSupabaseResponse(null, { message: 'Database error' })
-
-      const superAdmin = createMockUser('callumbao1122@gmail.com')
-      expect(await isEditorAsync(superAdmin)).toBe(true)
-
-      const regularUser = createMockUser('regular@example.com')
-      expect(await isEditorAsync(regularUser)).toBe(false)
-    })
-
-    it('✅ 應該使用緩存（60秒內不重複查詢）', async () => {
-      mockSupabaseResponse([{ email: 'editor@example.com' }])
-
-      const user = createMockUser('editor@example.com')
-
-      // 第一次查詢
-      await isEditorAsync(user)
-      const firstCallCount = vi.mocked(supabase.from).mock.calls.length
-
-      // 第二次查詢（應該使用緩存，不查詢數據庫）
-      await isEditorAsync(user)
-      const secondCallCount = vi.mocked(supabase.from).mock.calls.length
-
-      expect(secondCallCount).toBe(firstCallCount) // 沒有額外的查詢
     })
   })
 
@@ -377,40 +247,6 @@ describe('auth.ts - 權限驗證', () => {
     })
   })
 
-  describe('isEditor', () => {
-    it('✅ 超級管理員應該有小編權限（同步版本）', () => {
-      const user = createMockUser('callumbao1122@gmail.com')
-      expect(isEditor(user)).toBe(true)
-    })
-
-    it('✅ 緩存中的小編應該返回 true', async () => {
-      mockSupabaseResponse([{ email: 'editor@example.com' }])
-
-      const user = createMockUser('editor@example.com')
-
-      // 先用異步版本載入緩存
-      await isEditorAsync(user)
-
-      // 同步版本應該能從緩存讀取
-      expect(isEditor(user)).toBe(true)
-    })
-
-    it('✅ 緩存未載入時應該返回 false（非超級管理員）', () => {
-      clearPermissionCache()
-      const user = createMockUser('editor@example.com')
-      expect(isEditor(user)).toBe(false)
-    })
-
-    it('✅ null 用戶不應該有小編權限', () => {
-      expect(isEditor(null)).toBe(false)
-    })
-
-    it('✅ 沒有 email 的用戶不應該有小編權限', () => {
-      const user = { ...createMockUser('test@example.com'), email: undefined }
-      expect(isEditor(user as User)).toBe(false)
-    })
-  })
-
   describe('hasViewAccess', () => {
     it('✅ 超級管理員應該有一般權限', async () => {
       const user = createMockUser('callumbao1122@gmail.com')
@@ -426,9 +262,9 @@ describe('auth.ts - 權限驗證', () => {
         if (callCount === 1) {
           // 第一次查詢 editor_users
           return {
-            select: vi.fn(() => Promise.resolve({ 
-              data: [{ email: 'editor@example.com' }], 
-              error: null 
+            select: vi.fn(() => Promise.resolve({
+              data: [{ email: 'editor@example.com' }],
+              error: null
             }))
           } as any
         } else {
@@ -456,9 +292,9 @@ describe('auth.ts - 權限驗證', () => {
         } else {
           // 第二次查詢 view_users
           return {
-            select: vi.fn(() => Promise.resolve({ 
-              data: [{ email: 'viewer@example.com' }], 
-              error: null 
+            select: vi.fn(() => Promise.resolve({
+              data: [{ email: 'viewer@example.com' }],
+              error: null
             }))
           } as any
         }
@@ -531,7 +367,6 @@ describe('auth.ts - 權限驗證', () => {
 
       // 載入所有緩存
       await isAllowedUser(user)
-      await isEditorAsync(user)
       await hasViewAccess(user)
 
       vi.clearAllMocks()
@@ -577,12 +412,12 @@ describe('auth.ts - 權限驗證', () => {
 
       const user = createMockUser('test@example.com')
 
-      // 查詢小編權限（設置時間戳）
-      await isEditorAsync(user)
+      // 查詢功能權限（設置時間戳）
+      await hasEditorFeatureAsync(user, 'can_schedule')
       expect(callCount).toBe(1)
 
-      // 再次查詢小編權限（使用緩存）
-      await isEditorAsync(user)
+      // 再次查詢功能權限（使用緩存）
+      await hasEditorFeatureAsync(user, 'can_schedule')
       expect(callCount).toBe(1)
 
       // 查詢白名單（雖然時間戳相同，但緩存變數不同，需要查詢）
@@ -602,7 +437,7 @@ describe('auth.ts - 權限驗證', () => {
       })
 
       const user = createMockUser('test@example.com')
-      
+
       // 應該返回 false 而不是拋出錯誤
       const result = await isAllowedUser(user)
       expect(result).toBe(false)
@@ -612,8 +447,8 @@ describe('auth.ts - 權限驗證', () => {
       mockSupabaseResponse(null, { message: 'Table not found' })
 
       const user = createMockUser('editor@example.com')
-      const result = await isEditorAsync(user)
-      
+      const result = await hasEditorFeatureAsync(user, 'can_schedule')
+
       // 非超級管理員應該返回 false
       expect(result).toBe(false)
     })
@@ -630,8 +465,8 @@ describe('auth.ts - 權限驗證', () => {
         } else {
           // view_users 查詢失敗
           return {
-            select: vi.fn(() => Promise.resolve({ 
-              data: null, 
+            select: vi.fn(() => Promise.resolve({
+              data: null,
               error: { message: 'Permission denied' }
             }))
           } as any
@@ -640,7 +475,7 @@ describe('auth.ts - 權限驗證', () => {
 
       const user = createMockUser('test@example.com')
       const result = await hasViewAccess(user)
-      
+
       // 應該返回 false
       expect(result).toBe(false)
     })
@@ -650,7 +485,7 @@ describe('auth.ts - 權限驗證', () => {
 
       const user = createMockUser('test@example.com')
       const result = await isAllowedUser(user)
-      
+
       // 非超級管理員應該返回 false
       expect(result).toBe(false)
     })
@@ -660,7 +495,7 @@ describe('auth.ts - 權限驗證', () => {
 
       const user = createMockUser('test@example.com')
       const result = await isAllowedUser(user)
-      
+
       // 非超級管理員且不在空列表中
       expect(result).toBe(false)
     })

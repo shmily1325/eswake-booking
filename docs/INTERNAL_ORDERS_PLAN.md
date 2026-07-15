@@ -2,7 +2,7 @@
 
 > **定位**：店內用開單／結帳／扣庫存工具。**不**取代公開 `/shop` 型錄（見 `SHOP_PLAN.md`）。
 >
-> 📅 規劃日期：2026-05-31  
+> 📅 規劃日期：2026-05-31
 > ✅ 狀態：Phase 1–2 核心已上線；Phase 3 LIFF 商品訂單已上線；CSV 報表待做
 
 ---
@@ -265,7 +265,7 @@ qty_billable = min(
 | **訂單結帳** | 待結帳 inbox、扣款、代扣 | **`isAdmin`  only**（不新增 DB 權限欄） |
 
 - **不**新增 `can_settle_orders`：結帳一律由管理員處理，跟會員管理／會員儲值同一層。
-- `can_products_view`：**不能**開單（唯讀庫存 Tab；訂單 Tab 隱藏或唯讀—實作時以隱藏為準）。
+- 商品頁只使用 `can_products`，不再提供獨立的唯讀商品權限。
 
 ---
 
@@ -284,7 +284,7 @@ BAO › 會員相關 › 訂單結帳     ← 新增 icon
 
 | 路由 | 頁面標題 | 權限 |
 |------|----------|------|
-| `/products` | 商品管理 · 庫存（預設） | `can_products` 或 `can_products_view` |
+| `/products` | 商品管理 · 商品與庫存（預設） | `can_products` 或超管（`isAdmin`） |
 | `/products/orders` | 商品管理 · **訂單開單** | `can_products` 或超管（`isAdmin`） |
 | `/order-settle` | **訂單結帳**（待結帳 Tab） | `isAdmin` |
 | `/order-settle` · 已結帳統計 Tab | 總表＋細帳（`shop_order_settlements`） | `isAdmin` |

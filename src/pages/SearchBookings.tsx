@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuthUser } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
@@ -22,46 +22,10 @@ import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
 import { BatchDeleteConfirmDialog } from '../components/BatchDeleteConfirmDialog'
 import { hasEditorFeatureAsync } from '../utils/auth'
 import type { Booking as FullBooking } from '../types/booking'
-import { isFacility } from '../utils/facility'
-import {
-  enumerateDatesInclusive,
-  buildBoatAvailabilityLines,
-} from '../utils/boatAvailabilitySearch'
-import {
-  AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES,
-  AVAILABILITY_SEARCH_CLIP_START_MINUTES,
-} from '../constants/booking'
 import {
   memberIdsMatchingKeyword,
   formatSelectedMemberHint,
 } from '../utils/searchBookingMemberQuery'
-
-function weekdayFromYmd(ymd: string): number {
-  return new Date(`${ymd}T12:00:00`).getDay()
-}
-
-function ymdToMdLabel(ymd: string): string {
-  const [, m, d] = ymd.split('-').map(Number)
-  return `${m}/${d}`
-}
-
-/** 一～日（與「週間＝一至五」視覺一致） */
-const SLOT_WEEKDAY_DEFS: { w: number; label: string }[] = [
-  { w: 1, label: '一' },
-  { w: 2, label: '二' },
-  { w: 3, label: '三' },
-  { w: 4, label: '四' },
-  { w: 5, label: '五' },
-  { w: 6, label: '六' },
-  { w: 0, label: '日' },
-]
-
-function deriveSlotWeekdayPresetMode(set: Set<number>): 'all' | 'weekday' | 'weekend' | 'custom' {
-  if (set.size === 7 && [0, 1, 2, 3, 4, 5, 6].every(d => set.has(d))) return 'all'
-  if (set.size === 5 && [1, 2, 3, 4, 5].every(d => set.has(d))) return 'weekday'
-  if (set.size === 2 && set.has(0) && set.has(6)) return 'weekend'
-  return 'custom'
-}
 
 interface Booking {
   id: number
@@ -86,76 +50,48 @@ interface Member {
   phone: string | null
 }
 
-interface Boat {
-  id: number
-  name: string
-  color: string
-}
-
 interface SearchBookingsProps {
   isEmbedded?: boolean
 }
-
-/** 船空檔搜尋暫時停用（保留程式，設 true 可恢復） */
-const ENABLE_BOAT_SLOT_SEARCH = false
 
 export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const toast = useToast()
-  const slotTouchMin = isMobile ? 44 : 38
-  
   // 會員搜尋相關狀態
   const [searchName, setSearchName] = useState('')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
-  
+
   const [copySuccess, setCopySuccess] = useState(false)
-  
+
   // 日期區間篩選
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  
+
   // 排序選項
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  
+
   // 過去預約顯示
   const [showPastBookings, setShowPastBookings] = useState(true)
-  
+
   const [members, setMembers] = useState<Member[]>([])
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
   const [showMemberDropdown, setShowMemberDropdown] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
-  
-  const [boats, setBoats] = useState<Boat[]>([])
 
-  // 船隻空檔搜尋（僅查船，不含設施／教練）
-  const [slotFromDate, setSlotFromDate] = useState('')
-  const [slotToDate, setSlotToDate] = useState('')
-  const [slotWeekdaySet, setSlotWeekdaySet] = useState(() => new Set<number>([0, 1, 2, 3, 4, 5, 6]))
-  const [slotExcludedDates, setSlotExcludedDates] = useState<Set<string>>(() => new Set())
-  const [slotTimeFrom, setSlotTimeFrom] = useState('06:00')
-  const [slotTimeTo, setSlotTimeTo] = useState('18:00')
-  const [slotDurationMin, setSlotDurationMin] = useState(120)
-  const [slotSearchBufferMin, setSlotSearchBufferMin] = useState<15 | 30>(30)
-  const [slotSelectedBoatIds, setSlotSelectedBoatIds] = useState<Set<number>>(new Set())
-  const [slotResultLines, setSlotResultLines] = useState<string[]>([])
-  const [slotSearchDone, setSlotSearchDone] = useState(false)
-  const [slotSearching, setSlotSearching] = useState(false)
-  const [slotCopyOk, setSlotCopyOk] = useState(false)
-  
   // 編輯對話框狀態
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBookingForEdit, setSelectedBookingForEdit] = useState<FullBooking | null>(null)
   const [loadingBookingId, setLoadingBookingId] = useState<number | null>(null)
-  
+
   // 批次選擇模式
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedBookingIds, setSelectedBookingIds] = useState<Set<number>>(new Set())
   const [batchEditDialogOpen, setBatchEditDialogOpen] = useState(false)
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false)
-  
+
   const [canSearchBatch, setCanSearchBatch] = useState(false)
 
   const selectedMember = useMemo(
@@ -173,9 +109,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
   useEffect(() => {
     loadMembers()
-    if (ENABLE_BOAT_SLOT_SEARCH) {
-      loadBoats()
-    }
   }, [])
 
   const loadMembers = async () => {
@@ -184,25 +117,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       .select('id, name, nickname, phone')
       .eq('status', 'active')
       .order('name')
-    
+
     if (data) {
       setMembers(data)
-    }
-  }
-
-  const loadBoats = async () => {
-    const { data, error } = await supabase
-      .from('boats')
-      .select('id, name, color')
-      .eq('is_active', true)
-      .order('id')
-    
-    if (error) {
-      console.error('載入船隻失敗:', error)
-    }
-    
-    if (data) {
-      setBoats(data)
     }
   }
 
@@ -223,7 +140,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!searchName.trim()) {
       return
     }
@@ -236,10 +153,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       const now = new Date()
       const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
       const searchTerm = searchName.trim()
-      
+
       // 最大返回數量限制，避免返回過多資料造成卡頓
       const MAX_RESULTS = 100
-      
+
       // 步驟 1: 查詢匹配的預約 ID
       const bookingIds = new Set<number>()
 
@@ -271,34 +188,34 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         memberResult.data?.forEach(item => bookingIds.add(item.booking_id))
         bookingResult.data?.forEach(item => bookingIds.add(item.id))
       }
-      
+
       if (bookingIds.size === 0) {
         setBookings([])
         setLoading(false)
         return
       }
-      
+
       // 步驟 2: 建構詳細查詢（帶日期篩選）
       let detailQuery = supabase
         .from('bookings')
         .select('id, start_at, duration_min, contact_name, notes, activity_types, status, boats:boat_id(name, color)')
         .in('id', Array.from(bookingIds))
-      
+
       // 日期區間篩選
       if (startDate) {
         detailQuery = detailQuery.gte('start_at', `${startDate}T00:00:00`)
       } else {
         detailQuery = detailQuery.gte('start_at', nowStr)
       }
-      
+
       if (endDate) {
         detailQuery = detailQuery.lte('start_at', `${endDate}T23:59:59`)
       }
-      
+
       // 步驟 3: 並行執行三個查詢（預約詳情 + 教練 + 會員）
       // 這是主要優化點：原本是順序執行，現在改為並行
       const idsArray = Array.from(bookingIds)
-      
+
       const [bookingsResult, coachesResult, membersResult] = await Promise.all([
         detailQuery.order('start_at', { ascending: true }).limit(MAX_RESULTS),
         supabase
@@ -316,7 +233,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         setBookings([])
         return
       }
-      
+
       if (!bookingsResult.data || bookingsResult.data.length === 0) {
         setBookings([])
         return
@@ -334,7 +251,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           coachesByBooking[bookingId].push(coach)
         }
       }
-      
+
       // 建構會員對照表
       const membersByBooking: { [key: number]: any[] } = {}
       for (const item of membersResult.data || []) {
@@ -361,190 +278,17 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     }
   }
 
-  const toggleSlotBoat = (boatId: number) => {
-    setSlotSelectedBoatIds(prev => {
-      const next = new Set(prev)
-      if (next.has(boatId)) next.delete(boatId)
-      else next.add(boatId)
-      return next
-    })
-  }
-
-  const slotWeekdayKey = [...slotWeekdaySet].sort().join(',')
-
-  const slotWeekdayPresetMode = useMemo(
-    () => deriveSlotWeekdayPresetMode(slotWeekdaySet),
-    [slotWeekdayKey]
-  )
-
-  const slotDateCandidates = useMemo(() => {
-    if (!slotFromDate || !slotToDate || slotFromDate > slotToDate) return [] as string[]
-    if (slotWeekdaySet.size === 0) return [] as string[]
-    return enumerateDatesInclusive(slotFromDate, slotToDate).filter(ymd =>
-      slotWeekdaySet.has(weekdayFromYmd(ymd))
-    )
-  }, [slotFromDate, slotToDate, slotWeekdayKey])
-
-  const slotDatesForSearch = useMemo(
-    () => slotDateCandidates.filter(d => !slotExcludedDates.has(d)),
-    [slotDateCandidates, slotExcludedDates]
-  )
-
-  useEffect(() => {
-    const allowed = new Set(slotDateCandidates)
-    setSlotExcludedDates(prev => {
-      const next = new Set<string>()
-      for (const x of prev) {
-        if (allowed.has(x)) next.add(x)
-      }
-      return next
-    })
-  }, [slotDateCandidates])
-
-  const toggleSlotWeekday = useCallback((w: number) => {
-    setSlotWeekdaySet(prev => {
-      const n = new Set(prev)
-      if (n.has(w)) {
-        if (n.size <= 1) return prev
-        n.delete(w)
-      } else {
-        n.add(w)
-      }
-      return n
-    })
-  }, [])
-
-  const setSlotWeekdayPreset = useCallback((kind: 'all' | 'weekday' | 'weekend') => {
-    if (kind === 'all') setSlotWeekdaySet(new Set([0, 1, 2, 3, 4, 5, 6]))
-    else if (kind === 'weekday') setSlotWeekdaySet(new Set([1, 2, 3, 4, 5]))
-    else setSlotWeekdaySet(new Set([0, 6]))
-  }, [])
-
-  const toggleSlotDateExcluded = useCallback((ymd: string) => {
-    setSlotExcludedDates(prev => {
-      const n = new Set(prev)
-      if (n.has(ymd)) n.delete(ymd)
-      else n.add(ymd)
-      return n
-    })
-  }, [])
-
-  /** 船隻空檔：僅一般船、不含教練；接船緩衝為搜尋用參數 */
-  const handleSlotSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!slotFromDate || !slotToDate) {
-      toast.error('請選擇日期區間')
-      return
-    }
-    if (slotFromDate > slotToDate) {
-      toast.error('起始日期不能晚於結束日期')
-      return
-    }
-    if (slotWeekdaySet.size === 0) {
-      toast.error('請至少選一個星期')
-      return
-    }
-    if (slotSelectedBoatIds.size === 0) {
-      toast.error('請至少選擇一艘船')
-      return
-    }
-
-    const ids = [...slotSelectedBoatIds]
-    const selectedBoatsMeta = boats.filter(b => ids.includes(b.id) && !isFacility(b.name))
-    if (selectedBoatsMeta.length === 0) {
-      toast.error('請選擇一般船隻（設施不列入空檔查詢）')
-      return
-    }
-    if (!slotDurationMin || slotDurationMin <= 0) {
-      toast.error('請設定有效的預約時長（分鐘）')
-      return
-    }
-
-    setSlotSearching(true)
-    setSlotSearchDone(false)
-    setSlotCopyOk(false)
-
-    try {
-      const dates = [...slotDatesForSearch].sort()
-      if (dates.length === 0) {
-        toast.error('沒有要查詢的日期，請調整區間／星期，或點下方日期恢復查詢日')
-        return
-      }
-      if (dates.length > 120) {
-        toast.error('查詢範圍請縮短在 120 天內')
-        return
-      }
-
-      const minD = dates[0]
-      const maxD = dates[dates.length - 1]
-      const boatIds = selectedBoatsMeta.map(b => b.id)
-
-      const [bookRes, unRes] = await Promise.all([
-        supabase
-          .from('bookings')
-          .select('boat_id, start_at, duration_min, cleanup_minutes')
-          .in('boat_id', boatIds)
-          .gte('start_at', `${minD}T00:00:00`)
-          .lte('start_at', `${maxD}T23:59:59`),
-        supabase
-          .from('boat_unavailable_dates')
-          .select('*')
-          .in('boat_id', boatIds)
-          .eq('is_active', true)
-          .lte('start_date', maxD)
-          .gte('end_date', minD),
-      ])
-
-      if (bookRes.error) throw bookRes.error
-      if (unRes.error) throw unRes.error
-
-      const lines = buildBoatAvailabilityLines({
-        dates,
-        dayFilter: 'all',
-        timeFrom: slotTimeFrom,
-        timeTo: slotTimeTo,
-        durationMin: slotDurationMin,
-        searchBufferMinutes: slotSearchBufferMin,
-        stepMinutes: slotSearchBufferMin,
-        boats: selectedBoatsMeta.map(b => ({ id: b.id, name: b.name })),
-        bookings: bookRes.data || [],
-        unavailable: unRes.data || [],
-      })
-
-      setSlotResultLines(lines)
-      setSlotSearchDone(true)
-    } catch (err: unknown) {
-      console.error('Slot search error:', err)
-      toast.error(err instanceof Error ? err.message : '查詢失敗')
-      setSlotResultLines([])
-      setSlotSearchDone(true)
-    } finally {
-      setSlotSearching(false)
-    }
-  }
-
-  const handleCopySlotLines = async () => {
-    const text = slotResultLines.join('\n')
-    try {
-      await navigator.clipboard.writeText(text)
-      setSlotCopyOk(true)
-      setTimeout(() => setSlotCopyOk(false), 2000)
-    } catch {
-      toast.error('複製失敗，請手動複製')
-    }
-  }
-
   const formatDateTime = (isoString: string) => {
     // 純字符串處理（避免時區問題）
     const datetime = isoString.substring(0, 16) // "2025-11-01T13:55"
     const [dateStr, timeStr] = datetime.split('T')
     const [year, month, day] = dateStr.split('-')
-    
+
     // 計算星期幾（英文縮寫）
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
     const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const weekday = weekdays[date.getDay()]
-    
+
     return `${year}/${month}/${day}(${weekday}) ${timeStr}`
   }
 
@@ -568,7 +312,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     setBookings([])
     setHasSearched(false)
   }
-  
+
   const handleCopyToClipboard = async () => {
     const message = generateLineMessage()
     try {
@@ -688,8 +432,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     >
       {!isEmbedded && <PageHeader title="預約查詢" user={user} />}
 
-      {/* 船空檔分頁暫時停用，目前僅保留預約人搜尋 */}
-
       {/* Search Form */}
       <div style={{
         background: designSystem.colors.background.card,
@@ -768,7 +510,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 已選：{formatSelectedMemberHint(selectedMember)} · 僅顯示此會員預約
               </div>
             )}
-            
+
             {showMemberDropdown && filteredMembers.length > 0 && (
               <div style={{
                 position: 'absolute',
@@ -821,7 +563,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
           {/* 日期區間篩選 */}
           <div style={{ marginBottom: '16px' }}>
-            <div style={{ 
+            <div style={{
               display: 'flex',
               flexWrap: 'wrap',
               justifyContent: 'space-between',
@@ -829,13 +571,13 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               gap: '8px',
               marginBottom: '8px'
             }}>
-              <span style={{ 
-                fontSize: getFontSize('body', isMobile), 
+              <span style={{
+                fontSize: getFontSize('body', isMobile),
                 fontWeight: '600',
                 color: designSystem.colors.text.primary,
               }}>
                 日期區間
-                {(startDate || endDate) 
+                {(startDate || endDate)
                   ? <span style={{ color: designSystem.colors.text.secondary, marginLeft: '4px' }}>(已設定)</span>
                   : <span style={{ color: designSystem.colors.text.disabled, marginLeft: '4px', fontSize: getFontSize('bodySmall', isMobile) }}>(不設定則顯示未來預約)</span>
                 }
@@ -853,18 +595,18 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 </button>
               )}
             </div>
-            
-            <div style={{ 
-              display: 'flex', 
+
+            <div style={{
+              display: 'flex',
               flexDirection: isMobile ? 'column' : 'row',
               gap: '8px',
               alignItems: isMobile ? 'stretch' : 'center',
               width: '100%',
             }}>
-              <div style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
                 gap: '8px',
                 minWidth: 0,
               }}>
@@ -881,10 +623,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   }}
                 />
               </div>
-              <div style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
                 gap: '8px',
                 minWidth: 0,
               }}>
@@ -920,596 +662,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           </button>
         </form>
 
-        {/* 船空檔搜尋表單（暫時停用，保留程式） */}
-        {ENABLE_BOAT_SLOT_SEARCH && (
-        <form onSubmit={handleSlotSearch}>
-          <div style={{
-            marginBottom: isMobile ? '12px' : '16px',
-            padding: isMobile ? '8px 10px' : '12px 14px',
-            backgroundColor: designSystem.colors.background.hover,
-            borderRadius: designSystem.borderRadius.md,
-            fontSize: getFontSize('bodySmall', isMobile),
-            color: designSystem.colors.text.secondary,
-            lineHeight: 1.45,
-          }}>
-            {isMobile ? (
-              <>一般船；不含教練。緩衝僅估算。</>
-            ) : (
-              <>
-                僅查詢<strong style={{ color: designSystem.colors.text.primary }}>一般船</strong>可約時段（不含設施／陸上課）；不含教練。接船緩衝為搜尋用假設。
-              </>
-            )}
-          </div>
-
-          <div style={{ marginBottom: isMobile ? '12px' : '18px' }}>
-            <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
-              {isMobile ? '船隻' : '船隻（可多選）'}
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {boats.filter(b => !isFacility(b.name)).map(boat => {
-                const on = slotSelectedBoatIds.has(boat.id)
-                return (
-                  <button
-                    key={boat.id}
-                    type="button"
-                    onClick={() => toggleSlotBoat(boat.id)}
-                    style={{
-                      padding: isMobile ? '10px 18px' : '8px 16px',
-                      border: `1px solid ${on ? designSystem.colors.border.dark : designSystem.colors.border.main}`,
-                      borderRadius: designSystem.borderRadius.full,
-                      background: on ? designSystem.colors.secondary[100] : designSystem.colors.background.card,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
-                      fontWeight: on ? '600' : '500',
-                      color: designSystem.colors.text.primary,
-                      minHeight: `${slotTouchMin}px`,
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '12px',
-                        height: '12px',
-                        borderRadius: '50%',
-                        backgroundColor: boat.color || designSystem.colors.border.dark,
-                        border: `1px solid ${designSystem.colors.border.main}`,
-                        flexShrink: 0,
-                      }}
-                    />
-                    {boat.name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '8px',
-            }}>
-              <span style={{
-                fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
-                fontWeight: '600',
-                color: designSystem.colors.text.primary,
-              }}>
-                {isMobile ? '日期' : '起訖日期'}
-                {!slotFromDate && !slotToDate ? (
-                  <span style={{ color: designSystem.colors.text.disabled, marginLeft: '4px', fontSize: getFontSize('caption', isMobile) }}>{isMobile ? '＊' : '·必填'}</span>
-                ) : isMobile && slotFromDate && slotToDate ? (
-                  <span style={{ color: designSystem.colors.success[500], marginLeft: '6px', fontSize: getFontSize('body', isMobile) }}>✓</span>
-                ) : !isMobile ? (
-                  <span style={{ color: designSystem.colors.text.secondary, marginLeft: '4px' }}>·已填</span>
-                ) : null}
-              </span>
-              {(slotFromDate || slotToDate) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSlotFromDate('')
-                    setSlotToDate('')
-                    setSlotExcludedDates(new Set())
-                  }}
-                  style={{
-                    ...getButtonStyle('outline', 'small', isMobile),
-                    padding: isMobile ? '8px 14px' : '4px 10px',
-                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
-                  }}
-                >
-                  清除
-                </button>
-              )}
-            </div>
-            <div style={{
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              gap: '8px',
-              alignItems: isMobile ? 'stretch' : 'center',
-              width: '100%',
-            }}>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>從</span>
-                <input
-                  type="date"
-                  value={slotFromDate}
-                  onChange={e => setSlotFromDate(e.target.value)}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    flex: 1,
-                    minWidth: 0,
-                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>到</span>
-                <input
-                  type="date"
-                  value={slotToDate}
-                  onChange={e => setSlotToDate(e.target.value)}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    flex: 1,
-                    minWidth: 0,
-                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {slotFromDate &&
-            slotToDate &&
-            slotFromDate <= slotToDate &&
-            slotDateCandidates.length === 0 && (
-            <div style={{
-              marginBottom: '12px',
-              padding: '10px 12px',
-              background: designSystem.colors.background.hover,
-              border: `1px solid ${designSystem.colors.border.light}`,
-              borderRadius: designSystem.borderRadius.md,
-              fontSize: isMobile ? getFontSize('body', true) : getFontSize('bodySmall', false),
-              color: designSystem.colors.text.secondary,
-              lineHeight: 1.5,
-            }}>
-              {isMobile ? '此區間與所選星期無交集。' : '此區間內沒有符合所選星期的日期，請調整日期或星期。'}
-            </div>
-          )}
-
-          <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
-            <span style={{
-              display: 'block',
-              marginBottom: '6px',
-              fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
-              fontWeight: '600',
-              color: designSystem.colors.text.primary,
-            }}>
-              {isMobile ? '星期' : '星期（可複選）'}
-            </span>
-            <div
-              role="group"
-              aria-label="常用星期範圍"
-              style={{
-                display: 'flex',
-                width: '100%',
-                borderRadius: designSystem.borderRadius.md,
-                border: `1px solid ${designSystem.colors.border.main}`,
-                overflow: 'hidden',
-                marginBottom: isMobile ? '6px' : '8px',
-                background: designSystem.colors.background.hover,
-              }}
-            >
-              {([
-                { k: 'all' as const, t: '全週' },
-                { k: 'weekday' as const, t: '週間' },
-                { k: 'weekend' as const, t: '週末' },
-              ] as const).map(({ k, t }, i) => {
-                const active = slotWeekdayPresetMode === k
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setSlotWeekdayPreset(k)}
-                    style={{
-                      flex: 1,
-                      minHeight: isMobile ? 46 : 40,
-                      padding: isMobile ? '10px 4px' : '8px 10px',
-                      border: 'none',
-                      borderRight: i < 2 ? `1px solid ${designSystem.colors.border.main}` : undefined,
-                      background: active ? designSystem.colors.background.card : 'transparent',
-                      cursor: 'pointer',
-                      fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
-                      fontWeight: active ? '700' : '500',
-                      color: active ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-                      boxShadow: active ? designSystem.shadows.xs : 'none',
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    {t}
-                  </button>
-                )
-              })}
-            </div>
-            {slotWeekdayPresetMode === 'custom' && (
-              <div style={{
-                fontSize: getFontSize('caption', isMobile),
-                color: designSystem.colors.text.disabled,
-                marginBottom: isMobile ? '4px' : '6px',
-                lineHeight: 1.35,
-              }}>
-                {isMobile ? '自訂中；點上排復原。' : '已自訂組合；再點「全週／週間／週末」可一鍵恢復。'}
-              </div>
-            )}
-            {!isMobile && (
-            <div style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.text.disabled,
-              marginBottom: '6px',
-              lineHeight: 1.35,
-            }}>
-              先選常用範圍，再以「一～日」微調；實底為納入查詢、灰底為排除。
-            </div>
-            )}
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: isMobile ? '6px' : '8px',
-            }}>
-              {SLOT_WEEKDAY_DEFS.map(({ w, label }) => {
-                const on = slotWeekdaySet.has(w)
-                return (
-                  <button
-                    key={w}
-                    type="button"
-                    onClick={() => toggleSlotWeekday(w)}
-                    style={{
-                      minWidth: isMobile ? 46 : 40,
-                      minHeight: `${slotTouchMin}px`,
-                      padding: '0 12px',
-                      border: `1px solid ${on ? designSystem.colors.border.dark : designSystem.colors.border.main}`,
-                      background: on ? designSystem.colors.secondary[100] : designSystem.colors.background.hover,
-                      borderRadius: designSystem.borderRadius.md,
-                      cursor: 'pointer',
-                      fontSize: isMobile ? getFontSize('h3', true) : getFontSize('bodyLarge', false),
-                      fontWeight: on ? '700' : '500',
-                      color: on ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {slotDateCandidates.length > 0 && (
-            <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '6px',
-              }}>
-                <span style={{
-                  fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
-                  fontWeight: '600',
-                  color: designSystem.colors.text.primary,
-                }}>
-                  {isMobile ? '查詢日' : '查詢日（點一下略過）'}
-                </span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setSlotExcludedDates(new Set())}
-                    style={{
-                      padding: isMobile ? '8px 12px' : '4px 10px',
-                      border: `1px solid ${designSystem.colors.border.main}`,
-                      background: designSystem.colors.background.card,
-                      borderRadius: designSystem.borderRadius.full,
-                      cursor: 'pointer',
-                      fontSize: getFontSize('bodySmall', isMobile),
-                      color: designSystem.colors.text.primary,
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    {isMobile ? '全選' : '全選日'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSlotExcludedDates(new Set(slotDateCandidates))}
-                    style={{
-                      padding: isMobile ? '8px 12px' : '4px 10px',
-                      border: `1px solid ${designSystem.colors.border.main}`,
-                      background: designSystem.colors.background.card,
-                      borderRadius: designSystem.borderRadius.full,
-                      cursor: 'pointer',
-                      fontSize: getFontSize('bodySmall', isMobile),
-                      color: designSystem.colors.text.secondary,
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    {isMobile ? '全略' : '全略過'}
-                  </button>
-                </div>
-              </div>
-              <div style={{
-                fontSize: getFontSize('caption', isMobile),
-                color: designSystem.colors.text.disabled,
-                marginBottom: '6px',
-                lineHeight: 1.4,
-              }}>
-                {isMobile ? (
-                  <>
-                    <strong style={{ color: designSystem.colors.text.primary }}>{slotDatesForSearch.length}</strong>
-                    /{slotDateCandidates.length} · 點略
-                  </>
-                ) : (
-                  <>
-                    已選 <strong style={{ color: designSystem.colors.text.primary }}>{slotDatesForSearch.length}</strong> / {slotDateCandidates.length} 日；略過日不會送出查詢。
-                  </>
-                )}
-              </div>
-              <div style={{
-                display: 'flex',
-                flexWrap: isMobile ? 'nowrap' : 'wrap',
-                gap: '8px',
-                overflowX: isMobile ? 'auto' : 'visible',
-                WebkitOverflowScrolling: 'touch',
-                paddingBottom: '4px',
-                margin: isMobile ? '0 -4px' : 0,
-                paddingLeft: isMobile ? '4px' : 0,
-                paddingRight: isMobile ? '4px' : 0,
-              }}>
-                {slotDateCandidates.map(ymd => {
-                  const excluded = slotExcludedDates.has(ymd)
-                  return (
-                    <button
-                      key={ymd}
-                      type="button"
-                      onClick={() => toggleSlotDateExcluded(ymd)}
-                      style={{
-                        flexShrink: 0,
-                        minWidth: 56,
-                        minHeight: `${slotTouchMin}px`,
-                        padding: '0 10px',
-                        border: excluded
-                          ? `1px dashed ${designSystem.colors.border.dark}`
-                          : `1px solid ${designSystem.colors.border.dark}`,
-                        background: excluded ? designSystem.colors.background.hover : designSystem.colors.secondary[100],
-                        borderRadius: designSystem.borderRadius.md,
-                        cursor: 'pointer',
-                        fontSize: isMobile ? getFontSize('h3', true) : getFontSize('bodyLarge', false),
-                        fontWeight: excluded ? '500' : '600',
-                        color: excluded ? designSystem.colors.text.disabled : designSystem.colors.text.primary,
-                        touchAction: 'manipulation',
-                      }}
-                    >
-                      {ymdToMdLabel(ymd)}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
-            <span style={{
-              display: 'block',
-              marginBottom: isMobile ? '4px' : '8px',
-              fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
-              fontWeight: '600',
-              color: designSystem.colors.text.primary,
-            }}>
-              {isMobile ? '每日時段' : '每日可排時段'}
-            </span>
-            <div style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.text.disabled,
-              marginBottom: isMobile ? '6px' : '8px',
-              lineHeight: 1.4,
-            }}>
-              {isMobile ? (
-                <>
-                  課在區間內；起點約{' '}
-                  {String(Math.floor(AVAILABILITY_SEARCH_CLIP_START_MINUTES / 60)).padStart(2, '0')}–
-                  {String(Math.floor(AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES / 60)).padStart(2, '0')} 點。
-                </>
-              ) : (
-                <>
-                  整段課須落在區間內；與您輸入的時段取交集。列出之課程開始時間約{' '}
-                  {String(Math.floor(AVAILABILITY_SEARCH_CLIP_START_MINUTES / 60)).padStart(2, '0')}:00–
-                  {String(Math.floor(AVAILABILITY_SEARCH_CLIP_LAST_START_MINUTES / 60)).padStart(2, '0')}:00。
-                </>
-              )}
-            </div>
-            <div style={{
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              gap: '8px',
-              alignItems: isMobile ? 'stretch' : 'center',
-              width: '100%',
-            }}>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>從</span>
-                <input
-                  type="time"
-                  value={slotTimeFrom}
-                  onChange={e => setSlotTimeFrom(e.target.value)}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    flex: 1,
-                    minWidth: 0,
-                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>到</span>
-                <input
-                  type="time"
-                  value={slotTimeTo}
-                  onChange={e => setSlotTimeTo(e.target.value)}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    flex: 1,
-                    minWidth: 0,
-                    minHeight: isMobile ? `${slotTouchMin}px` : undefined,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: isMobile ? '12px' : '16px' }}>
-            <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
-              {isMobile ? '時長（分）' : '預約時長（分鐘）'}
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-              {[60, 90, 120, 150].map(m => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setSlotDurationMin(m)}
-                  style={{
-                    padding: isMobile ? '10px 18px' : '8px 16px',
-                    border: `1px solid ${slotDurationMin === m ? designSystem.colors.border.dark : designSystem.colors.border.main}`,
-                    background: slotDurationMin === m ? designSystem.colors.secondary[100] : designSystem.colors.background.card,
-                    borderRadius: designSystem.borderRadius.full,
-                    cursor: 'pointer',
-                    fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
-                    fontWeight: '500',
-                    color: designSystem.colors.text.primary,
-                    minHeight: `${slotTouchMin}px`,
-                    transition: 'all 0.2s',
-                    touchAction: 'manipulation',
-                  }}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={slotDurationMin || ''}
-                onChange={e => {
-                  const v = e.target.value.replace(/\D/g, '')
-                  const n = Number(v)
-                  if (v === '') setSlotDurationMin(0)
-                  else if (n > 0 && n <= 600) setSlotDurationMin(n)
-                }}
-                placeholder="自訂分鐘"
-                style={{
-                  ...getInputStyle(isMobile),
-                  flex: 1,
-                  minWidth: '120px',
-                  maxWidth: '280px',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <span style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary }}>分</span>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: isMobile ? '12px' : '18px' }}>
-            <span style={{
-              display: 'block',
-              marginBottom: isMobile ? '4px' : '8px',
-              fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
-              fontWeight: '600',
-              color: designSystem.colors.text.primary,
-            }}>
-              {isMobile ? '接船（分）' : '搜尋用接船緩衝（分鐘）'}
-            </span>
-            <div style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.text.disabled,
-              marginBottom: isMobile ? '6px' : '8px',
-              lineHeight: 1.4,
-            }}>
-              {isMobile
-                ? '同掃描步長；30＝半點格。'
-                : '空檔起點掃描步長與此相同（選 30 則不列出 15 分格點）。'}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {([30, 15] as const).map(m => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setSlotSearchBufferMin(m)}
-                  style={{
-                    padding: isMobile ? '10px 18px' : '8px 16px',
-                    border: `1px solid ${slotSearchBufferMin === m ? designSystem.colors.border.dark : designSystem.colors.border.main}`,
-                    background: slotSearchBufferMin === m ? designSystem.colors.secondary[100] : designSystem.colors.background.card,
-                    borderRadius: designSystem.borderRadius.full,
-                    cursor: 'pointer',
-                    fontSize: isMobile ? getFontSize('bodyLarge', true) : getFontSize('body', false),
-                    fontWeight: '500',
-                    color: designSystem.colors.text.primary,
-                    minHeight: `${slotTouchMin}px`,
-                    transition: 'all 0.2s',
-                    touchAction: 'manipulation',
-                  }}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            data-track="search_submit_availability"
-            disabled={
-              slotSearching ||
-              slotSelectedBoatIds.size === 0 ||
-              !slotFromDate ||
-              !slotToDate ||
-              !slotDurationMin ||
-              slotDatesForSearch.length === 0
-            }
-            style={{
-              ...getButtonStyle('primary', 'medium', isMobile),
-              width: '100%',
-              minHeight: isMobile ? 48 : undefined,
-              opacity: (
-                !slotSearching &&
-                slotSelectedBoatIds.size > 0 &&
-                slotFromDate &&
-                slotToDate &&
-                slotDurationMin &&
-                slotDatesForSearch.length > 0
-              ) ? 1 : 0.5,
-              cursor: (
-                !slotSearching &&
-                slotSelectedBoatIds.size > 0 &&
-                slotFromDate &&
-                slotToDate &&
-                slotDurationMin &&
-                slotDatesForSearch.length > 0
-              ) ? 'pointer' : 'not-allowed',
-            }}
-          >
-            {slotSearching ? '搜尋中...' : '搜尋'}
-          </button>
-        </form>
-        )}
       </div>
 
       {/* Results */}
@@ -1543,10 +695,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   </div>
 
                   {/* 右側：操作按鈕 */}
-                  <div style={{ 
-                    display: 'flex', 
+                  <div style={{
+                    display: 'flex',
                     alignItems: 'center',
-                    gap: '6px', 
+                    gap: '6px',
                   }}>
                     <button
                       data-track="search_select_all"
@@ -1558,7 +710,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     >
                       {selectedBookingIds.size === bookings.length ? '取消全選' : '全選'}
                     </button>
-                    
+
                     {selectedBookingIds.size > 0 && (
                       <>
                         <button
@@ -1583,7 +735,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         </button>
                       </>
                     )}
-                    
+
                     <button
                       onClick={toggleSelectionMode}
                       style={{
@@ -1618,8 +770,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
                   {/* 第二行/右側：操作按鈕 */}
                   {bookings.length > 0 && (
-                    <div style={{ 
-                      display: 'flex', 
+                    <div style={{
+                      display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
                     }}>
@@ -1952,129 +1104,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         </div>
       )}
 
-      {/* 船空檔搜尋結果（暫時停用，保留程式） */}
-      {ENABLE_BOAT_SLOT_SEARCH && (slotSearching || slotSearchDone) && (
-        <div>
-          {!slotSearching && (
-            <div style={{
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              justifyContent: 'space-between',
-              alignItems: isMobile ? 'stretch' : 'center',
-              gap: '8px',
-              marginBottom: '12px',
-              padding: '0 4px',
-            }}>
-              <div style={{
-                fontSize: getFontSize('body', isMobile),
-                color: designSystem.colors.text.secondary,
-              }}>
-                共 <strong style={{ color: designSystem.colors.text.primary }}>{slotResultLines.length}</strong> 行結果
-              </div>
-              <button
-                type="button"
-                data-track="search_copy_availability"
-                onClick={handleCopySlotLines}
-                style={{
-                  ...getButtonStyle(slotCopyOk ? 'success' : 'primary', 'small', isMobile),
-                  whiteSpace: 'nowrap',
-                  alignSelf: isMobile ? 'stretch' : 'auto',
-                }}
-              >
-                {slotCopyOk ? '已複製' : '複製'}
-              </button>
-            </div>
-          )}
-
-          {slotSearching && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: '16px',
-                    backgroundColor: designSystem.colors.background.card,
-                    borderRadius: designSystem.borderRadius.lg,
-                    boxShadow: designSystem.shadows.xs,
-                    border: `1px solid ${designSystem.colors.border.light}`,
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <div>
-                      <div
-                        style={{
-                          width: '120px',
-                          height: '20px',
-                          backgroundColor: designSystem.colors.secondary[100],
-                          borderRadius: designSystem.borderRadius.sm,
-                          marginBottom: '8px',
-                          animation: 'pulse 1.5s ease-in-out infinite',
-                        }}
-                      />
-                      <div
-                        style={{
-                          width: '180px',
-                          height: '16px',
-                          backgroundColor: designSystem.colors.secondary[100],
-                          borderRadius: designSystem.borderRadius.sm,
-                          animation: 'pulse 1.5s ease-in-out infinite',
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                    {[1, 2, 3, 4].map((j) => (
-                      <div
-                        key={j}
-                        style={{
-                          width: '100px',
-                          height: '14px',
-                          backgroundColor: designSystem.colors.secondary[100],
-                          borderRadius: designSystem.borderRadius.sm,
-                          animation: 'pulse 1.5s ease-in-out infinite',
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <style>{`
-                @keyframes pulse {
-                  0%, 100% { opacity: 1; }
-                  50% { opacity: 0.5; }
-                }
-              `}</style>
-            </div>
-          )}
-
-          {!slotSearching && slotSearchDone && (
-            <div
-              style={{
-                padding: '16px',
-                backgroundColor: designSystem.colors.background.card,
-                borderRadius: designSystem.borderRadius.lg,
-                boxShadow: designSystem.shadows.xs,
-                border: `1px solid ${designSystem.colors.border.light}`,
-              }}
-            >
-              <pre
-                style={{
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  fontSize: getFontSize('bodyLarge', isMobile),
-                  lineHeight: 1.65,
-                  margin: 0,
-                  fontFamily: 'inherit',
-                  color: designSystem.colors.text.primary,
-                }}
-              >
-                {slotResultLines.join('\n')}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-
       {!isEmbedded && <Footer />}
 
       {/* 編輯預約對話框 */}
@@ -2102,7 +1131,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         bookingIds={Array.from(selectedBookingIds)}
         user={user}
       />
-      
+
       {/* 批次刪除確認對話框 */}
       <BatchDeleteConfirmDialog
         isOpen={batchDeleteDialogOpen}
@@ -2116,4 +1145,3 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     </PageShell>
   )
 }
-

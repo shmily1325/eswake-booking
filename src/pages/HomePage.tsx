@@ -73,12 +73,12 @@ export function HomePage() {
   const [editorFeatureFlags, setEditorFeatureFlags] = useState<Record<EditorFeatureKey, boolean> | null>(null)
   const [hasViewPermission, setHasViewPermission] = useState(false)
   const [permissionsLoading, setPermissionsLoading] = useState(true)
-  
+
   // Detect V2 environment
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
   const isV2Environment = supabaseUrl.includes('v2') || supabaseUrl.includes('staging')
   const userIsAdmin = isAdmin(user)
-  
+
   // 合併所有權限檢查，一次性載入
   useEffect(() => {
     // user 變更時立刻清空權限 state + 啟用 loading skeleton，
@@ -119,7 +119,7 @@ export function HomePage() {
 
     loadAllPermissions()
   }, [user, userIsAdmin])
-  
+
   type HomeMenuItem = {
     title: string
     icon: string
@@ -210,8 +210,7 @@ export function HomePage() {
       title: '商品管理',
       icon: '📦',
       link: '/products',
-      // 可改（can_products）或只看（can_products_view）任一即顯示入口；唯讀模式由商品頁自行渲染
-      editorFeature: ['can_products', 'can_products_view'],
+      editorFeature: 'can_products',
       hideFromHomeForSuperAdmin: true
     },
     {
@@ -219,7 +218,7 @@ export function HomePage() {
       icon: '🛒',
       link: getPublicShopHomeUrl(),
       subtitle: 'shop.eswakeschool.com',
-      editorFeature: ['can_products', 'can_products_view'],
+      editorFeature: 'can_products',
       hideFromHomeForSuperAdmin: true
     },
     {
@@ -451,8 +450,8 @@ export function HomePage() {
           textAlign: 'center',
           marginBottom: isMobile ? '28px' : '50px',
         }}>
-          <img 
-            src="/logo_circle (black).png" 
+          <img
+            src="/logo_circle (black).png"
             alt={`${ES_BRAND.name} Logo`}
             style={{
               width: isMobile ? '100px' : '140px',
@@ -466,7 +465,7 @@ export function HomePage() {
               marginRight: 'auto',
             }}
           />
-          <h1 style={{ 
+          <h1 style={{
             margin: isMobile ? '0 0 12px 0' : '0 0 20px 0',
             fontSize: getFontSize('display', isMobile),
             fontWeight: '800',
@@ -501,7 +500,7 @@ export function HomePage() {
               100% { background-position: -200% 0; }
             }
           `}</style>
-          
+
           {/* 載入中顯示 Skeleton */}
           {permissionsLoading ? (
             <>
@@ -557,4 +556,3 @@ export function HomePage() {
     </PageShell>
   )
 }
-

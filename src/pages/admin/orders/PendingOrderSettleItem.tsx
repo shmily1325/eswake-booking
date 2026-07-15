@@ -6,7 +6,8 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { ConfirmModal, useToast } from '../../../components/ui'
+import { useToast } from '../../../components/ui'
+import { ConfirmModal } from '../../../components/ui/Modal'
 import { DecimalTextInput, MoneyInput } from '../../../components/ui/numericInputs'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'

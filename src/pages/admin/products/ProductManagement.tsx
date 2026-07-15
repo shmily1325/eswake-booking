@@ -52,15 +52,8 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
 
   const [hasAccess, setHasAccess] = useState(false)
   const [accessChecked, setAccessChecked] = useState(false)
-  /** DB 權限：can_products = true；只勾 can_products_view 時為 false，全頁進入唯讀模式 */
+  /** DB 權限：can_products = true */
   const [canEdit, setCanEdit] = useState(false)
-  /**
-   * 使用者主動鎖定（避免誤改）。only canEdit=true 才看得到鎖按鈕。
-   * 不持久化：重新進頁預設解鎖，跟「我有編輯權」直覺一致；要鎖就當場按。
-   */
-  const [userLocked, setUserLocked] = useState(false)
-  /** 實際可編輯 = DB 權限 ∧ 沒被自己鎖。鎖了之後 UI 跟唯讀模式完全一樣。 */
-  const effectiveCanEdit = canEdit && !userLocked
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState<ProductWithVariants[]>([])
   /**
@@ -151,16 +144,8 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
   }
 
   // 列表顯示模式：'gallery' = 圖大張只看縮圖；'table' = 庫存作業列表
-  // 新使用者預設 table；既有使用者仍沿用 localStorage 中的選擇
-  const [layout, setLayout] = useState<'gallery' | 'table'>(() => {
-    if (typeof window === 'undefined') return 'table'
-    const saved = window.localStorage.getItem('products_layout')
-    return saved === 'gallery' ? 'gallery' : 'table'
-  })
-  const setLayoutPersist = (next: 'gallery' | 'table') => {
-    setLayout(next)
-    if (typeof window !== 'undefined') window.localStorage.setItem('products_layout', next)
-  }
+  // 每次進入商品頁都從庫存作業列表開始；畫廊仍可於當次操作中切換
+  const [layout, setLayout] = useState<'gallery' | 'table'>('table')
 
   // 列表縮圖：封面優先 or 實拍優先（記憶於 localStorage）
   const [listImageMode, setListImageMode] = useState<ListImageMode>(() => {
@@ -178,7 +163,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
     let cancelled = false
     const check = async () => {
       if (!user) return
-      // 進頁條件：can_products（可改）或 can_products_view（只看）任一即可
+      // 商品頁只開放 can_products；不再提供唯讀商品權限
       const allowed = await hasProductsAccessAsync(user)
       if (cancelled) return
       if (!allowed) {
@@ -306,19 +291,6 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
   const categories = useMemo(() => getAllCategories(), [])
 
   /**
-   * 給儀表板顯示的「目前在看哪一類」label。
-   *   - all              → 全部
-   *   - group, sub=all   → 該 group 名（例：Wakeboarding）
-   *   - group, sub=catId → 該 category 的商城名（例：Boards），跟前台一致
-   */
-  const currentTabLabel = useMemo(() => {
-    if (activeGroup === 'all') return '全部'
-    if (activeSubCat === 'all') return activeGroup
-    const cat = getCategory(activeSubCat)
-    return cat ? getCategoryShopName(cat) : activeSubCat
-  }, [activeGroup, activeSubCat])
-
-  /**
    * 「新增商品」按鈕點下去時，新建商品要預填的 category：
    *   - 已選具體 sub-cat → 直接用它
    *   - 只選了 group     → 用該 group 第一個 category（按 sortOrder）
@@ -397,7 +369,6 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
             defaultCategory={view.kind === 'create' ? view.defaultCategory : undefined}
             existingProducts={products.map((p) => ({ category: p.category, brand: p.brand, model: p.model }))}
             currentUserEmail={user?.email ?? null}
-            readOnly={!effectiveCanEdit}
             onClose={(changed) => {
               setView({ kind: 'list' })
               if (changed) void loadData()
@@ -427,9 +398,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
 
         {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面 / 缺標籤 / 已售完（皆為 SKU 種數，隨搜尋變動） */}
         <InventoryDashboard
-          base={onlySoldOut ? baseForCounts.filter(isVariantSoldOut) : activeBaseForCounts}
-          filtered={filteredItems}
-          tabName={currentTabLabel}
+          base={activeBaseForCounts}
           isFiltered={hasAnyFilter}
           onlyMissingPrice={onlyMissingPrice}
           onlyMissingImage={onlyMissingImage}
@@ -462,7 +431,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           </div>
         )}
 
-        {/* 工具列：手機兩行（搜尋全寬 → 操作鈕），避免鎖定被 flex-wrap 擠到下一行 */}
+        {/* 主要操作：搜尋與新增商品 */}
         <div
           style={{
             display: 'flex',
@@ -522,7 +491,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
               width: isMobile ? '100%' : undefined,
             }}
           >
-            {effectiveCanEdit && (
+            {canEdit && (
               <Button
                 variant="primary"
                 data-track="product_add"
@@ -533,40 +502,10 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
                 + 新增{isMobile ? '' : '商品'}
               </Button>
             )}
-            {isMobile && (
-              <>
-                <SortMenu
-                  value={sortBy}
-                  onChange={(next) => {
-                    setSortByPersist(next)
-                    trackClick(`product_sort_${next}`, user?.email ?? undefined)
-                  }}
-                  isMobile={isMobile}
-                />
-                <ImageModeToggle
-                  mode={listImageMode}
-                  onChange={(next) => {
-                    setListImageModePersist(next)
-                    trackClick(`product_list_image_${next}`, user?.email ?? undefined)
-                  }}
-                />
-                <LayoutToggle layout={layout} onChange={setLayoutPersist} isMobile={isMobile} />
-                {canEdit && (
-                  <LockToggle
-                    locked={userLocked}
-                    onToggle={() => {
-                      const next = !userLocked
-                      setUserLocked(next)
-                      trackClick(next ? 'product_lock_on' : 'product_lock_off', user?.email ?? undefined)
-                    }}
-                  />
-                )}
-              </>
-            )}
           </div>
         </div>
 
-        {/* 類別 Tab + （桌機）排序/顯示模式切換 */}
+        {/* 系列與分類只負責篩選，不混入排序與顯示控制 */}
         <div
           style={{
             display: 'flex',
@@ -633,37 +572,56 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
               </CategoryRow>
             )}
           </div>
-          {/* 桌機版才在 tab 右側放排序 / 顯示模式 / 鎖定切換 */}
-          {!isMobile && (
-            <>
-              <SortMenu
-                value={sortBy}
-                onChange={(next) => {
-                  setSortByPersist(next)
-                  trackClick(`product_sort_${next}`, user?.email ?? undefined)
-                }}
-                isMobile={isMobile}
-              />
-              <ImageModeToggle
-                mode={listImageMode}
-                onChange={(next) => {
-                  setListImageModePersist(next)
-                  trackClick(`product_list_image_${next}`, user?.email ?? undefined)
-                }}
-              />
-              <LayoutToggle layout={layout} onChange={setLayoutPersist} isMobile={isMobile} />
-              {canEdit && (
-                <LockToggle
-                  locked={userLocked}
-                  onToggle={() => {
-                    const next = !userLocked
-                    setUserLocked(next)
-                    trackClick(next ? 'product_lock_on' : 'product_lock_off', user?.email ?? undefined)
-                  }}
-                />
-              )}
-            </>
-          )}
+        </div>
+
+        {/* 清單工具：結果數、排序、主要檢視與次要顯示設定 */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            flexWrap: 'wrap',
+            marginBottom: 14,
+          }}
+        >
+          <div
+            style={{
+              width: isMobile ? '100%' : undefined,
+              fontSize: getFontSize('bodySmall', isMobile),
+              color: colors.text.secondary,
+              fontWeight: 600,
+            }}
+          >
+            {loading ? '載入中…' : `${filteredItems.length} 個結果`}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+              width: isMobile ? '100%' : undefined,
+            }}
+          >
+            <SortMenu
+              value={sortBy}
+              onChange={(next) => {
+                setSortByPersist(next)
+                trackClick(`product_sort_${next}`, user?.email ?? undefined)
+              }}
+              isMobile={isMobile}
+            />
+            <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
+            <DisplaySettings
+              imageMode={listImageMode}
+              isMobile={isMobile}
+              onImageModeChange={(next) => {
+                setListImageModePersist(next)
+                trackClick(`product_list_image_${next}`, user?.email ?? undefined)
+              }}
+            />
+          </div>
         </div>
 
         {/* 列表 */}
@@ -682,7 +640,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
         ) : filteredItems.length === 0 ? (
           <EmptyState
             hasAnyProduct={products.length > 0}
-            canCreate={effectiveCanEdit}
+            canCreate={canEdit}
             onCreate={() => {
               setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
             }}
@@ -699,7 +657,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
           <MobileListView
             items={filteredItems}
             imageMode={listImageMode}
-            canEdit={effectiveCanEdit}
+            canEdit={canEdit}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
             onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
@@ -708,7 +666,7 @@ export function ProductManagement({ embedded = false }: { embedded?: boolean } =
             items={filteredItems}
             showCategoryColumn={showCategoryColumn}
             imageMode={listImageMode}
-            canEdit={effectiveCanEdit}
+            canEdit={canEdit}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
             onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
@@ -849,8 +807,6 @@ function isVariantMissingLabel(it: VariantListItem): boolean {
 
 interface InventoryDashboardProps {
   base: VariantListItem[] // 套搜尋（不含進一步狀態篩選）的清單，用來算主數字/待補 chip
-  filtered: VariantListItem[]
-  tabName: string
   isFiltered: boolean
   onlyMissingPrice: boolean
   onlyMissingImage: boolean
@@ -868,8 +824,6 @@ interface InventoryDashboardProps {
 }
 function InventoryDashboard({
   base,
-  filtered,
-  tabName,
   isFiltered,
   onlyMissingPrice,
   onlyMissingImage,
@@ -892,15 +846,25 @@ function InventoryDashboard({
   const missingImageCount = base.filter((it) => !it.variant.image_url).length
   const missingCoverCount = base.filter((it) => !it.variant.cover_image_url).length
   const missingLabelCount = base.filter(isVariantMissingLabel).length
+  const missingDataCount = base.filter(
+    (it) =>
+      it.variant.price == null ||
+      !it.variant.image_url ||
+      !it.variant.cover_image_url ||
+      isVariantMissingLabel(it),
+  ).length
+  const hasActiveDataIssue =
+    onlyMissingPrice || onlyMissingImage || onlyMissingCover || onlyMissingLabel
+  const [showDataIssues, setShowDataIssues] = useState(hasActiveDataIssue)
 
-  const filteredSkuCount = filtered.length
-  const filteredStockTotal = filtered.reduce((s, it) => s + getVariantSellableStock(it.variant), 0)
-  const filteredReservedTotal = filtered.reduce((s, it) => s + (it.variant.reserved_qty || 0), 0)
+  useEffect(() => {
+    if (hasActiveDataIssue) setShowDataIssues(true)
+  }, [hasActiveDataIssue])
 
-  // 主要顯示數字：有篩選就顯示已篩，沒篩就顯示總計
-  const mainSku = isFiltered ? filteredSkuCount : baseSkuCount
-  const mainStock = isFiltered ? filteredStockTotal : baseStockTotal
-  const mainReserved = isFiltered ? filteredReservedTotal : baseReservedTotal
+  // 摘要固定顯示目前搜尋／分類範圍的總數，不隨資料品質篩選切換
+  const mainSku = baseSkuCount
+  const mainStock = baseStockTotal
+  const mainReserved = baseReservedTotal
 
   return (
     <div
@@ -917,7 +881,16 @@ function InventoryDashboard({
       }}
     >
       {/* 主數字：種 + 件 */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 8,
+          rowGap: 10,
+          minWidth: 0,
+          flexWrap: 'wrap',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
           <span
             style={{
@@ -929,7 +902,9 @@ function InventoryDashboard({
           >
             {mainSku}
           </span>
-          <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>種</span>
+          <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>
+            種商品規格
+          </span>
         </div>
         <span style={{ color: colors.border.main }}>·</span>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
@@ -943,85 +918,107 @@ function InventoryDashboard({
           >
             {mainStock}
           </span>
-          <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>可售現貨</span>
+          <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>
+            件可售現貨
+          </span>
         </div>
-        {mainReserved > 0 && (
-          <>
-            <span style={{ color: colors.border.main }}>·</span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span
-                style={{
-                  fontSize: getFontSize('h3', isMobile),
-                  fontWeight: 700,
-                  color: colors.text.secondary,
-                  lineHeight: 1,
-                }}
-              >
-                {mainReserved}
-              </span>
-              <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>
-                待結帳保留
-              </span>
-            </div>
-          </>
-        )}
-        {isFiltered && (
+        <span style={{ color: colors.border.main }}>·</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
           <span
             style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: colors.text.disabled,
-              marginLeft: 4,
+              fontSize: getFontSize('h3', isMobile),
+              fontWeight: 700,
+              color: colors.text.secondary,
+              lineHeight: 1,
             }}
           >
-            / {tabName} {baseSkuCount}種
+            {mainReserved}
           </span>
-        )}
+          <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.secondary }}>
+            件待結帳保留
+          </span>
+        </div>
       </div>
 
-      <div
-        style={{
-          width: 1,
-          height: 22,
-          background: colors.border.light,
-          flexShrink: 0,
-          display: isMobile ? 'none' : 'block',
-        }}
-      />
+      <div style={{ flexBasis: '100%', height: 0 }} />
 
-      {/* 待補：缺價 / 沒實拍 / 沒封面 / 缺標籤（可點擊 toggle）— quiet near-black chips */}
+      {/* 待補資料預設收合，避免資料品質提醒與主要庫存數字同等醒目 */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <DashboardStatChip
-          label="缺價"
-          count={missingPriceCount}
-          active={onlyMissingPrice}
-          onClick={onToggleMissingPrice}
-          trackId="product_filter_missing_price"
-          isMobile={isMobile}
-        />
-        <DashboardStatChip
-          label="沒實拍"
-          count={missingImageCount}
-          active={onlyMissingImage}
-          onClick={onToggleMissingImage}
-          trackId="product_filter_missing_image"
-          isMobile={isMobile}
-        />
-        <DashboardStatChip
-          label="沒封面"
-          count={missingCoverCount}
-          active={onlyMissingCover}
-          onClick={onToggleMissingCover}
-          trackId="product_filter_missing_cover"
-          isMobile={isMobile}
-        />
-        <DashboardStatChip
-          label="缺標籤"
-          count={missingLabelCount}
-          active={onlyMissingLabel}
-          onClick={onToggleMissingLabel}
-          trackId="product_filter_missing_label"
-          isMobile={isMobile}
-        />
+        <span
+          style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: colors.text.secondary,
+            fontWeight: 600,
+          }}
+        >
+          資料整理
+        </span>
+        <button
+          type="button"
+          aria-expanded={showDataIssues}
+          disabled={missingDataCount === 0 && !hasActiveDataIssue && !showDataIssues}
+          onClick={() => setShowDataIssues((visible) => !visible)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            fontSize: getFontSize('caption', isMobile),
+            fontWeight: hasActiveDataIssue ? 700 : 500,
+            background: hasActiveDataIssue ? colors.primary[500] : colors.background.card,
+            color:
+              missingDataCount === 0 && !hasActiveDataIssue && !showDataIssues
+                ? colors.text.disabled
+                : hasActiveDataIssue
+                  ? colors.background.card
+                  : colors.text.secondary,
+            border: `1px solid ${hasActiveDataIssue ? colors.primary[500] : colors.border.light}`,
+            borderRadius: borderRadius.full,
+            cursor:
+              missingDataCount === 0 && !hasActiveDataIssue && !showDataIssues
+                ? 'default'
+                : 'pointer',
+          }}
+        >
+          {missingDataCount} 種缺資料
+          <span aria-hidden>{showDataIssues ? '▴' : '▾'}</span>
+        </button>
+        {showDataIssues && (
+          <>
+            <DashboardStatChip
+              label="缺價"
+              count={missingPriceCount}
+              active={onlyMissingPrice}
+              onClick={onToggleMissingPrice}
+              trackId="product_filter_missing_price"
+              isMobile={isMobile}
+            />
+            <DashboardStatChip
+              label="沒實拍"
+              count={missingImageCount}
+              active={onlyMissingImage}
+              onClick={onToggleMissingImage}
+              trackId="product_filter_missing_image"
+              isMobile={isMobile}
+            />
+            <DashboardStatChip
+              label="沒封面"
+              count={missingCoverCount}
+              active={onlyMissingCover}
+              onClick={onToggleMissingCover}
+              trackId="product_filter_missing_cover"
+              isMobile={isMobile}
+            />
+            <DashboardStatChip
+              label="缺標籤"
+              count={missingLabelCount}
+              active={onlyMissingLabel}
+              onClick={onToggleMissingLabel}
+              trackId="product_filter_missing_label"
+              isMobile={isMobile}
+            />
+          </>
+        )}
       </div>
 
       <div
@@ -1046,23 +1043,35 @@ function InventoryDashboard({
       <div style={{ flex: 1 }} />
 
       {isFiltered && (
-        <button
-          type="button"
-          data-track="product_filter_clear"
-          onClick={onClearAll}
+        <div
           style={{
-            background: 'transparent',
-            border: 'none',
-            color: colors.text.secondary,
-            fontSize: getFontSize('caption', isMobile),
-            cursor: 'pointer',
-            padding: 4,
-            textDecoration: 'underline',
-            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginLeft: isMobile ? 0 : 'auto',
           }}
         >
-          清除篩選
-        </button>
+          <span style={{ fontSize: getFontSize('caption', isMobile), color: colors.text.disabled }}>
+            目前顯示篩選結果
+          </span>
+          <button
+            type="button"
+            data-track="product_filter_clear"
+            onClick={onClearAll}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: colors.text.secondary,
+              fontSize: getFontSize('caption', isMobile),
+              cursor: 'pointer',
+              padding: 4,
+              textDecoration: 'underline',
+              flexShrink: 0,
+            }}
+          >
+            清除
+          </button>
+        </div>
       )}
     </div>
   )
@@ -1265,6 +1274,67 @@ function ImageModeToggle({ mode, onChange }: ImageModeToggleProps) {
         實拍
       </button>
     </div>
+  )
+}
+
+function DisplaySettings({
+  imageMode,
+  isMobile,
+  onImageModeChange,
+}: {
+  imageMode: ListImageMode
+  isMobile: boolean
+  onImageModeChange: (next: ListImageMode) => void
+}) {
+  return (
+    <details style={{ position: 'relative', flexShrink: 0 }}>
+      <summary
+        style={{
+          height: isMobile ? 40 : 34,
+          boxSizing: 'border-box',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 11px',
+          border: `1px solid ${colors.border.main}`,
+          borderRadius: borderRadius.sm,
+          background: colors.background.card,
+          color: colors.text.secondary,
+          fontSize: getFontSize('bodySmall', isMobile),
+          fontWeight: 500,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          listStyle: 'none',
+        }}
+      >
+        顯示設定
+      </summary>
+      <div
+        style={{
+          position: 'absolute',
+          top: 'calc(100% + 6px)',
+          right: 0,
+          zIndex: designSystem.zIndex.dropdown,
+          minWidth: 176,
+          padding: designSystem.spacing.md,
+          border: `1px solid ${colors.border.light}`,
+          borderRadius: borderRadius.md,
+          background: colors.background.card,
+          boxShadow: designSystem.shadows.md,
+        }}
+      >
+        <div
+          style={{
+            marginBottom: designSystem.spacing.sm,
+            color: colors.text.secondary,
+            fontSize: getFontSize('caption', isMobile),
+            fontWeight: 600,
+          }}
+        >
+          圖片優先顯示
+        </div>
+        <ImageModeToggle mode={imageMode} onChange={onImageModeChange} />
+      </div>
+    </details>
   )
 }
 
@@ -1549,46 +1619,6 @@ function GalleryCard({ item, imageMode, onClick, onStartOrder }: GalleryCardProp
   )
 }
 
-/**
- * 鎖定編輯按鈕：給有編輯權的人「自己進唯讀」的開關，防誤改。
- * 鎖了之後跟 can_products_view 帳號看到的 UI 完全一樣。
- */
-interface LockToggleProps {
-  locked: boolean
-  onToggle: () => void
-}
-function LockToggle({ locked, onToggle }: LockToggleProps) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      title={locked ? '目前已鎖定（唯讀）。點此解鎖編輯' : '目前可編輯。點此鎖定避免誤改'}
-      aria-label={locked ? '解鎖編輯' : '鎖定編輯'}
-      aria-pressed={locked}
-      style={{
-        minWidth: 44,
-        height: 34,
-        padding: '0 8px',
-        border: `1px solid ${locked ? colors.warning[500] : colors.border.main}`,
-        borderRadius: borderRadius.md,
-        background: locked ? colors.warning[50] : colors.background.card,
-        color: locked ? colors.warning[700] : colors.text.secondary,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: getFontSize('caption', false),
-        fontWeight: 600,
-        flexShrink: 0,
-        transition: designSystem.transitions.fast,
-      }}
-      data-track={locked ? 'product_unlock_edit' : 'product_lock_edit'}
-    >
-      {locked ? '鎖定' : '可編'}
-    </button>
-  )
-}
-
 /** 缺圖時的 placeholder：淺底＋文字，不使用分類 emoji */
 function ImagePlaceholder() {
   return (
@@ -1843,7 +1873,7 @@ function MobileListRow({
             <span
               style={{
                 fontSize: getFontSize('caption', true),
-                fontWeight: 600,
+                fontWeight: 500,
                 padding: '2px 8px',
                 borderRadius: 999,
                 background: status.bg,
@@ -1905,7 +1935,14 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
     >
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: getFontSize('body', false) }}>
-          <thead>
+          <thead
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 1,
+              background: colors.secondary[50],
+            }}
+          >
             <tr style={{ background: colors.secondary[50], color: colors.text.secondary, fontWeight: 600 }}>
               <th style={thStyle('60px')}>照片</th>
               <th style={thStyle('auto')}>商品／規格</th>
@@ -1981,17 +2018,40 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                   <td style={tdStyle('right')}>
                     <PriceDisplay price={it.variant.price} align="right" />
                   </td>
-                  <td style={{ ...tdStyle('center'), fontWeight: 600 }}>{stock}</td>
-                  <td style={{ ...tdStyle('center'), color: reserved > 0 ? colors.warning[700] : colors.text.secondary }}>
+                  <td
+                    style={{
+                      ...tdStyle('center'),
+                      fontSize: getFontSize('bodyLarge', false),
+                      fontWeight: 700,
+                    }}
+                  >
+                    {stock}
+                  </td>
+                  <td
+                    style={{
+                      ...tdStyle('center'),
+                      fontSize: getFontSize('bodyLarge', false),
+                      fontWeight: 600,
+                      color: reserved > 0 ? colors.warning[700] : colors.text.secondary,
+                    }}
+                  >
                     {reserved}
                   </td>
-                  <td style={{ ...tdStyle('center'), fontWeight: 700 }}>{sellable}</td>
+                  <td
+                    style={{
+                      ...tdStyle('center'),
+                      fontSize: getFontSize('bodyLarge', false),
+                      fontWeight: 700,
+                    }}
+                  >
+                    {sellable}
+                  </td>
                   <td style={tdStyle('center')}>
                     <span
                       style={{
-                        fontSize: getFontSize('bodySmall', false),
-                        fontWeight: 600,
-                        padding: '3px 10px',
+                        fontSize: getFontSize('caption', false),
+                        fontWeight: 500,
+                        padding: '2px 8px',
                         borderRadius: 999,
                         background: status.bg,
                         color: status.color,
@@ -2016,6 +2076,7 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                       {onStartOrder && (
                         <StartOrderButton
                           label="新增訂單"
+                          tone="secondary"
                           onClick={(e) => {
                             e.stopPropagation()
                             onStartOrder(it.variant.id)
@@ -2100,11 +2161,14 @@ function StartOrderButton({
   onClick,
   label = '開單',
   wide = false,
+  tone = 'primary',
 }: {
   onClick: (e: MouseEvent<HTMLButtonElement>) => void
   label?: string
   wide?: boolean
+  tone?: 'primary' | 'secondary'
 }) {
+  const primary = tone === 'primary'
   return (
     <button
       type="button"
@@ -2117,9 +2181,9 @@ function StartOrderButton({
         flex: wide ? 1 : undefined,
         minHeight: wide ? 44 : 32,
         borderRadius: 8,
-        border: `1px solid ${colors.primary[500]}`,
-        background: colors.primary[500],
-        color: colors.background.card,
+        border: `1px solid ${primary ? colors.primary[500] : colors.border.main}`,
+        background: primary ? colors.primary[500] : colors.background.card,
+        color: primary ? colors.background.card : colors.text.primary,
         cursor: 'pointer',
         whiteSpace: 'nowrap',
       }}

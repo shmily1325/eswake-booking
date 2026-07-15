@@ -1,7 +1,6 @@
 // LIFF 組件匯出
 
 export { ErrorView } from './ErrorView'
-export { LoadingSkeleton } from './LoadingSkeleton'
 export { BindingForm } from './BindingForm'
 export { LiffHeader } from './LiffHeader'
 export { LiffTabs } from './LiffTabs'
@@ -16,7 +15,6 @@ export { ShopOrdersListSkeleton } from './ShopOrdersListSkeleton'
 export { LiffStyles } from './LiffStyles'
 export { BookingsListSkeleton } from './BookingsListSkeleton'
 export { TabPanelSkeleton } from './TabPanelSkeleton'
-export { LiffContactBar, LiffPageHint, LIFF_CONTACT_LINE } from './LiffPageHint'
+export { LiffPageHint } from './LiffPageHint'
 export { LiffEmptyState } from './LiffEmptyState'
 export { LiffExpiryBanner } from './LiffExpiryBanner'
-

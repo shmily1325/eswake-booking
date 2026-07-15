@@ -74,6 +74,8 @@ function itemSearchHaystack(item: ShopOrderItemWithVariant): string {
   if (code) {
     parts.push(code, code.replace(/^#/, ''))
   }
+  const labelCode = variant.label_code?.trim()
+  if (labelCode) parts.push(labelCode)
   if (product?.category) {
     parts.push(formatAttributes(product.category, variant.attributes))
   }

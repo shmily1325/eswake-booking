@@ -5,7 +5,8 @@
  * Primary task: edit product / SKU and save without loud decorative CTAs.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Badge, useToast, ConfirmModal } from '../../../components/ui'
+import { Button, Badge, useToast } from '../../../components/ui'
+import { ConfirmModal } from '../../../components/ui/Modal'
 import { NumericTextInput } from '../../../components/ui/numericInputs'
 import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../../../styles/designSystem'
 import { useResponsive } from '../../../hooks/useResponsive'
@@ -61,7 +62,7 @@ interface ProductEditViewProps {
   defaultCategory?: string
   /** 已存在的商品（給品牌 / 型號 autocomplete 用） */
   existingProducts?: ReadonlyArray<{ category: string; brand: string; model: string }>
-  /** 唯讀模式（can_products_view 進來的人）：所有 input/按鈕 disabled、儲存/刪除/SKU 編輯入口隱藏 */
+  /** 可選的唯讀呈現（目前商品入口不使用） */
   readOnly?: boolean
   onClose: (changed: boolean) => void
   currentUserEmail?: string | null
@@ -1790,4 +1791,3 @@ function VariantBlock({
     </div>
   )
 }
-

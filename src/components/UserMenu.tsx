@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { getFontSize } from '../styles/designSystem'
+import { designSystem, getFontSize } from '../styles/designSystem'
 
 interface UserMenuProps {
   user: User
@@ -27,17 +27,17 @@ export function UserMenu({ user }: UserMenuProps) {
           justifyContent: 'center',
           padding: '4px',
           borderRadius: '50%',
-          border: '2px solid #ddd',
-          backgroundColor: 'white',
+          border: `2px solid ${designSystem.colors.border.main}`,
+          backgroundColor: designSystem.colors.background.card,
           cursor: 'pointer',
           transition: 'all 0.2s ease',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = '#007bff'
+          e.currentTarget.style.borderColor = designSystem.colors.primary[500]
           e.currentTarget.style.transform = 'scale(1.05)'
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = '#ddd'
+          e.currentTarget.style.borderColor = designSystem.colors.border.main
           e.currentTarget.style.transform = 'scale(1)'
         }}
       >
@@ -76,7 +76,7 @@ export function UserMenu({ user }: UserMenuProps) {
               {user.email}
             </div>
           </div>
-          
+
           <button
             onClick={handleLogout}
             disabled={loading}

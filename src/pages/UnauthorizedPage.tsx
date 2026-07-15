@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useResponsive } from '../hooks/useResponsive'
-import { designSystem, getButtonStyle } from '../styles/designSystem'
+import { EsBrandLockup } from '../components/EsBrandLockup'
+import { ES_BRAND } from '../lib/esBrandTokens'
+import { designSystem, getButtonStyle, getFontSize } from '../styles/designSystem'
 
 export function UnauthorizedPage() {
   const { user } = useAuth()
@@ -12,105 +14,109 @@ export function UnauthorizedPage() {
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)',
-      padding: designSystem.spacing.xl
+      background: ES_BRAND.pageBg,
     }}>
-      <div style={{
-        maxWidth: '500px',
-        width: '100%',
-        textAlign: 'center',
-        background: 'white',
-        borderRadius: designSystem.borderRadius.lg,
-        padding: isMobile ? designSystem.spacing.xl : '60px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+      <header style={{
+        background: ES_BRAND.headerBg,
+        borderBottom: ES_BRAND.headerBorderBottom,
+        padding: `${designSystem.spacing.md} ${designSystem.spacing.xl}`,
       }}>
-        {/* 圖示 */}
-        <div style={{
-          fontSize: isMobile ? '80px' : '100px',
-          marginBottom: designSystem.spacing.lg
-        }}>
-          🔒
+        <div style={{ width: '100%', maxWidth: '1100px', margin: '0 auto' }}>
+          <EsBrandLockup subtitle="存取權限" isMobile={isMobile} />
         </div>
+      </header>
 
-        {/* 標題 */}
-        <h1 style={{
-          fontSize: isMobile ? '28px' : '36px',
-          fontWeight: 'bold',
-          margin: 0,
-          marginBottom: designSystem.spacing.md,
-          color: designSystem.colors.text.primary
-        }}>
-          無法存取
-        </h1>
-
-        {/* 說明文字 */}
-        <p style={{
-          fontSize: isMobile ? '15px' : '16px',
-          color: designSystem.colors.text.secondary,
-          lineHeight: '1.6',
-          marginBottom: designSystem.spacing.xl
-        }}>
-          {user ? (
-            <>
-              您的帳號 <strong>{user.email}</strong> 沒有權限存取此頁面。
-              <br /><br />
-              如需協助，請聯絡系統管理員。
-            </>
-          ) : (
-            <>
-              您沒有權限存取此頁面。
-              <br /><br />
-              請先登入或聯絡系統管理員。
-            </>
-          )}
-        </p>
-
-        {/* 按鈕 */}
+      <main style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: designSystem.spacing.xl,
+      }}>
         <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: designSystem.spacing.md
+          maxWidth: '500px',
+          width: '100%',
+          boxSizing: 'border-box',
+          textAlign: 'center',
+          background: designSystem.colors.background.card,
+          borderRadius: designSystem.borderRadius.lg,
+          padding: isMobile ? designSystem.spacing.xl : designSystem.spacing.xxl,
+          boxShadow: designSystem.shadows.sm,
         }}>
-          <Link
-            to="/"
-            style={{
-              ...getButtonStyle('primary', 'large', isMobile),
-              textDecoration: 'none',
-              display: 'block'
-            }}
-          >
-            返回首頁
-          </Link>
-          
-          {!user && (
+          <h1 style={{
+            fontSize: getFontSize('h1', isMobile),
+            fontWeight: '700',
+            margin: `0 0 ${designSystem.spacing.md}`,
+            color: designSystem.colors.text.primary
+          }}>
+            無法存取
+          </h1>
+
+          <p style={{
+            fontSize: getFontSize('body', isMobile),
+            color: designSystem.colors.text.secondary,
+            lineHeight: '1.6',
+            margin: `0 0 ${designSystem.spacing.xl}`,
+          }}>
+            {user ? (
+              <>
+                您的帳號 <strong>{user.email}</strong> 沒有權限存取此頁面。
+                <br /><br />
+                如需協助，請聯絡系統管理員。
+              </>
+            ) : (
+              <>
+                您沒有權限存取此頁面。
+                <br /><br />
+                請先登入或聯絡系統管理員。
+              </>
+            )}
+          </p>
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: designSystem.spacing.md
+          }}>
             <Link
-              to="/login"
+              to="/"
               style={{
-                ...getButtonStyle('outline', 'large', isMobile),
+                ...getButtonStyle('primary', 'large', isMobile),
                 textDecoration: 'none',
-                display: 'block'
+                display: 'flex',
+                minHeight: '48px',
               }}
             >
-              重新登入
+              返回首頁
             </Link>
-          )}
-        </div>
 
-        {/* 聯絡資訊 */}
-        <div style={{
-          marginTop: designSystem.spacing.xl,
-          paddingTop: designSystem.spacing.lg,
-          borderTop: `1px solid ${designSystem.colors.border.main}`,
-          fontSize: '14px',
-          color: designSystem.colors.text.secondary
-        }}>
-          需要協助？<br />
-          請聯絡管理員開通權限
+            {!user && (
+              <Link
+                to="/login"
+                style={{
+                  ...getButtonStyle('outline', 'large', isMobile),
+                  textDecoration: 'none',
+                  display: 'flex',
+                  minHeight: '48px',
+                }}
+              >
+                重新登入
+              </Link>
+            )}
+          </div>
+
+          <div style={{
+            marginTop: designSystem.spacing.xl,
+            paddingTop: designSystem.spacing.lg,
+            borderTop: `1px solid ${designSystem.colors.border.main}`,
+            fontSize: getFontSize('bodySmall', isMobile),
+            color: designSystem.colors.text.secondary
+          }}>
+            需要協助？<br />
+            請聯絡管理員開通權限
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
-

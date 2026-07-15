@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isLiffPathname } from '../appBootstrap'
+import { isLiffPathname } from '../lib/appEntry'
 
 describe('isLiffPathname', () => {
   it('matches member area and booking paths', () => {

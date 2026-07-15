@@ -57,19 +57,3 @@ export interface BoardExportData {
     nickname: string | null
   } | null
 }
-
-/**
- * Papa Parse 結果
- */
-export interface ParseResult<T> {
-  data: T[]
-  errors: any[]
-  meta: {
-    delimiter: string
-    linebreak: string
-    aborted: boolean
-    truncated: boolean
-    cursor: number
-  }
-}
-

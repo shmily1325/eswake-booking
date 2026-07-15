@@ -28,7 +28,6 @@ import type {
   CoachFutureBooking,
   CoachStats,
   MemberStats,
-  FinanceStats,
   WeekdayStats,
 } from './types'
 
@@ -40,7 +39,7 @@ export function Statistics() {
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  
+
   // 權限檢查：只有管理員可以進入
   useEffect(() => {
     if (user && !isAdmin(user)) {
@@ -51,15 +50,8 @@ export function Statistics() {
   const [activeTab, setActiveTab] = useState<TabType>('operations')
   const [operationsPeriod, setOperationsPeriod] = useState<OperationsPeriodMode>('monthly')
 
-  // 舊趨勢／財務載入器暫留供後續移除，不再由畫面觸發。
-  const [, setMonthlyStats] = useState<MonthlyStats[]>([])
-  const [, setFinanceStats] = useState<FinanceStats[]>([])
-
   // 未來預約數據
   const [futureBookings, setFutureBookings] = useState<CoachFutureBooking[]>([])
-  const [, setFutureWeekdayStats] = useState<WeekdayStats>({
-    weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0
-  })
 
   // 月度統計數據
   const [selectedPeriod, setSelectedPeriod] = useState(() => getVenueDateString().slice(0, 7))
@@ -74,194 +66,15 @@ export function Statistics() {
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
   const [annualLoading, setAnnualLoading] = useState(false)
   const [annualMonthlyStats, setAnnualMonthlyStats] = useState<MonthlyStats[]>([])
-  const [, setAnnualFinanceStats] = useState<FinanceStats[]>([])
   const [annualCoachStats, setAnnualCoachStats] = useState<CoachStats[]>([])
   const [annualMemberStats, setAnnualMemberStats] = useState<MemberStats[]>([])
   const [annualBoatUsage, setAnnualBoatUsage] = useState<BoatUsageRangeRow[]>([])
-  const [, setAnnualWeekdayStats] = useState<WeekdayStats>({
-    weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0
-  })
 
   // 主導覽只區分已發生的營運數據與未來排程。
   const tabs: { key: TabType; label: string; shortLabel?: string }[] = [
     { key: 'operations', label: '營運報表' },
     { key: 'future', label: '未來排程' },
   ]
-
-  // 載入過去6個月的預約趨勢（歷史資料，不含未來）
-  const loadMonthlyTrend = async () => {
-    const today = getVenueDateString()
-    const [currentYear, currentMonth] = today.split('-').map(Number)
-
-    // 先計算每個月的查詢區間（保留原本 continue 略過當月的邏輯），
-    // 再以 Promise.all 並行送出 6 次查詢，最後依原本順序聚合。
-    type RangeMeta = {
-      monthStr: string
-      month: number
-      startDate: string
-      endDateStr: string
-    }
-    const ranges: RangeMeta[] = []
-
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(Date.UTC(currentYear, currentMonth - 1 - i, 1))
-      const year = date.getUTCFullYear()
-      const month = date.getUTCMonth() + 1
-      const monthStr = `${year}-${String(month).padStart(2, '0')}`
-      const startDate = `${monthStr}-01`
-
-      // 計算結束日期：當月只到昨天，過去月份到月底
-      const lastDayOfMonth = new Date(year, month, 0).getDate()
-      let endDateStr: string
-
-      if (i === 0) {
-        // 當月：只統計到昨天（不含今天及未來）
-        const yesterdayStr = addDaysToDate(today, -1)
-        // 如果昨天還在上個月，則當月沒有歷史資料
-        if (yesterdayStr < startDate) {
-          continue // 跳過當月（月初第一天時沒有歷史資料）
-        }
-        endDateStr = yesterdayStr
-      } else {
-        // 過去月份：到月底
-        endDateStr = `${monthStr}-${String(lastDayOfMonth).padStart(2, '0')}`
-      }
-
-      ranges.push({ monthStr, month, startDate, endDateStr })
-    }
-
-    // 並行查詢所有月份的參與者資料
-    const participantsByMonth = await Promise.all(
-      ranges.map((r) => loadPaidOperationalParticipantsForRange(supabase, r.startDate, r.endDateStr))
-    )
-
-    // 維持原本「依時間順序」放入 months
-    const months: MonthlyStats[] = ranges.map((r, idx) => {
-      const participants = participantsByMonth[idx]
-      const bookingCount = new Set(participants.map((p) => p.bookingId)).size
-
-      const totalMinutes = participants.reduce((sum, p) => sum + p.participantMinutes, 0)
-
-      const weekdayBookingIds = new Set<number>()
-      const weekendBookingIds = new Set<number>()
-      let weekdayMinutes = 0, weekendMinutes = 0
-      const boatMap = new Map<number, { boatName: string; minutes: number }>()
-
-      participants.forEach((p) => {
-        const d = new Date(p.start_at)
-        const dayOfWeek = d.getDay()
-        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-        const minutes = p.participantMinutes
-
-        if (isWeekend) {
-          weekendBookingIds.add(p.bookingId)
-          weekendMinutes += minutes
-        } else {
-          weekdayBookingIds.add(p.bookingId)
-          weekdayMinutes += minutes
-        }
-
-        const existing = boatMap.get(p.boatId)
-        if (existing) existing.minutes += minutes
-        else boatMap.set(p.boatId, { boatName: p.boatName, minutes })
-      })
-
-      const weekdayCount = weekdayBookingIds.size
-      const weekendCount = weekendBookingIds.size
-
-      const boatMinutes = Array.from(boatMap.entries())
-        .map(([boatId, d]) => ({ boatId, boatName: d.boatName, minutes: d.minutes }))
-        .sort((a, b) => a.boatId - b.boatId)
-
-      return {
-        month: r.monthStr,
-        label: `${r.month}月`,
-        bookingCount,
-        totalMinutes,
-        totalHours: Math.round(totalMinutes / 60 * 10) / 10,
-        boatMinutes,
-        weekdayCount,
-        weekdayMinutes,
-        weekendCount,
-        weekendMinutes
-      }
-    })
-
-    setMonthlyStats(months)
-  }
-
-  // 載入財務統計
-  const loadFinanceStats = async () => {
-    const today = getVenueDateString()
-    const [currentYear, currentMonth] = today.split('-').map(Number)
-
-    // 與 loadMonthlyTrend 相同模式：先算範圍 → 並行查 → 依序聚合
-    type RangeMeta = { monthStr: string; startDate: string; endDateStr: string }
-    const ranges: RangeMeta[] = []
-
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(Date.UTC(currentYear, currentMonth - 1 - i, 1))
-      const year = date.getUTCFullYear()
-      const month = date.getUTCMonth() + 1
-      const monthStr = `${year}-${String(month).padStart(2, '0')}`
-      const startDate = `${monthStr}-01`
-
-      // 計算結束日期：當月只到昨天，過去月份到月底
-      const lastDayOfMonth = new Date(year, month, 0).getDate()
-      let endDateStr: string
-
-      if (i === 0) {
-        // 當月：只統計到昨天
-        const yesterdayStr = addDaysToDate(today, -1)
-        // 如果昨天還在上個月，則當月沒有歷史資料
-        if (yesterdayStr < startDate) {
-          continue
-        }
-        endDateStr = yesterdayStr
-      } else {
-        // 過去月份：到月底
-        endDateStr = `${monthStr}-${String(lastDayOfMonth).padStart(2, '0')}`
-      }
-
-      ranges.push({ monthStr, startDate, endDateStr })
-    }
-
-    // 並行查詢所有月份的 consume 交易
-    const consumeResults = await Promise.all(
-      ranges.map((r) =>
-        fetchAllPaginated<any>(async (from, to) => {
-          return supabase
-            .from('transactions')
-            .select('category, amount, minutes')
-            .eq('transaction_type', 'consume')
-            .not('booking_participant_id', 'is', null)
-            .gte('transaction_date', r.startDate)
-            .lte('transaction_date', r.endDateStr)
-            .order('id', { ascending: true })
-            .range(from, to)
-        })
-      )
-    )
-
-    const stats: FinanceStats[] = ranges.map((r, idx) => {
-      const consumeData = consumeResults[idx]
-      let balanceUsed = 0, vipUsed = 0, g23Used = 0, g21Used = 0
-      consumeData?.forEach((tx: any) => {
-        if (tx.category === 'balance' && tx.amount) {
-          balanceUsed += Math.abs(tx.amount)
-        } else if (tx.category === 'vip_voucher' && tx.amount) {
-          vipUsed += Math.abs(tx.amount)
-        } else if (tx.category === 'boat_voucher_g23' && tx.minutes) {
-          g23Used += Math.abs(tx.minutes)
-        } else if (tx.category === 'boat_voucher_g21_panther' && tx.minutes) {
-          g21Used += Math.abs(tx.minutes)
-        }
-      })
-      return { month: r.monthStr, balanceUsed, vipUsed, g23Used, g21Used }
-    })
-
-    setFinanceStats(stats)
-  }
 
   // 載入未來預約
   const loadFutureBookings = async () => {
@@ -308,8 +121,6 @@ export function Statistics() {
     const reportedBookings = reportedBookingsResult.data
 
     const reportedBookingIds = new Set(reportedBookings?.map(r => r.booking_id) || [])
-
-    let weekdayCount = 0, weekdayMinutes = 0, weekendCount = 0, weekendMinutes = 0
 
     const coachMap = new Map<string, {
       coachId: string
@@ -359,33 +170,22 @@ export function Statistics() {
       const durationMin = booking.duration_min || 0
 
       // 合併會員和非會員名稱
-      const memberNamesFromBookingMembers = bookingMembers.map((bm: any) => 
+      const memberNamesFromBookingMembers = bookingMembers.map((bm: any) =>
         bm.members?.nickname || bm.members?.name || '未知會員'
       )
-      
+
       // 從 contact_name 取得所有名稱，過濾掉已經在 booking_members 中的
       const contactNames = (booking.contact_name || '').split(/[,，]/).map((n: string) => n.trim()).filter((n: string) => n)
-      const nonMemberNames = contactNames.filter((name: string) => 
-        !memberNamesFromBookingMembers.some((memberName: string) => 
+      const nonMemberNames = contactNames.filter((name: string) =>
+        !memberNamesFromBookingMembers.some((memberName: string) =>
           memberName === name || name.includes(memberName) || memberName.includes(name)
         )
       )
-      
+
       // 合併：先會員，再非會員
       const memberNames: string[] = memberNamesFromBookingMembers.length > 0 || nonMemberNames.length > 0
         ? [...memberNamesFromBookingMembers, ...nonMemberNames]
         : (booking.contact_name || '未知').split(/[,，]/).map((n: string) => n.trim()).filter((n: string) => n)
-
-      const date = new Date(booking.start_at)
-      const dayOfWeek = date.getDay()
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-      if (isWeekend) {
-        weekendCount++
-        weekendMinutes += durationMin
-      } else {
-        weekdayCount++
-        weekdayMinutes += durationMin
-      }
 
       // 多教練：預約總時數依教練人數等分（與 teachingMinutesAllocation 一致）；未指派仍計整筆
       const coachShares = coaches.length > 0 ? splitMinutesEqually(durationMin, coaches.length) : null
@@ -399,7 +199,7 @@ export function Statistics() {
         const coach = coachMap.get(coachId)!
 
         const monthData = coach.bookings.find(b => b.month === bookingMonth)
-        
+
         // 每位聯絡人／會員：在該教練此筆分攤時數內平分，加總嚴格等於 shareMin（無四捨五入誤差）
         const n = memberNames.length
         const baseMin = n > 0 ? Math.floor(shareMin / n) : 0
@@ -464,7 +264,6 @@ export function Statistics() {
       .sort((a, b) => b.totalMinutes - a.totalMinutes)
 
     setFutureBookings(sortedCoaches)
-    setFutureWeekdayStats({ weekdayCount, weekdayMinutes, weekendCount, weekendMinutes })
   }
 
   // 取得月報日期範圍（當月只到昨天，與歷史趨勢一致）
@@ -622,7 +421,7 @@ export function Statistics() {
       if (record.lesson_type === 'designated_paid' || record.lesson_type === 'designated_free') {
         // 非會員用 participant_name 作為 ID，會員用 member_id
         const memberId = record.member_id || `non-member:${record.participant_name || '未知'}`
-        const memberName = record.member_id 
+        const memberName = record.member_id
           ? (record.members?.nickname || record.members?.name || '未知')
           : (record.participant_name || '非會員')
         const boatName = record.bookings?.boats?.name || '未知'
@@ -870,66 +669,20 @@ export function Statistics() {
     setAnnualMonthlyStats(months)
   }
 
-  const loadAnnualFinance = async (year: number) => {
-    const ranges = getYearMonthRanges(year)
-    if (ranges.length === 0) {
-      setAnnualFinanceStats([])
-      return
-    }
-
-    const consumeResults = await Promise.all(
-      ranges.map((r) =>
-        fetchAllPaginated<any>(async (from, to) => {
-          return supabase
-            .from('transactions')
-            .select('category, amount, minutes')
-            .eq('transaction_type', 'consume')
-            .not('booking_participant_id', 'is', null)
-            .gte('transaction_date', r.startDate)
-            .lte('transaction_date', r.endDateStr)
-            .order('id', { ascending: true })
-            .range(from, to)
-        })
-      )
-    )
-
-    const stats: FinanceStats[] = ranges.map((r, idx) => {
-      const consumeData = consumeResults[idx]
-      let balanceUsed = 0, vipUsed = 0, g23Used = 0, g21Used = 0
-      consumeData?.forEach((tx: any) => {
-        if (tx.category === 'balance' && tx.amount) {
-          balanceUsed += Math.abs(tx.amount)
-        } else if (tx.category === 'vip_voucher' && tx.amount) {
-          vipUsed += Math.abs(tx.amount)
-        } else if (tx.category === 'boat_voucher_g23' && tx.minutes) {
-          g23Used += Math.abs(tx.minutes)
-        } else if (tx.category === 'boat_voucher_g21_panther' && tx.minutes) {
-          g21Used += Math.abs(tx.minutes)
-        }
-      })
-      return { month: r.monthStr, balanceUsed, vipUsed, g23Used, g21Used }
-    })
-
-    setAnnualFinanceStats(stats)
-  }
-
   const loadAnnualRankings = async (year: number) => {
     const range = getYearDateRange(year)
     if (!range) {
       setAnnualCoachStats([])
       setAnnualMemberStats([])
-      setAnnualWeekdayStats({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
       return
     }
 
-    const [coach, member, weekday] = await Promise.all([
+    const [coach, member] = await Promise.all([
       fetchCoachStatsForRange(range.startDate, range.endDateStr),
       fetchMemberStatsForRange(range.startDate, range.endDateStr),
-      fetchWeekdayStatsForRange(range.startDate, range.endDateStr),
     ])
     setAnnualCoachStats(coach)
     setAnnualMemberStats(member)
-    setAnnualWeekdayStats(weekday)
   }
 
   const loadAnnualBoatUsage = async (year: number) => {
@@ -957,11 +710,6 @@ export function Statistics() {
       setAnnualLoading(false)
     }
   }
-
-  // 舊報表查詢不再執行；待資料層拆分時一併移除其實作。
-  void loadMonthlyTrend
-  void loadFinanceStats
-  void loadAnnualFinance
 
   // 初次載入
   useEffect(() => {
@@ -1132,4 +880,3 @@ export function Statistics() {
     </PageShell>
   )
 }
-
