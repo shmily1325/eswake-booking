@@ -1618,7 +1618,7 @@ export function CoachAssignment() {
                                 {getDisplayContactName(booking)}
                                 {booking.requires_driver && (
                                   <span style={{ marginLeft: '8px', fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.disabled }}>
-                                    需駕駛
+                                    需要駕駛
                                   </span>
                                 )}
                               </div>
@@ -1747,13 +1747,14 @@ export function CoachAssignment() {
                             )}
                           </div>
                           {/* 顯示已指定的教練 */}
-                          {assignment.coachIds.length > 0 && !isEditing && (
+                          {assignment.coachIds.length > 0 && (
                             <div style={{ 
                               marginTop: '6px',
                               color: designSystem.colors.text.secondary,
                               fontSize: getFontSize('caption', isMobile),
-                                    fontWeight: '500'
+                              fontWeight: '500'
                             }}>
+                              <span aria-hidden>🎓 </span>
                               {coaches.filter(c => assignment.coachIds.includes(c.id)).map(c => c.name).join(', ')}
                             </div>
                           )}

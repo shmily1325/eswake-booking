@@ -138,6 +138,8 @@ export function HomePage() {
     disabled?: boolean
     /** 僅列在 MEMBER_PHONE_ONLY_EDITORS（或環境變數）的帳號可見 */
     phoneEditorOnly?: boolean
+    /** 僅指定帳號可見 */
+    visibleForEmails?: readonly string[]
     /** 超級管理員不顯示此格（從 BAO 進入即可，如排班、船隻管理） */
     hideFromHomeForSuperAdmin?: boolean
   }
@@ -240,12 +242,18 @@ export function HomePage() {
       title: '區間時數合計',
       icon: '⏱️',
       link: '/boat-usage-hours',
-      alwaysShow: true
+      visibleForEmails: ['hsulittlepang2015@gmail.com']
     }
   ]
 
   const filterVisibleMenuItems = (items: HomeMenuItem[]) =>
     items.filter((item) => {
+      if (
+        item.visibleForEmails &&
+        !item.visibleForEmails.some((email) => email.toLowerCase() === user?.email?.toLowerCase())
+      ) {
+        return false
+      }
       if (item.alwaysShow) return true
       if (item.phoneEditorOnly) {
         return Boolean(user && isMemberPhoneOnlyEditor(user))

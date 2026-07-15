@@ -5,6 +5,7 @@ import {
   getLocalTimestamp,
   getVenueDateString,
   getVenueTimestamp,
+  formatDbTimestampDisplay,
   parseDbTimestamp,
   compareDateTimeStr,
   formatDurationWithPickup,
@@ -165,6 +166,12 @@ describe('date.ts - 日期時間工具函數', () => {
 
       expect(result.datetime).toBe('2025-11-24T14:30')
       expect(result.datetime.length).toBe(16)
+    })
+  })
+
+  describe('formatDbTimestampDisplay', () => {
+    it('應該格式化為 YYYY/MM/DD HH:mm', () => {
+      expect(formatDbTimestampDisplay('2026-07-15T16:48:32')).toBe('2026/07/15 16:48')
     })
   })
 

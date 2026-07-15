@@ -519,9 +519,6 @@ export function AuditLog() {
   // 預約日期篩選（MM/DD 格式，如 "04/03"）
   const [bookingDateFilter, setBookingDateFilter] = useState<string>('')
   
-  // 進階篩選展開狀態（紀錄時間範圍）
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
-
   /** 與人員管理「權限管理」名稱欄同資料來源：view + editor + allowed(notes) */
   const [permissionDisplayByEmail, setPermissionDisplayByEmail] = useState<Record<string, string>>({})
 
@@ -744,19 +741,12 @@ export function AuditLog() {
     })
   }
 
-  const setQuickDateRange = (range: 'today' | '7days' | '30days' | '90days') => {
+  const setQuickDateRange = (range: '30days' | '90days') => {
     const end = getLocalDateString()
     setEndDate(end)
     
     const start = new Date()
     switch (range) {
-      case 'today':
-        setStartDate(end)
-        break
-      case '7days':
-        start.setDate(start.getDate() - 7)
-        setStartDate(getLocalDateString(start))
-        break
       case '30days':
         start.setDate(start.getDate() - 30)
         setStartDate(getLocalDateString(start))
@@ -825,118 +815,35 @@ export function AuditLog() {
           </div>
         </div>
 
-        {/* 進階篩選按鈕 */}
-        <button
-          data-track="audit_advanced_filters"
-          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-          style={{
-            ...getButtonStyle('secondary', 'medium', isMobile),
-            width: '100%',
-          }}
-        >
-          {showAdvancedFilters ? '收起篩選' : '更多篩選'}
-          <span style={{ 
-            fontSize: '10px',
-            transform: showAdvancedFilters ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s',
-          }}>▼</span>
-        </button>
+        {/* 記錄時間範圍 */}
+        <div>
+          <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
+            記錄時間範圍
+          </label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {([
+              { key: '30days', label: '30天', days: 30 },
+              { key: '90days', label: '90天', days: 90 },
+            ] as const).map(({ key, label, days }) => {
+              const end = getLocalDateString()
+              const start = new Date()
+              start.setDate(start.getDate() - days)
+              const isActive = startDate === getLocalDateString(start) && endDate === end
 
-        {/* 進階篩選區（可摺疊） */}
-        <div style={{
-          maxHeight: showAdvancedFilters ? '600px' : '0',
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease',
-        }}>
-          <div style={{
-            marginTop: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-          }}>
-            {/* 記錄時間 */}
-            <div>
-              <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
-                記錄時間範圍
-              </label>
-              {/* 快選按鈕 */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '8px',
-                marginBottom: '8px',
-                flexWrap: 'wrap',
-              }}>
-                {[
-                  { key: 'today', label: '今天' },
-                  { key: '7days', label: '7天' },
-                  { key: '30days', label: '30天' },
-                  { key: '90days', label: '90天' },
-                ].map(({ key, label }) => {
-                  const isActive = (() => {
-                    const end = getLocalDateString()
-                    const start = new Date()
-                    if (key === 'today') return startDate === end && endDate === end
-                    if (key === '7days') {
-                      start.setDate(start.getDate() - 7)
-                      return startDate === getLocalDateString(start) && endDate === end
-                    }
-                    if (key === '30days') {
-                      start.setDate(start.getDate() - 30)
-                      return startDate === getLocalDateString(start) && endDate === end
-                    }
-                    if (key === '90days') {
-                      start.setDate(start.getDate() - 90)
-                      return startDate === getLocalDateString(start) && endDate === end
-                    }
-                    return false
-                  })()
-                  
-                  return (
-                    <button
-                      key={key}
-                      data-track={`audit_quick_${key}`}
-                      onClick={() => setQuickDateRange(key as any)}
-                      style={{
-                        ...getButtonStyle(isActive ? 'secondary' : 'outline', 'small', isMobile),
-                      }}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-              {/* 自訂日期 */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '8px',
-                alignItems: 'center',
-                width: '100%',
-              }}>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+              return (
+                <button
+                  key={key}
+                  data-track={`audit_quick_${key}`}
+                  onClick={() => setQuickDateRange(key)}
                   style={{
-                    ...getInputStyle(isMobile),
+                    ...getButtonStyle(isActive ? 'secondary' : 'outline', 'small', isMobile),
                     flex: 1,
-                    minWidth: 0,
-                    boxSizing: 'border-box',
                   }}
-                />
-                <span style={{ fontSize: '14px', color: designSystem.colors.text.disabled, flexShrink: 0 }}>→</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    flex: 1,
-                    minWidth: 0,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-            </div>
+                >
+                  {label}
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>

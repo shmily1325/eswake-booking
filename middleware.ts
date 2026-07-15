@@ -6,13 +6,13 @@ import {
   isAllowedGuideHostPath,
   resolveBookHost,
   resolveGuideHost,
-} from './src/lib/bookHost'
+} from './src/lib/bookHost.js'
 import {
   isAllowedShopHostPath,
   resolveShopHost,
   shopLegacyRedirectResponse,
-} from './src/lib/shopHost'
-import { getRouteOgMeta, injectRouteOgTags, normalizeOgPath } from './src/lib/routeOgMeta'
+} from './src/lib/shopHost.js'
+import { getRouteOgMeta, injectRouteOgTags, normalizeOgPath } from './src/lib/routeOgMeta.js'
 
 const shopHost = resolveShopHost(process.env.VITE_SHOP_BASE_URL ?? process.env.SHOP_BASE_URL)
 const bookHost = resolveBookHost(process.env.VITE_BOOK_BASE_URL ?? process.env.BOOK_BASE_URL)

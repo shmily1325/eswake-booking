@@ -14,7 +14,7 @@ import {
   adminLoadingStyle,
   adminStatsBarStyle,
 } from '../../../components/AdminPageLayout'
-import { Button, ToastContainer, useToast } from '../../../components/ui'
+import { Button, ConfirmModal, ToastContainer, useToast } from '../../../components/ui'
 import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
@@ -84,6 +84,12 @@ const STAT_FILTERS: {
   { id: 'cancelled', label: '已作廢', mobileLabel: '作廢', color: colors.text.disabled },
 ]
 
+type BillingConfirmation = {
+  kind: 'submit' | 'cancel'
+  order: ShopOrderWithItems
+  message: string
+}
+
 export function OrderManagement({ embedded = false }: { embedded?: boolean } = {}) {
   const user = useAuthUser()
   const navigate = useNavigate()
@@ -102,6 +108,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   const [prefillVariantId, setPrefillVariantId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [billingBusyOrderId, setBillingBusyOrderId] = useState<string | null>(null)
+  const [billingConfirmation, setBillingConfirmation] = useState<BillingConfirmation | null>(null)
   const [highlightOrderId, setHighlightOrderId] = useState<string | null>(null)
   const [includeOlderOrders, setIncludeOlderOrders] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
@@ -250,11 +257,12 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   }, [])
 
   const afterOrderMutation = useCallback(async () => {
+    const scrollY = window.scrollY
     await reloadOrders()
-    setTab('all')
+    window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'auto' }))
   }, [reloadOrders])
 
-  const handleSubmitBilling = async (order: ShopOrderWithItems) => {
+  const handleSubmitBilling = (order: ShopOrderWithItems) => {
     if (billingBusyOrderId) return
     const payload = buildSubmitBillingPayload(order)
     const validation = validateSubmitBillingDraft(order, payload)
@@ -262,22 +270,14 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       toast.error(validation.error)
       return
     }
-    if (!confirm(buildSubmitBillingConfirmMessage(order))) return
-    setBillingBusyOrderId(order.id)
-    try {
-      await submitShopOrderBilling(order.id, validation.items, user?.email ?? null)
-      await reloadOrders()
-      setHighlightOrderId(order.id)
-      if (tab === 'ready') setTab('pending')
-      globalToast.success('已送結帳')
-    } catch (e: unknown) {
-      toast.error(shopOrderErrorMessage(e, '送結帳失敗'))
-    } finally {
-      setBillingBusyOrderId(null)
-    }
+    setBillingConfirmation({
+      kind: 'submit',
+      order,
+      message: buildSubmitBillingConfirmMessage(order),
+    })
   }
 
-  const handleCancelBilling = async (order: ShopOrderWithItems) => {
+  const handleCancelBilling = (order: ShopOrderWithItems) => {
     if (billingBusyOrderId) return
     const payload = buildCancelBillingPayload(order)
     const validation = validateCancelBillingDraft(order, payload)
@@ -285,14 +285,43 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       toast.error(validation.error)
       return
     }
-    if (!confirm(buildCancelBillingConfirmMessage(order))) return
+    setBillingConfirmation({
+      kind: 'cancel',
+      order,
+      message: buildCancelBillingConfirmMessage(order),
+    })
+  }
+
+  const confirmBillingAction = async () => {
+    if (!billingConfirmation || billingBusyOrderId) return
+    const { kind, order } = billingConfirmation
+    const payload =
+      kind === 'submit' ? buildSubmitBillingPayload(order) : buildCancelBillingPayload(order)
+    const validation =
+      kind === 'submit'
+        ? validateSubmitBillingDraft(order, payload)
+        : validateCancelBillingDraft(order, payload)
+    if (!validation.ok) {
+      toast.error(validation.error)
+      setBillingConfirmation(null)
+      return
+    }
+
     setBillingBusyOrderId(order.id)
     try {
-      await cancelShopOrderBilling(order.id, validation.items, user?.email ?? null)
-      toast.success('已撤回送結帳')
-      await afterOrderMutation()
+      if (kind === 'submit') {
+        await submitShopOrderBilling(order.id, validation.items, user?.email ?? null)
+        await afterOrderMutation()
+        setHighlightOrderId(order.id)
+        globalToast.success('已送結帳')
+      } else {
+        await cancelShopOrderBilling(order.id, validation.items, user?.email ?? null)
+        toast.success('已撤回送結帳')
+        await afterOrderMutation()
+      }
+      setBillingConfirmation(null)
     } catch (e: unknown) {
-      toast.error(shopOrderErrorMessage(e, '撤回失敗'))
+      toast.error(shopOrderErrorMessage(e, kind === 'submit' ? '送結帳失敗' : '撤回失敗'))
     } finally {
       setBillingBusyOrderId(null)
     }
@@ -568,6 +597,18 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
 
       {!embedded && <Footer />}
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
+      <ConfirmModal
+        isOpen={billingConfirmation !== null}
+        onClose={() => {
+          if (!billingBusyOrderId) setBillingConfirmation(null)
+        }}
+        onConfirm={() => void confirmBillingAction()}
+        title={billingConfirmation?.kind === 'cancel' ? '確認撤回送結帳' : '確認送結帳'}
+        message={billingConfirmation?.message ?? ''}
+        confirmText={billingConfirmation?.kind === 'cancel' ? '確認撤回' : '確認送結帳'}
+        variant={billingConfirmation?.kind === 'cancel' ? 'warning' : 'default'}
+        isLoading={billingBusyOrderId !== null}
+      />
 
       {previewSrc && (
         <div

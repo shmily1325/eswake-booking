@@ -256,6 +256,12 @@ export function parseDbTimestamp(dbTimestamp: string): {
   return { date, time, datetime }
 }
 
+/** 將 DB TEXT 時間戳顯示為 YYYY/MM/DD HH:mm。 */
+export function formatDbTimestampDisplay(dbTimestamp: string): string {
+  const { date, time } = parseDbTimestamp(dbTimestamp)
+  return `${date.replaceAll('-', '/')} ${time}`
+}
+
 /**
  * 比較兩個 datetime 字串
  * @returns 負數表示 dt1 < dt2，0 表示相等，正數表示 dt1 > dt2

@@ -1,4 +1,4 @@
-import type { ShopOrderItemWithVariant, ShopOrderWithItems } from '../../admin/orders/types'
+import type { ShopOrderItemWithVariant } from '../../admin/orders/types'
 import type { LiffShopOrder } from '../liffShopOrders'
 
 function item(
@@ -64,7 +64,7 @@ function item(
 }
 
 function order(
-  overrides: Partial<ShopOrderWithItems> & { id: string; order_no: string; items: ShopOrderItemWithVariant[] },
+  overrides: Partial<LiffShopOrder> & { id: string; order_no: string; items: ShopOrderItemWithVariant[] },
 ): LiffShopOrder {
   const { items, ...rest } = overrides
   return {
@@ -80,6 +80,7 @@ function order(
     created_by: null,
     updated_by: null,
     items,
+    settlements: [],
     ...rest,
   }
 }
@@ -90,6 +91,7 @@ export const PREVIEW_SHOP_ORDERS: LiffShopOrder[] = [
     id: 'o-done',
     order_no: 'SO-260628-001',
     customer_note: null,
+    settlements: [{ amount_total: 2050 }],
     items: [
       item({
         id: 'wetsuit-done',

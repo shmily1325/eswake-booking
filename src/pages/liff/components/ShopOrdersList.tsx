@@ -8,6 +8,7 @@ import {
   formatLiffOrderItemLine,
   liffDeliveryLabel,
   liffOrderProgressSummary,
+  liffOrderSettledTotal,
   liffOrderStatus,
 } from '../liffShopOrders'
 import { LiffEmptyState } from './LiffEmptyState'
@@ -32,6 +33,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
   const showMeta = !collapsible || expanded
   const progressSummary = liffOrderProgressSummary(order)
   const inProgress = statusKey !== 'done' && statusKey !== 'cancelled'
+  const settledTotal = statusKey === 'done' ? liffOrderSettledTotal(order) : null
 
   return (
     <div
@@ -189,6 +191,27 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
           )
         })}
       </div>
+      {settledTotal !== null && (
+        <div
+          style={{
+            marginTop: 12,
+            paddingTop: 10,
+            borderTop: `1px solid ${LIFF_THEME.rowDivider}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            gap: 12,
+            color: LIFF_THEME.inkSoft,
+          }}
+        >
+          <span style={{ fontSize: getFontSizePx('bodySmall', true), color: LIFF_THEME.muted }}>
+            結帳金額
+          </span>
+          <strong style={{ fontSize: getFontSizePx('body', true) }}>
+            ${settledTotal.toLocaleString()}
+          </strong>
+        </div>
+      )}
     </div>
   )
 }

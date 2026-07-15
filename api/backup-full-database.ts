@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { authorizeBackupRequest } from './backup-auth';
-import { fetchBackupData, generateSqlBackup } from './backup-data';
+import { authorizeBackupRequest } from './backup-auth.js';
+import { fetchBackupData, generateSqlBackup } from './backup-data.js';
 
 function getLocalTimestamp(date: Date = new Date()): string {
   const year = date.getFullYear();

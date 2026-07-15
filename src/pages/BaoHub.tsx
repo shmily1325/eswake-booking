@@ -210,7 +210,7 @@ export function BaoHub() {
         >
           <div
             style={{
-              fontSize: isMobile ? '80px' : '100px',
+              fontSize: isMobile ? '100px' : '140px',
               marginBottom: isMobile ? '12px' : '20px',
               lineHeight: 1,
             }}

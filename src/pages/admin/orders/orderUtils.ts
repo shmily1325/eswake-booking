@@ -382,7 +382,18 @@ export function buildSubmitBillingSummaryMessage(
   const active = positiveBillingLines(items)
   const totalQty = active.reduce((sum, x) => sum + x.qty, 0)
   const pendingSkipped = order.items.reduce((sum, it) => sum + it.qty_pending_bill, 0)
-  const lines = [`送結帳 ${order.order_no}？`, `共 ${totalQty} 件`]
+  const itemLines = active.map((line) => {
+    const item = order.items.find((it) => it.id === line.item_id)
+    return `• ${item ? formatOrderItemLabel(item) : '商品'} × ${line.qty}`
+  })
+  const lines = [
+    `訂單：${order.order_no}`,
+    `訂購人：${order.contact_name}`,
+    '',
+    '送結帳品項：',
+    ...itemLines,
+    `共 ${totalQty} 件`,
+  ]
   if (pendingSkipped > 0) {
     lines.push(`（已待結 ${pendingSkipped} 件不會重送）`)
   }
@@ -395,7 +406,18 @@ export function buildCancelBillingSummaryMessage(
 ): string {
   const active = positiveBillingLines(items)
   const totalQty = active.reduce((sum, x) => sum + x.qty, 0)
-  return [`撤回 ${order.order_no}？`, `共 ${totalQty} 件`].join('\n')
+  const itemLines = active.map((line) => {
+    const item = order.items.find((it) => it.id === line.item_id)
+    return `• ${item ? formatOrderItemLabel(item) : '商品'} × ${line.qty}`
+  })
+  return [
+    `訂單：${order.order_no}`,
+    `訂購人：${order.contact_name}`,
+    '',
+    '撤回品項：',
+    ...itemLines,
+    `共 ${totalQty} 件`,
+  ].join('\n')
 }
 
 /** 作廢確認（已有結帳／交易時需再輸入訂單號） */

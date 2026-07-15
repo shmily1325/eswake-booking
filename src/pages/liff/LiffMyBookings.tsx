@@ -214,6 +214,14 @@ export function LiffMyBookings() {
           loadBookings,
           loadShopOrders,
         })
+        const { error: loginTimeError } = await supabase
+          .from('line_bindings')
+          .update({ last_liff_login_at: getLocalTimestamp() })
+          .eq('line_user_id', userId)
+          .eq('status', 'active')
+        if (loginTimeError) {
+          console.warn('更新 LIFF 最後登入時間失敗:', loginTimeError.message)
+        }
         liffTrack({
           icon_id: 'liff_open',
           line_user_id: userId,
@@ -410,6 +418,7 @@ export function LiffMyBookings() {
           member_id: memberData.id,
           phone: memberData.phone,
           status: 'active',
+          last_liff_login_at: getLocalTimestamp(),
           completed_at: getLocalTimestamp(),
           created_at: getLocalTimestamp()
         }, {

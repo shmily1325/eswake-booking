@@ -142,6 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 */
+}
 
 async function replyMessage(replyToken: string, message: string) {
   const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN!;

@@ -19,6 +19,7 @@ import {
   SegmentedControl,
   TimeSelectField,
 } from '../../components/admin/AdminFormUi'
+import { TimeOffBatchCalendar } from '../../components/admin/TimeOffBatchCalendar'
 import {
   clearPermissionCache,
   isAdmin,
@@ -36,6 +37,7 @@ import {
   isCustomTimeOffEmptyOnSingleDay,
   inferTimeOffModeFromRow,
   getTimeOffListDisplayParts,
+  getTimeOffCellLabel,
   type TimeOffMode,
   type TimeOffPeriodKind,
 } from '../../utils/coachTimeOff'
@@ -231,6 +233,9 @@ export function StaffManagement() {
   /** 編輯模式：對應 DB 列 id（合併顯示列可能含多 id） */
   const [editingTimeOffIds, setEditingTimeOffIds] = useState<number[] | null>(null)
   const [timeOffMultiDay, setTimeOffMultiDay] = useState(false)
+  const [timeOffEntryMode, setTimeOffEntryMode] = useState<'calendar' | 'range'>('calendar')
+  const [timeOffCalendarMonth, setTimeOffCalendarMonth] = useState(currentMonth)
+  const [selectedTimeOffDates, setSelectedTimeOffDates] = useState<Set<string>>(new Set())
   
   // 設定教練帳號
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
@@ -246,9 +251,6 @@ export function StaffManagement() {
   const [accountClearConfirmOpen, setAccountClearConfirmOpen] = useState(false)
   const [priceClearConfirmOpen, setPriceClearConfirmOpen] = useState(false)
   const [permissionMatrixConfirm, setPermissionMatrixConfirm] = useState<PermissionMatrixConfirmAction | null>(null)
-
-  // 說明展開狀態
-  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -520,38 +522,55 @@ export function StaffManagement() {
 
   const handleSaveTimeOff = async () => {
     if (!selectedCoach) return
-    if (!timeOffStartDate || !timeOffEndDate) {
-      toast.warning('請選擇日期')
-      return
-    }
+    const isBatchCreate = !editingTimeOffIds?.length && timeOffEntryMode === 'calendar'
 
-    if (timeOffEndDate < timeOffStartDate) {
-      toast.warning('結束日期不能早於開始日期')
-      return
-    }
-
-    const isSingleDay = timeOffStartDate === timeOffEndDate
-    if ((timeOffMode === 'morning' || timeOffMode === 'afternoon') && !isSingleDay) {
-      toast.warning('上午／下午僅適用單日，跨日請選擇整天或自訂時間')
-      return
-    }
-
-    if (isCustomTimeOffEmptyOnSingleDay(
-      timeOffMode,
-      timeOffStartDate,
-      timeOffEndDate,
-      timeOffCustomStartTime,
-      timeOffCustomEndTime
-    )) {
-      toast.warning('請填寫開始或結束時間，或改選「整天」')
-      return
-    }
-
-    if (timeOffMode === 'custom' && isSingleDay && timeOffCustomStartTime && timeOffCustomEndTime) {
-      if (timeOffCustomEndTime <= timeOffCustomStartTime) {
-        toast.warning('結束時間需晚於開始時間')
+    if (isBatchCreate) {
+      if (selectedTimeOffDates.size === 0) {
+        toast.warning('請至少選擇一個日期')
         return
       }
+      if (timeOffMode === 'custom' && !timeOffCustomStartTime && !timeOffCustomEndTime) {
+        toast.warning('請填寫開始或結束時間，或改選「整天」')
+        return
+      }
+    } else {
+      if (!timeOffStartDate || !timeOffEndDate) {
+        toast.warning('請選擇日期')
+        return
+      }
+
+      if (timeOffEndDate < timeOffStartDate) {
+        toast.warning('結束日期不能早於開始日期')
+        return
+      }
+
+      const isSingleDay = timeOffStartDate === timeOffEndDate
+      if ((timeOffMode === 'morning' || timeOffMode === 'afternoon') && !isSingleDay) {
+        toast.warning('上午／下午僅適用單日，跨日請選擇整天或自訂時間')
+        return
+      }
+
+      if (isCustomTimeOffEmptyOnSingleDay(
+        timeOffMode,
+        timeOffStartDate,
+        timeOffEndDate,
+        timeOffCustomStartTime,
+        timeOffCustomEndTime
+      )) {
+        toast.warning('請填寫開始或結束時間，或改選「整天」')
+        return
+      }
+    }
+
+    if (
+      timeOffMode === 'custom' &&
+      timeOffCustomStartTime &&
+      timeOffCustomEndTime &&
+      timeOffCustomEndTime <= timeOffCustomStartTime &&
+      (isBatchCreate || timeOffStartDate === timeOffEndDate)
+    ) {
+      toast.warning('結束時間需晚於開始時間')
+      return
     }
 
     setTimeOffLoading(true)
@@ -570,7 +589,22 @@ export function StaffManagement() {
         reason: reasonVal,
       }
 
-      if (editingTimeOffIds?.length) {
+      if (isBatchCreate) {
+        const rows = [...selectedTimeOffDates]
+          .sort()
+          .map(date => ({
+            coach_id: selectedCoach.id,
+            start_date: date,
+            end_date: date,
+            start_time,
+            end_time,
+            reason: reasonVal,
+            created_at: getLocalTimestamp(),
+          }))
+        const { error } = await supabase.from('coach_time_off').insert(rows)
+        if (error) throw error
+        toast.success(`已設定 ${rows.length} 天休假`)
+      } else if (editingTimeOffIds?.length) {
         if (editingTimeOffIds.length === 1) {
           const { error } = await supabase
             .from('coach_time_off')
@@ -640,8 +674,12 @@ export function StaffManagement() {
   const openTimeOffDialog = (coach: Coach) => {
     setSelectedCoach(coach)
     setEditingTimeOffIds(null)
+    setTimeOffEntryMode('calendar')
+    setTimeOffCalendarMonth(selectedMonth)
+    setSelectedTimeOffDates(new Set())
     setTimeOffMultiDay(false)
-    const dateStr = getLocalDateString()
+    const today = getLocalDateString()
+    const dateStr = today.startsWith(`${selectedMonth}-`) ? today : `${selectedMonth}-01`
     setTimeOffStartDate(dateStr)
     setTimeOffEndDate(dateStr)
     setTimeOffReason('')
@@ -654,6 +692,9 @@ export function StaffManagement() {
   const openEditTimeOffDialog = (coach: Coach, row: TimeOffDisplayRow) => {
     setSelectedCoach(coach)
     setEditingTimeOffIds(row.mergedRecordIds)
+    setTimeOffEntryMode('range')
+    setTimeOffCalendarMonth(row.start_date.slice(0, 7))
+    setSelectedTimeOffDates(new Set())
     setTimeOffMultiDay(row.start_date !== row.end_date)
     setTimeOffStartDate(row.start_date)
     setTimeOffEndDate(row.end_date)
@@ -675,6 +716,8 @@ export function StaffManagement() {
     setTimeOffDialogOpen(false)
     setSelectedCoach(null)
     setEditingTimeOffIds(null)
+    setTimeOffEntryMode('calendar')
+    setSelectedTimeOffDates(new Set())
     setTimeOffMultiDay(false)
     setTimeOffStartDate('')
     setTimeOffEndDate('')
@@ -735,6 +778,31 @@ export function StaffManagement() {
     { value: 'afternoon' as const, label: '下午', hint: '12:00～', disabled: isTimeOffCrossDay, trackId: 'staff_time_off_mode_afternoon' },
     { value: 'custom' as const, label: '自訂', hint: '指定時間', trackId: 'staff_time_off_mode_custom' },
   ]), [isTimeOffCrossDay])
+
+  const existingTimeOffDateLabels = useMemo(() => {
+    const labels = new Map<string, string>()
+    if (!selectedCoach || !timeOffCalendarMonth) return labels
+
+    const [year, month] = timeOffCalendarMonth.split('-').map(Number)
+    const dayCount = new Date(year, month, 0).getDate()
+    const coachRows = timeOffs.filter(row => row.coach_id === selectedCoach.id)
+
+    for (let day = 1; day <= dayCount; day += 1) {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const label = getTimeOffCellLabel(coachRows, date)
+      if (label) labels.set(date, label)
+    }
+    return labels
+  }, [selectedCoach, timeOffCalendarMonth, timeOffs])
+
+  const toggleSelectedTimeOffDate = (date: string) => {
+    setSelectedTimeOffDates(current => {
+      const next = new Set(current)
+      if (next.has(date)) next.delete(date)
+      else next.add(date)
+      return next
+    })
+  }
 
   const openAccountDialog = (coach: Coach) => {
     setSelectedAccountCoach(coach)
@@ -1313,13 +1381,13 @@ export function StaffManagement() {
               boxShadow: activeTab === 'coaches' ? designSystem.shadows.xs : 'none',
               color: activeTab === 'coaches' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
               fontWeight: activeTab === 'coaches' ? 600 : 500,
-              fontSize: getFontSize('bodySmall', isMobile),
+              fontSize: isMobile ? '14px' : '15px',
               cursor: 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap'
             }}
           >
-            教練管理
+            教練
           </button>
           <button
             data-track="staff_tab_accounts"
@@ -1332,13 +1400,13 @@ export function StaffManagement() {
               boxShadow: activeTab === 'accounts' ? designSystem.shadows.xs : 'none',
               color: activeTab === 'accounts' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
               fontWeight: activeTab === 'accounts' ? 600 : 500,
-              fontSize: getFontSize('bodySmall', isMobile),
+              fontSize: isMobile ? '14px' : '15px',
               cursor: 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap'
             }}
           >
-            帳號配對
+            帳號
           </button>
           <button
             data-track="staff_tab_pricing"
@@ -1351,13 +1419,13 @@ export function StaffManagement() {
               boxShadow: activeTab === 'pricing' ? designSystem.shadows.xs : 'none',
               color: activeTab === 'pricing' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
               fontWeight: activeTab === 'pricing' ? 600 : 500,
-              fontSize: getFontSize('bodySmall', isMobile),
+              fontSize: isMobile ? '14px' : '15px',
               cursor: 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap'
             }}
           >
-            指定課價格
+            價格
           </button>
           <button
             data-track="staff_tab_permissions"
@@ -1370,70 +1438,19 @@ export function StaffManagement() {
               boxShadow: activeTab === 'permissions' ? designSystem.shadows.xs : 'none',
               color: activeTab === 'permissions' ? designSystem.colors.text.primary : designSystem.colors.text.secondary,
               fontWeight: activeTab === 'permissions' ? 600 : 500,
-              fontSize: getFontSize('bodySmall', isMobile),
+              fontSize: isMobile ? '14px' : '15px',
               cursor: 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap'
             }}
           >
-            權限管理
+            權限
           </button>
         </div>
 
         {/* 教練管理 Tab */}
         {activeTab === 'coaches' && (
           <>
-            {/* 說明 — 展開也不變重 card */}
-            <div
-              style={{
-                marginBottom: designSystem.spacing.md,
-                cursor: 'pointer',
-              }}
-              onClick={() => setShowHelp(!showHelp)}
-            >
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px',
-              }}>
-                <span style={{
-                  fontWeight: 500,
-                  fontSize: getFontSize('bodySmall', isMobile),
-                  color: designSystem.colors.text.disabled,
-                }}>
-                  {showHelp ? '功能說明' : '說明'}
-                </span>
-                <span style={{
-                  fontSize: getFontSize('caption', isMobile),
-                  color: designSystem.colors.text.disabled,
-                }}>
-                  {showHelp ? '收起' : '展開'}
-                </span>
-              </div>
-              {showHelp && (
-                <div style={{
-                  marginTop: designSystem.spacing.sm,
-                  fontSize: getFontSize('bodySmall', isMobile),
-                  color: designSystem.colors.text.secondary,
-                  lineHeight: 1.7,
-                }}>
-                  <div style={{ marginBottom: '4px' }}>
-                    啟用／停用：啟用 = 可選擇、停用 = 暫不上班
-                  </div>
-                  <div style={{ marginBottom: '4px' }}>
-                    休假：可設定整天、上午／下午或自訂時段；排班時依預約時間判斷是否重疊
-                  </div>
-                  <div style={{ marginBottom: '4px' }}>
-                    隱藏：長期不在，資料保留可恢復
-                  </div>
-                  <div>
-                    刪除：永久刪除（僅限無預約的隱藏教練）
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* 控制列 */}
             <div style={{
               marginBottom: designSystem.spacing.md,
@@ -1732,7 +1749,7 @@ export function StaffManagement() {
                               lineHeight: 1.45,
                             }}>
                               <span style={{
-                                fontSize: getFontSize('body', isMobile),
+                                fontSize: '15px',
                                 fontWeight: 500,
                                 color: designSystem.colors.text.primary,
                               }}>
@@ -1821,20 +1838,6 @@ export function StaffManagement() {
         {activeTab === 'accounts' && (
           <>
             <div style={{
-              marginBottom: designSystem.spacing.lg,
-              fontSize: getFontSize('bodySmall', isMobile),
-              color: designSystem.colors.text.secondary,
-              lineHeight: 1.6,
-            }}>
-              <div style={{ marginBottom: '4px' }}>
-                設定教練對應的登入帳號
-              </div>
-              <div style={{ color: designSystem.colors.text.disabled }}>
-                配對後可在「我的回報」看到自己需要回報的預約
-              </div>
-            </div>
-
-            <div style={{
               background: designSystem.colors.background.card,
               borderRadius: designSystem.borderRadius.lg,
               border: cardBorder,
@@ -1882,7 +1885,7 @@ export function StaffManagement() {
                         </div>
                         <div style={{
                           marginTop: '4px',
-                          fontSize: getFontSize('bodySmall', isMobile),
+                          fontSize: '15px',
                           color: paired
                             ? designSystem.colors.text.secondary
                             : designSystem.colors.text.disabled,
@@ -1910,20 +1913,6 @@ export function StaffManagement() {
         {/* 指定課價格 Tab */}
         {activeTab === 'pricing' && (
           <>
-            <div style={{
-              marginBottom: designSystem.spacing.lg,
-              fontSize: getFontSize('bodySmall', isMobile),
-              color: designSystem.colors.text.secondary,
-              lineHeight: 1.6,
-            }}>
-              <div style={{ marginBottom: '4px' }}>
-                設定每位教練 30 分鐘指定課價格
-              </div>
-              <div style={{ color: designSystem.colors.text.disabled }}>
-                扣款時自動帶入；其他時長按比例換算。未設定則顯示自訂輸入框。
-              </div>
-            </div>
-
             <div style={{
               background: designSystem.colors.background.card,
               borderRadius: designSystem.borderRadius.lg,
@@ -1988,16 +1977,6 @@ export function StaffManagement() {
                                 / 30 分
                               </span>
                             </div>
-                            <div style={{
-                              marginTop: '4px',
-                              fontSize: getFontSize('caption', isMobile),
-                              color: designSystem.colors.text.disabled,
-                            }}>
-                              20分 ${Math.floor(price * 20 / 30)}
-                              {' · '}40分 ${Math.floor(price * 40 / 30)}
-                              {' · '}60分 ${Math.floor(price * 60 / 30)}
-                              {' · '}90分 ${Math.floor(price * 90 / 30)}
-                            </div>
                           </>
                         ) : (
                           <div style={{
@@ -2029,23 +2008,6 @@ export function StaffManagement() {
         {activeTab === 'permissions' && (
           <>
             <div style={{
-              marginBottom: designSystem.spacing.lg,
-              fontSize: getFontSize('bodySmall', isMobile),
-              color: designSystem.colors.text.secondary,
-              lineHeight: 1.7,
-            }}>
-              <div style={{ marginBottom: '4px' }}>
-                登入：能使用本系統，僅能看到今日預約
-              </div>
-              <div style={{ marginBottom: '4px' }}>
-                一般：預約表／查詢／提醒等，以及各項功能
-              </div>
-              <div style={{ color: designSystem.colors.text.disabled }}>
-                勾選下層時上層會自動帶出且反灰；勾選小編功能前須有登入＋一般。取消登入或刪除整列會一併清除下層權限。
-              </div>
-            </div>
-
-            <div style={{
               background: designSystem.colors.background.card,
               borderRadius: designSystem.borderRadius.lg,
               padding: isMobile ? '16px' : '20px',
@@ -2068,7 +2030,7 @@ export function StaffManagement() {
                   人員權限
                 </h3>
                 <span style={{
-                  fontSize: getFontSize('caption', isMobile),
+                  fontSize: '15px',
                   color: designSystem.colors.text.disabled,
                 }}>
                   {permissionMatrixRows.length} 帳號
@@ -2077,15 +2039,6 @@ export function StaffManagement() {
                   )}
                 </span>
               </div>
-              <div style={{
-                fontSize: getFontSize('caption', isMobile),
-                color: designSystem.colors.text.disabled,
-                marginBottom: designSystem.spacing.md,
-                lineHeight: 1.5,
-              }}>
-                依權限由少到多排列；同分依帳號字序。
-              </div>
-
               <div style={{
                 display: 'flex',
                 gap: '10px',
@@ -2328,7 +2281,7 @@ export function StaffManagement() {
                                   style={{
                                     fontWeight: 600,
                                     color: designSystem.colors.text.primary,
-                                    fontSize: getFontSize('bodySmall', isMobile),
+                                    fontSize: '15px',
                                     lineHeight: 1.4,
                                   }}
                                 >
@@ -2701,6 +2654,7 @@ export function StaffManagement() {
       {timeOffDialogOpen && selectedCoach && (
         <AdminModal
           isMobile={isMobile}
+          maxWidth={timeOffEntryMode === 'calendar' ? 520 : 440}
           onClose={() => { if (!timeOffLoading) resetTimeOffDialog() }}
         >
           <AdminModalHeader
@@ -2709,21 +2663,58 @@ export function StaffManagement() {
             accent="amber"
           />
 
-          {timeOffPreviewText && (
+          {!editingTimeOffIds?.length && (
+            <div style={{ marginBottom: '16px' }}>
+              <SegmentedControl
+                options={[
+                  {
+                    value: 'calendar' as const,
+                    label: '月曆多選',
+                    hint: '一次選多天',
+                    trackId: 'staff_time_off_entry_calendar',
+                  },
+                  {
+                    value: 'range' as const,
+                    label: '日期區間',
+                    hint: '連續長假',
+                    trackId: 'staff_time_off_entry_range',
+                  },
+                ]}
+                value={timeOffEntryMode}
+                onChange={setTimeOffEntryMode}
+                accent="amber"
+              />
+            </div>
+          )}
+
+          {timeOffEntryMode === 'calendar' && !editingTimeOffIds?.length ? (
+            <TimeOffBatchCalendar
+              month={timeOffCalendarMonth}
+              onMonthChange={month => {
+                setTimeOffCalendarMonth(month)
+                setSelectedTimeOffDates(new Set())
+              }}
+              selectedDates={selectedTimeOffDates}
+              existingDateLabels={existingTimeOffDateLabels}
+              onToggleDate={toggleSelectedTimeOffDate}
+            />
+          ) : (
+            <DateRangeFields
+              startDate={timeOffStartDate}
+              endDate={timeOffEndDate}
+              onStartChange={handleTimeOffStartChange}
+              onEndChange={handleTimeOffEndChange}
+              multiDay={timeOffMultiDay}
+              onMultiDayChange={handleTimeOffMultiDayChange}
+              trackPrefix="staff_time_off"
+            />
+          )}
+
+          {timeOffEntryMode === 'range' && timeOffPreviewText && (
             <PreviewBanner>
               <strong>預覽：</strong>{timeOffPreviewText}
             </PreviewBanner>
           )}
-
-          <DateRangeFields
-            startDate={timeOffStartDate}
-            endDate={timeOffEndDate}
-            onStartChange={handleTimeOffStartChange}
-            onEndChange={handleTimeOffEndChange}
-            multiDay={timeOffMultiDay}
-            onMultiDayChange={handleTimeOffMultiDayChange}
-            trackPrefix="staff_time_off"
-          />
 
           <div style={{ marginBottom: '16px' }}>
             <FormFieldLabel>時段</FormFieldLabel>
@@ -2733,7 +2724,7 @@ export function StaffManagement() {
               onChange={setTimeOffMode}
               accent="amber"
             />
-            {isTimeOffCrossDay && (
+            {timeOffEntryMode === 'range' && isTimeOffCrossDay && (
               <HintBox>跨多日僅支援「整天」或「自訂時間」</HintBox>
             )}
           </div>
@@ -2790,7 +2781,11 @@ export function StaffManagement() {
             >
               {timeOffLoading
                 ? (editingTimeOffIds?.length ? '儲存中…' : '新增中…')
-                : (editingTimeOffIds?.length ? '儲存' : '新增')}
+                : editingTimeOffIds?.length
+                  ? '儲存'
+                  : timeOffEntryMode === 'calendar' && selectedTimeOffDates.size > 0
+                    ? `新增 ${selectedTimeOffDates.size} 天`
+                    : '新增'}
             </Button>
           </div>
         </AdminModal>

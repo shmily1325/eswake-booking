@@ -9,6 +9,7 @@ import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
 import {
+  formatDbTimestampDisplay,
   getVenueDateString,
   normalizeDate,
   isDateExpired,
@@ -84,6 +85,7 @@ interface Member {
   member_notes?: MemberNote[]  // 會員備忘錄
   // LINE 綁定資訊（衍生欄位）
   line_binding_user_id?: string | null
+  last_liff_login_at?: string | null
   is_line_bound?: boolean
 }
 
@@ -223,7 +225,7 @@ export function MemberManagement() {
 
         supabase
           .from('line_bindings')
-          .select('member_id, line_user_id')
+          .select('member_id, line_user_id, last_liff_login_at')
           .eq('status', 'active')
       ])
 
@@ -297,10 +299,13 @@ export function MemberManagement() {
       })
 
       // 整理 LINE 綁定 map
-      const memberIdToLineBinding: Record<string, string> = {}
+      const memberIdToLineBinding: Record<string, { lineUserId: string; lastLiffLoginAt: string | null }> = {}
       lineBindingsData.forEach((b: any) => {
         if (b.member_id) {
-          memberIdToLineBinding[b.member_id] = b.line_user_id
+          memberIdToLineBinding[b.member_id] = {
+            lineUserId: b.line_user_id,
+            lastLiffLoginAt: b.last_liff_login_at,
+          }
         }
       })
 
@@ -311,7 +316,8 @@ export function MemberManagement() {
         board_count: memberBoards[member.id]?.length || 0,
         partner: member.membership_partner_id ? partnersMap[member.membership_partner_id] : null,
         member_notes: memberNotes[member.id] || [],
-        line_binding_user_id: memberIdToLineBinding[member.id] || null,
+        line_binding_user_id: memberIdToLineBinding[member.id]?.lineUserId || null,
+        last_liff_login_at: memberIdToLineBinding[member.id]?.lastLiffLoginAt || null,
         is_line_bound: Boolean(memberIdToLineBinding[member.id])
       }))
 
@@ -781,6 +787,8 @@ export function MemberManagement() {
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
                     cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: getFontSize('body', isMobile),
                     fontWeight: (membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') ? '500' : 'normal',
                   }}
                 >
@@ -813,6 +821,8 @@ export function MemberManagement() {
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
                     cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: getFontSize('body', isMobile),
                     fontWeight: lineBindingFilter !== 'all' ? '500' : 'normal',
                   }}
                 >
@@ -837,6 +847,8 @@ export function MemberManagement() {
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
                     cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: getFontSize('body', isMobile),
                   }}
                 >
                   <option value="nickname">暱稱</option>
@@ -1291,6 +1303,14 @@ export function MemberManagement() {
                       >
                         {member.is_line_bound ? 'LINE 已綁定' : 'LINE 未綁定'}
                       </span>
+                      {member.is_line_bound && member.last_liff_login_at && (
+                        <span style={{
+                          fontSize: getFontSize('bodySmall', isMobile),
+                          color: designSystem.colors.text.secondary,
+                        }}>
+                          最後登入: {formatDbTimestampDisplay(member.last_liff_login_at)}
+                        </span>
+                      )}
                       {member.is_line_bound && (
                         <button
                           onClick={(e) => {

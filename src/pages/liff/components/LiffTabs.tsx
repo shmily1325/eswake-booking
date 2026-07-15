@@ -8,7 +8,7 @@ import type { TabType } from '../types'
 const TABS: { tab: TabType; label: string }[] = [
   { tab: 'bookings', label: '預約' },
   { tab: 'balance', label: '儲值' },
-  { tab: 'orders', label: '商品' },
+  { tab: 'orders', label: '訂單' },
   { tab: 'profile', label: '會員' },
 ]
 

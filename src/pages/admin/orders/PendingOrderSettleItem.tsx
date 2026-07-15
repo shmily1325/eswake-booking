@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { useToast } from '../../../components/ui'
+import { ConfirmModal, useToast } from '../../../components/ui'
 import { DecimalTextInput, MoneyInput } from '../../../components/ui/numericInputs'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
@@ -85,6 +85,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const [globalDiscountInput, setGlobalDiscountInput] = useState('')
   const [showMemberSearch, setShowMemberSearch] = useState(false)
   const [hasCheckedBillingRelation, setHasCheckedBillingRelation] = useState(false)
+  const [showSettleConfirmation, setShowSettleConfirmation] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const proxySearch = useMemberSearch()
 
@@ -243,7 +244,28 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const settleLabel =
     paymentMethod === 'cash' ? '現金結清' : paymentMethod === 'transfer' ? '匯款結清' : '確認扣款'
 
-  const handleSettle = async () => {
+  const paymentLabel =
+    paymentMethod === 'cash' ? '現金' : paymentMethod === 'transfer' ? '匯款' : '扣儲值'
+  const settleConfirmMessage = [
+    `訂單：${order.order_no}`,
+    `訂購人：${order.contact_name}`,
+    `付款方式：${paymentLabel}`,
+    ...(paymentMethod === 'balance'
+      ? [
+          `扣款會員：${chargeMemberName || order.contact_name}${isProxyCharge ? '（代扣）' : ''}`,
+          ...(projectedBalance !== null
+            ? [`扣款後餘額：${projectedBalance < 0 ? '-' : ''}$${Math.abs(projectedBalance).toLocaleString()}`]
+            : []),
+        ]
+      : []),
+    '',
+    '結帳品項：',
+    ...lines.map((line) => `• ${line.label} × ${line.qty}　$${line.line_total.toLocaleString()}`),
+    '',
+    `結帳金額：$${total.toLocaleString()}`,
+  ].join('\n')
+
+  const handleSettle = () => {
     if (paymentMethod === 'balance' && !chargeMemberId) {
       toast.error('請選扣款會員')
       return
@@ -254,13 +276,10 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
         return
       }
     }
+    setShowSettleConfirmation(true)
+  }
 
-    if (isProxyCharge && chargeMemberName) {
-      if (!confirm(`由 ${chargeMemberName} 代扣 $${total.toLocaleString()}？`)) return
-    } else if (!confirm(`${order.order_no} 結帳 $${total.toLocaleString()}？`)) {
-      return
-    }
-
+  const confirmSettle = async () => {
     setLoading(true)
     try {
       await settleShopOrder(
@@ -279,6 +298,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
         user?.email ?? null,
       )
       toast.success('已結帳')
+      setShowSettleConfirmation(false)
       onComplete()
     } catch (e: unknown) {
       toast.error(shopOrderErrorMessage(e, '結帳失敗'))
@@ -674,6 +694,19 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showSettleConfirmation}
+        onClose={() => {
+          if (!loading) setShowSettleConfirmation(false)
+        }}
+        onConfirm={() => void confirmSettle()}
+        title="確認結帳"
+        message={settleConfirmMessage}
+        confirmText={settleLabel}
+        variant={isProxyCharge ? 'warning' : 'default'}
+        isLoading={loading}
+      />
 
       {previewSrc && (
         <div

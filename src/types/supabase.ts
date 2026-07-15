@@ -896,6 +896,7 @@ export type Database = {
           created_at: string | null
           expires_at: string | null
           id: number
+          last_liff_login_at: string | null
           line_user_id: string
           member_id: string | null
           phone: string | null
@@ -907,6 +908,7 @@ export type Database = {
           created_at?: string | null
           expires_at?: string | null
           id?: number
+          last_liff_login_at?: string | null
           line_user_id: string
           member_id?: string | null
           phone?: string | null
@@ -918,6 +920,7 @@ export type Database = {
           created_at?: string | null
           expires_at?: string | null
           id?: number
+          last_liff_login_at?: string | null
           line_user_id?: string
           member_id?: string | null
           phone?: string | null

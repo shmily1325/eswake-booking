@@ -421,7 +421,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const auth = await requireProductsEditor(req)
-    if (!auth.ok) return res.status(auth.status).json({ error: auth.error })
+    if (auth.ok === false) return res.status(auth.status).json({ error: auth.error })
 
     const body = parseBody(req)
     if (!body?.action) return res.status(400).json({ error: '缺少 action' })

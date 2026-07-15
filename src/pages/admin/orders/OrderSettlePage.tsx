@@ -128,14 +128,14 @@ export function OrderSettlePage() {
           onClick={() => setTab('pending')}
           badge={pendingBadge}
         >
-          待結帳
+          結帳
         </AdminPillButton>
         <AdminPillButton
           active={activeTab === 'statistics'}
           data-track="order_hub_tab_statistics"
           onClick={() => setTab('statistics')}
         >
-          已結帳統計
+          統計
         </AdminPillButton>
       </AdminPillRow>
 

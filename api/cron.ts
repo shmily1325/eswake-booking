@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // 1. Google Drive 備份
       try {
         console.log('[Cron] 執行 Google Drive 備份...');
-        const backupHandler = (await import('./backup-to-cloud-drive')).default;
+        const backupHandler = (await import('./backup-to-cloud-drive.js')).default;
         // 創建一個模擬的 response 對象來捕獲結果
         const mockRes = {
           status: (code: number) => ({
@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // 2. Google Sheets 備份
       try {
         console.log('[Cron] 執行 Google Sheets 備份...');
-        const driveBackupHandler = (await import('./backup-to-drive')).default;
+        const driveBackupHandler = (await import('./backup-to-drive.js')).default;
         const mockRes = {
           status: (code: number) => ({
             json: (data: any) => {

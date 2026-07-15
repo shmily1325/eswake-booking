@@ -9,7 +9,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import type { Member } from '../../types/booking'
 import { useToast } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
-import { getVenueDateString } from '../../utils/date'
+import { formatDbTimestampDisplay, getVenueDateString } from '../../utils/date'
 import {
   designSystem,
   getBadgeStyle,
@@ -31,6 +31,7 @@ interface MemberWithLastTransaction extends Member {
   lastTransactionDate?: string | null
   lastTransactionCreatedAt?: string | null  // 最新交易的 created_at
   line_binding_user_id?: string | null
+  last_liff_login_at?: string | null
   is_line_bound?: boolean
 }
 
@@ -49,8 +50,6 @@ export function MemberTransaction() {
   // 新增的 state
   /** 手機：篩選下拉預設收合，避免佔滿螢幕又與 sticky 疊加難以瀏覽列表 */
   const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false)
-  /** 手機：總覽數字預設收合 */
-  const [mobileOverviewExpanded, setMobileOverviewExpanded] = useState(false)
   const [sortBy, setSortBy] = useState<'nickname' | 'balance' | 'vip' | 'g23' | 'g21' | 'lastTransaction' | 'updatedAt'>('updatedAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
@@ -93,7 +92,7 @@ export function MemberTransaction() {
           .order('created_at', { ascending: false }),
         supabase
           .from('line_bindings')
-          .select('member_id, line_user_id')
+          .select('member_id, line_user_id, last_liff_login_at')
           .eq('status', 'active')
       ])
 
@@ -116,10 +115,13 @@ export function MemberTransaction() {
       }
 
       const lineBindingsData = lineBindingsResult.data || []
-      const memberIdToLineBinding: Record<string, string> = {}
+      const memberIdToLineBinding: Record<string, { lineUserId: string; lastLiffLoginAt: string | null }> = {}
       lineBindingsData.forEach((b) => {
         if (b.member_id) {
-          memberIdToLineBinding[b.member_id] = b.line_user_id
+          memberIdToLineBinding[b.member_id] = {
+            lineUserId: b.line_user_id,
+            lastLiffLoginAt: b.last_liff_login_at,
+          }
         }
       })
 
@@ -128,7 +130,8 @@ export function MemberTransaction() {
         ...m,
         lastTransactionDate: lastTransactionMap[m.id]?.date || null,
         lastTransactionCreatedAt: lastTransactionMap[m.id]?.createdAt || null,
-        line_binding_user_id: memberIdToLineBinding[m.id] || null,
+        line_binding_user_id: memberIdToLineBinding[m.id]?.lineUserId || null,
+        last_liff_login_at: memberIdToLineBinding[m.id]?.lastLiffLoginAt || null,
         is_line_bound: Boolean(memberIdToLineBinding[m.id])
       }))
 
@@ -229,19 +232,6 @@ export function MemberTransaction() {
 
     return result
   }, [members, searchTerm, sortBy, sortOrder, membershipTypeFilter, lineBindingFilter])
-
-  // 計算統計數據（根據篩選結果動態計算）
-  const stats = useMemo(() => {
-    return {
-      totalBalance: filteredMembers.reduce((sum, m) => sum + (m.balance || 0), 0),
-      totalVipVoucher: filteredMembers.reduce((sum, m) => sum + (m.vip_voucher_amount || 0), 0),
-      totalDesignatedLesson: filteredMembers.reduce((sum, m) => sum + (m.designated_lesson_minutes || 0), 0),
-      totalG23: filteredMembers.reduce((sum, m) => sum + (m.boat_voucher_g23_minutes || 0), 0),
-      totalG21: filteredMembers.reduce((sum, m) => sum + (m.boat_voucher_g21_panther_minutes || 0), 0),
-      totalGiftBoat: filteredMembers.reduce((sum, m) => sum + (m.gift_boat_hours || 0), 0),
-      memberCount: filteredMembers.length
-    }
-  }, [filteredMembers])
 
   const handleMemberClick = (member: Member) => {
     setSelectedMember(member)
@@ -355,76 +345,6 @@ export function MemberTransaction() {
           </div>
         </div>
 
-        {isMobile && (
-          <button
-            type="button"
-            onClick={() => setMobileOverviewExpanded((v) => !v)}
-            style={{
-              width: '100%',
-              marginBottom: '10px',
-              padding: '10px 12px',
-              border: cardBorder,
-              borderRadius: designSystem.borderRadius.lg,
-              fontSize: getFontSize('body', isMobile),
-              background: designSystem.colors.background.card,
-              color: designSystem.colors.text.primary,
-              cursor: 'pointer',
-              textAlign: 'left',
-              boxShadow: designSystem.shadows.xs,
-            }}
-          >
-            {mobileOverviewExpanded
-              ? '收合總覽'
-              : '總覽（數字）'}
-          </button>
-        )}
-
-        {(!isMobile || mobileOverviewExpanded) && (
-        <>
-        {/* 數據總覽 */}
-        <div style={{
-          background: designSystem.colors.background.card,
-          borderRadius: designSystem.borderRadius.lg,
-          padding: isMobile ? '16px' : '20px',
-          marginBottom: '16px',
-          border: cardBorder,
-          boxShadow: cardShadow,
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-            gap: isMobile ? '12px' : '16px',
-            textAlign: 'center'
-          }}>
-            <div>
-              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總儲值</div>
-              <div style={{ fontSize: isMobile ? getFontSize('h3', isMobile) : getFontSize('h2', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
-                ${stats.totalBalance.toLocaleString()}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總VIP票券</div>
-              <div style={{ fontSize: isMobile ? getFontSize('h3', isMobile) : getFontSize('h2', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
-                ${stats.totalVipVoucher.toLocaleString()}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總G23船券</div>
-              <div style={{ fontSize: isMobile ? getFontSize('h3', isMobile) : getFontSize('h2', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
-                {stats.totalG23.toLocaleString()}分
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>總G21/黑豹</div>
-              <div style={{ fontSize: isMobile ? getFontSize('h3', isMobile) : getFontSize('h2', isMobile), fontWeight: 750, color: designSystem.colors.text.primary }}>
-                {stats.totalG21.toLocaleString()}分
-              </div>
-            </div>
-          </div>
-        </div>
-        </>
-        )}
-
         {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
         {isMobile ? (
           /* 手機版：篩選預設收合，展開後才顯示下拉選單 */
@@ -478,6 +398,8 @@ export function MemberTransaction() {
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
                     cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: getFontSize('body', isMobile),
                     fontWeight: (membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') ? '500' : 'normal',
                   }}
                 >
@@ -504,6 +426,8 @@ export function MemberTransaction() {
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
                     cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: getFontSize('body', isMobile),
                     fontWeight: lineBindingFilter !== 'all' ? '500' : 'normal',
                   }}
                 >
@@ -528,6 +452,8 @@ export function MemberTransaction() {
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
                     cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: getFontSize('body', isMobile),
                   }}
                 >
                   <option value="nickname">暱稱</option>
@@ -848,6 +774,14 @@ export function MemberTransaction() {
                     >
                       {member.is_line_bound ? 'LINE 已綁定' : 'LINE 未綁定'}
                     </span>
+                    {member.is_line_bound && member.last_liff_login_at && (
+                      <span style={{
+                        fontSize: getFontSize('bodySmall', isMobile),
+                        color: designSystem.colors.text.secondary,
+                      }}>
+                        最後登入: {formatDbTimestampDisplay(member.last_liff_login_at)}
+                      </span>
+                    )}
                     {member.is_line_bound && (
                       <button
                         onClick={(e) => {

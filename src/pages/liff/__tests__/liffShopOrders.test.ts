@@ -4,6 +4,7 @@ import {
   liffHiddenItemsProgressHint,
   liffOrderIsMixed,
   liffOrderProgressSummary,
+  liffOrderSettledTotal,
   liffOrderStatus,
 } from '../liffShopOrders'
 
@@ -114,5 +115,19 @@ describe('liffHiddenItemsProgressHint', () => {
     ]
     expect(liffHiddenItemsProgressHint(items)).toContain('另有 2 項')
     expect(liffHiddenItemsProgressHint(items)).toContain('等貨')
+  })
+})
+
+describe('liffOrderSettledTotal', () => {
+  it('sums multiple settlement records', () => {
+    const order = {
+      ...mockOrder([mockItem({ id: 'a', qty: 2, qty_paid: 2 })]),
+      settlements: [{ amount_total: 800 }, { amount_total: 1200 }],
+    }
+    expect(liffOrderSettledTotal(order)).toBe(2000)
+  })
+
+  it('returns null when the old order has no settlement record', () => {
+    expect(liffOrderSettledTotal(mockOrder([]))).toBeNull()
   })
 })

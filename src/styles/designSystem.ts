@@ -290,7 +290,8 @@ export const designSystem: DesignSystem = {
 export const PAGE_MAX_WIDTHS = {
   mobileColumn: '480px',
   hub: '640px',
-  hubWide: '750px',
+  // 4 欄 hub 保持與 3 欄 hub 相同的卡片寬度
+  hubWide: '845px',
   content: '1100px',
   dashboard: '1200px',
   wide: '1400px',

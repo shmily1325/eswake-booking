@@ -20,7 +20,6 @@ interface Props {
   isMobile: boolean
 }
 
-const PAYMENT_METHODS: OrderPaymentMethod[] = ['balance', 'transfer', 'cash']
 const { colors, borderRadius, shadows, spacing } = designSystem
 
 function dateRangeFromSelection(selectedDate: string): { start: string; end: string } {
@@ -44,7 +43,6 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
   const [loading, setLoading] = useState(false)
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [paymentFilter, setPaymentFilter] = useState<OrderPaymentMethod | 'all'>('all')
   const [variantDisplay, setVariantDisplay] = useState<Record<string, SettlementLineDisplay>>({})
 
   useEffect(() => {
@@ -96,11 +94,6 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
     }
   }
 
-  const filtered = useMemo(() => {
-    if (paymentFilter === 'all') return settlements
-    return settlements.filter((s) => s.payment_method === paymentFilter)
-  }, [settlements, paymentFilter])
-
   const summary = useMemo(() => {
     const byMethod: Record<OrderPaymentMethod, { count: number; total: number }> = {
       balance: { count: 0, total: 0 },
@@ -108,13 +101,13 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
       cash: { count: 0, total: 0 },
     }
     let grandTotal = 0
-    for (const s of filtered) {
+    for (const s of settlements) {
       grandTotal += s.amount_total
       byMethod[s.payment_method].count += 1
       byMethod[s.payment_method].total += s.amount_total
     }
-    return { count: filtered.length, grandTotal, byMethod }
-  }, [filtered])
+    return { count: settlements.length, grandTotal, byMethod }
+  }, [settlements])
 
   return (
     <div>
@@ -136,47 +129,11 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
           label="查詢期間"
           simplified
         />
-        <div style={{ marginTop: 16 }}>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: 8,
-              fontWeight: 600,
-              fontSize: getFontSize('body', isMobile),
-              color: colors.text.primary,
-            }}
-          >
-            付款方式
-          </label>
-          <select
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value as OrderPaymentMethod | 'all')}
-            style={{
-              width: '100%',
-              maxWidth: isMobile ? '100%' : 280,
-              padding: '12px 14px',
-              border: `1px solid ${colors.border.main}`,
-              borderRadius: borderRadius.md,
-              fontSize: getFontSize('body', isMobile),
-              fontWeight: 500,
-              cursor: 'pointer',
-              background: colors.background.card,
-              color: colors.text.primary,
-            }}
-          >
-            <option value="all">全部方式</option>
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>
-                {PAYMENT_METHOD_LABELS[m]}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>載入中…</div>
-      ) : filtered.length === 0 ? (
+      ) : settlements.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>
           {selectedDate.length === 10 ? '當日無結帳紀錄' : '當月無結帳紀錄'}
         </div>
@@ -232,9 +189,9 @@ export function ShopSettlementStatisticsTab({ isMobile }: Props) {
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {filtered.map((row, idx) => {
+            {settlements.map((row, idx) => {
               const expanded = expandedId === row.id
-              const isLast = idx === filtered.length - 1
+              const isLast = idx === settlements.length - 1
               return (
                 <div
                   key={row.id}

@@ -13,6 +13,7 @@ const c = designSystem.colors
 
 const LIFF_ORDER_SELECT = `
   id, order_no, contact_name, delivery_method, shipping_info, customer_note, cancelled_at, created_at,
+  settlements:shop_order_settlements(amount_total),
   items:shop_order_items(
     id, qty, qty_pending_bill, qty_paid, unit_price,
     variant:product_variants(
@@ -22,7 +23,9 @@ const LIFF_ORDER_SELECT = `
   )
 `
 
-export type LiffShopOrder = ShopOrderWithItems
+export type LiffShopOrder = ShopOrderWithItems & {
+  settlements?: Array<{ amount_total: number }>
+}
 
 export type LiffOrderStatusKey =
   | 'cancelled'
@@ -97,6 +100,15 @@ export function liffOrderStatus(order: LiffShopOrder): LiffOrderStatusKey {
   if (orderHasPendingBill(order)) return 'pending_pay'
   if (orderHasWaitingStock(order)) return 'waiting'
   return 'processing'
+}
+
+/** 已完成訂單的實際結帳總額；沒有結帳紀錄時不顯示金額。 */
+export function liffOrderSettledTotal(order: LiffShopOrder): number | null {
+  if (!order.settlements?.length) return null
+  return order.settlements.reduce((sum, settlement) => {
+    const amount = Number(settlement.amount_total)
+    return sum + (Number.isFinite(amount) ? amount : 0)
+  }, 0)
 }
 
 export function liffDeliveryLabel(method: string): string {
