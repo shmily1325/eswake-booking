@@ -444,8 +444,16 @@ export function AnnouncementManagement() {
           marginBottom: designSystem.spacing.lg,
           border: cardBorder,
           boxShadow: cardShadow,
-          overflow: 'hidden',
+          overflow: 'visible',
         }}>
+          <h2 style={{
+            margin: `0 0 ${designSystem.spacing.md}`,
+            fontSize: getFontSize('h3', isMobile),
+            fontWeight: 600,
+            color: designSystem.colors.text.primary,
+          }}>
+            新增交辦事項
+          </h2>
           <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'block',
@@ -482,14 +490,14 @@ export function AnnouncementManagement() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) auto minmax(0, 1fr) auto',
+                gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) auto minmax(0, 1fr)',
                 alignItems: 'end',
                 gap: '8px',
               }}
             >
               <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
                 {isMobile && (
-                  <span style={{ fontSize: getFontSize('caption', true), color: designSystem.colors.text.secondary }}>
+                  <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                     開始日期
                   </span>
                 )}
@@ -511,7 +519,7 @@ export function AnnouncementManagement() {
               )}
               <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
                 {isMobile && (
-                  <span style={{ fontSize: getFontSize('caption', true), color: designSystem.colors.text.secondary }}>
+                  <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                     結束日期
                   </span>
                 )}
@@ -525,15 +533,17 @@ export function AnnouncementManagement() {
                 />
               </label>
               <span style={{
-                padding: '10px 14px',
+                gridColumn: '1 / -1',
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '8px 12px',
                 borderRadius: designSystem.borderRadius.md,
-                background: designSystem.colors.primary[500],
-                color: 'white',
-                fontSize: getFontSize('button', isMobile),
-                fontWeight: '600',
+                background: designSystem.colors.background.main,
+                color: designSystem.colors.text.secondary,
+                fontSize: getFontSize('bodySmall', isMobile),
+                fontWeight: 600,
                 whiteSpace: 'nowrap',
-                flexShrink: 0,
-                justifySelf: 'start',
+                textAlign: isMobile ? 'left' : 'center',
               }}>
                 {newStartDate === newEndDate 
                   ? getWeekdayText(newStartDate)
@@ -567,7 +577,7 @@ export function AnnouncementManagement() {
 
           {/* 預約限制（簡易） */}
           <div style={{ marginBottom: '12px', borderTop: `1px dashed ${designSystem.colors.border.light}`, paddingTop: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gap: '4px' }}>
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -606,8 +616,17 @@ export function AnnouncementManagement() {
             </div>
 
             {newRestrictEnabled && (
-              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ marginTop: '8px', display: 'grid', gap: '10px' }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile
+                    ? '1fr'
+                    : newRestrictAllDay
+                      ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
+                      : 'minmax(0, 1fr) 120px auto minmax(0, 1fr) 120px',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}>
                   <input
                     type="date"
                     value={newRestrictStartDate}
@@ -617,30 +636,32 @@ export function AnnouncementManagement() {
                       setImpactedBookings([])
                       if (e.target.value > newRestrictEndDate) setNewRestrictEndDate(e.target.value)
                     }}
-                    style={{ ...getInputStyle(isMobile), width: isMobile ? '160px' : '150px' }}
+                    style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                   />
                   {!newRestrictAllDay && (
                     <input
                       type="time"
                       value={newRestrictStartTime}
                       onChange={(e) => { setNewRestrictStartTime(e.target.value); setNeedsRecalc(true); setImpactedBookings([]) }}
-                      style={{ ...getInputStyle(isMobile), width: '120px' }}
+                      style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                     />
                   )}
-                  <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile), flexShrink: 0 }}>～</span>
+                  {!isMobile && (
+                    <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', false) }}>～</span>
+                  )}
                   <input
                     type="date"
                     value={newRestrictEndDate}
                     onChange={(e) => { setNewRestrictEndDate(e.target.value); setNeedsRecalc(true); setImpactedBookings([]) }}
                     min={newRestrictStartDate}
-                    style={{ ...getInputStyle(isMobile), width: isMobile ? '160px' : '150px' }}
+                    style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                   />
                   {!newRestrictAllDay && (
                     <input
                       type="time"
                       value={newRestrictEndTime}
                       onChange={(e) => { setNewRestrictEndTime(e.target.value); setNeedsRecalc(true); setImpactedBookings([]) }}
-                      style={{ ...getInputStyle(isMobile), width: '120px' }}
+                      style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                     />
                   )}
                 </div>
@@ -665,7 +686,7 @@ export function AnnouncementManagement() {
                 </div>
 
                 {/* 即時摘要 */}
-                <div style={{ background: designSystem.colors.background.main, color: designSystem.colors.text.primary, padding: '6px 10px', borderRadius: designSystem.borderRadius.md, fontSize: getFontSize('bodySmall', isMobile) }}>
+                <div style={{ width: '100%', boxSizing: 'border-box', overflowWrap: 'anywhere', background: designSystem.colors.background.main, color: designSystem.colors.text.primary, padding: '8px 10px', borderRadius: designSystem.borderRadius.md, fontSize: getFontSize('bodySmall', isMobile) }}>
                   限制時段：{newRestrictStartDate}
                   {!newRestrictAllDay && ` ${newRestrictStartTime}`} ～ {newRestrictEndDate}
                   {!newRestrictAllDay && ` ${newRestrictEndTime}`}{newRestrictAllDay && ' 全天'}
@@ -724,6 +745,7 @@ export function AnnouncementManagement() {
                 style={{
                   ...getButtonStyle('secondary', 'medium', isMobile),
                   minHeight: isMobile ? 44 : undefined,
+                  width: isMobile ? '100%' : undefined,
                 }}
               >
                 試算
@@ -772,7 +794,10 @@ export function AnnouncementManagement() {
                             <span style={{ color: designSystem.colors.text.primary, fontWeight: 600 }}>{item.contact_name}</span>
                             {item.boat_name ? <span style={{ color: designSystem.colors.text.secondary }}>{` · 船：${item.boat_name}`}</span> : null}
                             {isMobile && (
-                              <div style={{ color: designSystem.colors.info[700] }}>{new Date(item.start_at).toLocaleString()}</div>
+                              <>
+                                <div style={{ color: designSystem.colors.info[700] }}>{new Date(item.start_at).toLocaleString()}</div>
+                                <div style={{ color: designSystem.colors.text.secondary }}>教練：{item.coach_names || '-'}</div>
+                              </>
                             )}
                           </div>
                           {!isMobile && <div style={{ color: designSystem.colors.text.secondary }}>{item.coach_names || '-'}</div>}
@@ -806,15 +831,14 @@ export function AnnouncementManagement() {
           border: cardBorder,
           boxShadow: cardShadow,
           minHeight: '200px',
-          overflow: 'hidden',
+          overflow: 'visible',
         }}>
           <div style={{
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) minmax(160px, 220px)',
             alignItems: isMobile ? 'stretch' : 'center',
-            marginBottom: '15px',
+            marginBottom: designSystem.spacing.md,
             gap: '8px',
-            flexWrap: isMobile ? 'nowrap' : 'wrap'
           }}>
             <h2 style={{
               margin: 0,
@@ -833,10 +857,9 @@ export function AnnouncementManagement() {
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               style={{
-                flex: isMobile ? undefined : '1 1 140px',
                 minWidth: 0,
                 ...getInputStyle(isMobile),
-                width: isMobile ? '100%' : 'auto',
+                width: '100%',
                 cursor: 'pointer',
               }}
             />
@@ -844,7 +867,7 @@ export function AnnouncementManagement() {
 
           {/* 搜尋和排序控制 */}
           <div style={{
-            marginBottom: '15px',
+            marginBottom: designSystem.spacing.md,
             display: 'grid',
             gridTemplateColumns: isMobile ? 'minmax(0, 1fr) auto' : 'minmax(200px, 1fr) auto',
             gap: '10px',
@@ -936,7 +959,7 @@ export function AnnouncementManagement() {
                     key={announcement.id}
                     style={{
                       padding: isMobile ? '16px' : '12px',
-                      background: designSystem.colors.background.card,
+                      background: designSystem.colors.background.main,
                       borderRadius: designSystem.borderRadius.md,
                       marginBottom: '8px',
                       border: cardBorder,
@@ -967,7 +990,7 @@ export function AnnouncementManagement() {
                           >
                             <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
                               {isMobile && (
-                                <span style={{ fontSize: getFontSize('caption', true), color: designSystem.colors.text.secondary }}>
+                                <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                                   開始日期
                                 </span>
                               )}
@@ -989,7 +1012,7 @@ export function AnnouncementManagement() {
                             )}
                             <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
                               {isMobile && (
-                                <span style={{ fontSize: getFontSize('caption', true), color: designSystem.colors.text.secondary }}>
+                                <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                                   結束日期
                                 </span>
                               )}
@@ -1002,6 +1025,22 @@ export function AnnouncementManagement() {
                                 style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
                               />
                             </label>
+                            <span style={{
+                              gridColumn: '1 / -1',
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '8px 12px',
+                              borderRadius: designSystem.borderRadius.md,
+                              background: designSystem.colors.background.card,
+                              color: designSystem.colors.text.secondary,
+                              fontSize: getFontSize('bodySmall', isMobile),
+                              fontWeight: 600,
+                              textAlign: isMobile ? 'left' : 'center',
+                            }}>
+                              {editStartDate === editEndDate
+                                ? getWeekdayText(editStartDate)
+                                : `${getWeekdayText(editStartDate)} ~ ${getWeekdayText(editEndDate)}`}
+                            </span>
                           </div>
                         </div>
                         <div style={{ marginBottom: '10px' }}>
@@ -1044,35 +1083,46 @@ export function AnnouncementManagement() {
                             <span>啟用預約限制</span>
                           </label>
                           {editRestrictEnabled && (
-                            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <div style={{ marginTop: '8px', display: 'grid', gap: '10px' }}>
+                              <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: isMobile
+                                  ? '1fr'
+                                  : editRestrictAllDay
+                                    ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
+                                    : 'minmax(0, 1fr) 120px auto minmax(0, 1fr) 120px',
+                                alignItems: 'center',
+                                gap: '8px',
+                              }}>
                                 <input
                                   type="date"
                                   value={editRestrictStartDate || editStartDate}
                                   onChange={(e) => setEditRestrictStartDate(e.target.value)}
-                                  style={{ ...getInputStyle(isMobile), width: isMobile ? '160px' : '150px' }}
+                                  style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                                 />
                                 {!editRestrictAllDay && (
                                   <input
                                     type="time"
                                     value={editRestrictStartTime}
                                     onChange={(e) => setEditRestrictStartTime(e.target.value)}
-                                    style={{ ...getInputStyle(isMobile), width: '120px' }}
+                                    style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                                   />
                                 )}
-                                <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile), flexShrink: 0 }}>～</span>
+                                {!isMobile && (
+                                  <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', false) }}>～</span>
+                                )}
                                 <input
                                   type="date"
                                   value={editRestrictEndDate || editEndDate}
                                   onChange={(e) => setEditRestrictEndDate(e.target.value)}
-                                  style={{ ...getInputStyle(isMobile), width: isMobile ? '160px' : '150px' }}
+                                  style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                                 />
                                 {!editRestrictAllDay && (
                                   <input
                                     type="time"
                                     value={editRestrictEndTime}
                                     onChange={(e) => setEditRestrictEndTime(e.target.value)}
-                                    style={{ ...getInputStyle(isMobile), width: '120px' }}
+                                    style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
                                   />
                                 )}
                               </div>
@@ -1152,25 +1202,25 @@ export function AnnouncementManagement() {
                               lineHeight: '1.5',
                               whiteSpace: 'pre-wrap',
                               wordBreak: 'break-word',
-                              display: 'flex',
-                              alignItems: 'baseline',
-                              gap: '8px',
-                              flexWrap: 'wrap'
+                              display: 'block',
                             }}>
-                              <span>{announcement.content}</span>
+                              <span style={{ display: 'block' }}>{announcement.content}</span>
                               {/* 若此公告有啟用中的限制，顯示小字 */}
                               {restrictionsMap[announcement.id] && (
                                 <span style={{
-                                  fontSize: getFontSize('caption', isMobile),
+                                  display: 'block',
+                                  marginTop: '6px',
+                                  fontSize: getFontSize('bodySmall', isMobile),
                                   color: designSystem.colors.text.secondary,
                                 }}>
-                                  {' '}
                                   {formatRestrictionNote(getLocalDateString(), restrictionsMap[announcement.id])}
                                 </span>
                               )}
                               {parseForEdit(announcement).showOneDayEarly && (
                                 <span style={{
-                                  fontSize: getFontSize('caption', isMobile),
+                                  display: 'inline-block',
+                                  marginTop: '6px',
+                                  fontSize: getFontSize('bodySmall', isMobile),
                                   padding: isMobile ? '3px 8px' : '2px 6px',
                                   borderRadius: '3px',
                                   background: designSystem.colors.warning[50],
@@ -1186,8 +1236,10 @@ export function AnnouncementManagement() {
                           <div style={{ 
                             display: 'flex', 
                             alignItems: 'center',
+                            alignSelf: isMobile ? 'stretch' : 'flex-end',
+                            width: isMobile ? '100%' : undefined,
                             gap: '8px', 
-                            flexWrap: 'wrap',
+                            flexWrap: 'nowrap',
                             flexShrink: 0
                           }}>
                             <button
@@ -1196,6 +1248,7 @@ export function AnnouncementManagement() {
                               style={{
                                 ...getButtonStyle('secondary', 'small', isMobile),
                                 minHeight: isMobile ? 44 : undefined,
+                                flex: isMobile ? 1 : undefined,
                               }}
                             >
                               編輯
@@ -1208,6 +1261,7 @@ export function AnnouncementManagement() {
                                 color: designSystem.colors.danger[500],
                                 borderColor: designSystem.colors.danger[500],
                                 minHeight: isMobile ? 44 : undefined,
+                                flex: isMobile ? 1 : undefined,
                               }}
                             >
                               刪除

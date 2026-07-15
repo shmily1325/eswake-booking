@@ -967,7 +967,7 @@ export function CoachReport({
         {/* 最後更新時間 */}
         {lastRefreshTime && (
           <div style={{
-            fontSize: getFontSize('caption', isMobile),
+            fontSize: getFontSize('bodySmall', isMobile),
             color: designSystem.colors.text.secondary,
             marginBottom: '16px'
           }}>
@@ -1183,7 +1183,7 @@ export function CoachReport({
                       {getDisplayContactName(booking)}
                     </div>
                     {booking.notes && (
-                      <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', isMobile), marginTop: '4px' }}>
+                      <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', isMobile), marginTop: '4px' }}>
                         備註：{booking.notes}
                       </div>
                     )}

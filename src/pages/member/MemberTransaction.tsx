@@ -328,30 +328,32 @@ export function MemberTransaction() {
         {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
         {isMobile ? (
           <>
-            {/* 手機版僅保留 LINE 綁定狀態，固定依最近更新排序 */}
-            <div style={{ width: '100%', marginBottom: '10px' }}>
-              <select
-                value={lineBindingFilter}
-                onChange={(e) => setLineBindingFilter(e.target.value as 'all' | 'bound' | 'unbound')}
-                aria-label="LINE 綁定狀態"
+            {/* 不另設「全部」選項；再次點擊已選狀態即可清除篩選。 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%', marginBottom: '10px' }}>
+              <button
+                type="button"
+                data-track="member_filter_line_bound"
+                aria-pressed={lineBindingFilter === 'bound'}
+                onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
                 style={{
-                  ...getInputStyle(isMobile),
-                  width: '100%',
-                  paddingRight: '32px',
-                  appearance: 'none',
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 12px center',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  fontSize: getFontSize('body', isMobile),
-                  fontWeight: lineBindingFilter !== 'all' ? '500' : 'normal',
+                  ...getButtonStyle('outline', 'medium', true),
+                  ...getFilterChipStyle(lineBindingFilter === 'bound', 'info'),
                 }}
               >
-                <option value="all">LINE 全部 ({members.length})</option>
-                <option value="bound">LINE 已綁定 ({members.filter(m => m.is_line_bound).length})</option>
-                <option value="unbound">LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})</option>
-              </select>
+                LINE 綁定 ({members.filter(m => m.is_line_bound).length})
+              </button>
+              <button
+                type="button"
+                data-track="member_filter_line_unbound"
+                aria-pressed={lineBindingFilter === 'unbound'}
+                onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
+                style={{
+                  ...getButtonStyle('outline', 'medium', true),
+                  ...getFilterChipStyle(lineBindingFilter === 'unbound', 'info'),
+                }}
+              >
+                LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
+              </button>
             </div>
 
             {/* 手機版結果數量 */}

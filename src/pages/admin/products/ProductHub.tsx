@@ -136,25 +136,23 @@ export function ProductHub() {
         pendingSettleCount={pendingSettleCount}
       />
 
-      <AdminPillRow style={{ marginBottom: isMobile ? 12 : 16 }}>
-        <AdminPillLink
-          to={forceReadOnly ? '/products?mode=readonly' : '/products'}
-          end
-          active={!onOrders && !onSales}
-        >
-          商品與庫存
-        </AdminPillLink>
-        {canEdit && (
+      {canEdit && (
+        <AdminPillRow style={{ marginBottom: isMobile ? 12 : 16 }}>
+          <AdminPillLink
+            to="/products"
+            end
+            active={!onOrders && !onSales}
+          >
+            商品與庫存
+          </AdminPillLink>
           <AdminPillLink to="/products/orders" active={onOrders}>
             訂單
           </AdminPillLink>
-        )}
-        {userIsAdmin && !forceReadOnly && (
-          <AdminPillLink to="/products/sales" active={onSales}>
-            銷售排行
-          </AdminPillLink>
-        )}
-        {canEdit && (
+          {userIsAdmin && (
+            <AdminPillLink to="/products/sales" active={onSales}>
+              銷售排行
+            </AdminPillLink>
+          )}
           <ExternalNavLink
             href={getPublicShopHomeUrl()}
             data-track="products_es_shop"
@@ -162,8 +160,8 @@ export function ProductHub() {
           >
             ES SHOP
           </ExternalNavLink>
-        )}
-      </AdminPillRow>
+        </AdminPillRow>
+      )}
 
       <Routes>
 

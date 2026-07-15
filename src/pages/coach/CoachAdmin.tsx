@@ -12,7 +12,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle, designSystem } from '../../styles/designSystem'
 import { AdminPageShell, AdminTabBar, AdminTabButton } from '../../components/AdminPageLayout'
-import { getLocalDateString, getLocalTimestamp } from '../../utils/date'
+import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { fetchAllInBatches, fetchAllPaginated } from '../../utils/supabasePaginate'
 import { extractDate, extractTime } from '../../utils/formatters'
 import { useToast } from '../../components/ui'
@@ -702,7 +702,7 @@ export function CoachAdmin() {
         {/* 最後更新時間 */}
         {lastRefreshTime && (
           <div style={{
-            fontSize: getFontSize('caption', isMobile),
+            fontSize: getFontSize('bodySmall', isMobile),
             color: designSystem.colors.text.secondary,
             marginBottom: '16px'
           }}>
@@ -748,43 +748,40 @@ export function CoachAdmin() {
           <>
             <div style={{
               ...getCardStyle(isMobile),
-              marginBottom: '24px'
+              marginBottom: '16px'
             }}>
               {/* 查看模式切換 */}
-              <div>
-                <div style={{
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{
                   color: designSystem.colors.text.secondary,
                   fontSize: getFontSize('bodySmall', isMobile),
                   fontWeight: 600,
-                  marginBottom: '10px',
+                  marginRight: '4px',
                 }}>
-                  篩選日期
-                </div>
-                <div
+                  日期
+                </span>
+                <button
+                  type="button"
+                  data-track="coach_admin_pending_all"
+                  onClick={() => setPendingViewMode('all')}
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, auto)',
-                    gap: '8px',
-                    justifyContent: isMobile ? 'stretch' : 'start',
+                    ...getFilterChipStyle(pendingViewMode === 'all', 'warning'),
+                    padding: isMobile ? '10px 16px' : '10px 20px',
+                    fontSize: getFontSize('button', isMobile),
+                    transition: 'all 0.2s',
                   }}
                 >
-                  {/* 全部待處理按鈕 */}
-                  <button
-                    data-track="coach_admin_pending_all"
-                    onClick={() => setPendingViewMode('all')}
-                    style={{
-                      ...getFilterChipStyle(pendingViewMode === 'all', 'warning'),
-                      padding: '10px 14px',
-                      fontSize: getFontSize('button', isMobile),
-                      transition: 'all 0.2s',
-                      width: '100%',
-                    }}
-                  >
-                    ⚠️ 全部待處理
-                  </button>
+                  ⚠️ 全部待處理
+                </button>
 
-                  {/* 日期按鈕 */}
-                  {[
+                {!isMobile && [
                     { label: '今天', offset: 0 },
                     { label: '昨天', offset: -1 },
                     { label: '前天', offset: -2 }
@@ -804,16 +801,57 @@ export function CoachAdmin() {
                         }}
                         style={{
                           ...getFilterChipStyle(isSelected, 'info'),
-                          padding: '10px 14px',
-                          fontSize: getFontSize('button', isMobile),
+                          padding: '10px 20px',
+                          fontSize: getFontSize('button', false),
                           transition: 'all 0.2s',
-                          width: '100%',
                         }}
                       >
                         {label}
                       </button>
                     )
                   })}
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginLeft: isMobile ? 0 : 'auto',
+                    ...(isMobile ? { marginTop: '8px', width: '100%', justifyContent: 'space-between' } : {}),
+                  }}
+                >
+                  <input
+                    type="date"
+                    data-track="coach_admin_pending_date_pick"
+                    value={selectedDate}
+                    onChange={(event) => {
+                      const nextDate = event.target.value
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(nextDate)) {
+                        setPendingViewMode('date')
+                        setSelectedDate(nextDate)
+                      }
+                    }}
+                    style={{
+                      ...getInputStyle(isMobile),
+                      padding: '8px 12px',
+                      flex: isMobile ? 1 : undefined,
+                      width: isMobile ? 'auto' : undefined,
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <span
+                    style={{
+                      padding: '8px 12px',
+                      background: designSystem.colors.background.hover,
+                      borderRadius: designSystem.borderRadius.lg,
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      fontWeight: 600,
+                      color: designSystem.colors.text.secondary,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {getWeekdayText(selectedDate)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -931,7 +969,7 @@ export function CoachAdmin() {
                                       background: designSystem.colors.warning[500],
                                       color: 'white',
                                       borderRadius: designSystem.borderRadius.sm,
-                                      fontSize: getFontSize('caption', true)
+                                      fontSize: getFontSize('bodySmall', isMobile)
                                     }}>
                                       非會員
                                     </span>
@@ -946,7 +984,7 @@ export function CoachAdmin() {
                                     const updatedBy = getSubmitterName((report as any).updated_by_email)
                                     if (!createdBy && !updatedBy) return null
                                     return (
-                                      <div style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.disabled, marginTop: '4px' }}>
+                                      <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled, marginTop: '4px' }}>
                                         {createdBy && updatedBy && createdBy !== updatedBy ? (
                                           <>由 {createdBy} 回報，{updatedBy} 修改</>
                                         ) : createdBy ? (
@@ -1303,34 +1341,25 @@ export function CoachAdmin() {
         {/* Tab 4: 代扣設定 */}
         {activeTab === 'billing' && (
           <div style={{ ...getCardStyle(isMobile) }}>
-            <h2 style={{ 
-              fontSize: getFontSize('h2', isMobile),
-              fontWeight: '600',
-              marginBottom: '20px',
-              color: designSystem.colors.text.primary
-            }}>
-              代扣關係設定
-            </h2>
-            
             <div style={{
               background: designSystem.colors.warning[50],
               borderRadius: designSystem.borderRadius.lg,
               border: `1px solid ${designSystem.colors.warning[500]}33`,
-              padding: '12px 16px',
-              marginBottom: '24px',
-              fontSize: getFontSize('body', isMobile),
+              padding: isMobile ? '11px 13px' : '12px 16px',
+              marginBottom: isMobile ? '16px' : '20px',
+              fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.warning[700],
-              lineHeight: 1.6
+              lineHeight: 1.55
             }}>
-              <strong>說明：</strong>設定代扣關係後，扣款時會自動帶入對應的代扣會員。
-              <br />例如：設定「火腿 → Mandy」後，扣「火腿」的款項時會自動從 Mandy 扣款。
+              <strong>說明：</strong>設定後，參與者的款項會自動改由指定會員支付。
+              <br />例如「火腿 → Mandy」，火腿的款項會從 Mandy 的帳戶扣除。
             </div>
 
             {/* 新增代扣關係表單 */}
             <div style={{
               background: designSystem.colors.background.hover,
               borderRadius: designSystem.borderRadius.xl,
-              padding: '20px',
+              padding: isMobile ? '16px' : '20px',
               marginBottom: '24px',
               border: `1.5px dashed ${designSystem.colors.border.main}`
             }}>
@@ -1356,7 +1385,7 @@ export function CoachAdmin() {
                     type="text"
                     value={newParticipantName}
                     onChange={(e) => setNewParticipantName(e.target.value)}
-                    placeholder=""
+                    placeholder="例如：火腿"
                     style={{
                       ...getInputStyle(isMobile),
                       width: '100%'
@@ -1384,7 +1413,7 @@ export function CoachAdmin() {
                         // 延遲關閉，讓點擊事件先觸發
                         setTimeout(() => setShowBillingMemberSearch(false), 200)
                       }}
-                      placeholder="搜尋會員..."
+                      placeholder="搜尋付款會員"
                       style={{
                         ...getInputStyle(isMobile),
                         width: '100%',
@@ -1477,7 +1506,7 @@ export function CoachAdmin() {
                   type="text"
                   value={newBillingNotes}
                   onChange={(e) => setNewBillingNotes(e.target.value)}
-                  placeholder=""
+                  placeholder="例如：家人、同行朋友"
                   style={{
                     ...getInputStyle(isMobile),
                     width: '100%'

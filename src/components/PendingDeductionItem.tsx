@@ -902,7 +902,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 report.payment_method === 'voucher' ? designSystem.colors.primary[500] :
                 designSystem.colors.success[500]
               }33`,
-              fontSize: getFontSize('caption', true),
+              fontSize: getFontSize('bodySmall', isMobile),
               borderRadius: designSystem.borderRadius.sm,
               fontWeight: '500'
             }}>
@@ -925,7 +925,7 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
                 report.lesson_type === 'designated_free' ? `${designSystem.colors.success[500]}33` :
                 designSystem.colors.border.light
               }`,
-              fontSize: getFontSize('caption', true),
+              fontSize: getFontSize('bodySmall', isMobile),
               borderRadius: designSystem.borderRadius.sm,
               fontWeight: '500'
             }}>

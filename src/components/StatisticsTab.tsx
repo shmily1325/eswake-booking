@@ -277,10 +277,10 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       {/* 篩選區 */}
       <div style={{
         ...getCardStyle(isMobile),
-        marginBottom: '24px'
+        marginBottom: isMobile ? '16px' : '24px'
       }}>
         {/* 查詢期間 - 簡化版 */}
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: isMobile ? '16px' : '20px' }}>
           <DateRangePicker
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
@@ -333,23 +333,59 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
             paddingBottom: designSystem.spacing.md,
             borderBottom: `1px solid ${designSystem.colors.border.light}`,
           }}>
-            <p style={{
-              margin: 0,
-              fontSize: getFontSize('bodyLarge', isMobile),
-              color: designSystem.colors.text.primary,
-              fontWeight: '600',
-              lineHeight: 1.5,
+            <div style={{
+              display: isMobile ? 'grid' : 'block',
+              gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : undefined,
+              gap: isMobile ? designSystem.spacing.sm : 0,
             }}>
-              教學 {totalTeachingMinutes} 分
-              <span style={{ color: designSystem.colors.text.disabled, fontWeight: '400' }}>
-                {' '}（{(totalTeachingMinutes / 60).toFixed(1)} 小時）
-              </span>
-              <span style={{ color: designSystem.colors.text.disabled, margin: '0 10px' }}>·</span>
-              駕駛 {totalDrivingMinutes} 分
-              <span style={{ color: designSystem.colors.text.disabled, fontWeight: '400' }}>
-                {' '}（{(totalDrivingMinutes / 60).toFixed(1)} 小時）
-              </span>
-            </p>
+              {[
+                { label: '教學', minutes: totalTeachingMinutes },
+                { label: '駕駛', minutes: totalDrivingMinutes },
+              ].map((metric) => (
+                <div
+                  key={metric.label}
+                  style={isMobile ? {
+                    padding: '10px 12px',
+                    background: designSystem.colors.background.card,
+                    border: `1px solid ${designSystem.colors.border.light}`,
+                    borderRadius: designSystem.borderRadius.md,
+                  } : {
+                    display: 'inline',
+                    fontSize: getFontSize('bodyLarge', false),
+                    color: designSystem.colors.text.primary,
+                    fontWeight: 600,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <span style={{
+                    display: isMobile ? 'block' : 'inline',
+                    fontSize: getFontSize(isMobile ? 'bodySmall' : 'bodyLarge', isMobile),
+                    color: isMobile ? designSystem.colors.text.secondary : designSystem.colors.text.primary,
+                    fontWeight: isMobile ? 500 : 600,
+                  }}>
+                    {metric.label}{' '}
+                  </span>
+                  <strong style={{
+                    fontSize: getFontSize('bodyLarge', isMobile),
+                    color: designSystem.colors.text.primary,
+                  }}>
+                    {metric.minutes} 分
+                  </strong>
+                  <span style={{
+                    display: isMobile ? 'block' : 'inline',
+                    marginTop: isMobile ? 2 : 0,
+                    color: designSystem.colors.text.disabled,
+                    fontSize: getFontSize('bodySmall', isMobile),
+                    fontWeight: 400,
+                  }}>
+                    {isMobile ? '' : ' '}（{(metric.minutes / 60).toFixed(1)} 小時）
+                  </span>
+                  {!isMobile && metric.label === '教學' && (
+                    <span style={{ color: designSystem.colors.text.disabled, margin: '0 10px' }}>·</span>
+                  )}
+                </div>
+              ))}
+            </div>
             <p style={{
               margin: `${designSystem.spacing.xs} 0 0`,
               fontSize: getFontSize('bodySmall', isMobile),
@@ -363,38 +399,38 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           <div style={{
             display: 'grid',
             gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-            gap: designSystem.spacing.lg,
+            gap: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
             marginBottom: designSystem.spacing.xl,
           }}>
             {/* 教學時數圖表 */}
             <div style={{
-              padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+              padding: isMobile ? '14px' : designSystem.spacing.lg,
               background: designSystem.colors.background.card,
               borderRadius: designSystem.borderRadius.lg,
               border: `1px solid ${designSystem.colors.border.light}`,
             }}>
               <h3 style={{ 
-                margin: '0 0 16px 0', 
+                margin: `0 0 ${isMobile ? '12px' : '16px'} 0`,
                 fontSize: getFontSize('h3', isMobile), 
                 fontWeight: '600', 
                 color: designSystem.colors.text.primary,
               }}>
                 教學時數對比
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '12px' }}>
                 {coachStats.map(stat => (
                   <div key={`teaching-${stat.coachId}`}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600', color: designSystem.colors.text.primary }}>
+                      <span style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', color: designSystem.colors.text.primary }}>
                         {stat.coachName}
                       </span>
-                      <span style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
+                      <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
                         {stat.teachingMinutes}分 ({stat.teachingCount}筆)
                       </span>
                     </div>
                     <div style={{
                       width: '100%',
-                      height: '8px',
+                      height: isMobile ? '6px' : '8px',
                       background: designSystem.colors.background.hover,
                       borderRadius: designSystem.borderRadius.full,
                       overflow: 'hidden'
@@ -416,33 +452,33 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
             {/* 駕駛時數圖表 */}
             <div style={{
-              padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+              padding: isMobile ? '14px' : designSystem.spacing.lg,
               background: designSystem.colors.background.card,
               borderRadius: designSystem.borderRadius.lg,
               border: `1px solid ${designSystem.colors.border.light}`,
             }}>
               <h3 style={{ 
-                margin: '0 0 16px 0', 
+                margin: `0 0 ${isMobile ? '12px' : '16px'} 0`,
                 fontSize: getFontSize('h3', isMobile), 
                 fontWeight: '600', 
                 color: designSystem.colors.text.primary,
               }}>
                 駕駛時數對比
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '12px' }}>
                 {coachStats.map(stat => (
                   <div key={`driving-${stat.coachId}`}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600', color: designSystem.colors.text.primary }}>
+                      <span style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', color: designSystem.colors.text.primary }}>
                         {stat.coachName}
                       </span>
-                      <span style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
+                      <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
                         {stat.drivingMinutes}分 ({stat.drivingCount}筆)
                       </span>
                     </div>
                     <div style={{
                       width: '100%',
-                      height: '8px',
+                      height: isMobile ? '6px' : '8px',
                       background: designSystem.colors.background.hover,
                       borderRadius: designSystem.borderRadius.full,
                       overflow: 'hidden'
@@ -508,14 +544,15 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                     <div style={{ 
                       fontSize: getFontSize('bodySmall', isMobile), 
                       color: designSystem.colors.text.secondary,
-                      display: 'flex',
-                      gap: '12px',
-                      flexWrap: 'wrap'
+                      display: isMobile ? 'grid' : 'flex',
+                      gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : undefined,
+                      gap: isMobile ? '6px 12px' : '12px',
+                      flexWrap: isMobile ? undefined : 'wrap'
                     }}>
                       <span>
                         教學 {stat.teachingMinutes}分 ({stat.teachingCount}筆)
                       </span>
-                      <span style={{ color: designSystem.colors.text.disabled }}>·</span>
+                      {!isMobile && <span style={{ color: designSystem.colors.text.disabled }}>·</span>}
                       <span>
                         駕駛 {stat.drivingMinutes}分 ({stat.drivingCount}筆)
                       </span>
