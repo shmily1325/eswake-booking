@@ -119,7 +119,7 @@ export function AlertCard({
           {expandedContent || (contactStats && contactStats.length > 0 && (
             <div>
               <div style={{
-                fontSize: getFontSize('caption', isMobile),
+                fontSize: getFontSize('bodySmall', isMobile),
                 color: designSystem.colors.text.secondary,
                 marginBottom: '10px',
                 fontWeight: '500'

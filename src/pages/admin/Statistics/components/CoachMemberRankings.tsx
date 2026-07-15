@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
-import { designSystem } from '../../../../styles/designSystem'
+import { useResponsive } from '../../../../hooks/useResponsive'
+import { designSystem, getFontSize } from '../../../../styles/designSystem'
 import { RankingCard } from './RankingCard'
 import type { CoachStats, MemberStats } from '../types'
 import { formatDuration } from '../utils'
@@ -19,6 +20,8 @@ export function CoachMemberRankings({
   memberStats,
   periodWord,
 }: CoachMemberRankingsProps) {
+  const { isMobile } = useResponsive()
+
   if (subTab === 'coach') {
     return (
       <>
@@ -41,7 +44,7 @@ export function CoachMemberRankings({
             return (
               <div>
                 <div style={{
-                  fontSize: '13px',
+                  fontSize: getFontSize('bodySmall', isMobile),
                   color: designSystem.colors.text.secondary,
                   marginBottom: '10px',
                   fontWeight: '500'
@@ -62,7 +65,7 @@ export function CoachMemberRankings({
                       }}
                     >
                       <span style={{
-                        fontSize: '13px',
+                        fontSize: getFontSize('bodySmall', isMobile),
                         color: designSystem.colors.text.primary
                       }}>
                         {idx + 1}. {student.memberName}
@@ -82,7 +85,7 @@ export function CoachMemberRankings({
                         )}
                       </span>
                       <span style={{
-                        fontSize: '13px',
+                        fontSize: getFontSize('bodySmall', isMobile),
                         color: designSystem.colors.warning[500],
                         fontWeight: '600',
                         flexShrink: 0,
@@ -138,7 +141,7 @@ export function CoachMemberRankings({
             {member.coaches.length > 0 && (
               <div style={{ flex: 1, minWidth: '150px' }}>
                 <div style={{
-                  fontSize: '13px',
+                  fontSize: getFontSize('bodySmall', isMobile),
                   color: designSystem.colors.text.secondary,
                   marginBottom: '8px',
                   fontWeight: '500'
@@ -152,7 +155,7 @@ export function CoachMemberRankings({
                       display: 'flex',
                       justifyContent: 'space-between',
                       padding: '4px 0',
-                      fontSize: '13px',
+                      fontSize: getFontSize('bodySmall', isMobile),
                       color: designSystem.colors.text.primary
                     }}
                   >
@@ -167,7 +170,7 @@ export function CoachMemberRankings({
             {member.boats.length > 0 && (
               <div style={{ flex: 1, minWidth: '150px' }}>
                 <div style={{
-                  fontSize: '13px',
+                  fontSize: getFontSize('bodySmall', isMobile),
                   color: designSystem.colors.text.secondary,
                   marginBottom: '8px',
                   fontWeight: '500'
@@ -181,7 +184,7 @@ export function CoachMemberRankings({
                       display: 'flex',
                       justifyContent: 'space-between',
                       padding: '4px 0',
-                      fontSize: '13px',
+                      fontSize: getFontSize('bodySmall', isMobile),
                       color: designSystem.colors.text.primary
                     }}
                   >
@@ -200,7 +203,7 @@ export function CoachMemberRankings({
   )
 }
 
-export function getCoachMemberSubTabStyle(isActive: boolean): CSSProperties {
+export function getCoachMemberSubTabStyle(isActive: boolean, isMobile: boolean): CSSProperties {
   return {
     flex: 1,
     padding: '10px 16px',
@@ -210,7 +213,7 @@ export function getCoachMemberSubTabStyle(isActive: boolean): CSSProperties {
     color: isActive
       ? designSystem.colors.text.primary
       : designSystem.colors.text.secondary,
-    fontSize: '14px',
+    fontSize: getFontSize('button', isMobile),
     fontWeight: isActive ? '600' : '500',
     cursor: 'pointer',
     boxShadow: isActive ? designSystem.shadows.xs : 'none',

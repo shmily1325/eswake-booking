@@ -154,13 +154,15 @@ export function ProductHub() {
             銷售排行
           </AdminPillLink>
         )}
-        <ExternalNavLink
-          href={getPublicShopHomeUrl()}
-          data-track="products_es_shop"
-          style={adminPillButtonStyle(false)}
-        >
-          ES SHOP
-        </ExternalNavLink>
+        {canEdit && (
+          <ExternalNavLink
+            href={getPublicShopHomeUrl()}
+            data-track="products_es_shop"
+            style={adminPillButtonStyle(false)}
+          >
+            ES SHOP
+          </ExternalNavLink>
+        )}
       </AdminPillRow>
 
       <Routes>

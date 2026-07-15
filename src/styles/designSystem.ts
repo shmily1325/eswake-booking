@@ -289,9 +289,9 @@ export const designSystem: DesignSystem = {
 /** 各頁型的桌面內容寬度；避免頁面自行散落 magic number。 */
 export const PAGE_MAX_WIDTHS = {
   mobileColumn: '480px',
-  hub: '640px',
+  hub: '600px',
   // 4 欄 hub 保持與 3 欄 hub 相同的卡片寬度
-  hubWide: '845px',
+  hubWide: '792px',
   content: '1100px',
   dashboard: '1200px',
   wide: '1400px',

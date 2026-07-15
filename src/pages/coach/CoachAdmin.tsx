@@ -751,7 +751,15 @@ export function CoachAdmin() {
               marginBottom: '24px'
             }}>
               {/* 查看模式切換 */}
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{
+                  color: designSystem.colors.text.secondary,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  fontWeight: 600,
+                  marginRight: '4px',
+                }}>
+                  日期
+                </span>
                 {/* 全部待處理按鈕 */}
                 <button
                   onClick={() => setPendingViewMode('all')}

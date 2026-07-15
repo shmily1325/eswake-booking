@@ -338,8 +338,6 @@ export function CoachTimeOffPage() {
   }, [user?.email])
 
   const monthDays = useMemo(() => daysInMonth(monthParam), [monthParam])
-  const { year, monthIndex } = monthRange(monthParam)
-  const monthTitle = `${year} 年 ${monthIndex + 1} 月`
   const weekDays = useMemo(() => getWeekDaysMondayStart(weekAnchor), [weekAnchor])
 
   const setMonth = (ym: string) => {
@@ -411,7 +409,6 @@ export function CoachTimeOffPage() {
                 fontWeight: 600,
               }}
             />
-            <span style={{ fontWeight: 750, fontSize: '17px', color: designSystem.colors.text.primary, letterSpacing: '-0.02em' }}>{monthTitle}</span>
             <button
               type="button"
               data-track="coach_time_off_month_next"

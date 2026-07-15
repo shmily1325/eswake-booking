@@ -318,11 +318,11 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary, fontSize: getFontSize('body', isMobile) }}>
           載入中...
         </div>
       ) : coachStats.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary, fontSize: getFontSize('body', isMobile) }}>
           {selectedDate.length === 10 ? '當日無記錄' : '當月無記錄'}
         </div>
       ) : (

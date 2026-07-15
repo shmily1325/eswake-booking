@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useResponsive } from '../../hooks/useResponsive'
 import { getFontSize } from '../../styles/designSystem'
 
 let modalKeyframesInjected = false
@@ -119,7 +120,7 @@ export function AdminModal({
               borderRadius: '999px',
               background: closeHover ? '#eef0f3' : 'transparent',
               color: '#a1a5b0',
-              fontSize: getFontSize('h2', false),
+              fontSize: getFontSize('h2', Boolean(isMobile)),
               lineHeight: 1,
               cursor: 'pointer',
               transition: 'background 0.15s',
@@ -143,12 +144,13 @@ export function AdminModalHeader({
   subtitle?: string
   accent?: 'blue' | 'amber' | 'orange'
 }) {
+  const { isMobile } = useResponsive()
   const colors = { blue: '#365d66', amber: '#7d5521', orange: '#7d5521' }
   return (
     <div style={{ marginBottom: '20px' }}>
-      <h2 style={{ margin: 0, fontSize: getFontSize('h2', false), fontWeight: 750, color: '#1d1d1f', letterSpacing: '-0.03em' }}>{title}</h2>
+      <h2 style={{ margin: 0, fontSize: getFontSize('h2', isMobile), fontWeight: 750, color: '#1d1d1f', letterSpacing: '-0.03em' }}>{title}</h2>
       {subtitle && (
-        <p style={{ margin: '6px 0 0', fontSize: getFontSize('body', false), color: colors[accent], fontWeight: 600 }}>
+        <p style={{ margin: '6px 0 0', fontSize: getFontSize('body', isMobile), color: colors[accent], fontWeight: 600 }}>
           {subtitle}
         </p>
       )}
@@ -163,17 +165,19 @@ export function FormFieldLabel({
   children: ReactNode
   optional?: boolean
 }) {
+  const { isMobile } = useResponsive()
+
   return (
     <label style={{
       display: 'block',
       marginBottom: '8px',
       fontWeight: 600,
-      fontSize: getFontSize('body', false),
+      fontSize: getFontSize('bodySmall', isMobile),
       color: '#1d1d1f',
     }}>
       {children}
       {optional && (
-        <span style={{ color: '#a1a5b0', fontWeight: 400, fontSize: getFontSize('bodySmall', false), marginLeft: '6px' }}>
+        <span style={{ color: '#a1a5b0', fontWeight: 400, fontSize: getFontSize('caption', isMobile), marginLeft: '6px' }}>
           （選填）
         </span>
       )}
@@ -193,6 +197,8 @@ export const adminTextInputStyle: CSSProperties = {
 }
 
 export function PreviewBanner({ children }: { children: ReactNode }) {
+  const { isMobile } = useResponsive()
+
   return (
     <div style={{
       marginBottom: '16px',
@@ -200,7 +206,7 @@ export function PreviewBanner({ children }: { children: ReactNode }) {
       background: '#edf3f5',
       borderRadius: '16px',
       border: '1px solid rgba(95, 135, 145, 0.22)',
-      fontSize: getFontSize('body', false),
+      fontSize: getFontSize('body', isMobile),
       color: '#365d66',
       lineHeight: 1.5,
     }}>
@@ -218,6 +224,8 @@ export function CrossDayToggle({
   onChange: (v: boolean) => void
   trackId?: string
 }) {
+  const { isMobile } = useResponsive()
+
   return (
     <label
       data-track={trackId}
@@ -227,7 +235,7 @@ export function CrossDayToggle({
         gap: '8px',
         marginBottom: '12px',
         cursor: 'pointer',
-        fontSize: getFontSize('body', false),
+        fontSize: getFontSize('body', isMobile),
         color: '#6b6f7a',
         userSelect: 'none',
       }}
@@ -315,6 +323,7 @@ export function SegmentedControl<T extends string>({
   onChange: (v: T) => void
   accent?: 'blue' | 'amber'
 }) {
+  const { isMobile } = useResponsive()
   const activeBg = accent === 'amber' ? '#fbf3e5' : '#edf3f5'
   const activeBorder = accent === 'amber' ? 'rgba(184, 132, 63, 0.28)' : 'rgba(95, 135, 145, 0.28)'
   const activeColor = accent === 'amber' ? '#7d5521' : '#365d66'
@@ -338,7 +347,7 @@ export function SegmentedControl<T extends string>({
               background: selected ? activeBg : disabled ? '#f4f5f7' : 'white',
               color: selected ? activeColor : disabled ? '#a1a5b0' : '#1d1d1f',
               fontWeight: selected ? 700 : 500,
-              fontSize: getFontSize('body', false),
+              fontSize: getFontSize('body', isMobile),
               cursor: disabled ? 'not-allowed' : 'pointer',
               opacity: disabled ? 0.5 : 1,
               textAlign: 'center',
@@ -349,7 +358,7 @@ export function SegmentedControl<T extends string>({
           >
             {opt.label}
             {opt.hint && (
-              <div style={{ fontSize: getFontSize('caption', true), fontWeight: 400, marginTop: '2px', opacity: 0.85 }}>
+              <div style={{ fontSize: getFontSize('caption', isMobile), fontWeight: 400, marginTop: '2px', opacity: 0.85 }}>
                 {opt.hint}
               </div>
             )}
@@ -386,9 +395,11 @@ export function TimeSelectField({
 }
 
 export function HintBox({ children }: { children: ReactNode }) {
+  const { isMobile } = useResponsive()
+
   return (
     <div style={{
-      fontSize: getFontSize('caption', false),
+      fontSize: getFontSize('caption', isMobile),
       color: '#6b6f7a',
       marginTop: '8px',
       lineHeight: 1.55,

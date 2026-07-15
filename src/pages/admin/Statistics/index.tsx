@@ -793,7 +793,7 @@ export function Statistics() {
       : `1px solid ${designSystem.colors.border.light}`,
     borderRadius: designSystem.borderRadius.lg,
     cursor: 'pointer' as const,
-    fontSize: getFontSize(isMobile ? 'body' : 'bodyLarge', isMobile),
+    fontSize: getFontSize('button', isMobile),
     fontWeight: isActive ? '600' : '500',
     transition: 'all 0.2s',
   })

@@ -52,7 +52,7 @@ export function RankingCard({
       <h3 style={{
         margin: '0 0 16px 0',
         fontSize: getFontSize('h3', isMobile),
-        fontWeight: '700',
+        fontWeight: '600',
         display: 'flex',
         alignItems: isMobile ? 'flex-start' : 'center',
         flexDirection: isMobile ? 'column' : 'row',
@@ -137,7 +137,7 @@ export function RankingCard({
                       {item.badge && (
                         <span style={{
                           marginLeft: '4px',
-                          fontSize: getFontSize('caption', true),
+                          fontSize: getFontSize('caption', isMobile),
                           color: item.isWarning
                             ? designSystem.colors.warning[700]
                             : designSystem.colors.text.secondary,
@@ -210,7 +210,8 @@ export function RankingCard({
         <div style={{
           textAlign: 'center',
           padding: '24px',
-          color: designSystem.colors.text.disabled
+          color: designSystem.colors.text.disabled,
+          fontSize: getFontSize('body', isMobile),
         }}>
           {emptyText}
         </div>

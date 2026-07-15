@@ -116,7 +116,6 @@ export function MemberManagement() {
   const [expiringFilter, setExpiringFilter] = useState<string>('none') // 'none', 'membership', 'board'
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
   const [showExpiringDetails, setShowExpiringDetails] = useState(false) // 收合/展開到期詳情
-  const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false)
   /** 列表備忘錄展開的會員 id（預設收合，只顯示最近幾則） */
   const [expandedMemoMemberIds, setExpandedMemoMemberIds] = useState<Set<string>>(() => new Set())
 
@@ -455,7 +454,7 @@ export function MemberManagement() {
     let result = members
     
     // 篩選會員種類
-    if (membershipTypeFilter !== 'all') {
+    if (!isMobile && membershipTypeFilter !== 'all') {
       result = result.filter(member => {
         if (membershipTypeFilter === 'member') {
           return member.membership_type === 'general' || member.membership_type === 'dual'
@@ -473,15 +472,15 @@ export function MemberManagement() {
       )
     }
 
-    // 篩選到期會員
-    if (expiringFilter === 'membership') {
+    // 手機版以臨時搜尋為主，不套用桌面進階篩選
+    if (!isMobile && expiringFilter === 'membership') {
       const expiringMemberNames = new Set(expiringMemberships.map((m: any) => m.name))
       const expiringMemberNicknames = new Set(expiringMemberships.map((m: any) => m.nickname).filter(Boolean))
       result = result.filter(member => 
         expiringMemberNames.has(member.name) || 
         (member.nickname && expiringMemberNicknames.has(member.nickname))
       )
-    } else if (expiringFilter === 'board') {
+    } else if (!isMobile && expiringFilter === 'board') {
       const expiringBoardMemberNames = new Set(expiringBoards.map((b: any) => b.member_name))
       result = result.filter(member => 
         expiringBoardMemberNames.has(member.name) || 
@@ -489,9 +488,9 @@ export function MemberManagement() {
       )
     }
 
-    if (lineBindingFilter === 'bound') {
+    if (!isMobile && lineBindingFilter === 'bound') {
       result = result.filter(m => m.is_line_bound)
-    } else if (lineBindingFilter === 'unbound') {
+    } else if (!isMobile && lineBindingFilter === 'unbound') {
       result = result.filter(m => !m.is_line_bound)
     }
 
@@ -509,7 +508,7 @@ export function MemberManagement() {
     })
     
     return result
-  }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards])
+  }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards, isMobile])
 
 
   if (loading) {
@@ -690,148 +689,8 @@ export function MemberManagement() {
           </button>
         </div>
 
-        {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
-        {isMobile ? (
-          /* 手機版：可收合的篩選區 */
-          <>
-            {(() => {
-              const filtersActive = membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all'
-              return (
-            <button
-              type="button"
-              onClick={() => setMobileFiltersExpanded((v) => !v)}
-              style={{
-                width: '100%',
-                marginBottom: '10px',
-                padding: '10px 12px',
-                border: cardBorder,
-                borderRadius: designSystem.borderRadius.lg,
-                fontSize: getFontSize('body', isMobile),
-                background: mobileFiltersExpanded
-                  ? designSystem.colors.background.card
-                  : (filtersActive ? designSystem.colors.warning[50] : designSystem.colors.background.card),
-                color: designSystem.colors.text.primary,
-                cursor: 'pointer',
-                textAlign: 'left',
-                boxShadow: designSystem.shadows.xs,
-              }}
-            >
-              {mobileFiltersExpanded
-                ? '收合篩選'
-                : `篩選（類型、到期、LINE）${filtersActive ? ' · 已套用' : ''}`}
-            </button>
-              )
-            })()}
-            {mobileFiltersExpanded && (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              alignItems: 'stretch',
-            }}>
-              {/* 會員類型下拉選單 */}
-              <div style={{ width: '100%' }}>
-                <select
-                  value={expiringFilter !== 'none' ? `expiring-${expiringFilter}` : membershipTypeFilter}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    if (val.startsWith('expiring-')) {
-                      const filter = val.replace('expiring-', '') as 'membership' | 'board'
-                      setExpiringFilter(filter)
-                      setMembershipTypeFilter('all')
-                    } else {
-                      setMembershipTypeFilter(val)
-                      setExpiringFilter('none')
-                    }
-                  }}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    width: '100%',
-                    paddingRight: '32px',
-                    appearance: 'none',
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 12px center',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: getFontSize('body', isMobile),
-                    fontWeight: (membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') ? '500' : 'normal',
-                  }}
-                >
-                  <option value="all">全部 ({members.length})</option>
-                  <option value="member">會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
-                  <option value="guest">非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
-                  <option value="es">ES ({members.filter(m => m.membership_type === 'es').length})</option>
-                  {expiringMemberships.length > 0 && (
-                    <option value="expiring-membership">會籍到期 ({expiringMemberships.length})</option>
-                  )}
-                  {expiringBoards.length > 0 && (
-                    <option value="expiring-board">置板到期 ({expiringBoards.length})</option>
-                  )}
-                </select>
-              </div>
-
-              {/* LINE 綁定狀態 */}
-              <div style={{ width: '100%' }}>
-                <select
-                  value={lineBindingFilter}
-                  onChange={(e) => setLineBindingFilter(e.target.value as 'all' | 'bound' | 'unbound')}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    width: '100%',
-                    paddingRight: '32px',
-                    appearance: 'none',
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 12px center',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: getFontSize('body', isMobile),
-                    fontWeight: lineBindingFilter !== 'all' ? '500' : 'normal',
-                  }}
-                >
-                  <option value="all">LINE 全部 ({members.length})</option>
-                  <option value="bound">LINE 已綁定 ({members.filter(m => m.is_line_bound).length})</option>
-                  <option value="unbound">LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})</option>
-                </select>
-              </div>
-
-              {/* 包含已隱藏 checkbox */}
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                cursor: 'pointer',
-                gap: '6px',
-                fontSize: getFontSize('button', isMobile),
-                color: designSystem.colors.text.secondary,
-                whiteSpace: 'nowrap',
-                padding: '4px 0',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={showInactive}
-                  onChange={(e) => setShowInactive(e.target.checked)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                包含已隱藏
-              </label>
-            </div>
-            )}
-
-            {/* 手機版結果數量 */}
-            {(searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') && (
-              <div style={{
-                fontSize: getFontSize('button', isMobile),
-                color: designSystem.colors.text.secondary,
-                marginTop: '8px',
-                textAlign: 'center',
-              }}>
-                {searchTerm ? `「${searchTerm}」` : ''} 找到 <strong>{filteredMembers.length}</strong> 位會員
-              </div>
-            )}
-          </>
-        ) : (
-          /* 桌面版：類型一列、次要篩選／排序一列 */
+        {/* 桌面版：類型一列、次要篩選／排序一列 */}
+        {!isMobile && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{
               display: 'flex',
@@ -1063,11 +922,19 @@ export function MemberManagement() {
         {filteredMembers.length === 0 ? (
           <div style={{ ...getEmptyStateStyle(isMobile), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
             <div>
-              {(searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all')
+              {(searchTerm || (!isMobile && (
+                membershipTypeFilter !== 'all' ||
+                expiringFilter !== 'none' ||
+                lineBindingFilter !== 'all'
+              )))
                 ? '找不到符合的會員'
                 : '尚無會員資料'}
             </div>
-            {(searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') && (
+            {(searchTerm || (!isMobile && (
+              membershipTypeFilter !== 'all' ||
+              expiringFilter !== 'none' ||
+              lineBindingFilter !== 'all'
+            ))) && (
               <button
                 type="button"
                 onClick={() => {

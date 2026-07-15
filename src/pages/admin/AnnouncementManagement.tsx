@@ -14,6 +14,7 @@ import { isAdmin } from '../../utils/auth'
 import {
   designSystem,
   getButtonStyle,
+  getFontSize,
   getInputStyle,
   getPageContentShellStyle,
 } from '../../styles/designSystem'
@@ -447,7 +448,7 @@ export function AnnouncementManagement() {
           <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'block',
-              fontSize: designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
+              fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
               marginBottom: '6px',
               fontWeight: '500',
@@ -470,7 +471,7 @@ export function AnnouncementManagement() {
           <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'block',
-              fontSize: designSystem.fontSize.bodySmall[isMobile ? 'mobile' : 'desktop'],
+              fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
               marginBottom: '8px',
               fontWeight: '500',
@@ -492,7 +493,7 @@ export function AnnouncementManagement() {
                   width: 'auto',
                 }}
               />
-              <span style={{ color: designSystem.colors.text.disabled, fontSize: '14px', flexShrink: 0 }}>～</span>
+              <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile), flexShrink: 0 }}>～</span>
               <input
                 type="date"
                 value={newEndDate}
@@ -510,7 +511,7 @@ export function AnnouncementManagement() {
                 borderRadius: designSystem.borderRadius.md,
                 background: designSystem.colors.primary[500],
                 color: 'white',
-                fontSize: '14px',
+                fontSize: getFontSize('button', isMobile),
                 fontWeight: '600',
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
@@ -529,7 +530,7 @@ export function AnnouncementManagement() {
               alignItems: 'center',
               gap: '10px',
               cursor: 'pointer',
-              fontSize: isMobile ? '15px' : '14px',
+              fontSize: getFontSize('body', isMobile),
               color: designSystem.colors.text.secondary,
               padding: isMobile ? '8px 0' : 0,
               minHeight: isMobile ? 44 : undefined
@@ -552,7 +553,7 @@ export function AnnouncementManagement() {
                 alignItems: 'center',
                 gap: '10px',
                 cursor: 'pointer',
-                fontSize: isMobile ? '15px' : '14px',
+                fontSize: getFontSize('body', isMobile),
                 color: designSystem.colors.text.primary,
                 padding: isMobile ? '8px 0' : 0,
                 minHeight: isMobile ? 44 : undefined,
@@ -577,7 +578,7 @@ export function AnnouncementManagement() {
                 <span>啟用預約限制</span>
               </label>
               {newRestrictEnabled && (
-                <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary }}>
+                <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
                   設定後，此時段內將禁止建立/編輯預約
                 </div>
               )}
@@ -605,7 +606,7 @@ export function AnnouncementManagement() {
                       style={{ ...getInputStyle(isMobile), width: '120px' }}
                     />
                   )}
-                  <span style={{ color: designSystem.colors.text.disabled, fontSize: '14px', flexShrink: 0 }}>～</span>
+                  <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile), flexShrink: 0 }}>～</span>
                   <input
                     type="date"
                     value={newRestrictEndDate}
@@ -628,7 +629,7 @@ export function AnnouncementManagement() {
                     alignItems: 'center',
                     gap: '10px',
                     cursor: 'pointer',
-                    fontSize: isMobile ? '15px' : '14px',
+                    fontSize: getFontSize('body', isMobile),
                     color: designSystem.colors.text.secondary,
                     whiteSpace: 'nowrap'
                   }}>
@@ -643,7 +644,7 @@ export function AnnouncementManagement() {
                 </div>
 
                 {/* 即時摘要 */}
-                <div style={{ background: designSystem.colors.background.main, color: designSystem.colors.text.primary, padding: '6px 10px', borderRadius: designSystem.borderRadius.md, fontSize: 12 }}>
+                <div style={{ background: designSystem.colors.background.main, color: designSystem.colors.text.primary, padding: '6px 10px', borderRadius: designSystem.borderRadius.md, fontSize: getFontSize('bodySmall', isMobile) }}>
                   限制時段：{newRestrictStartDate}
                   {!newRestrictAllDay && ` ${newRestrictStartTime}`} ～ {newRestrictEndDate}
                   {!newRestrictAllDay && ` ${newRestrictEndTime}`}{newRestrictAllDay && ' 全天'}
@@ -716,31 +717,31 @@ export function AnnouncementManagement() {
                 padding: '10px',
               }}>
                 {needsRecalc && (
-                  <div style={{ background: designSystem.colors.warning[50], border: `1px solid ${designSystem.colors.warning[500]}33`, color: designSystem.colors.warning[700], padding: '6px 10px', borderRadius: designSystem.borderRadius.sm, fontSize: 12, marginBottom: 8 }}>
+                  <div style={{ background: designSystem.colors.warning[50], border: `1px solid ${designSystem.colors.warning[500]}33`, color: designSystem.colors.warning[700], padding: '6px 10px', borderRadius: designSystem.borderRadius.sm, fontSize: getFontSize('caption', isMobile), marginBottom: 8 }}>
                     設定已變更，請重新試算
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontSize: '13px', color: designSystem.colors.text.primary, fontWeight: 600 }}>
+                  <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.primary, fontWeight: 600 }}>
                     受影響預約
                   </div>
-                  <div style={{ fontSize: 12, color: designSystem.colors.text.secondary }}>
+                  <div style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
                     {impactLoading ? '載入中…' : `共 ${impactedBookings.length} 筆`}
                   </div>
                 </div>
                 {impactedBookings.length === 0 && !impactLoading && (
-                  <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary }}>此時段沒有受影響的預約</div>
+                  <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>此時段沒有受影響的預約</div>
                 )}
                 {impactedBookings.length > 0 && (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: 12, color: designSystem.colors.text.secondary, padding: '4px 0' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary, padding: '4px 0' }}>
                       {!isMobile && <div>時間</div>}
                       <div>聯絡人 / 船</div>
                       {!isMobile && <div>教練</div>}
                     </div>
                     <div style={{ display: 'grid', rowGap: '6px' }}>
                       {impactedBookings.map(item => (
-                        <div key={item.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: 13, color: designSystem.colors.text.secondary, alignItems: 'baseline' }}>
+                        <div key={item.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 1fr', gap: '6px', fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, alignItems: 'baseline' }}>
                           {!isMobile && (
                             <div style={{ color: designSystem.colors.info[700], fontWeight: 600 }}>
                               {new Date(item.start_at).toLocaleString()}
@@ -795,7 +796,7 @@ export function AnnouncementManagement() {
           }}>
             <h2 style={{
               margin: 0,
-              fontSize: isMobile ? '16px' : '18px',
+              fontSize: getFontSize('h3', isMobile),
               fontWeight: '600',
               color: designSystem.colors.text.primary,
               flexShrink: 0,
@@ -852,13 +853,13 @@ export function AnnouncementManagement() {
           </div>
 
           {loading && (
-            <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary, fontSize: getFontSize('body', isMobile) }}>
               載入中...
             </div>
           )}
 
           {!loading && announcements.length === 0 && !searchText && (
-            <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile) }}>
               目前沒有交辦事項
             </div>
           )}
@@ -866,7 +867,7 @@ export function AnnouncementManagement() {
           {!loading && searchText && announcements.filter(a => 
             a.content.toLowerCase().includes(searchText.toLowerCase())
           ).length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile) }}>
               沒有符合「{searchText}」的搜尋結果
             </div>
           )}
@@ -890,14 +891,14 @@ export function AnnouncementManagement() {
                   gap: '8px',
                 }}>
                   <span style={{
-                    fontSize: isMobile ? '15px' : '14px',
+                    fontSize: getFontSize('body', isMobile),
                     fontWeight: '600',
                     color: designSystem.colors.text.secondary,
                   }}>
                     {formatDateHeader(date)}
                   </span>
                   <span style={{
-                    fontSize: isMobile ? '13px' : '12px',
+                    fontSize: getFontSize('bodySmall', isMobile),
                     color: designSystem.colors.text.disabled,
                   }}>
                     ({dateAnnouncements.length} 條)
@@ -932,7 +933,7 @@ export function AnnouncementManagement() {
                           }}
                         />
                         <div style={{ marginBottom: '10px' }}>
-                          <div style={{ fontSize: '12px', color: designSystem.colors.text.secondary, marginBottom: '6px' }}>事項日期</div>
+                          <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '6px' }}>事項日期</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <input
                               type="date"
@@ -948,7 +949,7 @@ export function AnnouncementManagement() {
                                 width: 'auto',
                               }}
                             />
-                            <span style={{ color: designSystem.colors.text.disabled, fontSize: '14px', flexShrink: 0 }}>～</span>
+                            <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile), flexShrink: 0 }}>～</span>
                             <input
                               type="date"
                               value={editEndDate}
@@ -969,7 +970,7 @@ export function AnnouncementManagement() {
                             alignItems: 'center',
                             gap: '10px',
                             cursor: 'pointer',
-                            fontSize: isMobile ? '15px' : '14px',
+                            fontSize: getFontSize('body', isMobile),
                             color: designSystem.colors.text.secondary,
                             padding: isMobile ? '8px 0' : 0,
                             minHeight: isMobile ? 44 : undefined
@@ -990,7 +991,7 @@ export function AnnouncementManagement() {
                             alignItems: 'center',
                             gap: '10px',
                             cursor: 'pointer',
-                            fontSize: isMobile ? '15px' : '14px',
+                            fontSize: getFontSize('body', isMobile),
                             color: designSystem.colors.text.primary,
                             fontWeight: 600
                           }}>
@@ -1019,7 +1020,7 @@ export function AnnouncementManagement() {
                                     style={{ ...getInputStyle(isMobile), width: '120px' }}
                                   />
                                 )}
-                                <span style={{ color: designSystem.colors.text.disabled, fontSize: '14px', flexShrink: 0 }}>～</span>
+                                <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', isMobile), flexShrink: 0 }}>～</span>
                                 <input
                                   type="date"
                                   value={editRestrictEndDate || editEndDate}
@@ -1036,7 +1037,7 @@ export function AnnouncementManagement() {
                                 )}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: isMobile ? '15px' : '14px', color: designSystem.colors.text.secondary, whiteSpace: 'nowrap' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, whiteSpace: 'nowrap' }}>
                                   <input
                                     type="checkbox"
                                     checked={editRestrictAllDay}
@@ -1087,7 +1088,7 @@ export function AnnouncementManagement() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {dateLabel.isRange && (
                               <div style={{
-                                fontSize: isMobile ? '12px' : '11px',
+                                fontSize: getFontSize('caption', isMobile),
                                 color: designSystem.colors.text.secondary,
                                 marginBottom: '4px',
                                 display: 'flex',
@@ -1106,7 +1107,7 @@ export function AnnouncementManagement() {
                               </div>
                             )}
                             <div style={{ 
-                              fontSize: isMobile ? '15px' : '14px',
+                              fontSize: getFontSize('body', isMobile),
                               color: designSystem.colors.text.primary,
                               lineHeight: '1.5',
                               whiteSpace: 'pre-wrap',
@@ -1120,7 +1121,7 @@ export function AnnouncementManagement() {
                               {/* 若此公告有啟用中的限制，顯示小字 */}
                               {restrictionsMap[announcement.id] && (
                                 <span style={{
-                                  fontSize: isMobile ? '12px' : '11px',
+                                  fontSize: getFontSize('caption', isMobile),
                                   color: designSystem.colors.text.secondary,
                                 }}>
                                   {' '}
@@ -1129,7 +1130,7 @@ export function AnnouncementManagement() {
                               )}
                               {parseForEdit(announcement).showOneDayEarly && (
                                 <span style={{
-                                  fontSize: isMobile ? '12px' : '11px',
+                                  fontSize: getFontSize('caption', isMobile),
                                   padding: isMobile ? '3px 8px' : '2px 6px',
                                   borderRadius: '3px',
                                   background: designSystem.colors.warning[50],

@@ -47,9 +47,6 @@ export function MemberTransaction() {
   const [showTransactionDialog, setShowTransactionDialog] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
-  // 新增的 state
-  /** 手機：篩選下拉預設收合，避免佔滿螢幕又與 sticky 疊加難以瀏覽列表 */
-  const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false)
   const [sortBy, setSortBy] = useState<'updatedAt' | 'lastLiffLogin'>('updatedAt')
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
@@ -164,7 +161,7 @@ export function MemberTransaction() {
     let result = members
 
     // 會員種類篩選
-    if (membershipTypeFilter !== 'all') {
+    if (!isMobile && membershipTypeFilter !== 'all') {
       result = result.filter(member => {
         if (membershipTypeFilter === 'member') {
           return member.membership_type === 'general' || member.membership_type === 'dual'
@@ -197,7 +194,7 @@ export function MemberTransaction() {
         return nameA.localeCompare(nameB, 'zh-TW')
       }
 
-      switch (sortBy) {
+      switch (isMobile ? 'updatedAt' : sortBy) {
         case 'lastLiffLogin':
           if (!a.last_liff_login_at && !b.last_liff_login_at) return compareNickname()
           if (!a.last_liff_login_at) return 1
@@ -214,7 +211,7 @@ export function MemberTransaction() {
     })
 
     return result
-  }, [members, searchTerm, sortBy, membershipTypeFilter, lineBindingFilter])
+  }, [members, searchTerm, sortBy, membershipTypeFilter, lineBindingFilter, isMobile])
 
   const handleMemberClick = (member: Member) => {
     setSelectedMember(member)
@@ -330,120 +327,35 @@ export function MemberTransaction() {
 
         {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
         {isMobile ? (
-          /* 手機版：篩選預設收合，展開後才顯示下拉選單 */
           <>
-            {(() => {
-              const filtersActive = membershipTypeFilter !== 'all' || lineBindingFilter !== 'all'
-              return (
-            <button
-              type="button"
-              onClick={() => setMobileFiltersExpanded((v) => !v)}
-              style={{
-                width: '100%',
-                marginBottom: '10px',
-                padding: '10px 12px',
-                border: cardBorder,
-                borderRadius: designSystem.borderRadius.lg,
-                fontSize: getFontSize('body', isMobile),
-                background: mobileFiltersExpanded
-                  ? designSystem.colors.background.card
-                  : (filtersActive ? designSystem.colors.warning[50] : designSystem.colors.background.card),
-                color: designSystem.colors.text.primary,
-                cursor: 'pointer',
-                textAlign: 'left',
-                boxShadow: designSystem.shadows.xs,
-              }}
-            >
-              {mobileFiltersExpanded
-                ? '收合篩選與排序'
-                : `篩選與排序（類型、LINE、排序）${filtersActive ? ' · 已套用' : ''}`}
-            </button>
-              )
-            })()}
-            {mobileFiltersExpanded && (
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              gap: '10px',
-              alignItems: 'stretch',
-            }}>
-              {/* 會員類型下拉選單 */}
-              <div style={{ width: '100%' }}>
-                <select
-                  value={membershipTypeFilter}
-                  onChange={(e) => setMembershipTypeFilter(e.target.value)}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    width: '100%',
-                    paddingRight: '32px',
-                    appearance: 'none',
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 12px center',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: getFontSize('body', isMobile),
-                    fontWeight: (membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') ? '500' : 'normal',
-                  }}
-                >
-                  <option value="all">全部 ({members.length})</option>
-                  <option value="member">會員 ({members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length})</option>
-                  <option value="guest">非會員 ({members.filter(m => m.membership_type === 'guest').length})</option>
-                  <option value="es">ES ({members.filter(m => m.membership_type === 'es').length})</option>
-                </select>
-              </div>
-
-              {/* LINE 綁定狀態 */}
-              <div style={{ width: '100%' }}>
-                <select
-                  value={lineBindingFilter}
-                  onChange={(e) => setLineBindingFilter(e.target.value as 'all' | 'bound' | 'unbound')}
-                  style={{
-                    ...getInputStyle(isMobile),
-                    width: '100%',
-                    paddingRight: '32px',
-                    appearance: 'none',
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 12px center',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: getFontSize('body', isMobile),
-                    fontWeight: lineBindingFilter !== 'all' ? '500' : 'normal',
-                  }}
-                >
-                  <option value="all">LINE 全部 ({members.length})</option>
-                  <option value="bound">LINE 已綁定 ({members.filter(m => m.is_line_bound).length})</option>
-                  <option value="unbound">LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})</option>
-                </select>
-              </div>
-
-              {/* 精簡排序切換 */}
-              <div style={{ width: '100%', display: 'flex', gap: '8px' }}>
-                {([
-                  { value: 'updatedAt', label: '最近異動' },
-                  { value: 'lastLiffLogin', label: 'LINE 登入' },
-                ] as const).map(option => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setSortBy(option.value)}
-                  style={{
-                    ...getButtonStyle('outline', 'medium', isMobile),
-                    ...getFilterChipStyle(sortBy === option.value, 'info'),
-                    flex: 1,
-                    minWidth: 0,
-                  }}
-                >
-                  {option.label}
-                </button>
-                ))}
-              </div>
+            {/* 手機版僅保留 LINE 綁定狀態，固定依最近更新排序 */}
+            <div style={{ width: '100%', marginBottom: '10px' }}>
+              <select
+                value={lineBindingFilter}
+                onChange={(e) => setLineBindingFilter(e.target.value as 'all' | 'bound' | 'unbound')}
+                aria-label="LINE 綁定狀態"
+                style={{
+                  ...getInputStyle(isMobile),
+                  width: '100%',
+                  paddingRight: '32px',
+                  appearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  fontSize: getFontSize('body', isMobile),
+                  fontWeight: lineBindingFilter !== 'all' ? '500' : 'normal',
+                }}
+              >
+                <option value="all">LINE 全部 ({members.length})</option>
+                <option value="bound">LINE 已綁定 ({members.filter(m => m.is_line_bound).length})</option>
+                <option value="unbound">LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})</option>
+              </select>
             </div>
-            )}
 
             {/* 手機版結果數量 */}
-            {(searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
+            {(searchTerm || lineBindingFilter !== 'all') && (
               <div style={{
                 fontSize: getFontSize('button', isMobile),
                 color: designSystem.colors.text.secondary,
@@ -516,7 +428,7 @@ export function MemberTransaction() {
               <div style={{ width: '1px', height: '22px', background: designSystem.colors.border.light, margin: '0 2px' }} />
 
               {([
-                { value: 'updatedAt', label: '最近異動' },
+                { value: 'updatedAt', label: '最近更新' },
                 { value: 'lastLiffLogin', label: 'LINE 登入' },
               ] as const).map(option => (
                 <button
@@ -590,11 +502,11 @@ export function MemberTransaction() {
         ) : filteredMembers.length === 0 ? (
           <div style={{ ...getEmptyStateStyle(isMobile), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
             <div>
-              {(searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all')
+              {(searchTerm || (!isMobile && membershipTypeFilter !== 'all') || lineBindingFilter !== 'all')
                 ? '找不到符合的會員'
                 : '尚無會員資料'}
             </div>
-            {(searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
+            {(searchTerm || (!isMobile && membershipTypeFilter !== 'all') || lineBindingFilter !== 'all') && (
               <button
                 type="button"
                 onClick={() => {

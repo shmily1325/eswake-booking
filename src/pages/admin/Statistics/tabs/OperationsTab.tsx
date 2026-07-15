@@ -37,11 +37,13 @@ function PeriodButton({
   children,
   onClick,
   track,
+  isMobile,
 }: {
   active: boolean
   children: React.ReactNode
   onClick: () => void
   track: string
+  isMobile: boolean
 }) {
   return (
     <button
@@ -55,6 +57,7 @@ function PeriodButton({
         borderRadius: designSystem.borderRadius.md,
         background: active ? designSystem.colors.background.card : 'transparent',
         color: active ? designSystem.colors.primary[600] : designSystem.colors.text.secondary,
+        fontSize: getFontSize('button', isMobile),
         fontWeight: active ? 700 : 500,
         cursor: 'pointer',
         boxShadow: active ? designSystem.shadows.sm : 'none',
@@ -91,6 +94,7 @@ function BoatUsageDetails({ rows }: { rows: BoatUsageRangeRow[] }) {
           margin: 0,
           padding: designSystem.spacing.lg,
           color: designSystem.colors.text.secondary,
+          fontSize: getFontSize('body', isMobile),
           textAlign: 'center',
         }}>
           此期間尚無資料
@@ -106,8 +110,8 @@ function BoatUsageDetails({ rows }: { rows: BoatUsageRangeRow[] }) {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <strong style={{ color: designSystem.colors.text.primary }}>{row.boatName}</strong>
-                <strong style={{ color: designSystem.colors.text.primary }}>
+                <strong style={{ color: designSystem.colors.text.primary, fontSize: getFontSize('bodySmall', isMobile) }}>{row.boatName}</strong>
+                <strong style={{ color: designSystem.colors.text.primary, fontSize: getFontSize('bodySmall', isMobile) }}>
                   {formatDuration(row.generalMinutes)}
                 </strong>
               </div>
@@ -115,7 +119,7 @@ function BoatUsageDetails({ rows }: { rows: BoatUsageRangeRow[] }) {
           ))}
         </div>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: getFontSize('bodySmall', isMobile) }}>
           <thead>
             <tr style={{ background: designSystem.colors.background.hover }}>
               <th style={{ padding: '12px 20px', textAlign: 'left' }}>船隻</th>
@@ -205,30 +209,6 @@ export function OperationsTab({
 
   return (
     <>
-      <div style={{
-        display: 'flex',
-        width: isMobile ? '100%' : '280px',
-        padding: '4px',
-        marginBottom: designSystem.spacing.md,
-        background: designSystem.colors.background.hover,
-        borderRadius: designSystem.borderRadius.lg,
-      }}>
-        <PeriodButton
-          active={isMonthly}
-          onClick={() => setPeriodMode('monthly')}
-          track="dashboard_period_monthly"
-        >
-          按月
-        </PeriodButton>
-        <PeriodButton
-          active={!isMonthly}
-          onClick={() => setPeriodMode('annual')}
-          track="dashboard_period_annual"
-        >
-          按年
-        </PeriodButton>
-      </div>
-
       <section style={{
         background: designSystem.colors.background.card,
         padding: designSystem.spacing.md,
@@ -236,7 +216,32 @@ export function OperationsTab({
         border: `1px solid ${designSystem.colors.border.light}`,
         marginBottom: designSystem.spacing.md,
       }}>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{
+            display: 'flex',
+            width: isMobile ? '100%' : '220px',
+            padding: '4px',
+            marginRight: isMobile ? 0 : '4px',
+            background: designSystem.colors.background.hover,
+            borderRadius: designSystem.borderRadius.lg,
+          }}>
+            <PeriodButton
+              active={isMonthly}
+              onClick={() => setPeriodMode('monthly')}
+              track="dashboard_period_monthly"
+              isMobile={isMobile}
+            >
+              按月
+            </PeriodButton>
+            <PeriodButton
+              active={!isMonthly}
+              onClick={() => setPeriodMode('annual')}
+              track="dashboard_period_annual"
+              isMobile={isMobile}
+            >
+              按年
+            </PeriodButton>
+          </div>
           {isMonthly ? (
             <>
               {quickMonths.slice(0, isMobile ? 4 : 6).map((month) => (
@@ -258,6 +263,7 @@ export function OperationsTab({
                     color: selectedPeriod === month.value
                       ? 'white'
                       : designSystem.colors.text.secondary,
+                    fontSize: getFontSize('button', isMobile),
                     fontWeight: selectedPeriod === month.value ? 600 : 500,
                     cursor: 'pointer',
                   }}
@@ -275,6 +281,7 @@ export function OperationsTab({
                   border: `1px solid ${designSystem.colors.border.main}`,
                   background: designSystem.colors.background.card,
                   color: designSystem.colors.text.secondary,
+                  fontSize: getFontSize('button', isMobile),
                 }}
               >
                 {Array.from({ length: 24 }, (_, index) => {
@@ -307,6 +314,7 @@ export function OperationsTab({
                     ? designSystem.colors.primary[500]
                     : designSystem.colors.background.card,
                   color: selectedYear === year ? 'white' : designSystem.colors.text.secondary,
+                  fontSize: getFontSize('button', isMobile),
                   fontWeight: selectedYear === year ? 600 : 500,
                   cursor: 'pointer',
                 }}
@@ -330,12 +338,13 @@ export function OperationsTab({
           padding: designSystem.spacing.xl,
           textAlign: 'center',
           color: designSystem.colors.text.secondary,
+          fontSize: getFontSize('body', isMobile),
         }}>
           載入年度資料中…
         </div>
       ) : (
         <>
-          <SummaryCardsGrid>
+          <SummaryCardsGrid desktopColumns={2}>
             <SummaryCard label="已結帳" value={bookingCount} unit="筆" />
             <SummaryCard label="已扣款時數" value={totalMinutes} unit="分" />
           </SummaryCardsGrid>
@@ -356,14 +365,14 @@ export function OperationsTab({
               <button
                 type="button"
                 onClick={() => setSubTab('coach')}
-                style={getCoachMemberSubTabStyle(subTab === 'coach')}
+                style={getCoachMemberSubTabStyle(subTab === 'coach', isMobile)}
               >
                 教練統計
               </button>
               <button
                 type="button"
                 onClick={() => setSubTab('member')}
-                style={getCoachMemberSubTabStyle(subTab === 'member')}
+                style={getCoachMemberSubTabStyle(subTab === 'member', isMobile)}
               >
                 會員統計
               </button>

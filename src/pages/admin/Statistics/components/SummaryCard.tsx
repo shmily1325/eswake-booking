@@ -72,7 +72,7 @@ export function SummaryCard({
             {change.label && (
               <span style={{
                 color: designSystem.colors.text.disabled,
-                fontSize: getFontSize('caption', true)
+                fontSize: getFontSize('caption', isMobile)
               }}>
                 {change.label}
               </span>
@@ -89,7 +89,7 @@ export function SummaryCard({
       </div>
       {subValue && (
         <div style={{
-          fontSize: getFontSize('caption', true),
+          fontSize: getFontSize('caption', isMobile),
           color: designSystem.colors.text.secondary,
           marginTop: '4px'
         }}>
@@ -102,15 +102,16 @@ export function SummaryCard({
 
 interface SummaryCardsGridProps {
   children: React.ReactNode
+  desktopColumns?: number
 }
 
-export function SummaryCardsGrid({ children }: SummaryCardsGridProps) {
+export function SummaryCardsGrid({ children, desktopColumns = 4 }: SummaryCardsGridProps) {
   const { isMobile } = useResponsive()
   
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+      gridTemplateColumns: isMobile ? '1fr 1fr' : `repeat(${desktopColumns}, 1fr)`,
       gap: designSystem.spacing.md,
       marginBottom: designSystem.spacing.lg,
     }}>

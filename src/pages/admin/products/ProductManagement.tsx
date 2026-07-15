@@ -443,41 +443,6 @@ export function ProductManagement({
       <div style={embedded ? { maxWidth: PAGE_MAX_WIDTHS.content, margin: '0 auto' } : getPageContentShellStyle(isMobile)}>
         {!embedded && <PageHeader user={user} title="商品" showBaoLink={isAdmin(user)} />}
 
-        {/* 儀表板：種數 / 件數 / 缺價 / 沒實拍 / 沒封面 / 缺標籤 / 已售完（皆為 SKU 種數，隨搜尋變動） */}
-        <InventoryDashboard
-          base={activeBaseForCounts}
-          isFiltered={hasAnyFilter}
-          onlyMissingPrice={onlyMissingPrice}
-          onlyMissingImage={onlyMissingImage}
-          onlyMissingCover={onlyMissingCover}
-          onlyMissingLabel={onlyMissingLabel}
-          onlySoldOut={onlySoldOut}
-          soldOutCount={soldOutCount}
-          onToggleMissingPrice={toggleMissingPrice}
-          onToggleMissingImage={toggleMissingImage}
-          onToggleMissingCover={toggleMissingCover}
-          onToggleMissingLabel={toggleMissingLabel}
-          onToggleSoldOut={toggleSoldOut}
-          onClearAll={clearAllFilters}
-          isMobile={isMobile}
-        />
-
-        {onlySoldOut && (
-          <div
-            style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.warning[700],
-              background: designSystem.colors.warning[50],
-              border: `1px solid ${designSystem.colors.border.light}`,
-              borderRadius: designSystem.borderRadius.md,
-              padding: '8px 12px',
-              marginBottom: 10,
-            }}
-          >
-            正在查看已售完商品 · 再按一次「已售完」或清除篩選返回
-          </div>
-        )}
-
         {/* 主要操作：搜尋與新增商品 */}
         <div
           style={{
@@ -541,6 +506,7 @@ export function ProductManagement({
             <Button
               variant="secondary"
               data-track="product_stock_scan_open"
+              style={isMobile && canEdit ? { flex: 1 } : undefined}
               onClick={() => {
                 setStockScannerStatus(null)
                 setStockScannerOpen(true)
@@ -552,15 +518,53 @@ export function ProductManagement({
               <Button
                 variant="primary"
                 data-track="product_add"
+                style={isMobile ? { flex: 1 } : undefined}
                 onClick={() => {
                   setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
                 }}
               >
-                + 新增{isMobile ? '' : '商品'}
+                + 新增商品
               </Button>
             )}
           </div>
         </div>
+
+        {/* 手機先呈現主要操作，再以精簡摘要補充庫存狀態。 */}
+        {canEdit && (
+          <InventoryDashboard
+            base={activeBaseForCounts}
+            isFiltered={hasAnyFilter}
+            onlyMissingPrice={onlyMissingPrice}
+            onlyMissingImage={onlyMissingImage}
+            onlyMissingCover={onlyMissingCover}
+            onlyMissingLabel={onlyMissingLabel}
+            onlySoldOut={onlySoldOut}
+            soldOutCount={soldOutCount}
+            onToggleMissingPrice={toggleMissingPrice}
+            onToggleMissingImage={toggleMissingImage}
+            onToggleMissingCover={toggleMissingCover}
+            onToggleMissingLabel={toggleMissingLabel}
+            onToggleSoldOut={toggleSoldOut}
+            onClearAll={clearAllFilters}
+            isMobile={isMobile}
+          />
+        )}
+
+        {canEdit && onlySoldOut && (
+          <div
+            style={{
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.warning[700],
+              background: designSystem.colors.warning[50],
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.md,
+              padding: '8px 12px',
+              marginBottom: 10,
+            }}
+          >
+            正在查看已售完商品 · 再按一次「已售完」或清除篩選返回
+          </div>
+        )}
 
         {scannedItem && (
           <StockCheckResult
@@ -646,37 +650,42 @@ export function ProductManagement({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 10,
-            flexWrap: 'wrap',
+            flexWrap: isMobile ? 'nowrap' : 'wrap',
             marginBottom: 14,
           }}
         >
           <div
             style={{
-              width: isMobile ? '100%' : undefined,
+              width: 'auto',
+              flexShrink: 0,
               fontSize: getFontSize('bodySmall', isMobile),
               color: colors.text.secondary,
               fontWeight: 600,
             }}
           >
-            {loading ? '載入中…' : `${filteredItems.length} 個結果`}
+            {loading ? '載入中…' : isMobile ? `${filteredItems.length} 筆` : `${filteredItems.length} 個結果`}
           </div>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              flexWrap: 'wrap',
-              width: isMobile ? '100%' : undefined,
+              flexWrap: isMobile ? 'nowrap' : 'wrap',
+              width: 'auto',
+              minWidth: 0,
+              marginLeft: 'auto',
             }}
           >
-            <SortMenu
-              value={sortBy}
-              onChange={(next) => {
-                setSortByPersist(next)
-                trackClick(`product_sort_${next}`, user?.email ?? undefined)
-              }}
-              isMobile={isMobile}
-            />
+            {canEdit && (
+              <SortMenu
+                value={sortBy}
+                onChange={(next) => {
+                  setSortByPersist(next)
+                  trackClick(`product_sort_${next}`, user?.email ?? undefined)
+                }}
+                isMobile={isMobile}
+              />
+            )}
             {canEdit && (
               <>
                 <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
@@ -1028,6 +1037,7 @@ function InventoryDashboard({
   onClearAll,
   isMobile,
 }: InventoryDashboardProps) {
+  const [mobileExpanded, setMobileExpanded] = useState(false)
   const baseSkuCount = base.length
   const baseStockTotal = base.reduce((s, it) => s + getVariantSellableStock(it.variant), 0)
   const baseReservedTotal = base.reduce((s, it) => s + (it.variant.reserved_qty || 0), 0)
@@ -1040,6 +1050,149 @@ function InventoryDashboard({
   const mainSku = baseSkuCount
   const mainStock = baseStockTotal
   const mainReserved = baseReservedTotal
+  const hasStatusFilter =
+    onlyMissingPrice ||
+    onlyMissingImage ||
+    onlyMissingCover ||
+    onlyMissingLabel ||
+    onlySoldOut
+  const issueCount =
+    missingPriceCount +
+    missingImageCount +
+    missingCoverCount +
+    missingLabelCount +
+    soldOutCount
+
+  useEffect(() => {
+    if (hasStatusFilter) setMobileExpanded(true)
+  }, [hasStatusFilter])
+
+  if (isMobile) {
+    return (
+      <div
+        style={{
+          background: colors.background.card,
+          borderRadius: borderRadius.lg,
+          marginBottom: 12,
+          border: `1px solid ${colors.border.light}`,
+          overflow: 'hidden',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setMobileExpanded(value => !value)}
+          aria-expanded={mobileExpanded}
+          style={{
+            width: '100%',
+            minHeight: 48,
+            padding: '10px 12px',
+            border: 'none',
+            background: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            color: colors.text.primary,
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <span style={{ fontSize: getFontSize('bodySmall', true), lineHeight: 1.45 }}>
+            <strong>{mainSku}</strong> 種規格
+            <span style={{ color: colors.text.disabled }}> · </span>
+            <strong>{mainStock}</strong> 件現貨
+            {mainReserved > 0 && (
+              <>
+                <span style={{ color: colors.text.disabled }}> · </span>
+                保留 {mainReserved}
+              </>
+            )}
+          </span>
+          <span
+            style={{
+              flexShrink: 0,
+              fontSize: getFontSize('caption', true),
+              color: hasStatusFilter ? colors.warning[700] : colors.text.secondary,
+            }}
+          >
+            {hasStatusFilter ? '已篩選' : issueCount > 0 ? `待補 ${issueCount}` : '摘要'}
+            <span aria-hidden style={{ marginLeft: 5 }}>{mobileExpanded ? '▴' : '▾'}</span>
+          </span>
+        </button>
+
+        {mobileExpanded && (
+          <div
+            style={{
+              padding: '0 12px 12px',
+              display: 'flex',
+              gap: 8,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+            }}
+          >
+            <DashboardStatChip
+              label="缺價"
+              count={missingPriceCount}
+              active={onlyMissingPrice}
+              onClick={onToggleMissingPrice}
+              trackId="product_filter_missing_price"
+              isMobile
+            />
+            <DashboardStatChip
+              label="沒實拍"
+              count={missingImageCount}
+              active={onlyMissingImage}
+              onClick={onToggleMissingImage}
+              trackId="product_filter_missing_image"
+              isMobile
+            />
+            <DashboardStatChip
+              label="沒封面"
+              count={missingCoverCount}
+              active={onlyMissingCover}
+              onClick={onToggleMissingCover}
+              trackId="product_filter_missing_cover"
+              isMobile
+            />
+            <DashboardStatChip
+              label="缺標籤"
+              count={missingLabelCount}
+              active={onlyMissingLabel}
+              onClick={onToggleMissingLabel}
+              trackId="product_filter_missing_label"
+              isMobile
+            />
+            <DashboardStatChip
+              label="已售完"
+              count={soldOutCount}
+              active={onlySoldOut}
+              onClick={onToggleSoldOut}
+              trackId="product_filter_sold_out"
+              isMobile
+            />
+            {isFiltered && (
+              <button
+                type="button"
+                data-track="product_filter_clear"
+                onClick={onClearAll}
+                style={{
+                  padding: '6px 4px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: colors.text.secondary,
+                  fontSize: getFontSize('caption', true),
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                }}
+              >
+                清除篩選
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div

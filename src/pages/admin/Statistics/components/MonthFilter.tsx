@@ -1,4 +1,5 @@
 import { getFontSize, designSystem } from '../../../../styles/designSystem'
+import { useResponsive } from '../../../../hooks/useResponsive'
 
 interface MonthOption {
   value: string
@@ -16,7 +17,7 @@ interface MonthFilterProps {
 }
 
 /** Dashboard 期間 chip：選中近黑，與月報／年報一致 */
-function chipStyle(isActive: boolean) {
+function chipStyle(isActive: boolean, isMobile: boolean) {
   return {
     padding: '8px 16px',
     borderRadius: designSystem.borderRadius.md,
@@ -27,7 +28,7 @@ function chipStyle(isActive: boolean) {
       ? designSystem.colors.primary[500]
       : designSystem.colors.background.card,
     color: isActive ? '#ffffff' : designSystem.colors.text.secondary,
-    fontSize: getFontSize('button', false),
+    fontSize: getFontSize('button', isMobile),
     fontWeight: isActive ? 600 : 500,
     cursor: 'pointer' as const,
     display: 'flex' as const,
@@ -38,9 +39,9 @@ function chipStyle(isActive: boolean) {
   }
 }
 
-function countBadgeStyle(isActive: boolean) {
+function countBadgeStyle(isActive: boolean, isMobile: boolean) {
   return {
-    fontSize: getFontSize('caption', true),
+    fontSize: getFontSize('caption', isMobile),
     fontWeight: 700 as const,
     background: isActive
       ? 'rgba(255,255,255,0.2)'
@@ -59,6 +60,8 @@ export function MonthFilter({
   allLabel = '全部',
   allCount
 }: MonthFilterProps) {
+  const { isMobile } = useResponsive()
+
   return (
     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
       {showAll && (
@@ -66,11 +69,11 @@ export function MonthFilter({
           type="button"
           data-track="dashboard_filter_all"
           onClick={() => onSelect('all')}
-          style={chipStyle(selected === 'all')}
+          style={chipStyle(selected === 'all', isMobile)}
         >
           {allLabel}
           {allCount !== undefined && (
-            <span style={countBadgeStyle(selected === 'all')}>
+            <span style={countBadgeStyle(selected === 'all', isMobile)}>
               {allCount}
             </span>
           )}
@@ -82,11 +85,11 @@ export function MonthFilter({
           key={option.value}
           data-track={`dashboard_filter_${option.value}`}
           onClick={() => onSelect(option.value)}
-          style={chipStyle(selected === option.value)}
+          style={chipStyle(selected === option.value, isMobile)}
         >
           {option.label}
           {option.count !== undefined && (
-            <span style={countBadgeStyle(selected === option.value)}>
+            <span style={countBadgeStyle(selected === option.value, isMobile)}>
               {option.count}
             </span>
           )}

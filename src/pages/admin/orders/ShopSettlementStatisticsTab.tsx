@@ -12,6 +12,7 @@ import { getVenueDateString } from '../../../utils/date'
 import { formatCurrency, formatDateTime, extractDate, extractTime } from '../../../utils/formatters'
 import { supabase } from '../../../lib/supabase'
 import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
+import { getCategory, getCategoryShopName } from '../products/schema'
 import { fetchSettlementsInRange } from './api'
 import { formatSettlementLineDisplay, type SettlementLineDisplay } from './settleUtils'
 import type { OrderPaymentMethod, ShopOrderSettlementWithDetails } from './types'
@@ -43,12 +44,19 @@ function dateRangeFromSelection(selectedDate: string): { start: string; end: str
   }
 }
 
-type SalesGroupBy = 'brand' | 'product'
+function formatSalesCategoryName(categoryId: string): string {
+  const category = getCategory(categoryId)
+  if (!category) return '其他'
+  return category.shopGroup
+    ? `${category.shopGroup} · ${getCategoryShopName(category)}`
+    : getCategoryShopName(category)
+}
+
+type SalesGroupBy = 'brand' | 'category'
 
 interface VariantSalesMeta {
   brand: string
-  productId: string
-  productName: string
+  category: string
 }
 
 export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: Props) {
@@ -81,7 +89,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
         const { data: variants, error: variantErr } = await supabase
           .from('product_variants')
           .select(
-            'id, vendor_code, attributes, product:products(id, brand, model, category)',
+            'id, vendor_code, attributes, product:products(brand, model, category)',
           )
           .in('id', variantIds)
         if (variantErr) throw variantErr
@@ -92,7 +100,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
             id: string
             vendor_code: string | null
             attributes: Record<string, unknown> | null
-            product: { id: string; brand: string; model: string; category: string } | null
+            product: { brand: string; model: string; category: string } | null
           }
           labels[row.id] = formatSettlementLineDisplay(
             { item_id: '', variant_id: row.id, qty: 0, unit_price: 0, line_total: 0 },
@@ -101,8 +109,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
           if (row.product) {
             salesMeta[row.id] = {
               brand: row.product.brand.trim() || '其他品牌',
-              productId: row.product.id,
-              productName: `${row.product.brand} ${row.product.model}`.trim(),
+              category: row.product.category || 'other',
             }
           }
         })
@@ -158,10 +165,10 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
           variantDisplay[line.variant_id] ?? formatSettlementLineDisplay(line, null)
         const groupId = salesGroupBy === 'brand'
           ? meta?.brand ?? '其他品牌'
-          : meta?.productId ?? `unknown:${line.variant_id || display.title}`
+          : meta?.category ?? 'other'
         const groupName = salesGroupBy === 'brand'
           ? groupId
-          : meta?.productName ?? display.title
+          : formatSalesCategoryName(groupId)
         const group = grouped.get(groupId) ?? {
           id: groupId,
           name: groupName,
@@ -169,12 +176,19 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
           total: 0,
           items: new Map(),
         }
-        const itemDisplay = salesGroupBy === 'brand' && meta
-          ? { title: meta.productName, subtitle: '' }
-          : display
-        const itemKey = salesGroupBy === 'brand' && meta
-          ? meta.productId
+        const itemKey = meta
+          ? salesGroupBy === 'brand'
+            ? meta.category
+            : meta.brand
           : line.variant_id || `${display.title}\u0000${display.subtitle}`
+        const itemDisplay = meta
+          ? {
+              title: salesGroupBy === 'brand'
+                ? formatSalesCategoryName(meta.category)
+                : meta.brand,
+              subtitle: '',
+            }
+          : display
         const item = group.items.get(itemKey) ?? {
           ...itemDisplay,
           qty: 0,
@@ -326,7 +340,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
               >
                 {([
                   ['brand', '品牌'],
-                  ['product', '品項'],
+                  ['category', '品項'],
                 ] as const).map(([value, label]) => (
                   <button
                     key={value}
@@ -370,11 +384,11 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                     onClick={() => setExpandedSalesGroupId(expanded ? null : group.id)}
                     style={{
                       width: '100%',
-                      display: 'flex',
-                      justifyContent: 'space-between',
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr) auto',
                       alignItems: 'center',
                       gap: spacing.md,
-                      padding: isMobile ? '12px 16px' : '13px 20px',
+                      padding: isMobile ? '11px 14px' : '13px 20px',
                       background: colors.secondary[50],
                       border: 0,
                       color: 'inherit',
@@ -382,17 +396,42 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                       textAlign: 'left',
                     }}
                   >
-                    <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: spacing.sm }}>
-                      <span
-                        style={{
-                          fontSize: getFontSize('caption', isMobile),
-                          color: colors.text.disabled,
-                          fontVariantNumeric: 'tabular-nums',
-                        }}
-                      >
-                        {String(groupIndex + 1).padStart(2, '0')}
-                      </span>
-                      <strong style={{ color: colors.text.primary }}>{group.name}</strong>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: spacing.sm }}>
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            fontSize: getFontSize('caption', isMobile),
+                            color: colors.text.disabled,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {String(groupIndex + 1).padStart(2, '0')}
+                        </span>
+                        <strong
+                          style={{
+                            minWidth: 0,
+                            color: colors.text.primary,
+                            lineHeight: 1.35,
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          {group.name}
+                        </strong>
+                      </div>
+                      {isMobile && (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            paddingLeft: 25,
+                            color: colors.text.secondary,
+                            fontSize: getFontSize('bodySmall', true),
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {group.qty} 件 · {formatCurrency(group.total, false)} · {share}%
+                        </div>
+                      )}
                     </div>
                     <div
                       style={{
@@ -404,6 +443,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                     >
                       <span
                         style={{
+                          display: isMobile ? 'none' : undefined,
                           color: colors.text.secondary,
                           fontSize: getFontSize('bodySmall', isMobile),
                           fontVariantNumeric: 'tabular-nums',
@@ -425,20 +465,50 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                       </span>
                     </div>
                   </button>
-                  {expanded && group.items.map((item) => (
+                  {expanded && group.items.map((item, itemIndex) => (
                     <div
                       key={`${item.title}-${item.subtitle}`}
                       style={{
                         display: 'grid',
                         gridTemplateColumns: 'minmax(0, 1fr) auto',
                         alignItems: 'center',
-                        gap: spacing.lg,
-                        padding: isMobile ? '12px 16px 12px 40px' : '12px 20px 12px 52px',
-                        borderTop: `1px solid ${colors.border.light}`,
+                        gap: spacing.md,
+                        margin: isMobile
+                          ? `4px 14px ${itemIndex === group.items.length - 1 ? '8px' : '0'} 39px`
+                          : `5px 20px ${itemIndex === group.items.length - 1 ? '10px' : '0'} 52px`,
+                        padding: isMobile ? '7px 9px' : '8px 10px',
+                        background: colors.secondary[100],
+                        borderRadius: borderRadius.md,
                       }}
                     >
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 500, color: colors.text.primary }}>
+                      <div
+                        style={{
+                          minWidth: 0,
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          gap: spacing.sm,
+                        }}
+                      >
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            fontSize: getFontSize('caption', isMobile),
+                            color: colors.text.disabled,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {itemIndex + 1}.
+                        </span>
+                        <div
+                          style={{
+                            minWidth: 0,
+                            fontSize: getFontSize('bodySmall', isMobile),
+                            fontWeight: 500,
+                            color: colors.text.primary,
+                            lineHeight: 1.35,
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
                           {item.title}
                         </div>
                         {item.subtitle && (
@@ -458,13 +528,11 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                           flexShrink: 0,
                           textAlign: 'right',
                           color: colors.text.secondary,
+                          fontSize: getFontSize('bodySmall', isMobile),
                           fontVariantNumeric: 'tabular-nums',
                         }}
                       >
-                        <div>{item.qty} 件</div>
-                        <div style={{ fontSize: getFontSize('caption', isMobile), marginTop: 2 }}>
-                          {formatCurrency(item.total, false)}
-                        </div>
+                        {item.qty} 件 · {formatCurrency(item.total, false)}
                       </div>
                     </div>
                   ))}

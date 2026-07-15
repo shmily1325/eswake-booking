@@ -138,9 +138,9 @@ export function BaoHub() {
         { title: '排班', icon: '📅', link: '/coach-assignment' },
         { title: '回報', icon: '📝', link: '/coach-report' },
         { title: '回報管理', icon: '💼', link: '/coach-admin' },
-        { title: '商品訂單', icon: '🧾', link: '/order-settle' },
         { title: '會員', icon: '👥', link: '/members' },
         { title: '儲值', icon: '💰', link: '/member-transaction' },
+        { title: '商品訂單', icon: '🧾', link: '/order-settle' },
       ],
     },
     {
@@ -160,11 +160,14 @@ export function BaoHub() {
     background: designSystem.colors.background.card,
     borderRadius: designSystem.borderRadius.xl,
     padding: isMobile ? '28px 14px' : '35px 20px',
+    boxSizing: 'border-box',
+    aspectRatio: '1 / 1',
     boxShadow: designSystem.shadows.xs,
     transition: 'transform 0.15s ease',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
+    justifyContent: 'center',
     textAlign: 'center',
     gap: '12px',
     cursor: 'pointer',
@@ -234,7 +237,8 @@ export function BaoHub() {
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              gap: '16px',
+              gap: isMobile ? '10px' : '14px',
+              flexWrap: 'wrap',
               marginTop: isMobile ? '8px' : '15px',
             }}
           >
@@ -254,80 +258,81 @@ export function BaoHub() {
             <UserMenu user={user} />
           </div>
           {backupHealth && (
-            <div
-              style={{
-                marginTop: isMobile ? 10 : 12,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              <Link
-                to="/backup"
-                data-track="bao_backup_status"
-                aria-label={`查看備份頁面：${backupHealth.message}`}
+              <div
                 style={{
-                  display: 'inline-flex',
+                  marginTop: isMobile ? 10 : 12,
+                  display: 'flex',
+                  justifyContent: 'center',
                   alignItems: 'center',
                   gap: 8,
-                  color: backupHealthColor(backupHealth.status),
-                  textDecoration: 'none',
-                  fontSize: getFontSize('bodySmall', isMobile),
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                  padding: '8px 12px',
-                  background: designSystem.colors.background.card,
-                  border: `1px solid ${designSystem.colors.border.light}`,
-                  borderRadius: '999px',
-                  boxShadow: designSystem.shadows.xs,
-                  cursor: 'pointer',
-                  transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                  e.currentTarget.style.boxShadow = designSystem.shadows.sm
-                  e.currentTarget.style.borderColor = backupHealthColor(backupHealth.status)
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = designSystem.shadows.xs
-                  e.currentTarget.style.borderColor = designSystem.colors.border.light
+                  flexWrap: 'wrap',
                 }}
               >
-                <span
-                  aria-hidden
+                <Link
+                  to="/backup"
+                  data-track="bao_backup_status"
+                  aria-label={`查看備份頁面：${backupHealth.message}`}
                   style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: backupHealthColor(backupHealth.status),
-                    flexShrink: 0,
-                    boxShadow:
-                      backupHealth.status === 'unknown'
-                        ? 'none'
-                        : `0 0 0 2px ${backupHealthColor(backupHealth.status)}33`,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    color: backupHealthColor(backupHealth.status),
+                    textDecoration: 'none',
+                    fontSize: getFontSize('bodySmall', isMobile),
+                    fontWeight: 600,
+                    letterSpacing: '0.02em',
+                    padding: '8px 12px',
+                    background: designSystem.colors.background.card,
+                    border: `1px solid ${designSystem.colors.border.light}`,
+                    borderRadius: '999px',
+                    boxShadow: designSystem.shadows.xs,
+                    cursor: 'pointer',
+                    transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
                   }}
-                />
-                {backupHealth.message}
-                <span aria-hidden style={{ fontSize: '1.15em', lineHeight: 1 }}>
-                  ›
-                </span>
-              </Link>
-              {(backupHealth.status === 'warning' || backupHealth.status === 'error') && (
-                <span
-                  style={{
-                    fontSize: getFontSize('caption', isMobile),
-                    fontWeight: 500,
-                    color: designSystem.colors.text.secondary,
-                    letterSpacing: '0.01em',
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                    e.currentTarget.style.boxShadow = designSystem.shadows.sm
+                    e.currentTarget.style.borderColor = backupHealthColor(backupHealth.status)
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = designSystem.shadows.xs
+                    e.currentTarget.style.borderColor = designSystem.colors.border.light
                   }}
                 >
-                  {backupHealth.status === 'error' ? '請通知工程師' : '請手動備份'}
-                </span>
-              )}
-            </div>
-          )}
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: backupHealthColor(backupHealth.status),
+                      flexShrink: 0,
+                      boxShadow:
+                        backupHealth.status === 'unknown'
+                          ? 'none'
+                          : `0 0 0 2px ${backupHealthColor(backupHealth.status)}33`,
+                    }}
+                  />
+                  {backupHealth.message}
+                  <span aria-hidden style={{ fontSize: '1.15em', lineHeight: 1 }}>
+                    ›
+                  </span>
+                </Link>
+                {(backupHealth.status === 'warning' || backupHealth.status === 'error') && (
+                  <span
+                    style={{
+                      fontSize: getFontSize('caption', isMobile),
+                      fontWeight: 500,
+                      color: designSystem.colors.text.secondary,
+                      letterSpacing: '0.01em',
+                    }}
+                  >
+                    {backupHealth.status === 'error' ? '請通知工程師' : '請手動備份'}
+                  </span>
+                )}
+              </div>
+            )}
         </div>
 
         {/* Feature Cards by Section */}

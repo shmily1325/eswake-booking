@@ -979,16 +979,6 @@ export function CoachReport({
           ...getCardStyle(isMobile),
           marginBottom: '16px'
         }}>
-          {/* 日期選擇標題 */}
-          <div style={{
-            fontSize: getFontSize('bodySmall', isMobile),
-            color: designSystem.colors.text.secondary,
-            fontWeight: '600',
-            marginBottom: '12px'
-          }}>
-            選擇日期
-          </div>
-
           {/* 快捷按鈕 */}
           <div style={{
             display: 'flex',
@@ -997,6 +987,14 @@ export function CoachReport({
             marginBottom: isMobile ? '0' : '12px',
             alignItems: 'center'
           }}>
+            <span style={{
+              color: designSystem.colors.text.secondary,
+              fontSize: getFontSize('bodySmall', isMobile),
+              fontWeight: 600,
+              marginRight: '4px',
+            }}>
+              日期
+            </span>
             {/* 近30天未回報 */}
             <button
               data-track="coach_report_view_unreported"
@@ -1086,23 +1084,22 @@ export function CoachReport({
 
           {/* 教練選擇 - 只在非自動篩選模式且桌面版顯示 */}
           {!autoFilterByUser && !isMobile && (
-            <>
-              <div style={{
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
+              marginTop: '16px',
+              paddingTop: '16px',
+              borderTop: `1px solid ${designSystem.colors.border.light}`,
+            }}>
+              <span style={{
                 fontSize: getFontSize('bodySmall', false),
                 color: designSystem.colors.text.secondary,
                 fontWeight: '600',
-                marginBottom: '12px',
-                marginTop: '16px',
-                paddingTop: '16px',
-                borderTop: `1px solid ${designSystem.colors.border.light}`
               }}>
-                選擇教練
-              </div>
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                flexWrap: 'wrap'
-              }}>
+                教練
+              </span>
                 <button
                   onClick={() => setSelectedCoachId('all')}
                   style={{
@@ -1126,8 +1123,7 @@ export function CoachReport({
                     {coach.name}
                   </button>
                 ))}
-              </div>
-            </>
+            </div>
           )}
 
         </div>

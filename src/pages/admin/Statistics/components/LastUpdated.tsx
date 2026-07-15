@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useResponsive } from '../../../../hooks/useResponsive'
+import { designSystem, getFontSize } from '../../../../styles/designSystem'
 
 interface LastUpdatedProps {
   timestamp: Date
@@ -7,6 +9,7 @@ interface LastUpdatedProps {
 }
 
 export function LastUpdated({ timestamp, onRefresh, isRefreshing = false }: LastUpdatedProps) {
+  const { isMobile } = useResponsive()
   const [, setTick] = useState(0)
 
   // 每分鐘更新顯示
@@ -29,8 +32,8 @@ export function LastUpdated({ timestamp, onRefresh, isRefreshing = false }: Last
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      fontSize: '12px',
-      color: '#999'
+      fontSize: getFontSize('caption', isMobile),
+      color: designSystem.colors.text.disabled,
     }}>
       <span>更新於 {formatTime(timestamp)}</span>
       <button
@@ -39,12 +42,12 @@ export function LastUpdated({ timestamp, onRefresh, isRefreshing = false }: Last
         disabled={isRefreshing}
         style={{
           background: 'none',
-          border: '1px solid #e0e0e0',
-          borderRadius: '4px',
+          border: `1px solid ${designSystem.colors.border.light}`,
+          borderRadius: designSystem.borderRadius.sm,
           padding: '4px 8px',
           cursor: isRefreshing ? 'not-allowed' : 'pointer',
-          fontSize: '12px',
-          color: '#666',
+          fontSize: getFontSize('caption', isMobile),
+          color: designSystem.colors.text.secondary,
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
