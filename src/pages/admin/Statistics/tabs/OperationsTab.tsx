@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
 import { designSystem, getFontSize } from '../../../../styles/designSystem'
 import { getCalendarDateString, getVenueDateString } from '../../../../utils/date'
+import type { BoatUsageRangeRow } from '../../../../utils/boatUsageRangeStats'
 import {
   CoachMemberRankings,
   SummaryCard,
@@ -21,19 +22,14 @@ interface OperationsTabProps {
   monthlyCoachStats: CoachStats[]
   monthlyMemberStats: MemberStats[]
   monthlyWeekdayStats: WeekdayStats
+  monthlyBoatUsage: BoatUsageRangeRow[]
   selectedYear: number
   setSelectedYear: (year: number) => void
   annualMonthlyStats: MonthlyStats[]
   annualCoachStats: CoachStats[]
   annualMemberStats: MemberStats[]
+  annualBoatUsage: BoatUsageRangeRow[]
   annualLoading: boolean
-}
-
-interface DetailRow {
-  key: string
-  label: string
-  bookingCount: number
-  totalMinutes: number
 }
 
 function PeriodButton({
@@ -69,7 +65,7 @@ function PeriodButton({
   )
 }
 
-function DataDetails({ rows }: { rows: DetailRow[] }) {
+function BoatUsageDetails({ rows }: { rows: BoatUsageRangeRow[] }) {
   const { isMobile } = useResponsive()
 
   return (
@@ -87,7 +83,7 @@ function DataDetails({ rows }: { rows: DetailRow[] }) {
         color: designSystem.colors.text.primary,
         borderBottom: `1px solid ${designSystem.colors.border.light}`,
       }}>
-        數據明細
+        各船使用時數
       </h3>
 
       {rows.length === 0 ? (
@@ -101,24 +97,20 @@ function DataDetails({ rows }: { rows: DetailRow[] }) {
         </p>
       ) : isMobile ? (
         <div>
-          {[...rows].reverse().map((row) => (
+          {rows.map((row) => (
             <div
-              key={row.key}
+              key={row.boatId}
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: designSystem.spacing.md,
                 padding: designSystem.spacing.md,
                 borderBottom: `1px solid ${designSystem.colors.border.light}`,
               }}
             >
-              <span style={{ fontWeight: 600, color: designSystem.colors.text.primary }}>
-                {row.label}
-              </span>
-              <span style={{ color: designSystem.colors.text.secondary, textAlign: 'right' }}>
-                {row.bookingCount.toLocaleString()} 筆 · {formatDuration(row.totalMinutes)}
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <strong style={{ color: designSystem.colors.text.primary }}>{row.boatName}</strong>
+                <strong style={{ color: designSystem.colors.text.primary }}>
+                  {formatDuration(row.generalMinutes)}
+                </strong>
+              </div>
             </div>
           ))}
         </div>
@@ -126,22 +118,18 @@ function DataDetails({ rows }: { rows: DetailRow[] }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
             <tr style={{ background: designSystem.colors.background.hover }}>
-              <th style={{ padding: '12px 20px', textAlign: 'left' }}>期間</th>
-              <th style={{ padding: '12px 20px', textAlign: 'right' }}>已結帳筆數</th>
-              <th style={{ padding: '12px 20px', textAlign: 'right' }}>已扣款時數</th>
+              <th style={{ padding: '12px 20px', textAlign: 'left' }}>船隻</th>
+              <th style={{ padding: '12px 20px', textAlign: 'right' }}>使用時數</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.key}>
+              <tr key={row.boatId}>
                 <td style={{ padding: '12px 20px', borderTop: `1px solid ${designSystem.colors.border.light}`, fontWeight: 600 }}>
-                  {row.label}
+                  {row.boatName}
                 </td>
                 <td style={{ padding: '12px 20px', borderTop: `1px solid ${designSystem.colors.border.light}`, textAlign: 'right' }}>
-                  {row.bookingCount.toLocaleString()} 筆
-                </td>
-                <td style={{ padding: '12px 20px', borderTop: `1px solid ${designSystem.colors.border.light}`, textAlign: 'right' }}>
-                  {formatDuration(row.totalMinutes)}
+                  {formatDuration(row.generalMinutes)}
                 </td>
               </tr>
             ))}
@@ -160,11 +148,13 @@ export function OperationsTab({
   monthlyCoachStats,
   monthlyMemberStats,
   monthlyWeekdayStats,
+  monthlyBoatUsage,
   selectedYear,
   setSelectedYear,
   annualMonthlyStats,
   annualCoachStats,
   annualMemberStats,
+  annualBoatUsage,
   annualLoading,
 }: OperationsTabProps) {
   const { isMobile } = useResponsive()
@@ -198,20 +188,8 @@ export function OperationsTab({
   const totalMinutes = isMonthly ? monthlyMinutes : annualMinutes
   const coachStats = isMonthly ? monthlyCoachStats : annualCoachStats
   const memberStats = isMonthly ? monthlyMemberStats : annualMemberStats
+  const boatUsage = isMonthly ? monthlyBoatUsage : annualBoatUsage
   const periodWord = isMonthly ? '本月' : '本年'
-  const detailRows: DetailRow[] = isMonthly
-    ? [{
-        key: selectedPeriod,
-        label: `${monthYear}年${monthNumber}月`,
-        bookingCount: monthlyBookingCount,
-        totalMinutes: monthlyMinutes,
-      }]
-    : annualMonthlyStats.map((month) => ({
-        key: month.month,
-        label: `${Number(month.month.slice(5))}月`,
-        bookingCount: month.bookingCount,
-        totalMinutes: month.totalMinutes,
-      }))
 
   const rangeNote = isMonthly
     ? monthRange
@@ -399,7 +377,7 @@ export function OperationsTab({
             periodWord={periodWord}
           />
 
-          <DataDetails rows={detailRows} />
+          <BoatUsageDetails rows={boatUsage} />
         </>
       )}
     </>

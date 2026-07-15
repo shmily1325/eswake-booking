@@ -242,7 +242,12 @@ export function HomePage() {
       title: '區間時數合計',
       icon: '⏱️',
       link: '/boat-usage-hours',
-      visibleForEmails: ['hsulittlepang2015@gmail.com']
+      visibleForEmails: [
+        'hsulittlepang2015@gmail.com',
+        'minlin1325@gmail.com',
+        'callumbao1122@gmail.com',
+        'pjpan0511@gmail.com',
+      ]
     }
   ]
 

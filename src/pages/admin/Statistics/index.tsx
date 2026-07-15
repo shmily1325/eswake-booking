@@ -7,12 +7,11 @@ import { PageShell } from '../../../components/PageShell'
 import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { addDaysToDate, getCalendarDateString, getVenueDateString } from '../../../utils/date'
-import { sortBoatsByDisplayOrder } from '../../../utils/boatUtils'
 import { isAdmin } from '../../../utils/auth'
 import { loadPaidOperationalParticipantsForRange } from '../../../utils/settledNonPracticeBookings'
 import {
-  loadCoachPracticeSessionsForRange,
-  type CoachPracticeSessionRow
+  loadBoatUsageRangeStats,
+  type BoatUsageRangeRow
 } from '../../../utils/boatUsageRangeStats'
 import { splitMinutesEqually } from '../../../utils/teachingMinutesAllocation'
 import { fetchAllInBatches, fetchAllPaginated } from '../../../utils/supabasePaginate'
@@ -31,7 +30,6 @@ import type {
   MemberStats,
   FinanceStats,
   WeekdayStats,
-  BoatData
 } from './types'
 
 type TabType = 'operations' | 'future'
@@ -53,10 +51,9 @@ export function Statistics() {
   const [activeTab, setActiveTab] = useState<TabType>('operations')
   const [operationsPeriod, setOperationsPeriod] = useState<OperationsPeriodMode>('monthly')
 
-  // 趨勢數據
+  // 舊趨勢／財務載入器暫留供後續移除，不再由畫面觸發。
   const [, setMonthlyStats] = useState<MonthlyStats[]>([])
   const [, setFinanceStats] = useState<FinanceStats[]>([])
-  const [, setAllBoatsData] = useState<BoatData[]>([])
 
   // 未來預約數據
   const [futureBookings, setFutureBookings] = useState<CoachFutureBooking[]>([])
@@ -71,9 +68,7 @@ export function Statistics() {
   const [weekdayStats, setWeekdayStats] = useState<WeekdayStats>({
     weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0
   })
-  const [, setMonthlyCoachPracticeSessions] = useState<
-    CoachPracticeSessionRow[]
-  >([])
+  const [monthlyBoatUsage, setMonthlyBoatUsage] = useState<BoatUsageRangeRow[]>([])
 
   // 年報（獨立 state，避免蓋掉月報）
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
@@ -82,6 +77,7 @@ export function Statistics() {
   const [, setAnnualFinanceStats] = useState<FinanceStats[]>([])
   const [annualCoachStats, setAnnualCoachStats] = useState<CoachStats[]>([])
   const [annualMemberStats, setAnnualMemberStats] = useState<MemberStats[]>([])
+  const [annualBoatUsage, setAnnualBoatUsage] = useState<BoatUsageRangeRow[]>([])
   const [, setAnnualWeekdayStats] = useState<WeekdayStats>({
     weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0
   })
@@ -91,15 +87,6 @@ export function Statistics() {
     { key: 'operations', label: '營運報表' },
     { key: 'future', label: '未來排程' },
   ]
-
-  // 載入所有船隻
-  const loadAllBoats = async () => {
-    const { data } = await supabase.from('boats').select('id, name')
-    if (data) {
-      const sorted = sortBoatsByDisplayOrder(data)
-      setAllBoatsData(sorted.map(b => ({ boatId: b.id, boatName: b.name })))
-    }
-  }
 
   // 載入過去6個月的預約趨勢（歷史資料，不含未來）
   const loadMonthlyTrend = async () => {
@@ -495,22 +482,22 @@ export function Statistics() {
     return { startDate, endDateStr: `${selectedPeriod}-${String(endDate).padStart(2, '0')}` }
   }
 
-  const loadMonthlyCoachPractice = async () => {
+  const loadMonthlyBoatUsage = async () => {
     const range = getMonthlyDateRange()
     if (!range) {
-      setMonthlyCoachPracticeSessions([])
+      setMonthlyBoatUsage([])
       return
     }
     try {
-      const sessions = await loadCoachPracticeSessionsForRange(
+      const result = await loadBoatUsageRangeStats(
         supabase,
         range.startDate,
         range.endDateStr
       )
-      setMonthlyCoachPracticeSessions(sessions)
+      setMonthlyBoatUsage(result.boats)
     } catch (error) {
-      console.error('載入教練練習列表失敗:', error)
-      setMonthlyCoachPracticeSessions([])
+      console.error('載入各船時數失敗:', error)
+      setMonthlyBoatUsage([])
     }
   }
 
@@ -945,13 +932,23 @@ export function Statistics() {
     setAnnualWeekdayStats(weekday)
   }
 
+  const loadAnnualBoatUsage = async (year: number) => {
+    const range = getYearDateRange(year)
+    if (!range) {
+      setAnnualBoatUsage([])
+      return
+    }
+    const result = await loadBoatUsageRangeStats(supabase, range.startDate, range.endDateStr)
+    setAnnualBoatUsage(result.boats)
+  }
+
   const loadAnnualData = async (year: number) => {
     setAnnualLoading(true)
     try {
       await Promise.all([
         loadAnnualTrend(year),
-        loadAnnualFinance(year),
         loadAnnualRankings(year),
+        loadAnnualBoatUsage(year),
       ])
       setLastUpdated(new Date())
     } catch (error) {
@@ -961,24 +958,20 @@ export function Statistics() {
     }
   }
 
+  // 舊報表查詢不再執行；待資料層拆分時一併移除其實作。
+  void loadMonthlyTrend
+  void loadFinanceStats
+  void loadAnnualFinance
+
   // 初次載入
   useEffect(() => {
     const loadFixedData = async () => {
       setLoading(true)
       try {
-        await Promise.all([
-          loadMonthlyTrend(),
-          loadFinanceStats(),
-          loadAllBoats()
-        ])
-        try {
-          await loadFutureBookings()
-        } catch (error) {
-          console.error('載入排程預覽失敗:', error)
-        }
+        await loadFutureBookings()
         setLastUpdated(new Date())
       } catch (error) {
-        console.error('載入趨勢數據失敗:', error)
+        console.error('載入未來排程失敗:', error)
       } finally {
         setLoading(false)
       }
@@ -992,7 +985,7 @@ export function Statistics() {
     setCoachStats([])
     setMemberStats([])
     setWeekdayStats({ weekdayCount: 0, weekdayMinutes: 0, weekendCount: 0, weekendMinutes: 0 })
-    setMonthlyCoachPracticeSessions([])
+    setMonthlyBoatUsage([])
 
     const loadMonthlyData = async () => {
       try {
@@ -1000,7 +993,7 @@ export function Statistics() {
           loadCoachStats(),
           loadMemberStats(),
           loadWeekdayStats(),
-          loadMonthlyCoachPractice()
+          loadMonthlyBoatUsage()
         ])
       } catch (error) {
         console.error('載入月度統計失敗:', error)
@@ -1024,20 +1017,16 @@ export function Statistics() {
     try {
       if (activeTab === 'operations' && operationsPeriod === 'annual') {
         await loadAnnualData(selectedYear)
+      } else if (activeTab === 'future') {
+        await loadFutureBookings()
+        setLastUpdated(new Date())
       } else {
         await Promise.all([
-          loadMonthlyTrend(),
-          loadFinanceStats(),
           loadCoachStats(),
           loadMemberStats(),
           loadWeekdayStats(),
-          loadMonthlyCoachPractice()
+          loadMonthlyBoatUsage()
         ])
-        try {
-          await loadFutureBookings()
-        } catch (error) {
-          console.error('載入排程預覽失敗:', error)
-        }
         setLastUpdated(new Date())
       }
     } catch (error) {
@@ -1119,11 +1108,13 @@ export function Statistics() {
                 monthlyCoachStats={coachStats}
                 monthlyMemberStats={memberStats}
                 monthlyWeekdayStats={weekdayStats}
+                monthlyBoatUsage={monthlyBoatUsage}
                 selectedYear={selectedYear}
                 setSelectedYear={setSelectedYear}
                 annualMonthlyStats={annualMonthlyStats}
                 annualCoachStats={annualCoachStats}
                 annualMemberStats={annualMemberStats}
+                annualBoatUsage={annualBoatUsage}
                 annualLoading={annualLoading}
               />
             )}
