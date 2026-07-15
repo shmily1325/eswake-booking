@@ -7,7 +7,7 @@ import { UserMenu } from '../components/UserMenu'
 import { Footer } from '../components/Footer'
 import { useResponsive } from '../hooks/useResponsive'
 import { isAdmin } from '../utils/auth'
-import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
+import { isExternalNavLink } from '../lib/shopPublicUrl'
 import { ExternalNavLink } from '../components/ExternalNavLink'
 import { PageShell } from '../components/PageShell'
 import { designSystem, getFontSize } from '../styles/designSystem'
@@ -141,7 +141,6 @@ export function BaoHub() {
         { title: '商品訂單', icon: '🧾', link: '/order-settle' },
         { title: '會員', icon: '👥', link: '/members' },
         { title: '儲值', icon: '💰', link: '/member-transaction' },
-        { title: '置板', icon: '🏄', link: '/boards' },
       ],
     },
     {
@@ -152,7 +151,6 @@ export function BaoHub() {
         { title: '人員管理', icon: '🎓', link: '/staff' },
         { title: '船隻管理', icon: '🚤', link: '/boats' },
         { title: '商品管理', icon: '📦', link: '/products' },
-        { title: 'ES SHOP', icon: '🛒', link: getPublicShopHomeUrl() },
       ],
     },
   ]
@@ -195,7 +193,7 @@ export function BaoHub() {
 
   return (
     <PageShell
-      variant="hubWide"
+      variant="hub"
       mobilePadding="24px 16px max(20px, env(safe-area-inset-bottom))"
       desktopPadding="40px 20px max(20px, env(safe-area-inset-bottom))"
       outerStyle={{ minHeight: '100dvh', alignItems: 'center' }}
@@ -210,18 +208,9 @@ export function BaoHub() {
         >
           <div
             style={{
-              width: isMobile ? '76px' : '96px',
-              height: isMobile ? '76px' : '96px',
               margin: `0 auto ${isMobile ? '10px' : '14px'}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: isMobile ? '44px' : '56px',
+              fontSize: isMobile ? '64px' : '80px',
               lineHeight: 1,
-              borderRadius: '50%',
-              background: designSystem.colors.background.card,
-              border: `1px solid ${designSystem.colors.border.light}`,
-              boxShadow: designSystem.shadows.sm,
             }}
             aria-hidden
           >
@@ -230,7 +219,7 @@ export function BaoHub() {
           <h1
             style={{
               margin: isMobile ? '0 0 12px 0' : '0 0 20px 0',
-              fontSize: isMobile ? '28px' : '42px',
+              fontSize: isMobile ? '26px' : '36px',
               fontWeight: 800,
               color: designSystem.colors.text.primary,
               letterSpacing: isMobile ? '1px' : '2px',
@@ -361,7 +350,7 @@ export function BaoHub() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
                 gap: '15px',
               }}
             >
@@ -369,7 +358,7 @@ export function BaoHub() {
                 const inner = (
                   <>
                     <div style={{ marginBottom: '5px' }}>
-                      <span style={{ fontSize: isMobile ? '30px' : '32px' }}>{feature.icon}</span>
+                      <span style={{ fontSize: isMobile ? '34px' : '38px' }}>{feature.icon}</span>
                     </div>
                     <h2
                       style={{

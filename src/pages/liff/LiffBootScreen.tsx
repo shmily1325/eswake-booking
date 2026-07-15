@@ -76,7 +76,7 @@ export function LiffBootScreen({ label = '載入中…', onRetry, liffOpenUrl }:
           </a>
         </div>
       )}
-      {stuck && (
+      {stuck && !liffOpenUrl && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.muted, marginBottom: 12, lineHeight: 1.55 }}>
             載入時間較久，請重新整理或再開一次連結。

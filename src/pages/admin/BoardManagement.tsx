@@ -693,7 +693,12 @@ export function BoardManagement() {
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
       }}>
         <div style={getPageContentShellStyle(isMobile)}>
-          <PageHeader title="置板" user={user} showBaoLink={isAdmin(user)} />
+          <PageHeader
+            title="置板"
+            user={user}
+            showBaoLink={isAdmin(user)}
+            extraLinks={[{ label: '會員', link: '/members' }]}
+          />
           <div style={{
             padding: '40px',
             textAlign: 'center',
@@ -716,7 +721,12 @@ export function BoardManagement() {
       paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
     }}>
       <div style={getPageContentShellStyle(isMobile)}>
-        <PageHeader title="置板" user={user} showBaoLink={isAdmin(user)} />
+        <PageHeader
+          title="置板"
+          user={user}
+          showBaoLink={isAdmin(user)}
+          extraLinks={[{ label: '會員', link: '/members' }]}
+        />
 
       {/* 統計資訊 */}
       <div style={{

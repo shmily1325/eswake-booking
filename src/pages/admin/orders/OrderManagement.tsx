@@ -354,6 +354,11 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       <div
         style={{
           ...adminStatsBarStyle(isMobile),
+          padding: 0,
+          background: 'transparent',
+          border: 'none',
+          borderRadius: 0,
+          gap: 8,
           flexWrap: isMobile ? 'nowrap' : 'wrap',
           overflowX: isMobile ? 'auto' : 'visible',
           WebkitOverflowScrolling: 'touch',
@@ -366,39 +371,21 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
           onClick={() => setStatusFilter('all')}
           title="顯示全部進行中訂單"
           style={{
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: 8,
-            border: tab === 'all' ? `1px solid ${colors.border.main}` : 'none',
-            background: tab === 'all' ? colors.secondary[100] : 'transparent',
-            borderRadius: borderRadius.md,
-            padding: tab === 'all' ? '6px 10px' : '6px 4px',
+            border: tab === 'all' ? `1px solid ${colors.text.primary}` : `1px solid ${colors.border.light}`,
+            background: colors.background.card,
+            borderRadius: borderRadius.full,
+            padding: isMobile ? '6px 10px' : '4px 10px',
             cursor: 'pointer',
             flexShrink: 0,
             minHeight: 36,
+            color: colors.text.primary,
+            fontSize: getFontSize('caption', isMobile),
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
           }}
         >
-          <span
-            style={{
-              fontSize: getFontSize(isMobile ? 'h3' : 'h2', isMobile),
-              fontWeight: 700,
-              color: colors.text.primary,
-              lineHeight: 1,
-            }}
-          >
-            {tabCounts.all}
-          </span>
-          <span
-            style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: tab === 'all' ? colors.text.primary : colors.text.secondary,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            進行中
-          </span>
+          全部 {tabCounts.all}
         </button>
-        <span style={{ color: colors.border.main, display: isMobile ? 'none' : 'inline' }}>·</span>
         {STAT_FILTERS.map((f) => (
           <OrderStatChip
             key={f.id}
@@ -458,7 +445,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             style={{
               width: '100%',
               padding: isMobile ? '12px 14px 12px 36px' : '10px 14px 10px 36px',
-              fontSize: getFontSize('bodyLarge', isMobile),
+              fontSize: isMobile ? '16px' : getFontSize('body', false),
               border: `1px solid ${colors.border.main}`,
               borderRadius: borderRadius.lg,
               boxSizing: 'border-box',
@@ -683,23 +670,22 @@ function OrderCard({
   const status = orderStatusMeta(statusKey)
   const showSubmit = orderCanSubmitBilling(order)
   const showCancelBill = !cancelled && orderHasPendingBill(order)
-  const readyAccent = !cancelled && statusKey === 'ready'
   return (
     <div
       style={{
         background: highlighted ? colors.info[50] : colors.background.card,
         borderRadius: borderRadius.lg,
-        marginBottom: 12,
+        marginBottom: 10,
         border: highlighted
           ? `1px solid ${colors.info[500]}`
           : `1px solid ${colors.border.light}`,
-        borderLeft: readyAccent ? `3px solid ${status.border}` : undefined,
         opacity: cancelled ? 0.72 : statusKey === 'settled' ? 0.88 : 1,
         overflow: 'hidden',
+        boxShadow: designSystem.shadows.xs,
         transition: 'background 0.5s ease, border-color 0.5s ease',
       }}
     >
-      <div style={{ padding: isMobile ? '14px 12px 10px' : '16px 18px 12px' }}>
+      <div style={{ padding: isMobile ? '14px 14px 12px' : '16px 20px 14px' }}>
         <div
           style={{
             display: 'flex',
@@ -759,8 +745,8 @@ function OrderCard({
       <div
         style={{
           borderTop: `1px solid ${colors.border.light}`,
-          background: colors.secondary[50],
-          padding: isMobile ? '8px 12px' : '10px 18px',
+          background: colors.background.card,
+          padding: isMobile ? '0 14px' : '0 20px',
         }}
       >
         {order.items.map((it, idx) => (
@@ -779,15 +765,17 @@ function OrderCard({
         <div
           style={{
             display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            alignItems: isMobile ? 'stretch' : 'center',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            gap: isMobile ? 10 : 8,
-            padding: isMobile ? '12px' : '12px 18px 14px',
-            borderTop: '1px solid #f0f0f0',
+            gap: 8,
+            padding: isMobile ? '10px 14px 12px' : '10px 20px 12px',
+            borderTop: `1px solid ${colors.border.light}`,
+            background: colors.secondary[50],
           }}
         >
-          <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : undefined }}>
+          <div style={{ display: 'flex', gap: 8, flex: isMobile ? 1 : undefined }}>
             {showSubmit && (
               <ActionBtn
                 isMobile={isMobile}
@@ -813,9 +801,8 @@ function OrderCard({
             <div
               style={{
                 display: 'flex',
-                gap: isMobile ? 20 : 12,
-                justifyContent: isMobile ? 'center' : 'flex-end',
-                width: isMobile ? '100%' : undefined,
+                gap: 12,
+                justifyContent: 'flex-end',
               }}
             >
               {showCancelBill && (
@@ -853,7 +840,7 @@ function OrderItemRow({
 }) {
   const { title, subtitle } = formatOrderItemParts(item)
   const chips = itemQtyChipsForCard(item, order)
-  const thumbSize = isMobile ? 46 : 56
+  const thumbSize = isMobile ? 44 : 48
   return (
     <div
       style={{
@@ -861,27 +848,27 @@ function OrderItemRow({
         gridTemplateColumns:
           chips.length > 0
             ? isMobile
-              ? `${thumbSize}px minmax(0, 1fr)`
+              ? `${thumbSize}px minmax(0, 1fr) auto`
               : `${thumbSize}px minmax(0, 1fr) 48px minmax(100px, auto)`
             : isMobile
-              ? `${thumbSize}px minmax(0, 1fr)`
+              ? `${thumbSize}px minmax(0, 1fr) auto`
               : `${thumbSize}px minmax(0, 1fr) 48px`,
-        gap: isMobile ? 6 : '4px 12px',
-        alignItems: 'start',
-        paddingTop: showDivider ? 8 : 0,
-        marginTop: showDivider ? 8 : 0,
+        gap: isMobile ? 10 : '4px 12px',
+        alignItems: 'center',
+        padding: isMobile ? '10px 0' : '12px 0',
         borderTop: showDivider ? `1px solid ${colors.border.light}` : 'none',
       }}
     >
       <OrderItemThumb
         item={item}
         size={thumbSize}
+        isMobile={isMobile}
         onOpen={() => onOpenImagePreview(item)}
       />
       <div style={{ minWidth: 0 }}>
         <div
           style={{
-            fontSize: getFontSize('body', false),
+            fontSize: getFontSize('body', isMobile),
             fontWeight: 600,
             color: colors.text.primary,
             lineHeight: 1.35,
@@ -892,7 +879,7 @@ function OrderItemRow({
         {subtitle && (
           <div
             style={{
-              fontSize: getFontSize('caption', false),
+              fontSize: getFontSize('caption', isMobile),
               color: colors.text.secondary,
               marginTop: 2,
               lineHeight: 1.35,
@@ -902,48 +889,31 @@ function OrderItemRow({
           </div>
         )}
       </div>
-      {!isMobile && (
-        <div
-          style={{
-            fontSize: getFontSize('body', false),
-            fontWeight: 700,
-            color: colors.text.primary,
-            textAlign: 'center',
-            paddingTop: 2,
-          }}
-        >
-          ×{item.qty}
-        </div>
-      )}
-      {(isMobile || chips.length > 0) && (
+      <div
+        style={{
+          fontSize: getFontSize('bodySmall', isMobile),
+          fontWeight: 700,
+          color: colors.text.primary,
+          textAlign: 'right',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        ×{item.qty}
+      </div>
+      {chips.length > 0 && (
         <div
           style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: 6,
-            justifyContent: isMobile ? 'space-between' : 'flex-end',
+            gap: 4,
+            justifyContent: isMobile ? 'flex-start' : 'flex-end',
             alignItems: 'center',
-            gridColumn: isMobile ? '1 / -1' : undefined,
+            gridColumn: isMobile ? '2 / -1' : undefined,
           }}
         >
-          {isMobile && (
-            <span
-              style={{
-                fontSize: getFontSize('bodySmall', false),
-                fontWeight: 700,
-                color: colors.text.primary,
-              }}
-            >
-              ×{item.qty}
-            </span>
-          )}
-          {chips.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
-              {chips.map((c) => (
-                <QtyChip key={c.label} label={c.label} color={c.color} bg={c.bg} />
-              ))}
-            </div>
-          )}
+          {chips.map((c) => (
+            <QtyChip key={c.label} label={c.label} color={c.color} bg={c.bg} isMobile={isMobile} />
+          ))}
         </div>
       )}
     </div>
@@ -953,10 +923,12 @@ function OrderItemRow({
 function OrderItemThumb({
   item,
   size,
+  isMobile,
   onOpen,
 }: {
   item: ShopOrderWithItems['items'][number]
   size: number
+  isMobile: boolean
   onOpen: () => void
 }) {
   // 內部作業優先看實拍，再退回封面圖
@@ -975,11 +947,11 @@ function OrderItemThumb({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: size >= 50 ? 16 : 14,
+          fontSize: getFontSize('caption', isMobile),
           flexShrink: 0,
         }}
       >
-        🖼️
+        無圖
       </div>
     )
   }
@@ -1020,11 +992,21 @@ function OrderItemThumb({
   )
 }
 
-function QtyChip({ label, color, bg }: { label: string; color: string; bg: string }) {
+function QtyChip({
+  label,
+  color,
+  bg,
+  isMobile,
+}: {
+  label: string
+  color: string
+  bg: string
+  isMobile: boolean
+}) {
   return (
     <span
       style={{
-        fontSize: 11,
+        fontSize: getFontSize('caption', isMobile),
         fontWeight: 600,
         padding: '2px 7px',
         borderRadius: 6,
@@ -1060,7 +1042,7 @@ function OrderTag({
   return (
     <span
       style={{
-        fontSize: isMobile ? 11 : 11,
+        fontSize: getFontSize('caption', Boolean(isMobile)),
         fontWeight: 600,
         padding: isMobile ? '4px 10px' : '4px 10px',
         borderRadius: 999,

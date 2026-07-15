@@ -56,7 +56,6 @@ import {
   chipBtn,
   fieldLabel,
   stepFieldPrompt,
-  fieldHint,
   footerBlockHint,
   footerSoftHint,
   primaryBtn,
@@ -580,7 +579,6 @@ export function BookWizardCore({
                     {s.step3.addAlternateDates}
                   </button>
                 ) : null}
-                <div style={{ ...fieldHint, marginTop: 8, marginBottom: 0, textAlign: 'center' }}>{s.step3.maxDates}</div>
               </div>
             )}
 

@@ -19,19 +19,19 @@ const PILL: Record<ShopAvailability, { bg: string; color: string; label: string 
 }
 
 const pillBase: CSSProperties = {
-  fontSize: getFontSize('caption', true),
   fontWeight: 600,
   padding: '2px 8px',
   borderRadius: designSystem.borderRadius.full,
   flexShrink: 0,
 }
 
-export function ShopStatusPill({ status }: { status: ShopAvailability }) {
+export function ShopStatusPill({ status, isMobile }: { status: ShopAvailability; isMobile: boolean }) {
   const pill = PILL[status]
   return (
     <span
       style={{
         ...pillBase,
+        fontSize: getFontSize('caption', isMobile),
         background: pill.bg,
         color: pill.color,
       }}
@@ -41,11 +41,12 @@ export function ShopStatusPill({ status }: { status: ShopAvailability }) {
   )
 }
 
-export function ShopVisibilityPill({ isPublic }: { isPublic: boolean }) {
+export function ShopVisibilityPill({ isPublic, isMobile }: { isPublic: boolean; isMobile: boolean }) {
   return (
     <span
       style={{
         ...pillBase,
+        fontSize: getFontSize('caption', isMobile),
         background: isPublic ? colors.warning[50] : colors.secondary[100],
         color: isPublic ? colors.warning[700] : colors.text.disabled,
       }}

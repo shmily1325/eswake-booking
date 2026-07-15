@@ -182,7 +182,7 @@ export function CoachReport({
 
     if (error) {
       console.error('查找用戶對應的教練失敗:', error)
-      toast.error('無法找到您對應的教練帳號，請聯繫管理員設定')
+      toast.error('無法找到您對應的教練帳號，請聯繫負責人協助設定')
       return
     }
 
@@ -190,7 +190,7 @@ export function CoachReport({
       setUserCoachId(data.id)
       setSelectedCoachId(data.id) // 自動選擇該教練
     } else {
-      toast.error('您的帳號尚未配對教練，請聯繫管理員')
+      toast.error('您的帳號尚未配對教練，請聯繫負責人協助設定')
     }
   }
 

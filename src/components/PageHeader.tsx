@@ -209,7 +209,7 @@ export function PageHeader({
         <Link
           to="/bao"
           style={navButtonStyle}
-          aria-label="BAO 管理後台"
+          aria-label="BAO"
           title="BAO"
           data-track="header_bao"
         >

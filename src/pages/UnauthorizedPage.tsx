@@ -61,14 +61,12 @@ export function UnauthorizedPage() {
             {user ? (
               <>
                 您的帳號 <strong>{user.email}</strong> 沒有權限存取此頁面。
-                <br /><br />
-                如需協助，請聯絡系統管理員。
               </>
             ) : (
               <>
                 您沒有權限存取此頁面。
                 <br /><br />
-                請先登入或聯絡系統管理員。
+                請先登入。
               </>
             )}
           </p>
@@ -105,16 +103,6 @@ export function UnauthorizedPage() {
             )}
           </div>
 
-          <div style={{
-            marginTop: designSystem.spacing.xl,
-            paddingTop: designSystem.spacing.lg,
-            borderTop: `1px solid ${designSystem.colors.border.main}`,
-            fontSize: getFontSize('bodySmall', isMobile),
-            color: designSystem.colors.text.secondary
-          }}>
-            需要協助？<br />
-            請聯絡管理員開通權限
-          </div>
         </div>
       </main>
     </div>

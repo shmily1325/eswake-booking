@@ -137,7 +137,7 @@ export function MemberManagement() {
     if (!user) return
     if (!userIsAdmin) {
       setLoading(false)
-      toast.error('會員管理僅限管理員使用')
+      toast.error('目前帳號無此功能權限')
       navigate('/')
     }
   }, [user, userIsAdmin, navigate, toast])
@@ -525,7 +525,10 @@ export function MemberManagement() {
             title="會員" 
             user={user} 
             showBaoLink={isAdmin(user)} 
-            extraLinks={userIsAdmin ? [{ label: '儲值', link: '/member-transaction' }] : undefined}
+            extraLinks={userIsAdmin ? [
+              { label: '儲值', link: '/member-transaction' },
+              { label: '🏄 置板', link: '/boards' },
+            ] : undefined}
           />
 
           {/* 搜尋框骨架屏 */}
@@ -610,7 +613,10 @@ export function MemberManagement() {
           user={user} 
           showBaoLink={isAdmin(user)} 
           extraLinks={
-            userIsAdmin ? [{ label: '儲值', link: '/member-transaction' }] : undefined
+            userIsAdmin ? [
+              { label: '儲值', link: '/member-transaction' },
+              { label: '🏄 置板', link: '/boards' },
+            ] : undefined
           }
         />
         {/* 搜尋欄 + 新增會員按鈕 */}
@@ -1349,24 +1355,6 @@ export function MemberManagement() {
             )
           })
         )}
-      </div>
-
-      {/* 次要功能按鈕 */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '12px', 
-        justifyContent: 'center',
-        marginTop: '30px',
-        marginBottom: '20px',
-        flexWrap: 'wrap'
-      }}>
-        <button
-          data-track="member_boards_link"
-          onClick={() => navigate('/boards')}
-          style={getButtonStyle('outline', 'small', isMobile)}
-        >
-          置板
-        </button>
       </div>
 
       {/* Footer */}

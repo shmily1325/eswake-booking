@@ -156,7 +156,7 @@ export function CoachReportFormDialog({
                 color: designSystem.colors.warning[700]
               }}
             >
-              ⚠️ <strong>注意：</strong>此記錄已被管理員處理過。如果修改任何內容，將會重新進入待處理狀態。
+              ⚠️ <strong>注意：</strong>此記錄已完成處理。如果修改任何內容，將會重新進入待處理狀態。
             </div>
           )}
 

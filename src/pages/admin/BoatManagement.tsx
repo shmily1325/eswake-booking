@@ -23,6 +23,7 @@ import {
   DateRangeFields,
   FormFieldLabel,
   HintBox,
+  SegmentedControl,
   TimeSelectField,
 } from '../../components/admin/AdminFormUi'
 
@@ -30,6 +31,12 @@ const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
 const cardShadow = designSystem.shadows.elevation[1]
 const defaultBoatColor = designSystem.colors.info[500]
+type UnavailableTimeMode = 'allDay' | 'custom'
+
+const unavailableTimeModeOptions = [
+    { value: 'allDay', label: '整天停用', trackId: 'boat_unavailable_all_day' },
+    { value: 'custom', label: '指定時段', trackId: 'boat_unavailable_custom_time' },
+] satisfies { value: UnavailableTimeMode; label: string; trackId: string }[]
 
 export function BoatManagement() {
     const user = useAuthUser()
@@ -50,6 +57,7 @@ export function BoatManagement() {
     const [endDate, setEndDate] = useState('')
     const [startTime, setStartTime] = useState('')
     const [endTime, setEndTime] = useState('')
+    const [unavailableTimeMode, setUnavailableTimeMode] = useState<UnavailableTimeMode>('allDay')
     const [reason, setReason] = useState('')
     const [unavailableLoading, setUnavailableLoading] = useState(false)
     const [editingUnavailableId, setEditingUnavailableId] = useState<number | null>(null)
@@ -186,9 +194,8 @@ export function BoatManagement() {
             return
         }
 
-        // 如果有填時間，必須兩個都填
-        if ((startTime && !endTime) || (!startTime && endTime)) {
-            toast.warning('請完整填寫開始與結束時間，或兩者皆留空(代表全天)')
+        if (unavailableTimeMode === 'custom' && (!startTime || !endTime)) {
+            toast.warning('請完整填寫開始與結束時間')
             return
         }
 
@@ -240,6 +247,7 @@ export function BoatManagement() {
             setEndDate('')
             setStartTime('')
             setEndTime('')
+            setUnavailableTimeMode('allDay')
             setReason('')
             loadData()
         } catch (error) {
@@ -287,6 +295,7 @@ export function BoatManagement() {
         setEndDate(dateStr)
         setStartTime('')
         setEndTime('')
+        setUnavailableTimeMode('allDay')
         setReason('')
         setUnavailableDialogOpen(true)
     }
@@ -299,6 +308,7 @@ export function BoatManagement() {
         setEndDate(record.end_date)
         setStartTime(unavailableTimeToForm(record.start_time))
         setEndTime(unavailableTimeToForm(record.end_time))
+        setUnavailableTimeMode(record.start_time && record.end_time ? 'custom' : 'allDay')
         setReason(record.reason || '')
         setUnavailableDialogOpen(true)
     }
@@ -312,6 +322,7 @@ export function BoatManagement() {
         setEndDate('')
         setStartTime('')
         setEndTime('')
+        setUnavailableTimeMode('allDay')
         setReason('')
     }
 
@@ -330,6 +341,14 @@ export function BoatManagement() {
     const handleUnavailableMultiDayChange = (v: boolean) => {
         setUnavailableMultiDay(v)
         if (!v && startDate) setEndDate(startDate)
+    }
+
+    const handleUnavailableTimeModeChange = (mode: UnavailableTimeMode) => {
+        setUnavailableTimeMode(mode)
+        if (mode === 'allDay') {
+            setStartTime('')
+            setEndTime('')
+        }
     }
 
     // 初始化編輯價格
@@ -1133,26 +1152,34 @@ export function BoatManagement() {
                     />
 
                     <div style={{ marginBottom: '16px' }}>
-                        <FormFieldLabel>時段（留空＝整天停用）</FormFieldLabel>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <TimeSelectField
-                                value={startTime}
-                                onChange={setStartTime}
-                                label={isUnavailableSingleDay ? '開始時間' : '第一天時間'}
-                            />
-                            <TimeSelectField
-                                value={endTime}
-                                onChange={setEndTime}
-                                label={isUnavailableSingleDay ? '結束時間' : '最後一天時間'}
-                            />
-                        </div>
-                        <HintBox>
-                            {isUnavailableSingleDay ? (
-                                <>單日：時間留空表示全天停用；例如 13:30–15:00 表示當天該時段不可用。</>
-                            ) : (
-                                <>跨日：時間留空表示這幾天全天停用；中間日期亦視為全天。</>
-                            )}
-                        </HintBox>
+                        <FormFieldLabel>停用時段</FormFieldLabel>
+                        <SegmentedControl
+                            options={unavailableTimeModeOptions}
+                            value={unavailableTimeMode}
+                            onChange={handleUnavailableTimeModeChange}
+                            accent="amber"
+                        />
+                        {unavailableTimeMode === 'custom' && (
+                            <div style={{ marginTop: '14px' }}>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <TimeSelectField
+                                        value={startTime}
+                                        onChange={setStartTime}
+                                        label={isUnavailableSingleDay ? '開始時間' : '第一天開始'}
+                                        optional={false}
+                                    />
+                                    <TimeSelectField
+                                        value={endTime}
+                                        onChange={setEndTime}
+                                        label={isUnavailableSingleDay ? '結束時間' : '最後一天結束'}
+                                        optional={false}
+                                    />
+                                </div>
+                                {unavailableMultiDay && (
+                                    <HintBox>中間日期將整天停用。</HintBox>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ marginBottom: '20px' }}>

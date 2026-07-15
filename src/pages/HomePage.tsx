@@ -13,7 +13,7 @@ import {
   type EditorFeatureKey
 } from '../utils/auth'
 import { supabase } from '../lib/supabase'
-import { getPublicShopHomeUrl, isExternalNavLink } from '../lib/shopPublicUrl'
+import { isExternalNavLink } from '../lib/shopPublicUrl'
 import { ES_BRAND } from '../lib/esBrandTokens'
 import { Footer } from '../components/Footer'
 import { ExternalNavLink } from '../components/ExternalNavLink'
@@ -191,7 +191,7 @@ export function HomePage() {
     }
   ]
 
-  /** 分隔線下方：排班 / 船隻管理 / 商品查詢或管理 / ES SHOP / 會員電話 / BAO */
+  /** 分隔線下方：排班 / 船隻管理 / 商品查詢或管理 / 會員電話 / BAO */
   const menuItemsTools: HomeMenuItem[] = [
     {
       title: '排班',
@@ -219,14 +219,6 @@ export function HomePage() {
       icon: '📦',
       link: '/products?mode=readonly',
       visibleForEmails: PRODUCT_READONLY_PREVIEW_EMAILS
-    },
-    {
-      title: 'ES SHOP',
-      icon: '🛒',
-      link: getPublicShopHomeUrl(),
-      subtitle: 'shop.eswakeschool.com',
-      editorFeature: 'can_products',
-      hideFromHomeForSuperAdmin: true
     },
     {
       title: '會員電話',
@@ -371,7 +363,7 @@ export function HomePage() {
     const inner = (
       <>
         <div style={{ marginBottom: '5px' }}>
-          <span style={{ fontSize: isMobile ? '30px' : '32px' }}>{item.icon}</span>
+          <span style={{ fontSize: isMobile ? '34px' : '38px' }}>{item.icon}</span>
         </div>
         <h2
           style={{
@@ -461,8 +453,8 @@ export function HomePage() {
             src="/logo_circle (black).png"
             alt={`${ES_BRAND.name} Logo`}
             style={{
-              width: isMobile ? '76px' : '96px',
-              height: isMobile ? '76px' : '96px',
+              width: isMobile ? '88px' : '112px',
+              height: isMobile ? '88px' : '112px',
               objectFit: 'contain',
               marginBottom: isMobile ? '10px' : '14px',
               borderRadius: '50%',
@@ -474,7 +466,7 @@ export function HomePage() {
           />
           <h1 style={{
             margin: isMobile ? '0 0 12px 0' : '0 0 20px 0',
-            fontSize: getFontSize('display', isMobile),
+            fontSize: isMobile ? '32px' : '40px',
             fontWeight: '800',
             color: designSystem.colors.text.primary,
             letterSpacing: isMobile ? '1px' : '2px',

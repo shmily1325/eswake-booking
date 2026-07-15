@@ -87,7 +87,7 @@ export function BookBootScreen({ phase = 'init', onRetry, liffOpenUrl }: BookBoo
           </a>
         </div>
       )}
-      {stuck && (
+      {stuck && !liffOpenUrl && (
         <div style={{ marginTop: 16, maxWidth: 280 }}>
           <div style={{ fontSize: ty.caption, color: T.muted, marginBottom: 12, lineHeight: 1.55 }}>
             {s.boot.stuck}

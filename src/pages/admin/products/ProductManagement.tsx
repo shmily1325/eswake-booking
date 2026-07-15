@@ -42,7 +42,7 @@ const { colors, borderRadius } = designSystem
 
 type ViewMode =
   | { kind: 'list' }
-  | { kind: 'edit'; productId: string; focusVariantId?: string }
+  | { kind: 'edit'; productId: string; focusVariantId?: string; addNewVariant?: boolean }
   | { kind: 'create'; defaultCategory: string }
 
 function openProductEdit(productId: string, variantId: string): ViewMode {
@@ -402,9 +402,19 @@ export function ProductManagement({
             }
             productId={view.kind === 'edit' ? view.productId : null}
             focusVariantId={view.kind === 'edit' ? view.focusVariantId : undefined}
+            addNewVariantOnLoad={view.kind === 'edit' ? view.addNewVariant : false}
             defaultCategory={view.kind === 'create' ? view.defaultCategory : undefined}
             readOnly={!canEdit}
-            existingProducts={products.map((p) => ({ category: p.category, brand: p.brand, model: p.model }))}
+            existingProducts={products.map((p) => ({
+              id: p.id,
+              category: p.category,
+              brand: p.brand,
+              model: p.model,
+              variantCount: p.variants.length,
+            }))}
+            onOpenExistingProduct={(productId) => {
+              setView({ kind: 'edit', productId, addNewVariant: true })
+            }}
             currentUserEmail={user?.email ?? null}
             onClose={(changed) => {
               setView({ kind: 'list' })
@@ -472,10 +482,10 @@ export function ProductManagement({
         <div
           style={{
             display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
+            flexDirection: isMobile && canEdit ? 'column' : 'row',
             gap: 10,
             marginBottom: 14,
-            alignItems: isMobile ? 'stretch' : 'center',
+            alignItems: isMobile && canEdit ? 'stretch' : 'center',
           }}
         >
           <div style={{ flex: 1, minWidth: isMobile ? 0 : 200, position: 'relative' }}>
@@ -483,11 +493,11 @@ export function ProductManagement({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜尋品牌、型號、貨號、規格"
+              placeholder="搜尋品牌、型號、貨號、標籤、規格"
               style={{
                 width: '100%',
                 padding: search ? '10px 36px 10px 14px' : '10px 14px',
-                fontSize: isMobile ? 16 : getFontSize('body', false),
+                fontSize: isMobile ? '16px' : getFontSize('body', false),
                 border: `1px solid ${designSystem.colors.border.light}`,
                 borderRadius: designSystem.borderRadius.lg,
                 boxSizing: 'border-box',
@@ -525,7 +535,7 @@ export function ProductManagement({
               alignItems: 'center',
               flexShrink: 0,
               flexWrap: isMobile ? 'wrap' : 'nowrap',
-              width: isMobile ? '100%' : undefined,
+              width: isMobile && canEdit ? '100%' : undefined,
             }}
           >
             <Button
@@ -536,7 +546,7 @@ export function ProductManagement({
                 setStockScannerOpen(true)
               }}
             >
-              掃碼查庫存
+              {isMobile && !canEdit ? '掃碼' : '掃碼查庫存'}
             </Button>
             {canEdit && (
               <Button
@@ -557,10 +567,6 @@ export function ProductManagement({
             item={scannedItem}
             isMobile={isMobile}
             onClose={() => setScannedItem(null)}
-            onOpenProduct={() => {
-              setView(openProductEdit(scannedItem.product.id, scannedItem.variant.id))
-              setScannedItem(null)
-            }}
           />
         )}
 
@@ -671,15 +677,19 @@ export function ProductManagement({
               }}
               isMobile={isMobile}
             />
-            <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
-            <DisplaySettings
-              imageMode={listImageMode}
-              isMobile={isMobile}
-              onImageModeChange={(next) => {
-                setListImageModePersist(next)
-                trackClick(`product_list_image_${next}`, user?.email ?? undefined)
-              }}
-            />
+            {canEdit && (
+              <>
+                <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
+                <DisplaySettings
+                  imageMode={listImageMode}
+                  isMobile={isMobile}
+                  onImageModeChange={(next) => {
+                    setListImageModePersist(next)
+                    trackClick(`product_list_image_${next}`, user?.email ?? undefined)
+                  }}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -700,11 +710,12 @@ export function ProductManagement({
           <EmptyState
             hasAnyProduct={products.length > 0}
             canCreate={canEdit}
+            isMobile={isMobile}
             onCreate={() => {
               setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
             }}
           />
-        ) : layout === 'gallery' ? (
+        ) : canEdit && layout === 'gallery' ? (
           <ProductGalleryGrid
             items={filteredItems}
             isMobile={isMobile}
@@ -735,7 +746,6 @@ export function ProductManagement({
       </div>
       <LabelCodeCameraScanner
         open={stockScannerOpen}
-        mode="stock-check"
         busy={stockScannerBusy}
         statusMessage={stockScannerStatus}
         onScan={handleStockLabelScan}
@@ -750,15 +760,12 @@ function StockCheckResult({
   item,
   isMobile,
   onClose,
-  onOpenProduct,
 }: {
   item: VariantListItem
   isMobile: boolean
   onClose: () => void
-  onOpenProduct: () => void
 }) {
   const { product, variant } = item
-  const status = inventoryStatusBadge(variant, product.is_public)
   const attributeText = formatAttributes(product.category, variant.attributes)
   const reserved = variant.reserved_qty ?? 0
   const sellable = getVariantSellableStock(variant)
@@ -806,47 +813,20 @@ function StockCheckResult({
               .join(' · ') || '未填規格'}
           </div>
         </div>
-        <span
-          style={{
-            flexShrink: 0,
-            padding: '4px 10px',
-            borderRadius: borderRadius.full,
-            background: status.bg,
-            color: status.color,
-            fontSize: getFontSize('caption', isMobile),
-            fontWeight: 600,
-          }}
-        >
-          {status.label}
-        </span>
+        <Button variant="secondary" onClick={onClose}>完成</Button>
       </div>
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(0, 1fr))',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
           borderTop: `1px solid ${colors.border.light}`,
           borderBottom: `1px solid ${colors.border.light}`,
         }}
       >
-        <StockCheckValue label="售價" isMobile={isMobile}>
-          <PriceDisplay price={variant.price} />
-        </StockCheckValue>
         <StockCheckValue label="現有庫存" isMobile={isMobile}>{variant.stock}</StockCheckValue>
         <StockCheckValue label="待結帳保留" isMobile={isMobile}>{reserved}</StockCheckValue>
         <StockCheckValue label="可售現貨" isMobile={isMobile} emphasize>{sellable}</StockCheckValue>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 8,
-          marginTop: 14,
-        }}
-      >
-        <Button variant="secondary" onClick={onClose}>關閉</Button>
-        <Button variant="primary" onClick={onOpenProduct}>查看商品</Button>
       </div>
     </section>
   )
@@ -1055,20 +1035,6 @@ function InventoryDashboard({
   const missingImageCount = base.filter((it) => !it.variant.image_url).length
   const missingCoverCount = base.filter((it) => !it.variant.cover_image_url).length
   const missingLabelCount = base.filter(isVariantMissingLabel).length
-  const missingDataCount = base.filter(
-    (it) =>
-      it.variant.price == null ||
-      !it.variant.image_url ||
-      !it.variant.cover_image_url ||
-      isVariantMissingLabel(it),
-  ).length
-  const hasActiveDataIssue =
-    onlyMissingPrice || onlyMissingImage || onlyMissingCover || onlyMissingLabel
-  const [showDataIssues, setShowDataIssues] = useState(hasActiveDataIssue)
-
-  useEffect(() => {
-    if (hasActiveDataIssue) setShowDataIssues(true)
-  }, [hasActiveDataIssue])
 
   // 摘要固定顯示目前搜尋／分類範圍的總數，不隨資料品質篩選切換
   const mainSku = baseSkuCount
@@ -1151,83 +1117,40 @@ function InventoryDashboard({
 
       <div style={{ flexBasis: '100%', height: 0 }} />
 
-      {/* 待補資料預設收合，避免資料品質提醒與主要庫存數字同等醒目 */}
+      {/* 資料狀態直接顯示，避免為少量常用篩選增加一次展開操作 */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span
-          style={{
-            fontSize: getFontSize('caption', isMobile),
-            color: colors.text.secondary,
-            fontWeight: 600,
-          }}
-        >
-          資料整理
-        </span>
-        <button
-          type="button"
-          aria-expanded={showDataIssues}
-          disabled={missingDataCount === 0 && !hasActiveDataIssue && !showDataIssues}
-          onClick={() => setShowDataIssues((visible) => !visible)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '4px 10px',
-            fontSize: getFontSize('caption', isMobile),
-            fontWeight: hasActiveDataIssue ? 700 : 500,
-            background: hasActiveDataIssue ? colors.primary[500] : colors.background.card,
-            color:
-              missingDataCount === 0 && !hasActiveDataIssue && !showDataIssues
-                ? colors.text.disabled
-                : hasActiveDataIssue
-                  ? colors.background.card
-                  : colors.text.secondary,
-            border: `1px solid ${hasActiveDataIssue ? colors.primary[500] : colors.border.light}`,
-            borderRadius: borderRadius.full,
-            cursor:
-              missingDataCount === 0 && !hasActiveDataIssue && !showDataIssues
-                ? 'default'
-                : 'pointer',
-          }}
-        >
-          {missingDataCount} 種缺資料
-          <span aria-hidden>{showDataIssues ? '▴' : '▾'}</span>
-        </button>
-        {showDataIssues && (
-          <>
-            <DashboardStatChip
-              label="缺價"
-              count={missingPriceCount}
-              active={onlyMissingPrice}
-              onClick={onToggleMissingPrice}
-              trackId="product_filter_missing_price"
-              isMobile={isMobile}
-            />
-            <DashboardStatChip
-              label="沒實拍"
-              count={missingImageCount}
-              active={onlyMissingImage}
-              onClick={onToggleMissingImage}
-              trackId="product_filter_missing_image"
-              isMobile={isMobile}
-            />
-            <DashboardStatChip
-              label="沒封面"
-              count={missingCoverCount}
-              active={onlyMissingCover}
-              onClick={onToggleMissingCover}
-              trackId="product_filter_missing_cover"
-              isMobile={isMobile}
-            />
-            <DashboardStatChip
-              label="缺標籤"
-              count={missingLabelCount}
-              active={onlyMissingLabel}
-              onClick={onToggleMissingLabel}
-              trackId="product_filter_missing_label"
-              isMobile={isMobile}
-            />
-          </>
-        )}
+        <DashboardStatChip
+          label="缺價"
+          count={missingPriceCount}
+          active={onlyMissingPrice}
+          onClick={onToggleMissingPrice}
+          trackId="product_filter_missing_price"
+          isMobile={isMobile}
+        />
+        <DashboardStatChip
+          label="沒實拍"
+          count={missingImageCount}
+          active={onlyMissingImage}
+          onClick={onToggleMissingImage}
+          trackId="product_filter_missing_image"
+          isMobile={isMobile}
+        />
+        <DashboardStatChip
+          label="沒封面"
+          count={missingCoverCount}
+          active={onlyMissingCover}
+          onClick={onToggleMissingCover}
+          trackId="product_filter_missing_cover"
+          isMobile={isMobile}
+        />
+        <DashboardStatChip
+          label="缺標籤"
+          count={missingLabelCount}
+          active={onlyMissingLabel}
+          onClick={onToggleMissingLabel}
+          trackId="product_filter_missing_label"
+          isMobile={isMobile}
+        />
       </div>
 
       <div
@@ -1914,16 +1837,16 @@ function MobileListRow({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      data-track="product_edit_open"
-      onClick={onClick}
-      onKeyDown={(e) => {
+      role={canEdit ? 'button' : undefined}
+      tabIndex={canEdit ? 0 : undefined}
+      data-track={canEdit ? 'product_edit_open' : undefined}
+      onClick={canEdit ? onClick : undefined}
+      onKeyDown={canEdit ? (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           onClick()
         }
-      }}
+      } : undefined}
       style={{
         display: 'flex',
         gap: 12,
@@ -1932,7 +1855,7 @@ function MobileListRow({
         borderRadius: 12,
         padding: 10,
         textAlign: 'left',
-        cursor: 'pointer',
+        cursor: canEdit ? 'pointer' : 'default',
         width: '100%',
         boxSizing: 'border-box',
         alignItems: 'stretch',
@@ -2034,7 +1957,7 @@ function MobileListRow({
               #{variant.vendor_code}
             </div>
           )}
-          {product.description && (
+          {canEdit && product.description && (
             <div
               title={product.description}
               style={{
@@ -2067,57 +1990,59 @@ function MobileListRow({
           <StockMetric label="可售現貨" value={sellable} bordered />
         </div>
 
-        {/* 價格與供貨狀態 */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: 6,
-            gap: 8,
-          }}
-        >
-          <PriceDisplay price={variant.price} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <span
+        {canEdit && (
+          <>
+            {/* 管理模式才顯示價格、狀態與操作 */}
+            <div
               style={{
-                fontSize: getFontSize('caption', true),
-                fontWeight: 500,
-                padding: '2px 8px',
-                borderRadius: 999,
-                background: status.bg,
-                color: status.color,
-                whiteSpace: 'nowrap',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: 6,
+                gap: 8,
               }}
             >
-              {status.label}
-            </span>
-          </div>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            marginTop: 8,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {onStartOrder && (
-            <StartOrderButton
-              label="新增訂單"
-              wide
-              onClick={(e) => {
-                e.stopPropagation()
-                onStartOrder(variant.id)
+              <PriceDisplay price={variant.price} />
+              <span
+                style={{
+                  fontSize: getFontSize('caption', true),
+                  fontWeight: 500,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  background: status.bg,
+                  color: status.color,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {status.label}
+              </span>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                marginTop: 8,
               }}
-            />
-          )}
-          <EditProductButton label={canEdit ? '編輯' : '查看'} wide onClick={onClick} />
-        </div>
-        {formatStockInAt(variant.last_stock_in_at) && (
-          <div style={{ marginTop: 4, fontSize: getFontSize('caption', true), color: colors.text.secondary }}>
-            入庫 {formatStockInAt(variant.last_stock_in_at)}
-          </div>
+              onClick={(e) => e.stopPropagation()}
+            >
+              {onStartOrder && (
+                <StartOrderButton
+                  label="新增訂單"
+                  wide
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onStartOrder(variant.id)
+                  }}
+                />
+              )}
+              <EditProductButton label="編輯" wide onClick={onClick} />
+            </div>
+            {formatStockInAt(variant.last_stock_in_at) && (
+              <div style={{ marginTop: 4, fontSize: getFontSize('caption', true), color: colors.text.secondary }}>
+                入庫 {formatStockInAt(variant.last_stock_in_at)}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -2155,13 +2080,13 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
             <tr style={{ background: colors.secondary[50], color: colors.text.secondary, fontWeight: 600 }}>
               <th style={thStyle('60px')}>照片</th>
               <th style={thStyle('auto')}>商品／規格</th>
-              <th style={thStyle('90px', 'right')}>售價</th>
+              {canEdit && <th style={thStyle('90px', 'right')}>售價</th>}
               <th style={thStyle('76px', 'center')}>現有庫存</th>
               <th style={thStyle('92px', 'center')}>待結帳保留</th>
               <th style={thStyle('76px', 'center')}>可售現貨</th>
-              <th style={thStyle('88px', 'center')}>狀態</th>
-              <th style={thStyle('130px')}>入庫</th>
-              <th style={thStyle(onStartOrder ? '170px' : '78px', 'center')}>操作</th>
+              {canEdit && <th style={thStyle('88px', 'center')}>狀態</th>}
+              {canEdit && <th style={thStyle('130px')}>入庫</th>}
+              {canEdit && <th style={thStyle(onStartOrder ? '170px' : '78px', 'center')}>操作</th>}
             </tr>
           </thead>
           <tbody>
@@ -2176,10 +2101,10 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
               return (
                 <tr
                   key={it.variant.id}
-                  data-track="product_edit_open"
-                  onClick={() => onRowClick(it.product.id, it.variant.id)}
-                  title={it.product.description ?? undefined}
-                  style={{ cursor: 'pointer', borderTop: `1px solid ${colors.border.light}` }}
+                  data-track={canEdit ? 'product_edit_open' : undefined}
+                  onClick={canEdit ? () => onRowClick(it.product.id, it.variant.id) : undefined}
+                  title={canEdit ? it.product.description ?? undefined : undefined}
+                  style={{ cursor: canEdit ? 'pointer' : 'default', borderTop: `1px solid ${colors.border.light}` }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = colors.background.hover)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
@@ -2224,9 +2149,11 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                       </div>
                     )}
                   </td>
-                  <td style={tdStyle('right')}>
-                    <PriceDisplay price={it.variant.price} align="right" />
-                  </td>
+                  {canEdit && (
+                    <td style={tdStyle('right')}>
+                      <PriceDisplay price={it.variant.price} align="right" />
+                    </td>
+                  )}
                   <td
                     style={{
                       ...tdStyle('center'),
@@ -2255,49 +2182,53 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                   >
                     {sellable}
                   </td>
-                  <td style={tdStyle('center')}>
-                    <span
-                      style={{
-                        fontSize: getFontSize('caption', false),
-                        fontWeight: 500,
-                        padding: '2px 8px',
-                        borderRadius: 999,
-                        background: status.bg,
-                        color: status.color,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {status.label}
-                    </span>
-                  </td>
-                  <td
-                    style={{
-                      ...tdStyle(),
-                      fontSize: getFontSize('bodySmall', false),
-                      color: colors.text.secondary,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {formatStockInAt(it.variant.last_stock_in_at) ?? '—'}
-                  </td>
-                  <td style={tdStyle('center')} onClick={(e) => e.stopPropagation()}>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
-                      {onStartOrder && (
-                        <StartOrderButton
-                          label="新增訂單"
-                          tone="secondary"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onStartOrder(it.variant.id)
+                  {canEdit && (
+                    <>
+                      <td style={tdStyle('center')}>
+                        <span
+                          style={{
+                            fontSize: getFontSize('caption', false),
+                            fontWeight: 500,
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            background: status.bg,
+                            color: status.color,
+                            whiteSpace: 'nowrap',
                           }}
-                        />
-                      )}
-                      <EditProductButton
-                        label={canEdit ? '編輯' : '查看'}
-                        onClick={() => onRowClick(it.product.id, it.variant.id)}
-                      />
-                    </div>
-                  </td>
+                        >
+                          {status.label}
+                        </span>
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle(),
+                          fontSize: getFontSize('bodySmall', false),
+                          color: colors.text.secondary,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {formatStockInAt(it.variant.last_stock_in_at) ?? '—'}
+                      </td>
+                      <td style={tdStyle('center')} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+                          {onStartOrder && (
+                            <StartOrderButton
+                              label="新增訂單"
+                              tone="secondary"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onStartOrder(it.variant.id)
+                              }}
+                            />
+                          )}
+                          <EditProductButton
+                            label="編輯"
+                            onClick={() => onRowClick(it.product.id, it.variant.id)}
+                          />
+                        </div>
+                      </td>
+                    </>
+                  )}
                 </tr>
               )
             })}
@@ -2405,9 +2336,10 @@ function StartOrderButton({
 interface EmptyStateProps {
   hasAnyProduct: boolean
   canCreate: boolean
+  isMobile: boolean
   onCreate: () => void
 }
-function EmptyState({ hasAnyProduct, canCreate, onCreate }: EmptyStateProps) {
+function EmptyState({ hasAnyProduct, canCreate, isMobile, onCreate }: EmptyStateProps) {
   return (
     <div
       style={{
@@ -2421,7 +2353,7 @@ function EmptyState({ hasAnyProduct, canCreate, onCreate }: EmptyStateProps) {
     >
       <div
         style={{
-          fontSize: getFontSize('bodyLarge', false),
+          fontSize: getFontSize('bodyLarge', isMobile),
           fontWeight: 600,
           marginBottom: 6,
           color: colors.text.primary,
@@ -2429,7 +2361,7 @@ function EmptyState({ hasAnyProduct, canCreate, onCreate }: EmptyStateProps) {
       >
         {hasAnyProduct ? '沒有符合的商品' : '還沒有任何商品'}
       </div>
-      <div style={{ fontSize: getFontSize('bodySmall', false), marginBottom: 18 }}>
+      <div style={{ fontSize: getFontSize('bodySmall', isMobile), marginBottom: 18 }}>
         {hasAnyProduct
           ? '試著清除篩選或調整關鍵字。'
           : canCreate

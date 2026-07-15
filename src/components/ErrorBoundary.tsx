@@ -96,8 +96,7 @@ export class ErrorBoundary extends Component<Props, State> {
               lineHeight: '1.6',
               margin: `0 0 ${designSystem.spacing.xl}`,
             }}>
-              系統遇到了一個意外錯誤，請嘗試重新整理頁面。<br/>
-              如果問題持續發生，請聯繫系統管理員。
+              系統遇到了一個意外錯誤，請嘗試重新整理頁面。
             </p>
 
             {/* 簡化的錯誤訊息（可折疊） */}

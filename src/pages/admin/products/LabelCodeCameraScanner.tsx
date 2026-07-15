@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useResponsive } from '../../../hooks/useResponsive'
+import { getFontSize } from '../../../styles/designSystem'
 
 const SCANNER_Z_INDEX = 2100
 /** 同一組代碼重新觸發的最短間隔；搭配解鎖狀態避免手持不動時狂加 */
@@ -16,7 +17,6 @@ interface LabelCodeCameraScannerProps {
   onScan: (labelCode: string) => void | Promise<void>
   busy?: boolean
   statusMessage?: string | null
-  mode?: 'order' | 'stock-check'
 }
 
 export function LabelCodeCameraScanner({
@@ -25,7 +25,6 @@ export function LabelCodeCameraScanner({
   onScan,
   busy = false,
   statusMessage = null,
-  mode = 'order',
 }: LabelCodeCameraScannerProps) {
   const { isMobile } = useResponsive()
   const regionId = useId().replace(/:/g, '')
@@ -38,9 +37,14 @@ export function LabelCodeCameraScanner({
   const busyRef = useRef(busy)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
+  const [manualCode, setManualCode] = useState('')
 
   onScanRef.current = onScan
   busyRef.current = busy
+
+  useEffect(() => {
+    if (open) setManualCode('')
+  }, [open])
 
   const stopCamera = useCallback(async () => {
     const scanner = scannerRef.current
@@ -154,11 +158,7 @@ export function LabelCodeCameraScanner({
 
   if (!open) return null
 
-  const stockCheck = mode === 'stock-check'
-  const dialogTitle = stockCheck ? '掃描標籤查庫存' : '掃描標籤條碼'
-  const hintText = stockCheck
-    ? '對準商品標籤上的 Code128 條碼；掃描後會顯示售價與目前庫存。'
-    : '對準商品標籤上的 Code128 條碼；掃到會自動加入訂單，可連續掃多項。'
+  const dialogTitle = '掃描商品標籤'
 
   return createPortal(
     <div
@@ -199,7 +199,7 @@ export function LabelCodeCameraScanner({
             borderBottom: '1px solid #eee',
           }}
         >
-          <h3 style={{ margin: 0, fontSize: isMobile ? 17 : 18 }}>{dialogTitle}</h3>
+          <h3 style={{ margin: 0, fontSize: getFontSize('h3', isMobile) }}>{dialogTitle}</h3>
           <button
             type="button"
             onClick={onClose}
@@ -220,8 +220,8 @@ export function LabelCodeCameraScanner({
         </div>
 
         <div style={{ padding: '12px 16px 16px' }}>
-          <p style={{ margin: '0 0 10px', fontSize: 13, color: '#666', lineHeight: 1.45 }}>
-            {hintText}
+          <p style={{ margin: '0 0 10px', fontSize: getFontSize('bodySmall', isMobile), color: '#666', lineHeight: 1.45 }}>
+            對準標籤條碼，或直接輸入標籤編號。
           </p>
 
           <div
@@ -243,7 +243,7 @@ export function LabelCodeCameraScanner({
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#fff',
-                  fontSize: 14,
+                  fontSize: getFontSize('body', isMobile),
                   background: 'rgba(0,0,0,0.35)',
                 }}
               >
@@ -253,16 +253,68 @@ export function LabelCodeCameraScanner({
           </div>
 
           {cameraError && (
-            <p style={{ margin: '10px 0 0', fontSize: 13, color: '#c62828', lineHeight: 1.45 }}>
+            <p style={{ margin: '10px 0 0', fontSize: getFontSize('bodySmall', isMobile), color: '#c62828', lineHeight: 1.45 }}>
               {cameraError}
             </p>
           )}
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const code = manualCode.trim()
+              if (!code || busy) return
+              void onScanRef.current(code)
+            }}
+            style={{
+              display: 'flex',
+              gap: 8,
+              marginTop: 12,
+            }}
+          >
+            <input
+              type="text"
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value)}
+              placeholder="輸入標籤編號"
+              autoCapitalize="none"
+              autoCorrect="off"
+              disabled={busy}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                minHeight: 44,
+                padding: '9px 12px',
+                border: '1px solid #ccc',
+                borderRadius: 8,
+                fontSize: 16,
+                boxSizing: 'border-box',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={busy || !manualCode.trim()}
+              style={{
+                minHeight: 44,
+                padding: '9px 16px',
+                border: 'none',
+                borderRadius: 8,
+                background: '#111',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: getFontSize('button', isMobile),
+                cursor: busy || !manualCode.trim() ? 'default' : 'pointer',
+                opacity: busy || !manualCode.trim() ? 0.5 : 1,
+              }}
+            >
+              確認
+            </button>
+          </form>
 
           {statusMessage && (
             <p
               style={{
                 margin: '10px 0 0',
-                fontSize: 13,
+                fontSize: getFontSize('bodySmall', isMobile),
                 color: busy ? '#2563eb' : '#333',
                 lineHeight: 1.45,
               }}
@@ -290,6 +342,7 @@ export function LabelCodeCameraScanner({
               border: '1px solid #ccc',
               background: '#fff',
               minHeight: isMobile ? 44 : undefined,
+              fontSize: getFontSize('button', isMobile),
             }}
           >
             完成

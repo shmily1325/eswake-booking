@@ -126,7 +126,6 @@ export interface BookI18nStrings {
     selectedLabel: string
     addAlternateDates: string
     preferredDates: string
-    maxDates: string
     removeDate: string
     earlyCoachNote: string
     addCoachShort: string
@@ -139,7 +138,6 @@ export interface BookI18nStrings {
     labelBoat: string
     labelDates: string
     labelCoach: string
-    confirmNote: string
     submitHint: string
     messageTooLong: string
     contact: string
@@ -453,7 +451,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       selectedLabel: '已選',
       addAlternateDates: '＋ 再加備選日（最多 3 個）',
       preferredDates: '備選日期',
-      maxDates: '最多 3 個備選日',
       removeDate: '移除',
     },
     step4: {
@@ -463,7 +460,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       labelBoat: '船型',
       labelDates: '日期',
       labelCoach: '教練',
-      confirmNote: '參考價以小編回覆為準',
       submitHint: '小編回信後才確認時段與價格',
       messageTooLong: '訊息過長，請精簡備註後再試',
       contact: '姓名與電話',
@@ -819,7 +815,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       selectedLabel: 'Selected',
       addAlternateDates: '+ Add alternate date (up to 3)',
       preferredDates: 'Alternate dates',
-      maxDates: 'Up to 3 preferred dates',
       removeDate: 'Remove',
     },
     step4: {
@@ -829,7 +824,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       labelBoat: 'Boat',
       labelDates: 'Dates',
       labelCoach: 'Coach',
-      confirmNote: 'Estimate only — staff will confirm',
       submitHint: 'Date and price confirmed after we reply',
       messageTooLong: 'Message too long — shorten notes and try again.',
       contact: 'Name & phone',

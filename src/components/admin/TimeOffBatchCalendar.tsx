@@ -56,7 +56,7 @@ export function TimeOffBatchCalendar({
         marginBottom: '10px',
       }}>
         <span style={{ fontSize: getFontSize('body', false), fontWeight: 600 }}>
-          點日期套用時段
+          選擇日期
         </span>
         <input
           type="month"
@@ -163,7 +163,7 @@ export function TimeOffBatchCalendar({
         fontSize: getFontSize('caption', false),
         lineHeight: 1.5,
       }}>
-        可切換時段後繼續點其他日期；同一日期再點一次即可取消。灰色日期請從列表編輯。
+        先選時段，再點日期套用；切換時段後可繼續選其他日期。同一日期再點一次即可取消，灰色日期請從列表編輯。
       </div>
     </div>
   )

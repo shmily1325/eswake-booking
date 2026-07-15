@@ -34,6 +34,7 @@ import { ExternalNavLink } from '../../../components/ExternalNavLink'
 import { ProductManagement } from './ProductManagement'
 
 import { OrderManagement } from '../orders/OrderManagement'
+import { ShopSettlementStatisticsTab } from '../orders/ShopSettlementStatisticsTab'
 
 
 
@@ -118,6 +119,7 @@ export function ProductHub() {
 
 
   const onOrders = location.pathname.includes('/products/orders')
+  const onSales = location.pathname.includes('/products/sales')
 
 
 
@@ -138,13 +140,18 @@ export function ProductHub() {
         <AdminPillLink
           to={forceReadOnly ? '/products?mode=readonly' : '/products'}
           end
-          active={!onOrders}
+          active={!onOrders && !onSales}
         >
           商品與庫存
         </AdminPillLink>
         {canEdit && (
           <AdminPillLink to="/products/orders" active={onOrders}>
-            訂單整理
+            訂單
+          </AdminPillLink>
+        )}
+        {userIsAdmin && !forceReadOnly && (
+          <AdminPillLink to="/products/sales" active={onSales}>
+            銷售排行
           </AdminPillLink>
         )}
         <ExternalNavLink
@@ -170,6 +177,12 @@ export function ProductHub() {
         />
 
         {canEdit && <Route path="orders" element={<OrderManagement embedded />} />}
+        {userIsAdmin && (
+          <Route
+            path="sales"
+            element={<ShopSettlementStatisticsTab isMobile={isMobile} rankingOnly />}
+          />
+        )}
 
         <Route path="*" element={<Navigate to="/products" replace />} />
 

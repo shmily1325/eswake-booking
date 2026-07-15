@@ -27,6 +27,7 @@ import {
   deleteProduct,
   deleteVariant,
   fetchProductWithVariants,
+  findExistingProductIdentity,
   findLabelCodeConflict,
   generateLabelCode,
   updateProduct,
@@ -52,16 +53,25 @@ import {
 import { copyProductImage, removeProductImage } from '../../../utils/imageUpload'
 import { trackClick } from '../../../utils/trackClick'
 import { formatDateTime } from '../../../utils/formatters'
+import {
+  findExactProductIdentityMatch,
+  findProductIdentityCandidates,
+  type ProductIdentityCandidate,
+} from './productIdentity'
 
 interface ProductEditViewProps {
   /** 編輯模式：傳入 productId；新增模式：傳 null */
   productId: string | null
   /** 從庫存列表點進來時，自動展開並捲到這個 SKU */
   focusVariantId?: string
+  /** 從重複商品提示導入時，載入後直接新增一筆空 SKU */
+  addNewVariantOnLoad?: boolean
   /** 預設類別（新增時用，從目前 Tab 帶入） */
   defaultCategory?: string
-  /** 已存在的商品（給品牌 / 型號 autocomplete 用） */
-  existingProducts?: ReadonlyArray<{ category: string; brand: string; model: string }>
+  /** 已存在的商品（給 autocomplete 與重複建檔檢查用） */
+  existingProducts?: readonly ProductIdentityCandidate[]
+  /** 新增時發現既有商品，改前往該商品新增 SKU */
+  onOpenExistingProduct?: (productId: string) => void
   /** 可選的唯讀呈現（目前商品入口不使用） */
   readOnly?: boolean
   onClose: (changed: boolean) => void
@@ -69,6 +79,7 @@ interface ProductEditViewProps {
 }
 
 interface DraftVariant {
+  clientKey: string
   /** 已存在於 DB 的 SKU id；新加的尚未儲存則為 null */
   id: string | null
   label_code: string
@@ -98,6 +109,15 @@ interface DraftVariant {
   pendingDelete?: boolean
 }
 
+type CreateStep = 1 | 2 | 3
+type VariantSectionMode = 'all' | 'core' | 'advanced'
+let nextDraftClientKey = 0
+
+function createDraftClientKey(prefix: string): string {
+  nextDraftClientKey += 1
+  return `${prefix}-${nextDraftClientKey}`
+}
+
 function variantRowToDraft(v: ProductVariantRow): DraftVariant {
   const attrs: Record<string, string> = {}
   for (const [k, val] of Object.entries(v.attributes ?? {})) {
@@ -109,6 +129,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     }
   }
   return {
+    clientKey: `variant-${v.id}`,
     id: v.id,
     label_code: v.label_code ?? '',
     savedLabelCode: v.label_code ?? '',
@@ -131,6 +152,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
 
 function emptyDraft(): DraftVariant {
   return {
+    clientKey: createDraftClientKey('new-variant'),
     id: null,
     label_code: '',
     savedLabelCode: '',
@@ -153,8 +175,10 @@ function emptyDraft(): DraftVariant {
 export function ProductEditView({
   productId,
   focusVariantId,
+  addNewVariantOnLoad = false,
   defaultCategory,
   existingProducts = [],
+  onOpenExistingProduct,
   readOnly = false,
   onClose,
   currentUserEmail,
@@ -183,6 +207,10 @@ export function ProductEditView({
   const [drafts, setDrafts] = useState<DraftVariant[]>(() => (isNew ? [emptyDraft()] : []))
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmZeroStock, setConfirmZeroStock] = useState(false)
+  const [serverIdentityMatch, setServerIdentityMatch] = useState<ProductIdentityCandidate | null>(null)
+  const [createdProductId, setCreatedProductId] = useState<string | null>(null)
+  const [createStep, setCreateStep] = useState<CreateStep>(1)
+  const [activeSkuIndex, setActiveSkuIndex] = useState<number | null>(0)
 
   /**
    * 這個編輯 session 內所有「上傳到 storage 的新檔路徑」。
@@ -191,6 +219,7 @@ export function ProductEditView({
    * - cancel 時：DB 沒寫入，所有 session uploads 都是孤兒，全刪
    */
   const sessionUploadsRef = useRef<Set<string>>(new Set())
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
   const trackUpload = (path: string) => {
     sessionUploadsRef.current.add(path)
   }
@@ -216,6 +245,20 @@ export function ProductEditView({
     return Array.from(set).sort()
   }, [existingProducts, category, brand])
 
+  const identityCandidates = useMemo(
+    () => findProductIdentityCandidates(existingProducts, category, brand),
+    [existingProducts, category, brand],
+  )
+  const localIdentityMatch = useMemo(
+    () => findExactProductIdentityMatch(existingProducts, category, brand, model),
+    [existingProducts, category, brand, model],
+  )
+  const identityMatch = localIdentityMatch ?? serverIdentityMatch
+
+  useEffect(() => {
+    setServerIdentityMatch(null)
+  }, [category, brand, model])
+
   useEffect(() => {
     if (isNew) return
     let cancelled = false
@@ -234,7 +277,14 @@ export function ProductEditView({
         setModel(p.model)
         setDescription(p.description ?? '')
         setIsPublic(p.is_public)
-        setDrafts(p.variants.length > 0 ? p.variants.map(variantRowToDraft) : [emptyDraft()])
+        const loadedDrafts = p.variants.map(variantRowToDraft)
+        const nextDrafts = addNewVariantOnLoad
+          ? [...loadedDrafts, emptyDraft()]
+          : loadedDrafts.length > 0
+            ? loadedDrafts
+            : [emptyDraft()]
+        setDrafts(nextDrafts)
+        if (addNewVariantOnLoad) setActiveSkuIndex(nextDrafts.length - 1)
       })
       .catch((err) => {
         console.error('[ProductEditView] load failed', err)
@@ -261,6 +311,7 @@ export function ProductEditView({
   }
 
   const handleAddVariant = () => {
+    setActiveSkuIndex(drafts.length)
     setDrafts((prev) => [...prev, emptyDraft()])
   }
 
@@ -307,6 +358,7 @@ export function ProductEditView({
       setDrafts((prev) => [
         ...prev,
         {
+          clientKey: createDraftClientKey('new-variant'),
           id: null,
           label_code: '',
           savedLabelCode: '',
@@ -325,6 +377,7 @@ export function ProductEditView({
           originalImagePath: null,
         },
       ])
+      setActiveSkuIndex(drafts.length)
     } finally {
       setDuplicating(false)
     }
@@ -340,6 +393,12 @@ export function ProductEditView({
       // 新增中尚未存檔：直接從 UI 拿掉
       // image_path 若是 session 上傳，會在 save / cancel 時統一清理，這裡不立刻刪
       setDrafts((prev) => prev.filter((_, i) => i !== idx))
+      setActiveSkuIndex((current) => {
+        if (drafts.length <= 1) return null
+        if (current === idx) return Math.max(0, idx - 1)
+        if (current != null && current > idx) return current - 1
+        return current
+      })
     }
   }
 
@@ -378,9 +437,14 @@ export function ProductEditView({
     ].join('\n')
   }, [zeroStockWarnings, category])
 
-  const validate = (): string | null => {
+  const validateProductIdentity = (): string | null => {
     if (!brand.trim()) return '品牌為必填'
     if (!model.trim()) return '型號為必填'
+    if (isNew && identityMatch) return `「${identityMatch.brand} ${identityMatch.model}」已存在，請改到既有商品新增 SKU`
+    return null
+  }
+
+  const validateSkuCore = (): string | null => {
     const active = drafts.filter((d) => !d.pendingDelete)
     if (active.length === 0) return '至少要有一個規格 (SKU)'
     for (const [i, d] of active.entries()) {
@@ -397,6 +461,17 @@ export function ProductEditView({
       if (d.reserved_qty > 0 && stockNum < d.reserved_qty) {
         return `規格 #${i + 1}：庫存不可少於已送結帳保留量（保留 ${d.reserved_qty} 件），請先撤回送結帳或作廢訂單`
       }
+    }
+    return null
+  }
+
+  const validate = (): string | null => {
+    const identityError = validateProductIdentity()
+    if (identityError) return identityError
+    const coreError = validateSkuCore()
+    if (coreError) return coreError
+    const active = drafts.filter((d) => !d.pendingDelete)
+    for (const [i, d] of active.entries()) {
       const labelErr = validateLabelCodeFormat(d.label_code)
       if (labelErr) return `規格 #${i + 1}：${labelErr}`
     }
@@ -489,17 +564,34 @@ export function ProductEditView({
   const performSave = async () => {
     setSaving(true)
     try {
-      let pid = productId
+      let pid = productId ?? createdProductId
       if (isNew) {
-        const created = await createProduct({
-          category,
-          brand,
-          model,
-          description: description.trim() || null,
-          is_public: isPublic,
-          created_by: currentUserEmail ?? null,
-        })
-        pid = created.id
+        if (!pid) {
+          const duplicate = await findExistingProductIdentity(category, brand, model)
+          if (duplicate) {
+            setServerIdentityMatch(duplicate)
+            throw new Error(`「${duplicate.brand} ${duplicate.model}」已存在，請改到既有商品新增 SKU`)
+          }
+          const created = await createProduct({
+            category,
+            brand,
+            model,
+            description: description.trim() || null,
+            is_public: isPublic,
+            created_by: currentUserEmail ?? null,
+          })
+          pid = created.id
+          setCreatedProductId(created.id)
+        } else {
+          await updateProduct(pid, {
+            category,
+            brand,
+            model,
+            description: description.trim() || null,
+            is_public: isPublic,
+            updated_by: currentUserEmail ?? null,
+          })
+        }
       } else {
         await updateProduct(productId!, {
           category,
@@ -528,7 +620,7 @@ export function ProductEditView({
       }
 
       // SKU：依狀態 dispatch
-      for (const d of drafts) {
+      for (const [draftIndex, d] of drafts.entries()) {
         if (d.pendingDelete) {
           if (d.id) {
             await deleteVariant(d.id)
@@ -554,7 +646,16 @@ export function ProductEditView({
         if (d.id) {
           await updateVariant(d.id, payload)
         } else {
-          await createVariant({ product_id: pid!, ...payload })
+          const createdVariant = await createVariant({ product_id: pid!, ...payload })
+          setDrafts(prev => prev.map((row, index) => index === draftIndex
+            ? {
+                ...row,
+                id: createdVariant.id,
+                savedLabelCode: createdVariant.label_code ?? '',
+                originalCoverImagePath: createdVariant.cover_image_path,
+                originalImagePath: createdVariant.image_path,
+              }
+            : row))
         }
       }
 
@@ -618,6 +719,22 @@ export function ProductEditView({
     void performSave()
   }
 
+  const goToCreateStep = (step: CreateStep) => {
+    setCreateStep(step)
+    window.requestAnimationFrame(() => {
+      mobileScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
+
+  const handleCreateNext = () => {
+    const error = createStep === 1 ? validateProductIdentity() : validateSkuCore()
+    if (error) {
+      toast.error(error)
+      return
+    }
+    goToCreateStep((createStep + 1) as CreateStep)
+  }
+
   const handleConfirmZeroStockSave = () => {
     setConfirmZeroStock(false)
     void performSave()
@@ -631,6 +748,26 @@ export function ProductEditView({
       void Promise.all(paths.map((p) => removeProductImage(p)))
     }
     onClose(false)
+  }
+
+  const handleOpenExistingProduct = (productIdToOpen: string) => {
+    const hasDraftWork = drafts.some(d =>
+      d.stock.trim() !== '' ||
+      d.price.trim() !== '' ||
+      d.vendor_code.trim() !== '' ||
+      d.label_code.trim() !== '' ||
+      Object.values(d.attributes).some(value => value.trim() !== '') ||
+      Boolean(d.image_path || d.cover_image_path),
+    )
+    if (hasDraftWork && !window.confirm('前往既有商品後，目前尚未儲存的 SKU 草稿不會自動合併。確定繼續？')) {
+      return
+    }
+    if (sessionUploadsRef.current.size > 0) {
+      const paths = Array.from(sessionUploadsRef.current)
+      sessionUploadsRef.current.clear()
+      void Promise.all(paths.map(path => removeProductImage(path)))
+    }
+    onOpenExistingProduct?.(productIdToOpen)
   }
 
   const handleDeleteProduct = async () => {
@@ -684,13 +821,17 @@ export function ProductEditView({
     boxSizing: 'border-box',
     background: designSystem.colors.background.card,
   }
+  const mobileCreateWizard = isNew && isMobile && !readOnly
   const sectionStyle: React.CSSProperties = {
     background: designSystem.colors.background.card,
     borderRadius: designSystem.borderRadius.lg,
     padding: isMobile ? 16 : 20,
     marginBottom: 16,
-    border: `1px solid ${designSystem.colors.border.light}`,
+    border: mobileCreateWizard ? 'none' : `1px solid ${designSystem.colors.border.light}`,
   }
+  const showIdentitySection = !mobileCreateWizard || createStep === 1
+  const showSkuCoreSection = !mobileCreateWizard || createStep === 2
+  const showAdvancedSection = !mobileCreateWizard || createStep === 3
 
   /** 與 AddMemberDialog / NewBookingDialog 相同：手機版底部按鈕欄（flex 底欄，非 fixed） */
   const mobileFooterBar =
@@ -708,8 +849,10 @@ export function ProductEditView({
       >
         <button
           type="button"
-          data-track="product_edit_cancel"
-          onClick={handleCancel}
+          data-track={mobileCreateWizard && createStep > 1 ? 'product_create_previous' : 'product_edit_cancel'}
+          onClick={mobileCreateWizard && createStep > 1
+            ? () => goToCreateStep((createStep - 1) as CreateStep)
+            : handleCancel}
           disabled={saving}
           style={{
             ...getButtonStyle('outline', 'large', isMobile),
@@ -720,18 +863,18 @@ export function ProductEditView({
             minHeight: 48,
           }}
         >
-          取消
+          {mobileCreateWizard && createStep > 1 ? '上一步' : '取消'}
         </button>
         <button
           type="button"
-          data-track="product_edit_save"
-          onClick={() => void handleSave()}
-          disabled={saving}
+          data-track={mobileCreateWizard && createStep < 3 ? 'product_create_next' : 'product_edit_save'}
+          onClick={mobileCreateWizard && createStep < 3 ? handleCreateNext : () => void handleSave()}
+          disabled={saving || (mobileCreateWizard && createStep === 1 && Boolean(identityMatch))}
           style={{
             ...getButtonStyle('primary', 'large', isMobile),
             flex: 2,
-            opacity: saving ? 0.7 : 1,
-            cursor: saving ? 'not-allowed' : 'pointer',
+            opacity: saving || (mobileCreateWizard && createStep === 1 && Boolean(identityMatch)) ? 0.55 : 1,
+            cursor: saving || (mobileCreateWizard && createStep === 1 && Boolean(identityMatch)) ? 'not-allowed' : 'pointer',
             touchAction: 'manipulation',
             minHeight: 48,
             background: saving
@@ -739,7 +882,11 @@ export function ProductEditView({
               : designSystem.colors.primary[500],
           }}
         >
-          {saving ? '儲存中…' : '儲存'}
+          {saving
+            ? '儲存中…'
+            : mobileCreateWizard && createStep < 3
+              ? '下一步'
+              : '儲存'}
         </button>
       </div>
     ) : null
@@ -756,8 +903,16 @@ export function ProductEditView({
           flexWrap: 'wrap',
         }}
       >
-        <Button variant="outline" size="small" data-track="product_edit_back" onClick={handleCancel} disabled={saving}>
-          ← 返回
+        <Button
+          variant="outline"
+          size="small"
+          data-track="product_edit_back"
+          onClick={mobileCreateWizard && createStep > 1
+            ? () => goToCreateStep((createStep - 1) as CreateStep)
+            : handleCancel}
+          disabled={saving}
+        >
+          {mobileCreateWizard && createStep > 1 ? '← 上一步' : '← 返回'}
         </Button>
         <h2
           style={{
@@ -782,18 +937,61 @@ export function ProductEditView({
           )}
         </h2>
         {!isMobile && !readOnly && (
-          <Button variant="primary" data-track="product_edit_save" onClick={handleSave} disabled={saving}>
+          <Button
+            variant="primary"
+            data-track="product_edit_save"
+            onClick={handleSave}
+            disabled={saving || (isNew && Boolean(identityMatch))}
+          >
             {saving ? '儲存中…' : '儲存'}
           </Button>
         )}
       </div>
 
+      {mobileCreateWizard && (
+        <div style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 6,
+              marginBottom: 8,
+            }}
+          >
+            {([1, 2, 3] as CreateStep[]).map(step => (
+              <div
+                key={step}
+                style={{
+                  height: 4,
+                  borderRadius: designSystem.borderRadius.full,
+                  background: step <= createStep
+                    ? designSystem.colors.primary[500]
+                    : designSystem.colors.secondary[200],
+                }}
+              />
+            ))}
+          </div>
+          <div
+            style={{
+              fontSize: getFontSize('bodySmall', true),
+              color: designSystem.colors.text.secondary,
+            }}
+          >
+            步驟 {createStep} / 3 · {createStep === 1
+              ? '確認商品'
+              : createStep === 2
+                ? '建立規格與庫存'
+                : '圖片、標籤與商城'}
+          </div>
+        </div>
+      )}
+
       {/* 商品基本資訊 */}
-      <section style={sectionStyle}>
+      {showIdentitySection && <section style={sectionStyle}>
         <h3
           style={{
             margin: '0 0 16px 0',
-            fontSize: getFontSize('body', isMobile),
+            fontSize: getFontSize('h3', isMobile),
             fontWeight: 700,
             color: designSystem.colors.text.primary,
           }}
@@ -849,8 +1047,70 @@ export function ProductEditView({
                 <option key={m} value={m} />
               ))}
             </datalist>
+            {isNew && identityMatch && (
+              <div
+                role="alert"
+                style={{
+                  marginTop: 10,
+                  padding: 12,
+                  borderRadius: designSystem.borderRadius.md,
+                  border: `1px solid ${designSystem.colors.warning[500]}`,
+                  background: designSystem.colors.warning[50],
+                  color: designSystem.colors.warning[700],
+                }}
+              >
+                <div style={{ fontSize: getFontSize('bodySmall', isMobile), lineHeight: 1.5 }}>
+                  已有「{identityMatch.brand} {identityMatch.model}」
+                  {identityMatch.variantCount != null ? `，目前 ${identityMatch.variantCount} 個 SKU` : ''}。
+                  尺寸、顏色、年份等差異請加在既有商品下。
+                </div>
+                {onOpenExistingProduct && (
+                  <Button
+                    variant="warning"
+                    size="small"
+                    data-track="product_create_open_existing"
+                    onClick={() => handleOpenExistingProduct(identityMatch.id)}
+                    style={{ marginTop: 10 }}
+                  >
+                    前往既有商品新增 SKU
+                  </Button>
+                )}
+              </div>
+            )}
+            {isNew && !identityMatch && brand.trim() && identityCandidates.length > 0 && (
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: getFontSize('caption', isMobile),
+                  color: designSystem.colors.text.secondary,
+                  lineHeight: 1.5,
+                }}
+              >
+                此品牌已有：{' '}
+                {identityCandidates.slice(0, 5).map((candidate, index) => (
+                  <span key={candidate.id}>
+                    {index > 0 ? '、' : ''}
+                    <button
+                      type="button"
+                      onClick={() => setModel(candidate.model)}
+                      style={{
+                        padding: 0,
+                        border: 'none',
+                        background: 'transparent',
+                        color: designSystem.colors.info[700],
+                        font: 'inherit',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {candidate.model}
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-          <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+          {!mobileCreateWizard && <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
             <label style={labelStyle}>備註</label>
             <input
               style={inputStyle}
@@ -859,32 +1119,45 @@ export function ProductEditView({
               placeholder="（可選）此商品的補充說明"
               disabled={saving || readOnly}
             />
-          </div>
+          </div>}
         </div>
-      </section>
+      </section>}
 
       {/* SKU 列表 */}
-      <section style={sectionStyle}>
+      {(showSkuCoreSection || showAdvancedSection) && <section style={sectionStyle}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
           <h3
             style={{
               margin: 0,
-              fontSize: getFontSize('body', isMobile),
+              fontSize: getFontSize('h3', isMobile),
               fontWeight: 700,
               flex: 1,
               color: designSystem.colors.text.primary,
             }}
           >
-            規格與庫存 (SKU)
+            {mobileCreateWizard && createStep === 3 ? '完成商品設定' : '規格與庫存 (SKU)'}
           </h3>
           <Badge variant="info" size="small">
             {drafts.filter((d) => !d.pendingDelete).length}
           </Badge>
         </div>
 
+        {mobileCreateWizard && createStep === 3 && (
+          <div style={{ marginBottom: designSystem.spacing.lg }}>
+            <label style={labelStyle}>商品備註</label>
+            <input
+              style={inputStyle}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="（可選）此商品的補充說明"
+              disabled={saving}
+            />
+          </div>
+        )}
+
         {visibleDrafts.map((d, idx) => (
           <VariantBlock
-            key={d.id ?? `new-${idx}`}
+            key={d.clientKey}
             index={idx}
             draft={d}
             brand={brand}
@@ -904,10 +1177,19 @@ export function ProductEditView({
             onSaveLabelCode={() => void handleSaveLabelCode(idx)}
             labelCodeGenerating={labelCodeGeneratingIdx === idx}
             onGenerateLabelCode={() => void handleGenerateLabelCode(idx)}
+            sectionMode={mobileCreateWizard
+              ? createStep === 2
+                ? 'core'
+                : 'advanced'
+              : 'all'}
+            expanded={mobileCreateWizard ? activeSkuIndex === idx : undefined}
+            onToggleExpanded={mobileCreateWizard
+              ? () => setActiveSkuIndex(current => current === idx ? null : idx)
+              : undefined}
           />
         ))}
 
-        {!readOnly && (
+        {!readOnly && (!mobileCreateWizard || createStep === 2) && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button variant="outline" size="small" data-track="product_sku_add" onClick={handleAddVariant} disabled={saving}>
               + 新增規格 (SKU)
@@ -929,7 +1211,7 @@ export function ProductEditView({
         )}
 
         {/* 商城顯示：保留在同一個建檔群組中，作為完成規格後的次要設定 */}
-        <div
+        {(!mobileCreateWizard || createStep === 3) && <div
           style={{
             marginTop: designSystem.spacing.lg,
             paddingTop: designSystem.spacing.lg,
@@ -939,7 +1221,7 @@ export function ProductEditView({
         <h3
           style={{
             margin: `0 0 ${designSystem.spacing.md} 0`,
-            fontSize: getFontSize('body', isMobile),
+            fontSize: getFontSize('h3', isMobile),
             fontWeight: 700,
             color: designSystem.colors.text.primary,
           }}
@@ -994,7 +1276,7 @@ export function ProductEditView({
             >
               上架 Shop
             </span>
-            <ShopVisibilityPill isPublic={isPublic} />
+            <ShopVisibilityPill isPublic={isPublic} isMobile={isMobile} />
           </div>
         </label>
         <p
@@ -1006,8 +1288,8 @@ export function ProductEditView({
         >
           每個 SKU 的 Shop 封面可在上方規格卡底部展開設定。
         </p>
-        </div>
-      </section>
+        </div>}
+      </section>}
 
       {/* 危險區（編輯模式才有；唯讀模式隱藏） */}
       {!isNew && !readOnly && (
@@ -1022,7 +1304,7 @@ export function ProductEditView({
           <h3
             style={{
               margin: '0 0 12px 0',
-              fontSize: getFontSize('body', isMobile),
+              fontSize: getFontSize('h3', isMobile),
               fontWeight: 700,
               color: designSystem.colors.danger[700],
             }}
@@ -1089,6 +1371,7 @@ export function ProductEditView({
         }}
       >
         <div
+          ref={mobileScrollRef}
           style={{
             flex: 1,
             minHeight: 0,
@@ -1129,6 +1412,9 @@ interface VariantBlockProps {
   onSaveLabelCode?: () => void
   labelCodeGenerating?: boolean
   onGenerateLabelCode?: () => void
+  sectionMode?: VariantSectionMode
+  expanded?: boolean
+  onToggleExpanded?: () => void
 }
 
 function SectionLabel({ children, isMobile }: { children: React.ReactNode; isMobile: boolean }) {
@@ -1168,6 +1454,9 @@ function VariantBlock({
   onSaveLabelCode,
   labelCodeGenerating = false,
   onGenerateLabelCode,
+  sectionMode = 'all',
+  expanded,
+  onToggleExpanded,
 }: VariantBlockProps) {
   const blockRef = useRef<HTMLDivElement>(null)
   // 折疊：手機上已有 SKU 預設收合；從列表點進來的目標 SKU 強制展開
@@ -1176,7 +1465,7 @@ function VariantBlock({
     return isMobile && draft.id != null && !draft.pendingDelete
   })
   // 桌機強制展開（避免從手機切到桌機時內容被卡住看不到；桌機本來也沒折疊互動）
-  const effectiveCollapsed = collapsed && isMobile
+  const effectiveCollapsed = isMobile && (expanded !== undefined ? !expanded : collapsed)
 
   /** 規格摘要（給折疊狀態下的 header 顯示） */
   const summary = schemaFields
@@ -1220,7 +1509,9 @@ function VariantBlock({
   /** 手機才允許 collapse；點 header 切換 */
   const headerClickable = isMobile && !draft.pendingDelete
   const onHeaderClick = () => {
-    if (headerClickable) setCollapsed((c) => !c)
+    if (!headerClickable) return
+    if (onToggleExpanded) onToggleExpanded()
+    else setCollapsed((c) => !c)
   }
   const stop = (e: React.MouseEvent) => e.stopPropagation()
   /** 封面：列表點進來的 SKU 直接展開，省一次點擊 */
@@ -1282,7 +1573,7 @@ function VariantBlock({
   const preOrderField =
     stockNum > 0 ? (
       <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
-        <ShopStatusPill status={shopStatus} />
+        <ShopStatusPill status={shopStatus} isMobile={isMobile} />
       </div>
     ) : (
       <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
@@ -1306,7 +1597,7 @@ function VariantBlock({
             />
             <span style={{ fontWeight: 600 }}>開放預購</span>
           </span>
-          <ShopStatusPill status={shopStatus} />
+          <ShopStatusPill status={shopStatus} isMobile={isMobile} />
         </label>
       </div>
     )
@@ -1316,10 +1607,14 @@ function VariantBlock({
       style={{
         display: 'grid',
         gap: 8,
-        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
+        gridTemplateColumns: isMobile
+          ? sectionMode === 'core'
+            ? '1fr'
+            : '1fr 1fr'
+          : 'repeat(3, 1fr)',
       }}
     >
-      <div style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>
+      <div style={{ gridColumn: isMobile && sectionMode !== 'core' ? '1 / -1' : 'auto' }}>
         <label style={labelStyle}>貨號</label>
         <input
           style={inputStyle}
@@ -1374,7 +1669,11 @@ function VariantBlock({
       style={{
         display: 'grid',
         gap: 8,
-        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
+        gridTemplateColumns: isMobile
+          ? sectionMode === 'core'
+            ? '1fr'
+            : '1fr 1fr'
+          : 'repeat(3, 1fr)',
       }}
     >
       {stockField}
@@ -1779,13 +2078,22 @@ function VariantBlock({
 
       {effectiveCollapsed ? null : (
         <>
-          <SectionLabel isMobile={isMobile}>規格資料</SectionLabel>
-          {specFieldsGrid}
-          {productPhotoSection}
-          <SectionLabel isMobile={isMobile}>庫存與售價</SectionLabel>
-          {inventoryFieldsGrid}
-          {labelCodeSection}
-          {collapsibleCoverSection}
+          {(sectionMode === 'all' || sectionMode === 'core') && (
+            <>
+              <SectionLabel isMobile={isMobile}>規格資料</SectionLabel>
+              {specFieldsGrid}
+              <SectionLabel isMobile={isMobile}>庫存與售價</SectionLabel>
+              {inventoryFieldsGrid}
+            </>
+          )}
+          {(sectionMode === 'all' || sectionMode === 'advanced') && (
+            <>
+              <SectionLabel isMobile={isMobile}>圖片與標籤</SectionLabel>
+              {productPhotoSection}
+              {labelCodeSection}
+              {collapsibleCoverSection}
+            </>
+          )}
         </>
       )}
     </div>

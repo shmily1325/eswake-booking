@@ -2715,11 +2715,9 @@ export function StaffManagement() {
                 </PreviewBanner>
               )}
             </>
-          ) : (
-            <HintBox>先選時段，再點日期；切換時段後可繼續設定其他日期。</HintBox>
-          )}
+          ) : null}
 
-          <div style={{ marginTop: editingTimeOffIds?.length ? 0 : '16px', marginBottom: '16px' }}>
+          <div style={{ marginBottom: '16px' }}>
             <FormFieldLabel>時段</FormFieldLabel>
             <SegmentedControl
               options={timeOffModeOptions}
@@ -2749,7 +2747,7 @@ export function StaffManagement() {
               <HintBox>
                 {editingTimeOffIds?.length && !isTimeOffSingleDay
                   ? '時間留空表示該端為整天；中間日期視為整天休假。'
-                  : '設定時間後，再點月曆日期套用。'}
+                  : '時間留空表示該端為整天。'}
               </HintBox>
             </div>
           )}

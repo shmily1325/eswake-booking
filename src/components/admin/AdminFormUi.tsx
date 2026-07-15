@@ -364,45 +364,23 @@ export function TimeSelectField({
   value,
   onChange,
   label,
+  optional = true,
 }: {
   value: string
   onChange: (v: string) => void
   label: string
+  optional?: boolean
 }) {
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <FormFieldLabel optional>{label}</FormFieldLabel>
-      <div style={{ display: 'flex', gap: '6px' }}>
-        <select
-          value={value ? value.split(':')[0] : ''}
-          onChange={e => {
-            const hour = e.target.value
-            if (!hour) onChange('')
-            else onChange(`${hour}:${value ? value.split(':')[1] : '00'}`)
-          }}
-          style={{ ...adminTextInputStyle, flex: 1, padding: '10px 8px' }}
-        >
-          <option value="">--</option>
-          {Array.from({ length: 24 }, (_, i) => {
-            const hour = String(i).padStart(2, '0')
-            return <option key={hour} value={hour}>{hour}</option>
-          })}
-        </select>
-        <select
-          value={value ? value.split(':')[1] : ''}
-          onChange={e => {
-            const minute = e.target.value
-            if (!minute) onChange('')
-            else onChange(`${value ? value.split(':')[0] : '08'}:${minute}`)
-          }}
-          style={{ ...adminTextInputStyle, flex: 1, padding: '10px 8px' }}
-        >
-          <option value="">--</option>
-          {['00', '15', '30', '45'].map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
-      </div>
+      <FormFieldLabel optional={optional}>{label}</FormFieldLabel>
+      <input
+        type="time"
+        step={900}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={adminTextInputStyle}
+      />
     </div>
   )
 }

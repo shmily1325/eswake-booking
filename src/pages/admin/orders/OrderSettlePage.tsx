@@ -69,7 +69,7 @@ export function OrderSettlePage() {
 
   useEffect(() => {
     if (!isAdmin(user)) {
-      toast.error('僅限管理員')
+      toast.error('目前帳號無此功能權限')
       navigate('/')
     }
   }, [user, navigate, toast])

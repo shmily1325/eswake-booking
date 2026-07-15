@@ -775,7 +775,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
                 alignItems: 'center',
               }}
             >
-              <h3 style={{ margin: 0, fontSize: getFontSize('bodyLarge', isMobile), color: colors.text.primary }}>
+              <h3 style={{ margin: 0, fontSize: getFontSize('h3', isMobile), color: colors.text.primary }}>
                 選擇代扣會員
               </h3>
               <button

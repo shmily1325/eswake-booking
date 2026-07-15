@@ -168,7 +168,6 @@ export function BookEstimateCard({
             {expanded ? s.estimate.collapse : s.estimate.expand}
           </button>
         ) : null}
-        <div style={{ ...includesTrustLine, marginTop: 10 }}>{s.estimate.referenceNote}</div>
       </div>
     )
   }

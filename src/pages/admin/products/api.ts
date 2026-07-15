@@ -11,6 +11,10 @@ import type { AttributeValue, ProductRow, ProductVariantRow, ProductWithVariants
 import { deriveVariantAvailability } from './availabilityHelpers'
 import { getCategoryLabelCode } from './schema'
 import { buildLabelPrefix, composeLabelCode, maxLabelSeq } from './labelCode'
+import {
+  findExactProductIdentityMatch,
+  type ProductIdentityCandidate,
+} from './productIdentity'
 
 type VariantInsert = Database['public']['Tables']['product_variants']['Insert']
 type VariantUpdate = Database['public']['Tables']['product_variants']['Update']
@@ -122,6 +126,7 @@ export async function fetchProductWithVariants(productId: string): Promise<Produ
       return ta - tb
     })
   const { product_variants: _omit, ...product } = row
+  void _omit
   return { ...(product as ProductRow), variants }
 }
 
@@ -135,6 +140,26 @@ export interface CreateProductInput {
   /** 是否對外公開（商城可見），預設 true（上架到商城） */
   is_public?: boolean
   created_by?: string | null
+}
+
+export async function findExistingProductIdentity(
+  category: string,
+  brand: string,
+  model: string,
+): Promise<ProductIdentityCandidate | null> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, category, brand, model')
+    .eq('is_active', true)
+    .eq('category', category)
+  if (error) throw error
+
+  return findExactProductIdentityMatch(
+    (data ?? []) as ProductIdentityCandidate[],
+    category,
+    brand,
+    model,
+  )
 }
 
 export async function createProduct(input: CreateProductInput): Promise<ProductRow> {

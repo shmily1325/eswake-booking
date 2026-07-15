@@ -1184,7 +1184,7 @@ export function CoachAssignment() {
       }, 500)
     } catch (err: any) {
       console.error('儲存失敗:', err)
-      const msg = '儲存失敗，請稍後再試。若仍失敗，請聯絡管理員。'
+      const msg = '儲存失敗，請稍後再試。'
       setError(msg)
       toast.error(msg)
     } finally {

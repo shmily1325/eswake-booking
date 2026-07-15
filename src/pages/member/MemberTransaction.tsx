@@ -148,7 +148,7 @@ export function MemberTransaction() {
     if (!user) return
     if (!userIsAdmin) {
       setLoading(false)
-      toast.error('會員儲值僅限管理員使用')
+      toast.error('目前帳號無此功能權限')
       navigate('/')
     }
   }, [user, userIsAdmin, navigate, toast])

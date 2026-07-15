@@ -522,7 +522,7 @@ export function CoachAdmin() {
       toast.success(`已成功關聯到會員：${member.nickname || member.name}\n\n原名「${originalName}」已記錄在備註中\n記錄已移至「會員待扣款」區域，請查看上方列表。`)
     } catch (error) {
       console.error('關聯會員失敗:', error)
-      toast.error('關聯會員失敗，請再試一次。若仍失敗，請聯絡管理員。')
+      toast.error('關聯會員失敗，請再試一次。')
       setLoading(false)
     }
   }
