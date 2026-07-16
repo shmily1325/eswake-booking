@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ES Wake - 離線編輯器</title>
+    <title>ES Wake - 離線查詢工具</title>
     <style>
         * {
             margin: 0;
@@ -259,8 +259,6 @@
                     </label>
                     <div id="file-name" style="margin-top: 10px; font-size: 12px; color: #666; text-align: center;"></div>
                 </div>
-                <button class="btn btn-secondary" onclick="createEmptyDatabase()">🆕 建立空白資料庫</button>
-                <button class="btn btn-secondary" onclick="clearDatabaseAndReload()" style="background: #dc3545;">🗑️ 清空資料庫</button>
                 <div id="db-loading" class="hidden">
                     <div class="spinner"></div>
                     <p style="text-align: center; margin-top: 10px;">處理中...</p>
@@ -282,25 +280,13 @@
             
             <div class="footer">
                 <p>© 2025 ES Wake. All Rights Reserved.</p>
-                <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">滑水預約管理系統 - 離線模式</p>
+                <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">滑水預約管理系統 - 離線查詢工具</p>
             </div>
         </div>
         
-        <!-- 對話框容器 -->
-        <div id="add-member-dialog" class="modal">
-            <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
-                <!-- 將由 JavaScript 動態生成 -->
-            </div>
-        </div>
-        
+        <!-- 唯讀詳情對話框容器 -->
         <div id="member-detail-dialog" class="modal">
             <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
-                <!-- 將由 JavaScript 動態生成 -->
-            </div>
-        </div>
-        
-        <div id="transaction-dialog" class="modal">
-            <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
                 <!-- 將由 JavaScript 動態生成 -->
             </div>
         </div>
@@ -361,6 +347,7 @@
             { title: '今日預約', icon: '📅', link: '#', action: 'coach-daily' },
             { title: '預約查詢', icon: '🔍', link: '#', action: 'search' },
             { title: '明日提醒', icon: '⏰', link: '#', action: 'tomorrow' },
+            { title: '異動暫存', icon: '📝', link: '#', action: 'change-journal' },
             { title: 'BAO', icon: '🔧', link: '#', action: 'bao' }
         ];
         
@@ -676,40 +663,6 @@
             });
         }
         
-        // 解析 SQL INSERT 語句並插入到 IndexedDB
-        async function insertFromSQL(tableName, values) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction([tableName], 'readwrite');
-                const store = transaction.objectStore(tableName);
-                
-                const record = {};
-                values.forEach((value, index) => {
-                    const column = Object.keys(values)[index] || `column${index}`;
-                    record[column] = value === 'NULL' || value === null ? null : value;
-                });
-                
-                const request = store.add(record);
-                request.onsuccess = () => resolve();
-                request.onerror = () => reject(request.error);
-            });
-        }
-        
-        
-        // 清空資料庫
-        async function clearDatabase() {
-            if (!db) await initDatabase();
-            const storeNames = Array.from(db.objectStoreNames);
-            const transaction = db.transaction(storeNames, 'readwrite');
-            storeNames.forEach(storeName => transaction.objectStore(storeName).clear());
-            await new Promise((resolve, reject) => {
-                transaction.oncomplete = resolve;
-                transaction.onerror = () => reject(transaction.error);
-                transaction.onabort = () => reject(transaction.error || new Error('清空交易已取消'));
-            });
-            
-            console.log('✅ 資料庫已清空');
-        }
-
         function parseBackupManifest(text) {
             const match = text.match(/^-- ESWAKE_BACKUP_MANIFEST: (.+)$/m);
             if (!match) throw new Error('不是受支援的 ESWake 完整備份：缺少 manifest');
@@ -797,17 +750,12 @@
                     console.log('資料庫已初始化');
                 } catch (initError) {
                     console.warn('資料庫初始化失敗，嘗試重置資料庫...', initError);
-                    const shouldReset = confirm('資料庫初始化失敗，是否要重置資料庫？\n\n這將刪除所有現有資料並重新創建資料庫。\n\n點擊「確定」重置\n點擊「取消」取消載入');
-                    if (shouldReset) {
-                        try {
-                            await resetDatabase();
-                            console.log('資料庫已重置並重新初始化');
-                        } catch (resetError) {
-                            console.error('重置資料庫失敗:', resetError);
-                            throw new Error(`無法初始化資料庫: ${initError.message}。重置也失敗: ${resetError.message}`);
-                        }
-                    } else {
-                        throw new Error('用戶取消重置資料庫');
+                    try {
+                        await resetDatabase();
+                        console.log('staging 資料庫已重建');
+                    } catch (resetError) {
+                        console.error('重建 staging 資料庫失敗:', resetError);
+                        throw new Error(`無法初始化 staging 資料庫: ${initError.message}。重建也失敗: ${resetError.message}`);
                     }
                 }
                 
@@ -1442,53 +1390,6 @@
             }
         }
         
-        // 清空資料庫並重新載入
-        async function clearDatabaseAndReload() {
-            if (!confirm('確定要清空所有資料嗎？此操作無法復原！')) {
-                return;
-            }
-            
-            const loadingDiv = document.getElementById('db-loading');
-            if (loadingDiv) {
-                loadingDiv.classList.remove('hidden');
-            }
-            
-            try {
-                await initDatabase();
-                await clearDatabase();
-                showAlert('✅ 資料庫已清空！', 'success');
-                
-                setTimeout(() => {
-                    if (loadingDiv) loadingDiv.classList.add('hidden');
-                }, 1000);
-            } catch (error) {
-                if (loadingDiv) loadingDiv.classList.add('hidden');
-                showAlert('❌ 清空失敗: ' + error.message, 'error');
-            }
-        }
-        
-        // 建立空白資料庫
-        async function createEmptyDatabase() {
-            const loadingDiv = document.getElementById('db-loading');
-            loadingDiv.classList.remove('hidden');
-            
-            try {
-                await initDatabase();
-                showAlert('✅ 空白資料庫建立成功！', 'success');
-                
-                setTimeout(() => {
-                    loadingDiv.classList.add('hidden');
-                    document.getElementById('db-loader').classList.remove('active');
-                    document.getElementById('main-content').classList.remove('hidden');
-                    // 顯示主頁面（包含「重新載入資料庫」按鈕）
-                    showHomePage();
-                }, 1000);
-            } catch (error) {
-                loadingDiv.classList.add('hidden');
-                showAlert('❌ 建立失敗: ' + error.message, 'error');
-            }
-        }
-        
         // 渲染選單
         function renderMenu() {
             const menuGrid = document.getElementById('menu-grid');
@@ -1508,6 +1409,8 @@
                 showSearchBookings();
             } else if (action === 'tomorrow') {
                 showTomorrowReminder();
+            } else if (action === 'change-journal') {
+                showOfflineChangeJournal();
             } else if (action === 'bao') {
                 showBaoHub();
             } else {
@@ -1609,7 +1512,7 @@
                 <div class="header">
                     <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23000'/%3E%3Ctext x='50' y='65' font-size='40' fill='white' text-anchor='middle' font-weight='bold'%3EES%3C/text%3E%3C/svg%3E" 
                          alt="ES Wake Logo" class="logo" onerror="this.style.display='none'">
-                    <h1 class="title">ES Wake</h1>
+                    <h1 class="title">ES Wake 離線查詢工具</h1>
                 </div>
                 <div style="text-align: center; margin-bottom: 20px;">
                     ${backupMetaHtml}
@@ -1628,11 +1531,271 @@
                 <div class="menu-grid" id="menu-grid"></div>
                 <div class="footer">
                     <p>© 2025 ES Wake. All Rights Reserved.</p>
-                    <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">滑水預約管理系統 - 離線模式</p>
+                    <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">滑水預約管理系統 - 離線查詢工具</p>
                 </div>
             `;
             renderMenu();
             loadHomeAnnouncement();
+        }
+
+        // ==================== 離線異動暫存 ====================
+        // 與 SQL 備份資料庫分開保存，重新匯入備份時不會被清除。
+        const OFFLINE_CHANGE_JOURNAL_KEY = 'eswake-offline-change-journal-v1';
+
+        function loadOfflineChangeJournal() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(OFFLINE_CHANGE_JOURNAL_KEY) || '[]');
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                console.error('讀取離線異動暫存失敗:', error);
+                return [];
+            }
+        }
+
+        function saveOfflineChangeJournal(records) {
+            try {
+                localStorage.setItem(OFFLINE_CHANGE_JOURNAL_KEY, JSON.stringify(records));
+                return true;
+            } catch (error) {
+                console.error('儲存離線異動暫存失敗:', error);
+                alert('暫存失敗，可能是瀏覽器儲存空間不足。請先匯出 CSV 保存現有紀錄。');
+                return false;
+            }
+        }
+
+        function makeOfflineChangeId() {
+            return 'change-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+        }
+
+        function formatOfflineChangeTime(value) {
+            if (!value) return '—';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-TW');
+        }
+
+        async function showOfflineChangeJournal() {
+            const mainContent = document.getElementById('main-content');
+            const appContainer = document.getElementById('app');
+            if (!db) await initDatabase();
+            const boats = await safeGetAllFromStore('boats');
+            const coaches = await safeGetAllFromStore('coaches');
+            const activeCoaches = coaches.filter(coach => !coach.status || coach.status === 'active');
+            appContainer.style.maxWidth = '1000px';
+            appContainer.style.padding = '20px';
+            appContainer.classList.remove('full-width');
+
+            mainContent.innerHTML = `
+                <div style="min-height:100vh; background:#f5f5f5; padding-bottom:70px;">
+                    <div style="position:sticky; top:0; z-index:100; background:#f5f5f5; padding:16px 0; border-bottom:1px solid #ddd;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                            <div>
+                                <h1 style="font-size:21px; margin:0;">📝 離線異動暫存</h1>
+                                <div style="font-size:12px; color:#777; margin-top:5px;">記錄斷網期間的新預約，避免恢復連線後漏登</div>
+                            </div>
+                            <button onclick="showHomePage()" style="padding:8px 14px; border:1px solid #ccc; border-radius:7px; background:white; cursor:pointer;">HOME</button>
+                        </div>
+                    </div>
+
+                    <div style="background:#fff8e6; border:1px solid #efd28a; border-radius:9px; padding:12px 14px; margin:16px 0; color:#76531a; font-size:13px; line-height:1.6;">
+                        這裡不會占用線上時段。網路恢復後，請先確認時段並補登線上系統，再標記為「已補登」。重新匯入 SQL 備份不會清除暫存。
+                    </div>
+
+                    <form id="offline-change-form" onsubmit="addOfflineChange(event)" style="background:white; border:1px solid #ddd; border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                        <h2 style="font-size:16px; margin:0 0 14px;">新增離線預約</h2>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:12px;">
+                            <label style="font-size:13px; color:#555;">預約日期
+                                <input id="offline-booking-date" type="date" required value="${getVenueDateString()}" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            </label>
+                            <label style="font-size:13px; color:#555;">開始時間
+                                <input id="offline-booking-time" type="time" required step="300" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            </label>
+                            <label style="font-size:13px; color:#555;">分鐘
+                                <input id="offline-booking-duration" type="number" required min="5" max="720" step="5" value="60" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            </label>
+                            <label style="font-size:13px; color:#555;">船隻／場地
+                                <input id="offline-booking-boat" list="offline-booking-boats" required maxlength="80" placeholder="例如：G21" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                                <datalist id="offline-booking-boats">${boats.map(boat => `<option value="${escapeHtml(boat.name || '')}"></option>`).join('')}</datalist>
+                            </label>
+                            <label style="font-size:13px; color:#555;">預約人
+                                <input id="offline-booking-contact" required maxlength="160" placeholder="姓名或暱稱" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            </label>
+                            <label style="font-size:13px; color:#555;">電話
+                                <input id="offline-booking-phone" type="tel" maxlength="40" placeholder="方便恢復連線後核對" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            </label>
+                            <label style="font-size:13px; color:#555;">教練（選填）
+                                <input id="offline-booking-coach" list="offline-booking-coaches" maxlength="120" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                                <datalist id="offline-booking-coaches">${activeCoaches.map(coach => `<option value="${escapeHtml(coach.name || '')}"></option>`).join('')}</datalist>
+                            </label>
+                            <label style="font-size:13px; color:#555;">活動（選填）
+                                <input id="offline-booking-activity" maxlength="120" placeholder="例如：WB、WS" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            </label>
+                            <label style="font-size:13px; color:#555;">操作人
+                                <input id="offline-change-operator" required maxlength="80" placeholder="例如：阿寶" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            </label>
+                        </div>
+                        <label style="display:block; font-size:13px; color:#555; margin-bottom:12px;">備註（選填）
+                            <textarea id="offline-booking-notes" maxlength="3000" rows="4" placeholder="例如：需要駕駛、教練練習、聯絡來源或其他注意事項" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px; resize:vertical;"></textarea>
+                        </label>
+                        <button type="submit" style="width:100%; padding:11px; border:0; border-radius:8px; background:#333; color:white; font-size:15px; font-weight:600; cursor:pointer;">儲存離線預約</button>
+                    </form>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:18px 0 10px;">
+                        <div id="offline-change-summary" style="font-size:14px; color:#555;"></div>
+                        <div style="display:flex; gap:8px;">
+                            <select id="offline-change-filter" onchange="renderOfflineChangeJournalList()" style="padding:8px 10px; border:1px solid #ccc; border-radius:7px; background:white;">
+                                <option value="pending">待補登</option>
+                                <option value="completed">已補登</option>
+                                <option value="all">全部</option>
+                            </select>
+                            <button onclick="exportOfflineChangeJournal()" style="padding:8px 12px; border:1px solid #aaa; border-radius:7px; background:white; cursor:pointer;">匯出 CSV</button>
+                        </div>
+                    </div>
+                    <div id="offline-change-list" style="display:grid; gap:10px;"></div>
+                </div>
+            `;
+            renderOfflineChangeJournalList();
+        }
+
+        function addOfflineChange(event) {
+            event.preventDefault();
+            const bookingDate = document.getElementById('offline-booking-date').value;
+            const startTime = document.getElementById('offline-booking-time').value;
+            const durationMin = Number(document.getElementById('offline-booking-duration').value);
+            const boatName = document.getElementById('offline-booking-boat').value.trim();
+            const contactName = document.getElementById('offline-booking-contact').value.trim();
+            const phone = document.getElementById('offline-booking-phone').value.trim();
+            const coachName = document.getElementById('offline-booking-coach').value.trim();
+            const activityTypes = document.getElementById('offline-booking-activity').value.trim();
+            const operator = document.getElementById('offline-change-operator').value.trim();
+            const notes = document.getElementById('offline-booking-notes').value.trim();
+            if (!bookingDate || !startTime || !durationMin || !boatName || !contactName || !operator) return;
+
+            const records = loadOfflineChangeJournal();
+            records.push({
+                id: makeOfflineChangeId(),
+                created_at: new Date().toISOString(),
+                type: '預約',
+                operator,
+                booking_date: bookingDate,
+                start_time: startTime,
+                duration_min: durationMin,
+                boat_name: boatName,
+                contact_name: contactName,
+                phone,
+                coach_name: coachName,
+                activity_types: activityTypes,
+                notes,
+                subject: `${contactName} ${bookingDate} ${startTime} ${boatName}`,
+                details: [
+                    `${bookingDate} ${startTime} · ${durationMin}分 · ${boatName}`,
+                    `預約人：${contactName}${phone ? ` · ${phone}` : ''}`,
+                    coachName ? `教練：${coachName}` : '',
+                    activityTypes ? `活動：${activityTypes}` : '',
+                    notes ? `備註：${notes}` : ''
+                ].filter(Boolean).join('\n'),
+                status: 'pending',
+                completed_at: null
+            });
+            if (!saveOfflineChangeJournal(records)) return;
+
+            document.getElementById('offline-booking-time').value = '';
+            document.getElementById('offline-booking-boat').value = '';
+            document.getElementById('offline-booking-contact').value = '';
+            document.getElementById('offline-booking-phone').value = '';
+            document.getElementById('offline-booking-coach').value = '';
+            document.getElementById('offline-booking-activity').value = '';
+            document.getElementById('offline-booking-notes').value = '';
+            document.getElementById('offline-change-filter').value = 'pending';
+            renderOfflineChangeJournalList();
+        }
+
+        function toggleOfflineChangeCompleted(id) {
+            const records = loadOfflineChangeJournal();
+            const record = records.find(item => item.id === id);
+            if (!record) return;
+            const completing = record.status !== 'completed';
+            if (completing && !confirm('確認這筆異動已經補登到線上系統？')) return;
+            record.status = completing ? 'completed' : 'pending';
+            record.completed_at = completing ? new Date().toISOString() : null;
+            if (saveOfflineChangeJournal(records)) renderOfflineChangeJournalList();
+        }
+
+        function renderOfflineChangeJournalList() {
+            const container = document.getElementById('offline-change-list');
+            const summary = document.getElementById('offline-change-summary');
+            if (!container || !summary) return;
+            const records = loadOfflineChangeJournal()
+                .slice()
+                .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+            const pendingCount = records.filter(item => item.status !== 'completed').length;
+            const filter = document.getElementById('offline-change-filter')?.value || 'pending';
+            const visible = records.filter(item =>
+                filter === 'all' ||
+                (filter === 'completed' ? item.status === 'completed' : item.status !== 'completed')
+            );
+            summary.innerHTML = `待補登 <strong>${pendingCount}</strong> 筆 · 全部 ${records.length} 筆`;
+
+            if (visible.length === 0) {
+                container.innerHTML = '<div style="background:white; border:1px solid #ddd; border-radius:10px; padding:30px; text-align:center; color:#888;">目前沒有符合條件的紀錄</div>';
+                return;
+            }
+            container.innerHTML = visible.map(record => {
+                const completed = record.status === 'completed';
+                const subject = record.booking_date
+                    ? `${record.contact_name || '未填姓名'} · ${record.booking_date} ${record.start_time || ''} · ${record.boat_name || '未填船隻'}`
+                    : (record.subject || '舊版暫存紀錄');
+                const details = record.booking_date
+                    ? [
+                        `${record.duration_min || 0}分${record.activity_types ? ` · ${record.activity_types}` : ''}`,
+                        record.phone ? `電話：${record.phone}` : '',
+                        record.coach_name ? `教練：${record.coach_name}` : '',
+                        record.notes ? `備註：${record.notes}` : ''
+                    ].filter(Boolean).join('\n')
+                    : (record.details || '');
+                return `<div style="background:white; border:1px solid ${completed ? '#cfe6d4' : '#e0c675'}; border-left:5px solid ${completed ? '#4caf50' : '#e0a800'}; border-radius:10px; padding:15px; opacity:${completed ? '0.78' : '1'};">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+                        <div style="min-width:0;">
+                            <div style="display:flex; gap:7px; align-items:center; flex-wrap:wrap;">
+                                <span style="font-size:12px; padding:3px 8px; border-radius:999px; background:#f0f0f0;">預約</span>
+                                <strong>${escapeHtml(subject)}</strong>
+                            </div>
+                            <div style="font-size:12px; color:#777; margin-top:6px;">${escapeHtml(formatOfflineChangeTime(record.created_at))} · 操作人：${escapeHtml(record.operator || '未填')}</div>
+                        </div>
+                        <button onclick="toggleOfflineChangeCompleted('${record.id}')" style="padding:7px 11px; border:1px solid ${completed ? '#aaa' : '#4caf50'}; border-radius:7px; background:white; color:${completed ? '#555' : '#2e7d32'}; cursor:pointer;">${completed ? '恢復待補登' : '標記已補登'}</button>
+                    </div>
+                    <div style="margin-top:11px; padding:11px; background:#f8f9fa; border-radius:7px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.6;">${escapeHtml(details)}</div>
+                    ${completed ? `<div style="font-size:12px; color:#2e7d32; margin-top:8px;">已補登：${escapeHtml(formatOfflineChangeTime(record.completed_at))}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function exportOfflineChangeJournal() {
+            const records = loadOfflineChangeJournal()
+                .slice()
+                .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+            if (records.length === 0) {
+                alert('目前沒有可匯出的異動紀錄');
+                return;
+            }
+            downloadCsv(
+                '離線異動暫存',
+                ['建立時間', '狀態', '補登時間', '預約日期', '開始時間', '分鐘', '船隻／場地', '預約人', '電話', '教練', '活動', '備註', '操作人'],
+                records.map(record => [
+                    record.created_at || '',
+                    record.status === 'completed' ? '已補登' : '待補登',
+                    record.completed_at || '',
+                    record.booking_date || '',
+                    record.start_time || '',
+                    record.duration_min || '',
+                    record.boat_name || '',
+                    record.contact_name || record.subject || '',
+                    record.phone || '',
+                    record.coach_name || '',
+                    record.activity_types || '',
+                    record.notes || record.details || '',
+                    record.operator || ''
+                ])
+            );
         }
         
         // 顯示 BAO Hub 頁面
@@ -1676,15 +1839,15 @@
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
                             <div class="menu-item" onclick="showMemberManagement()">
                                 <div class="menu-icon">👥</div>
-                                <h2 class="menu-title">會員管理</h2>
+                                <h2 class="menu-title">會員查詢</h2>
                             </div>
                             <div class="menu-item" onclick="showMemberTransaction()">
                                 <div class="menu-icon">💰</div>
-                                <h2 class="menu-title">會員儲值</h2>
+                                <h2 class="menu-title">交易查詢</h2>
                             </div>
                             <div class="menu-item" onclick="showBoardManagement()">
                                 <div class="menu-icon">🏄</div>
-                                <h2 class="menu-title">置板管理</h2>
+                                <h2 class="menu-title">置板查詢</h2>
                             </div>
                         </div>
                     </div>
@@ -2239,42 +2402,41 @@
         
         // 獲取顯示名稱（與網頁版一致）
         function getDisplayContactName(booking) {
-            // 如果有關聯的會員，優先顯示暱稱
-            if (booking.booking_members && booking.booking_members.length > 0) {
-                const memberDisplayNames = booking.booking_members
-                    .map(function(bm) {
-                        if (!bm.members) return null;
-                        return bm.members.nickname || bm.members.name;
-                    })
-                    .filter(function(name) { return name; });
-                
-                // 如果有重複的暱稱，只顯示一個
-                const uniqueNames = [];
-                memberDisplayNames.forEach(function(name) {
-                    if (uniqueNames.indexOf(name) === -1) {
-                        uniqueNames.push(name);
-                    }
-                });
-                
-                // 如果沒有任何有效的會員名稱，回退到 contact_name
-                if (uniqueNames.length === 0) {
-                    return booking.contact_name || '未命名';
+            if (!booking.contact_name) return '未命名';
+            if (!booking.booking_members || booking.booking_members.length === 0) return booking.contact_name;
+
+            const parts = booking.contact_name.split(/[,，]/).map(function(name) {
+                return name.trim();
+            }).filter(Boolean);
+            const nameMap = new Map();
+            booking.booking_members.forEach(function(bm) {
+                if (!bm.members) return;
+                const member = bm.members;
+                const nickname = member.nickname || member.name;
+                if (member.name) nameMap.set(member.name, nickname);
+                if (member.nickname) nameMap.set(member.nickname, member.nickname);
+            });
+
+            const displayed = [];
+            const seen = new Set();
+            parts.forEach(function(name) {
+                const display = nameMap.has(name) ? nameMap.get(name) : name;
+                const key = String(display).trim().toLocaleLowerCase('zh-TW');
+                if (display && !seen.has(key)) {
+                    displayed.push(display);
+                    seen.add(key);
                 }
-                
-                // 如果只有會員，且數量吻合 contact_name 中的名字數量，直接返回
-                const contactNameParts = booking.contact_name ? booking.contact_name.split(',').map(function(n) { return n.trim(); }).filter(function(n) { return n; }) : [];
-                
-                // 如果會員數量等於 contact_name 中的名字數量，說明都是會員
-                if (uniqueNames.length === contactNameParts.length) {
-                    return uniqueNames.join(', ');
+            });
+            booking.booking_members.forEach(function(bm) {
+                if (!bm.members) return;
+                const display = bm.members.nickname || bm.members.name;
+                const key = String(display || '').trim().toLocaleLowerCase('zh-TW');
+                if (display && !seen.has(key)) {
+                    displayed.push(display);
+                    seen.add(key);
                 }
-                
-                // 否則，直接返回第一個會員的暱稱/姓名
-                return uniqueNames[0] || booking.contact_name || '未命名';
-            }
-            
-            // 沒有關聯會員，直接使用 contact_name
-            return booking.contact_name || '未命名';
+            });
+            return displayed.length ? displayed.join(', ') : booking.contact_name;
         }
         
         // 從 IndexedDB 獲取所有資料
@@ -2327,11 +2489,30 @@
             return Math.max(0, (Number(variant.stock) || 0) - (Number(variant.reserved_qty) || 0));
         }
 
-        function variantAvailabilityLabel(variant) {
-            const sellable = variantSellableStock(variant);
-            if (variant.availability === 'pre_order' && sellable <= 0) return '預購';
-            if (variant.availability === 'sold_out' || sellable <= 0) return '已售完';
-            return '現貨';
+        function getVariantAvailability(variant) {
+            const stock = Number(variant.stock) || 0;
+            const availability = ['in_stock', 'pre_order', 'sold_out'].includes(variant.availability)
+                ? variant.availability
+                : null;
+            if (availability === 'in_stock' && stock <= 0) return 'sold_out';
+            if (availability === 'pre_order' && stock > 0) return 'in_stock';
+            return availability || (stock > 0 ? 'in_stock' : 'sold_out');
+        }
+
+        function variantAvailabilityLabel(variant, isPublic) {
+            if (!isPublic) return '未公開';
+            const availability = getVariantAvailability(variant);
+            if (availability === 'pre_order') return '預購';
+            if (availability === 'in_stock') {
+                return variantSellableStock(variant) > 0 ? '現貨' : '全數保留';
+            }
+            return '已售完';
+        }
+
+        function isVariantPurchasable(variant) {
+            const availability = getVariantAvailability(variant);
+            return availability === 'pre_order' ||
+                (availability === 'in_stock' && variantSellableStock(variant) > 0);
         }
 
         function orderItemOpenQty(item) {
@@ -2357,16 +2538,42 @@
         }
 
         function offlineOrderStatus(order) {
+            const fullySettled = order.items.length > 0 && order.items.every(item =>
+                Number(item.qty_paid) >= Number(item.qty) && Number(item.qty_pending_bill) === 0
+            );
             const hasReady = order.items.some(item => orderItemBillableQty(item) > 0);
             const hasPending = order.items.some(item => Number(item.qty_pending_bill) > 0);
             const hasWaiting = order.items.some(item =>
                 orderItemOpenQty(item) > 0 && orderItemBillableQty(item) === 0
             );
+            if (order.cancelled_at) return { key: 'cancelled', label: '已作廢', color: '#777', bg: '#eee' };
+            if (fullySettled) return { key: 'settled', label: '已結清', color: '#2e7d32', bg: '#e8f5e9' };
             if (hasReady) return { key: 'ready', label: '可送結帳', color: '#1565c0', bg: '#e3f2fd' };
             if (hasPending && hasWaiting) return { key: 'partial', label: '部分待結', color: '#6a1b9a', bg: '#f3e5f5' };
             if (hasPending) return { key: 'pending', label: '待結帳', color: '#6a1b9a', bg: '#f3e5f5' };
             if (hasWaiting) return { key: 'waiting', label: '等貨', color: '#a05a00', bg: '#fff3e0' };
             return { key: 'open', label: '進行中', color: '#555', bg: '#f2f2f2' };
+        }
+
+        function offlineOrderLatestStockInMs(order) {
+            return order.items.reduce((latest, item) => {
+                if (orderItemBillableQty(item) <= 0 || !item.variant?.last_stock_in_at) return latest;
+                const value = new Date(item.variant.last_stock_in_at).getTime();
+                return Number.isFinite(value) ? Math.max(latest, value) : latest;
+            }, 0);
+        }
+
+        function sortOfflineOrdersForInbox(orders) {
+            return orders.slice().sort((a, b) => {
+                const readyA = offlineOrderStatus(a).key === 'ready' ? 0 : 1;
+                const readyB = offlineOrderStatus(b).key === 'ready' ? 0 : 1;
+                if (readyA !== readyB) return readyA - readyB;
+                if (readyA === 0) {
+                    const stockDiff = offlineOrderLatestStockInMs(b) - offlineOrderLatestStockInMs(a);
+                    if (stockDiff !== 0) return stockDiff;
+                }
+                return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
+            });
         }
 
         async function loadOfflineShopData() {
@@ -2663,6 +2870,8 @@
         let searchActiveTab = 'member';
         let searchHasSearched = false;
         let currentSearchBookings = [];
+        let searchShowPastBookings = false;
+        let searchSortAscending = true;
         let searchSelectedMemberId = null;
         let searchSelectedMemberHint = '';
 
@@ -2970,8 +3179,16 @@
                             </form>
                         </div>
 
-                        <!-- 結果摘要 -->
-                        <div id="booking-search-summary" style="margin-bottom: 10px; font-size: 14px; color: #666;"></div>
+                        <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+                            <div id="booking-search-summary" style="font-size:14px; color:#666;"></div>
+                            <div style="display:flex; gap:14px; align-items:center; font-size:13px;">
+                                <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" onchange="setSearchShowPast(this.checked)"> 顯示已結束</label>
+                                <select onchange="setSearchSort(this.value)" style="padding:6px 9px; border:1px solid #ccc; border-radius:6px; background:white;">
+                                    <option value="asc">時間升序</option>
+                                    <option value="desc">時間降序</option>
+                                </select>
+                            </div>
+                        </div>
 
                         <!-- 搜尋結果列表 -->
                         <div id="booking-search-results" style="display: flex; flex-direction: column; gap: 12px;"></div>
@@ -3078,6 +3295,36 @@
                 if (startInput) startInput.value = '';
                 if (endInput) endInput.value = '';
             }
+        }
+
+        function setSearchShowPast(checked) {
+            searchShowPastBookings = !!checked;
+            renderBookingSearchResults(currentSearchBookings);
+        }
+
+        function setSearchSort(value) {
+            searchSortAscending = value !== 'desc';
+            renderBookingSearchResults(currentSearchBookings);
+        }
+
+        function formatBookingForLineCopy(booking) {
+            const datetime = String(booking.start_at || '').substring(0, 16);
+            const parts = datetime.split('T');
+            const dateParts = (parts[0] || '').split('-');
+            const time = parts[1] || '--:--';
+            const arrival = addMinutesToTimeStr(time, -30);
+            const boat = booking.boats?.name || '?';
+            const timeLabel = boat === '彈簧床' || boat === '陸上課程' ? '開始' : '下水';
+            const coaches = (booking.coaches || []).filter(c => c && c.name).map(c => c.name + '教練').join('/');
+            return `${dateParts[1] || '--'}/${dateParts[2] || '--'} ${getDisplayContactName(booking)}, ${arrival}抵達, ${time}${timeLabel}, ${booking.duration_min || 0}分鐘, ${boat}${coaches ? ', ' + coaches : ''}`;
+        }
+
+        function copyBookingForLine(index) {
+            const booking = currentSearchBookings[index];
+            if (!booking) return;
+            navigator.clipboard.writeText(formatBookingForLineCopy(booking))
+                .then(() => alert('LINE 預約文字已複製'))
+                .catch(() => alert('複製失敗，請確認瀏覽器剪貼簿權限'));
         }
 
         // 將預約加上詳細資訊（船、教練、會員）
@@ -3276,7 +3523,8 @@
                     return;
                 }
 
-                const allBookings = await getAllFromStore('bookings').catch(function () { return []; });
+                const allBookings = (await getAllFromStore('bookings').catch(function () { return []; }))
+                    .filter(function(b) { return b.status === 'confirmed'; });
                 if (!allBookings || allBookings.length === 0) {
                     searchHasSearched = true;
                     renderBookingSearchResults([]);
@@ -3329,17 +3577,6 @@
                         if (endStr && t > endStr) return false;
                         return true;
                     });
-                } else {
-                    // 若無日期區間，預設只顯示尚未開始的預約
-                    const now = new Date();
-                    const nowStr = now.getFullYear() + '-' +
-                        String(now.getMonth() + 1).padStart(2, '0') + '-' +
-                        String(now.getDate()).padStart(2, '0') + 'T' +
-                        String(now.getHours()).padStart(2, '0') + ':' +
-                        String(now.getMinutes()).padStart(2, '0') + ':00';
-                    matchedBookings = matchedBookings.filter(function (b) {
-                        return b.start_at >= nowStr;
-                    });
                 }
 
                 // 限制最大筆數，避免畫面太慢
@@ -3376,7 +3613,7 @@
                 const endDate = endInput && endInput.value ? endInput.value : '';
 
                 let allBookings = await getAllFromStore('bookings').catch(function () { return []; });
-                allBookings = allBookings.filter(function (b) { return b.boat_id === boatId; });
+                allBookings = allBookings.filter(function (b) { return b.status === 'confirmed' && b.boat_id === boatId; });
 
                 if (startDate || endDate) {
                     const startStr = startDate ? (startDate + 'T00:00:00') : null;
@@ -3386,14 +3623,6 @@
                         if (startStr && t < startStr) return false;
                         if (endStr && t > endStr) return false;
                         return true;
-                    });
-                } else {
-                    const today = new Date();
-                    const todayStr = today.getFullYear() + '-' +
-                        String(today.getMonth() + 1).padStart(2, '0') + '-' +
-                        String(today.getDate()).padStart(2, '0') + 'T00:00:00';
-                    allBookings = allBookings.filter(function (b) {
-                        return b.start_at >= todayStr;
                     });
                 }
 
@@ -3428,7 +3657,8 @@
                 const startDate = startInput && startInput.value ? startInput.value : '';
                 const endDate = endInput && endInput.value ? endInput.value : '';
 
-                const allBookings = await getAllFromStore('bookings').catch(function () { return []; });
+                const allBookings = (await getAllFromStore('bookings').catch(function () { return []; }))
+                    .filter(function(b) { return b.status === 'confirmed'; });
                 if (!allBookings || allBookings.length === 0) {
                     searchHasSearched = true;
                     renderBookingSearchResults([]);
@@ -3458,14 +3688,6 @@
                         if (endStr && t > endStr) return false;
                         return true;
                     });
-                } else {
-                    const today = new Date();
-                    const todayStr = today.getFullYear() + '-' +
-                        String(today.getMonth() + 1).padStart(2, '0') + '-' +
-                        String(today.getDate()).padStart(2, '0') + 'T00:00:00';
-                    matchedBookings = matchedBookings.filter(function (b) {
-                        return b.start_at >= todayStr;
-                    });
                 }
 
                 const MAX_RESULTS = 100;
@@ -3489,7 +3711,10 @@
             const container = document.getElementById('booking-search-results');
             if (!summaryEl || !container) return;
 
-            if (!bookings || bookings.length === 0) {
+            const visibleBookings = (bookings || []).filter(function(booking) {
+                return searchShowPastBookings || !isPastBooking(booking.start_at);
+            });
+            if (visibleBookings.length === 0) {
                 if (searchHasSearched) {
                     summaryEl.innerHTML = '😔 沒有找到相關預約記錄';
                 } else {
@@ -3499,11 +3724,11 @@
                 return;
             }
 
-            summaryEl.innerHTML = '找到 <strong style="color: #5a5a5a;">' + bookings.length + '</strong> 筆預約';
+            summaryEl.innerHTML = '找到 <strong style="color: #5a5a5a;">' + visibleBookings.length + '</strong> 筆預約';
 
             // 依開始時間排序
-            const sorted = bookings.slice().sort(function (a, b) {
-                return a.start_at.localeCompare(b.start_at);
+            const sorted = visibleBookings.slice().sort(function (a, b) {
+                return (searchSortAscending ? 1 : -1) * a.start_at.localeCompare(b.start_at);
             });
 
             container.innerHTML = sorted.map(function (booking) {
@@ -3580,11 +3805,13 @@
                             ? '<div style="margin-top: 12px; padding: 8px; background-color: #f8f9fa; border-radius: 4px; font-size: 13px; color: #666;">📝 ' + booking.notes + '</div>'
                             : ''
                         ) +
+                        '<button type="button" onclick="copyBookingForLine(' + currentSearchBookings.indexOf(booking) + ')" style="margin-top:12px; padding:7px 12px; border:1px solid #bbb; border-radius:6px; background:white; cursor:pointer;">📋 複製 LINE</button>' +
                     '</div>'
                 );
             }).join('');
         }
         
+
         // ==================== 明日提醒（與線上版介面功能一致） ====================
         
         // 明日提醒預設日期：凌晨 3 點前算今天，之後算明天
@@ -3603,7 +3830,6 @@
             var endOfDay = selectedDate + 'T23:59:59';
             var allBookings = await getAllFromStore('bookings').catch(function() { return []; });
             var dateBookings = allBookings.filter(function(b) {
-                if (b.status !== 'confirmed') return false;
                 if (b.is_coach_practice) return false;
                 var startAt = b.start_at;
                 return startAt >= startOfDay && startAt <= endOfDay;
@@ -3613,7 +3839,7 @@
             
             var boats = await getAllFromStore('boats').catch(function() { return []; });
             var coaches = await getAllFromStore('coaches').catch(function() { return []; });
-            var activeCoaches = coaches.filter(function(c) { return !c.status || c.status === 'active'; });
+            var activeCoaches = coaches;
             var bookingIds = dateBookings.map(function(b) { return b.id; });
             var bookingCoaches = await getBookingCoaches(bookingIds);
             var bookingDrivers = await getBookingDrivers(bookingIds);
@@ -3700,7 +3926,7 @@
             return raw.slice(0, 2) + ':' + raw.slice(2, 4);
         }
         
-        var SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小'];
+        var SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小', '火隆', '火龍'];
         var SAFIN_TOMORROW_STUDENT_NAMES = { 'Safin': 1 };
 
         var QIQI_TOMORROW_STUDENT_NAME = 'EHA綺';
@@ -3718,6 +3944,40 @@
         function displayCoachNameForTomorrowMessage(studentName, coachName) {
             if (!_isQiqiEd(studentName, coachName)) return coachName;
             return '　　　　Ｅ\n　　ｂ　　　ｄ\n　　　ｏｏｏ　\n　　ｏｏｏｏｏ\n　ｏｏｏｏｏｏｏ\n　ｏｏｏｏｏｏｏ\n　　ｏｏｏｏｏ\n　　　ｏｏｏ　\n　　ｐ　　　ｑ\n';
+        }
+
+        function getFacilityMessageLabelOffline(boatName) {
+            if (boatName === '彈簧床') return '彈簧床';
+            if (boatName === '陸上課程') return '陸上課程';
+            return '';
+        }
+
+        var TOMORROW_COACH_REMINDER_TARGET_COACHES = ['火隆', '侑曄'];
+        function getCoachTomorrowReminderLines(coachName, bookings) {
+            var seen = {};
+            return bookings
+                .filter(function(b) {
+                    return (b.coaches || []).some(function(c) { return String(c.name || '').trim() === coachName.trim(); });
+                })
+                .sort(function(a, b) { return a.start_at.localeCompare(b.start_at); })
+                .filter(function(b) {
+                    var key = b.id != null ? 'id:' + b.id : [b.start_at, b.boats?.name || '', b.duration_min || ''].join('\u001f');
+                    if (seen[key]) return false;
+                    seen[key] = true;
+                    return true;
+                })
+                .map(function(b) {
+                    var names = String(b.contact_name || '').split(',').map(function(n) { return n.trim(); }).filter(Boolean);
+                    var namePart = names.length ? names.join(', ') : '（未填預約人）';
+                    var time = formatTimeNoColon(b.start_at) || '----';
+                    var facility = getFacilityMessageLabelOffline(b.boats?.name || '');
+                    var segment = facility === '陸上課程'
+                        ? time + '陸上訓練'
+                        : facility === '彈簧床'
+                            ? time + '彈簧床'
+                            : time + '下水(' + (b.boats?.name || '—') + ')';
+                    return namePart + ' ' + segment;
+                });
         }
         
         function generateTomorrowMessageForStudent(studentName, bookings, includeWeatherWarning, weatherWarning, footerText) {
@@ -3763,13 +4023,14 @@
                     : '';
                 var startTime = formatTimeNoColon(booking.start_at);
                 var boatName = (booking.boats && booking.boats.name) || '';
-                var isFacility = boatName.indexOf('彈簧床') !== -1;
+                var facilityLabel = getFacilityMessageLabelOffline(boatName);
+                var isFacility = !!facilityLabel;
                 if (!isFacility) boatCount++;
                 
                 if (index === 0) {
                     if (hasCoach) message += coachNames + '教練\n';
                     message += getArrivalTimeNoColon(booking.start_at) + '抵達\n';
-                    message += isFacility ? (startTime + '彈簧床\n') : (startTime + '下水\n');
+                    message += isFacility ? (startTime + facilityLabel + '\n') : (startTime + '下水\n');
                     previousCoachNames = coachNames;
                 } else {
                     if (!isFacility && boatCount >= 2) {
@@ -3777,10 +4038,10 @@
                         message += '\n' + shipLabel + '\n';
                     }
                     if (coachNames === previousCoachNames) {
-                        message += isFacility ? (startTime + '彈簧床\n') : (startTime + '下水\n');
+                        message += isFacility ? (startTime + facilityLabel + '\n') : (startTime + '下水\n');
                     } else {
                         if (hasCoach) message += coachNames + '教練\n';
-                        message += isFacility ? (startTime + '彈簧床\n') : (startTime + '下水\n');
+                        message += isFacility ? (startTime + facilityLabel + '\n') : (startTime + '下水\n');
                         previousCoachNames = coachNames;
                     }
                 }
@@ -3802,6 +4063,7 @@
             return Object.keys(students).filter(function(n) { return !EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS[n]; }).sort();
         }
         
+
         var tomorrowReminderSelectedStudent = null;
         var tomorrowReminderCopiedStudent = null;
         
@@ -3813,10 +4075,15 @@
             appContainer.classList.remove('full-width');
             
             var defaultDate = getTomorrowDefaultDate();
-            var includeWeather = localStorage.getItem('includeWeatherWarning');
-            var includeWeatherWarning = includeWeather !== null ? JSON.parse(includeWeather) : true;
-            var weatherWarning = localStorage.getItem('weatherWarning') || '由於近期天氣變化較大，請務必在『啟程前』\n透過官方訊息與我們確認最新天氣狀況\n別忘了在出發前查收最新訊息哦！';
-            var footerText = localStorage.getItem('footerText') || '再麻煩幫我們準時抵達哦！謝謝！\n明天見哦😊\n抵達時 再麻煩幫我按開門鍵提醒教練們幫你開啟停車場鐵閘門 \n進來後再麻煩幫我停黃色停車格 \n白色的不能停 煩請配合🙏';
+            var weatherWarning = '由於近期天氣變化較大，請務必在『啟程前』\n透過官方訊息與我們確認最新天氣狀況\n別忘了在出發前查收最新訊息哦！';
+            var footerText = '再麻煩幫我們準時抵達哦！謝謝！\n明天見哦😊\n抵達時 再麻煩幫我按開門鍵提醒教練們幫你開啟停車場鐵閘門 \n進來後再麻煩幫我停黃色停車格 \n白色的不能停 煩請配合🙏';
+            var includeWeatherWarning = true;
+            var settings = await safeGetAllFromStore('system_settings');
+            var settingMap = new Map(settings.map(function(item) { return [item.setting_key, item.setting_value ?? '']; }));
+            includeWeatherWarning = settingMap.get('tomorrow_reminder_include_weather_warning') !== 'false';
+            weatherWarning = settingMap.get('tomorrow_reminder_weather_warning') || weatherWarning;
+            footerText = settingMap.get('tomorrow_reminder_footer_text') || footerText;
+            window._tomorrowIncludeWeatherWarning = includeWeatherWarning;
             
             mainContent.innerHTML = '<div style="min-height: 100vh; background: #f8f9fa; padding-bottom: 80px;">' +
                 '<div style="position: sticky; top: 0; z-index: 100; background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e0e0e0;">' +
@@ -3842,17 +4109,7 @@
                     '<span style="padding: 10px 14px; border-radius: 8px; background: #5a5a5a; color: white; font-size: 14px; font-weight: 600;">' + weekday + '</span>' +
                     '</div></div>';
                 
-                var templateSection = '<div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">' +
-                    '<h2 style="font-size: 16px; font-weight: 600; color: #34495e; margin-bottom: 15px;">編輯文字模板</h2>' +
-                    '<div style="margin-bottom: 18px; padding: 14px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e0e0e0;">' +
-                    '<label style="display: flex; align-items: center; cursor: pointer; font-size: 14px; font-weight: 500; gap: 10px;">' +
-                    '<input type="checkbox" id="tomorrow-include-weather" ' + (includeW ? 'checked' : '') + ' style="width: 16px; height: 16px; cursor: pointer;"> <span>🌥️ 包含天氣警告</span></label></div>' +
-                    '<div style="margin-bottom: 15px;"><label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">天氣提醒</label>' +
-                    '<textarea id="tomorrow-weather-warning" style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; box-sizing: border-box; resize: vertical;" ' + (includeW ? '' : 'disabled') + '>' + (weatherW || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea></div>' +
-                    '<div><label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555;">預約提醒</label>' +
-                    '<textarea id="tomorrow-footer-text" style="width: 100%; min-height: 140px; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; box-sizing: border-box; resize: vertical;">' + (footerT || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea></div>' +
-                    '<div style="margin-top: 15px; padding: 12px; background: #e8f5e9; border-radius: 4px; font-size: 13px; color: #2e7d32;">✓ 您的修改會自動保存，下次打開時繼續使用</div></div>';
-                
+                var templateSection = '<div style="background:white;border-radius:8px;padding:16px 20px;margin-bottom:15px;border:1px solid #e0e0e0;font-size:13px;color:#666;">提醒模板來自備份的 system_settings（唯讀）</div>';
                 var studentSection = '';
                 if (bookings.length === 0) {
                     studentSection = '<div style="background: white; border-radius: 8px; padding: 40px 20px; text-align: center; color: #666; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">' +
@@ -3885,6 +4142,18 @@
                         '</div></div>';
                 }
                 
+                var coachBlocks = TOMORROW_COACH_REMINDER_TARGET_COACHES.map(function(coach) {
+                    return { coach: coach, lines: getCoachTomorrowReminderLines(coach, bookings) };
+                }).filter(function(block) { return block.lines.length > 0; });
+                var coachSection = coachBlocks.length ? '<div style="background:white; border-radius:8px; padding:20px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">' +
+                    '<h2 style="font-size:16px; margin:0 0 12px;">教練提醒訊息</h2>' +
+                    coachBlocks.map(function(block) {
+                        var text = block.lines.join('\n');
+                        return '<div style="border:1px solid #ddd; border-radius:7px; padding:12px; margin-top:10px;"><strong>' + escapeHtml(block.coach) + '</strong>' +
+                            '<div style="white-space:pre-wrap; margin:9px 0; line-height:1.6;">' + escapeHtml(text) + '</div>' +
+                            '<button type="button" class="tomorrow-coach-copy" data-coach="' + escapeHtml(block.coach) + '" data-text="' + escapeHtml(text) + '" style="padding:8px 12px; border:1px solid #bbb; border-radius:6px; background:white; cursor:pointer;">📋 複製教練提醒</button></div>';
+                    }).join('') + '</div>' : '';
+
                 var bookingListSection = '';
                 if (bookings.length > 0) {
                     var actDisplay = function(act) {
@@ -3904,8 +4173,9 @@
                             var arrivalTime = getArrivalTimeNoColon(b.start_at);
                             var allCoaches = (b.coaches && b.coaches.length > 0) ? b.coaches.map(function(c) { return c.name; }).join(' / ') : '';
                             var actStr = actDisplay(b.activity_types);
+                            var facilityLabel = getFacilityMessageLabelOffline(b.boats && b.boats.name ? b.boats.name : '');
                             return '<div style="padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; font-size: 14px;">' +
-                                '<div style="color: #666;"><div style="font-weight: 600; color: #333;">' + arrivalTime + ' 抵達</div><div style="font-size: 12px; margin-top: 2px;">' + startTime + ' 下水</div></div>' +
+                                '<div style="color: #666;"><div style="font-weight: 600; color: #333;">' + arrivalTime + ' 抵達</div><div style="font-size: 12px; margin-top: 2px;">' + startTime + ' ' + (facilityLabel || '下水') + '</div></div>' +
                                 '<div><div style="font-weight: 600; color: #333;">' + (b.contact_name || '') + '</div><div style="font-size: 12px; color: #666; margin-top: 2px;">' + (allCoaches ? allCoaches + ' · ' : '') + (b.boats && b.boats.name ? b.boats.name : '') + ' · ' + (b.duration_min || 0) + '分</div></div>' +
                                 (actStr ? '<div style="font-size: 11px; padding: 3px 8px; background: #e3f2fd; border-radius: 3px; color: #1976d2; font-weight: 600;">' + actStr + '</div>' : '') +
                                 '</div>';
@@ -3913,7 +4183,7 @@
                         '</div></div>';
                 }
                 
-                content.innerHTML = dateSection + templateSection + studentSection + bookingListSection;
+                content.innerHTML = dateSection + templateSection + studentSection + coachSection + bookingListSection;
                 window._tomorrowSelectedDate = selectedDate;
                 
                 content.querySelectorAll('.tomorrow-student-header').forEach(function(el) {
@@ -3931,60 +4201,35 @@
                         if (name) copyTomorrowMessage(name);
                     };
                 });
+                content.querySelectorAll('.tomorrow-coach-copy').forEach(function(btn) {
+                    btn.onclick = function() {
+                        navigator.clipboard.writeText(btn.getAttribute('data-text') || '').then(function() {
+                            btn.textContent = '✓ 已複製';
+                        });
+                    };
+                });
                 
                 document.getElementById('tomorrow-date-picker').onchange = function() {
                     var newDate = this.value;
-                    saveTomorrowTemplates();
                     loadTomorrowBookings(newDate).then(function(list) {
-                        var inc = document.getElementById('tomorrow-include-weather');
-                        var wea = document.getElementById('tomorrow-weather-warning');
-                        var foot = document.getElementById('tomorrow-footer-text');
-                        renderTomorrowPage(list, newDate, inc ? inc.checked : true, wea ? wea.value : weatherW, foot ? foot.value : footerT);
+                        window._tomorrowBookings = list;
+                        renderTomorrowPage(list, newDate, includeW, weatherW, footerT);
                     });
                 };
-                document.getElementById('tomorrow-include-weather').onchange = function() {
-                    var inc = this.checked;
-                    localStorage.setItem('includeWeatherWarning', JSON.stringify(inc));
-                    var wea = document.getElementById('tomorrow-weather-warning');
-                    wea.disabled = !inc;
-                };
-                document.getElementById('tomorrow-weather-warning').oninput = function() { localStorage.setItem('weatherWarning', this.value); };
-                document.getElementById('tomorrow-footer-text').oninput = function() { localStorage.setItem('footerText', this.value); };
-            }
-            
-            function saveTomorrowTemplates() {
-                var inc = document.getElementById('tomorrow-include-weather');
-                var wea = document.getElementById('tomorrow-weather-warning');
-                var foot = document.getElementById('tomorrow-footer-text');
-                if (inc) localStorage.setItem('includeWeatherWarning', JSON.stringify(inc.checked));
-                if (wea) localStorage.setItem('weatherWarning', wea.value);
-                if (foot) localStorage.setItem('footerText', foot.value);
             }
             
             window.toggleTomorrowStudent = function(name) {
                 tomorrowReminderSelectedStudent = tomorrowReminderSelectedStudent === name ? null : name;
-                var inc = document.getElementById('tomorrow-include-weather');
-                var wea = document.getElementById('tomorrow-weather-warning');
-                var foot = document.getElementById('tomorrow-footer-text');
                 var curDate = window._tomorrowSelectedDate || defaultDate;
-                var incW = inc ? inc.checked : true;
-                var weaW = wea ? wea.value : weatherWarning;
-                var footT = foot ? foot.value : footerText;
-                renderTomorrowPage(window._tomorrowBookings || [], curDate, incW, weaW, footT);
+                renderTomorrowPage(window._tomorrowBookings || [], curDate, includeWeatherWarning, weatherWarning, footerText);
             };
             window.copyTomorrowMessage = function(name) {
-                var inc = document.getElementById('tomorrow-include-weather');
-                var wea = document.getElementById('tomorrow-weather-warning');
-                var foot = document.getElementById('tomorrow-footer-text');
-                var msg = generateTomorrowMessageForStudent(name, window._tomorrowBookings || [], inc ? inc.checked : true, wea ? wea.value : '', foot ? foot.value : '');
+                var msg = generateTomorrowMessageForStudent(name, window._tomorrowBookings || [], includeWeatherWarning, weatherWarning, footerText);
                 navigator.clipboard.writeText(msg).then(function() {
                     tomorrowReminderCopiedStudent = name;
                     setTimeout(function() { tomorrowReminderCopiedStudent = null; }, 2000);
                     var curDate = window._tomorrowSelectedDate || defaultDate;
-                    var incW = inc ? inc.checked : true;
-                    var weaW = wea ? wea.value : '';
-                    var footT = foot ? foot.value : '';
-                    renderTomorrowPage(window._tomorrowBookings || [], curDate, incW, weaW, footT);
+                    renderTomorrowPage(window._tomorrowBookings || [], curDate, includeWeatherWarning, weatherWarning, footerText);
                 });
             };
             window._tomorrowBookings = [];
@@ -4013,9 +4258,9 @@
                     <!-- PageHeader -->
                     <div style="position: sticky; top: 0; z-index: 100; background: #f5f5f5; margin: 0; padding: 20px; border-bottom: 1px solid #e0e0e0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto;">
-                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">👥 會員管理</h1>
+                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">👥 會員查詢</h1>
                             <div style="display: flex; gap: 8px; align-items: center;">
-                                <button onclick="showMemberTransaction()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">💰 會員儲值</button>
+                                <button onclick="showMemberTransaction()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">💰 交易查詢</button>
                                 <button onclick="showBaoHub()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">← BAO</button>
                                 <button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">HOME</button>
                             </div>
@@ -4045,9 +4290,9 @@
                     <!-- PageHeader -->
                     <div style="position: sticky; top: 0; z-index: 100; background: #f5f5f5; margin: 0; padding: 20px; border-bottom: 1px solid #e0e0e0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto;">
-                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">💰 會員儲值</h1>
+                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">💰 交易查詢</h1>
                             <div style="display: flex; gap: 8px; align-items: center;">
-                                <button onclick="showMemberManagement()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">👥 會員管理</button>
+                                <button onclick="showMemberManagement()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">👥 會員查詢</button>
                                 <button onclick="showBaoHub()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">← BAO</button>
                                 <button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">HOME</button>
                             </div>
@@ -4077,7 +4322,7 @@
                     <!-- PageHeader -->
                     <div style="position: sticky; top: 0; z-index: 100; background: #f5f5f5; margin: 0; padding: 20px; border-bottom: 1px solid #e0e0e0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto;">
-                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">🏄 置板區管理</h1>
+                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">🏄 置板查詢</h1>
                             <div style="display: flex; gap: 8px; align-items: center;">
                                 <button onclick="showBaoHub()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">← BAO</button>
                                 <button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">HOME</button>
@@ -4226,7 +4471,7 @@
             });
             
             content.innerHTML = `
-                <!-- 搜尋和新增 -->
+                <!-- 搜尋和匯出 -->
                 <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <div style="display: flex; gap: 12px; margin-bottom: 12px;">
                         <input type="text" id="member-search" placeholder="🔍 搜尋會員（姓名、暱稱）" style="
@@ -4239,17 +4484,6 @@
                             background: white;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
                         " oninput="filterMembers()">
-                        <button onclick="openAddMemberDialog()" style="
-                            padding: 12px 20px;
-                            background: #5a5a5a;
-                            color: white;
-                            border: none;
-                            border-radius: 8px;
-                            font-size: 14px;
-                            font-weight: 600;
-                            cursor: pointer;
-                            white-space: nowrap;
-                        ">+ 新增會員</button>
                     </div>
                     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                         <button onclick="exportMembers()" style="
@@ -4306,20 +4540,6 @@
                     position: relative;
                 " onmouseenter="this.style.borderColor='#5a5a5a'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(90, 90, 90, 0.2)'" 
                    onmouseleave="this.style.borderColor='transparent'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'">
-                    <!-- 隱藏/恢復按鈕 -->
-                    <button onclick="event.stopPropagation(); ${member.status === 'inactive' ? `restoreMember('${member.id}')` : `hideMember('${member.id}')`}" style="
-                        position: absolute;
-                        top: 12px;
-                        right: 12px;
-                        background: ${member.status === 'inactive' ? '#4caf50' : '#f5f5f5'};
-                        color: ${member.status === 'inactive' ? 'white' : '#999'};
-                        border: none;
-                        border-radius: 6px;
-                        padding: 6px 12px;
-                        font-size: 12px;
-                        cursor: pointer;
-                        z-index: 10;
-                    ">${member.status === 'inactive' ? '🔄 恢復' : '👁️ 隱藏'}</button>
                     <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 12px;">
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
                             <h3 style="margin: 0; font-size: 18px; font-weight: bold;">${displayName}</h3>
@@ -4379,18 +4599,6 @@
             });
             
             memberList.innerHTML = filtered.map(member => renderMemberCard(member)).join('');
-        }
-        
-        // 開啟新增會員對話框
-        function openAddMemberDialog() {
-            // 實現新增會員對話框
-            showAddMemberDialog();
-        }
-        
-        // 開啟會員詳情對話框
-        function openMemberDetailDialog(memberId) {
-            // 實現會員詳情對話框
-            showMemberDetailDialog(memberId);
         }
         
         // ==================== 會員儲值功能 ====================
@@ -4515,7 +4723,7 @@
             const displayName = member.nickname || member.name;
             
             return `
-                <div onclick="openTransactionDialog('${member.id}')" style="
+                <div onclick="openMemberDetailDialog('${member.id}')" style="
                     background: white;
                     border-radius: 12px;
                     margin-bottom: 15px;
@@ -4583,11 +4791,6 @@
             });
             
             memberList.innerHTML = filtered.map(member => renderMemberTransactionCard(member)).join('');
-        }
-        
-        // 開啟交易對話框
-        function openTransactionDialog(memberId) {
-            showTransactionDialog(memberId);
         }
         
         // ==================== 置板管理功能 ====================
@@ -4662,17 +4865,8 @@
             const emptySlots = totalSlots - usedSlots;
             
             content.innerHTML = `
-                <!-- 操作按鈕 -->
+                <!-- 唯讀匯出 -->
                 <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
-                    <button onclick="importBoards()" style="
-                        padding: 8px 14px;
-                        background: white;
-                        color: #666;
-                        border: 1px solid #ddd;
-                        border-radius: 6px;
-                        font-size: 13px;
-                        cursor: pointer;
-                    ">📥 匯入</button>
                     <button onclick="exportBoards()" style="
                         padding: 8px 14px;
                         background: white;
@@ -4825,16 +5019,6 @@
             `;
         }
         
-        // 開啟置板格位對話框
-        function openBoardSlotDialog(slotNumber) {
-            showBoardSlotDialog(slotNumber);
-        }
-        
-        // 匯入置板
-        function importBoards() {
-            alert('匯入功能開發中');
-        }
-        
         // 匯出置板
         async function exportBoards() {
             try {
@@ -4931,7 +5115,6 @@
             try {
                 const shop = await loadOfflineShopData();
                 offlineProductRows = shop.variants
-                    .filter(variant => variant.is_active !== false && variant.product?.is_active !== false)
                     .sort((a, b) => {
                         const aName = `${a.product?.category || ''} ${a.product?.brand || ''} ${a.product?.model || ''}`;
                         const bName = `${b.product?.category || ''} ${b.product?.brand || ''} ${b.product?.model || ''}`;
@@ -4994,14 +5177,15 @@
                 <div style="overflow-x:auto; background:white; border:1px solid #e0e0e0; border-radius:12px;">
                     <table style="width:100%; border-collapse:collapse; min-width:900px;">
                         <thead><tr style="background:#f6f6f6; text-align:left;">
-                            ${['分類', '商品', '規格', '貨號／標籤', '庫存', '保留', '可售', '狀態', '售價'].map(label => `<th style="padding:12px; border-bottom:1px solid #ddd;">${label}</th>`).join('')}
+                            ${['分類', '商品', '規格', '貨號／標籤', '庫存', '保留', '可售', '供貨狀態', '公開狀態', '商城可售', '售價'].map(label => `<th style="padding:12px; border-bottom:1px solid #ddd;">${label}</th>`).join('')}
                         </tr></thead>
                         <tbody>
                             ${rows.map(variant => {
                                 const product = variant.product || {};
                                 const sellable = variantSellableStock(variant);
-                                const availability = variantAvailabilityLabel(variant);
-                                const price = variant.price == null ? '待補' : `$${Number(variant.price).toLocaleString()}`;
+                                const isPublic = product.is_public === true;
+                                const availability = variantAvailabilityLabel(variant, isPublic);
+                                const price = variant.price == null ? '缺' : `$${Number(variant.price).toLocaleString()}`;
                                 return `<tr>
                                     <td style="padding:11px; border-bottom:1px solid #eee;">${escapeHtml(PRODUCT_CATEGORY_LABELS[product.category] || product.category || '—')}</td>
                                     <td style="padding:11px; border-bottom:1px solid #eee;"><strong>${escapeHtml(product.brand || '—')} ${escapeHtml(product.model || '')}</strong></td>
@@ -5011,9 +5195,11 @@
                                     <td style="padding:11px; border-bottom:1px solid #eee;">${Number(variant.reserved_qty) || 0}</td>
                                     <td style="padding:11px; border-bottom:1px solid #eee; font-weight:700;">${sellable}</td>
                                     <td style="padding:11px; border-bottom:1px solid #eee;">${availability}</td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee;">${isPublic ? '公開' : '未公開'}</td>
+                                    <td style="padding:11px; border-bottom:1px solid #eee;">${isPublic && isVariantPurchasable(variant) ? '可售' : '不可售'}</td>
                                     <td style="padding:11px; border-bottom:1px solid #eee;">${price}</td>
                                 </tr>`;
-                            }).join('') || `<tr><td colspan="9" style="padding:30px; text-align:center; color:#777;">沒有符合條件的商品</td></tr>`}
+                            }).join('') || `<tr><td colspan="11" style="padding:30px; text-align:center; color:#777;">沒有符合條件的商品</td></tr>`}
                         </tbody>
                     </table>
                 </div>
@@ -5038,9 +5224,7 @@
             );
             try {
                 const shop = await loadOfflineShopData();
-                offlineOrderRows = shop.orders
-                    .filter(isUnsettledOfflineOrder)
-                    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+                offlineOrderRows = sortOfflineOrdersForInbox(shop.orders.filter(isUnsettledOfflineOrder));
                 offlineOrderSettlements = shop.settlements;
                 renderOfflineOrders();
             } catch (error) {
@@ -5112,1550 +5296,128 @@
             `;
         }
         
-        // ==================== 對話框函數 ====================
-        
-        // 顯示新增會員對話框
-        function showAddMemberDialog() {
-            const dialog = document.getElementById('add-member-dialog');
-            if (!dialog) return;
-            
+        // ==================== 唯讀詳情與 CSV ====================
+
+        async function showMemberDetailDialog(memberId) {
+            if (!db) await initDatabase();
+            const [members, boards, notes, transactions, lineBindings] = await Promise.all([
+                safeGetAllFromStore('members'),
+                safeGetAllFromStore('board_storage'),
+                safeGetAllFromStore('member_notes'),
+                safeGetAllFromStore('transactions'),
+                safeGetAllFromStore('line_bindings')
+            ]);
+            const member = members.find(m => m.id === memberId);
+            if (!member) return alert('找不到會員資料');
+            const partner = member.membership_partner_id
+                ? members.find(m => m.id === member.membership_partner_id)
+                : null;
+            const binding = lineBindings.find(row => row.member_id === memberId && row.status === 'active');
+            const memberBoards = boards.filter(row => row.member_id === memberId && row.status === 'active')
+                .sort((a, b) => Number(a.slot_number || 0) - Number(b.slot_number || 0));
+            const memberNotes = notes.filter(row => row.member_id === memberId)
+                .sort((a, b) => {
+                    const dateDiff = String(a.event_date || '').localeCompare(String(b.event_date || ''));
+                    return dateDiff || String(b.created_at || '').localeCompare(String(a.created_at || ''));
+                });
+            const memberTransactions = transactions.filter(row => row.member_id === memberId)
+                .sort((a, b) => String(b.transaction_date || b.created_at || '').localeCompare(String(a.transaction_date || a.created_at || '')));
+            const money = value => '$' + (Number(value) || 0).toLocaleString();
+            const minutes = value => (Number(value) || 0).toLocaleString() + '分';
+            const dialog = document.getElementById('member-detail-dialog');
             dialog.innerHTML = `
-                <div style="padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
-                    <h2 style="margin: 0; font-size: 20px; font-weight: bold;">➕ 新增會員</h2>
-                    <button onclick="closeAddMemberDialog()" style="border: none; background: none; font-size: 24px; cursor: pointer; color: #666; padding: 0 8px;">×</button>
+                <div style="padding:20px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between;position:sticky;top:0;background:white;z-index:1;">
+                    <h2 style="margin:0;">會員唯讀詳情</h2>
+                    <button onclick="closeMemberDetailDialog()" style="border:0;background:none;font-size:24px;cursor:pointer;">×</button>
                 </div>
-                <form id="add-member-form" style="padding: 20px;" onsubmit="handleAddMember(event)">
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">姓名 <span style="color: red;">*</span></label>
-                        <input type="text" id="member-name" required style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">暱稱 <span style="font-size: 13px;">（選填）</span></label>
-                        <input type="text" id="member-nickname" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">電話 <span style="font-size: 13px;">（選填）</span></label>
-                        <input type="tel" id="member-phone" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">生日 <span style="font-size: 13px;">（選填）</span></label>
-                        <input type="date" id="member-birthday" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">會籍類型 <span style="color: red;">*</span></label>
-                        <select id="member-type" required style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                            <option value="general">會員</option>
-                            <option value="dual">雙人會員</option>
-                            <option value="guest">非會員</option>
-                            <option value="es">ES</option>
-                        </select>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                        <div>
-                            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">會員開始日期 <span style="font-size: 13px;">（選填）</span></label>
-                            <input type="date" id="member-start-date" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
+                <div style="padding:20px;display:grid;gap:18px;">
+                    <section><h3>👤 基本資料</h3>
+                        <div style="background:#f8f9fa;padding:14px;border-radius:8px;line-height:1.9;">
+                            <strong>${escapeHtml(member.nickname || member.name)}</strong>${member.nickname ? `（${escapeHtml(member.name)}）` : ''}<br>
+                            手機：${escapeHtml(member.phone || '未填寫')} · 會籍：${escapeHtml(member.membership_type || '—')}<br>
+                            LINE：${binding ? '已綁定' : '未綁定'}
+                            ${partner ? `<br>雙人會員配對：${escapeHtml(partner.nickname || partner.name)}` : ''}
                         </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">會員截止日期 <span style="font-size: 13px;">（選填）</span></label>
-                            <input type="date" id="member-end-date" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
+                    </section>
+                    <section><h3>💰 現行餘額</h3>
+                        <div style="display:grid;grid-template-columns:repeat(2,minmax(130px,1fr));gap:8px;background:#f8f9fa;padding:14px;border-radius:8px;">
+                            <div>儲值 ${money(member.balance)}</div><div>VIP ${money(member.vip_voucher_amount)}</div>
+                            <div>指定課 ${minutes(member.designated_lesson_minutes)}</div><div>G23 ${minutes(member.boat_voucher_g23_minutes)}</div>
+                            <div>黑豹/G21 ${minutes(member.boat_voucher_g21_panther_minutes)}</div><div>贈送大船 ${minutes(member.gift_boat_hours)}</div>
                         </div>
-                    </div>
-                    <div style="display: flex; gap: 12px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-                        <button type="button" onclick="closeAddMemberDialog()" style="flex: 1; padding: 12px 24px; border: 1px solid #ccc; border-radius: 8px; background: white; color: #333; font-size: 15px; font-weight: 500; cursor: pointer;">取消</button>
-                        <button type="submit" style="flex: 1; padding: 12px 24px; border: none; border-radius: 8px; background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%); color: white; font-size: 15px; font-weight: 600; cursor: pointer;">✅ 確認新增</button>
-                    </div>
-                </form>
-            `;
+                    </section>
+                    <section><h3>🏄 置板（依格位排序）</h3>
+                        ${memberBoards.length ? memberBoards.map(board => `<div style="padding:8px;border-bottom:1px solid #eee;">#${board.slot_number} · ${escapeHtml(board.start_date || '—')} → ${escapeHtml(board.expires_at || '—')} ${board.status !== 'active' ? '（非現行）' : ''}</div>`).join('') : '<div style="color:#999;">尚無置板</div>'}
+                    </section>
+                    <section><h3>📝 備忘錄（事件日期排序）</h3>
+                        ${memberNotes.length ? memberNotes.map(note => `<div style="padding:8px;border-bottom:1px solid #eee;"><span style="color:#777;">${escapeHtml(note.event_date || '')}</span> ${escapeHtml(note.event_type || '')} · ${escapeHtml(note.description || '')}</div>`).join('') : '<div style="color:#999;">尚無備忘錄</div>'}
+                    </section>
+                    <section><h3>📊 交易記錄（新到舊）</h3>
+                        ${memberTransactions.length ? memberTransactions.map(tx => `<div style="padding:8px;border-bottom:1px solid #eee;">${escapeHtml(tx.transaction_date || '')} · ${escapeHtml(tx.description || tx.category || '')} · ${escapeHtml(tx.adjust_type || '')} ${Number(tx.amount || tx.minutes || 0).toLocaleString()}</div>`).join('') : '<div style="color:#999;">尚無交易</div>'}
+                    </section>
+                </div>`;
             dialog.classList.add('active');
         }
-        
-        // 關閉新增會員對話框
-        function closeAddMemberDialog() {
-            const dialog = document.getElementById('add-member-dialog');
-            if (dialog) {
-                dialog.classList.remove('active');
-            }
-        }
-        
-        // 處理新增會員
-        async function handleAddMember(event) {
-            event.preventDefault();
-            
-            try {
-                if (!db) await initDatabase();
-                
-                const name = document.getElementById('member-name').value.trim();
-                const nickname = document.getElementById('member-nickname').value.trim();
-                const phone = document.getElementById('member-phone').value.trim();
-                const birthday = document.getElementById('member-birthday').value;
-                const membershipType = document.getElementById('member-type').value;
-                const membershipStartDate = document.getElementById('member-start-date').value;
-                const membershipEndDate = document.getElementById('member-end-date').value;
-                
-                if (!name) {
-                    alert('請輸入姓名');
-                    return;
-                }
-                
-                // 驗證電話格式
-                if (phone && !/^09\d{8}$/.test(phone)) {
-                    alert('電話需為 09 開頭的 10 位數字');
-                    return;
-                }
-                
-                // 生成會員 ID（使用 UUID 或時間戳）
-                const memberId = 'member_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                
-                const memberData = {
-                    id: memberId,
-                    name: name,
-                    nickname: nickname || null,
-                    phone: phone || null,
-                    birthday: birthday || null,
-                    membership_type: membershipType,
-                    membership_start_date: membershipStartDate || null,
-                    membership_end_date: membershipEndDate || null,
-                    balance: 0,
-                    vip_voucher_amount: 0,
-                    designated_lesson_minutes: 0,
-                    boat_voucher_g23_minutes: 0,
-                    boat_voucher_g21_panther_minutes: 0,
-                    gift_boat_hours: 0,
-                    status: 'active',
-                    created_at: getVenueTimestamp(),
-                    updated_at: null
-                };
-                
-                // 插入到 IndexedDB
-                const transaction = db.transaction(['members'], 'readwrite');
-                const store = transaction.objectStore('members');
-                await new Promise((resolve, reject) => {
-                    const request = store.add(memberData);
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-                
-                // 如果有會員開始日期，新增備忘錄
-                if (membershipStartDate && membershipType !== 'guest') {
-                    try {
-                        await createTableIfNotExists('member_notes', 'id', true);
-                        const notesTransaction = db.transaction(['member_notes'], 'readwrite');
-                        const notesStore = notesTransaction.objectStore('member_notes');
-                        await new Promise((resolve, reject) => {
-                            const request = notesStore.add({
-                                member_id: memberId,
-                                event_date: membershipStartDate,
-                                event_type: '入會',
-                                description: '入會'
-                            });
-                            request.onsuccess = () => resolve();
-                            request.onerror = () => reject(request.error);
-                        });
-                    } catch (e) {
-                        console.warn('無法新增備忘錄:', e);
-                    }
-                }
-                
-                alert('會員新增成功！');
-                closeAddMemberDialog();
-                await loadAndDisplayMembers();
-            } catch (error) {
-                console.error('新增會員失敗:', error);
-                alert('新增會員失敗：' + error.message);
-            }
-        }
-        
-        // 顯示會員詳情對話框
-        async function showMemberDetailDialog(memberId) {
-            try {
-                if (!db) await initDatabase();
-                
-                // 載入會員資料
-                const members = await getAllFromStore('members');
-                const member = members.find(m => m.id === memberId);
-                
-                if (!member) {
-                    alert('找不到會員資料');
-                    return;
-                }
-                
-                // 載入置板資料
-                let boardStorage = [];
-                try {
-                    boardStorage = await getAllFromStore('board_storage');
-                } catch (e) {
-                    console.warn('無法載入置板資料:', e);
-                }
-                
-                const memberBoards = boardStorage.filter(b => b.member_id === memberId && b.status === 'active');
-                
-                // 載入備忘錄
-                let memberNotes = [];
-                try {
-                    memberNotes = await getAllFromStore('member_notes');
-                } catch (e) {
-                    console.warn('無法載入備忘錄:', e);
-                }
-                
-                const notes = memberNotes.filter(n => n.member_id === memberId);
-                
-                // 載入交易記錄
-                let transactions = [];
-                try {
-                    transactions = await getAllFromStore('transactions');
-                } catch (e) {
-                    console.warn('無法載入交易記錄:', e);
-                }
-                
-                const memberTransactions = transactions.filter(t => t.member_id === memberId);
-                
-                const dialog = document.getElementById('member-detail-dialog');
-                if (!dialog) return;
-                
-                const formatDate = (dateStr) => {
-                    if (!dateStr) return '';
-                    return dateStr.split('T')[0];
-                };
-                
-                const isExpired = (dateStr) => {
-                    if (!dateStr) return false;
-                    return dateStr.split('T')[0] < getVenueDateString();
-                };
-                
-                const membershipTypeLabel = member.membership_type === 'dual' ? '雙人會員' : 
-                                           member.membership_type === 'guest' ? '非會員' : 
-                                           member.membership_type === 'es' ? 'ES' : '會員';
-                
-                dialog.innerHTML = `
-                    <div style="padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: white; z-index: 1;">
-                        <h2 style="margin: 0; font-size: 20px; font-weight: bold;">會員詳情</h2>
-                        <button onclick="closeMemberDetailDialog()" style="border: none; background: none; font-size: 24px; cursor: pointer; color: #666; padding: 0 8px;">×</button>
-                    </div>
-                    <div style="padding: 20px; max-height: calc(90vh - 80px); overflow-y: auto;">
-                        <!-- 基本資料 -->
-                        <div style="margin-bottom: 24px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <h3 style="margin: 0; font-size: 16px; color: #333; font-weight: 600;">👤 基本資料</h3>
-                                <button onclick="openEditMemberDialog('${member.id}')" style="padding: 4px 12px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer;">✏️ 編輯</button>
-                            </div>
-                            <div style="background: #f8f9fa; border-radius: 8px; padding: 12px 16px;">
-                                <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px;">
-                                    <div><span style="color: #666;">姓名：</span>${member.name}</div>
-                                    ${member.nickname ? `<div><span style="color: #666;">暱稱：</span>${member.nickname}</div>` : ''}
-                                    <div><span style="color: #666;">手機：</span>${member.phone || '<span style="color: #999;">未填寫</span>'}</div>
-                                    ${member.birthday ? `<div><span style="color: #666;">生日：</span>${formatDate(member.birthday)}</div>` : ''}
-                                    <div>
-                                        <span style="background: ${member.membership_type === 'guest' ? '#fff9e6' : '#e3f2fd'}; color: ${member.membership_type === 'guest' ? '#856404' : '#1976d2'}; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
-                                            ${member.membership_type === 'guest' ? '🎫 非會員' : '👤 ' + membershipTypeLabel}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 會籍 -->
-                        ${(member.membership_type === 'general' || member.membership_type === 'dual') ? `
-                            <div style="margin-bottom: 24px;">
-                                <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #333; font-weight: 600;">🎫 會籍</h3>
-                                <div style="background: #f8f9fa; border-radius: 8px; padding: 12px 16px;">
-                                    <div style="font-size: 14px; margin-bottom: 12px; color: ${isExpired(member.membership_end_date) ? '#f44336' : '#333'};">
-                                        ${formatDate(member.membership_start_date) || '?'} → ${formatDate(member.membership_end_date) || '?'}
-                                        ${isExpired(member.membership_end_date) ? ' <span style="font-weight: 600;">(已過期)</span>' : ''}
-                                    </div>
-                                    <button onclick="renewMembership('${member.id}')" style="padding: 6px 14px; background: #4caf50; color: white; border: none; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer;">🔄 續約</button>
-                                </div>
-                            </div>
-                        ` : ''}
-                        
-                        <!-- 置板 -->
-                        <div style="margin-bottom: 24px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <h3 style="margin: 0; font-size: 16px; color: #333; font-weight: 600;">🏄 置板</h3>
-                                <button onclick="openAddBoardDialog('${member.id}')" style="padding: 4px 12px; background: #5a5a5a; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">+ 新增</button>
-                            </div>
-                            ${memberBoards.length === 0 ? `
-                                <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; text-align: center; color: #999; font-size: 13px;">尚無置板</div>
-                            ` : `
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    ${memberBoards.map(board => `
-                                        <div onclick="openEditBoardDialog('${board.id}', ${board.slot_number})" style="
-                                            background: #f8f9fa;
-                                            border-radius: 6px;
-                                            padding: 10px 14px;
-                                            display: flex;
-                                            justify-content: space-between;
-                                            align-items: center;
-                                            font-size: 13px;
-                                            cursor: pointer;
-                                            transition: all 0.2s;
-                                            border: 1px solid transparent;
-                                        " onmouseenter="this.style.background='#e8f4fd'; this.style.borderColor='#90caf9'" 
-                                           onmouseleave="this.style.background='#f8f9fa'; this.style.borderColor='transparent'">
-                                            <div>
-                                                <span style="font-weight: 600;">#${board.slot_number}</span>
-                                                ${board.start_date ? `<span style="color: #666; margin-left: 8px;">${formatDate(board.start_date)}</span>` : ''}
-                                                ${board.expires_at ? `<span style="color: #666;"> → ${formatDate(board.expires_at)}</span>` : ''}
-                                                ${isExpired(board.expires_at) ? ' <span style="color: #f44336;">(已過期)</span>' : ''}
-                                                ${board.notes ? `<span style="color: #999; margin-left: 8px; font-size: 12px;">📝 ${board.notes.length > 10 ? board.notes.substring(0, 10) + '...' : board.notes}</span>` : ''}
-                                            </div>
-                                            <button onclick="event.stopPropagation(); renewBoard('${board.id}', ${board.slot_number}, '${board.expires_at || ''}')" style="
-                                                padding: 4px 10px;
-                                                background: #4caf50;
-                                                color: white;
-                                                border: none;
-                                                border-radius: 4px;
-                                                font-size: 12px;
-                                                cursor: pointer;
-                                            ">+1年</button>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            `}
-                        </div>
-                        
-                        <!-- 備忘錄 -->
-                        <div style="margin-bottom: 24px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <h3 style="margin: 0; font-size: 16px; color: #333; font-weight: 600;">
-                                    📝 備忘錄 ${notes.length > 0 ? `<span style="color: #999; font-weight: normal;">(${notes.length})</span>` : ''}
-                                </h3>
-                                <button onclick="openAddNoteDialog('${member.id}')" style="padding: 4px 12px; background: #5a5a5a; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">+ 新增</button>
-                            </div>
-                            ${notes.length === 0 ? `
-                                <div style="text-align: center; padding: 30px 20px; color: #999; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
-                                    <div style="font-size: 32px; margin-bottom: 8px;">📝</div>
-                                    <div style="font-size: 14px;">尚無備忘錄</div>
-                                </div>
-                            ` : `
-                                <div style="display: flex; flex-direction: column; gap: 10px; max-height: 500px; overflow-y: auto;">
-                                    ${notes.map(note => {
-                                        const eventColors = {
-                                            '續約': '#4caf50',
-                                            '購買': '#2196f3',
-                                            '贈送': '#9c27b0',
-                                            '使用': '#ff9800',
-                                            '入會': '#e91e63',
-                                            '備註': '#607d8b'
-                                        };
-                                        const color = eventColors[note.event_type] || '#607d8b';
-                                        return `
-                                            <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; border-left: 4px solid ${color};">
-                                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                                    <div style="flex: 1;">
-                                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                                            <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">${note.event_type}</span>
-                                                            <span style="color: #666; font-size: 12px;">${note.event_date || ''}</span>
-                                                        </div>
-                                                        <div style="font-size: 13px; color: #333; line-height: 1.4;">${note.description}</div>
-                                                    </div>
-                                                    <div style="display: flex; gap: 4px; margin-left: 8px;">
-                                                        <button onclick="editNote(${note.id})" style="padding: 4px 8px; background: #e3f2fd; color: #1976d2; border: none; border-radius: 4px; font-size: 11px; cursor: pointer;">✏️</button>
-                                                        <button onclick="deleteNote(${note.id}, '${member.id}')" style="padding: 4px 8px; background: #ffebee; color: #d32f2f; border: none; border-radius: 4px; font-size: 11px; cursor: pointer;">🗑️</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            `}
-                        </div>
-                        
-                        <!-- 金流資訊 -->
-                        <div style="margin-bottom: 24px;">
-                            <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #333; font-weight: 600;">💰 金流</h3>
-                            <div onclick="openTransactionDialog('${member.id}')" style="
-                                background: #f8f9fa;
-                                border-radius: 8px;
-                                padding: 12px 16px;
-                                cursor: pointer;
-                                transition: all 0.2s;
-                                border: 2px solid transparent;
-                            " onmouseenter="this.style.background='#e8f4e8'; this.style.borderColor='#4caf50'" 
-                               onmouseleave="this.style.background='#f8f9fa'; this.style.borderColor='transparent'">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0;">
-                                    <span style="font-size: 12px; color: #4caf50; font-weight: 500;">點擊記帳 →</span>
-                                </div>
-                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 13px;">
-                                    <div style="display: flex; justify-content: space-between;"><span style="color: #666;">儲值</span><span style="font-weight: 500;">$${(member.balance || 0).toFixed(0)}</span></div>
-                                    <div style="display: flex; justify-content: space-between;"><span style="color: #666;">VIP票券</span><span style="font-weight: 500;">$${(member.vip_voucher_amount || 0).toFixed(0)}</span></div>
-                                    <div style="display: flex; justify-content: space-between;"><span style="color: #666;">G23船券</span><span style="font-weight: 500;">${member.boat_voucher_g23_minutes || 0}分</span></div>
-                                    <div style="display: flex; justify-content: space-between;"><span style="color: #666;">G21/黑豹</span><span style="font-weight: 500;">${member.boat_voucher_g21_panther_minutes || 0}分</span></div>
-                                    <div style="display: flex; justify-content: space-between;"><span style="color: #666;">贈送大船</span><span style="font-weight: 500;">${member.gift_boat_hours || 0}分</span></div>
-                                    <div style="display: flex; justify-content: space-between;"><span style="color: #666;">指定課</span><span style="font-weight: 500;">${member.designated_lesson_minutes || 0}分</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                dialog.classList.add('active');
-                window.currentMemberDetail = member;
-            } catch (error) {
-                console.error('載入會員詳情失敗:', error);
-                alert('載入會員詳情失敗：' + error.message);
-            }
-        }
-        
-        // 關閉會員詳情對話框
+
+        function openMemberDetailDialog(memberId) { void showMemberDetailDialog(memberId); }
+        function openTransactionDialog(memberId) { void showMemberDetailDialog(memberId); }
         function closeMemberDetailDialog() {
-            const dialog = document.getElementById('member-detail-dialog');
-            if (dialog) {
-                dialog.classList.remove('active');
-            }
+            document.getElementById('member-detail-dialog')?.classList.remove('active');
         }
-        
-        // 開啟編輯會員對話框
-        async function openEditMemberDialog(memberId) {
-            await showEditMemberDialog(memberId);
-        }
-        
-        // 顯示編輯會員對話框
-        async function showEditMemberDialog(memberId) {
-            try {
-                if (!db) await initDatabase();
-                
-                // 載入會員資料
-                const members = await getAllFromStore('members');
-                const member = members.find(m => m.id === memberId);
-                
-                if (!member) {
-                    alert('找不到會員資料');
-                    return;
-                }
-                
-                const dialog = document.getElementById('add-member-dialog');
-                if (!dialog) return;
-                
-                const formatDateForInput = (dateStr) => {
-                    if (!dateStr) return '';
-                    return dateStr.split('T')[0];
-                };
-                
-                dialog.innerHTML = `
-                    <div style="padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
-                        <h2 style="margin: 0; font-size: 20px; font-weight: bold;">✏️ 編輯會員</h2>
-                        <button onclick="closeAddMemberDialog()" style="border: none; background: none; font-size: 24px; cursor: pointer; color: #666; padding: 0 8px;">×</button>
-                    </div>
-                    <form id="edit-member-form" style="padding: 20px;" onsubmit="handleEditMember(event, '${memberId}')">
-                        <div style="margin-bottom: 16px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 500;">姓名 <span style="color: red;">*</span></label>
-                            <input type="text" id="edit-member-name" value="${member.name || ''}" required style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                        </div>
-                        <div style="margin-bottom: 16px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">暱稱 <span style="font-size: 13px;">（選填）</span></label>
-                            <input type="text" id="edit-member-nickname" value="${member.nickname || ''}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                        </div>
-                        <div style="margin-bottom: 16px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">電話 <span style="font-size: 13px;">（選填）</span></label>
-                            <input type="tel" id="edit-member-phone" value="${member.phone || ''}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                        </div>
-                        <div style="margin-bottom: 16px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">生日 <span style="font-size: 13px;">（選填）</span></label>
-                            <input type="date" id="edit-member-birthday" value="${formatDateForInput(member.birthday)}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                        </div>
-                        <div style="margin-bottom: 16px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 500;">會籍類型 <span style="color: red;">*</span></label>
-                            <select id="edit-member-type" required style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                                <option value="general" ${member.membership_type === 'general' ? 'selected' : ''}>會員</option>
-                                <option value="dual" ${member.membership_type === 'dual' ? 'selected' : ''}>雙人會員</option>
-                                <option value="guest" ${member.membership_type === 'guest' ? 'selected' : ''}>非會員</option>
-                                <option value="es" ${member.membership_type === 'es' ? 'selected' : ''}>ES</option>
-                            </select>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                            <div>
-                                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">會員開始日期 <span style="font-size: 13px;">（選填）</span></label>
-                                <input type="date" id="edit-member-start-date" value="${formatDateForInput(member.membership_start_date)}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                            </div>
-                            <div>
-                                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #666;">會員截止日期 <span style="font-size: 13px;">（選填）</span></label>
-                                <input type="date" id="edit-member-end-date" value="${formatDateForInput(member.membership_end_date)}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 12px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-                            <button type="button" onclick="closeAddMemberDialog()" style="flex: 1; padding: 12px 24px; border: 1px solid #ccc; border-radius: 8px; background: white; color: #333; font-size: 15px; font-weight: 500; cursor: pointer;">取消</button>
-                            <button type="submit" style="flex: 1; padding: 12px 24px; border: none; border-radius: 8px; background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%); color: white; font-size: 15px; font-weight: 600; cursor: pointer;">✅ 確認修改</button>
-                        </div>
-                    </form>
-                `;
-                dialog.classList.add('active');
-            } catch (error) {
-                console.error('載入編輯會員表單失敗:', error);
-                alert('載入編輯會員表單失敗：' + error.message);
-            }
-        }
-        
-        // 處理編輯會員
-        async function handleEditMember(event, memberId) {
-            event.preventDefault();
-            
-            try {
-                if (!db) await initDatabase();
-                
-                const name = document.getElementById('edit-member-name').value.trim();
-                const nickname = document.getElementById('edit-member-nickname').value.trim();
-                const phone = document.getElementById('edit-member-phone').value.trim();
-                const birthday = document.getElementById('edit-member-birthday').value;
-                const membershipType = document.getElementById('edit-member-type').value;
-                const membershipStartDate = document.getElementById('edit-member-start-date').value;
-                const membershipEndDate = document.getElementById('edit-member-end-date').value;
-                
-                if (!name) {
-                    alert('請輸入姓名');
-                    return;
-                }
-                
-                // 驗證電話格式
-                if (phone && !/^09\d{8}$/.test(phone)) {
-                    alert('電話需為 09 開頭的 10 位數字');
-                    return;
-                }
-                
-                // 載入現有會員資料以保留其他欄位
-                const members = await getAllFromStore('members');
-                const existingMember = members.find(m => m.id === memberId);
-                
-                if (!existingMember) {
-                    alert('找不到會員資料');
-                    return;
-                }
-                
-                // 更新會員資料
-                const updatedMemberData = {
-                    ...existingMember,
-                    name: name,
-                    nickname: nickname || null,
-                    phone: phone || null,
-                    birthday: birthday || null,
-                    membership_type: membershipType,
-                    membership_start_date: membershipStartDate || null,
-                    membership_end_date: membershipEndDate || null,
-                    updated_at: getVenueTimestamp()
-                };
-                
-                // 更新到 IndexedDB
-                const transaction = db.transaction(['members'], 'readwrite');
-                const store = transaction.objectStore('members');
-                await new Promise((resolve, reject) => {
-                    const request = store.put(updatedMemberData);
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-                
-                alert('會員資料更新成功！');
-                closeAddMemberDialog();
-                
-                // 如果會員詳情對話框是開啟的，重新載入
-                const detailDialog = document.getElementById('member-detail-dialog');
-                if (detailDialog && detailDialog.classList.contains('active')) {
-                    await showMemberDetailDialog(memberId);
-                }
-                
-                // 重新載入會員列表
-                await loadAndDisplayMembers();
-            } catch (error) {
-                console.error('更新會員失敗:', error);
-                alert('更新會員失敗：' + error.message);
-            }
-        }
-        
-        // 隱藏會員
-        async function hideMember(memberId) {
-            if (!confirm('確定要隱藏此會員嗎？')) return;
-            
-            try {
-                if (!db) await initDatabase();
-                
-                // 載入會員資料
-                const members = await getAllFromStore('members');
-                const member = members.find(m => m.id === memberId);
-                
-                if (!member) {
-                    alert('找不到會員資料');
-                    return;
-                }
-                
-                // 更新狀態為 inactive
-                const updatedMember = {
-                    ...member,
-                    status: 'inactive',
-                    membership_partner_id: null, // 清除配對關係
-                    updated_at: getVenueTimestamp()
-                };
-                
-                const transaction = db.transaction(['members'], 'readwrite');
-                const store = transaction.objectStore('members');
-                await new Promise((resolve, reject) => {
-                    const request = store.put(updatedMember);
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-                
-                // 新增備忘錄
-                const today = getVenueDateString();
-                try {
-                    await createTableIfNotExists('member_notes', 'id', true);
-                    const notesTransaction = db.transaction(['member_notes'], 'readwrite');
-                    const notesStore = notesTransaction.objectStore('member_notes');
-                    await new Promise((resolve, reject) => {
-                        const request = notesStore.add({
-                            member_id: memberId,
-                            event_date: today,
-                            event_type: '備註',
-                            description: '會員隱藏'
-                        });
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    });
-                } catch (e) {
-                    console.warn('無法新增備忘錄:', e);
-                }
-                
-                alert('已隱藏會員');
-                await loadAndDisplayMembers();
-            } catch (error) {
-                console.error('隱藏會員失敗:', error);
-                alert('隱藏會員失敗：' + error.message);
-            }
-        }
-        
-        // 恢復會員
-        async function restoreMember(memberId) {
-            if (!confirm('確定要恢復此會員嗎？')) return;
-            
-            try {
-                if (!db) await initDatabase();
-                
-                // 載入會員資料
-                const members = await getAllFromStore('members');
-                const member = members.find(m => m.id === memberId);
-                
-                if (!member) {
-                    alert('找不到會員資料');
-                    return;
-                }
-                
-                // 更新狀態為 active
-                const updatedMember = {
-                    ...member,
-                    status: 'active',
-                    updated_at: getVenueTimestamp()
-                };
-                
-                const transaction = db.transaction(['members'], 'readwrite');
-                const store = transaction.objectStore('members');
-                await new Promise((resolve, reject) => {
-                    const request = store.put(updatedMember);
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-                
-                // 新增備忘錄
-                const today = getVenueDateString();
-                try {
-                    await createTableIfNotExists('member_notes', 'id', true);
-                    const notesTransaction = db.transaction(['member_notes'], 'readwrite');
-                    const notesStore = notesTransaction.objectStore('member_notes');
-                    await new Promise((resolve, reject) => {
-                        const request = notesStore.add({
-                            member_id: memberId,
-                            event_date: today,
-                            event_type: '備註',
-                            description: '會員恢復'
-                        });
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    });
-                } catch (e) {
-                    console.warn('無法新增備忘錄:', e);
-                }
-                
-                alert('已恢復會員');
-                await loadAndDisplayMembers();
-            } catch (error) {
-                console.error('恢復會員失敗:', error);
-                alert('恢復會員失敗：' + error.message);
-            }
-        }
-        
-        // 匯出會員資料
+
         async function exportMembers() {
-            try {
-                if (!db) await initDatabase();
-                
-                // 載入所有會員資料和備忘錄
-                const [allMembers, memberNotes] = await Promise.all([
-                    getAllFromStore('members'),
-                    getAllFromStore('member_notes').catch(() => [])
-                ]);
-                
-                if (allMembers.length === 0) {
-                    alert('沒有會員資料可以導出');
-                    return;
-                }
-                
-                // 整理備忘錄資料
-                const memberNotesMap = {};
-                memberNotes.forEach(note => {
-                    if (!memberNotesMap[note.member_id]) {
-                        memberNotesMap[note.member_id] = [];
-                    }
-                    const noteStr = note.event_date 
-                        ? `${note.event_date} ${note.description}`
-                        : note.description;
-                    memberNotesMap[note.member_id].push(noteStr);
-                });
-                
-                // 準備 CSV 內容
-                const headers = [
-                    '姓名', '暱稱', '會籍類型', '配對會員', 
-                    '會員開始日期', '會員截止日', '電話', '生日', '備忘錄', '狀態'
-                ];
-                
-                const rows = allMembers.map(member => {
-                    // 會籍類型
-                    let membershipTypeLabel = '一般會員';
-                    if (member.membership_type === 'dual') {
-                        membershipTypeLabel = '雙人會員';
-                    } else if (member.membership_type === 'guest') {
-                        membershipTypeLabel = '非會員';
-                    } else if (member.membership_type === 'es') {
-                        membershipTypeLabel = 'ES';
-                    }
-                    
-                    // 配對會員（目前離線版不支援，留空）
-                    const partnerName = '';
-                    
-                    // 備忘錄（用分號分隔）
-                    const notesStr = memberNotesMap[member.id]?.join(' ; ') || '';
-                    
-                    // 格式化日期
-                    const formatDate = (dateStr) => {
-                        if (!dateStr) return '';
-                        return dateStr.split('T')[0];
-                    };
-                    
-                    return [
-                        member.name || '',
-                        member.nickname || '',
-                        membershipTypeLabel,
-                        partnerName,
-                        formatDate(member.membership_start_date),
-                        formatDate(member.membership_end_date),
-                        member.phone || '',
-                        formatDate(member.birthday),
-                        notesStr,
-                        member.status === 'active' ? '啟用' : '隱藏'
-                    ];
-                });
-                
-                // 生成 CSV 內容
-                const csvContent = [
-                    headers.join(','),
-                    ...rows.map(row => row.map(cell => {
-                        // 處理包含逗號、換行符或雙引號的內容
-                        const cellStr = String(cell);
-                        if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
-                            return `"${cellStr.replace(/"/g, '""')}"`;
-                        }
-                        return cellStr;
-                    }).join(','))
-                ].join('\n');
-                
-                // 下載檔案
-                const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                
-                const today = new Date();
-                const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-                link.setAttribute('download', `會員資料_${dateStr}.csv`);
-                
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                alert(`成功導出 ${allMembers.length} 位會員資料`);
-            } catch (error) {
-                console.error('導出失敗:', error);
-                alert('導出失敗：' + error.message);
-            }
+            if (!db) await initDatabase();
+            const [members, notes] = await Promise.all([
+                safeGetAllFromStore('members'),
+                safeGetAllFromStore('member_notes')
+            ]);
+            const memberMap = new Map(members.map(member => [member.id, member]));
+            const rows = members.map(member => [
+                member.name || '', member.nickname || '', member.membership_type || '',
+                memberMap.get(member.membership_partner_id)?.nickname || memberMap.get(member.membership_partner_id)?.name || '',
+                member.membership_start_date || '', member.membership_end_date || '', member.phone || '', member.birthday || '',
+                notes.filter(note => note.member_id === member.id)
+                    .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')))
+                    .map(note => `${note.event_date || ''} ${note.description || ''}`.trim()).join(' ; '),
+                member.status || ''
+            ]);
+            downloadCsv('會員資料', ['姓名','暱稱','會籍類型','配對會員','會員開始日期','會員截止日','電話','生日','備忘錄','狀態'], rows);
         }
-        
-        // 續約會籍
-        async function renewMembership(memberId) {
-            const newEndDate = prompt('請輸入新的到期日（YYYY-MM-DD）：');
-            if (!newEndDate) return;
-            
-            try {
-                if (!db) await initDatabase();
-                
-                const transaction = db.transaction(['members'], 'readwrite');
-                const store = transaction.objectStore('members');
-                const getRequest = store.get(memberId);
-                
-                await new Promise((resolve, reject) => {
-                    getRequest.onsuccess = () => {
-                        const member = getRequest.result;
-                        if (!member) {
-                            reject(new Error('找不到會員'));
-                            return;
-                        }
-                        
-                        member.membership_end_date = newEndDate;
-                        member.updated_at = getVenueTimestamp();
-                        
-                        const updateRequest = store.put(member);
-                        updateRequest.onsuccess = () => resolve();
-                        updateRequest.onerror = () => reject(updateRequest.error);
-                    };
-                    getRequest.onerror = () => reject(getRequest.error);
-                });
-                
-                // 新增備忘錄
-                try {
-                    await createTableIfNotExists('member_notes', 'id', true);
-                    const notesTransaction = db.transaction(['member_notes'], 'readwrite');
-                    const notesStore = notesTransaction.objectStore('member_notes');
-                    await new Promise((resolve, reject) => {
-                        const request = notesStore.add({
-                            member_id: memberId,
-                            event_date: getVenueDateString(),
-                            event_type: '續約',
-                            description: `續約至 ${newEndDate}`
-                        });
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    });
-                } catch (e) {
-                    console.warn('無法新增備忘錄:', e);
-                }
-                
-                alert('續約成功！');
-                await showMemberDetailDialog(memberId);
-                await loadAndDisplayMembers();
-            } catch (error) {
-                console.error('續約失敗:', error);
-                alert('續約失敗：' + error.message);
-            }
+
+        function downloadCsv(fileName, headers, rows) {
+            const quote = value => {
+                const text = String(value == null ? '' : value);
+                return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+            };
+            const csv = [headers, ...rows].map(row => row.map(quote).join(',')).join('\n');
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+            link.download = `${fileName}_${getVenueDateString()}.csv`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 0);
         }
-        
-        // 開啟新增置板對話框
-        function openAddBoardDialog(memberId) {
-            const slotNumber = prompt('請輸入格位編號（1-145）：');
-            if (!slotNumber) return;
-            
-            const slotNum = parseInt(slotNumber);
-            if (isNaN(slotNum) || slotNum < 1 || slotNum > 145) {
-                alert('格位編號必須是 1-145 之間的數字');
-                return;
-            }
-            
-            const startDate = prompt('請輸入開始日期（YYYY-MM-DD，選填）：') || null;
-            const expiresAt = prompt('請輸入到期日期（YYYY-MM-DD，選填）：') || null;
-            const notes = prompt('請輸入備註（選填）：') || null;
-            
-            addBoard(memberId, slotNum, startDate, expiresAt, notes);
-        }
-        
-        // 新增置板
-        async function addBoard(memberId, slotNumber, startDate, expiresAt, notes) {
-            try {
-                if (!db) await initDatabase();
-                
-                // 檢查格位是否已被使用
-                try {
-                    const boards = await getAllFromStore('board_storage');
-                    const existing = boards.find(b => b.slot_number === slotNumber && b.status === 'active');
-                    if (existing) {
-                        alert(`格位 ${slotNumber} 已被使用，請選擇其他格位`);
-                        return;
-                    }
-                } catch (e) {
-                    console.warn('無法檢查格位:', e);
-                }
-                
-                await createTableIfNotExists('board_storage', 'id', true);
-                const transaction = db.transaction(['board_storage'], 'readwrite');
-                const store = transaction.objectStore('board_storage');
-                
-                await new Promise((resolve, reject) => {
-                    const request = store.add({
-                        member_id: memberId,
-                        slot_number: slotNumber,
-                        start_date: startDate,
-                        expires_at: expiresAt,
-                        notes: notes,
-                        status: 'active'
-                    });
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-                
-                // 新增備忘錄
-                try {
-                    await createTableIfNotExists('member_notes', 'id', true);
-                    const notesTransaction = db.transaction(['member_notes'], 'readwrite');
-                    const notesStore = notesTransaction.objectStore('member_notes');
-                    await new Promise((resolve, reject) => {
-                        const request = notesStore.add({
-                            member_id: memberId,
-                            event_date: startDate || getVenueDateString(),
-                            event_type: '備註',
-                            description: `置板開始 #${slotNumber}${expiresAt ? '，至 ' + expiresAt : ''}`
-                        });
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    });
-                } catch (e) {
-                    console.warn('無法新增備忘錄:', e);
-                }
-                
-                alert(`已新增格位 #${slotNumber}`);
-                if (window.currentMemberDetail) {
-                    await showMemberDetailDialog(memberId);
-                }
-                await loadAndDisplayMembers();
-                await loadAndDisplayBoards();
-            } catch (error) {
-                console.error('新增置板失敗:', error);
-                alert('新增置板失敗：' + error.message);
-            }
-        }
-        
-        // 開啟編輯置板對話框
-        function openEditBoardDialog(boardId, slotNumber) {
-            // 實現編輯置板功能
-            alert('編輯置板功能開發中');
-        }
-        
-        // 續約置板
-        async function renewBoard(boardId, slotNumber, currentExpiry) {
-            const newEndDate = prompt('請輸入新的到期日（YYYY-MM-DD）：', currentExpiry ? addYearsToDateStr(currentExpiry.split('T')[0], 1) : '');
-            if (!newEndDate) return;
-            
-            try {
-                if (!db) await initDatabase();
-                
-                const transaction = db.transaction(['board_storage'], 'readwrite');
-                const store = transaction.objectStore('board_storage');
-                const getRequest = store.get(boardId);
-                
-                await new Promise((resolve, reject) => {
-                    getRequest.onsuccess = () => {
-                        const board = getRequest.result;
-                        if (!board) {
-                            reject(new Error('找不到置板資料'));
-                            return;
-                        }
-                        
-                        board.expires_at = newEndDate;
-                        
-                        const updateRequest = store.put(board);
-                        updateRequest.onsuccess = () => resolve();
-                        updateRequest.onerror = () => reject(updateRequest.error);
-                    };
-                    getRequest.onerror = () => reject(getRequest.error);
-                });
-                
-                // 新增備忘錄
-                try {
-                    await createTableIfNotExists('member_notes', 'id', true);
-                    const notesTransaction = db.transaction(['member_notes'], 'readwrite');
-                    const notesStore = notesTransaction.objectStore('member_notes');
-                    await new Promise((resolve, reject) => {
-                        const request = notesStore.add({
-                            member_id: board.member_id,
-                            event_date: getVenueDateString(),
-                            event_type: '續約置板',
-                            description: `置板續約 #${slotNumber}，至 ${newEndDate}`
-                        });
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    });
-                } catch (e) {
-                    console.warn('無法新增備忘錄:', e);
-                }
-                
-                alert(`格位 #${slotNumber} 已延長至 ${newEndDate}`);
-                if (window.currentMemberDetail) {
-                    await showMemberDetailDialog(board.member_id);
-                }
-                await loadAndDisplayMembers();
-                await loadAndDisplayBoards();
-            } catch (error) {
-                console.error('置板續約失敗:', error);
-                alert('置板續約失敗：' + error.message);
-            }
-        }
-        
-        // 開啟新增備忘錄對話框
-        function openAddNoteDialog(memberId) {
-            const eventDate = prompt('請輸入事件日期（YYYY-MM-DD）：', getVenueDateString());
-            if (!eventDate) return;
-            
-            const eventType = prompt('請輸入事件類型（續約/購買/贈送/使用/入會/備註）：', '備註');
-            if (!eventType) return;
-            
-            const description = prompt('請輸入說明：');
-            if (!description) return;
-            
-            addNote(memberId, eventDate, eventType, description);
-        }
-        
-        // 新增備忘錄
-        async function addNote(memberId, eventDate, eventType, description) {
-            try {
-                if (!db) await initDatabase();
-                
-                await createTableIfNotExists('member_notes', 'id', true);
-                const transaction = db.transaction(['member_notes'], 'readwrite');
-                const store = transaction.objectStore('member_notes');
-                
-                await new Promise((resolve, reject) => {
-                    const request = store.add({
-                        member_id: memberId,
-                        event_date: eventDate,
-                        event_type: eventType,
-                        description: description
-                    });
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-                
-                alert('備忘錄已新增');
-                if (window.currentMemberDetail) {
-                    await showMemberDetailDialog(memberId);
-                }
-                await loadAndDisplayMembers();
-            } catch (error) {
-                console.error('新增備忘錄失敗:', error);
-                alert('新增備忘錄失敗：' + error.message);
-            }
-        }
-        
-        // 編輯備忘錄
-        function editNote(noteId) {
-            alert('編輯備忘錄功能開發中');
-        }
-        
-        // 刪除備忘錄
-        async function deleteNote(noteId, memberId) {
-            if (!confirm('確定要刪除這則備忘錄嗎？')) return;
-            
-            try {
-                if (!db) await initDatabase();
-                
-                const transaction = db.transaction(['member_notes'], 'readwrite');
-                const store = transaction.objectStore('member_notes');
-                
-                await new Promise((resolve, reject) => {
-                    const request = store.delete(noteId);
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-                
-                alert('備忘錄已刪除');
-                await showMemberDetailDialog(memberId);
-                await loadAndDisplayMembers();
-            } catch (error) {
-                console.error('刪除備忘錄失敗:', error);
-                alert('刪除備忘錄失敗：' + error.message);
-            }
-        }
-        
-        // 顯示交易對話框
-        async function showTransactionDialog(memberId) {
-            try {
-                if (!db) await initDatabase();
-                
-                // 載入會員資料
-                const members = await getAllFromStore('members');
-                const member = members.find(m => m.id === memberId);
-                
-                if (!member) {
-                    alert('找不到會員資料');
-                    return;
-                }
-                
-                // 載入交易記錄
-                let transactions = [];
-                try {
-                    transactions = await getAllFromStore('transactions');
-                } catch (e) {
-                    console.warn('無法載入交易記錄:', e);
-                }
-                
-                const memberTransactions = transactions.filter(t => t.member_id === memberId)
-                    .sort((a, b) => {
-                        const dateA = a.transaction_date || (a.created_at ? a.created_at.split('T')[0] : '');
-                        const dateB = b.transaction_date || (b.created_at ? b.created_at.split('T')[0] : '');
-                        return dateB.localeCompare(dateA);
-                    });
-                
-                const dialog = document.getElementById('transaction-dialog');
-                if (!dialog) return;
-                
-                const CATEGORIES = [
-                    { value: 'balance', label: '💰 儲值', unit: '元' },
-                    { value: 'vip_voucher', label: '💎 VIP票券', unit: '元' },
-                    { value: 'designated_lesson', label: '📚 指定課', unit: '分' },
-                    { value: 'boat_voucher_g23', label: '🚤 G23船券', unit: '分' },
-                    { value: 'boat_voucher_g21_panther', label: '⛵ G21/黑豹船券', unit: '分' },
-                    { value: 'gift_boat_hours', label: '🎁 贈送大船', unit: '分' }
-                ];
-                
-                dialog.innerHTML = `
-                    <div style="padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
-                        <h2 style="margin: 0; font-size: 20px; font-weight: bold;">💳 ${member.nickname || member.name}</h2>
-                        <button onclick="closeTransactionDialog()" style="border: none; background: none; font-size: 24px; cursor: pointer; color: #666; padding: 0 8px;">×</button>
-                    </div>
-                    <div style="padding: 20px;">
-                        <!-- 當前餘額 -->
-                        <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-                            <div style="font-size: 13px; color: #666; margin-bottom: 12px; font-weight: 600;">📊 當前餘額</div>
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 13px;">
-                                <div><div style="color: #999; margin-bottom: 4px;">💰 儲值</div><div style="font-weight: bold; color: #333;">$${(member.balance || 0).toLocaleString()}</div></div>
-                                <div><div style="color: #999; margin-bottom: 4px;">💎 VIP票券</div><div style="font-weight: bold; color: #333;">$${(member.vip_voucher_amount || 0).toLocaleString()}</div></div>
-                                <div><div style="color: #999; margin-bottom: 4px;">📚 指定課</div><div style="font-weight: bold; color: #333;">${(member.designated_lesson_minutes || 0).toLocaleString()}分</div></div>
-                                <div><div style="color: #999; margin-bottom: 4px;">🚤 G23船券</div><div style="font-weight: bold; color: #333;">${(member.boat_voucher_g23_minutes || 0).toLocaleString()}分</div></div>
-                                <div><div style="color: #999; margin-bottom: 4px;">⛵ G21/黑豹船券</div><div style="font-weight: bold; color: #333;">${(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分</div></div>
-                                <div><div style="color: #999; margin-bottom: 4px;">🎁 贈送大船</div><div style="font-weight: bold; color: #333;">${(member.gift_boat_hours || 0).toLocaleString()}分</div></div>
-                            </div>
-                        </div>
-                        
-                        <!-- 記帳表單 -->
-                        <form id="transaction-form" onsubmit="handleAddTransaction(event, '${memberId}')" style="margin-bottom: 30px;">
-                            <div style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">項目 *</label>
-                                <select id="tx-category" required style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
-                                    ${CATEGORIES.map(cat => `<option value="${cat.value}">${cat.label}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">操作 *</label>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                    <button type="button" id="tx-increase" onclick="setTransactionType('increase')" style="padding: 12px; border: 2px solid #1976d2; border-radius: 8px; background: #e3f2fd; color: #1976d2; font-size: 14px; font-weight: 600; cursor: pointer;">➕ 增加</button>
-                                    <button type="button" id="tx-decrease" onclick="setTransactionType('decrease')" style="padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; color: #666; font-size: 14px; cursor: pointer;">➖ 減少</button>
-                                </div>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">數值 *</label>
-                                <input type="text" id="tx-value" inputmode="numeric" required placeholder="請輸入數值" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">交易日期 *</label>
-                                <input type="date" id="tx-date" required value="${getVenueDateString()}" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">說明 *</label>
-                                <input type="text" id="tx-description" required placeholder="例如：儲值、購買課程等" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
-                            </div>
-                            <div style="margin-bottom: 20px;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">備註</label>
-                                <textarea id="tx-notes" placeholder="選填：記錄原因或其他說明" rows="3" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; resize: vertical; box-sizing: border-box; font-family: inherit;"></textarea>
-                            </div>
-                            <button type="submit" style="width: 100%; padding: 14px; background: #424242; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">確認記帳</button>
-                        </form>
-                        
-                        <!-- 交易記錄 -->
-                        <div style="margin-top: 30px;">
-                            <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">📊 交易記錄</h3>
-                            ${memberTransactions.length === 0 ? `
-                                <div style="text-align: center; padding: 40px; color: #999;">無交易記錄</div>
-                            ` : `
-                                <div style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
-                                    ${memberTransactions.map(tx => {
-                                        const categoryConfig = CATEGORIES.find(c => c.value === tx.category);
-                                        const isIncrease = tx.adjust_type === 'increase';
-                                        const value = tx.amount || tx.minutes || 0;
-                                        return `
-                                            <div style="background: #f8f9fa; padding: 14px; border-radius: 8px; border-left: 4px solid ${isIncrease ? '#4caf50' : '#f44336'};">
-                                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">${categoryConfig?.label || tx.category}</div>
-                                                        <div style="font-size: 13px; color: #666; margin-bottom: 4px;">${tx.description}</div>
-                                                        <div style="font-size: 12px; color: #999;">${tx.transaction_date || (tx.created_at ? tx.created_at.split('T')[0] : '-')}</div>
-                                                    </div>
-                                                    <div style="font-size: 18px; font-weight: bold; color: ${isIncrease ? '#1976d2' : '#757575'}; white-space: nowrap; margin-left: 12px;">
-                                                        ${isIncrease ? '+' : '-'}${categoryConfig?.unit === '元' ? '$' : ''}${Math.abs(value).toLocaleString()}${categoryConfig?.unit === '分' ? '分' : ''}
-                                                    </div>
-                                                </div>
-                                                ${tx.notes ? `<div style="font-size: 13px; color: #666; margin-top: 8px; padding: 8px; background: white; border-radius: 4px;">備註：${tx.notes}</div>` : ''}
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            `}
-                        </div>
-                    </div>
-                `;
-                
-                dialog.classList.add('active');
-                window.currentTransactionType = 'increase';
-                updateTransactionButtons();
-            } catch (error) {
-                console.error('載入交易對話框失敗:', error);
-                alert('載入交易對話框失敗：' + error.message);
-            }
-        }
-        
-        // 設定交易類型
-        function setTransactionType(type) {
-            window.currentTransactionType = type;
-            updateTransactionButtons();
-        }
-        
-        // 更新交易按鈕樣式
-        function updateTransactionButtons() {
-            const increaseBtn = document.getElementById('tx-increase');
-            const decreaseBtn = document.getElementById('tx-decrease');
-            const type = window.currentTransactionType || 'increase';
-            
-            if (increaseBtn && decreaseBtn) {
-                if (type === 'increase') {
-                    increaseBtn.style.border = '2px solid #1976d2';
-                    increaseBtn.style.background = '#e3f2fd';
-                    increaseBtn.style.color = '#1976d2';
-                    increaseBtn.style.fontWeight = '600';
-                    decreaseBtn.style.border = '2px solid #e0e0e0';
-                    decreaseBtn.style.background = 'white';
-                    decreaseBtn.style.color = '#666';
-                    decreaseBtn.style.fontWeight = 'normal';
-                } else {
-                    decreaseBtn.style.border = '2px solid #757575';
-                    decreaseBtn.style.background = '#f5f5f5';
-                    decreaseBtn.style.color = '#757575';
-                    decreaseBtn.style.fontWeight = '600';
-                    increaseBtn.style.border = '2px solid #e0e0e0';
-                    increaseBtn.style.background = 'white';
-                    increaseBtn.style.color = '#666';
-                    increaseBtn.style.fontWeight = 'normal';
-                }
-            }
-        }
-        
-        // 關閉交易對話框
-        function closeTransactionDialog() {
-            const dialog = document.getElementById('transaction-dialog');
-            if (dialog) {
-                dialog.classList.remove('active');
-            }
-        }
-        
-        // 處理新增交易
-        async function handleAddTransaction(event, memberId) {
-            event.preventDefault();
-            
-            try {
-                if (!db) await initDatabase();
-                
-                const category = document.getElementById('tx-category').value;
-                const adjustType = window.currentTransactionType || 'increase';
-                const value = parseFloat(document.getElementById('tx-value').value);
-                const transactionDate = document.getElementById('tx-date').value;
-                const description = document.getElementById('tx-description').value.trim();
-                const notes = document.getElementById('tx-notes').value.trim();
-                
-                if (isNaN(value) || value < 0) {
-                    alert('請輸入有效的數值');
-                    return;
-                }
-                
-                if (!description) {
-                    alert('請輸入說明');
-                    return;
-                }
-                
-                // 載入會員資料
-                const members = await getAllFromStore('members');
-                const member = members.find(m => m.id === memberId);
-                
-                if (!member) {
-                    alert('找不到會員資料');
-                    return;
-                }
-                
-                // 計算新值
-                const delta = adjustType === 'increase' ? value : -value;
-                const CATEGORIES = {
-                    'balance': { field: 'balance', type: 'amount' },
-                    'vip_voucher': { field: 'vip_voucher_amount', type: 'amount' },
-                    'designated_lesson': { field: 'designated_lesson_minutes', type: 'minutes' },
-                    'boat_voucher_g23': { field: 'boat_voucher_g23_minutes', type: 'minutes' },
-                    'boat_voucher_g21_panther': { field: 'boat_voucher_g21_panther_minutes', type: 'minutes' },
-                    'gift_boat_hours': { field: 'gift_boat_hours', type: 'minutes' }
-                };
-                
-                const categoryConfig = CATEGORIES[category];
-                if (!categoryConfig) {
-                    alert('無效的項目');
-                    return;
-                }
-                
-                // 更新會員餘額
-                const transaction = db.transaction(['members'], 'readwrite');
-                const store = transaction.objectStore('members');
-                const getRequest = store.get(memberId);
-                
-                await new Promise((resolve, reject) => {
-                    getRequest.onsuccess = () => {
-                        const member = getRequest.result;
-                        if (!member) {
-                            reject(new Error('找不到會員'));
-                            return;
-                        }
-                        
-                        member[categoryConfig.field] = (member[categoryConfig.field] || 0) + delta;
-                        member.updated_at = getVenueTimestamp();
-                        
-                        const updateRequest = store.put(member);
-                        updateRequest.onsuccess = () => resolve();
-                        updateRequest.onerror = () => reject(updateRequest.error);
-                    };
-                    getRequest.onerror = () => reject(getRequest.error);
-                });
-                
-                // 記錄交易
-                await createTableIfNotExists('transactions', 'id', true);
-                const txTransaction = db.transaction(['transactions'], 'readwrite');
-                const txStore = txTransaction.objectStore('transactions');
-                
-                await new Promise((resolve, reject) => {
-                    const request = txStore.add({
-                        member_id: memberId,
-                        transaction_type: 'adjust',
-                        category: category,
-                        adjust_type: adjustType,
-                        amount: categoryConfig.type === 'amount' ? value : null,
-                        minutes: categoryConfig.type === 'minutes' ? value : null,
-                        description: description,
-                        notes: notes || null,
-                        transaction_date: transactionDate,
-                        created_at: getVenueTimestamp()
-                    });
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-                
-                const unit = categoryConfig.type === 'amount' ? '$' : '分';
-                const changeText = adjustType === 'increase' ? `+${unit}${value.toLocaleString()}` : `-${unit}${value.toLocaleString()}`;
-                alert(`記帳成功！${changeText}`);
-                
-                closeTransactionDialog();
-                await loadAndDisplayMemberTransactions();
-                if (window.currentMemberDetail) {
-                    await showMemberDetailDialog(memberId);
-                }
-            } catch (error) {
-                console.error('記帳失敗:', error);
-                alert('記帳失敗：' + error.message);
-            }
-        }
-        
-        // 顯示置板格位對話框
+
         async function showBoardSlotDialog(slotNumber) {
-            try {
-                if (!db) await initDatabase();
-                
-                // 載入置板資料
-                let boardStorage = [];
-                try {
-                    boardStorage = await getAllFromStore('board_storage');
-                } catch (e) {
-                    console.warn('無法載入置板資料:', e);
-                }
-                
-                const board = boardStorage.find(b => b.slot_number === slotNumber && b.status === 'active');
-                
-                // 載入會員資料
-                const members = await getAllFromStore('members');
-                const membersMap = {};
-                members.forEach(m => {
-                    membersMap[m.id] = m;
-                });
-                
-                const dialog = document.getElementById('board-slot-dialog');
-                if (!dialog) return;
-                
-                if (board) {
-                    const member = membersMap[board.member_id];
-                    const formatDate = (dateStr) => {
-                        if (!dateStr) return '';
-                        return dateStr.split('T')[0];
-                    };
-                    
-                    dialog.innerHTML = `
-                        <div style="padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
-                            <h2 style="margin: 0; font-size: 20px; font-weight: bold;">格位 ${slotNumber}</h2>
-                            <button onclick="closeBoardSlotDialog()" style="border: none; background: none; font-size: 24px; cursor: pointer; color: #666; padding: 0 8px;">×</button>
-                        </div>
-                        <div style="padding: 20px;">
-                            <div style="margin-bottom: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px;">
-                                <div style="font-size: 14px; color: #666; margin-bottom: 8px;">會員</div>
-                                <div style="font-size: 18px; font-weight: bold;">${member?.nickname || member?.name || '未知'}</div>
-                            </div>
-                            ${board.start_date ? `
-                                <div style="margin-bottom: 16px;">
-                                    <div style="font-size: 14px; color: #666; margin-bottom: 8px;">開始日期</div>
-                                    <div style="font-size: 16px;">${formatDate(board.start_date)}</div>
-                                </div>
-                            ` : ''}
-                            ${board.expires_at ? `
-                                <div style="margin-bottom: 16px;">
-                                    <div style="font-size: 14px; color: #666; margin-bottom: 8px;">到期日期</div>
-                                    <div style="font-size: 16px;">${formatDate(board.expires_at)}</div>
-                                </div>
-                            ` : ''}
-                            ${board.notes ? `
-                                <div style="margin-bottom: 16px;">
-                                    <div style="font-size: 14px; color: #666; margin-bottom: 8px;">備註</div>
-                                    <div style="font-size: 14px; font-style: italic; color: #999;">${board.notes}</div>
-                                </div>
-                            ` : ''}
-                            <div style="display: flex; gap: 10px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-                                <button onclick="openEditBoardDialog('${board.id}', ${slotNumber})" style="flex: 1; padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer;">✏️ 編輯</button>
-                                <button onclick="deleteBoard('${board.id}', ${slotNumber}, '${board.member_id}')" style="flex: 1; padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer;">🗑️ 刪除</button>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    dialog.innerHTML = `
-                        <div style="padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
-                            <h2 style="margin: 0; font-size: 20px; font-weight: bold;">格位 ${slotNumber}</h2>
-                            <button onclick="closeBoardSlotDialog()" style="border: none; background: none; font-size: 24px; cursor: pointer; color: #666; padding: 0 8px;">×</button>
-                        </div>
-                        <div style="padding: 40px 20px; text-align: center; color: #999;">
-                            <div style="font-size: 48px; margin-bottom: 16px;">🏄</div>
-                            <div style="font-size: 16px; margin-bottom: 20px;">此格位尚未使用</div>
-                            <button onclick="openAddBoardSlotDialog(${slotNumber})" style="padding: 12px 24px; background: linear-gradient(135deg, #4caf50 0%, #45a049 100%); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;">新增置板</button>
-                        </div>
-                    `;
-                }
-                
-                dialog.classList.add('active');
-            } catch (error) {
-                console.error('載入置板格位對話框失敗:', error);
-                alert('載入置板格位對話框失敗：' + error.message);
-            }
-        }
-        
-        // 關閉置板格位對話框
-        function closeBoardSlotDialog() {
+            if (!db) await initDatabase();
+            const [boards, members] = await Promise.all([
+                safeGetAllFromStore('board_storage'),
+                safeGetAllFromStore('members')
+            ]);
+            const board = boards.find(row => Number(row.slot_number) === Number(slotNumber) && row.status === 'active');
+            const member = board ? members.find(row => row.id === board.member_id) : null;
             const dialog = document.getElementById('board-slot-dialog');
-            if (dialog) {
-                dialog.classList.remove('active');
-            }
+            dialog.innerHTML = `<div style="padding:20px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between;">
+                <h2 style="margin:0;">格位 #${slotNumber}</h2><button onclick="closeBoardSlotDialog()" style="border:0;background:none;font-size:24px;">×</button></div>
+                <div style="padding:20px;line-height:1.9;">${board
+                    ? `會員：${escapeHtml(member?.nickname || member?.name || '未知')}<br>開始：${escapeHtml(board.start_date || '—')}<br>到期：${escapeHtml(board.expires_at || '—')}<br>備註：${escapeHtml(board.notes || '—')}`
+                    : '<span style="color:#999;">此格位尚未使用</span>'}</div>`;
+            dialog.classList.add('active');
         }
-        
-        // 開啟新增置板格位對話框
-        function openAddBoardSlotDialog(slotNumber) {
-            const memberSearch = prompt('請輸入會員姓名或暱稱：');
-            if (!memberSearch) return;
-            
-            // 搜尋會員
-            searchMemberForBoard(memberSearch, slotNumber);
+        function openBoardSlotDialog(slotNumber) { void showBoardSlotDialog(slotNumber); }
+        function closeBoardSlotDialog() {
+            document.getElementById('board-slot-dialog')?.classList.remove('active');
         }
-        
-        // 搜尋會員並新增置板
-        async function searchMemberForBoard(searchTerm, slotNumber) {
-            try {
-                if (!db) await initDatabase();
-                
-                const members = await getAllFromStore('members');
-                const activeMembers = members.filter(m => m.status === 'active');
-                
-                const matched = activeMembers.filter(m => {
-                    const name = (m.name || '').toLowerCase();
-                    const nickname = (m.nickname || '').toLowerCase();
-                    return name.includes(searchTerm.toLowerCase()) || nickname.includes(searchTerm.toLowerCase());
-                });
-                
-                if (matched.length === 0) {
-                    alert('找不到會員');
-                    return;
-                }
-                
-                if (matched.length > 1) {
-                    const memberList = matched.map((m, i) => `${i + 1}. ${m.nickname || m.name}`).join('\n');
-                    const index = prompt(`找到多個會員，請選擇：\n${memberList}\n\n請輸入編號：`);
-                    if (!index) return;
-                    const selectedIndex = parseInt(index) - 1;
-                    if (selectedIndex < 0 || selectedIndex >= matched.length) {
-                        alert('無效的編號');
-                        return;
-                    }
-                    const member = matched[selectedIndex];
-                    const startDate = prompt('請輸入開始日期（YYYY-MM-DD，選填）：') || null;
-                    const expiresAt = prompt('請輸入到期日期（YYYY-MM-DD，選填）：') || null;
-                    const notes = prompt('請輸入備註（選填）：') || null;
-                    await addBoard(member.id, slotNumber, startDate, expiresAt, notes);
-                } else {
-                    const member = matched[0];
-                    const startDate = prompt('請輸入開始日期（YYYY-MM-DD，選填）：') || null;
-                    const expiresAt = prompt('請輸入到期日期（YYYY-MM-DD，選填）：') || null;
-                    const notes = prompt('請輸入備註（選填）：') || null;
-                    await addBoard(member.id, slotNumber, startDate, expiresAt, notes);
-                }
-                
-                closeBoardSlotDialog();
-                await loadAndDisplayBoards();
-            } catch (error) {
-                console.error('搜尋會員失敗:', error);
-                alert('搜尋會員失敗：' + error.message);
-            }
-        }
-        
-        // 刪除置板
-        async function deleteBoard(boardId, slotNumber, memberId) {
-            if (!confirm(`確定要刪除格位 #${slotNumber} 嗎？`)) return;
-            
-            try {
-                if (!db) await initDatabase();
-                
-                const transaction = db.transaction(['board_storage'], 'readwrite');
-                const store = transaction.objectStore('board_storage');
-                
-                await new Promise((resolve, reject) => {
-                    const request = store.delete(boardId);
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-                
-                // 新增備忘錄
-                try {
-                    await createTableIfNotExists('member_notes', 'id', true);
-                    const notesTransaction = db.transaction(['member_notes'], 'readwrite');
-                    const notesStore = notesTransaction.objectStore('member_notes');
-                    await new Promise((resolve, reject) => {
-                        const request = notesStore.add({
-                            member_id: memberId,
-                            event_date: getVenueDateString(),
-                            event_type: '備註',
-                            description: `移除置板 #${slotNumber}`
-                        });
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    });
-                } catch (e) {
-                    console.warn('無法新增備忘錄:', e);
-                }
-                
-                alert(`已刪除格位 #${slotNumber}`);
-                closeBoardSlotDialog();
-                await loadAndDisplayBoards();
-                if (window.currentMemberDetail) {
-                    await showMemberDetailDialog(memberId);
-                }
-                await loadAndDisplayMembers();
-            } catch (error) {
-                console.error('刪除置板失敗:', error);
-                alert('刪除置板失敗：' + error.message);
-            }
-        }
-        
+
         // 檢查是否有已載入的資料庫
         window.addEventListener('load', async () => {
             try {
