@@ -104,6 +104,31 @@ textarea {
   max-width: 100%; /* Prevent overflow on mobile */
 }
 
+/* Safari gives native date/time controls a wide intrinsic content size.
+   Allow the editable value to shrink so it cannot overlap the picker icon. */
+input[type='date'],
+input[type='time'] {
+  min-width: 0;
+}
+
+input[type='date']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
+
+input[type='date']::-webkit-datetime-edit,
+input[type='time']::-webkit-datetime-edit {
+  min-width: 0;
+  overflow: hidden;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator {
+  flex: 0 0 auto;
+  margin-left: 8px;
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;

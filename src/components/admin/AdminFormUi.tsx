@@ -75,12 +75,17 @@ export function AdminModal({
       style={{
         position: 'fixed',
         inset: 0,
+        height: '100dvh',
+        boxSizing: 'border-box',
         background: 'rgba(31, 27, 23, 0.28)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
-        padding: isMobile ? '16px' : '24px',
+        padding: isMobile
+          ? 'max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom))'
+          : '24px',
+        overflow: 'hidden',
         animation: 'adminModalOverlayIn 0.18s ease',
       }}
     >
@@ -93,8 +98,13 @@ export function AdminModal({
           padding: isMobile ? '20px' : '28px',
           maxWidth,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: isMobile
+            ? 'calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)))'
+            : '90vh',
           overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
+          boxSizing: 'border-box',
           boxShadow: '0 28px 90px rgba(31, 27, 23, 0.18)',
           animation: 'adminModalCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
@@ -108,9 +118,14 @@ export function AdminModal({
             onMouseEnter={() => setCloseHover(true)}
             onMouseLeave={() => setCloseHover(false)}
             style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
+              position: isMobile ? 'sticky' : 'absolute',
+              top: isMobile ? 0 : '12px',
+              right: isMobile ? undefined : '12px',
+              zIndex: 2,
+              marginTop: isMobile ? '-8px' : undefined,
+              marginRight: isMobile ? '-8px' : undefined,
+              marginBottom: isMobile ? '-32px' : undefined,
+              marginLeft: isMobile ? 'auto' : undefined,
               width: '32px',
               height: '32px',
               display: 'flex',
@@ -389,7 +404,12 @@ export function TimeSelectField({
         step={900}
         value={value}
         onChange={e => onChange(e.target.value)}
-        style={adminTextInputStyle}
+        style={{
+          ...adminTextInputStyle,
+          display: 'block',
+          minWidth: 0,
+          maxWidth: '100%',
+        }}
       />
     </div>
   )

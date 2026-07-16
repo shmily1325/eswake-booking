@@ -1168,7 +1168,11 @@ export function BoatManagement() {
                         />
                         {unavailableTimeMode === 'custom' && (
                             <div style={{ marginTop: '14px' }}>
-                                <div style={{ display: 'flex', gap: '10px' }}>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+                                    gap: '10px',
+                                }}>
                                     <TimeSelectField
                                         value={startTime}
                                         onChange={setStartTime}

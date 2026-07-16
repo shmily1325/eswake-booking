@@ -51,13 +51,10 @@ export function TimeOffBatchCalendar({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         gap: '12px',
         marginBottom: '10px',
       }}>
-        <span style={{ fontSize: getFontSize('body', false), fontWeight: 600 }}>
-          選擇日期
-        </span>
         <input
           type="month"
           value={month}

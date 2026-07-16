@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
@@ -39,6 +39,8 @@ export function TomorrowReminder() {
   const user = useAuthUser()
   const navigate = useNavigate()
   const { isMobile } = useResponsive()
+  const weatherWarningRef = useRef<HTMLTextAreaElement>(null)
+  const footerTextRef = useRef<HTMLTextAreaElement>(null)
   
   // 權限檢查：需要一般權限
   useEffect(() => {
@@ -81,6 +83,17 @@ export function TomorrowReminder() {
     setFooterText,
     saveStatus: templateSaveStatus,
   } = useTomorrowReminderTemplates(user?.id)
+
+  useLayoutEffect(() => {
+    const fitTextareaToContent = (textarea: HTMLTextAreaElement | null) => {
+      if (!textarea) return
+      textarea.style.height = 'auto'
+      textarea.style.height = `${textarea.scrollHeight + 2}px`
+    }
+
+    fitTextareaToContent(weatherWarningRef.current)
+    fitTextareaToContent(footerTextRef.current)
+  }, [weatherWarning, footerText, isMobile])
   
   useEffect(() => {
     setSelectedStudent(null)
@@ -427,15 +440,6 @@ export function TomorrowReminder() {
         <PageHeader title="明日提醒" user={user} />
 
         <div style={pageCardStyle}>
-          <label style={{
-            display: 'block',
-            fontSize: getFontSize('bodySmall', isMobile),
-            fontWeight: '600',
-            marginBottom: '8px',
-            color: designSystem.colors.text.primary
-          }}>
-            選擇日期
-          </label>
           <BookingDateNav
             date={selectedDate}
             onDateChange={(event) => setSelectedDate(event.target.value)}
@@ -530,14 +534,19 @@ export function TomorrowReminder() {
               天氣提醒
             </label>
             <textarea
+              ref={weatherWarningRef}
               value={weatherWarning}
               onChange={(e) => setWeatherWarning(e.target.value)}
               style={{
                 ...getInputStyle(isMobile),
                 width: '100%',
-                minHeight: isMobile ? '100px' : '80px',
+                height: 'auto',
+                minHeight: 0,
+                fontSize: isMobile ? '14px' : '15px',
+                lineHeight: 1.5,
                 fontFamily: 'inherit',
-                resize: 'vertical',
+                resize: 'none',
+                overflow: 'hidden',
                 touchAction: 'manipulation',
                 boxSizing: 'border-box',
                 opacity: includeWeatherWarning ? 1 : 0.5
@@ -558,14 +567,19 @@ export function TomorrowReminder() {
               預約提醒
             </label>
             <textarea
+              ref={footerTextRef}
               value={footerText}
               onChange={(e) => setFooterText(e.target.value)}
               style={{
                 ...getInputStyle(isMobile),
                 width: '100%',
-                minHeight: isMobile ? '180px' : '140px',
+                height: 'auto',
+                minHeight: 0,
+                fontSize: isMobile ? '14px' : '15px',
+                lineHeight: 1.5,
                 fontFamily: 'inherit',
-                resize: 'vertical',
+                resize: 'none',
+                overflow: 'hidden',
                 touchAction: 'manipulation',
                 boxSizing: 'border-box'
               }}

@@ -2732,7 +2732,11 @@ export function StaffManagement() {
 
           {timeOffMode === 'custom' && (
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+                gap: '10px',
+              }}>
                 <TimeSelectField
                   value={timeOffCustomStartTime}
                   onChange={setTimeOffCustomStartTime}
@@ -2776,7 +2780,17 @@ export function StaffManagement() {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{
+            position: isMobile ? 'sticky' : undefined,
+            bottom: isMobile ? '-20px' : undefined,
+            zIndex: 2,
+            display: 'flex',
+            gap: '12px',
+            margin: isMobile ? '0 -20px -20px' : undefined,
+            padding: isMobile ? '12px 20px 20px' : undefined,
+            borderTop: isMobile ? '1px solid #eceef2' : undefined,
+            background: isMobile ? '#ffffff' : undefined,
+          }}>
             <Button
               variant="outline"
               data-track="staff_time_off_cancel"
