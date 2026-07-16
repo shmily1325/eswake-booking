@@ -1,8 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { authorizeBackupRequest } from '../src/server/backup-auth.js';
-import { BACKUP_TABLES } from '../src/server/backup-config.js';
-import { fetchBackupData } from '../src/server/backup-data.js';
+import { authorizeBackupRequest, setBackupResponseHeaders } from '../src/server/backup-auth.js';
+import { BACKUP_FORMAT_VERSION, BACKUP_TABLES } from '../src/server/backup-config.js';
+import { fetchBackupData, getBackupIntegrity } from '../src/server/backup-data.js';
 
 function getLocalTimestamp(date: Date = new Date()): string {
   const year = date.getFullYear();
@@ -16,6 +16,7 @@ function getLocalTimestamp(date: Date = new Date()): string {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
+  setBackupResponseHeaders(res);
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -43,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const jsonBackup = {
       metadata: {
         backupTime: getLocalTimestamp(),
-        version: '2.0',
+        version: BACKUP_FORMAT_VERSION,
         tables: BACKUP_TABLES,
         stats: backupStats,
       },
@@ -53,10 +54,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const totalTime = Date.now() - startTime;
     console.log(`备份完成 (${totalTime}ms)`);
 
+    const jsonContent = JSON.stringify(jsonBackup);
+    const integrity = getBackupIntegrity(jsonContent);
+
     // 返回 JSON 备份
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="eswake_queryable_backup_${getLocalTimestamp().replace(/:/g, '-')}.json"`);
-    return res.status(200).json(jsonBackup);
+    res.setHeader('Content-Length', String(integrity.bytes));
+    res.setHeader('X-Backup-SHA256', integrity.checksum);
+    return res.status(200).send(jsonContent);
 
   } catch (error: any) {
     const totalTime = Date.now() - startTime;

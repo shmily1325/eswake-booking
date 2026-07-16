@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { authorizeBackupRequest, setBackupResponseHeaders } from '../src/server/backup-auth.js';
 
 /**
  * 統一的備份 Cron 端點（可選用）
@@ -19,9 +20,16 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
  * 3. 使用外部 Cron 服務（如 GitHub Actions）
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setBackupResponseHeaders(res);
+
   // 只允許 GET 請求（來自 Vercel Cron）
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const auth = await authorizeBackupRequest(req);
+  if (auth.ok === false) {
+    return res.status(auth.status).json({ error: auth.error });
   }
 
   const now = new Date();
@@ -44,6 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const backupHandler = (await import('./backup-to-cloud-drive.js')).default;
         // 創建一個模擬的 response 對象來捕獲結果
         const mockRes = {
+          setHeader: () => mockRes,
           status: (code: number) => ({
             json: (data: any) => {
               results.push({ type: 'cloud-drive', status: code, data });
@@ -62,6 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log('[Cron] 執行 Google Sheets 備份...');
         const driveBackupHandler = (await import('./backup-to-drive.js')).default;
         const mockRes = {
+          setHeader: () => mockRes,
           status: (code: number) => ({
             json: (data: any) => {
               results.push({ type: 'sheets', status: code, data });

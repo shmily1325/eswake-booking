@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
+const crypto = require('crypto');
 
 // ============================================
 // 配置參數（請根據實際情況修改）
@@ -22,6 +23,7 @@ const http = require('http');
 
 // 1. API 端點（你的 Vercel 部署地址）
 const API_URL = process.env.ESWAKE_API_URL || 'https://eswake-booking.vercel.app/api/backup-full-database';
+const REPORT_URL = process.env.ESWAKE_REPORT_URL || new URL('/api/backup-report', API_URL).toString();
 
 // 2. WD MY BOOK 硬碟路徑（Windows）
 // 例如：'E:\\' 或 'D:\\Backups\\ESWake'
@@ -32,6 +34,9 @@ const KEEP_DAYS = parseInt(process.env.BACKUP_KEEP_DAYS || '90', 10);
 
 // 4. 是否啟用詳細日誌
 const VERBOSE = process.env.VERBOSE === 'true';
+
+// 5. 與 Vercel CRON_SECRET 相同的自動備份密鑰
+const BACKUP_SECRET = process.env.ESWAKE_BACKUP_SECRET;
 
 // ============================================
 // 工具函數
@@ -92,13 +97,15 @@ function downloadFile(url, outputPath) {
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
       headers: {
-        'User-Agent': 'ESWake-AutoBackup/1.0'
+        'User-Agent': 'ESWake-AutoBackup/1.0',
+        'Authorization': `Bearer ${BACKUP_SECRET}`
       }
     };
     
     const req = protocol.request(options, (response) => {
       if (response.statusCode === 301 || response.statusCode === 302) {
-        // 處理重定向
+        file.close();
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         return downloadFile(response.headers.location, outputPath)
           .then(resolve)
           .catch(reject);
@@ -122,11 +129,14 @@ function downloadFile(url, outputPath) {
         }
       });
       
-      response.on('end', () => {
+      file.on('finish', () => {
         if (VERBOSE) console.log('');
         file.close();
         log(`下載完成: ${(downloadedSize / 1024 / 1024).toFixed(2)} MB`, 'success');
-        resolve(downloadedSize);
+        resolve({
+          downloadedSize,
+          expectedChecksum: response.headers['x-backup-sha256'] || null
+        });
       });
       
       response.pipe(file);
@@ -141,6 +151,34 @@ function downloadFile(url, outputPath) {
     });
     
     req.end();
+  });
+}
+
+function reportBackup(payload) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(REPORT_URL);
+    const protocol = urlObj.protocol === 'https:' ? https : http;
+    const body = JSON.stringify(payload);
+    const req = protocol.request({
+      hostname: urlObj.hostname,
+      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      path: urlObj.pathname + urlObj.search,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${BACKUP_SECRET}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        'User-Agent': 'ESWake-AutoBackup/1.0'
+      }
+    }, response => {
+      response.resume();
+      response.on('end', () => {
+        if (response.statusCode >= 200 && response.statusCode < 300) resolve();
+        else reject(new Error(`備份回報失敗: HTTP ${response.statusCode}`));
+      });
+    });
+    req.on('error', reject);
+    req.end(body);
   });
 }
 
@@ -163,6 +201,8 @@ function cleanupOldBackups(backupDir, keepDays) {
       if (age > maxAge) {
         const size = stats.size;
         fs.unlinkSync(filePath);
+        const checksumPath = `${filePath}.sha256`;
+        if (fs.existsSync(checksumPath)) fs.unlinkSync(checksumPath);
         deletedCount++;
         freedSpace += size;
         log(`刪除舊備份: ${file} (${(age / 1000 / 60 / 60 / 24).toFixed(1)} 天前)`, 'warning');
@@ -210,7 +250,13 @@ function getBackupStats(backupDir) {
 // ============================================
 
 async function main() {
+  const startedAt = Date.now();
   log('='.repeat(60), 'info');
+
+  if (!BACKUP_SECRET) {
+    log('缺少 ESWAKE_BACKUP_SECRET，已拒絕執行未授權備份', 'error');
+    process.exit(1);
+  }
   log('ESWake 自動備份開始', 'info');
   log('='.repeat(60), 'info');
   
@@ -234,19 +280,48 @@ async function main() {
   // 產生備份檔案名稱
   const fileName = getBackupFileName();
   const filePath = path.join(backupDir, fileName);
+  const tempPath = `${filePath}.tmp`;
   
   try {
     // 下載備份檔案
-    await downloadFile(API_URL, filePath);
+    const download = await downloadFile(API_URL, tempPath);
     
     // 驗證檔案
-    const stats = fs.statSync(filePath);
+    const stats = fs.statSync(tempPath);
     if (stats.size === 0) {
       throw new Error('下載的檔案為空');
     }
+    if (stats.size !== download.downloadedSize) {
+      throw new Error('下載檔案大小不一致');
+    }
+
+    const checksum = crypto
+      .createHash('sha256')
+      .update(fs.readFileSync(tempPath))
+      .digest('hex');
+    if (download.expectedChecksum && checksum !== download.expectedChecksum) {
+      throw new Error('SHA-256 校驗失敗，備份檔案可能不完整');
+    }
+
+    fs.renameSync(tempPath, filePath);
+    fs.writeFileSync(`${filePath}.sha256`, `${checksum}  ${fileName}\n`, 'utf8');
+
+    const sql = fs.readFileSync(filePath, 'utf8');
+    const manifestMatch = sql.match(/^-- ESWAKE_BACKUP_MANIFEST: (.+)$/m);
+    const manifest = manifestMatch ? JSON.parse(manifestMatch[1]) : {};
+    await reportBackup({
+      status: 'success',
+      fileName,
+      fileSizeBytes: stats.size,
+      checksum,
+      formatVersion: manifest.formatVersion,
+      recordsCount: manifest.totalRecords,
+      executionTime: Date.now() - startedAt
+    });
     
     log(`備份成功保存: ${filePath}`, 'success');
     log(`檔案大小: ${(stats.size / 1024 / 1024).toFixed(2)} MB`, 'success');
+    log(`SHA-256: ${checksum}`, 'success');
     
     // 清理舊備份
     log(`清理超過 ${KEEP_DAYS} 天的舊備份...`, 'info');
@@ -257,6 +332,17 @@ async function main() {
     log(`備份完成！目前共有 ${finalStats.count} 個備份檔案`, 'success');
     
   } catch (error) {
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    try {
+      await reportBackup({
+        status: 'failed',
+        fileName,
+        errorMessage: error.message,
+        executionTime: Date.now() - startedAt
+      });
+    } catch (reportError) {
+      log(`失敗狀態無法回報: ${reportError.message}`, 'warning');
+    }
     log(`備份失敗: ${error.message}`, 'error');
     if (error.stack && VERBOSE) {
       log(error.stack, 'error');

@@ -105,10 +105,14 @@ export type Database = {
         Row: {
           id: number
           backup_type: string
+          destination: string | null
           status: string
           records_count: number | null
           file_name: string | null
           file_size: string | null
+          file_size_bytes: number | null
+          checksum: string | null
+          format_version: number | null
           file_url: string | null
           error_message: string | null
           execution_time: number | null
@@ -117,10 +121,14 @@ export type Database = {
         Insert: {
           id?: number
           backup_type: string
+          destination?: string | null
           status: string
           records_count?: number | null
           file_name?: string | null
           file_size?: string | null
+          file_size_bytes?: number | null
+          checksum?: string | null
+          format_version?: number | null
           file_url?: string | null
           error_message?: string | null
           execution_time?: number | null
@@ -129,10 +137,14 @@ export type Database = {
         Update: {
           id?: number
           backup_type?: string
+          destination?: string | null
           status?: string
           records_count?: number | null
           file_name?: string | null
           file_size?: string | null
+          file_size_bytes?: number | null
+          checksum?: string | null
+          format_version?: number | null
           file_url?: string | null
           error_message?: string | null
           execution_time?: number | null

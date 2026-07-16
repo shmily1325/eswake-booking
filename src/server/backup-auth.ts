@@ -1,5 +1,6 @@
 import type { VercelRequest } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { timingSafeEqual } from 'node:crypto'
 
 const SUPER_ADMIN_EMAILS = [
   'callumbao1122@gmail.com',
@@ -15,6 +16,31 @@ function bearerToken(req: VercelRequest): string | null {
   const header = req.headers.authorization
   if (!header?.startsWith('Bearer ')) return null
   return header.slice(7).trim() || null
+}
+
+function tokensMatch(actual: string, expected: string): boolean {
+  const actualBuffer = Buffer.from(actual)
+  const expectedBuffer = Buffer.from(expected)
+  return actualBuffer.length === expectedBuffer.length
+    && timingSafeEqual(actualBuffer, expectedBuffer)
+}
+
+function authorizeAutomation(req: VercelRequest): BackupAuthResult {
+  const expected = process.env.CRON_SECRET
+  if (!expected) {
+    return { ok: false, status: 500, error: '自動備份密鑰尚未設定' }
+  }
+
+  const token = bearerToken(req)
+  if (!token || !tokensMatch(token, expected)) {
+    return { ok: false, status: 401, error: '未授權的自動備份請求' }
+  }
+
+  return { ok: true }
+}
+
+export function authorizeAutomationRequest(req: VercelRequest): BackupAuthResult {
+  return authorizeAutomation(req)
 }
 
 async function authorizeAdmin(req: VercelRequest): Promise<BackupAuthResult> {
@@ -47,9 +73,17 @@ async function authorizeAdmin(req: VercelRequest): Promise<BackupAuthResult> {
 
 /**
  * Manual POST requests require a signed-in super admin.
- * GET keeps the existing automated Vercel / local backup flow.
+ * Automated GET requests require the Vercel CRON_SECRET.
  */
 export async function authorizeBackupRequest(req: VercelRequest): Promise<BackupAuthResult> {
-  if (req.method === 'GET') return { ok: true }
+  if (req.method === 'GET') return authorizeAutomation(req)
   return authorizeAdmin(req)
+}
+
+export function setBackupResponseHeaders(res: {
+  setHeader: (name: string, value: string) => unknown
+}): void {
+  res.setHeader('Cache-Control', 'no-store, max-age=0')
+  res.setHeader('Pragma', 'no-cache')
+  res.setHeader('X-Content-Type-Options', 'nosniff')
 }

@@ -30,6 +30,9 @@
     "api/backup-to-cloud-drive.ts": {
       "maxDuration": 60
     },
+    "api/backup-report.ts": {
+      "maxDuration": 10
+    },
     "api/backup-to-drive.ts": {
       "maxDuration": 60
     },

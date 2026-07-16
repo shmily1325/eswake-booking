@@ -247,7 +247,10 @@
         <!-- 資料庫載入器 -->
         <div id="db-loader" class="modal">
             <div class="modal-content">
-                <div class="modal-title">💾 載入資料庫</div>
+                <div class="modal-title">💾 載入離線備份</div>
+                <p style="font-size: 13px; color: #666; line-height: 1.5; margin: 0 0 14px;">
+                    資料只會儲存在此裝置，不會同步回線上系統。匯入新備份前會先完整驗證。
+                </p>
                 <div id="db-alert"></div>
                 <div class="file-input-wrapper">
                     <label class="file-input" for="sql-file">
@@ -312,25 +315,52 @@
     <script>
         // 全域變數 - 使用 IndexedDB 作為資料庫
         let db = null;
-        const DB_NAME = 'eswake-offline';
-        const DB_VERSION = 3;
-        const REQUIRED_SHOP_STORES = [
-            'products',
-            'product_variants',
-            'shop_orders',
-            'shop_order_items',
-            'shop_order_settlements'
+        let DB_NAME = localStorage.getItem('eswake-offline-active-db') || 'eswake-offline';
+        const DB_VERSION = 4;
+        const BACKUP_FORMAT_VERSION = 3;
+        const REQUIRED_BACKUP_TABLES = [
+            'members', 'coaches', 'boats', 'bookings', 'booking_members',
+            'booking_coaches', 'booking_drivers', 'transactions',
+            'daily_announcements', 'reservation_restrictions'
         ];
-        
+        const OFFLINE_STORE_CONFIG = {
+            members: { keyPath: 'id' },
+            coaches: { keyPath: 'id' },
+            boats: { keyPath: 'id', autoIncrement: true },
+            admin_users: { keyPath: 'id' },
+            allowed_users: { keyPath: 'id' },
+            editor_users: { keyPath: 'id' },
+            view_users: { keyPath: 'id' },
+            member_notes: { keyPath: 'id', autoIncrement: true },
+            billing_relations: { keyPath: 'id', autoIncrement: true },
+            board_storage: { keyPath: 'id', autoIncrement: true },
+            products: { keyPath: 'id' },
+            product_variants: { keyPath: 'id' },
+            boat_unavailable_dates: { keyPath: 'id', autoIncrement: true },
+            coach_time_off: { keyPath: 'id', autoIncrement: true },
+            bookings: { keyPath: 'id', autoIncrement: true },
+            booking_members: { keyPath: 'id', autoIncrement: true },
+            booking_coaches: { keyPath: 'id', autoIncrement: true },
+            booking_drivers: { keyPath: 'id', autoIncrement: true },
+            coach_reports: { keyPath: 'id', autoIncrement: true },
+            booking_participants: { keyPath: 'id', autoIncrement: true },
+            shop_orders: { keyPath: 'id' },
+            shop_order_items: { keyPath: 'id' },
+            shop_order_settlements: { keyPath: 'id' },
+            transactions: { keyPath: 'id', autoIncrement: true },
+            shop_order_no_seq: { keyPath: 'seq_date' },
+            daily_announcements: { keyPath: 'id', autoIncrement: true },
+            reservation_restrictions: { keyPath: 'id', autoIncrement: true },
+            audit_log: { keyPath: 'id', autoIncrement: true },
+            system_settings: { keyPath: 'id', autoIncrement: true },
+            line_bindings: { keyPath: 'id', autoIncrement: true },
+            backup_logs: { keyPath: 'id', autoIncrement: true }
+        };
         // 選單項目配置
         const menuItems = [
             { title: '今日預約', icon: '📅', link: '#', action: 'coach-daily' },
-            { title: '預約表', icon: '📝', link: '#', action: 'day' },
-            { title: '教練回報', icon: '✅', link: '#', action: 'my-report' },
             { title: '預約查詢', icon: '🔍', link: '#', action: 'search' },
             { title: '明日提醒', icon: '⏰', link: '#', action: 'tomorrow' },
-            { title: '編輯記錄', icon: '📋', link: '#', action: 'audit-log' },
-            { title: '船隻管理', icon: '🚤', link: '#', action: 'boats' },
             { title: 'BAO', icon: '🔧', link: '#', action: 'bao' }
         ];
         
@@ -436,26 +466,7 @@
                             const database = event.target.result;
                             
                             // 重新創建所有現有表（如果不存在）
-                            const existingStores = {
-                                'members': { keyPath: 'id', autoIncrement: false },
-                                'boats': { keyPath: 'id', autoIncrement: true, index: { name: 'name', unique: true } },
-                                'coaches': { keyPath: 'id', autoIncrement: false },
-                                'bookings': { keyPath: 'id', autoIncrement: true, index: { name: 'start_at', unique: false } },
-                                'booking_coaches': { keyPath: 'id', autoIncrement: true },
-                                'booking_drivers': { keyPath: 'id', autoIncrement: true },
-                                'booking_members': { keyPath: 'id', autoIncrement: true },
-                                'daily_announcements': { keyPath: 'id', autoIncrement: true },
-                                'coach_time_off': { keyPath: 'id', autoIncrement: true },
-                                'audit_log': { keyPath: 'id', autoIncrement: true },
-                                'transactions': { keyPath: 'id', autoIncrement: true },
-                                'board_storage': { keyPath: 'id', autoIncrement: true },
-                                'member_notes': { keyPath: 'id', autoIncrement: true },
-                                'products': { keyPath: 'id', autoIncrement: false },
-                                'product_variants': { keyPath: 'id', autoIncrement: false },
-                                'shop_orders': { keyPath: 'id', autoIncrement: false },
-                                'shop_order_items': { keyPath: 'id', autoIncrement: false },
-                                'shop_order_settlements': { keyPath: 'id', autoIncrement: false }
-                            };
+                            const existingStores = OFFLINE_STORE_CONFIG;
                             
                             // 創建現有表
                             Object.keys(existingStores).forEach(storeName => {
@@ -534,12 +545,12 @@
                 request.onsuccess = async () => {
                     db = request.result;
                     console.log('✅ 資料庫已開啟');
-                    const missingShopStores = REQUIRED_SHOP_STORES.filter(
+                    const missingShopStores = Object.keys(OFFLINE_STORE_CONFIG).filter(
                         storeName => !db.objectStoreNames.contains(storeName)
                     );
                     if (missingShopStores.length > 0) {
                         missingShopStores.forEach(storeName => {
-                            pendingTables.set(storeName, { keyPath: 'id', autoIncrement: false });
+                            pendingTables.set(storeName, OFFLINE_STORE_CONFIG[storeName]);
                         });
                         try {
                             await createAllPendingTables();
@@ -612,6 +623,15 @@
                         if (!database.objectStoreNames.contains('shop_order_settlements')) {
                             database.createObjectStore('shop_order_settlements', { keyPath: 'id' });
                         }
+
+                        Object.entries(OFFLINE_STORE_CONFIG).forEach(([storeName, config]) => {
+                            if (!database.objectStoreNames.contains(storeName)) {
+                                database.createObjectStore(storeName, {
+                                    keyPath: config.keyPath,
+                                    autoIncrement: Boolean(config.autoIncrement)
+                                });
+                            }
+                        });
                         
                         console.log('✅ 資料表已建立');
                     } catch (upgradeError) {
@@ -678,24 +698,62 @@
         // 清空資料庫
         async function clearDatabase() {
             if (!db) await initDatabase();
-            
-            const storeNames = ['members', 'boats', 'coaches', 'bookings', 'booking_coaches', 'booking_drivers', 'booking_members', 'daily_announcements', 'coach_time_off', 'audit_log', 'transactions', 'board_storage', 'member_notes', 'products', 'product_variants', 'shop_orders', 'shop_order_items', 'shop_order_settlements'];
-            
-            for (const storeName of storeNames) {
-                try {
-                    const transaction = db.transaction([storeName], 'readwrite');
-                    const store = transaction.objectStore(storeName);
-                    await new Promise((resolve, reject) => {
-                        const request = store.clear();
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    });
-                } catch (error) {
-                    console.warn('清空 ' + storeName + ' 失敗:', error);
-                }
-            }
+            const storeNames = Array.from(db.objectStoreNames);
+            const transaction = db.transaction(storeNames, 'readwrite');
+            storeNames.forEach(storeName => transaction.objectStore(storeName).clear());
+            await new Promise((resolve, reject) => {
+                transaction.oncomplete = resolve;
+                transaction.onerror = () => reject(transaction.error);
+                transaction.onabort = () => reject(transaction.error || new Error('清空交易已取消'));
+            });
             
             console.log('✅ 資料庫已清空');
+        }
+
+        function parseBackupManifest(text) {
+            const match = text.match(/^-- ESWAKE_BACKUP_MANIFEST: (.+)$/m);
+            if (!match) throw new Error('不是受支援的 ESWake 完整備份：缺少 manifest');
+            let manifest;
+            try {
+                manifest = JSON.parse(match[1]);
+            } catch {
+                throw new Error('備份 manifest 格式損壞');
+            }
+            if (manifest.formatVersion !== BACKUP_FORMAT_VERSION) {
+                throw new Error(`備份格式版本不相容：需要 ${BACKUP_FORMAT_VERSION}，取得 ${manifest.formatVersion}`);
+            }
+            const missing = REQUIRED_BACKUP_TABLES.filter(table => !manifest.tables?.includes(table));
+            if (missing.length > 0) {
+                throw new Error(`備份缺少必要資料表：${missing.join(', ')}`);
+            }
+            return manifest;
+        }
+
+        async function verifyImportedManifest(manifest) {
+            const mismatches = [];
+            for (const tableName of manifest.tables) {
+                if (!db.objectStoreNames.contains(tableName)) {
+                    mismatches.push(`${tableName}: 缺少資料表`);
+                    continue;
+                }
+                const actual = await new Promise((resolve, reject) => {
+                    const request = db.transaction(tableName, 'readonly').objectStore(tableName).count();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+                const expected = manifest.stats[tableName] || 0;
+                if (actual !== expected) mismatches.push(`${tableName}: ${actual}/${expected}`);
+            }
+            if (mismatches.length > 0) {
+                throw new Error(`匯入筆數驗證失敗：${mismatches.slice(0, 8).join('、')}`);
+            }
+        }
+
+        function deleteOfflineDatabase(name) {
+            return new Promise(resolve => {
+                const request = indexedDB.deleteDatabase(name);
+                request.onsuccess = request.onerror = request.onblocked = () => resolve();
+            });
         }
         
         // 載入 SQL 檔案
@@ -720,7 +778,19 @@
             if (fileInput) fileInput.disabled = true;
             if (label) label.style.pointerEvents = 'none';
             
+            let previousDatabaseName = DB_NAME;
+            let stagingDatabaseName = null;
+            let importActivated = false;
             try {
+                const text = await file.text();
+                const manifest = parseBackupManifest(text);
+                console.log('備份驗證完成:', manifest);
+
+                stagingDatabaseName = `eswake-offline-import-${Date.now()}`;
+                if (db) db.close();
+                db = null;
+                DB_NAME = stagingDatabaseName;
+
                 // 嘗試初始化資料庫，如果失敗則嘗試重置
                 try {
                     await initDatabase();
@@ -741,15 +811,6 @@
                     }
                 }
                 
-                // 詢問是否要清空現有資料
-                const shouldClear = confirm('是否要清空現有資料庫並載入新資料？\n\n點擊「確定」清空並載入\n點擊「取消」追加到現有資料');
-                
-                if (shouldClear) {
-                    await clearDatabase();
-                    console.log('已清空現有資料');
-                }
-                
-                const text = await file.text();
                 console.log('檔案讀取完成，長度:', text.length);
                 
                 // 先掃描所有 CREATE TABLE 語句，收集需要創建的表
@@ -1300,8 +1361,32 @@
                         });
                 }
                 console.log(`========================================\n`);
+
+                await verifyImportedManifest(manifest);
+                let checksum = null;
+                if (window.crypto?.subtle) {
+                    const digest = await window.crypto.subtle.digest(
+                        'SHA-256',
+                        new TextEncoder().encode(text)
+                    );
+                    checksum = Array.from(new Uint8Array(digest))
+                        .map(byte => byte.toString(16).padStart(2, '0'))
+                        .join('');
+                }
+                localStorage.setItem('eswake-offline-active-db', stagingDatabaseName);
+                localStorage.setItem('eswake-offline-backup-meta', JSON.stringify({
+                    backupTime: manifest.backupTime,
+                    totalRecords: manifest.totalRecords,
+                    formatVersion: manifest.formatVersion,
+                    checksum
+                }));
+                importActivated = true;
+                if (previousDatabaseName !== stagingDatabaseName) {
+                    await deleteOfflineDatabase(previousDatabaseName);
+                }
                 
-                let alertMessage = `✅ 資料庫載入成功！\n成功: ${successCount} 條`;
+                let alertMessage = `✅ 備份已驗證並載入！\n備份時間: ${manifest.backupTime}\n資料: ${manifest.totalRecords} 筆`;
+                if (checksum) alertMessage += `\nSHA-256: ${checksum.slice(0, 16)}…`;
                 if (skipCount > 0) {
                     alertMessage += `\n跳過: ${skipCount} 條\n\n跳過原因：\n${Object.entries(skippedReasons).filter(([_, count]) => count > 0).map(([reason, count]) => `  • ${reason}: ${count}`).join('\n')}`;
                 }
@@ -1331,6 +1416,13 @@
                 
             } catch (error) {
                 console.error('載入 SQL 檔案時發生錯誤:', error);
+                if (!importActivated && stagingDatabaseName) {
+                    if (db) db.close();
+                    db = null;
+                    await deleteOfflineDatabase(stagingDatabaseName);
+                    DB_NAME = previousDatabaseName;
+                    await initDatabase();
+                }
                 if (loadingDiv) loadingDiv.classList.add('hidden');
                 showAlert('❌ 載入失敗: ' + (error.message || '未知錯誤'), 'error');
             } finally {
@@ -1412,8 +1504,6 @@
         function handleMenuClick(action) {
             if (action === 'coach-daily') {
                 showCoachDailyView();
-            } else if (action === 'day') {
-                showDayView();
             } else if (action === 'search') {
                 showSearchBookings();
             } else if (action === 'tomorrow') {
@@ -1492,6 +1582,23 @@
         function showHomePage() {
             const mainContent = document.getElementById('main-content');
             const appContainer = document.getElementById('app');
+            let backupMeta = null;
+            try {
+                backupMeta = JSON.parse(localStorage.getItem('eswake-offline-backup-meta') || 'null');
+            } catch {
+                backupMeta = null;
+            }
+            const backupMetaHtml = backupMeta ? `
+                <div style="background:#eef7f0; border:1px solid #cfe6d4; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13px; line-height:1.6; color:#245b31;">
+                    已載入 ${backupMeta.backupTime} 的備份 · ${Number(backupMeta.totalRecords || 0).toLocaleString()} 筆
+                    ${backupMeta.checksum ? `<br>SHA-256 ${backupMeta.checksum.slice(0, 16)}…` : ''}
+                    <br><strong>資料只在此裝置，不會同步回線上系統。</strong>
+                </div>
+            ` : `
+                <div style="background:#fff4dd; border:1px solid #eed59c; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:#76531a;">
+                    尚未載入已驗證的完整備份。
+                </div>
+            `;
             
             // 恢復 container 的原始樣式
             appContainer.style.maxWidth = '600px';
@@ -1505,6 +1612,7 @@
                     <h1 class="title">ES Wake</h1>
                 </div>
                 <div style="text-align: center; margin-bottom: 20px;">
+                    ${backupMetaHtml}
                     <button onclick="showDatabaseLoader()" style="
                         padding: 10px 20px;
                         background: #667eea;

@@ -1,8 +1,13 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
-import { authorizeBackupRequest } from '../src/server/backup-auth.js';
-import { fetchBackupData, generateSqlBackup } from '../src/server/backup-data.js';
+import { authorizeBackupRequest, setBackupResponseHeaders } from '../src/server/backup-auth.js';
+import {
+  fetchBackupData,
+  generateSqlBackup,
+  getBackupIntegrity,
+} from '../src/server/backup-data.js';
+import { BACKUP_FORMAT_VERSION } from '../src/server/backup-config.js';
 
 function getLocalTimestamp(date: Date = new Date()): string {
   const year = date.getFullYear();
@@ -16,6 +21,7 @@ function getLocalTimestamp(date: Date = new Date()): string {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
+  setBackupResponseHeaders(res);
   const logStep = (step: string, data?: any) => {
     const elapsed = Date.now() - startTime;
     console.log(`[${elapsed}ms] ${step}`, data ? JSON.stringify(data).substring(0, 200) : '');
@@ -127,6 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const backupTime = getLocalTimestamp();
     const { data, stats, totalRecords } = await fetchBackupData(supabase);
     const sqlContent = generateSqlBackup(data, stats, backupTime);
+    const integrity = getBackupIntegrity(sqlContent);
 
     logStep('6. 備份 SQL 內容生成完成', { 
       totalRecords,
@@ -160,6 +167,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fileName: uploadResponse.data.name,
       size: uploadResponse.data.size,
     });
+
+    if (Number(uploadResponse.data.size) !== integrity.bytes) {
+      if (uploadResponse.data.id) {
+        await drive.files.delete({
+          fileId: uploadResponse.data.id,
+          supportsAllDrives: true,
+        });
+      }
+      throw new Error('Google Drive 上傳檔案大小驗證失敗');
+    }
+
+    const verificationDownload = await drive.files.get(
+      {
+        fileId: uploadResponse.data.id!,
+        alt: 'media',
+        supportsAllDrives: true,
+      },
+      { responseType: 'arraybuffer' },
+    );
+    const uploadedContent = Buffer.from(verificationDownload.data as ArrayBuffer).toString('utf8');
+    const uploadedIntegrity = getBackupIntegrity(uploadedContent);
+    if (uploadedIntegrity.checksum !== integrity.checksum) {
+      await drive.files.delete({
+        fileId: uploadResponse.data.id!,
+        supportsAllDrives: true,
+      });
+      throw new Error('Google Drive 上傳檔案 SHA-256 驗證失敗');
+    }
 
     // 清理舊備份（保留最近 90 天的備份）
     logStep('9. 開始清理舊備份');
@@ -219,10 +254,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       await supabase.from('backup_logs').insert({
         backup_type: 'cloud_drive',
+        destination: 'google_drive',
         status: 'success',
         records_count: totalRecords,
         file_name: uploadResponse.data.name,
         file_size: uploadResponse.data.size,
+        file_size_bytes: integrity.bytes,
+        checksum: integrity.checksum,
+        format_version: BACKUP_FORMAT_VERSION,
         file_url: uploadResponse.data.webViewLink,
         execution_time: totalTime,
       });
@@ -240,6 +279,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fileUrl: uploadResponse.data.webViewLink,
       fileSize: uploadResponse.data.size,
       totalRecords,
+      checksum: integrity.checksum,
+      formatVersion: BACKUP_FORMAT_VERSION,
       executionTime: totalTime,
     });
 

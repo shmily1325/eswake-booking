@@ -1,12 +1,22 @@
 import {
+  BACKUP_FORMAT_VERSION,
   BACKUP_TABLES,
   JSONB_COLUMNS,
   TABLE_ORDER_COLUMN,
   type BackupTable,
 } from './backup-config.js'
+import { createHash } from 'node:crypto'
 
 export type BackupData = Record<BackupTable, Record<string, unknown>[]>
 export type BackupStats = Record<BackupTable, number>
+
+export interface BackupManifest {
+  formatVersion: number
+  backupTime: string
+  tables: readonly BackupTable[]
+  stats: BackupStats
+  totalRecords: number
+}
 
 const PAGE_SIZE = 1000
 
@@ -111,10 +121,18 @@ export function generateSqlBackup(
 ): string {
   const quotedTables = BACKUP_TABLES.map(quoteIdentifier).join(', ')
   const totalRecords = Object.values(stats).reduce((sum, count) => sum + count, 0)
+  const manifest: BackupManifest = {
+    formatVersion: BACKUP_FORMAT_VERSION,
+    backupTime,
+    tables: BACKUP_TABLES,
+    stats,
+    totalRecords,
+  }
   const lines = [
     '-- =============================================',
     '-- ESWake 預約系統 - 完整資料庫備份',
     `-- 備份時間: ${backupTime}`,
+    `-- ESWAKE_BACKUP_MANIFEST: ${JSON.stringify(manifest)}`,
     '-- 還原前請先確認目標資料庫已套用相同版本的 migrations',
     '-- =============================================',
     '',
@@ -163,4 +181,14 @@ export function generateSqlBackup(
   lines.push('-- =============================================', '')
 
   return lines.join('\n')
+}
+
+export function getBackupIntegrity(sqlContent: string): {
+  checksum: string
+  bytes: number
+} {
+  return {
+    checksum: createHash('sha256').update(sqlContent, 'utf8').digest('hex'),
+    bytes: Buffer.byteLength(sqlContent, 'utf8'),
+  }
 }

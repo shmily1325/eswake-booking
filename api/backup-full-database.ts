@@ -1,7 +1,12 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { authorizeBackupRequest } from '../src/server/backup-auth.js';
-import { fetchBackupData, generateSqlBackup } from '../src/server/backup-data.js';
+import { authorizeBackupRequest, setBackupResponseHeaders } from '../src/server/backup-auth.js';
+import {
+  fetchBackupData,
+  generateSqlBackup,
+  getBackupIntegrity,
+} from '../src/server/backup-data.js';
+import { BACKUP_FORMAT_VERSION } from '../src/server/backup-config.js';
 
 function getLocalTimestamp(date: Date = new Date()): string {
   const year = date.getFullYear();
@@ -15,6 +20,7 @@ function getLocalTimestamp(date: Date = new Date()): string {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
+  setBackupResponseHeaders(res);
 
   // 允许 POST 和 GET 请求（GET 用于自动备份）
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -43,6 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const backupTime = getLocalTimestamp();
     const { data, stats, totalRecords } = await fetchBackupData(supabase);
     const sqlContent = generateSqlBackup(data, stats, backupTime);
+    const integrity = getBackupIntegrity(sqlContent);
     console.log(`已備份 ${totalRecords} 筆資料`);
 
     const totalTime = Date.now() - startTime;
@@ -51,6 +58,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 返回 SQL 内容（作为文本响应）
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="eswake_backup_${getLocalTimestamp().replace(/:/g, '-')}.sql"`);
+    res.setHeader('Content-Length', String(integrity.bytes));
+    res.setHeader('X-Backup-SHA256', integrity.checksum);
+
+    if (req.method === 'POST') {
+      await supabase.from('backup_logs').insert({
+        backup_type: 'full_database',
+        destination: 'manual_download',
+        status: 'success',
+        records_count: totalRecords,
+        file_size: String(integrity.bytes),
+        file_size_bytes: integrity.bytes,
+        checksum: integrity.checksum,
+        format_version: BACKUP_FORMAT_VERSION,
+        execution_time: totalTime,
+      });
+    }
+
     return res.status(200).send(sqlContent);
 
   } catch (error: any) {

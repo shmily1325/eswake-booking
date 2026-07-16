@@ -29,6 +29,7 @@ export const BACKUP_TABLES = [
   'transactions',
   'shop_order_no_seq',
   'daily_announcements',
+  'reservation_restrictions',
   'audit_log',
   'system_settings',
   'line_bindings',
@@ -36,6 +37,8 @@ export const BACKUP_TABLES = [
 ] as const
 
 export type BackupTable = (typeof BACKUP_TABLES)[number]
+
+export const BACKUP_FORMAT_VERSION = 3
 
 export const TABLE_ORDER_COLUMN: Partial<Record<BackupTable, string>> = {
   shop_order_no_seq: 'seq_date',

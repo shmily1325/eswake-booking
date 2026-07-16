@@ -18,14 +18,33 @@ import {
 interface BackupLog {
   id: number
   backup_type: string
+  destination: string | null
   status: string
   records_count: number | null
   file_name: string | null
   file_size: string | null
+  file_size_bytes: number | null
+  checksum: string | null
+  format_version: number | null
   file_url: string | null
   error_message: string | null
   execution_time: number | null
   created_at: string | null
+}
+
+function getLogDestination(log: BackupLog): 'google_drive' | 'wd_local' | 'manual_download' | 'other' {
+  if (log.destination === 'google_drive' || log.backup_type === 'cloud_drive') return 'google_drive'
+  if (log.destination === 'wd_local') return 'wd_local'
+  if (log.destination === 'manual_download' || log.backup_type === 'full_database') return 'manual_download'
+  return 'other'
+}
+
+function destinationLabel(log: BackupLog): string {
+  const destination = getLogDestination(log)
+  if (destination === 'google_drive') return 'Google Drive'
+  if (destination === 'wd_local') return '本機 WD'
+  if (destination === 'manual_download') return '手動下載'
+  return log.backup_type
 }
 
 type HealthStatus = 'ok' | 'warning' | 'error' | 'unknown'
@@ -138,7 +157,7 @@ export function BackupPage() {
         .from('backup_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(10)
+        .limit(30)
 
       if (error) {
         console.error('載入備份記錄失敗:', error)
@@ -158,6 +177,15 @@ export function BackupPage() {
   }, [fetchBackupLogs])
 
   const backupHealth = getBackupHealth(backupLogs)
+  const cloudLogs = backupLogs.filter((log) => getLogDestination(log) === 'google_drive')
+  const wdLogs = backupLogs.filter((log) => getLogDestination(log) === 'wd_local')
+  const cloudHealth = getBackupHealth(cloudLogs)
+  const wdHealth = getBackupHealth(wdLogs)
+  const requiredHealth = cloudHealth.status !== 'ok'
+    ? { ...cloudHealth, message: `Google Drive：${cloudHealth.message}` }
+    : wdLogs.length > 0 && wdHealth.status !== 'ok'
+      ? { ...wdHealth, message: `本機 WD：${wdHealth.message}` }
+      : backupHealth
   const isAnyLoading = fullBackupLoading || cloudBackupLoading
   const lastSuccess = backupLogs.find((log) => log.status === 'success')
 
@@ -241,6 +269,23 @@ export function BackupPage() {
     }
   }
 
+  const downloadOfflineTool = async () => {
+    try {
+      const response = await fetch('/offline.html', { cache: 'no-store' })
+      if (!response.ok) throw new Error('無法取得離線工具')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'eswake-offline.html'
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success('離線工具已下載，請與最新 SQL 備份一起保存。')
+    } catch (error) {
+      toast.error(`下載失敗：${(error as Error).message}`)
+    }
+  }
+
   return (
     <div
       style={{
@@ -275,11 +320,11 @@ export function BackupPage() {
             <span
               aria-hidden
               title={
-                backupHealth.status === 'ok'
+                requiredHealth.status === 'ok'
                   ? '綠燈'
-                  : backupHealth.status === 'warning'
+                  : requiredHealth.status === 'warning'
                     ? '黃燈'
-                    : backupHealth.status === 'error'
+                    : requiredHealth.status === 'error'
                       ? '紅燈'
                       : '無資料'
               }
@@ -287,12 +332,12 @@ export function BackupPage() {
                 width: 14,
                 height: 14,
                 borderRadius: '50%',
-                background: backupHealth.light,
+                background: requiredHealth.light,
                 flexShrink: 0,
                 boxShadow:
-                  backupHealth.status === 'unknown'
+                  requiredHealth.status === 'unknown'
                     ? 'none'
-                    : `0 0 0 3px ${backupHealth.light}33`,
+                    : `0 0 0 3px ${requiredHealth.light}33`,
               }}
             />
             <h2
@@ -301,11 +346,11 @@ export function BackupPage() {
                 fontSize: isMobile ? 22 : 28,
                 fontWeight: 700,
                 letterSpacing: '-0.02em',
-                color: backupHealth.color,
+                color: requiredHealth.color,
                 lineHeight: 1.25,
               }}
             >
-              {backupHealth.message}
+              {requiredHealth.message}
             </h2>
           </div>
           {lastSuccess?.created_at && (
@@ -333,17 +378,17 @@ export function BackupPage() {
           >
             系統每天自動備份（台灣時間 02:00）
           </p>
-            {(backupHealth.status === 'error' || backupHealth.status === 'warning') && (
+            {(requiredHealth.status === 'error' || requiredHealth.status === 'warning') && (
               <p
                 style={{
                   margin: '12px 0 0 0',
                   fontSize: 14,
                   fontWeight: 500,
-                  color: backupHealth.color,
+                    color: requiredHealth.color,
                   lineHeight: 1.5,
                 }}
               >
-                {backupHealth.status === 'error' ? '請通知工程師' : '請手動備份'}
+                {requiredHealth.status === 'error' ? '請通知工程師' : '請檢查該備份目的地'}
               </p>
             )}
         </section>
@@ -405,7 +450,8 @@ export function BackupPage() {
                           color: designSystem.colors.text.primary,
                         }}
                       >
-                        {formatLogTime(log.created_at)}
+                        {destinationLabel(log)} · {formatLogTime(log.created_at)}
+                        {log.checksum ? ` · ${log.checksum.slice(0, 10)}…` : ''}
                       </div>
                       {!ok && (
                         <div
@@ -524,14 +570,14 @@ export function BackupPage() {
             </button>
             <button
               type="button"
-              onClick={() => window.open('/offline', '_blank', 'noopener,noreferrer')}
+              onClick={downloadOfflineTool}
               style={{
                 ...getButtonStyle('secondary', 'large', isMobile),
                 flex: isMobile ? undefined : 1,
                 width: isMobile ? '100%' : undefined,
               }}
             >
-              開啟離線查詢
+              下載離線工具
             </button>
           </div>
         </section>
