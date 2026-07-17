@@ -1796,7 +1796,7 @@ export function CoachAssignment() {
                           color: designSystem.colors.secondary[700],
                           fontWeight: '500'
                         }}>
-                          整天休假
+                          🏖️ 整天休假
                         </span>
                       )}
                     </div>
@@ -1808,7 +1808,7 @@ export function CoachAssignment() {
                           padding: isMobile ? '0 16px 8px' : '0 20px 10px',
                           borderBottom: `1px solid ${designSystem.colors.border.main}`,
                         }}>
-                          {partialOffLabel}休假
+                          🏖️ {partialOffLabel}休假
                         </div>
                       )}
                     </div>
@@ -2051,7 +2051,7 @@ export function CoachAssignment() {
                                 color: designSystem.colors.secondary[700],
                                 borderRadius: designSystem.borderRadius.sm,
                               }}>
-                                偷懶中
+                                😏😏😏
                               </span>
                             )}
                           </div>
@@ -2152,7 +2152,7 @@ export function CoachAssignment() {
                                         }}
                                         disabled={isUnavailable}
                                       >
-                                        {c.name}{isOnTimeOff && !isSelected ? '（休假）' : ''}
+                                        {c.name}{isOnTimeOff && !isSelected ? ' 🏖️' : ''}
                                 </button>
                     )
                   })}
@@ -2179,8 +2179,9 @@ export function CoachAssignment() {
                                       whiteSpace: 'nowrap'
                                     }}
                                     title={currentAssignment.skipped ? '點一下取消偷懶 (改回正常排班)' : '今天就先不排這筆，按儲存時不會被擋'}
+                                    aria-label={currentAssignment.skipped ? '取消偷懶' : '偷懶'}
                                   >
-                                    {currentAssignment.skipped ? '偷懶中' : '偷懶'}
+                                    😏😏😏
                                   </button>
                               </div>
                               </div>
