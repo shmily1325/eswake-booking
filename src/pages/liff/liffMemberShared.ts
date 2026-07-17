@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import liff from '@line/liff'
-import type { Member } from './types'
+import type { Member, Transaction } from './types'
 
 export const LIFF_MEMBER_SELECT =
   'id, name, nickname, phone, birthday, membership_type, membership_partner_id, membership_end_date, board_slot_number, board_expiry_date, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours'
@@ -220,4 +220,30 @@ export async function updateLiffMemberBirthday(
   const result = data as BirthdayUpdateResult | null
   if (result?.success) return null
   return result?.error || '生日更新失敗'
+}
+
+type TransactionQueryResult = {
+  success?: boolean
+  error?: string
+  transactions?: Transaction[]
+}
+
+export async function fetchLiffMemberTransactions(
+  lineUserId: string,
+  category: string,
+  sinceDate: string,
+): Promise<Transaction[]> {
+  const { data, error } = await supabase.rpc('get_liff_member_transactions', {
+    p_line_user_id: lineUserId,
+    p_category: category,
+    p_since_date: sinceDate,
+  })
+
+  if (error) throw new Error(error.message)
+
+  const result = data as TransactionQueryResult | null
+  if (!result?.success) {
+    throw new Error(result?.error || '交易記錄載入失敗')
+  }
+  return Array.isArray(result.transactions) ? result.transactions : []
 }

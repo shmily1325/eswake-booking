@@ -1555,6 +1555,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_liff_member_transactions: {
+        Args: {
+          p_category: string
+          p_line_user_id: string
+          p_since_date?: string | null
+        }
+        Returns: Json
+      }
       is_boat_available: {
         Args: { p_boat_id: number; p_check_date: string }
         Returns: boolean

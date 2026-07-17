@@ -6,6 +6,10 @@ const migration = readFileSync(
   resolve(process.cwd(), 'migrations/143_add_liff_birthday_rpc.sql'),
   'utf8',
 )
+const revokeMigration = readFileSync(
+  resolve(process.cwd(), 'migrations/144_revoke_anon_member_update.sql'),
+  'utf8',
+)
 const shared = readFileSync(
   resolve(process.cwd(), 'src/pages/liff/liffMemberShared.ts'),
   'utf8',
@@ -54,5 +58,20 @@ describe('LIFF birthday RPC migration', () => {
   it('does not revoke the legacy policy during phase one', () => {
     expect(migration).not.toContain('DROP POLICY')
     expect(migration).not.toContain('REVOKE UPDATE ON TABLE public.members FROM anon')
+  })
+
+  it('revokes broad member updates only after requiring the birthday RPC', () => {
+    expect(revokeMigration).toContain(
+      "to_regprocedure('public.update_liff_member_birthday(text,date)')",
+    )
+    expect(revokeMigration).toContain(
+      'DROP POLICY IF EXISTS "allow_anon_update_birthday" ON public.members;',
+    )
+    expect(revokeMigration).toContain(
+      'REVOKE UPDATE ON TABLE public.members FROM anon;',
+    )
+    expect(revokeMigration).not.toMatch(
+      /REVOKE\s+(SELECT|INSERT|DELETE|ALL)/i,
+    )
   })
 })

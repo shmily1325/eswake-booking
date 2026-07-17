@@ -41,6 +41,7 @@ import {
   isFirstDocumentLoadThisNavigation,
   liteMemberFromRow,
   LIFF_MEMBER_SELECT,
+  fetchLiffMemberTransactions,
   unknownErrorMessage,
   updateLiffMemberBirthday,
 } from './liffMemberShared'
@@ -346,18 +347,8 @@ export function LiffMyBookings() {
       // 計算兩個月前的日期
       const twoMonthsAgoStr = addDaysToDate(getVenueDateString(), -60)
 
-      // 查詢該類別的交易記錄
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('id, transaction_date, category, adjust_type, transaction_type, amount, minutes, description, notes')
-        .eq('member_id', memberId)
-        .eq('category', category)
-        .gte('transaction_date', twoMonthsAgoStr)
-        .order('transaction_date', { ascending: false })
-
-      if (error) throw error
-
-      const result = data || []
+      if (!lineUserId) throw new Error('缺少 LINE 使用者識別')
+      const result = await fetchLiffMemberTransactions(lineUserId, category, twoMonthsAgoStr)
       setTransactions(result)
       // 存入快取
       setTransactionCache(prev => ({ ...prev, [cacheKey]: result }))
