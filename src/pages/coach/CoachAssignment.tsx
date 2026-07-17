@@ -110,7 +110,7 @@ function AssignmentReferencePanel({
         top: isMobile ? undefined : 16,
         marginBottom: isMobile ? designSystem.spacing.md : undefined,
         background: designSystem.colors.background.card,
-        border: `1px solid ${designSystem.colors.border.light}`,
+        border: `1px solid ${isMobile ? designSystem.colors.info[500] : designSystem.colors.border.light}`,
         borderRadius: designSystem.borderRadius.lg,
         boxShadow: designSystem.shadows.xs,
         overflow: 'hidden',
@@ -129,15 +129,34 @@ function AssignmentReferencePanel({
             justifyContent: 'space-between',
             alignItems: 'center',
             border: 'none',
-            background: designSystem.colors.background.card,
+            background: expanded ? designSystem.colors.background.card : designSystem.colors.info[50],
             color: designSystem.colors.text.primary,
             fontSize: getFontSize('body', true),
             fontWeight: 600,
             cursor: 'pointer',
           }}
         >
-          <span>排班參考</span>
-          <span style={{ color: designSystem.colors.text.disabled }}>{expanded ? '收起' : '展開'}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <span>排班參考</span>
+            {!expanded && (
+              <span style={{
+                color: designSystem.colors.info[700],
+                fontSize: getFontSize('caption', true),
+                fontWeight: 500,
+              }}>
+                今日＋本月
+              </span>
+            )}
+          </span>
+          <span style={{
+            padding: '3px 8px',
+            borderRadius: designSystem.borderRadius.full,
+            background: expanded ? designSystem.colors.background.hover : designSystem.colors.background.card,
+            color: designSystem.colors.info[700],
+            fontSize: getFontSize('caption', true),
+          }}>
+            {expanded ? '收起' : '展開'}
+          </span>
         </button>
       ) : (
         <div
@@ -1636,16 +1655,6 @@ export function CoachAssignment() {
           />
         )}
 
-        {!loading && bookings.length > 0 && isMobile && (
-          <AssignmentReferencePanel
-            todayStats={assignmentOverviewStats}
-            monthlyRows={monthlyWorkloadRows}
-            monthlyLoading={monthlyWorkloadLoading}
-            monthlyError={monthlyWorkloadError}
-            isMobile
-          />
-        )}
-
         {/* 當天可上班人員 - 在今日總覽下方 */}
         {!loading && (
           <DailyStaffDisplay date={selectedDate} isMobile={isMobile} />
@@ -1941,6 +1950,16 @@ export function CoachAssignment() {
                           )
                         })}
               </div>
+
+              {isMobile && (
+                <AssignmentReferencePanel
+                  todayStats={assignmentOverviewStats}
+                  monthlyRows={monthlyWorkloadRows}
+                  monthlyLoading={monthlyWorkloadLoading}
+                  monthlyError={monthlyWorkloadError}
+                  isMobile
+                />
+              )}
               
               {/* 底部區塊：需要駕駛（並排網格）*/}
               <div style={{ 
