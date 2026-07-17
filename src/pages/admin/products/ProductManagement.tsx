@@ -147,6 +147,9 @@ export function ProductManagement({
     })
   }
 
+  // 商品管理可切換庫存列表／畫廊；唯讀商品查詢固定使用列表
+  const [layout, setLayout] = useState<'gallery' | 'table'>('table')
+
   // 列表縮圖：封面優先 or 實拍優先（記憶於 localStorage）
   const [listImageMode, setListImageMode] = useState<ListImageMode>(() => {
     if (typeof window === 'undefined') return 'cover'
@@ -646,14 +649,17 @@ export function ProductManagement({
             }}
           >
             {canEdit && (
-              <ImageModeToggle
-                mode={listImageMode}
-                isMobile={isMobile}
-                onChange={(next) => {
-                  setListImageModePersist(next)
-                  trackClick(`product_list_image_${next}`, user?.email ?? undefined)
-                }}
-              />
+              <>
+                <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
+                <ImageModeToggle
+                  mode={listImageMode}
+                  isMobile={isMobile}
+                  onChange={(next) => {
+                    setListImageModePersist(next)
+                    trackClick(`product_list_image_${next}`, user?.email ?? undefined)
+                  }}
+                />
+              </>
             )}
           </div>
         </div>
@@ -679,6 +685,13 @@ export function ProductManagement({
             onCreate={() => {
               setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
             }}
+          />
+        ) : canEdit && layout === 'gallery' ? (
+          <ProductGalleryGrid
+            items={filteredItems}
+            isMobile={isMobile}
+            imageMode={listImageMode}
+            onCardClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
           />
         ) : isMobile ? (
           <MobileListView
@@ -1433,6 +1446,300 @@ function ImageModeToggle({ mode, onChange, isMobile }: ImageModeToggleProps) {
       >
         實拍
       </button>
+    </div>
+  )
+}
+
+interface LayoutToggleProps {
+  layout: 'gallery' | 'table'
+  onChange: (next: 'gallery' | 'table') => void
+  isMobile: boolean
+}
+
+function LayoutToggle({ layout, onChange, isMobile }: LayoutToggleProps) {
+  const cellStyle = (active: boolean): React.CSSProperties => ({
+    minWidth: isMobile ? 62 : 72,
+    height: isMobile ? 40 : 34,
+    padding: '0 10px',
+    border: 'none',
+    background: active ? colors.primary[500] : colors.background.card,
+    color: active ? colors.background.card : colors.text.secondary,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: getFontSize('bodySmall', isMobile),
+    fontWeight: active ? 700 : 500,
+    whiteSpace: 'nowrap',
+  })
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        border: `1px solid ${colors.border.main}`,
+        borderRadius: borderRadius.sm,
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
+      <button
+        type="button"
+        data-track="product_layout_table"
+        title="庫存列表：含完整規格與庫存資訊"
+        aria-label="庫存列表"
+        aria-pressed={layout === 'table'}
+        style={cellStyle(layout === 'table')}
+        onClick={() => onChange('table')}
+      >
+        庫存
+      </button>
+      <button
+        type="button"
+        data-track="product_layout_gallery"
+        title="畫廊：以圖片瀏覽商品"
+        aria-label="畫廊模式"
+        aria-pressed={layout === 'gallery'}
+        style={{ ...cellStyle(layout === 'gallery'), borderLeft: `1px solid ${colors.border.main}` }}
+        onClick={() => onChange('gallery')}
+      >
+        畫廊
+      </button>
+    </div>
+  )
+}
+
+interface ProductGalleryGridProps {
+  items: VariantListItem[]
+  isMobile: boolean
+  imageMode: ListImageMode
+  onCardClick: (productId: string, variantId: string) => void
+}
+
+function ProductGalleryGrid({ items, isMobile, imageMode, onCardClick }: ProductGalleryGridProps) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gap: isMobile ? 10 : 14,
+        gridTemplateColumns: isMobile
+          ? 'repeat(2, minmax(0, 1fr))'
+          : 'repeat(auto-fill, minmax(180px, 1fr))',
+      }}
+    >
+      {items.map((item) => (
+        <GalleryCard
+          key={item.variant.id}
+          item={item}
+          imageMode={imageMode}
+          onClick={() => onCardClick(item.product.id, item.variant.id)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function GalleryCard({
+  item,
+  imageMode,
+  onClick,
+}: {
+  item: VariantListItem
+  imageMode: ListImageMode
+  onClick: () => void
+}) {
+  const { variant, product } = item
+  const status = inventoryStatusBadge(variant, product.is_public)
+  const attrText = formatAttributes(product.category, variant.attributes)
+  const imageUrl = getVariantListImageUrl(variant, imageMode)
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      data-track="product_edit_open"
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onClick()
+        }
+      }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        background: colors.background.card,
+        border: `1px solid ${colors.border.light}`,
+        borderRadius: borderRadius.lg,
+        padding: 8,
+        textAlign: 'left',
+        cursor: 'pointer',
+        width: '100%',
+        boxSizing: 'border-box',
+        transition: designSystem.transitions.fast,
+      }}
+      onMouseEnter={(event) => {
+        event.currentTarget.style.boxShadow = designSystem.shadows.sm
+        event.currentTarget.style.transform = 'translateY(-2px)'
+      }}
+      onMouseLeave={(event) => {
+        event.currentTarget.style.boxShadow = 'none'
+        event.currentTarget.style.transform = 'translateY(0)'
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          aspectRatio: '9 / 16',
+          background: colors.secondary[50],
+          borderRadius: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            loading="lazy"
+          />
+        ) : (
+          <ImagePlaceholder />
+        )}
+        <span
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            fontSize: getFontSize('caption', false),
+            fontWeight: 600,
+            padding: '2px 7px',
+            borderRadius: 999,
+            background: status.bg,
+            color: status.color,
+            boxShadow: designSystem.shadows.xs,
+          }}
+        >
+          {status.label}
+        </span>
+      </div>
+
+      <div
+        style={{
+          paddingTop: 8,
+          paddingInline: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            fontSize: getFontSize('caption', false),
+            color: colors.text.disabled,
+            fontWeight: 500,
+            textTransform: 'uppercase',
+            letterSpacing: 0.3,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {product.brand}
+        </div>
+        <div
+          title={product.model}
+          style={{
+            fontSize: getFontSize('bodySmall', false),
+            fontWeight: 700,
+            color: colors.text.primary,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.3,
+          }}
+        >
+          {product.model}
+        </div>
+        {attrText && (
+          <div
+            title={attrText}
+            style={{
+              fontSize: getFontSize('caption', false),
+              color: colors.text.secondary,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {attrText}
+          </div>
+        )}
+        {product.description && (
+          <div
+            title={product.description}
+            style={{
+              fontSize: getFontSize('caption', false),
+              color: colors.text.secondary,
+              lineHeight: 1.35,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'break-word',
+            }}
+          >
+            {product.description}
+          </div>
+        )}
+        <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', false) }}>
+          <PriceDisplay price={variant.price} />
+        </div>
+        {formatStockInAt(variant.last_stock_in_at) && (
+          <div style={{ marginTop: 2, fontSize: getFontSize('caption', false), color: colors.text.secondary }}>
+            入庫 {formatStockInAt(variant.last_stock_in_at)}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ImagePlaceholder() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        color: colors.text.disabled,
+      }}
+    >
+      <span
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: borderRadius.sm,
+          background: colors.secondary[100],
+          border: `1px solid ${colors.border.light}`,
+        }}
+      />
+      <span
+        style={{
+          fontSize: getFontSize('caption', true),
+          color: colors.text.disabled,
+          letterSpacing: 1,
+        }}
+      >
+        NO IMAGE
+      </span>
     </div>
   )
 }

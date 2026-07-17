@@ -23,7 +23,7 @@ import { isAdmin, hasEditorFeatureAsync } from '../../utils/auth'
 import { logCoachAssignment } from '../../utils/auditLog'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { useToast, ToastContainer } from '../../components/ui'
-import { computeAssignmentOverviewStats } from '../../utils/todayOverviewStats'
+import { computeAssignmentOverviewStats, type TodayOverviewStats } from '../../utils/todayOverviewStats'
 import { addDaysToDate, getVenueDateString } from '../../utils/date'
 import { fetchAllPaginated } from '../../utils/supabasePaginate'
 import {
@@ -134,16 +134,26 @@ function MonthlyWorkloadRows({
 }
 
 function AssignmentReferencePanel({
-  todayEntries,
+  todayStats,
   monthlyRows,
   monthlyLoading,
   monthlyError,
 }: {
-  todayEntries: Array<[string, { count: number; totalMinutes: number }]>
+  todayStats: TodayOverviewStats
   monthlyRows: MonthlyWorkloadStat[]
   monthlyLoading: boolean
   monthlyError: string
 }) {
+  const todayCoachStats = new Map(todayStats.sortedCoaches)
+  const todayDriverStats = new Map(todayStats.sortedDrivers)
+  const todayRows = todayStats.sortedCombined.map(([name, combined]) => ({
+    name,
+    count: combined.count,
+    coachingMinutes: todayCoachStats.get(name)?.totalMinutes ?? 0,
+    drivingMinutes: todayDriverStats.get(name)?.totalMinutes ?? 0,
+    combinedMinutes: combined.totalMinutes,
+  }))
+
   return (
     <aside
       style={{
@@ -171,19 +181,22 @@ function AssignmentReferencePanel({
 
       <div style={{ padding: '14px 20px 18px' }}>
       <section>
-        <div style={{ fontSize: getFontSize('body', false), fontWeight: 600 }}>今日教練＋駕駛</div>
-        <div style={{ marginTop: 3, marginBottom: 8, color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', false) }}>
-          含尚未儲存的調整
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <span style={{ fontSize: getFontSize('body', false), fontWeight: 600 }}>今日</span>
+          <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', false) }}>單位：分鐘</span>
         </div>
-        {todayEntries.length === 0 ? (
+        <div style={{ marginTop: 3, marginBottom: 8, color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', false) }}>
+          含尚未儲存
+        </div>
+        {todayRows.length === 0 ? (
           <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', false) }}>尚未安排人員</div>
         ) : (
           <div>
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) 54px 64px',
-                gap: 8,
+                gridTemplateColumns: 'minmax(0, 1fr) 36px 48px 48px 76px',
+                gap: 6,
                 padding: '4px 0 6px',
                 borderBottom: `1px solid ${designSystem.colors.border.light}`,
                 color: designSystem.colors.text.disabled,
@@ -194,15 +207,17 @@ function AssignmentReferencePanel({
             >
               <span style={{ textAlign: 'left' }}>人員</span>
               <span>筆數</span>
-              <span>分鐘</span>
+              <span>教練</span>
+              <span>駕駛</span>
+              <span>教練＋駕駛</span>
             </div>
-            {todayEntries.map(([name, stat], index) => (
+            {todayRows.map((row, index) => (
               <div
-                key={name}
+                key={row.name}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'minmax(0, 1fr) 54px 64px',
-                  gap: 8,
+                  gridTemplateColumns: 'minmax(0, 1fr) 36px 48px 48px 76px',
+                  gap: 6,
                   padding: '7px 0',
                   borderTop: index === 0 ? undefined : `1px solid ${designSystem.colors.border.light}`,
                   alignItems: 'baseline',
@@ -210,9 +225,11 @@ function AssignmentReferencePanel({
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{name}</span>
-                <span style={{ color: designSystem.colors.text.secondary, textAlign: 'right' }}>{stat.count} 筆</span>
-                <span style={{ textAlign: 'right', fontWeight: 600 }}>{stat.totalMinutes.toLocaleString()} 分</span>
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{row.name}</span>
+                <span style={{ color: designSystem.colors.text.secondary, textAlign: 'right' }}>{row.count}</span>
+                <span style={{ textAlign: 'right' }}>{row.coachingMinutes.toLocaleString()}</span>
+                <span style={{ textAlign: 'right' }}>{row.drivingMinutes.toLocaleString()}</span>
+                <span style={{ textAlign: 'right', fontWeight: 600 }}>{row.combinedMinutes.toLocaleString()}</span>
               </div>
             ))}
           </div>
@@ -2231,7 +2248,7 @@ export function CoachAssignment() {
               )}
               {!isMobile && (
                 <AssignmentReferencePanel
-                  todayEntries={assignmentOverviewStats.sortedCombined}
+                  todayStats={assignmentOverviewStats}
                   monthlyRows={monthlyWorkloadRows}
                   monthlyLoading={monthlyWorkloadLoading}
                   monthlyError={monthlyWorkloadError}

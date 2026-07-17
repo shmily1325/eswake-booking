@@ -1596,14 +1596,14 @@ function DeductionItemRow({
   }
 
   const categories = [
-    { value: 'balance', label: '💰 儲值', emoji: '💰' },
-    { value: 'vip_voucher', label: '💎 VIP票券', emoji: '💎' },
-    { value: 'boat_voucher_g23', label: '🚤 G23船券', emoji: '🚤' },
-    { value: 'boat_voucher_g21_panther', label: '🚤 G21/黑豹券', emoji: '🚤' },
-    { value: 'designated_lesson', label: '🎓 指定課時數', emoji: '🎓' },
-    { value: 'plan', label: '⭐ 方案', emoji: '⭐' },
-    { value: 'gift_boat_hours', label: '🎁 贈送時數', emoji: '🎁' },
-    { value: 'direct_settlement', label: '✅ 直接結清', emoji: '✅' },
+    { value: 'balance', label: '儲值' },
+    { value: 'vip_voucher', label: 'VIP票券' },
+    { value: 'boat_voucher_g23', label: 'G23船券' },
+    { value: 'boat_voucher_g21_panther', label: 'G21/黑豹券' },
+    { value: 'designated_lesson', label: '指定課時數' },
+    { value: 'plan', label: '方案' },
+    { value: 'gift_boat_hours', label: '贈送時數' },
+    { value: 'direct_settlement', label: '直接結清' },
   ]
 
   const isBalance = item.category === 'balance'
@@ -1615,9 +1615,6 @@ function DeductionItemRow({
   // memberData 由父層傳入，已為「實際扣款帳戶」（含代扣會員）
   const showGuestMemberBoatBalanceReminder =
     memberData?.membership_type === 'guest' && isBalance && !isDesignatedLessonFromBalance
-  const currentCategory = categories.find(c => c.value === item.category)
-  
-
   // 計算餘額（考慮前面項目的累計扣款）
   const calculateBalance = () => {
     if (!memberData) return { before: 0, after: 0 }
@@ -1683,26 +1680,15 @@ function DeductionItemRow({
         }}>
           <div style={{ 
             display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
+            alignItems: 'center'
           }}>
             <span style={{ 
-              fontSize: getFontSize('caption', true), 
+              fontSize: getFontSize('bodySmall', isMobile),
               fontWeight: '500',
               color: designSystem.colors.text.secondary,
-              background: '#ffffff',
-              border: `1px solid ${designSystem.colors.border.light}`,
-              width: '20px',
-              height: '20px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
             }}>
               {index}
             </span>
-            <span style={{ fontSize: getFontSize('body', isMobile) }}>{currentCategory?.emoji}</span>
           </div>
           {canRemove && (
             <button
@@ -1733,6 +1719,14 @@ function DeductionItemRow({
 
       {/* 類別選擇 */}
       <div style={{ marginBottom: '14px' }}>
+        <div style={{
+          fontSize: getFontSize('bodySmall', isMobile),
+          color: designSystem.colors.text.secondary,
+          marginBottom: designSystem.spacing.sm,
+          fontWeight: '500'
+        }}>
+          扣款方式：
+        </div>
         <select
           value={item.category}
           onChange={(e) => {
@@ -1839,12 +1833,8 @@ function DeductionItemRow({
             background: designSystem.colors.success[50],
             padding: '14px 18px',
             borderRadius: designSystem.borderRadius.lg,
-            border: `1px solid ${designSystem.colors.success[500]}33`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+            border: `1px solid ${designSystem.colors.success[500]}33`
           }}>
-            <span style={{ fontSize: '18px' }}>✅</span>
             <div>
               <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', color: designSystem.colors.success[700] }}>
                 直接結清
@@ -1859,12 +1849,8 @@ function DeductionItemRow({
             background: designSystem.colors.warning[50],
             padding: '14px 18px',
             borderRadius: designSystem.borderRadius.lg,
-            border: `1px solid ${designSystem.colors.warning[500]}55`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+            border: `1px solid ${designSystem.colors.warning[500]}55`
           }}>
-            <span style={{ fontSize: '18px' }}>⭐</span>
             <div>
               <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', color: designSystem.colors.warning[700] }}>
                 方案記錄
@@ -1928,28 +1914,26 @@ function DeductionItemRow({
               </div>
               {/* 計算說明 */}
               <div style={{ 
-                marginTop: '8px',
+                marginTop: designSystem.spacing.sm,
                 fontSize: getFontSize('bodySmall', isMobile), 
                 color: designSystem.colors.text.secondary,
-                background: designSystem.colors.background.hover,
-                padding: '8px 12px',
-                borderRadius: designSystem.borderRadius.md,
-                lineHeight: 1.5
+                lineHeight: 1.5,
+                paddingInline: designSystem.spacing.xs
               }}>
                 {isDesignatedLessonFromBalance ? (
                   coachPrice30min 
-                    ? <>📝 ${coachPrice30min.toLocaleString()}/30分 ÷ 30 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去)</span></>
-                    : <>📝 指定課費用 <span style={{ color: '#999' }}></span></>
+                    ? <>${coachPrice30min.toLocaleString()}/30分 ÷ 30 × {defaultMinutes}分 = <strong style={{ color: designSystem.colors.text.primary }}>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: designSystem.colors.text.disabled }}>(無條件捨去)</span></>
+                    : <>指定課費用</>
                 ) : isBalance ? (
                   boatData?.balance_price_per_hour 
-                    ? <>📝 ${boatData.balance_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去)</span></>
-                    : <>📝 儲值扣款 <span style={{ color: '#999' }}></span></>
+                    ? <>${boatData.balance_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong style={{ color: designSystem.colors.text.primary }}>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: designSystem.colors.text.disabled }}>(無條件捨去)</span></>
+                    : <>儲值扣款</>
                 ) : isVipVoucher ? (
                   boatData?.vip_price_per_hour 
-                    ? <>📝 ${boatData.vip_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: '#999' }}>(無條件捨去)</span></>
-                    : <>📝 VIP 票券扣款 <span style={{ color: '#999' }}></span></>
+                    ? <>${boatData.vip_price_per_hour.toLocaleString()}/時 ÷ 60 × {defaultMinutes}分 = <strong style={{ color: designSystem.colors.text.primary }}>${item.amount?.toLocaleString() || '?'}</strong> <span style={{ color: designSystem.colors.text.disabled }}>(無條件捨去)</span></>
+                    : <>VIP 票券扣款</>
                 ) : (
-                  <>📝 扣款金額 <span style={{ color: '#999' }}></span></>
+                  <>扣款金額</>
                 )}
               </div>
             </div>
@@ -1988,14 +1972,13 @@ function DeductionItemRow({
               </div>
               {/* 說明 */}
               <div style={{ 
-                marginTop: '8px',
+                marginTop: designSystem.spacing.sm,
                 fontSize: getFontSize('bodySmall', isMobile), 
                 color: designSystem.colors.text.secondary,
-                background: designSystem.colors.background.hover,
-                padding: '8px 12px',
-                borderRadius: designSystem.borderRadius.md
+                paddingInline: designSystem.spacing.xs,
+                lineHeight: 1.5
               }}>
-                📝 依教練回報 {defaultMinutes} 分鐘帶入 <span style={{ color: '#999' }}></span>
+                依教練回報 {defaultMinutes} 分鐘帶入
               </div>
             </div>
           </div>
@@ -2004,13 +1987,13 @@ function DeductionItemRow({
         {/* 錯誤提示：金額/時數 */}
         {(validationErrors[`item-${itemIndex}-amount`] || validationErrors[`item-${itemIndex}-minutes`]) && (
           <div style={{
-            marginTop: '8px',
-            padding: '8px 12px',
-            background: '#fef2f2',
-            borderRadius: '6px',
-            border: '1px solid #fecaca',
+            marginTop: designSystem.spacing.sm,
+            padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+            background: designSystem.colors.danger[50],
+            borderRadius: designSystem.borderRadius.md,
+            border: `1px solid ${designSystem.colors.danger[500]}`,
             fontSize: getFontSize('bodySmall', isMobile),
-            color: '#dc2626',
+            color: designSystem.colors.danger[700],
             display: 'flex',
             alignItems: 'center',
             gap: '6px'
@@ -2045,13 +2028,13 @@ function DeductionItemRow({
           {/* 錯誤提示：方案名稱 */}
           {validationErrors[`item-${itemIndex}-planName`] && (
             <div style={{
-              marginTop: '8px',
-              padding: '8px 12px',
-              background: '#fef2f2',
-              borderRadius: '6px',
-              border: '1px solid #fecaca',
+              marginTop: designSystem.spacing.sm,
+              padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+              background: designSystem.colors.danger[50],
+              borderRadius: designSystem.borderRadius.md,
+              border: `1px solid ${designSystem.colors.danger[500]}`,
               fontSize: getFontSize('bodySmall', isMobile),
-              color: '#dc2626',
+              color: designSystem.colors.danger[700],
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
@@ -2119,12 +2102,12 @@ function DeductionItemRow({
         ) : (
           <div 
             style={{
-              padding: '10px 12px',
-              background: designSystem.colors.background.hover,
+              padding: `${designSystem.spacing.sm} ${designSystem.spacing.xs}`,
+              background: designSystem.colors.background.card,
               border: validationErrors[`item-${itemIndex}-description`]
                 ? `1px solid ${designSystem.colors.danger[500]}`
-                : `1px solid ${designSystem.colors.border.light}`,
-              borderRadius: designSystem.borderRadius.md,
+                : '1px solid transparent',
+              borderRadius: designSystem.borderRadius.sm,
               fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
               whiteSpace: 'nowrap',
@@ -2141,13 +2124,13 @@ function DeductionItemRow({
         {/* 錯誤提示：說明 */}
         {validationErrors[`item-${itemIndex}-description`] && (
           <div style={{
-            marginTop: '8px',
-            padding: '8px 12px',
-            background: '#fef2f2',
-            borderRadius: '6px',
-            border: '1px solid #fecaca',
+            marginTop: designSystem.spacing.sm,
+            padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+            background: designSystem.colors.danger[50],
+            borderRadius: designSystem.borderRadius.md,
+            border: `1px solid ${designSystem.colors.danger[500]}`,
             fontSize: getFontSize('bodySmall', isMobile),
-            color: '#dc2626',
+            color: designSystem.colors.danger[700],
             display: 'flex',
             alignItems: 'center',
             gap: '6px'
@@ -2167,7 +2150,7 @@ function DeductionItemRow({
             style={{
               padding: '8px 12px',
               background: designSystem.colors.background.card,
-              border: `1px dashed ${designSystem.colors.border.main}`,
+              border: `1px solid ${designSystem.colors.border.light}`,
               borderRadius: designSystem.borderRadius.md,
               fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
@@ -2236,21 +2219,21 @@ function DeductionItemRow({
       {/* 餘額顯示（簡化為單行） */}
       {memberData && !isDirectSettlement && !isPlan && (
         <div style={{
-          padding: '8px 12px',
+          padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
           background: balance.after < 0
             ? designSystem.colors.danger[50]
-            : designSystem.colors.success[50],
+            : designSystem.colors.background.card,
           borderRadius: designSystem.borderRadius.md,
           fontSize: getFontSize('bodySmall', isMobile),
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           border: balance.after < 0
-            ? `1px solid ${designSystem.colors.danger[500]}55`
-            : `1px solid ${designSystem.colors.success[500]}55`
+            ? `1px solid ${designSystem.colors.danger[500]}`
+            : `1px solid ${designSystem.colors.border.light}`
         }}>
           <span style={{ color: designSystem.colors.text.secondary, fontWeight: '500' }}>
-            {currentCategory?.emoji} 餘額
+            餘額
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: designSystem.colors.text.secondary }}>
@@ -2261,7 +2244,7 @@ function DeductionItemRow({
               fontWeight: '600',
               color: balance.after < 0
                 ? designSystem.colors.danger[700]
-                : designSystem.colors.success[700]
+                : designSystem.colors.text.primary
             }}>
               {(isBalance || isVipVoucher) ? `$${balance.after.toLocaleString()}` : `${balance.after}分`}
             </span>

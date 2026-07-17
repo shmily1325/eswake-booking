@@ -257,17 +257,6 @@ export function MemberPhoneEditPage() {
     >
       <PageHeader title="會員電話" user={user} showBaoLink={false} />
 
-      <p
-        style={{
-          fontSize: getFontSize('body', isMobile),
-          color: designSystem.colors.text.secondary,
-          marginBottom: '14px',
-          lineHeight: 1.5,
-        }}
-      >
-        按「編輯」或點電話欄可改手機；可貼含空格或 +886，儲存會整理成 09 開頭。編輯中按 Enter 可儲存。
-      </p>
-
       <div
         style={{
           display: 'flex',
