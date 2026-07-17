@@ -64,101 +64,51 @@ interface MonthlyWorkloadStat {
   drivingMinutes: number
 }
 
-function MonthlyWorkloadRows({
-  rows,
-  loading,
-  error,
-  isMobile,
-}: {
-  rows: MonthlyWorkloadStat[]
-  loading: boolean
-  error: string
-  isMobile: boolean
-}) {
-  if (loading) {
-    return <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', isMobile) }}>載入中…</div>
-  }
-  if (error) {
-    return <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', isMobile) }}>暫時無法載入</div>
-  }
-  if (rows.length === 0) {
-    return <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', isMobile) }}>本月尚無資料</div>
-  }
-
-  return (
-    <div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(58px, 1fr) minmax(64px, auto) minmax(64px, auto)',
-          gap: isMobile ? 6 : 10,
-          padding: '4px 0 6px',
-          borderBottom: `1px solid ${designSystem.colors.border.light}`,
-          color: designSystem.colors.text.disabled,
-          fontSize: getFontSize('caption', isMobile),
-          fontWeight: 600,
-          textAlign: 'right',
-        }}
-      >
-        <span style={{ textAlign: 'left' }}>人員</span>
-        <span>教學</span>
-        <span>駕駛</span>
-      </div>
-      {rows.map((row, index) => (
-        <div
-          key={row.coachId}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(58px, 1fr) minmax(64px, auto) minmax(64px, auto)',
-            alignItems: 'baseline',
-            gap: isMobile ? 6 : 10,
-            padding: '8px 0',
-            borderTop: index === 0 ? undefined : `1px solid ${designSystem.colors.border.light}`,
-            fontSize: getFontSize('bodySmall', isMobile),
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
-            {row.coachName}
-          </span>
-          <span style={{ color: designSystem.colors.text.primary, whiteSpace: 'nowrap', textAlign: 'right', fontWeight: 600 }}>
-            {row.teachingMinutes.toLocaleString()} 分
-          </span>
-          <span style={{ color: designSystem.colors.text.primary, whiteSpace: 'nowrap', textAlign: 'right', fontWeight: 600 }}>
-            {row.drivingMinutes.toLocaleString()} 分
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function AssignmentReferencePanel({
   todayStats,
   monthlyRows,
   monthlyLoading,
   monthlyError,
+  isMobile = false,
 }: {
   todayStats: TodayOverviewStats
   monthlyRows: MonthlyWorkloadStat[]
   monthlyLoading: boolean
   monthlyError: string
+  isMobile?: boolean
 }) {
+  const [expanded, setExpanded] = useState(!isMobile)
   const todayCoachStats = new Map(todayStats.sortedCoaches)
   const todayDriverStats = new Map(todayStats.sortedDrivers)
-  const todayRows = todayStats.sortedCombined.map(([name, combined]) => ({
-    name,
-    count: combined.count,
-    coachingMinutes: todayCoachStats.get(name)?.totalMinutes ?? 0,
-    drivingMinutes: todayDriverStats.get(name)?.totalMinutes ?? 0,
-    combinedMinutes: combined.totalMinutes,
-  }))
+  const monthlyByName = new Map(monthlyRows.map((row) => [row.coachName, row]))
+  const todayNames = new Set(todayStats.sortedCombined.map(([name]) => name))
+  const rows = [
+    ...todayStats.sortedCombined.map(([name, combined]) => ({
+      name,
+      count: combined.count,
+      coachingMinutes: todayCoachStats.get(name)?.totalMinutes ?? 0,
+      drivingMinutes: todayDriverStats.get(name)?.totalMinutes ?? 0,
+      combinedMinutes: combined.totalMinutes,
+      monthly: monthlyByName.get(name),
+    })),
+    ...monthlyRows
+      .filter((row) => !todayNames.has(row.coachName))
+      .map((monthly) => ({
+        name: monthly.coachName,
+        count: 0,
+        coachingMinutes: 0,
+        drivingMinutes: 0,
+        combinedMinutes: 0,
+        monthly,
+      })),
+  ]
 
   return (
     <aside
       style={{
-        position: 'sticky',
-        top: 16,
+        position: isMobile ? 'static' : 'sticky',
+        top: isMobile ? undefined : 16,
+        marginBottom: isMobile ? designSystem.spacing.md : undefined,
         background: designSystem.colors.background.card,
         border: `1px solid ${designSystem.colors.border.light}`,
         borderRadius: designSystem.borderRadius.lg,
@@ -166,41 +116,70 @@ function AssignmentReferencePanel({
         overflow: 'hidden',
       }}
     >
-      <div
-        style={{
-          padding: '20px 20px 8px',
-          borderBottom: `1px solid ${designSystem.colors.border.main}`,
-          display: 'flex',
-          alignItems: 'center',
-          fontSize: getFontSize('h3', false),
-          fontWeight: 600,
-        }}
-      >
-        排班參考
-      </div>
+      {isMobile ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          style={{
+            width: '100%',
+            minHeight: 46,
+            padding: '11px 14px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            border: 'none',
+            background: designSystem.colors.background.card,
+            color: designSystem.colors.text.primary,
+            fontSize: getFontSize('body', true),
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          <span>排班參考</span>
+          <span style={{ color: designSystem.colors.text.disabled }}>{expanded ? '收起' : '展開'}</span>
+        </button>
+      ) : (
+        <div
+          style={{
+            padding: '20px 20px 8px',
+            borderBottom: `1px solid ${designSystem.colors.border.main}`,
+            display: 'flex',
+            alignItems: 'center',
+            fontSize: getFontSize('h3', false),
+            fontWeight: 600,
+          }}
+        >
+          排班參考
+        </div>
+      )}
 
-      <div style={{ padding: '14px 20px 18px' }}>
+      {expanded && <div style={{
+        padding: isMobile ? '10px 12px 12px' : '14px 20px 18px',
+        borderTop: isMobile ? `1px solid ${designSystem.colors.border.light}` : undefined,
+      }}>
       <section>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-          <span style={{ fontSize: getFontSize('body', false), fontWeight: 600 }}>今日</span>
-          <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', false) }}>單位：分鐘</span>
+          <span style={{ fontSize: getFontSize('body', isMobile), fontWeight: 600 }}>今日</span>
+          <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', isMobile) }}>單位：分鐘</span>
         </div>
-        <div style={{ marginTop: 3, marginBottom: 8, color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', false) }}>
+        <div style={{ marginTop: 3, marginBottom: 8, color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', isMobile) }}>
           含尚未儲存
         </div>
-        {todayRows.length === 0 ? (
-          <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', false) }}>尚未安排人員</div>
+        {rows.length === 0 ? (
+          <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', isMobile) }}>尚未安排人員</div>
         ) : (
-          <div>
+          <div style={{ overflowX: isMobile ? 'auto' : undefined }}>
+            <div style={{ minWidth: isMobile ? 390 : undefined }}>
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) 36px 48px 48px 76px',
+                gridTemplateColumns: 'minmax(54px, 1fr) 30px 42px 42px 56px 100px',
                 gap: 6,
                 padding: '4px 0 6px',
                 borderBottom: `1px solid ${designSystem.colors.border.light}`,
                 color: designSystem.colors.text.disabled,
-                fontSize: getFontSize('caption', false),
+                fontSize: getFontSize('caption', isMobile),
                 fontWeight: 600,
                 textAlign: 'right',
               }}
@@ -209,91 +188,43 @@ function AssignmentReferencePanel({
               <span>筆數</span>
               <span>教練</span>
               <span>駕駛</span>
-              <span>教練＋駕駛</span>
+              <span>合計</span>
+              <span>本月 教／駕</span>
             </div>
-            {todayRows.map((row, index) => (
+            {rows.map((row, index) => (
               <div
                 key={row.name}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'minmax(0, 1fr) 36px 48px 48px 76px',
+                  gridTemplateColumns: 'minmax(54px, 1fr) 30px 42px 42px 56px 100px',
                   gap: 6,
                   padding: '7px 0',
                   borderTop: index === 0 ? undefined : `1px solid ${designSystem.colors.border.light}`,
                   alignItems: 'baseline',
-                  fontSize: getFontSize('bodySmall', false),
+                  fontSize: getFontSize('bodySmall', isMobile),
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{row.name}</span>
-                <span style={{ color: designSystem.colors.text.secondary, textAlign: 'right' }}>{row.count}</span>
-                <span style={{ textAlign: 'right' }}>{row.coachingMinutes.toLocaleString()}</span>
-                <span style={{ textAlign: 'right' }}>{row.drivingMinutes.toLocaleString()}</span>
-                <span style={{ textAlign: 'right', fontWeight: 600 }}>{row.combinedMinutes.toLocaleString()}</span>
+                <span style={{ color: designSystem.colors.text.secondary, textAlign: 'right' }}>{row.count || '—'}</span>
+                <span style={{ textAlign: 'right' }}>{row.coachingMinutes || '—'}</span>
+                <span style={{ textAlign: 'right' }}>{row.drivingMinutes || '—'}</span>
+                <span style={{ textAlign: 'right', fontWeight: 600 }}>{row.combinedMinutes || '—'}</span>
+                <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {monthlyLoading
+                    ? '載入中…'
+                    : monthlyError
+                      ? '—'
+                      : `${(row.monthly?.teachingMinutes ?? 0).toLocaleString()}／${(row.monthly?.drivingMinutes ?? 0).toLocaleString()}`}
+                </span>
               </div>
             ))}
+            </div>
           </div>
         )}
       </section>
-
-      <section style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${designSystem.colors.border.light}` }}>
-        <div style={{ fontSize: getFontSize('body', false), fontWeight: 600, marginBottom: 6 }}>本月統計</div>
-        <MonthlyWorkloadRows rows={monthlyRows} loading={monthlyLoading} error={monthlyError} isMobile={false} />
-      </section>
-      </div>
+      </div>}
     </aside>
-  )
-}
-
-function MobileMonthlyWorkload({
-  rows,
-  loading,
-  error,
-}: {
-  rows: MonthlyWorkloadStat[]
-  loading: boolean
-  error: string
-}) {
-  const [expanded, setExpanded] = useState(false)
-
-  return (
-    <div
-      style={{
-        marginBottom: designSystem.spacing.md,
-        background: designSystem.colors.background.card,
-        border: `1px solid ${designSystem.colors.border.light}`,
-        borderRadius: designSystem.borderRadius.lg,
-        overflow: 'hidden',
-      }}
-    >
-      <button
-        type="button"
-        onClick={() => setExpanded((value) => !value)}
-        aria-expanded={expanded}
-        style={{
-          width: '100%',
-          minHeight: 46,
-          padding: '11px 14px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          border: 'none',
-          background: designSystem.colors.background.card,
-          color: designSystem.colors.text.primary,
-          fontSize: getFontSize('body', true),
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}
-      >
-        <span>本月統計</span>
-        <span style={{ color: designSystem.colors.text.disabled }}>{expanded ? '收起' : '展開'}</span>
-      </button>
-      {expanded && (
-        <div style={{ padding: '0 14px 10px', borderTop: `1px solid ${designSystem.colors.border.light}` }}>
-          <MonthlyWorkloadRows rows={rows} loading={loading} error={error} isMobile />
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -1697,10 +1628,12 @@ export function CoachAssignment() {
         )}
 
         {!loading && bookings.length > 0 && isMobile && (
-          <MobileMonthlyWorkload
-            rows={monthlyWorkloadRows}
-            loading={monthlyWorkloadLoading}
-            error={monthlyWorkloadError}
+          <AssignmentReferencePanel
+            todayStats={assignmentOverviewStats}
+            monthlyRows={monthlyWorkloadRows}
+            monthlyLoading={monthlyWorkloadLoading}
+            monthlyError={monthlyWorkloadError}
+            isMobile
           />
         )}
 
@@ -2252,6 +2185,7 @@ export function CoachAssignment() {
                   monthlyRows={monthlyWorkloadRows}
                   monthlyLoading={monthlyWorkloadLoading}
                   monthlyError={monthlyWorkloadError}
+                  isMobile={false}
                 />
               )}
               </div>
