@@ -46,9 +46,9 @@ describe('LIFF birthday RPC migration', () => {
   })
 
   it('switches both binding flows away from direct member updates', () => {
-    expect(shared).toContain("supabase.rpc('update_liff_member_birthday'")
+    expect(shared).toContain("callLiffMemberApi<BirthdayUpdateResult>('birthday'")
     for (const flow of bindingFlows) {
-      expect(flow).toContain('updateLiffMemberBirthday(lineUserId, birthday)')
+      expect(flow).toContain('bindLiffMember(lineUserId, phone, birthday)')
       expect(flow).not.toMatch(
         /\.from\(['"]members['"]\)\s*\.update\(\{\s*birthday\s*\}\)/,
       )

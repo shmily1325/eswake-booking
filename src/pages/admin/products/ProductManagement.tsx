@@ -2,10 +2,10 @@
  * Design thinking:
  * Current feel: InventoryDashboard rainbow chips + emoji image placeholders read as admin KPI chrome.
  * Hierarchy: search/list primary; filter chips secondary near-black; status soft tonal only.
- * Primary task: find or scan a SKU to inspect stock/price; editors can continue into edit or order.
+ * Primary task: find or scan a SKU to inspect stock/price; editors can continue into edit.
  */
 import { useEffect, useMemo, useState } from 'react'
-import type { MouseEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
@@ -146,10 +146,6 @@ export function ProductManagement({
       return next
     })
   }
-
-  // 列表顯示模式：'gallery' = 圖大張只看縮圖；'table' = 庫存作業列表
-  // 每次進入商品頁都從庫存作業列表開始；畫廊仍可於當次操作中切換
-  const [layout, setLayout] = useState<'gallery' | 'table'>('table')
 
   // 列表縮圖：封面優先 or 實拍優先（記憶於 localStorage）
   const [listImageMode, setListImageMode] = useState<ListImageMode>(() => {
@@ -334,10 +330,6 @@ export function ProductManagement({
    * 只要當前清單跨越多個 category 就顯示（不然欄位每列都一樣，浪費空間）。
    */
   const showCategoryColumn = activeSubCat === 'all'
-
-  const startOrderWithVariant = (variantId: string) => {
-    navigate(`/products/orders?newVariant=${encodeURIComponent(variantId)}`)
-  }
 
   // ====== 權限尚未確認/拒絕：先顯示 loading ======
   if (!accessChecked || !hasAccess) {
@@ -654,17 +646,14 @@ export function ProductManagement({
             }}
           >
             {canEdit && (
-              <>
-                <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
-                <ImageModeToggle
-                  mode={listImageMode}
-                  isMobile={isMobile}
-                  onChange={(next) => {
-                    setListImageModePersist(next)
-                    trackClick(`product_list_image_${next}`, user?.email ?? undefined)
-                  }}
-                />
-              </>
+              <ImageModeToggle
+                mode={listImageMode}
+                isMobile={isMobile}
+                onChange={(next) => {
+                  setListImageModePersist(next)
+                  trackClick(`product_list_image_${next}`, user?.email ?? undefined)
+                }}
+              />
             )}
           </div>
         </div>
@@ -691,21 +680,12 @@ export function ProductManagement({
               setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
             }}
           />
-        ) : canEdit && layout === 'gallery' ? (
-          <ProductGalleryGrid
-            items={filteredItems}
-            isMobile={isMobile}
-            imageMode={listImageMode}
-            onCardClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
-            onStartOrder={canEdit ? startOrderWithVariant : undefined}
-          />
         ) : isMobile ? (
           <MobileListView
             items={filteredItems}
             imageMode={listImageMode}
             canEdit={canEdit}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
-            onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
         ) : (
           <DesktopTable
@@ -714,7 +694,6 @@ export function ProductManagement({
             imageMode={listImageMode}
             canEdit={canEdit}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
-            onStartOrder={canEdit ? startOrderWithVariant : undefined}
           />
         )}
 
@@ -1323,27 +1302,6 @@ function DashboardStatChip({ label, count, active, onClick, trackId, isMobile }:
   )
 }
 
-function shopStatusBadge(
-  variant: ProductVariantRow,
-  isPublic: boolean,
-): { bg: string; color: string; label: string } {
-  if (!isPublic) {
-    return { bg: colors.secondary[100], color: colors.text.disabled, label: '未公開' }
-  }
-  const avail = getVariantAvailability(variant)
-  const sellableStock = getVariantSellableStock(variant)
-  const reservedStock = variant.reserved_qty ?? 0
-  if (avail === 'in_stock') {
-    const label = reservedStock > 0
-      ? `可售 ${sellableStock} · 保留 ${reservedStock}`
-      : `可售 ${sellableStock}`
-    if (sellableStock <= 2) return { bg: colors.warning[50], color: colors.warning[700], label }
-    return { bg: colors.success[50], color: colors.success[700], label }
-  }
-  if (avail === 'pre_order') return { bg: colors.warning[50], color: colors.warning[700], label: '預購' }
-  return { bg: colors.secondary[100], color: colors.text.disabled, label: '已售完' }
-}
-
 function inventoryStatusBadge(
   variant: ProductVariantRow,
   isPublic: boolean,
@@ -1363,16 +1321,6 @@ function inventoryStatusBadge(
   }
   return { bg: colors.secondary[100], color: colors.text.disabled, label: '已售完' }
 }
-
-function variantCardBorder(variant: ProductVariantRow, isPublic: boolean): string {
-  if (!isPublic) return colors.border.light
-  const avail = getVariantAvailability(variant)
-  if (avail === 'pre_order') return colors.warning[500]
-  if (avail === 'in_stock' && getVariantSellableStock(variant) <= 2) return colors.warning[500]
-  if (avail === 'sold_out') return colors.border.light
-  return colors.border.light
-}
-
 
 function formatStockInAt(at: string | null | undefined): string | null {
   if (!at) return null
@@ -1489,322 +1437,6 @@ function ImageModeToggle({ mode, onChange, isMobile }: ImageModeToggleProps) {
   )
 }
 
-/** 畫廊／庫存列表切換按鈕 */
-interface LayoutToggleProps {
-  layout: 'gallery' | 'table'
-  onChange: (next: 'gallery' | 'table') => void
-  isMobile: boolean
-}
-function LayoutToggle({ layout, onChange, isMobile }: LayoutToggleProps) {
-  const cellStyle = (active: boolean): React.CSSProperties => ({
-    minWidth: isMobile ? 62 : 72,
-    height: isMobile ? 40 : 34,
-    padding: '0 10px',
-    border: 'none',
-    background: active ? colors.primary[500] : colors.background.card,
-    color: active ? colors.background.card : colors.text.secondary,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: getFontSize('bodySmall', isMobile),
-    fontWeight: active ? 700 : 500,
-    whiteSpace: 'nowrap',
-  })
-  return (
-    <div
-      style={{
-        display: 'flex',
-        border: `1px solid ${colors.border.main}`,
-        borderRadius: borderRadius.sm,
-        overflow: 'hidden',
-        flexShrink: 0,
-      }}
-    >
-      <button
-        type="button"
-        data-track="product_layout_table"
-        title="庫存列表：含完整規格與庫存資訊"
-        aria-label="庫存列表"
-        style={cellStyle(layout === 'table')}
-        onClick={() => onChange('table')}
-      >
-        ≡ 庫存
-      </button>
-      <button
-        type="button"
-        data-track="product_layout_gallery"
-        title="畫廊：以圖片瀏覽商品"
-        aria-label="畫廊模式"
-        style={{ ...cellStyle(layout === 'gallery'), borderLeft: `1px solid ${colors.border.main}` }}
-        onClick={() => onChange('gallery')}
-      >
-        ▦ 畫廊
-      </button>
-    </div>
-  )
-}
-
-/** 畫廊：只顯示圖縮圖 + 品牌型號 + 價格 */
-interface ProductGalleryGridProps {
-  items: VariantListItem[]
-  isMobile: boolean
-  imageMode: ListImageMode
-  onCardClick: (productId: string, variantId: string) => void
-  onStartOrder?: (variantId: string) => void
-}
-function ProductGalleryGrid({ items, isMobile, imageMode, onCardClick, onStartOrder }: ProductGalleryGridProps) {
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gap: isMobile ? 10 : 14,
-        // 手機 2 欄、桌機自動排（每張至少 180px 寬）
-        gridTemplateColumns: isMobile
-          ? 'repeat(2, minmax(0, 1fr))'
-          : 'repeat(auto-fill, minmax(180px, 1fr))',
-      }}
-    >
-      {items.map((it) => (
-        <GalleryCard
-          key={it.variant.id}
-          item={it}
-          imageMode={imageMode}
-          onClick={() => onCardClick(it.product.id, it.variant.id)}
-          onStartOrder={onStartOrder}
-        />
-      ))}
-    </div>
-  )
-}
-
-interface GalleryCardProps {
-  item: VariantListItem
-  imageMode: ListImageMode
-  onClick: () => void
-  onStartOrder?: (variantId: string) => void
-}
-function GalleryCard({ item, imageMode, onClick, onStartOrder }: GalleryCardProps) {
-  const { variant, product } = item
-  const status = shopStatusBadge(variant, product.is_public)
-  const attrText = formatAttributes(product.category, variant.attributes)
-  const cardBorder = variantCardBorder(variant, product.is_public)
-  const imageUrl = getVariantListImageUrl(variant, imageMode)
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      data-track="product_edit_open"
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onClick()
-        }
-      }}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        background: colors.background.card,
-        border: '1px solid ' + cardBorder,
-        borderRadius: borderRadius.lg,
-        padding: 8,
-        textAlign: 'left',
-        cursor: 'pointer',
-        width: '100%',
-        boxSizing: 'border-box',
-        transition: designSystem.transitions.fast,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = designSystem.shadows.sm
-        e.currentTarget.style.transform = 'translateY(-2px)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'none'
-        e.currentTarget.style.transform = 'translateY(0)'
-      }}
-    >
-      {/* 圖（9:16 portrait），inset 在卡片內，跟邊緣有空隙 */}
-      <div
-        style={{
-          width: '100%',
-          aspectRatio: '9 / 16',
-          background: colors.secondary[50],
-          borderRadius: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          position: 'relative',
-        }}
-      >
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            loading="lazy"
-          />
-        ) : (
-          <ImagePlaceholder />
-        )}
-        {/* 庫存標籤浮在右上 */}
-        <span
-          style={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            fontSize: getFontSize('caption', false),
-            fontWeight: 600,
-            padding: '2px 7px',
-            borderRadius: 999,
-            background: status.bg,
-            color: status.color,
-            boxShadow: designSystem.shadows.xs,
-          }}
-        >
-          {status.label}
-        </span>
-      </div>
-
-      {/* 文字區：跟圖之間用 padding 自然分隔 */}
-      <div
-        style={{
-          paddingTop: 8,
-          paddingInline: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          minWidth: 0,
-        }}
-      >
-        <div
-          style={{
-            fontSize: getFontSize('caption', false),
-            color: colors.text.disabled,
-            fontWeight: 500,
-            textTransform: 'uppercase',
-            letterSpacing: 0.3,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {product.brand}
-        </div>
-        <div
-          style={{
-            fontSize: getFontSize('bodySmall', false),
-            fontWeight: 700,
-            color: colors.text.primary,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            lineHeight: 1.3,
-          }}
-          title={product.model}
-        >
-          {product.model}
-        </div>
-        {attrText && (
-          <div
-            style={{
-              fontSize: getFontSize('caption', false),
-              color: colors.text.secondary,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-            title={attrText}
-          >
-            {attrText}
-          </div>
-        )}
-        {product.description && (
-          <div
-            title={product.description}
-            style={{
-              fontSize: getFontSize('caption', false),
-              color: colors.text.secondary,
-              lineHeight: 1.35,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              wordBreak: 'break-word',
-            }}
-          >
-            {product.description}
-          </div>
-        )}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: 4,
-            gap: 6,
-            minWidth: 0,
-          }}
-        >
-          <div style={{ fontSize: getFontSize('bodySmall', false), minWidth: 0 }}>
-            <PriceDisplay price={variant.price} />
-          </div>
-          {onStartOrder && (
-            <StartOrderButton
-              onClick={(e) => {
-                e.stopPropagation()
-                onStartOrder(variant.id)
-              }}
-            />
-          )}
-        </div>
-        {formatStockInAt(variant.last_stock_in_at) && (
-          <div style={{ marginTop: 2, fontSize: getFontSize('caption', false), color: colors.text.secondary }}>
-            入庫 {formatStockInAt(variant.last_stock_in_at)}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-/** 缺圖時的 placeholder：淺底＋文字，不使用分類 emoji */
-function ImagePlaceholder() {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        color: colors.text.disabled,
-      }}
-    >
-      <span
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: borderRadius.sm,
-          background: colors.secondary[100],
-          border: `1px solid ${colors.border.light}`,
-        }}
-      />
-      <span
-        style={{
-          fontSize: getFontSize('caption', true),
-          color: colors.text.disabled,
-          letterSpacing: 1,
-        }}
-      >
-        NO IMAGE
-      </span>
-    </div>
-  )
-}
-
 // ============================================================
 //  手機列表（取代 table）：每筆 SKU 一張橫式卡片，圖在左、資訊在右
 // ============================================================
@@ -1813,9 +1445,8 @@ interface MobileListViewProps {
   imageMode: ListImageMode
   canEdit: boolean
   onRowClick: (productId: string, variantId: string) => void
-  onStartOrder?: (variantId: string) => void
 }
-function MobileListView({ items, imageMode, canEdit, onRowClick, onStartOrder }: MobileListViewProps) {
+function MobileListView({ items, imageMode, canEdit, onRowClick }: MobileListViewProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {items.map((it) => (
@@ -1825,7 +1456,6 @@ function MobileListView({ items, imageMode, canEdit, onRowClick, onStartOrder }:
           imageMode={imageMode}
           canEdit={canEdit}
           onClick={() => onRowClick(it.product.id, it.variant.id)}
-          onStartOrder={onStartOrder}
         />
       ))}
     </div>
@@ -1837,13 +1467,11 @@ function MobileListRow({
   imageMode,
   canEdit,
   onClick,
-  onStartOrder,
 }: {
   item: VariantListItem
   imageMode: ListImageMode
   canEdit: boolean
   onClick: () => void
-  onStartOrder?: (variantId: string) => void
 }) {
   const { variant, product } = item
   const status = inventoryStatusBadge(variant, product.is_public)
@@ -1877,7 +1505,7 @@ function MobileListRow({
         boxSizing: 'border-box',
       }}
     >
-      {/* 只有商品基本資料採圖片＋文字雙欄，其餘資訊使用卡片全寬 */}
+      {/* 查詢模式採圖片／商品資料／價格庫存三欄；管理資訊維持卡片全寬 */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <div
           style={{
@@ -1999,40 +1627,60 @@ function MobileListRow({
             </div>
           )}
         </div>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          marginTop: 7,
-          gap: '5px 9px',
-          color: colors.text.secondary,
-          fontSize: getFontSize('bodySmall', true),
-        }}
-      >
-        <div style={{ color: colors.text.primary, fontWeight: 600 }}>
-          <PriceDisplay price={variant.price} />
-        </div>
-        {canEdit && <span style={{ color: colors.border.main }} aria-hidden="true">｜</span>}
-        {canEdit && <span>庫存 {stock}</span>}
-        {canEdit && <span>保留 {reserved}</span>}
-        {canEdit && <span>可售 {sellable}</span>}
         {!canEdit && (
-          <span style={{
+          <div style={{
             flexShrink: 0,
-            padding: '3px 9px',
-            borderRadius: 999,
-            background: status.bg,
-            color: status.color,
-            fontSize: getFontSize('bodySmall', true),
-            fontWeight: 700,
+            minWidth: 72,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: 7,
+            textAlign: 'right',
           }}>
-            現貨 {sellable}
-          </span>
+            <div style={{
+              color: colors.text.primary,
+              fontSize: getFontSize('bodySmall', true),
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}>
+              <PriceDisplay price={variant.price} />
+            </div>
+            <span style={{
+              padding: '3px 9px',
+              borderRadius: 999,
+              background: status.bg,
+              color: status.color,
+              fontSize: getFontSize('bodySmall', true),
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+            }}>
+              現貨 {sellable}
+            </span>
+          </div>
         )}
       </div>
+
+      {canEdit && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            marginTop: 7,
+            gap: '5px 9px',
+            color: colors.text.secondary,
+            fontSize: getFontSize('bodySmall', true),
+          }}
+        >
+          <div style={{ color: colors.text.primary, fontWeight: 600 }}>
+            <PriceDisplay price={variant.price} />
+          </div>
+          <span style={{ color: colors.border.main }} aria-hidden="true">｜</span>
+          <span>庫存 {stock}</span>
+          <span>保留 {reserved}</span>
+          <span>可售 {sellable}</span>
+        </div>
+      )}
       {canEdit && compactStockInAt && (
         <div style={{
           marginTop: 3,
@@ -2051,16 +1699,6 @@ function MobileListRow({
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {onStartOrder && (
-            <StartOrderButton
-              label="新增訂單"
-              wide
-              onClick={(e) => {
-                e.stopPropagation()
-                onStartOrder(variant.id)
-              }}
-            />
-          )}
           <EditProductButton label="編輯" wide onClick={onClick} />
         </div>
       )}
@@ -2074,9 +1712,8 @@ interface DesktopTableProps {
   imageMode: ListImageMode
   canEdit: boolean
   onRowClick: (productId: string, variantId: string) => void
-  onStartOrder?: (variantId: string) => void
 }
-function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClick, onStartOrder }: DesktopTableProps) {
+function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClick }: DesktopTableProps) {
   return (
     <div
       style={{
@@ -2105,7 +1742,7 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
               <th style={thStyle('76px', 'center')}>可售現貨</th>
               {canEdit && <th style={thStyle('88px', 'center')}>狀態</th>}
               {canEdit && <th style={thStyle('130px')}>入庫</th>}
-              {canEdit && <th style={thStyle(onStartOrder ? '170px' : '78px', 'center')}>操作</th>}
+              {canEdit && <th style={thStyle('78px', 'center')}>操作</th>}
             </tr>
           </thead>
           <tbody>
@@ -2232,16 +1869,6 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                       </td>
                       <td style={tdStyle('center')} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
-                          {onStartOrder && (
-                            <StartOrderButton
-                              label="新增訂單"
-                              tone="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onStartOrder(it.variant.id)
-                              }}
-                            />
-                          )}
                           <EditProductButton
                             label="編輯"
                             onClick={() => onRowClick(it.product.id, it.variant.id)}
@@ -2292,42 +1919,6 @@ function EditProductButton({ label, onClick, wide = false }: { label: string; on
         color: colors.text.primary,
         fontSize: getFontSize('button', wide),
         fontWeight: 600,
-        cursor: 'pointer',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-function StartOrderButton({
-  onClick,
-  label = '開單',
-  wide = false,
-  tone = 'primary',
-}: {
-  onClick: (e: MouseEvent<HTMLButtonElement>) => void
-  label?: string
-  wide?: boolean
-  tone?: 'primary' | 'secondary'
-}) {
-  const primary = tone === 'primary'
-  return (
-    <button
-      type="button"
-      data-track="product_start_order"
-      onClick={onClick}
-      style={{
-        fontSize: getFontSize('button', wide),
-        fontWeight: 600,
-        padding: '6px 10px',
-        flex: wide ? 1 : undefined,
-        minHeight: wide ? 44 : 32,
-        borderRadius: 8,
-        border: `1px solid ${primary ? colors.primary[500] : colors.border.main}`,
-        background: primary ? colors.primary[500] : colors.background.card,
-        color: primary ? colors.background.card : colors.text.primary,
         cursor: 'pointer',
         whiteSpace: 'nowrap',
       }}

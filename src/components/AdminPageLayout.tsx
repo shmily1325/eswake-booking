@@ -47,7 +47,7 @@ export function adminPillRowStyle(): CSSProperties {
     gap: 6,
     alignItems: 'center',
     overflowX: 'auto',
-    paddingBottom: 2,
+    padding: '7px 7px 2px 0',
     WebkitOverflowScrolling: 'touch',
   }
 }
@@ -68,6 +68,7 @@ export function adminPillButtonStyle(active: boolean): CSSProperties {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
+    position: 'relative',
   }
 }
 
@@ -75,10 +76,23 @@ export function adminPillBadgeStyle(active: boolean): CSSProperties {
   return {
     fontSize: getFontSize('caption', true),
     fontWeight: 700,
-    padding: '1px 6px',
+    position: 'absolute',
+    top: -7,
+    right: -7,
+    minWidth: 19,
+    height: 19,
+    padding: '0 4px',
+    boxSizing: 'border-box',
     borderRadius: 999,
-    background: active ? 'rgba(255,255,255,0.22)' : '#f0f0f0',
-    color: active ? '#fff' : '#666',
+    background: '#ef5b3f',
+    color: '#fff',
+    border: `2px solid ${active ? '#222' : '#fff'}`,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 1,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+    pointerEvents: 'none',
   }
 }
 
@@ -228,7 +242,7 @@ export function AdminPillButton({
     >
       {children}
       {badge != null && badge > 0 && (
-        <span style={adminPillBadgeStyle(active)}>{badge}</span>
+        <span style={adminPillBadgeStyle(active)}>{badge > 99 ? '99+' : badge}</span>
       )}
     </button>
   )

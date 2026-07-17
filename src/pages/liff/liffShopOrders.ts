@@ -1,4 +1,3 @@
-import { supabase } from '../../lib/supabase'
 import { designSystem } from '../../styles/designSystem'
 import { formatAttributes } from '../admin/products/schema'
 import {
@@ -8,20 +7,9 @@ import {
   qtyOpen,
 } from '../admin/orders/orderUtils'
 import type { ShopOrderWithItems } from '../admin/orders/types'
+import { callLiffMemberApi } from './liffMemberShared'
 
 const c = designSystem.colors
-
-const LIFF_ORDER_SELECT = `
-  id, order_no, contact_name, delivery_method, shipping_info, customer_note, cancelled_at, created_at,
-  settlements:shop_order_settlements(amount_total),
-  items:shop_order_items(
-    id, qty, qty_pending_bill, qty_paid, unit_price,
-    variant:product_variants(
-      id, vendor_code, attributes, last_stock_in_at, stock, reserved_qty,
-      product:products(brand, model, category)
-    )
-  )
-`
 
 export type LiffShopOrder = ShopOrderWithItems & {
   settlements?: Array<{ amount_total: number }>
@@ -165,14 +153,15 @@ export function liffHiddenItemsProgressHint(items: LiffShopOrder['items']): stri
   return `另有 ${items.length} 項：${parts.join(' · ')}`
 }
 
-export async function fetchLiffShopOrders(memberId: string): Promise<LiffShopOrder[]> {
-  const { data, error } = await supabase
-    .from('shop_orders')
-    .select(LIFF_ORDER_SELECT)
-    .eq('member_id', memberId)
-    .is('cancelled_at', null)
-    .order('created_at', { ascending: false })
+type LiffShopOrdersRpcResult = {
+  success?: boolean
+  error?: string
+  orders?: LiffShopOrder[]
+}
 
-  if (error) throw new Error(error.message)
-  return (data ?? []) as unknown as LiffShopOrder[]
+export async function fetchLiffShopOrders(lineUserId: string): Promise<LiffShopOrder[]> {
+  if (!lineUserId) throw new Error('缺少 LINE 使用者識別')
+  const result = await callLiffMemberApi<LiffShopOrdersRpcResult>('orders')
+  if (!result?.success) throw new Error(result?.error || '商品訂單載入失敗')
+  return Array.isArray(result.orders) ? result.orders : []
 }

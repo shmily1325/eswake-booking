@@ -4,7 +4,6 @@ import liff from '@line/liff'
 import {
   addDaysToDate,
   addMinutesToTime,
-  getLocalTimestamp,
   getVenueDateString,
   parseDbTimestamp,
 } from '../../utils/date'
@@ -35,20 +34,18 @@ import { ES_BRAND } from '../../lib/esBrandTokens'
 import { LIFF_THEME } from './liffUiStyles'
 import { LiffBootScreen } from './LiffBootScreen'
 import {
-  enrichMemberForLiff,
+  bindLiffMember,
   ensureLiffLoggedIn,
+  fetchMemberByLineUserId,
   initLiffSdk,
   isFirstDocumentLoadThisNavigation,
-  liteMemberFromRow,
-  LIFF_MEMBER_SELECT,
   fetchLiffMemberTransactions,
   unknownErrorMessage,
-  updateLiffMemberBirthday,
 } from './liffMemberShared'
 
 function startMemberBackgroundLoads(
-  memberId: string,
-  memberData: Record<string, unknown>,
+  member: Member,
+  lineUserId: string,
   handlers: {
     setMember: (m: Member) => void
     setBookingsLoading: (v: boolean) => void
@@ -58,19 +55,10 @@ function startMemberBackgroundLoads(
   },
 ) {
   handlers.setBookingsLoading(true)
-  handlers.setMemberEnriching(true)
-  handlers.setMember(liteMemberFromRow(memberData))
-
-  void handlers.loadBookings(memberId).finally(() => handlers.setBookingsLoading(false))
-
-  void enrichMemberForLiff(memberData)
-    .then(handlers.setMember)
-    .catch(err => {
-      console.warn('LIFF 會員資料 enrichment 失敗（沿用基本資料）:', err)
-    })
-    .finally(() => handlers.setMemberEnriching(false))
-
-  void handlers.loadShopOrders(memberId, true)
+  handlers.setMemberEnriching(false)
+  handlers.setMember(member)
+  void handlers.loadBookings(member.id).finally(() => handlers.setBookingsLoading(false))
+  void handlers.loadShopOrders(lineUserId, true)
 }
 
 export function LiffMyBookings() {
@@ -122,10 +110,10 @@ export function LiffMyBookings() {
 
   const expiryBannerLines = useMemo(() => buildLiffExpiryBannerLines(member), [member])
 
-  const loadShopOrders = async (memberId: string, silent = false) => {
+  const loadShopOrders = useCallback(async (userId: string, silent = false) => {
     setLoadingShopOrders(true)
     try {
-      setShopOrders(await fetchLiffShopOrders(memberId))
+      setShopOrders(await fetchLiffShopOrders(userId))
     } catch (err: unknown) {
       console.error('載入商品訂單失敗:', err)
       if (!silent) toast.error('載入商品訂單失敗')
@@ -133,7 +121,7 @@ export function LiffMyBookings() {
     } finally {
       setLoadingShopOrders(false)
     }
-  }
+  }, [toast])
 
   const loadBookings = async (memberId: string) => {
     try {
@@ -198,37 +186,21 @@ export function LiffMyBookings() {
 
   const checkBinding = async (userId: string, displayName: string | null) => {
     try {
-      const { data: binding } = await supabase
-        .from('line_bindings')
-        .select(`member_id, members(${LIFF_MEMBER_SELECT})`)
-        .eq('line_user_id', userId)
-        .eq('status', 'active')
-        .single()
-
-      if (binding?.members) {
-        const memberData = binding.members as Record<string, unknown>
-        const memberId = memberData.id as string
+      const boundMember = await fetchMemberByLineUserId(userId, true)
+      if (boundMember) {
         setBootLoading(false)
-        startMemberBackgroundLoads(memberId, memberData, {
+        startMemberBackgroundLoads(boundMember, userId, {
           setMember,
           setBookingsLoading,
           setMemberEnriching,
           loadBookings,
           loadShopOrders,
         })
-        const { error: loginTimeError } = await supabase
-          .from('line_bindings')
-          .update({ last_liff_login_at: getLocalTimestamp() })
-          .eq('line_user_id', userId)
-          .eq('status', 'active')
-        if (loginTimeError) {
-          console.warn('更新 LIFF 最後登入時間失敗:', loginTimeError.message)
-        }
         liffTrack({
           icon_id: 'liff_open',
           line_user_id: userId,
-          member_id: memberId,
-          extras: { display_name: displayName ?? undefined, member_name: (memberData.name as string) ?? undefined },
+          member_id: boundMember.id,
+          extras: { display_name: displayName ?? undefined, member_name: boundMember.name },
         })
       } else {
         setShowBindingForm(true)
@@ -287,11 +259,11 @@ export function LiffMyBookings() {
   }, [])
 
   const refreshShopOrders = useCallback(async () => {
-    if (!member?.id) return
+    if (!lineUserId) return
     triggerHaptic('light')
-    await loadShopOrders(member.id, true)
+    await loadShopOrders(lineUserId, true)
     toast.success('訂單已更新')
-  }, [member?.id, toast])
+  }, [lineUserId, loadShopOrders, toast])
 
   // 刷新資料
   const handleRefresh = async () => {
@@ -306,23 +278,13 @@ export function LiffMyBookings() {
     setTransactionCache({})
     
     try {
-      // 重新查詢會員資料
-      const { data: binding } = await supabase
-        .from('line_bindings')
-        .select(`member_id, members(${LIFF_MEMBER_SELECT})`)
-        .eq('line_user_id', lineUserId)
-        .eq('status', 'active')
-        .single()
-
-      if (binding && binding.members) {
-        const memberData = binding.members as Record<string, unknown>
-        const memberId = memberData.id as string
-        const [enrichedMember] = await Promise.all([
-          enrichMemberForLiff(memberData),
-          loadBookings(memberId),
-          loadShopOrders(memberId, true),
+      const refreshedMember = await fetchMemberByLineUserId(lineUserId)
+      if (refreshedMember) {
+        await Promise.all([
+          loadBookings(refreshedMember.id),
+          loadShopOrders(lineUserId, true),
         ])
-        setMember(enrichedMember)
+        setMember(refreshedMember)
         toast.success('資料已更新')
       }
     } catch (err: unknown) {
@@ -376,88 +338,26 @@ export function LiffMyBookings() {
     setBinding(true)
     setBindingError(null)
     try {
-      // 清理電話號碼：移除所有非數字字符
-      const cleanPhone = phone.replace(/\D/g, '')
-      // 查詢會員：嘗試多種格式
-      const { data: allMembers } = await supabase
-        .from('members')
-        .select('id, name, nickname, phone, status')
-      
-      if (!allMembers || allMembers.length === 0) {
-        toast.error('無法查詢會員資料，請稍後再試')
-        setBinding(false)
-        return
-      }
-      
-      // 尋找匹配的會員（比對清理後的電話號碼）
-      const memberData = allMembers.find(m => {
-        const dbPhone = m.phone?.replace(/\D/g, '') || ''
-        return dbPhone === cleanPhone && m.status === 'active'
-      })
+      const birthday = birthYear && birthMonth && birthDay
+        ? `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`
+        : null
+      const boundMember = await bindLiffMember(lineUserId, phone, birthday)
 
-      if (!memberData) {
-        triggerHaptic('error')
-        setBindingError('找不到此手機號碼的會員資料')
-        setBinding(false)
-        return
-      }
-
-      // 創建綁定
-      const { error: bindError } = await supabase
-        .from('line_bindings')
-        .upsert({
-          line_user_id: lineUserId,
-          member_id: memberData.id,
-          phone: memberData.phone,
-          status: 'active',
-          last_liff_login_at: getLocalTimestamp(),
-          completed_at: getLocalTimestamp(),
-          created_at: getLocalTimestamp()
-        }, {
-          onConflict: 'line_user_id'
-        })
-
-      if (bindError) {
-        triggerHaptic('error')
-        toast.error('綁定失敗：' + bindError.message)
-        setBinding(false)
-        return
-      }
-
-      // 更新會員生日
-      if (birthYear && birthMonth && birthDay) {
-        const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`
-        const updateError = await updateLiffMemberBirthday(lineUserId, birthday)
-        
-        if (updateError) {
-          console.error('❌ 更新生日失敗:', updateError)
-          // 不阻擋綁定流程，但記錄錯誤
-          toast.error('生日更新失敗，請稍後在會員資料中手動更新')
-        }
-      }
-
-      // 綁定成功 - 重新載入完整的會員資料（包含儲值欄位）
       triggerHaptic('success')
-
-      const { data: fullMemberData } = await supabase
-        .from('members')
-        .select(LIFF_MEMBER_SELECT)
-        .eq('id', memberData.id)
-        .single()
-
-      const dataForEnrich = (fullMemberData ?? memberData) as Record<string, unknown>
       setShowBindingForm(false)
-      startMemberBackgroundLoads(memberData.id, dataForEnrich, {
+      startMemberBackgroundLoads(boundMember, lineUserId, {
         setMember,
         setBookingsLoading,
         setMemberEnriching,
         loadBookings,
         loadShopOrders,
       })
-      liffTrack({ icon_id: 'liff_bind_success', line_user_id: lineUserId, member_id: memberData.id })
+      liffTrack({ icon_id: 'liff_bind_success', line_user_id: lineUserId, member_id: boundMember.id })
     } catch (err: unknown) {
       console.error('綁定失敗:', err)
-      toast.error('綁定失敗')
+      const message = unknownErrorMessage(err, '綁定失敗')
+      setBindingError(message)
+      toast.error(message)
     } finally {
       setBinding(false)
     }

@@ -1,19 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import liff from '@line/liff'
-import { supabase } from '../../lib/supabase'
-import { getLocalTimestamp } from '../../utils/date'
 import { triggerHaptic } from '../../utils/haptic'
 import type { Member } from './types'
 import {
+  bindLiffMember,
+  fetchMemberByLineUserId,
   initLiffSdk,
   ensureLiffLoggedIn,
   isFirstDocumentLoadThisNavigation,
   unknownErrorMessage,
-  enrichMemberForLiff,
   liteMemberFromRow,
-  LIFF_MEMBER_SELECT,
   LIFF_INIT_FAST_RETRY_DELAYS_MS,
-  updateLiffMemberBirthday,
 } from './liffMemberShared'
 import { liffTrackFlushQueueNow } from './track'
 
@@ -59,27 +56,14 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
   const [binding, setBinding] = useState(false)
   const [bindingError, setBindingError] = useState<string | null>(null)
 
-  const resolveMember = useCallback(
-    async (memberData: Record<string, unknown>): Promise<Member> => {
-      if (lightMember) return liteMemberFromRow(memberData)
-      return enrichMemberForLiff(memberData)
-    },
-    [lightMember],
-  )
-
   const checkBinding = useCallback(async (userId: string, displayName: string | null) => {
     if (nonBlockingBinding) setBindingLoading(true)
     try {
-      const { data: binding } = await supabase
-        .from('line_bindings')
-        .select(`member_id, members(${LIFF_MEMBER_SELECT})`)
-        .eq('line_user_id', userId)
-        .eq('status', 'active')
-        .single()
-
-      if (binding?.members) {
-        const memberData = binding.members as Record<string, unknown>
-        const resolved = await resolveMember(memberData)
+      const boundMember = await fetchMemberByLineUserId(userId)
+      if (boundMember) {
+        const resolved = lightMember
+          ? liteMemberFromRow(boundMember as unknown as Record<string, unknown>)
+          : boundMember
         setMember(resolved)
         setShowBindingForm(false)
         void liffTrackFlushQueueNow()
@@ -119,7 +103,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
         setLoading(false)
       }
     }
-  }, [requireBinding, trackIconId, nonBlockingBinding, resolveMember])
+  }, [requireBinding, trackIconId, nonBlockingBinding, lightMember])
 
   const initLiff = useCallback(async () => {
     setBootPhase('init')
@@ -189,61 +173,17 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
     setBinding(true)
     setBindingError(null)
     try {
-      const cleanPhone = phone.replace(/\D/g, '')
-      const { data: allMembers } = await supabase
-        .from('members')
-        .select('id, name, nickname, phone, status')
-
-      if (!allMembers?.length) {
-        setBindingError('無法查詢會員資料，請稍後再試')
-        return
-      }
-
-      const memberData = allMembers.find(m => {
-        const dbPhone = m.phone?.replace(/\D/g, '') || ''
-        return dbPhone === cleanPhone && m.status === 'active'
-      })
-
-      if (!memberData) {
-        triggerHaptic('error')
-        setBindingError('找不到此手機號碼的會員資料')
-        return
-      }
-
-      const { error: bindError } = await supabase
-        .from('line_bindings')
-        .upsert({
-          line_user_id: lineUserId,
-          member_id: memberData.id,
-          phone: memberData.phone,
-          status: 'active',
-          completed_at: getLocalTimestamp(),
-          created_at: getLocalTimestamp(),
-        }, { onConflict: 'line_user_id' })
-
-      if (bindError) {
-        triggerHaptic('error')
-        setBindingError('綁定失敗：' + bindError.message)
-        return
-      }
-
-      if (birthYear && birthMonth && birthDay) {
-        const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`
-        const birthdayError = await updateLiffMemberBirthday(lineUserId, birthday)
-        if (birthdayError) {
-          console.warn('LIFF 生日更新失敗:', birthdayError)
-        }
-      }
+      const birthday = birthYear && birthMonth && birthDay
+        ? `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`
+        : null
+      const memberData = await bindLiffMember(lineUserId, phone, birthday)
 
       triggerHaptic('success')
-      const { data: fullMemberData } = await supabase
-        .from('members')
-        .select(LIFF_MEMBER_SELECT)
-        .eq('id', memberData.id)
-        .single()
-
-      const enriched = await resolveMember((fullMemberData ?? memberData) as Record<string, unknown>)
-      setMember(enriched)
+      setMember(
+        lightMember
+          ? liteMemberFromRow(memberData as unknown as Record<string, unknown>)
+          : memberData,
+      )
       setShowBindingForm(false)
       setSkippedBinding(false)
     } catch (err: unknown) {
@@ -252,7 +192,7 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
     } finally {
       setBinding(false)
     }
-  }, [phone, lineUserId, birthYear, birthMonth, birthDay, resolveMember])
+  }, [phone, lineUserId, birthYear, birthMonth, birthDay, lightMember])
 
   const skipBinding = useCallback(() => {
     triggerHaptic('light')

@@ -7,7 +7,7 @@ import { useToast } from '../../components/ui'
 import { CoachReport } from './CoachReport'
 import { StatisticsTab } from '../../components/StatisticsTab'
 import { CoachSchedulePreviewTable } from './CoachSchedulePreviewTable'
-import { AdminTabBar, AdminTabButton } from '../../components/AdminPageLayout'
+import { AdminPillRow, AdminPillButton } from '../../components/AdminPageLayout'
 import { designSystem, getFontSize } from '../../styles/designSystem'
 import { PageShell } from '../../components/PageShell'
 
@@ -80,29 +80,29 @@ export function MyReport() {
         />
 
         {/* Tab 切換 */}
-        <AdminTabBar>
-          <AdminTabButton
+        <AdminPillRow style={{ marginBottom: isMobile ? 12 : 16 }}>
+          <AdminPillButton
             data-track="my_report_tab_report"
             active={activeTab === 'report'}
             onClick={() => setActiveTab('report')}
           >
             回報
-          </AdminTabButton>
-          <AdminTabButton
+          </AdminPillButton>
+          <AdminPillButton
             data-track="my_report_tab_history"
             active={activeTab === 'history'}
             onClick={() => setActiveTab('history')}
           >
             細帳
-          </AdminTabButton>
-          <AdminTabButton
+          </AdminPillButton>
+          <AdminPillButton
             data-track="my_report_tab_schedule"
             active={activeTab === 'schedule'}
             onClick={() => setActiveTab('schedule')}
           >
             排程
-          </AdminTabButton>
-        </AdminTabBar>
+          </AdminPillButton>
+        </AdminPillRow>
 
         {/* Tab 內容區 */}
         <div>

@@ -1555,11 +1555,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bind_liff_member: {
+        Args: {
+          p_birthday?: string | null
+          p_line_user_id: string
+          p_phone: string
+        }
+        Returns: Json
+      }
       get_liff_member_transactions: {
         Args: {
           p_category: string
           p_line_user_id: string
           p_since_date?: string | null
+        }
+        Returns: Json
+      }
+      get_liff_member_profile: {
+        Args: {
+          p_line_user_id: string
+          p_record_login?: boolean
+        }
+        Returns: Json
+      }
+      get_liff_shop_orders: {
+        Args: {
+          p_line_user_id: string
         }
         Returns: Json
       }

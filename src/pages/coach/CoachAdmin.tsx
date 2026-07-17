@@ -11,7 +11,7 @@ import { DateRangePicker } from '../../components/DateRangePicker'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
 import { getButtonStyle, getCardStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle, designSystem } from '../../styles/designSystem'
-import { AdminPageShell, AdminTabBar, AdminTabButton } from '../../components/AdminPageLayout'
+import { AdminPageShell, AdminPillRow, AdminPillButton } from '../../components/AdminPageLayout'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { fetchAllInBatches, fetchAllPaginated } from '../../utils/supabasePaginate'
 import { extractDate, extractTime } from '../../utils/formatters'
@@ -711,37 +711,37 @@ export function CoachAdmin() {
         )}
 
         {/* Tab 切換 */}
-        <AdminTabBar>
-          <AdminTabButton
+        <AdminPillRow style={{ marginBottom: '24px' }}>
+          <AdminPillButton
             data-track="coach_admin_tab_pending"
             active={activeTab === 'pending'}
             onClick={() => setActiveTab('pending')}
             badge={pendingReports.length + nonMemberReports.length}
           >
             待處理
-          </AdminTabButton>
-          <AdminTabButton
+          </AdminPillButton>
+          <AdminPillButton
             data-track="coach_admin_tab_completed"
             active={activeTab === 'completed'}
             onClick={() => setActiveTab('completed')}
           >
             已處理
-          </AdminTabButton>
-          <AdminTabButton
+          </AdminPillButton>
+          <AdminPillButton
             data-track="coach_admin_tab_statistics"
             active={activeTab === 'statistics'}
             onClick={() => setActiveTab('statistics')}
           >
             統計報表
-          </AdminTabButton>
-          <AdminTabButton
+          </AdminPillButton>
+          <AdminPillButton
             data-track="coach_admin_tab_billing"
             active={activeTab === 'billing'}
             onClick={() => setActiveTab('billing')}
           >
             代扣設定
-          </AdminTabButton>
-        </AdminTabBar>
+          </AdminPillButton>
+        </AdminPillRow>
 
         {/* Tab 1: 待處理記錄 */}
         {activeTab === 'pending' && (

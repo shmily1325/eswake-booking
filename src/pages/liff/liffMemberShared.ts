@@ -1,9 +1,5 @@
-import { supabase } from '../../lib/supabase'
 import liff from '@line/liff'
 import type { Member, Transaction } from './types'
-
-export const LIFF_MEMBER_SELECT =
-  'id, name, nickname, phone, birthday, membership_type, membership_partner_id, membership_end_date, board_slot_number, board_expiry_date, balance, vip_voucher_amount, designated_lesson_minutes, boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, gift_boat_hours'
 
 const LIFF_INIT_MAX_ATTEMPTS = 3
 const LIFF_INIT_RETRY_DELAYS_MS = [400, 800]
@@ -148,52 +144,67 @@ export function liteMemberFromRow(raw: Record<string, unknown>): Member {
   return buildMember(raw as LiffMemberRow, { board_slots: [], partner: null })
 }
 
-export async function enrichMemberForLiff(raw: Record<string, unknown>): Promise<Member> {
+function memberFromRpcPayload(raw: Record<string, unknown>): Member {
   const r = raw as LiffMemberRow
-
-  const boardsRes = await supabase
-    .from('board_storage')
-    .select('id, slot_number, start_date, expires_at')
-    .eq('member_id', r.id)
-    .eq('status', 'active')
-    .order('slot_number', { ascending: true })
-
-  if (boardsRes.error) {
-    console.warn('LIFF 置板查詢失敗:', boardsRes.error.message)
-  }
-
-  const board_slots = (boardsRes.error ? [] : boardsRes.data ?? []).map(b => ({
-    id: b.id,
-    slot_number: b.slot_number,
-    start_date: b.start_date,
-    expires_at: b.expires_at,
-  }))
-
-  let partner: Member['partner'] = null
-  if (r.membership_type === 'dual' && r.membership_partner_id) {
-    const partnerRes = await supabase
-      .from('members')
-      .select('name, nickname')
-      .eq('id', r.membership_partner_id)
-      .single()
-    if (!partnerRes.error && partnerRes.data) {
-      partner = { name: partnerRes.data.name, nickname: partnerRes.data.nickname }
-    }
-  }
-
+  const board_slots = Array.isArray(raw.board_slots)
+    ? raw.board_slots as NonNullable<Member['board_slots']>
+    : []
+  const partner = raw.partner && typeof raw.partner === 'object'
+    ? raw.partner as NonNullable<Member['partner']>
+    : null
   return buildMember(r, { board_slots, partner })
 }
 
-export async function fetchMemberByLineUserId(userId: string): Promise<Member | null> {
-  const { data: binding } = await supabase
-    .from('line_bindings')
-    .select(`member_id, members(${LIFF_MEMBER_SELECT})`)
-    .eq('line_user_id', userId)
-    .eq('status', 'active')
-    .single()
+type MemberProfileRpcResult = {
+  success?: boolean
+  error?: string
+  member?: Record<string, unknown> | null
+}
 
-  if (!binding?.members) return null
-  return enrichMemberForLiff(binding.members as Record<string, unknown>)
+export async function callLiffMemberApi<T>(
+  action: string,
+  payload: Record<string, unknown> = {},
+): Promise<T> {
+  const accessToken = liff.getAccessToken()
+  if (!accessToken) throw new Error('LINE 登入驗證失敗')
+
+  const response = await fetch('/api/liff-member-access', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action, ...payload }),
+  })
+  const result = await response.json() as T & { error?: string }
+  if (!response.ok) throw new Error(result.error || '服務暫時無法使用')
+  return result
+}
+
+export async function fetchMemberByLineUserId(
+  _userId: string,
+  recordLogin = false,
+): Promise<Member | null> {
+  const result = await callLiffMemberApi<MemberProfileRpcResult>('profile', {
+    recordLogin,
+  })
+  if (!result?.success) throw new Error(result?.error || '會員資料載入失敗')
+  return result.member ? memberFromRpcPayload(result.member) : null
+}
+
+export async function bindLiffMember(
+  _lineUserId: string,
+  phone: string,
+  birthday: string | null,
+): Promise<Member> {
+  const result = await callLiffMemberApi<MemberProfileRpcResult>('bind', {
+    phone,
+    birthday,
+  })
+  if (!result?.success || !result.member) {
+    throw new Error(result?.error || '會員綁定失敗')
+  }
+  return memberFromRpcPayload(result.member)
 }
 
 type BirthdayUpdateResult = {
@@ -207,17 +218,12 @@ type BirthdayUpdateResult = {
  * existing behavior where a birthday failure does not undo a completed binding.
  */
 export async function updateLiffMemberBirthday(
-  lineUserId: string,
+  _lineUserId: string,
   birthday: string,
 ): Promise<string | null> {
-  const { data, error } = await supabase.rpc('update_liff_member_birthday', {
-    p_line_user_id: lineUserId,
-    p_birthday: birthday,
+  const result = await callLiffMemberApi<BirthdayUpdateResult>('birthday', {
+    birthday,
   })
-
-  if (error) return error.message
-
-  const result = data as BirthdayUpdateResult | null
   if (result?.success) return null
   return result?.error || '生日更新失敗'
 }
@@ -229,19 +235,14 @@ type TransactionQueryResult = {
 }
 
 export async function fetchLiffMemberTransactions(
-  lineUserId: string,
+  _lineUserId: string,
   category: string,
   sinceDate: string,
 ): Promise<Transaction[]> {
-  const { data, error } = await supabase.rpc('get_liff_member_transactions', {
-    p_line_user_id: lineUserId,
-    p_category: category,
-    p_since_date: sinceDate,
+  const result = await callLiffMemberApi<TransactionQueryResult>('transactions', {
+    category,
+    sinceDate,
   })
-
-  if (error) throw new Error(error.message)
-
-  const result = data as TransactionQueryResult | null
   if (!result?.success) {
     throw new Error(result?.error || '交易記錄載入失敗')
   }

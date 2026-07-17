@@ -57,7 +57,7 @@ describe('LIFF transaction read hardening', () => {
   })
 
   it('switches LIFF away from direct transaction table reads', () => {
-    expect(shared).toContain("supabase.rpc('get_liff_member_transactions'")
+    expect(shared).toContain("callLiffMemberApi<TransactionQueryResult>('transactions'")
     expect(bookingsPage).toContain(
       'fetchLiffMemberTransactions(lineUserId, category, twoMonthsAgoStr)',
     )
