@@ -20,14 +20,6 @@ interface ScheduleBooking {
   booking_coaches?: Array<{ coach_id: string }>
 }
 
-interface DateGroup {
-  date: string
-  weekday: string
-  count: number
-  minutes: number
-  items: ScheduleBooking[]
-}
-
 /** 今天起至當月+2 的月底（約未來三個月） */
 function getFutureThreeMonthWindow() {
   const now = new Date()
@@ -59,81 +51,6 @@ function coachShareMinutesForBooking(booking: ScheduleBooking, coachId: string):
   if (idx < 0) return 0
   const shares = splitMinutesEqually(total, list.length)
   return shares[idx] ?? 0
-}
-
-function groupBookingsByDate(bookings: ScheduleBooking[], coachId: string): DateGroup[] {
-  const groups = new Map<string, ScheduleBooking[]>()
-  const sorted = [...bookings].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
-  sorted.forEach(booking => {
-    const dateKey = booking.start_at.substring(0, 10)
-    if (!groups.has(dateKey)) groups.set(dateKey, [])
-    groups.get(dateKey)!.push(booking)
-  })
-
-  return Array.from(groups.entries()).map(([date, items]) => ({
-    date,
-    weekday: getWeekdayText(date),
-    count: items.length,
-    minutes: items.reduce((sum, item) => sum + coachShareMinutesForBooking(item, coachId), 0),
-    items
-  }))
-}
-
-function BookingRow({
-  booking,
-  coachId,
-  isMobile
-}: {
-  booking: ScheduleBooking
-  coachId: string
-  isMobile: boolean
-}) {
-  return (
-    <div
-      style={{
-        padding: '9px 4px',
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '66px 1fr auto' : '74px 1fr auto',
-        alignItems: 'center',
-        gap: '10px',
-        borderBottom: `1px solid ${designSystem.colors.border.light}`
-      }}
-    >
-      <div style={{
-        fontWeight: 600,
-        color: designSystem.colors.text.primary,
-        fontSize: getFontSize('bodySmall', isMobile)
-      }}>
-        {extractTime(booking.start_at)}
-      </div>
-      <div style={{
-        color: designSystem.colors.text.secondary,
-        fontSize: getFontSize('bodySmall', isMobile),
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis'
-      }}>
-        {booking.contact_name || '-'} ｜ {booking.boats?.name || '-'}
-      </div>
-      <div style={{
-        color: designSystem.colors.info[700],
-        fontWeight: '500',
-        fontSize: getFontSize('bodySmall', isMobile),
-        flexShrink: 0
-      }}>
-        {coachShareMinutesForBooking(booking, coachId)} 分
-        {(booking.booking_coaches || []).length > 1 && (
-          <span style={{
-            color: designSystem.colors.text.disabled,
-            fontWeight: 400,
-            fontSize: getFontSize('caption', isMobile)
-          }}>
-            {' '}（堂 {(booking.duration_min || 0)}）
-          </span>
-        )}
-      </div>
-    </div>
-  )
 }
 
 function DailySchedule({
@@ -237,8 +154,6 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [bookings, setBookings] = useState<ScheduleBooking[]>([])
-  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [statsOpen, setStatsOpen] = useState(false)
   const [statsMonth, setStatsMonth] = useState<'all' | string>('all')
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
@@ -299,11 +214,6 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     load()
   }, [coachId])
 
-  const laterBookings = useMemo(
-    () => bookings.filter(b => b.start_at.substring(0, 10) > today),
-    [bookings, today]
-  )
-
   const selectedDateBookings = useMemo(
     () => bookings.filter(b => b.start_at.substring(0, 10) === selectedDate),
     [bookings, selectedDate]
@@ -313,11 +223,6 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     () => bookings.find(b => b.start_at.substring(0, 10) > selectedDate)?.start_at.substring(0, 10) ?? null,
     [bookings, selectedDate]
   )
-
-  // 未來排程列表預設不展開，避免切換教練後沿用先前狀態
-  useEffect(() => {
-    setExpandedDates(new Set())
-  }, [laterBookings])
 
   const statsBookings = useMemo(
     () => statsMonth === 'all'
@@ -387,71 +292,6 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
         ...item
       }))
   }, [statsBookings, coachId])
-
-  const laterGroups = useMemo(
-    () => groupBookingsByDate(laterBookings, coachId),
-    [laterBookings, coachId]
-  )
-
-  const toggleDateGroup = (date: string) => {
-    setExpandedDates(prev => {
-      const next = new Set(prev)
-      if (next.has(date)) next.delete(date)
-      else next.add(date)
-      return next
-    })
-  }
-
-  const calendarWeeks = useMemo(() => {
-    if (laterBookings.length === 0) return []
-
-    const dayNames = ['一', '二', '三', '四', '五', '六', '日']
-    const bookingMap = new Map<string, ScheduleBooking[]>()
-    laterBookings.forEach(booking => {
-      const date = booking.start_at.substring(0, 10)
-      if (!bookingMap.has(date)) bookingMap.set(date, [])
-      bookingMap.get(date)!.push(booking)
-    })
-
-    const getMonday = (dateStr: string) => {
-      const [y, m, d] = dateStr.split('-').map(Number)
-      const date = new Date(y, m - 1, d)
-      const day = date.getDay()
-      const diffToMonday = day === 0 ? -6 : 1 - day
-      date.setDate(date.getDate() + diffToMonday)
-      return date
-    }
-
-    const formatDate = (date: Date) => {
-      const y = date.getFullYear()
-      const m = String(date.getMonth() + 1).padStart(2, '0')
-      const d = String(date.getDate()).padStart(2, '0')
-      return `${y}-${m}-${d}`
-    }
-
-    const weekStarts = Array.from(new Set(laterBookings.map(b => formatDate(getMonday(b.start_at.substring(0, 10))))))
-      .sort()
-
-    return weekStarts.map(weekStart => {
-      const [y, m, d] = weekStart.split('-').map(Number)
-      const monday = new Date(y, m - 1, d)
-      const days = Array.from({ length: 7 }).map((_, idx) => {
-        const date = new Date(monday)
-        date.setDate(monday.getDate() + idx)
-        const key = formatDate(date)
-        return {
-          key,
-          label: `${date.getMonth() + 1}/${date.getDate()} (${dayNames[idx]})`,
-          bookings: bookingMap.get(key) || []
-        }
-      })
-      return {
-        weekStart,
-        weekEnd: days[6].key,
-        days
-      }
-    })
-  }, [laterBookings])
 
   const sectionTitleStyle = {
     margin: '0 0 10px 0',
@@ -588,174 +428,6 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                 查看下一個排程日：{nextBookingDate}
               </button>
             )}
-          </div>
-        )}
-      </div>
-
-      {/* 未來排程 */}
-      <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
-        <div style={sectionTitleStyle}>未來排程</div>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }} role="tablist" aria-label="排程檢視方式">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'list'}
-            onClick={() => setViewMode('list')}
-            style={{
-              ...getFilterChipStyle(viewMode === 'list', 'info'),
-              padding: '4px 10px',
-              fontSize: getFontSize('caption', isMobile),
-            }}
-          >
-            列表
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'calendar'}
-            onClick={() => setViewMode('calendar')}
-            style={{
-              ...getFilterChipStyle(viewMode === 'calendar', 'info'),
-              padding: '4px 10px',
-              fontSize: getFontSize('caption', isMobile),
-            }}
-          >
-            行事曆
-          </button>
-        </div>
-        {loading ? (
-          <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>載入中...</div>
-        ) : laterGroups.length === 0 ? (
-          <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>目前沒有更遠的排程</div>
-        ) : viewMode === 'list' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {laterGroups.map(group => (
-              <div key={group.date}>
-                <button
-                  type="button"
-                  onClick={() => toggleDateGroup(group.date)}
-                  aria-expanded={expandedDates.has(group.date)}
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: getFontSize('bodySmall', isMobile),
-                    fontWeight: 600,
-                    color: designSystem.colors.text.secondary,
-                    padding: '2px 2px 8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <span style={{
-                    display: 'inline-block',
-                    transform: expandedDates.has(group.date) ? 'rotate(90deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.15s ease',
-                    fontSize: getFontSize('caption', isMobile)
-                  }}>
-                    ▶
-                  </span>
-                  {group.date}（{group.weekday}） • {group.count} 堂 • {group.minutes} 分
-                </button>
-                {expandedDates.has(group.date) && (
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {group.items.map(booking => (
-                      <BookingRow
-                        key={booking.id}
-                        booking={booking}
-                        coachId={coachId}
-                        isMobile={isMobile}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {calendarWeeks.map(week => (
-              <div key={week.weekStart}>
-                <div style={{
-                  fontSize: getFontSize('caption', isMobile),
-                  color: designSystem.colors.text.secondary,
-                  marginBottom: '6px'
-                }}>
-                  {week.weekStart} ~ {week.weekEnd}
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(7, minmax(120px, 1fr))',
-                    gap: '8px',
-                    minWidth: '860px'
-                  }}>
-                    {week.days.map(day => (
-                      <div key={day.key} style={{
-                        border: `1px solid ${designSystem.colors.border.light}`,
-                        borderRadius: designSystem.borderRadius.lg,
-                        padding: '8px',
-                        background: '#fff'
-                      }}>
-                        <div style={{
-                          fontSize: getFontSize('caption', isMobile),
-                          color: designSystem.colors.text.secondary,
-                          marginBottom: '6px',
-                          fontWeight: 600
-                        }}>
-                          {day.label}
-                        </div>
-                        {day.bookings.length === 0 ? (
-                          <div style={{
-                            fontSize: getFontSize('caption', isMobile),
-                            color: designSystem.colors.text.disabled
-                          }}>
-                            -
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            {day.bookings.map(booking => (
-                              <div key={booking.id} style={{
-                                borderTop: `1px dashed ${designSystem.colors.border.light}`,
-                                paddingTop: '4px'
-                              }}>
-                                <div style={{
-                                  fontSize: getFontSize('caption', isMobile),
-                                  color: designSystem.colors.text.primary,
-                                  fontWeight: 600
-                                }}>
-                                  {extractTime(booking.start_at)} / {coachShareMinutesForBooking(booking, coachId)}分
-                                  {(booking.booking_coaches || []).length > 1 && (
-                                    <span style={{
-                                      color: designSystem.colors.text.disabled,
-                                      fontWeight: 400
-                                    }}>
-                                      （堂{booking.duration_min || 0}）
-                                    </span>
-                                  )}
-                                </div>
-                                <div style={{
-                                  fontSize: getFontSize('caption', isMobile),
-                                  color: designSystem.colors.text.secondary,
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis'
-                                }}>
-                                  {booking.contact_name || '-'} ｜ {booking.boats?.name || '-'}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </div>

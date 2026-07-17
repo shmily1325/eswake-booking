@@ -195,3 +195,29 @@ export async function fetchMemberByLineUserId(userId: string): Promise<Member | 
   if (!binding?.members) return null
   return enrichMemberForLiff(binding.members as Record<string, unknown>)
 }
+
+type BirthdayUpdateResult = {
+  success?: boolean
+  error?: string
+}
+
+/**
+ * Updates only the birthday of the member resolved from an active LINE binding.
+ * Returns an error message instead of throwing so callers can preserve the
+ * existing behavior where a birthday failure does not undo a completed binding.
+ */
+export async function updateLiffMemberBirthday(
+  lineUserId: string,
+  birthday: string,
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc('update_liff_member_birthday', {
+    p_line_user_id: lineUserId,
+    p_birthday: birthday,
+  })
+
+  if (error) return error.message
+
+  const result = data as BirthdayUpdateResult | null
+  if (result?.success) return null
+  return result?.error || '生日更新失敗'
+}

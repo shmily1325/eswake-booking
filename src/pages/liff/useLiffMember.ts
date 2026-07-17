@@ -13,6 +13,7 @@ import {
   liteMemberFromRow,
   LIFF_MEMBER_SELECT,
   LIFF_INIT_FAST_RETRY_DELAYS_MS,
+  updateLiffMemberBirthday,
 } from './liffMemberShared'
 import { liffTrackFlushQueueNow } from './track'
 
@@ -228,7 +229,10 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
 
       if (birthYear && birthMonth && birthDay) {
         const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`
-        await supabase.from('members').update({ birthday }).eq('id', memberData.id)
+        const birthdayError = await updateLiffMemberBirthday(lineUserId, birthday)
+        if (birthdayError) {
+          console.warn('LIFF 生日更新失敗:', birthdayError)
+        }
       }
 
       triggerHaptic('success')

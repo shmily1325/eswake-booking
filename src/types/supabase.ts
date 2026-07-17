@@ -1638,6 +1638,13 @@ export type Database = {
         }
         Returns: Json
       }
+      update_liff_member_birthday: {
+        Args: {
+          p_birthday: string
+          p_line_user_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

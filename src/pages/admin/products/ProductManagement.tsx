@@ -1848,7 +1848,6 @@ function MobileListRow({
   const { variant, product } = item
   const status = inventoryStatusBadge(variant, product.is_public)
   const attrText = formatAttributes(product.category, variant.attributes)
-  const cardBorder = variantCardBorder(variant, product.is_public)
   const imageUrl = getVariantListImageUrl(variant, imageMode)
   const stock = variant.stock ?? 0
   const reserved = variant.reserved_qty ?? 0
@@ -1870,7 +1869,6 @@ function MobileListRow({
       style={{
         background: colors.background.card,
         border: `1px solid ${colors.border.light}`,
-        borderLeft: `3px solid ${cardBorder}`,
         borderRadius: 12,
         padding: 10,
         textAlign: 'left',
@@ -1939,20 +1937,22 @@ function MobileListRow({
                 {product.model}
               </div>
             </div>
-            <span
-              style={{
-                flexShrink: 0,
-                fontSize: getFontSize('caption', true),
-                fontWeight: 600,
-                padding: '2px 7px',
-                borderRadius: 999,
-                background: status.bg,
-                color: status.color,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {status.label}
-            </span>
+            {canEdit && (
+              <span
+                style={{
+                  flexShrink: 0,
+                  fontSize: getFontSize('caption', true),
+                  fontWeight: 600,
+                  padding: '2px 7px',
+                  borderRadius: 999,
+                  background: status.bg,
+                  color: status.color,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {status.label}
+              </span>
+            )}
           </div>
           {attrText && (
             <div
@@ -1969,7 +1969,7 @@ function MobileListRow({
               {attrText}
             </div>
           )}
-          {variant.vendor_code && (
+          {canEdit && variant.vendor_code && (
             <div
               style={{
                 fontSize: getFontSize('bodySmall', true),
@@ -2003,38 +2003,45 @@ function MobileListRow({
 
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          marginTop: 9,
-          border: `1px solid ${colors.border.light}`,
-          borderRadius: 8,
-          overflow: 'hidden',
-          background: colors.secondary[50],
-        }}
-      >
-        <StockMetric label="現有庫存" value={stock} />
-        <StockMetric label="待結帳保留" value={reserved} bordered />
-        <StockMetric label="可售現貨" value={sellable} bordered emphasize />
-      </div>
-
-      <div
-        style={{
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
           marginTop: 7,
-          gap: 8,
+          gap: '5px 9px',
+          color: colors.text.secondary,
+          fontSize: getFontSize('bodySmall', true),
         }}
       >
-        <div style={{ fontSize: getFontSize('bodyLarge', true), fontWeight: 700 }}>
+        <div style={{ color: colors.text.primary, fontWeight: 600 }}>
           <PriceDisplay price={variant.price} />
         </div>
-        {canEdit && compactStockInAt && (
-          <span style={{ fontSize: getFontSize('caption', true), color: colors.text.disabled }}>
-            最近入庫：{compactStockInAt}
+        {canEdit && <span style={{ color: colors.border.main }} aria-hidden="true">｜</span>}
+        {canEdit && <span>庫存 {stock}</span>}
+        {canEdit && <span>保留 {reserved}</span>}
+        {canEdit && <span>可售 {sellable}</span>}
+        {!canEdit && (
+          <span style={{
+            flexShrink: 0,
+            padding: '3px 9px',
+            borderRadius: 999,
+            background: status.bg,
+            color: status.color,
+            fontSize: getFontSize('bodySmall', true),
+            fontWeight: 700,
+          }}>
+            現貨 {sellable}
           </span>
         )}
       </div>
+      {canEdit && compactStockInAt && (
+        <div style={{
+          marginTop: 3,
+          fontSize: getFontSize('caption', true),
+          color: colors.text.disabled,
+        }}>
+          最近入庫：{compactStockInAt}
+        </div>
+      )}
       {canEdit && (
         <div
           style={{
@@ -2093,8 +2100,8 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
               <th style={thStyle('60px')}>照片</th>
               <th style={thStyle('auto')}>商品／規格</th>
               <th style={thStyle('90px', 'right')}>售價</th>
-              <th style={thStyle('76px', 'center')}>現有庫存</th>
-              <th style={thStyle('92px', 'center')}>待結帳保留</th>
+              {canEdit && <th style={thStyle('76px', 'center')}>現有庫存</th>}
+              {canEdit && <th style={thStyle('92px', 'center')}>待結帳保留</th>}
               <th style={thStyle('76px', 'center')}>可售現貨</th>
               {canEdit && <th style={thStyle('88px', 'center')}>狀態</th>}
               {canEdit && <th style={thStyle('130px')}>入庫</th>}
@@ -2155,7 +2162,7 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                       )}
                       {attributes || '無規格'}
                     </div>
-                    {it.variant.vendor_code && (
+                    {canEdit && it.variant.vendor_code && (
                       <div style={{ marginTop: 2, color: colors.text.disabled, fontSize: getFontSize('caption', false) }}>
                         #{it.variant.vendor_code}
                       </div>
@@ -2164,25 +2171,29 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                   <td style={tdStyle('right')}>
                     <PriceDisplay price={it.variant.price} align="right" />
                   </td>
-                  <td
-                    style={{
-                      ...tdStyle('center'),
-                      fontSize: getFontSize('bodyLarge', false),
-                      fontWeight: 700,
-                    }}
-                  >
-                    {stock}
-                  </td>
-                  <td
-                    style={{
-                      ...tdStyle('center'),
-                      fontSize: getFontSize('bodyLarge', false),
-                      fontWeight: 600,
-                      color: reserved > 0 ? colors.warning[700] : colors.text.secondary,
-                    }}
-                  >
-                    {reserved}
-                  </td>
+                  {canEdit && (
+                    <td
+                      style={{
+                        ...tdStyle('center'),
+                        fontSize: getFontSize('bodyLarge', false),
+                        fontWeight: 700,
+                      }}
+                    >
+                      {stock}
+                    </td>
+                  )}
+                  {canEdit && (
+                    <td
+                      style={{
+                        ...tdStyle('center'),
+                        fontSize: getFontSize('bodyLarge', false),
+                        fontWeight: 600,
+                        color: reserved > 0 ? colors.warning[700] : colors.text.secondary,
+                      }}
+                    >
+                      {reserved}
+                    </td>
+                  )}
                   <td
                     style={{
                       ...tdStyle('center'),
@@ -2263,39 +2274,6 @@ function thStyle(width: string, align: 'left' | 'center' | 'right' = 'left'): Re
 }
 function tdStyle(align: 'left' | 'center' | 'right' = 'left'): React.CSSProperties {
   return { padding: '12px 14px', textAlign: align, color: colors.text.primary, verticalAlign: 'middle' }
-}
-
-function StockMetric({
-  label,
-  value,
-  bordered = false,
-  emphasize = false,
-}: {
-  label: string
-  value: number
-  bordered?: boolean
-  emphasize?: boolean
-}) {
-  return (
-    <div
-      style={{
-        padding: '5px 4px',
-        textAlign: 'center',
-        borderLeft: bordered ? `1px solid ${colors.border.light}` : undefined,
-        background: emphasize ? colors.success[50] : undefined,
-      }}
-    >
-      <div style={{ fontSize: getFontSize('bodySmall', true), color: colors.text.secondary }}>{label}</div>
-      <div style={{
-        marginTop: 1,
-        fontSize: getFontSize('bodyLarge', true),
-        fontWeight: emphasize ? 800 : 600,
-        color: emphasize ? colors.success[700] : colors.text.secondary,
-      }}>
-        {value}
-      </div>
-    </div>
-  )
 }
 
 function EditProductButton({ label, onClick, wide = false }: { label: string; onClick: () => void; wide?: boolean }) {

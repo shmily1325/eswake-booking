@@ -42,6 +42,7 @@ import {
   liteMemberFromRow,
   LIFF_MEMBER_SELECT,
   unknownErrorMessage,
+  updateLiffMemberBirthday,
 } from './liffMemberShared'
 
 function startMemberBackgroundLoads(
@@ -435,17 +436,12 @@ export function LiffMyBookings() {
       // 更新會員生日
       if (birthYear && birthMonth && birthDay) {
         const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`
-        const { error: updateError } = await supabase
-          .from('members')
-          .update({ birthday })
-          .eq('id', memberData.id)
-          .select()
+        const updateError = await updateLiffMemberBirthday(lineUserId, birthday)
         
         if (updateError) {
           console.error('❌ 更新生日失敗:', updateError)
           // 不阻擋綁定流程，但記錄錯誤
           toast.error('生日更新失敗，請稍後在會員資料中手動更新')
-        } else {
         }
       }
 
