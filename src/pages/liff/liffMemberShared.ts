@@ -192,6 +192,22 @@ export async function fetchMemberByLineUserId(
   return result.member ? memberFromRpcPayload(result.member) : null
 }
 
+type MemberBootstrapRpcResult = MemberProfileRpcResult & {
+  orders?: unknown[]
+}
+
+export async function fetchLiffMemberBootstrap<TOrder>(): Promise<{
+  member: Member | null
+  orders: TOrder[]
+}> {
+  const result = await callLiffMemberApi<MemberBootstrapRpcResult>('bootstrap')
+  if (!result?.success) throw new Error(result?.error || '會員資料載入失敗')
+  return {
+    member: result.member ? memberFromRpcPayload(result.member) : null,
+    orders: Array.isArray(result.orders) ? result.orders as TOrder[] : [],
+  }
+}
+
 export async function bindLiffMember(
   _lineUserId: string,
   phone: string,

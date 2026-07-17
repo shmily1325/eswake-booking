@@ -25,6 +25,7 @@ import { getDisplayContactName } from '../../utils/bookingFormat'
 import { useToast, ToastContainer } from '../../components/ui'
 import { computeAssignmentOverviewStats } from '../../utils/todayOverviewStats'
 import { addDaysToDate, getVenueDateString } from '../../utils/date'
+import { fetchAllPaginated } from '../../utils/supabasePaginate'
 import {
   assignmentSnapshotKey,
   computeAssignmentChanges,
@@ -54,6 +55,229 @@ interface Booking {
   activity_types?: string[] | null
   notes?: string | null
   booking_members?: { member_id: string; members?: { id: string; name: string; nickname?: string | null } | null }[]
+}
+
+interface MonthlyWorkloadStat {
+  coachId: string
+  coachName: string
+  teachingMinutes: number
+  drivingMinutes: number
+}
+
+function MonthlyWorkloadRows({
+  rows,
+  loading,
+  error,
+  isMobile,
+}: {
+  rows: MonthlyWorkloadStat[]
+  loading: boolean
+  error: string
+  isMobile: boolean
+}) {
+  if (loading) {
+    return <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', isMobile) }}>載入中…</div>
+  }
+  if (error) {
+    return <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', isMobile) }}>暫時無法載入</div>
+  }
+  if (rows.length === 0) {
+    return <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', isMobile) }}>本月尚無資料</div>
+  }
+
+  return (
+    <div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(58px, 1fr) minmax(64px, auto) minmax(64px, auto)',
+          gap: isMobile ? 6 : 10,
+          padding: '4px 0 6px',
+          borderBottom: `1px solid ${designSystem.colors.border.light}`,
+          color: designSystem.colors.text.disabled,
+          fontSize: getFontSize('caption', isMobile),
+          fontWeight: 600,
+          textAlign: 'right',
+        }}
+      >
+        <span style={{ textAlign: 'left' }}>人員</span>
+        <span>教學</span>
+        <span>駕駛</span>
+      </div>
+      {rows.map((row, index) => (
+        <div
+          key={row.coachId}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(58px, 1fr) minmax(64px, auto) minmax(64px, auto)',
+            alignItems: 'baseline',
+            gap: isMobile ? 6 : 10,
+            padding: '8px 0',
+            borderTop: index === 0 ? undefined : `1px solid ${designSystem.colors.border.light}`,
+            fontSize: getFontSize('bodySmall', isMobile),
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+            {row.coachName}
+          </span>
+          <span style={{ color: designSystem.colors.text.primary, whiteSpace: 'nowrap', textAlign: 'right', fontWeight: 600 }}>
+            {row.teachingMinutes.toLocaleString()} 分
+          </span>
+          <span style={{ color: designSystem.colors.text.primary, whiteSpace: 'nowrap', textAlign: 'right', fontWeight: 600 }}>
+            {row.drivingMinutes.toLocaleString()} 分
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function AssignmentReferencePanel({
+  todayEntries,
+  monthlyRows,
+  monthlyLoading,
+  monthlyError,
+}: {
+  todayEntries: Array<[string, { count: number; totalMinutes: number }]>
+  monthlyRows: MonthlyWorkloadStat[]
+  monthlyLoading: boolean
+  monthlyError: string
+}) {
+  return (
+    <aside
+      style={{
+        position: 'sticky',
+        top: 16,
+        background: designSystem.colors.background.card,
+        border: `1px solid ${designSystem.colors.border.light}`,
+        borderRadius: designSystem.borderRadius.lg,
+        boxShadow: designSystem.shadows.xs,
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          padding: '20px 20px 8px',
+          borderBottom: `1px solid ${designSystem.colors.border.main}`,
+          display: 'flex',
+          alignItems: 'center',
+          fontSize: getFontSize('h3', false),
+          fontWeight: 600,
+        }}
+      >
+        排班參考
+      </div>
+
+      <div style={{ padding: '14px 20px 18px' }}>
+      <section>
+        <div style={{ fontSize: getFontSize('body', false), fontWeight: 600 }}>今日教練＋駕駛</div>
+        <div style={{ marginTop: 3, marginBottom: 8, color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', false) }}>
+          含尚未儲存的調整
+        </div>
+        {todayEntries.length === 0 ? (
+          <div style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('bodySmall', false) }}>尚未安排人員</div>
+        ) : (
+          <div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) 54px 64px',
+                gap: 8,
+                padding: '4px 0 6px',
+                borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                color: designSystem.colors.text.disabled,
+                fontSize: getFontSize('caption', false),
+                fontWeight: 600,
+                textAlign: 'right',
+              }}
+            >
+              <span style={{ textAlign: 'left' }}>人員</span>
+              <span>筆數</span>
+              <span>分鐘</span>
+            </div>
+            {todayEntries.map(([name, stat], index) => (
+              <div
+                key={name}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) 54px 64px',
+                  gap: 8,
+                  padding: '7px 0',
+                  borderTop: index === 0 ? undefined : `1px solid ${designSystem.colors.border.light}`,
+                  alignItems: 'baseline',
+                  fontSize: getFontSize('bodySmall', false),
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{name}</span>
+                <span style={{ color: designSystem.colors.text.secondary, textAlign: 'right' }}>{stat.count} 筆</span>
+                <span style={{ textAlign: 'right', fontWeight: 600 }}>{stat.totalMinutes.toLocaleString()} 分</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${designSystem.colors.border.light}` }}>
+        <div style={{ fontSize: getFontSize('body', false), fontWeight: 600, marginBottom: 6 }}>本月統計</div>
+        <MonthlyWorkloadRows rows={monthlyRows} loading={monthlyLoading} error={monthlyError} isMobile={false} />
+      </section>
+      </div>
+    </aside>
+  )
+}
+
+function MobileMonthlyWorkload({
+  rows,
+  loading,
+  error,
+}: {
+  rows: MonthlyWorkloadStat[]
+  loading: boolean
+  error: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div
+      style={{
+        marginBottom: designSystem.spacing.md,
+        background: designSystem.colors.background.card,
+        border: `1px solid ${designSystem.colors.border.light}`,
+        borderRadius: designSystem.borderRadius.lg,
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        style={{
+          width: '100%',
+          minHeight: 46,
+          padding: '11px 14px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          border: 'none',
+          background: designSystem.colors.background.card,
+          color: designSystem.colors.text.primary,
+          fontSize: getFontSize('body', true),
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        <span>本月統計</span>
+        <span style={{ color: designSystem.colors.text.disabled }}>{expanded ? '收起' : '展開'}</span>
+      </button>
+      {expanded && (
+        <div style={{ padding: '0 14px 10px', borderTop: `1px solid ${designSystem.colors.border.light}` }}>
+          <MonthlyWorkloadRows rows={rows} loading={loading} error={error} isMobile />
+        </div>
+      )}
+    </div>
+  )
 }
 
 // 輔助函數：獲取明天的日期
@@ -125,6 +349,9 @@ export function CoachAssignment() {
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null) // 正在快速編輯的預約
+  const [monthlyWorkload, setMonthlyWorkload] = useState<MonthlyWorkloadStat[]>([])
+  const [monthlyWorkloadLoading, setMonthlyWorkloadLoading] = useState(true)
+  const [monthlyWorkloadError, setMonthlyWorkloadError] = useState('')
   
   // 儲存每個預約的配置（key: booking_id）
   const [assignments, setAssignments] = useState<Record<number, {
@@ -166,6 +393,100 @@ export function CoachAssignment() {
     () => computeAssignmentOverviewStats(bookings, assignments, coaches),
     [bookings, assignments, coaches],
   )
+
+  const monthlyWorkloadRows = useMemo(() => {
+    const rows = new Map(monthlyWorkload.map((row) => [row.coachId, { ...row }]))
+    coaches.forEach((coach) => {
+      if (!rows.has(coach.id)) {
+        rows.set(coach.id, {
+          coachId: coach.id,
+          coachName: coach.name,
+          teachingMinutes: 0,
+          drivingMinutes: 0,
+        })
+      }
+    })
+    return Array.from(rows.values()).sort(
+      (a, b) =>
+        (b.teachingMinutes + b.drivingMinutes) - (a.teachingMinutes + a.drivingMinutes) ||
+        a.coachName.localeCompare(b.coachName, 'zh-Hant'),
+    )
+  }, [monthlyWorkload, coaches])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadMonthlyWorkload = async () => {
+      setMonthlyWorkloadLoading(true)
+      setMonthlyWorkloadError('')
+      try {
+        const month = getVenueDateString().slice(0, 7)
+        const [year, monthNumber] = month.split('-').map(Number)
+        const lastDay = new Date(year, monthNumber, 0).getDate()
+        const startAt = `${month}-01T00:00:00`
+        const endAt = `${month}-${String(lastDay).padStart(2, '0')}T23:59:59`
+
+        const [teachingData, drivingData] = await Promise.all([
+          fetchAllPaginated<any>(async (from, to) =>
+            supabase
+              .from('booking_participants')
+              .select('coach_id, duration_min, coaches:coach_id(id, name), bookings!inner(start_at)')
+              .eq('status', 'processed')
+              .eq('is_teaching', true)
+              .eq('is_deleted', false)
+              .gte('bookings.start_at', startAt)
+              .lte('bookings.start_at', endAt)
+              .order('id', { ascending: true })
+              .range(from, to)
+          ),
+          fetchAllPaginated<any>(async (from, to) =>
+            supabase
+              .from('coach_reports')
+              .select('coach_id, driver_duration_min, coaches:coach_id(id, name), bookings!inner(start_at)')
+              .gte('bookings.start_at', startAt)
+              .lte('bookings.start_at', endAt)
+              .order('id', { ascending: true })
+              .range(from, to)
+          ),
+        ])
+
+        const stats = new Map<string, MonthlyWorkloadStat>()
+        const ensureRow = (coachId: string | null | undefined, coachName: string | null | undefined) => {
+          if (!coachId) return null
+          if (!stats.has(coachId)) {
+            stats.set(coachId, {
+              coachId,
+              coachName: coachName || '未知',
+              teachingMinutes: 0,
+              drivingMinutes: 0,
+            })
+          }
+          return stats.get(coachId)!
+        }
+
+        teachingData.forEach((record: any) => {
+          const row = ensureRow(record.coach_id, record.coaches?.name)
+          if (row) row.teachingMinutes += record.duration_min || 0
+        })
+        drivingData.forEach((record: any) => {
+          const row = ensureRow(record.coach_id, record.coaches?.name)
+          if (row) row.drivingMinutes += record.driver_duration_min || 0
+        })
+
+        if (!cancelled) setMonthlyWorkload(Array.from(stats.values()))
+      } catch (loadError) {
+        console.error('載入本月教學／駕駛統計失敗:', loadError)
+        if (!cancelled) setMonthlyWorkloadError('load_failed')
+      } finally {
+        if (!cancelled) setMonthlyWorkloadLoading(false)
+      }
+    }
+
+    void loadMonthlyWorkload()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleAssignmentDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value
@@ -1358,6 +1679,14 @@ export function CoachAssignment() {
           />
         )}
 
+        {!loading && bookings.length > 0 && isMobile && (
+          <MobileMonthlyWorkload
+            rows={monthlyWorkloadRows}
+            loading={monthlyWorkloadLoading}
+            error={monthlyWorkloadError}
+          />
+        )}
+
         {/* 當天可上班人員 - 在今日總覽下方 */}
         {!loading && (
           <DailyStaffDisplay date={selectedDate} isMobile={isMobile} />
@@ -1439,7 +1768,14 @@ export function CoachAssignment() {
           )
           
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
               {/* 渲染所有上班的教練 - 網格布局 */}
                               <div style={{
                 display: 'grid', 
@@ -1650,8 +1986,11 @@ export function CoachAssignment() {
               {/* 底部區塊：需要駕駛（並排網格）*/}
               <div style={{ 
                 display: 'grid', 
-                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(380px, 1fr))',
-                gap: '16px'
+                gridTemplateColumns: isMobile
+                  ? '1fr'
+                  : 'repeat(auto-fill, minmax(380px, 1fr))',
+                gap: '16px',
+                alignItems: 'start',
               }}>
               
               {/* 需要駕駛區塊（未指定教練的預約）*/}
@@ -1890,6 +2229,15 @@ export function CoachAssignment() {
                 </div>
               </div>
               )}
+              {!isMobile && (
+                <AssignmentReferencePanel
+                  todayEntries={assignmentOverviewStats.sortedCombined}
+                  monthlyRows={monthlyWorkloadRows}
+                  monthlyLoading={monthlyWorkloadLoading}
+                  monthlyError={monthlyWorkloadError}
+                />
+              )}
+              </div>
               </div>
             </div>
           )

@@ -36,7 +36,7 @@ import { LiffBootScreen } from './LiffBootScreen'
 import {
   bindLiffMember,
   ensureLiffLoggedIn,
-  fetchMemberByLineUserId,
+  fetchLiffMemberBootstrap,
   initLiffSdk,
   isFirstDocumentLoadThisNavigation,
   fetchLiffMemberTransactions,
@@ -50,15 +50,21 @@ function startMemberBackgroundLoads(
     setMember: (m: Member) => void
     setBookingsLoading: (v: boolean) => void
     setMemberEnriching: (v: boolean) => void
+    setShopOrders: (orders: LiffShopOrder[]) => void
     loadBookings: (id: string) => Promise<void>
     loadShopOrders: (id: string, silent: boolean) => Promise<void>
   },
+  initialShopOrders?: LiffShopOrder[],
 ) {
   handlers.setBookingsLoading(true)
   handlers.setMemberEnriching(false)
   handlers.setMember(member)
   void handlers.loadBookings(member.id).finally(() => handlers.setBookingsLoading(false))
-  void handlers.loadShopOrders(lineUserId, true)
+  if (initialShopOrders) {
+    handlers.setShopOrders(initialShopOrders)
+  } else {
+    void handlers.loadShopOrders(lineUserId, true)
+  }
 }
 
 export function LiffMyBookings() {
@@ -186,16 +192,18 @@ export function LiffMyBookings() {
 
   const checkBinding = async (userId: string, displayName: string | null) => {
     try {
-      const boundMember = await fetchMemberByLineUserId(userId, true)
+      const bootstrap = await fetchLiffMemberBootstrap<LiffShopOrder>()
+      const boundMember = bootstrap.member
       if (boundMember) {
         setBootLoading(false)
         startMemberBackgroundLoads(boundMember, userId, {
           setMember,
           setBookingsLoading,
           setMemberEnriching,
+          setShopOrders,
           loadBookings,
           loadShopOrders,
-        })
+        }, bootstrap.orders)
         liffTrack({
           icon_id: 'liff_open',
           line_user_id: userId,
@@ -278,13 +286,12 @@ export function LiffMyBookings() {
     setTransactionCache({})
     
     try {
-      const refreshedMember = await fetchMemberByLineUserId(lineUserId)
+      const bootstrap = await fetchLiffMemberBootstrap<LiffShopOrder>()
+      const refreshedMember = bootstrap.member
       if (refreshedMember) {
-        await Promise.all([
-          loadBookings(refreshedMember.id),
-          loadShopOrders(lineUserId, true),
-        ])
+        await loadBookings(refreshedMember.id)
         setMember(refreshedMember)
+        setShopOrders(bootstrap.orders)
         toast.success('資料已更新')
       }
     } catch (err: unknown) {
@@ -349,6 +356,7 @@ export function LiffMyBookings() {
         setMember,
         setBookingsLoading,
         setMemberEnriching,
+        setShopOrders,
         loadBookings,
         loadShopOrders,
       })

@@ -174,14 +174,10 @@ BEGIN
   INTO v_match_count
   FROM public.members m
   WHERE regexp_replace(COALESCE(m.phone, ''), '[^0-9]', '', 'g') = v_clean_phone
-    AND m.status = 'active'
-    AND (
-      NULLIF(trim(m.birthday), '') IS NULL
-      OR m.birthday = to_char(p_birthday, 'YYYY-MM-DD')
-    );
+    AND m.status = 'active';
 
   IF v_match_count = 0 THEN
-    RETURN jsonb_build_object('success', false, 'error', '手機或生日與會員資料不符');
+    RETURN jsonb_build_object('success', false, 'error', '找不到此手機號碼的會員資料');
   END IF;
   IF v_match_count > 1 THEN
     RETURN jsonb_build_object('success', false, 'error', '手機號碼對應多筆會員，請聯絡工作人員');
@@ -192,10 +188,6 @@ BEGIN
   FROM public.members m
   WHERE regexp_replace(COALESCE(m.phone, ''), '[^0-9]', '', 'g') = v_clean_phone
     AND m.status = 'active'
-    AND (
-      NULLIF(trim(m.birthday), '') IS NULL
-      OR m.birthday = to_char(p_birthday, 'YYYY-MM-DD')
-    )
   LIMIT 1;
 
   SELECT member_id
@@ -252,8 +244,7 @@ BEGIN
 
   UPDATE public.members
   SET birthday = to_char(p_birthday, 'YYYY-MM-DD')
-  WHERE id = v_member_id
-    AND NULLIF(trim(birthday), '') IS NULL;
+  WHERE id = v_member_id;
 
   v_member := public._liff_member_snapshot(v_member_id);
   RETURN jsonb_build_object('success', true, 'member', v_member);

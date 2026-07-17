@@ -947,7 +947,7 @@ export function CoachReport({
       <div style={{
         flex: 1,
         padding: embedded ? '0' : (isMobile ? '16px' : '24px'),
-        maxWidth: PAGE_MAX_WIDTHS.focused,
+        maxWidth: embedded ? 'none' : PAGE_MAX_WIDTHS.focused,
         margin: '0 auto',
         width: '100%',
         boxSizing: 'border-box',
@@ -988,14 +988,6 @@ export function CoachReport({
             marginBottom: isMobile ? '0' : '12px',
             alignItems: 'center'
           }}>
-            <span style={{
-              color: designSystem.colors.text.secondary,
-              fontSize: getFontSize('bodySmall', isMobile),
-              fontWeight: 600,
-              marginRight: '4px',
-            }}>
-              日期
-            </span>
             {/* 近30天未回報 */}
             <button
               data-track="coach_report_view_unreported"

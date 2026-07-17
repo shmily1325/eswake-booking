@@ -759,14 +759,6 @@ export function CoachAdmin() {
                   alignItems: 'center',
                 }}
               >
-                <span style={{
-                  color: designSystem.colors.text.secondary,
-                  fontSize: getFontSize('bodySmall', isMobile),
-                  fontWeight: 600,
-                  marginRight: '4px',
-                }}>
-                  日期
-                </span>
                 <button
                   type="button"
                   data-track="coach_admin_pending_all"
@@ -1091,7 +1083,7 @@ export function CoachAdmin() {
                     onDateChange={setSelectedDate}
                     isMobile={isMobile}
                     showTodayButton={true}
-                    label="查詢期間"
+                    label=""
                     simplified={true}
                   />
                 </div>

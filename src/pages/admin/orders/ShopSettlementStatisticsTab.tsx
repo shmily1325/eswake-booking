@@ -278,7 +278,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
           onDateChange={setSelectedDate}
           isMobile={isMobile}
           showTodayButton={!isMobile}
-          label="查詢期間"
+          label=""
           simplified
           showYearButtons
           trackPrefix="product_order_settle_stat_period"

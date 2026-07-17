@@ -70,4 +70,42 @@ describe('LIFF member access API', () => {
     })
     expect(response.status).toHaveBeenCalledWith(200)
   })
+
+  it('loads member and orders with one LINE verification', async () => {
+    const lineFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ userId: 'verified-line-user' }),
+    } as Response)
+    rpcMock
+      .mockResolvedValueOnce({
+        data: { success: true, member: { id: 'member-1' } },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { success: true, orders: [{ id: 'order-1' }] },
+        error: null,
+      })
+    const response = responseMock()
+    const req = {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid-token' },
+      body: { action: 'bootstrap' },
+    } as VercelRequest
+
+    await handler(req, response as unknown as VercelResponse)
+
+    expect(lineFetch).toHaveBeenCalledTimes(1)
+    expect(rpcMock).toHaveBeenNthCalledWith(1, 'get_liff_member_profile', {
+      p_line_user_id: 'verified-line-user',
+      p_record_login: true,
+    })
+    expect(rpcMock).toHaveBeenNthCalledWith(2, 'get_liff_shop_orders', {
+      p_line_user_id: 'verified-line-user',
+    })
+    expect(response.json).toHaveBeenCalledWith({
+      success: true,
+      member: { id: 'member-1' },
+      orders: [{ id: 'order-1' }],
+    })
+  })
 })

@@ -42,13 +42,16 @@ describe('LIFF member and order access hardening', () => {
     expect(migration).toContain('WHERE o.member_id = v_member_id')
   })
 
-  it('matches phone and birthday and prevents conflicting bindings', () => {
+  it('matches phone, writes birthday, and prevents conflicting bindings', () => {
     expect(migration).toContain(
       "regexp_replace(COALESCE(m.phone, ''), '[^0-9]', '', 'g') = v_clean_phone",
     )
     expect(migration).toContain('INSERT INTO public.line_bindings')
     expect(migration).toContain('ON CONFLICT (line_user_id) DO UPDATE')
-    expect(migration).toContain("m.birthday = to_char(p_birthday, 'YYYY-MM-DD')")
+    expect(migration).not.toContain("m.birthday = to_char(p_birthday, 'YYYY-MM-DD')")
+    expect(migration).toMatch(
+      /UPDATE public\.members\s+SET birthday = to_char\(p_birthday, 'YYYY-MM-DD'\)\s+WHERE id = v_member_id;/,
+    )
     expect(migration).toContain('此 LINE 帳號已綁定其他會員')
     expect(migration).toContain('此會員已綁定其他 LINE 帳號')
     expect(migration).toContain('CREATE UNIQUE INDEX IF NOT EXISTS uq_line_bindings_active_member')

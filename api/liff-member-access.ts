@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 type Action =
+  | 'bootstrap'
   | 'profile'
   | 'bind'
   | 'orders'
@@ -64,6 +65,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       | undefined
 
     switch (action) {
+      case 'bootstrap': {
+        const profileRpc = await supabase.rpc('get_liff_member_profile', {
+          p_line_user_id: lineUserId,
+          p_record_login: true,
+        })
+        if (profileRpc.error) {
+          console.error('LIFF bootstrap profile failed:', profileRpc.error.message)
+          return res.status(500).json({ success: false, error: '服務暫時無法使用' })
+        }
+
+        const profile = profileRpc.data as {
+          success?: boolean
+          error?: string
+          member?: unknown
+        } | null
+        if (!profile?.success) {
+          return res.status(200).json({ success: false, error: '會員資料載入失敗' })
+        }
+        if (!profile.member) {
+          return res.status(200).json({ success: true, member: null, orders: [] })
+        }
+
+        const ordersRpc = await supabase.rpc('get_liff_shop_orders', {
+          p_line_user_id: lineUserId,
+        })
+        if (ordersRpc.error) {
+          console.error('LIFF bootstrap orders failed:', ordersRpc.error.message)
+          return res.status(200).json({
+            success: true,
+            member: profile.member,
+            orders: [],
+          })
+        }
+
+        const orders = ordersRpc.data as {
+          success?: boolean
+          orders?: unknown[]
+        } | null
+        if (!orders?.success) {
+          return res.status(200).json({
+            success: true,
+            member: profile.member,
+            orders: [],
+          })
+        }
+        return res.status(200).json({
+          success: true,
+          member: profile.member,
+          orders: Array.isArray(orders.orders) ? orders.orders : [],
+        })
+      }
       case 'profile':
         rpc = await supabase.rpc('get_liff_member_profile', {
           p_line_user_id: lineUserId,
