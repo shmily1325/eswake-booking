@@ -174,7 +174,7 @@ function AssignmentReferencePanel({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(54px, 1fr) 30px 42px 42px 56px 100px',
+                gridTemplateColumns: 'minmax(54px, 1fr) 30px 42px 42px 56px 47px 47px',
                 gap: 6,
                 padding: '4px 0 6px',
                 borderBottom: `1px solid ${designSystem.colors.border.light}`,
@@ -189,14 +189,15 @@ function AssignmentReferencePanel({
               <span>教練</span>
               <span>駕駛</span>
               <span>合計</span>
-              <span>本月 教／駕</span>
+              <span title="本月教學" style={{ borderLeft: `1px solid ${designSystem.colors.border.main}`, paddingLeft: 5 }}>本月🎓</span>
+              <span title="本月駕駛">本月🚤</span>
             </div>
             {rows.map((row, index) => (
               <div
                 key={row.name}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'minmax(54px, 1fr) 30px 42px 42px 56px 100px',
+                  gridTemplateColumns: 'minmax(54px, 1fr) 30px 42px 42px 56px 47px 47px',
                   gap: 6,
                   padding: '7px 0',
                   borderTop: index === 0 ? undefined : `1px solid ${designSystem.colors.border.light}`,
@@ -210,12 +211,20 @@ function AssignmentReferencePanel({
                 <span style={{ textAlign: 'right' }}>{row.coachingMinutes || '—'}</span>
                 <span style={{ textAlign: 'right' }}>{row.drivingMinutes || '—'}</span>
                 <span style={{ textAlign: 'right', fontWeight: 600 }}>{row.combinedMinutes || '—'}</span>
+                <span style={{
+                  alignSelf: 'stretch',
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'flex-end',
+                  borderLeft: `1px solid ${designSystem.colors.border.main}`,
+                  paddingLeft: 5,
+                  textAlign: 'right',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {monthlyLoading ? '…' : monthlyError ? '—' : (row.monthly?.teachingMinutes ?? 0).toLocaleString()}
+                </span>
                 <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  {monthlyLoading
-                    ? '載入中…'
-                    : monthlyError
-                      ? '—'
-                      : `${(row.monthly?.teachingMinutes ?? 0).toLocaleString()}／${(row.monthly?.drivingMinutes ?? 0).toLocaleString()}`}
+                  {monthlyLoading ? '…' : monthlyError ? '—' : (row.monthly?.drivingMinutes ?? 0).toLocaleString()}
                 </span>
               </div>
             ))}
