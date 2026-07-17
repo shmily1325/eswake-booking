@@ -420,7 +420,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             }
             style={{
               width: '100%',
-              padding: isMobile ? '12px 14px 12px 36px' : '10px 14px 10px 36px',
+              padding: isMobile ? '12px 14px' : '10px 14px',
               fontSize: isMobile ? '16px' : getFontSize('body', false),
               border: `1px solid ${colors.border.main}`,
               borderRadius: borderRadius.lg,
@@ -429,18 +429,6 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
               color: colors.text.primary,
             }}
           />
-          <span
-            style={{
-              position: 'absolute',
-              left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: colors.text.disabled,
-              fontSize: getFontSize('bodySmall', isMobile),
-            }}
-          >
-            搜
-          </span>
           {search && (
             <button
               type="button"

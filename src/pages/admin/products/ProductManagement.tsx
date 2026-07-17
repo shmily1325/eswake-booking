@@ -90,17 +90,6 @@ export function ProductManagement({
   /** 已售完 archive：active 時只顯示 sold_out；預設隱藏已售完（搜尋時仍會找到） */
   const [onlySoldOut, setOnlySoldOut] = useState(false)
 
-  // 排序模式（記憶於 localStorage）
-  const [sortBy, setSortBy] = useState<SortMode>(() => {
-    if (typeof window === 'undefined') return 'stock-asc'
-    const saved = window.localStorage.getItem('products_sort')
-    return SORT_MODES.some((m) => m.id === saved) ? (saved as SortMode) : 'stock-asc'
-  })
-  const setSortByPersist = (next: SortMode) => {
-    setSortBy(next)
-    if (typeof window !== 'undefined') window.localStorage.setItem('products_sort', next)
-  }
-
   const clearAllFilters = () => {
     setOnlyMissingPrice(false)
     setOnlyMissingImage(false)
@@ -295,7 +284,7 @@ export function ProductManagement({
       items = items.filter((it) => variantMatchesSearchTokens(it, searchQuery))
     }
 
-    return sortItems(items, sortBy)
+    return sortItemsByUpdated(items)
   }, [
     tabItems,
     searchQuery,
@@ -305,7 +294,6 @@ export function ProductManagement({
     onlyMissingCover,
     onlyMissingLabel,
     onlySoldOut,
-    sortBy,
   ])
 
   /** tab + 搜尋，用來算儀表板數字與 chip 計數 */
@@ -643,28 +631,17 @@ export function ProductManagement({
           </div>
         </div>
 
-        {/* 清單工具：結果數、排序、主要檢視與次要顯示設定 */}
+        {/* 清單工具：主要檢視與圖片來源切換 */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-end',
             gap: 10,
             flexWrap: isMobile ? 'nowrap' : 'wrap',
             marginBottom: 14,
           }}
         >
-          <div
-            style={{
-              width: 'auto',
-              flexShrink: 0,
-              fontSize: getFontSize('bodySmall', isMobile),
-              color: colors.text.secondary,
-              fontWeight: 600,
-            }}
-          >
-            {loading ? '載入中…' : isMobile ? `${filteredItems.length} 筆` : `${filteredItems.length} 個結果`}
-          </div>
           <div
             style={{
               display: 'flex',
@@ -677,22 +654,12 @@ export function ProductManagement({
             }}
           >
             {canEdit && (
-              <SortMenu
-                value={sortBy}
-                onChange={(next) => {
-                  setSortByPersist(next)
-                  trackClick(`product_sort_${next}`, user?.email ?? undefined)
-                }}
-                isMobile={isMobile}
-              />
-            )}
-            {canEdit && (
               <>
                 <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
-                <DisplaySettings
-                  imageMode={listImageMode}
+                <ImageModeToggle
+                  mode={listImageMode}
                   isMobile={isMobile}
-                  onImageModeChange={(next) => {
+                  onChange={(next) => {
                     setListImageModePersist(next)
                     trackClick(`product_list_image_${next}`, user?.email ?? undefined)
                   }}
@@ -800,7 +767,7 @@ function StockCheckResult({
           marginBottom: 12,
         }}
       >
-        <div style={{ minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
               fontSize: getFontSize('h3', isMobile),
@@ -928,64 +895,14 @@ function CategoryRow({ children }: { children: ReactNode }) {
 }
 
 // ============================================================
-//  排序
+//  排序：商品清單固定依最近更新優先
 // ============================================================
-type SortMode = 'stock-asc' | 'price-asc' | 'updated-desc'
-const SORT_MODES: { id: SortMode; label: string }[] = [
-  { id: 'stock-asc', label: '可售少 → 多' },
-  { id: 'price-asc', label: '價格低 → 高' },
-  { id: 'updated-desc', label: '最近更新' },
-]
-function sortItems(items: VariantListItem[], mode: SortMode): VariantListItem[] {
-  const arr = [...items]
-  switch (mode) {
-    case 'stock-asc':
-      return arr.sort((a, b) => getVariantSellableStock(a.variant) - getVariantSellableStock(b.variant))
-    case 'price-asc':
-      return arr.sort((a, b) => priceForSort(a.variant.price) - priceForSort(b.variant.price))
-    case 'updated-desc':
-      return arr.sort((a, b) => {
-        const ta = new Date(a.variant.updated_at ?? a.product.updated_at ?? 0).getTime()
-        const tb = new Date(b.variant.updated_at ?? b.product.updated_at ?? 0).getTime()
-        return tb - ta
-      })
-  }
-}
-/** 排序時 null 價格放最後（缺價的不要混入正常數字中段） */
-function priceForSort(p: number | null): number {
-  return p == null ? Number.POSITIVE_INFINITY : p
-}
-
-interface SortMenuProps {
-  value: SortMode
-  onChange: (next: SortMode) => void
-  isMobile: boolean
-}
-function SortMenu({ value, onChange, isMobile }: SortMenuProps) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as SortMode)}
-      title="排序方式"
-      style={{
-        height: 34,
-        border: `1px solid ${colors.border.main}`,
-        borderRadius: borderRadius.sm,
-        padding: isMobile ? '0 8px' : '0 10px',
-        fontSize: getFontSize('bodySmall', isMobile),
-        background: colors.background.card,
-        color: colors.text.primary,
-        cursor: 'pointer',
-        flexShrink: 0,
-      }}
-    >
-      {SORT_MODES.map((m) => (
-        <option key={m.id} value={m.id}>
-          ↕ {m.label}
-        </option>
-      ))}
-    </select>
-  )
+function sortItemsByUpdated(items: VariantListItem[]): VariantListItem[] {
+  return [...items].sort((a, b) => {
+    const ta = new Date(a.variant.updated_at ?? a.product.updated_at ?? 0).getTime()
+    const tb = new Date(b.variant.updated_at ?? b.product.updated_at ?? 0).getTime()
+    return tb - ta
+  })
 }
 
 // ============================================================
@@ -1466,6 +1383,14 @@ function formatStockInAt(at: string | null | undefined): string | null {
   }
 }
 
+function formatCompactStockInAt(at: string | null | undefined): string | null {
+  const formatted = formatStockInAt(at)
+  if (!formatted) return null
+  const match = formatted.match(/^\d{4}-(\d{2})-(\d{2})\s+(.+)$/)
+  if (!match) return formatted
+  return `${Number(match[1])}/${Number(match[2])} ${match[3]}`
+}
+
 /** 售價顯示：null = 「缺」（橘標籤），其他 = "$1,234" */
 function PriceDisplay({ price, align = 'left' }: { price: number | null; align?: 'left' | 'right' }) {
   if (price == null) {
@@ -1511,10 +1436,12 @@ function getVariantListImageUrl(
 interface ImageModeToggleProps {
   mode: ListImageMode
   onChange: (next: ListImageMode) => void
+  isMobile: boolean
 }
-function ImageModeToggle({ mode, onChange }: ImageModeToggleProps) {
+function ImageModeToggle({ mode, onChange, isMobile }: ImageModeToggleProps) {
   const cellStyle = (active: boolean): React.CSSProperties => ({
-    height: 34,
+    minWidth: isMobile ? 54 : 60,
+    height: isMobile ? 40 : 34,
     padding: '0 10px',
     border: 'none',
     background: active ? colors.primary[500] : colors.background.card,
@@ -1523,7 +1450,7 @@ function ImageModeToggle({ mode, onChange }: ImageModeToggleProps) {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: getFontSize('bodySmall', false),
+    fontSize: getFontSize('bodySmall', isMobile),
     fontWeight: active ? 600 : 500,
     whiteSpace: 'nowrap',
   })
@@ -1559,67 +1486,6 @@ function ImageModeToggle({ mode, onChange }: ImageModeToggleProps) {
         實拍
       </button>
     </div>
-  )
-}
-
-function DisplaySettings({
-  imageMode,
-  isMobile,
-  onImageModeChange,
-}: {
-  imageMode: ListImageMode
-  isMobile: boolean
-  onImageModeChange: (next: ListImageMode) => void
-}) {
-  return (
-    <details style={{ position: 'relative', flexShrink: 0 }}>
-      <summary
-        style={{
-          height: isMobile ? 40 : 34,
-          boxSizing: 'border-box',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 11px',
-          border: `1px solid ${colors.border.main}`,
-          borderRadius: borderRadius.sm,
-          background: colors.background.card,
-          color: colors.text.secondary,
-          fontSize: getFontSize('bodySmall', isMobile),
-          fontWeight: 500,
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-          listStyle: 'none',
-        }}
-      >
-        顯示設定
-      </summary>
-      <div
-        style={{
-          position: 'absolute',
-          top: 'calc(100% + 6px)',
-          right: 0,
-          zIndex: designSystem.zIndex.dropdown,
-          minWidth: 176,
-          padding: designSystem.spacing.md,
-          border: `1px solid ${colors.border.light}`,
-          borderRadius: borderRadius.md,
-          background: colors.background.card,
-          boxShadow: designSystem.shadows.md,
-        }}
-      >
-        <div
-          style={{
-            marginBottom: designSystem.spacing.sm,
-            color: colors.text.secondary,
-            fontSize: getFontSize('caption', isMobile),
-            fontWeight: 600,
-          }}
-        >
-          圖片優先顯示
-        </div>
-        <ImageModeToggle mode={imageMode} onChange={onImageModeChange} />
-      </div>
-    </details>
   )
 }
 
@@ -1987,6 +1853,7 @@ function MobileListRow({
   const stock = variant.stock ?? 0
   const reserved = variant.reserved_qty ?? 0
   const sellable = getVariantSellableStock(variant)
+  const compactStockInAt = formatCompactStockInAt(variant.last_stock_in_at)
 
   return (
     <div
@@ -2001,85 +1868,91 @@ function MobileListRow({
         }
       } : undefined}
       style={{
-        display: 'flex',
-        gap: 12,
         background: colors.background.card,
-        border: '1px solid ' + cardBorder,
+        border: `1px solid ${colors.border.light}`,
+        borderLeft: `3px solid ${cardBorder}`,
         borderRadius: 12,
         padding: 10,
         textAlign: 'left',
         cursor: canEdit ? 'pointer' : 'default',
         width: '100%',
         boxSizing: 'border-box',
-        alignItems: 'stretch',
       }}
     >
-      {/* 縮圖（9:16，55x98） */}
-      <div
-        style={{
-          width: 55,
-          height: 98,
-          flexShrink: 0,
-          background: colors.secondary[50],
-          borderRadius: borderRadius.sm,
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            loading="lazy"
-          />
-        ) : (
-          <span style={{ fontSize: getFontSize('caption', true), color: colors.text.disabled, letterSpacing: 1 }}>
-            —
-          </span>
-        )}
-      </div>
-
-      {/* 內容區 */}
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: getFontSize('bodySmall', true),
-              color: colors.text.disabled,
-              fontWeight: 500,
-              textTransform: 'uppercase',
-              letterSpacing: 0.3,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {product.brand}
-          </div>
-          <div
-            style={{
-              fontSize: getFontSize('body', true),
-              fontWeight: 700,
-              color: colors.text.primary,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              lineHeight: 1.3,
-            }}
-            title={product.model}
-          >
-            {product.model}
+      {/* 只有商品基本資料採圖片＋文字雙欄，其餘資訊使用卡片全寬 */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div
+          style={{
+            width: 58,
+            height: 86,
+            flexShrink: 0,
+            background: colors.secondary[50],
+            borderRadius: borderRadius.sm,
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              loading="lazy"
+            />
+          ) : (
+            <span style={{ fontSize: getFontSize('caption', true), color: colors.text.disabled }}>
+              —
+            </span>
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: getFontSize('bodySmall', true),
+                  color: colors.text.disabled,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.3,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {product.brand}
+              </div>
+              <div
+                style={{
+                  fontSize: getFontSize('body', true),
+                  fontWeight: 700,
+                  color: colors.text.primary,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  lineHeight: 1.3,
+                }}
+                title={product.model}
+              >
+                {product.model}
+              </div>
+            </div>
+            <span
+              style={{
+                flexShrink: 0,
+                fontSize: getFontSize('caption', true),
+                fontWeight: 600,
+                padding: '2px 7px',
+                borderRadius: 999,
+                background: status.bg,
+                color: status.color,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {status.label}
+            </span>
           </div>
           {attrText && (
             <div
@@ -2126,78 +1999,64 @@ function MobileListRow({
             </div>
           )}
         </div>
+      </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-            marginTop: 8,
-            border: `1px solid ${colors.border.light}`,
-            borderRadius: 8,
-            overflow: 'hidden',
-            background: colors.secondary[50],
-          }}
-        >
-          <StockMetric label="現有庫存" value={stock} />
-          <StockMetric label="待結帳保留" value={reserved} bordered />
-          <StockMetric label="可售現貨" value={sellable} bordered />
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          marginTop: 9,
+          border: `1px solid ${colors.border.light}`,
+          borderRadius: 8,
+          overflow: 'hidden',
+          background: colors.secondary[50],
+        }}
+      >
+        <StockMetric label="現有庫存" value={stock} />
+        <StockMetric label="待結帳保留" value={reserved} bordered />
+        <StockMetric label="可售現貨" value={sellable} bordered emphasize />
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: 7,
+          gap: 8,
+        }}
+      >
+        <div style={{ fontSize: getFontSize('bodyLarge', true), fontWeight: 700 }}>
+          <PriceDisplay price={variant.price} />
         </div>
-
-        {canEdit && (
-          <>
-            {/* 管理模式才顯示價格、狀態與操作 */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: 6,
-                gap: 8,
-              }}
-            >
-              <PriceDisplay price={variant.price} />
-              <span
-                style={{
-                  fontSize: getFontSize('bodySmall', true),
-                  fontWeight: 500,
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                  background: status.bg,
-                  color: status.color,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {status.label}
-              </span>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                gap: 8,
-                marginTop: 8,
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {onStartOrder && (
-                <StartOrderButton
-                  label="新增訂單"
-                  wide
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onStartOrder(variant.id)
-                  }}
-                />
-              )}
-              <EditProductButton label="編輯" wide onClick={onClick} />
-            </div>
-            {formatStockInAt(variant.last_stock_in_at) && (
-              <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', true), color: colors.text.secondary }}>
-                入庫 {formatStockInAt(variant.last_stock_in_at)}
-              </div>
-            )}
-          </>
+        {canEdit && compactStockInAt && (
+          <span style={{ fontSize: getFontSize('caption', true), color: colors.text.disabled }}>
+            最近入庫：{compactStockInAt}
+          </span>
         )}
       </div>
+      {canEdit && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            marginTop: 8,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onStartOrder && (
+            <StartOrderButton
+              label="新增訂單"
+              wide
+              onClick={(e) => {
+                e.stopPropagation()
+                onStartOrder(variant.id)
+              }}
+            />
+          )}
+          <EditProductButton label="編輯" wide onClick={onClick} />
+        </div>
+      )}
     </div>
   )
 }
@@ -2233,7 +2092,7 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
             <tr style={{ background: colors.secondary[50], color: colors.text.secondary, fontWeight: 600 }}>
               <th style={thStyle('60px')}>照片</th>
               <th style={thStyle('auto')}>商品／規格</th>
-              {canEdit && <th style={thStyle('90px', 'right')}>售價</th>}
+              <th style={thStyle('90px', 'right')}>售價</th>
               <th style={thStyle('76px', 'center')}>現有庫存</th>
               <th style={thStyle('92px', 'center')}>待結帳保留</th>
               <th style={thStyle('76px', 'center')}>可售現貨</th>
@@ -2302,11 +2161,9 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                       </div>
                     )}
                   </td>
-                  {canEdit && (
-                    <td style={tdStyle('right')}>
-                      <PriceDisplay price={it.variant.price} align="right" />
-                    </td>
-                  )}
+                  <td style={tdStyle('right')}>
+                    <PriceDisplay price={it.variant.price} align="right" />
+                  </td>
                   <td
                     style={{
                       ...tdStyle('center'),
@@ -2408,17 +2265,33 @@ function tdStyle(align: 'left' | 'center' | 'right' = 'left'): React.CSSProperti
   return { padding: '12px 14px', textAlign: align, color: colors.text.primary, verticalAlign: 'middle' }
 }
 
-function StockMetric({ label, value, bordered = false }: { label: string; value: number; bordered?: boolean }) {
+function StockMetric({
+  label,
+  value,
+  bordered = false,
+  emphasize = false,
+}: {
+  label: string
+  value: number
+  bordered?: boolean
+  emphasize?: boolean
+}) {
   return (
     <div
       style={{
-        padding: '6px 4px',
+        padding: '5px 4px',
         textAlign: 'center',
         borderLeft: bordered ? `1px solid ${colors.border.light}` : undefined,
+        background: emphasize ? colors.success[50] : undefined,
       }}
     >
       <div style={{ fontSize: getFontSize('bodySmall', true), color: colors.text.secondary }}>{label}</div>
-      <div style={{ marginTop: 1, fontSize: getFontSize('bodyLarge', true), fontWeight: 700, color: colors.text.primary }}>
+      <div style={{
+        marginTop: 1,
+        fontSize: getFontSize('bodyLarge', true),
+        fontWeight: emphasize ? 800 : 600,
+        color: emphasize ? colors.success[700] : colors.text.secondary,
+      }}>
         {value}
       </div>
     </div>

@@ -326,24 +326,29 @@ export function VirtualizedBookingList({
                                                         fontSize: isMobile ? getFontSize('bodySmall', true) : getFontSize('bodySmall', false),
                                                         color: designSystem.colors.text.secondary,
                                                         lineHeight: '1.4',
+                                                        display: 'flex',
+                                                        flexWrap: 'wrap',
+                                                        alignItems: 'center',
                                                     }}>
                                                         {booking.coaches && booking.coaches.length > 0 && (
-                                                            <span>🎓 {booking.coaches.filter(c => c && c.name).map(c => c.name).join('/')}</span>
+                                                            <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                                                                🎓 {booking.coaches.filter(c => c && c.name).map(c => c.name).join('/')}
+                                                            </span>
                                                         )}
                                                         {booking.drivers && booking.drivers.length > 0 && (
-                                                            <>
+                                                            <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                                                                 {booking.coaches && booking.coaches.length > 0 && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
-                                                                <span>🚤 {booking.drivers.filter(d => d && d.name).map(d => d.name).join('/')}</span>
-                                                            </>
+                                                                🚤 {booking.drivers.filter(d => d && d.name).map(d => d.name).join('/')}
+                                                            </span>
                                                         )}
                                                         {booking.requires_driver && (!booking.drivers || booking.drivers.length === 0) && (
-                                                            <>
+                                                            <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                                                                 {booking.coaches && booking.coaches.length > 0 && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
                                                                 <span style={{ color: designSystem.colors.warning[700] }}>需要駕駛</span>
-                                                            </>
+                                                            </span>
                                                         )}
                                                         {booking.activity_types && booking.activity_types.length > 0 && (
-                                                            <>
+                                                            <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                                                                 {((booking.coaches && booking.coaches.length > 0) || (booking.drivers && booking.drivers.length > 0) || booking.requires_driver) && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
                                                                 <span style={{ 
                                                                     backgroundColor: designSystem.colors.secondary[100], 
@@ -356,7 +361,7 @@ export function VirtualizedBookingList({
                                                                 }}>
                                                                     {booking.activity_types.join('+')}
                                                                 </span>
-                                                            </>
+                                                            </span>
                                                         )}
                                                     </div>
 

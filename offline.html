@@ -236,6 +236,202 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+
+        .offline-journal-page {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 12px 0 64px;
+        }
+        .offline-journal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .offline-journal-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .offline-journal-title-icon {
+            width: 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            border-radius: 11px;
+            background: #1f2937;
+            color: white;
+            font-size: 19px;
+        }
+        .offline-journal-notice {
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            border: 1px solid #f0d98a;
+            border-radius: 10px;
+            background: #fffbeb;
+            color: #715516;
+            font-size: 12px;
+            line-height: 1.55;
+        }
+        .offline-booking-form {
+            padding: 18px;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: white;
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+        }
+        .offline-booking-form-title {
+            margin: 0 0 14px;
+            font-size: 16px;
+            color: #111827;
+        }
+        .offline-booking-grid {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .offline-booking-grid-time {
+            grid-template-columns: minmax(150px, 1.4fr) minmax(120px, 1fr) 90px;
+        }
+        .offline-booking-grid-main {
+            grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr);
+        }
+        .offline-booking-grid-extra {
+            grid-template-columns: repeat(3, minmax(120px, 1fr));
+        }
+        .offline-booking-field {
+            min-width: 0;
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .offline-booking-field input,
+        .offline-booking-field select,
+        .offline-booking-field textarea {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 5px;
+            padding: 10px 11px;
+            border: 1px solid #d1d5db;
+            border-radius: 9px;
+            background: #fff;
+            color: #111827;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            outline: none;
+        }
+        .offline-booking-field input:focus,
+        .offline-booking-field select:focus,
+        .offline-booking-field textarea:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        .offline-booking-submit {
+            width: 100%;
+            margin-top: 2px;
+            padding: 11px 14px;
+            border: 0;
+            border-radius: 9px;
+            background: #1f2937;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .offline-booking-card {
+            display: grid;
+            grid-template-columns: 92px minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        }
+        .offline-booking-card.completed {
+            opacity: 0.68;
+        }
+        .offline-booking-time-card {
+            padding: 9px 7px;
+            border-left: 3px solid #2563eb;
+            border-radius: 9px;
+            background: #eff6ff;
+            text-align: center;
+        }
+        .offline-booking-time-card .date {
+            color: #64748b;
+            font-size: 11px;
+        }
+        .offline-booking-time-card .time {
+            margin-top: 2px;
+            color: #0f172a;
+            font-size: 17px;
+            font-weight: 800;
+        }
+        .offline-booking-time-card .duration {
+            margin-top: 2px;
+            color: #64748b;
+            font-size: 11px;
+        }
+        .offline-booking-card-name {
+            color: #111827;
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .offline-booking-card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px 10px;
+            margin-top: 5px;
+            color: #64748b;
+            font-size: 12px;
+        }
+        .offline-booking-card-note {
+            margin-top: 6px;
+            color: #475569;
+            font-size: 12px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        .offline-booking-complete {
+            padding: 7px 9px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: white;
+            color: #334155;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .offline-pending-badge {
+            display: inline-block;
+            margin-bottom: 6px;
+            padding: 3px 8px;
+            border: 1px solid #d97706;
+            border-radius: 999px;
+            background: #fffbeb;
+            color: #92400e;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        @media (max-width: 640px) {
+            .offline-booking-grid-time,
+            .offline-booking-grid-main,
+            .offline-booking-grid-extra {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .offline-booking-card {
+                grid-template-columns: 78px minmax(0, 1fr);
+            }
+            .offline-booking-complete {
+                grid-column: 1 / -1;
+                width: 100%;
+            }
+        }
         
         .hidden {
             display: none;
@@ -1450,6 +1646,17 @@
                                 margin: 0;
                             ">今日預約</h1>
                             <div style="display: flex; gap: 8px; align-items: center;">
+                                <button onclick="showOfflineChangeJournal()" style="
+                                    padding: 6px 12px;
+                                    background: #f59e0b;
+                                    color: #422006;
+                                    border-radius: 4px;
+                                    font-size: 13px;
+                                    border: 1px solid rgba(255, 255, 255, 0.25);
+                                    white-space: nowrap;
+                                    cursor: pointer;
+                                    font-weight: 700;
+                                ">＋ 離線新增</button>
                                 <button onclick="showHomePage()" style="
                                     padding: 6px 12px;
                                     background: rgba(255, 255, 255, 0.15);
@@ -1573,6 +1780,66 @@
             return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-TW');
         }
 
+        function normalizeOfflineBookingBoatName(value) {
+            return String(value || '').trim().toLocaleLowerCase();
+        }
+
+        function splitOfflineBookingNames(value) {
+            return String(value || '')
+                .split(/[,、/]/)
+                .map(name => name.trim())
+                .filter(Boolean);
+        }
+
+        function buildPendingOfflineBookings(records, boats, coaches, selectedDate) {
+            return (records || [])
+                .filter(record =>
+                    record &&
+                    record.status !== 'completed' &&
+                    record.booking_date === selectedDate
+                )
+                .map(record => {
+                    const boatName = normalizeOfflineBookingBoatName(record.boat_name);
+                    const boat = (boats || []).find(item =>
+                        normalizeOfflineBookingBoatName(item && item.name) === boatName
+                    );
+                    if (!boat || !record.start_time || !Number(record.duration_min)) return null;
+
+                    const matchedCoaches = splitOfflineBookingNames(record.coach_name)
+                        .map(name =>
+                            (coaches || []).find(coach => coach && coach.name === name) ||
+                            { id: `offline-coach:${name}`, name }
+                        );
+
+                    return {
+                        id: `offline:${record.id}`,
+                        offline_change_id: record.id,
+                        is_offline_pending: true,
+                        status: 'confirmed',
+                        start_at: `${record.booking_date}T${record.start_time}:00`,
+                        duration_min: Number(record.duration_min),
+                        boat_id: boat.id,
+                        boats: boat,
+                        contact_name: record.contact_name || '未填姓名',
+                        contact_phone: record.phone || '',
+                        notes: record.notes || '',
+                        schedule_notes: record.activity_types ? `活動：${record.activity_types}` : '',
+                        coaches: matchedCoaches,
+                        drivers: [],
+                        booking_members: []
+                    };
+                })
+                .filter(Boolean);
+        }
+
+        function bookingRangesOverlap(startTimeA, durationA, startTimeB, durationB) {
+            const startA = timeToMinutes(startTimeA);
+            const startB = timeToMinutes(startTimeB);
+            const endA = startA + Number(durationA || 0);
+            const endB = startB + Number(durationB || 0);
+            return startA < endB && startB < endA;
+        }
+
         async function showOfflineChangeJournal() {
             const mainContent = document.getElementById('main-content');
             const appContainer = document.getElementById('app');
@@ -1580,74 +1847,83 @@
             const boats = await safeGetAllFromStore('boats');
             const coaches = await safeGetAllFromStore('coaches');
             const activeCoaches = coaches.filter(coach => !coach.status || coach.status === 'active');
-            appContainer.style.maxWidth = '1000px';
-            appContainer.style.padding = '20px';
+            appContainer.style.maxWidth = '820px';
+            appContainer.style.padding = '16px';
             appContainer.classList.remove('full-width');
 
             mainContent.innerHTML = `
-                <div style="min-height:100vh; background:#f5f5f5; padding-bottom:70px;">
-                    <div style="position:sticky; top:0; z-index:100; background:#f5f5f5; padding:16px 0; border-bottom:1px solid #ddd;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <div class="offline-journal-page">
+                    <div class="offline-journal-header">
+                        <div class="offline-journal-title">
+                            <div class="offline-journal-title-icon">＋</div>
                             <div>
-                                <h1 style="font-size:21px; margin:0;">📝 離線異動暫存</h1>
-                                <div style="font-size:12px; color:#777; margin-top:5px;">記錄斷網期間的新預約，避免恢復連線後漏登</div>
+                                <h1 style="font-size:20px; margin:0; color:#111827;">離線預約暫存</h1>
+                                <div style="font-size:12px; color:#64748b; margin-top:3px;">斷網時先記下，恢復後再補登</div>
                             </div>
-                            <button onclick="showHomePage()" style="padding:8px 14px; border:1px solid #ccc; border-radius:7px; background:white; cursor:pointer;">HOME</button>
                         </div>
+                        <button onclick="showHomePage()" style="padding:8px 13px; border:1px solid #d1d5db; border-radius:8px; background:white; color:#374151; cursor:pointer;">HOME</button>
                     </div>
 
-                    <div style="background:#fff8e6; border:1px solid #efd28a; border-radius:9px; padding:12px 14px; margin:16px 0; color:#76531a; font-size:13px; line-height:1.6;">
-                        這裡不會占用線上時段。網路恢復後，請先確認時段並補登線上系統，再標記為「已補登」。重新匯入 SQL 備份不會清除暫存。
+                    <div class="offline-journal-notice">
+                        此處不會占用線上時段。恢復連線後請先確認時段，再補登並標記完成。
                     </div>
 
-                    <form id="offline-change-form" onsubmit="addOfflineChange(event)" style="background:white; border:1px solid #ddd; border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-                        <h2 style="font-size:16px; margin:0 0 14px;">新增離線預約</h2>
-                        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:12px;">
-                            <label style="font-size:13px; color:#555;">預約日期
-                                <input id="offline-booking-date" type="date" required value="${getVenueDateString()}" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                    <form id="offline-change-form" class="offline-booking-form" onsubmit="addOfflineChange(event)">
+                        <h2 class="offline-booking-form-title">新增預約</h2>
+                        <div class="offline-booking-grid offline-booking-grid-time">
+                            <label class="offline-booking-field">日期
+                                <input id="offline-booking-date" type="date" required value="${getVenueDateString()}">
                             </label>
-                            <label style="font-size:13px; color:#555;">開始時間
-                                <input id="offline-booking-time" type="time" required step="300" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            <label class="offline-booking-field">時間
+                                <input id="offline-booking-time" type="time" required step="300">
                             </label>
-                            <label style="font-size:13px; color:#555;">分鐘
-                                <input id="offline-booking-duration" type="number" required min="5" max="720" step="5" value="60" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            <label class="offline-booking-field">分鐘
+                                <input id="offline-booking-duration" type="number" required min="5" max="720" step="5" value="60">
                             </label>
-                            <label style="font-size:13px; color:#555;">船隻／場地
-                                <input id="offline-booking-boat" list="offline-booking-boats" required maxlength="80" placeholder="例如：G21" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
-                                <datalist id="offline-booking-boats">${boats.map(boat => `<option value="${escapeHtml(boat.name || '')}"></option>`).join('')}</datalist>
+                        </div>
+                        <div class="offline-booking-grid offline-booking-grid-main">
+                            <label class="offline-booking-field">預約人
+                                <input id="offline-booking-contact" required maxlength="160" placeholder="姓名或暱稱">
                             </label>
-                            <label style="font-size:13px; color:#555;">預約人
-                                <input id="offline-booking-contact" required maxlength="160" placeholder="姓名或暱稱" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            <label class="offline-booking-field">船隻／場地
+                                <select id="offline-booking-boat" required>
+                                    <option value="">請選擇</option>
+                                    ${boats.map(boat => `<option value="${escapeHtml(boat.name || '')}">${escapeHtml(boat.name || '')}</option>`).join('')}
+                                </select>
                             </label>
-                            <label style="font-size:13px; color:#555;">電話
-                                <input id="offline-booking-phone" type="tel" maxlength="40" placeholder="方便恢復連線後核對" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                        </div>
+                        <div class="offline-booking-grid offline-booking-grid-extra">
+                            <label class="offline-booking-field">電話
+                                <input id="offline-booking-phone" type="tel" maxlength="40" placeholder="選填">
                             </label>
-                            <label style="font-size:13px; color:#555;">教練（選填）
-                                <input id="offline-booking-coach" list="offline-booking-coaches" maxlength="120" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            <label class="offline-booking-field">教練
+                                <input id="offline-booking-coach" list="offline-booking-coaches" maxlength="120" placeholder="選填">
                                 <datalist id="offline-booking-coaches">${activeCoaches.map(coach => `<option value="${escapeHtml(coach.name || '')}"></option>`).join('')}</datalist>
                             </label>
-                            <label style="font-size:13px; color:#555;">活動（選填）
-                                <input id="offline-booking-activity" maxlength="120" placeholder="例如：WB、WS" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
-                            </label>
-                            <label style="font-size:13px; color:#555;">操作人
-                                <input id="offline-change-operator" required maxlength="80" placeholder="例如：阿寶" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px;">
+                            <label class="offline-booking-field">活動
+                                <input id="offline-booking-activity" maxlength="120" placeholder="WB、WS">
                             </label>
                         </div>
-                        <label style="display:block; font-size:13px; color:#555; margin-bottom:12px;">備註（選填）
-                            <textarea id="offline-booking-notes" maxlength="3000" rows="4" placeholder="例如：需要駕駛、教練練習、聯絡來源或其他注意事項" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:7px; resize:vertical;"></textarea>
-                        </label>
-                        <button type="submit" style="width:100%; padding:11px; border:0; border-radius:8px; background:#333; color:white; font-size:15px; font-weight:600; cursor:pointer;">儲存離線預約</button>
+                        <div class="offline-booking-grid offline-booking-grid-main">
+                            <label class="offline-booking-field">操作人
+                                <input id="offline-change-operator" required maxlength="80" placeholder="誰接的預約">
+                            </label>
+                            <label class="offline-booking-field">備註
+                                <input id="offline-booking-notes" maxlength="3000" placeholder="駕駛、聯絡來源等">
+                            </label>
+                        </div>
+                        <button type="submit" class="offline-booking-submit">直接新增預約</button>
                     </form>
 
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:18px 0 10px;">
-                        <div id="offline-change-summary" style="font-size:14px; color:#555;"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:18px 2px 9px;">
+                        <div id="offline-change-summary" style="font-size:13px; color:#64748b;"></div>
                         <div style="display:flex; gap:8px;">
-                            <select id="offline-change-filter" onchange="renderOfflineChangeJournalList()" style="padding:8px 10px; border:1px solid #ccc; border-radius:7px; background:white;">
+                            <select id="offline-change-filter" onchange="renderOfflineChangeJournalList()" style="padding:7px 9px; border:1px solid #d1d5db; border-radius:8px; background:white; color:#374151;">
                                 <option value="pending">待補登</option>
                                 <option value="completed">已補登</option>
                                 <option value="all">全部</option>
                             </select>
-                            <button onclick="exportOfflineChangeJournal()" style="padding:8px 12px; border:1px solid #aaa; border-radius:7px; background:white; cursor:pointer;">匯出 CSV</button>
+                            <button onclick="exportOfflineChangeJournal()" style="padding:7px 10px; border:1px solid #d1d5db; border-radius:8px; background:white; color:#374151; cursor:pointer;">匯出</button>
                         </div>
                     </div>
                     <div id="offline-change-list" style="display:grid; gap:10px;"></div>
@@ -1656,7 +1932,7 @@
             renderOfflineChangeJournalList();
         }
 
-        function addOfflineChange(event) {
+        async function addOfflineChange(event) {
             event.preventDefault();
             const bookingDate = document.getElementById('offline-booking-date').value;
             const startTime = document.getElementById('offline-booking-time').value;
@@ -1671,6 +1947,41 @@
             if (!bookingDate || !startTime || !durationMin || !boatName || !contactName || !operator) return;
 
             const records = loadOfflineChangeJournal();
+            const boats = await safeGetAllFromStore('boats');
+            const selectedBoat = boats.find(boat =>
+                normalizeOfflineBookingBoatName(boat && boat.name) === normalizeOfflineBookingBoatName(boatName)
+            );
+            if (!selectedBoat) {
+                alert('找不到這個船隻／場地，請重新選擇。');
+                return;
+            }
+
+            const backupBookings = await safeGetAllFromStore('bookings');
+            const overlapsBackup = backupBookings.some(booking =>
+                booking &&
+                booking.status === 'confirmed' &&
+                booking.start_at &&
+                booking.boat_id === selectedBoat.id &&
+                parseDbTime(booking.start_at).date === bookingDate &&
+                bookingRangesOverlap(
+                    startTime,
+                    durationMin,
+                    parseDbTime(booking.start_at).time,
+                    booking.duration_min
+                )
+            );
+            const overlapsPending = records.some(record =>
+                record &&
+                record.status !== 'completed' &&
+                record.booking_date === bookingDate &&
+                normalizeOfflineBookingBoatName(record.boat_name) === normalizeOfflineBookingBoatName(boatName) &&
+                bookingRangesOverlap(startTime, durationMin, record.start_time, record.duration_min)
+            );
+            if ((overlapsBackup || overlapsPending) &&
+                !confirm('這個船隻／場地在所選時段已有預約。仍要新增離線待補登預約嗎？')) {
+                return;
+            }
+
             records.push({
                 id: makeOfflineChangeId(),
                 created_at: new Date().toISOString(),
@@ -1697,16 +2008,7 @@
                 completed_at: null
             });
             if (!saveOfflineChangeJournal(records)) return;
-
-            document.getElementById('offline-booking-time').value = '';
-            document.getElementById('offline-booking-boat').value = '';
-            document.getElementById('offline-booking-contact').value = '';
-            document.getElementById('offline-booking-phone').value = '';
-            document.getElementById('offline-booking-coach').value = '';
-            document.getElementById('offline-booking-activity').value = '';
-            document.getElementById('offline-booking-notes').value = '';
-            document.getElementById('offline-change-filter').value = 'pending';
-            renderOfflineChangeJournalList();
+            await showCoachDailyView(bookingDate);
         }
 
         function toggleOfflineChangeCompleted(id) {
@@ -1746,25 +2048,30 @@
                     : (record.subject || '舊版暫存紀錄');
                 const details = record.booking_date
                     ? [
-                        `${record.duration_min || 0}分${record.activity_types ? ` · ${record.activity_types}` : ''}`,
                         record.phone ? `電話：${record.phone}` : '',
-                        record.coach_name ? `教練：${record.coach_name}` : '',
                         record.notes ? `備註：${record.notes}` : ''
                     ].filter(Boolean).join('\n')
                     : (record.details || '');
-                return `<div style="background:white; border:1px solid ${completed ? '#cfe6d4' : '#e0c675'}; border-left:5px solid ${completed ? '#4caf50' : '#e0a800'}; border-radius:10px; padding:15px; opacity:${completed ? '0.78' : '1'};">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
-                        <div style="min-width:0;">
-                            <div style="display:flex; gap:7px; align-items:center; flex-wrap:wrap;">
-                                <span style="font-size:12px; padding:3px 8px; border-radius:999px; background:#f0f0f0;">預約</span>
-                                <strong>${escapeHtml(subject)}</strong>
-                            </div>
-                            <div style="font-size:12px; color:#777; margin-top:6px;">${escapeHtml(formatOfflineChangeTime(record.created_at))} · 操作人：${escapeHtml(record.operator || '未填')}</div>
-                        </div>
-                        <button onclick="toggleOfflineChangeCompleted('${record.id}')" style="padding:7px 11px; border:1px solid ${completed ? '#aaa' : '#4caf50'}; border-radius:7px; background:white; color:${completed ? '#555' : '#2e7d32'}; cursor:pointer;">${completed ? '恢復待補登' : '標記已補登'}</button>
+                const dateLabel = record.booking_date
+                    ? record.booking_date.slice(5).replace('-', '/')
+                    : '舊紀錄';
+                return `<div class="offline-booking-card${completed ? ' completed' : ''}">
+                    <div class="offline-booking-time-card">
+                        <div class="date">${escapeHtml(dateLabel)}</div>
+                        <div class="time">${escapeHtml(record.start_time || '--:--')}</div>
+                        <div class="duration">${escapeHtml(String(record.duration_min || 0))} 分</div>
                     </div>
-                    <div style="margin-top:11px; padding:11px; background:#f8f9fa; border-radius:7px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.6;">${escapeHtml(details)}</div>
-                    ${completed ? `<div style="font-size:12px; color:#2e7d32; margin-top:8px;">已補登：${escapeHtml(formatOfflineChangeTime(record.completed_at))}</div>` : ''}
+                    <div style="min-width:0;">
+                        <div class="offline-booking-card-name">${escapeHtml(record.contact_name || subject)}</div>
+                        <div class="offline-booking-card-meta">
+                            <span>🚤 ${escapeHtml(record.boat_name || '未填船隻')}</span>
+                            ${record.coach_name ? `<span>🎓 ${escapeHtml(record.coach_name)}</span>` : ''}
+                            ${record.activity_types ? `<span style="padding:1px 6px; border-radius:999px; background:#f1f5f9; color:#334155;">${escapeHtml(record.activity_types)}</span>` : ''}
+                        </div>
+                        ${details ? `<div class="offline-booking-card-note">${escapeHtml(details)}</div>` : ''}
+                        <div style="margin-top:6px; color:#94a3b8; font-size:10px;">${escapeHtml(record.operator || '未填操作人')} · ${escapeHtml(formatOfflineChangeTime(record.created_at))}${completed ? ` · 已於 ${escapeHtml(formatOfflineChangeTime(record.completed_at))} 補登` : ''}</div>
+                    </div>
+                    <button class="offline-booking-complete" onclick="toggleOfflineChangeCompleted('${record.id}')">${completed ? '恢復待補登' : '標記已補登'}</button>
                 </div>`;
             }).join('');
         }
@@ -1931,6 +2238,12 @@
                     const startAt = b.start_at;
                     return startAt >= startOfDay && startAt <= endOfDay;
                 }).sort((a, b) => a.start_at.localeCompare(b.start_at));
+                const pendingOfflineBookings = buildPendingOfflineBookings(
+                    loadOfflineChangeJournal(),
+                    boats,
+                    activeCoaches,
+                    selectedDate
+                );
                 
                 // 載入關聯資料
                 const bookingIds = dateBookings.map(b => b.id);
@@ -1962,6 +2275,9 @@
                         booking_members: members
                     };
                 });
+                bookingsWithDetails = bookingsWithDetails
+                    .concat(pendingOfflineBookings)
+                    .sort((a, b) => a.start_at.localeCompare(b.start_at));
                 
                 // 篩選教練
                 if (selectedCoachId) {
@@ -2753,25 +3069,26 @@
                         const boatColor = booking.boats && booking.boats.color ? booking.boats.color : '#1976d2';
                         
                         // 獲取顯示名稱（與網頁版一致）
-                        const displayContactName = getDisplayContactName(booking);
+                        const displayContactName = escapeHtml(getDisplayContactName(booking));
                         
                         // 構建卡片 HTML（與網頁版樣式一致）
                         const cardStyle = 'padding: 14px 12px; background: linear-gradient(135deg, ' + boatColor + '08 0%, ' + boatColor + '15 100%); border: 2px solid ' + boatColor + '; vertical-align: top; position: relative; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
                         
                         // 教練練習標籤（如果有）
                         const coachPracticeHtml = booking.is_coach_practice ? '<div style="display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; background: #fff3e0; color: #e65100; border-radius: 4px; margin-bottom: 6px; border: 1px solid #ff9800;">🏄 教練練習</div>' : '';
+                        const offlinePendingHtml = booking.is_offline_pending ? '<div class="offline-pending-badge">離線待補</div>' : '';
                         
                         const timeRangeHtml = '<div style="font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; text-align: center; line-height: 1.3; letter-spacing: 0.5px;">' + startTime + ' - ' + endTime + '</div>';
                         const contactNameHtml = '<div style="font-size: 16px; font-weight: 700; margin-bottom: 6px; text-align: center; color: #1a1a1a;">' + displayContactName + '</div>';
-                        const notesHtml = booking.notes ? '<div style="font-size: 12px; color: #666; margin-bottom: 4px; text-align: center; font-style: italic;">' + booking.notes + '</div>' : '';
-                        const scheduleNotesHtml = booking.schedule_notes ? '<div style="font-size: 12px; color: #e65100; margin-bottom: 4px; text-align: center; font-weight: 500;">📝 ' + booking.schedule_notes + '</div>' : '';
+                        const notesHtml = booking.notes ? '<div style="font-size: 12px; color: #666; margin-bottom: 4px; text-align: center; font-style: italic;">' + escapeHtml(booking.notes) + '</div>' : '';
+                        const scheduleNotesHtml = booking.schedule_notes ? '<div style="font-size: 12px; color: #e65100; margin-bottom: 4px; text-align: center; font-weight: 500;">📝 ' + escapeHtml(booking.schedule_notes) + '</div>' : '';
                         
                         // 教練和駕駛 HTML（確保有資料時才顯示）
-                        const coachHtml = coachNames ? '<div style="font-size: 12px; color: ' + boatColor + '; font-weight: 600; text-align: center; margin-top: 2px;">🎓 ' + coachNames + '</div>' : '';
-                        const driverHtml = driverNames ? '<div style="font-size: 12px; color: ' + boatColor + '; font-weight: 600; text-align: center; margin-top: 2px;">🚤 ' + driverNames + '</div>' : '';
+                        const coachHtml = coachNames ? '<div style="font-size: 12px; color: ' + boatColor + '; font-weight: 600; text-align: center; margin-top: 2px;">🎓 ' + escapeHtml(coachNames) + '</div>' : '';
+                        const driverHtml = driverNames ? '<div style="font-size: 12px; color: ' + boatColor + '; font-weight: 600; text-align: center; margin-top: 2px;">🚤 ' + escapeHtml(driverNames) + '</div>' : '';
                         
                         cells.push({
-                            html: '<td rowspan="' + slots + '" style="' + cardStyle + '">' + coachPracticeHtml + timeRangeHtml + contactNameHtml + notesHtml + scheduleNotesHtml + coachHtml + driverHtml + '</td>',
+                            html: '<td rowspan="' + slots + '" style="' + cardStyle + '">' + offlinePendingHtml + coachPracticeHtml + timeRangeHtml + contactNameHtml + notesHtml + scheduleNotesHtml + coachHtml + driverHtml + '</td>',
                             skip: false
                         });
                     } else if (isInRange) {

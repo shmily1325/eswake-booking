@@ -68,7 +68,9 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
   const [loading, setLoading] = useState(false)
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [expandedSalesGroupId, setExpandedSalesGroupId] = useState<string | null>(null)
+  const [expandedSalesGroupIds, setExpandedSalesGroupIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [expandedSalesItemIds, setExpandedSalesItemIds] = useState<Set<string>>(
     () => new Set(),
   )
@@ -250,6 +252,9 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
       }))
   }, [salesGroupBy, settlements, variantDisplay, variantSalesMeta])
 
+  const allSalesGroupsExpanded =
+    salesGroups.length > 0 && salesGroups.every((group) => expandedSalesGroupIds.has(group.id))
+
   return (
     <div
       style={{
@@ -375,41 +380,70 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                   依銷售金額排序
                 </p>
               </div>
-              <div
-                role="group"
-                aria-label="商品排行分組方式"
-                style={{
-                  display: 'flex',
-                  gap: spacing.sm,
-                }}
-              >
-                {([
-                  ['brand', '品牌'],
-                  ['category', '品項'],
-                ] as const).map(([value, label]) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                <div
+                  role="group"
+                  aria-label="商品排行分組方式"
+                  style={{
+                    display: 'flex',
+                    gap: spacing.sm,
+                    flex: isMobile ? 1 : undefined,
+                  }}
+                >
+                  {([
+                    ['brand', '品牌'],
+                    ['category', '品項'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      data-track={`product_order_settle_stat_group_${value}`}
+                      aria-pressed={salesGroupBy === value}
+                      onClick={() => {
+                        setSalesGroupBy(value)
+                        setExpandedSalesGroupIds(new Set())
+                        setExpandedSalesItemIds(new Set())
+                      }}
+                      style={{
+                        ...getButtonStyle(
+                          salesGroupBy === value ? 'primary' : 'secondary',
+                          'small',
+                          isMobile,
+                        ),
+                        flex: isMobile ? 1 : undefined,
+                        boxShadow: 'none',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {!isMobile && salesGroups.length > 1 && (
                   <button
-                    key={value}
                     type="button"
-                    data-track={`product_order_settle_stat_group_${value}`}
-                    aria-pressed={salesGroupBy === value}
+                    data-track="product_order_settle_stat_expand_all"
                     onClick={() => {
-                      setSalesGroupBy(value)
-                      setExpandedSalesGroupId(null)
-                      setExpandedSalesItemIds(new Set())
+                      if (allSalesGroupsExpanded) {
+                        setExpandedSalesGroupIds(new Set())
+                        setExpandedSalesItemIds(new Set())
+                        return
+                      }
+                      setExpandedSalesGroupIds(new Set(salesGroups.map((group) => group.id)))
+                      setExpandedSalesItemIds(new Set(
+                        salesGroups.flatMap((group) =>
+                          group.items.map((item) => `${group.id}\u0000${item.id}`),
+                        ),
+                      ))
                     }}
                     style={{
-                      ...getButtonStyle(
-                        salesGroupBy === value ? 'primary' : 'secondary',
-                        'small',
-                        isMobile,
-                      ),
-                      flex: isMobile ? 1 : undefined,
+                      ...getButtonStyle('secondary', 'small', false),
                       boxShadow: 'none',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {label}
+                    {allSalesGroupsExpanded ? '全部收合' : '全部展開'}
                   </button>
-                ))}
+                )}
               </div>
             </div>
 
@@ -417,7 +451,9 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
               const share = summary.grandTotal > 0
                 ? Math.round((group.total / summary.grandTotal) * 100)
                 : 0
-              const expanded = expandedSalesGroupId === group.id
+              const expanded = expandedSalesGroupIds.has(group.id)
+              const rankMark = ['🥇', '🥈', '🥉'][groupIndex]
+              const rankBackground = ['#fff8e8', '#f5f7fa', '#fff3eb'][groupIndex]
               return (
                 <section
                   key={group.id}
@@ -432,14 +468,24 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                     aria-label={`${expanded ? '收合' : '展開'}第 ${groupIndex + 1} 名全部明細`}
                     onClick={() => {
                       if (expanded) {
-                        setExpandedSalesGroupId(null)
-                        setExpandedSalesItemIds(new Set())
+                        setExpandedSalesGroupIds((current) => {
+                          const next = new Set(current)
+                          next.delete(group.id)
+                          return next
+                        })
+                        setExpandedSalesItemIds((current) => {
+                          const next = new Set(current)
+                          group.items.forEach((item) => next.delete(`${group.id}\u0000${item.id}`))
+                          return next
+                        })
                         return
                       }
-                      setExpandedSalesGroupId(group.id)
-                      setExpandedSalesItemIds(
-                        new Set(group.items.map((item) => `${group.id}\u0000${item.id}`)),
-                      )
+                      setExpandedSalesGroupIds((current) => new Set(current).add(group.id))
+                      setExpandedSalesItemIds((current) => {
+                        const next = new Set(current)
+                        group.items.forEach((item) => next.add(`${group.id}\u0000${item.id}`))
+                        return next
+                      })
                     }}
                     style={{
                       width: '100%',
@@ -448,7 +494,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                       alignItems: 'center',
                       gap: spacing.md,
                       padding: isMobile ? '11px 14px' : '13px 20px',
-                      background: colors.secondary[50],
+                      background: rankBackground || colors.background.card,
                       border: 0,
                       color: 'inherit',
                       cursor: 'pointer',
@@ -465,7 +511,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                             fontVariantNumeric: 'tabular-nums',
                           }}
                         >
-                          {String(groupIndex + 1).padStart(2, '0')}
+                          {rankMark || String(groupIndex + 1).padStart(2, '0')}
                         </span>
                         <strong
                           style={{
@@ -490,7 +536,11 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                             fontVariantNumeric: 'tabular-nums',
                           }}
                         >
-                          {group.qty} 件 · {formatCurrency(group.total, false)} · {share}%
+                          {group.qty} 件 ·{' '}
+                          <strong style={{ color: colors.text.primary, fontWeight: 700 }}>
+                            {formatCurrency(group.total, false)}
+                          </strong>
+                          {' '}· {share}%
                         </div>
                       )}
                     </div>
@@ -511,7 +561,11 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                           textAlign: 'right',
                         }}
                       >
-                        {group.qty} 件 · {formatCurrency(group.total, false)} · {share}%
+                        {group.qty} 件 ·{' '}
+                        <strong style={{ color: colors.text.primary, fontWeight: 700 }}>
+                          {formatCurrency(group.total, false)}
+                        </strong>
+                        {' '}· {share}%
                       </span>
                       <span
                         aria-hidden="true"
@@ -525,6 +579,28 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                         ▼
                       </span>
                     </div>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        gridColumn: '1 / -1',
+                        display: 'block',
+                        height: isMobile ? 4 : 5,
+                        overflow: 'hidden',
+                        borderRadius: borderRadius.full,
+                        background: colors.secondary[100],
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: 'block',
+                          width: `${share}%`,
+                          height: '100%',
+                          borderRadius: 'inherit',
+                          background: colors.secondary[800],
+                          transition: 'width 180ms ease',
+                        }}
+                      />
+                    </span>
                   </button>
                   {expanded && group.items.map((item, itemIndex) => {
                     const itemExpansionId = `${group.id}\u0000${item.id}`

@@ -38,21 +38,16 @@ function getFutureThreeMonthWindow() {
   }
 }
 
-/** 本週日（含今天）：依本地日曆算到星期日 */
-function getThisWeekEndDate(today = getLocalDateString()): string {
-  const [y, m, d] = today.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  const day = date.getDay() // 0=日
-  const daysUntilSunday = day === 0 ? 0 : 7 - day
-  date.setDate(date.getDate() + daysUntilSunday)
-  return getLocalDateString(date)
-}
-
 function addDays(dateYmd: string, days: number): string {
   const [y, m, d] = dateYmd.split('-').map(Number)
   const date = new Date(y, m - 1, d)
   date.setDate(date.getDate() + days)
   return getLocalDateString(date)
+}
+
+function formatShortDate(dateYmd: string): string {
+  const [, month, day] = dateYmd.split('-').map(Number)
+  return `${month}/${day}`
 }
 
 /** 依 booking_coaches 人數等分該堂總分鐘（與管理端統計同一算法） */
@@ -141,6 +136,103 @@ function BookingRow({
   )
 }
 
+function DailySchedule({
+  bookings,
+  coachId,
+  isMobile
+}: {
+  bookings: ScheduleBooking[]
+  coachId: string
+  isMobile: boolean
+}) {
+  const sorted = [...bookings].sort((a, b) => a.start_at.localeCompare(b.start_at))
+
+  const minutesFromStart = (booking: ScheduleBooking) => {
+    const [hour, minute] = extractTime(booking.start_at).split(':').map(Number)
+    return hour * 60 + minute
+  }
+
+  const formatMinutes = (minutes: number) =>
+    `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {sorted.map((booking, index) => {
+        const startMinutes = minutesFromStart(booking)
+        const endMinutes = startMinutes + (booking.duration_min || 0)
+        const nextBooking = sorted[index + 1]
+        const gapMinutes = nextBooking ? minutesFromStart(nextBooking) - endMinutes : 0
+        const boatColor = booking.boats?.color || designSystem.colors.info[500]
+
+        return (
+          <div key={booking.id}>
+            <div style={{
+              padding: isMobile ? '13px 14px' : '14px 16px',
+              borderRadius: designSystem.borderRadius.lg,
+              borderLeft: `3px solid ${boatColor}`,
+              background: designSystem.colors.background.hover
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: '12px',
+                marginBottom: '7px'
+              }}>
+                <span style={{
+                  color: designSystem.colors.text.primary,
+                  fontSize: getFontSize('body', isMobile),
+                  fontWeight: 700
+                }}>
+                  {formatMinutes(startMinutes)}–{formatMinutes(endMinutes)}
+                </span>
+                <span style={{
+                  color: designSystem.colors.info[700],
+                  fontSize: getFontSize('caption', isMobile),
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap'
+                }}>
+                  {coachShareMinutesForBooking(booking, coachId)} 分
+                </span>
+              </div>
+              <div style={{
+                color: designSystem.colors.text.primary,
+                fontSize: getFontSize('bodySmall', isMobile),
+                fontWeight: 600
+              }}>
+                {booking.contact_name || '未命名'}
+              </div>
+              <div style={{
+                color: designSystem.colors.text.secondary,
+                fontSize: getFontSize('caption', isMobile),
+                marginTop: '3px'
+              }}>
+                {booking.boats?.name || '未指定船隻'}
+                {(booking.booking_coaches || []).length > 1 && ` · 本堂共 ${booking.duration_min || 0} 分`}
+              </div>
+            </div>
+            {gapMinutes > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 2px 0',
+                color: designSystem.colors.text.disabled,
+                fontSize: getFontSize('caption', isMobile)
+              }}>
+                <span style={{ flex: 1, height: '1px', background: designSystem.colors.border.light }} />
+                空檔 {Math.floor(gapMinutes / 60) > 0 ? `${Math.floor(gapMinutes / 60)} 小時 ` : ''}
+                {gapMinutes % 60 > 0 ? `${gapMinutes % 60} 分` : ''}
+                <span style={{ flex: 1, height: '1px', background: designSystem.colors.border.light }} />
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePreviewTableProps) {
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -148,10 +240,21 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [statsOpen, setStatsOpen] = useState(false)
+  const [statsMonth, setStatsMonth] = useState<'all' | string>('all')
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
 
   const today = getLocalDateString()
-  const tomorrow = addDays(today, 1)
-  const weekEnd = getThisWeekEndDate(today)
+  const scheduleEndDate = getFutureThreeMonthWindow().endDay
+  const statsMonthOptions = useMemo(() => {
+    const [year, month] = today.split('-').map(Number)
+    return Array.from({ length: 3 }, (_, index) => {
+      const date = new Date(year, month - 1 + index, 1)
+      return {
+        value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+        label: `${date.getMonth() + 1}月`
+      }
+    })
+  }, [today])
 
   useEffect(() => {
     const load = async () => {
@@ -196,26 +299,35 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     load()
   }, [coachId])
 
-  const upcomingBookings = useMemo(
-    () => bookings.filter(b => {
-      const date = b.start_at.substring(0, 10)
-      return date >= today && date <= weekEnd
-    }),
-    [bookings, today, weekEnd]
-  )
-
   const laterBookings = useMemo(
-    () => bookings.filter(b => b.start_at.substring(0, 10) > weekEnd),
-    [bookings, weekEnd]
+    () => bookings.filter(b => b.start_at.substring(0, 10) > today),
+    [bookings, today]
   )
 
-  // 「之後」列表預設不展開（本週已在上方「接下來」看完）
+  const selectedDateBookings = useMemo(
+    () => bookings.filter(b => b.start_at.substring(0, 10) === selectedDate),
+    [bookings, selectedDate]
+  )
+
+  const nextBookingDate = useMemo(
+    () => bookings.find(b => b.start_at.substring(0, 10) > selectedDate)?.start_at.substring(0, 10) ?? null,
+    [bookings, selectedDate]
+  )
+
+  // 未來排程列表預設不展開，避免切換教練後沿用先前狀態
   useEffect(() => {
     setExpandedDates(new Set())
   }, [laterBookings])
 
+  const statsBookings = useMemo(
+    () => statsMonth === 'all'
+      ? bookings
+      : bookings.filter(booking => booking.start_at.substring(0, 7) === statsMonth),
+    [bookings, statsMonth]
+  )
+
   const stats = useMemo(() => {
-    return bookings.reduce(
+    return statsBookings.reduce(
       (acc, booking) => {
         acc.totalSessions += 1
         acc.totalMinutes += coachShareMinutesForBooking(booking, coachId)
@@ -223,12 +335,12 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       },
       { totalSessions: 0, totalMinutes: 0 }
     )
-  }, [bookings, coachId])
+  }, [statsBookings, coachId])
 
   const memberDistribution = useMemo(() => {
     const map = new Map<string, { name: string; minutes: number; count: number }>()
 
-    bookings.forEach(booking => {
+    statsBookings.forEach(booking => {
       const shareMin = coachShareMinutesForBooking(booking, coachId)
       const bookingMembers = booking.booking_members || []
       const memberNamesFromBookingMembers = bookingMembers
@@ -274,27 +386,12 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
         rank: idx + 1,
         ...item
       }))
-  }, [bookings, coachId])
-
-  const upcomingGroups = useMemo(
-    () => groupBookingsByDate(upcomingBookings, coachId),
-    [upcomingBookings, coachId]
-  )
+  }, [statsBookings, coachId])
 
   const laterGroups = useMemo(
     () => groupBookingsByDate(laterBookings, coachId),
     [laterBookings, coachId]
   )
-
-  const upcomingSummary = useMemo(() => {
-    const countOn = (date: string) =>
-      upcomingBookings.filter(b => b.start_at.substring(0, 10) === date).length
-    return {
-      today: countOn(today),
-      tomorrow: countOn(tomorrow),
-      week: upcomingBookings.length
-    }
-  }, [upcomingBookings, today, tomorrow])
 
   const toggleDateGroup = (date: string) => {
     setExpandedDates(prev => {
@@ -363,12 +460,6 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     color: designSystem.colors.text.secondary
   } as const
 
-  const formatUpcomingHeading = (group: DateGroup) => {
-    if (group.date === today) return `今天（${group.date} ${group.weekday}）`
-    if (group.date === tomorrow) return `明天（${group.date} ${group.weekday}）`
-    return `${group.date}（${group.weekday}）`
-  }
-
   return (
     <div>
       {loadError && (
@@ -387,65 +478,123 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
         </div>
       )}
 
-      {/* 接下來：今天／明天／本週 */}
+      {/* 每日排程 */}
       <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
-        <div style={sectionTitleStyle}>接下來</div>
+        <div style={sectionTitleStyle}>每日排程</div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '40px minmax(0, 1fr) 40px',
+          gap: '8px',
+          marginBottom: '14px'
+        }}>
+          <button
+            type="button"
+            aria-label="前一天"
+            disabled={selectedDate <= today}
+            onClick={() => setSelectedDate(date => addDays(date, -1))}
+            style={{
+              minHeight: '40px',
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.md,
+              background: '#fff',
+              color: selectedDate <= today ? designSystem.colors.text.disabled : designSystem.colors.text.primary,
+              cursor: selectedDate <= today ? 'not-allowed' : 'pointer',
+              fontSize: getFontSize('body', isMobile)
+            }}
+          >
+            ←
+          </button>
+          <input
+            type="date"
+            min={today}
+            max={scheduleEndDate}
+            value={selectedDate}
+            aria-label="排程日期"
+            onChange={event => event.target.value && setSelectedDate(event.target.value)}
+            style={{
+              width: '100%',
+              minWidth: 0,
+              minHeight: '40px',
+              boxSizing: 'border-box',
+              padding: '7px 10px',
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.md,
+              background: '#fff',
+              color: designSystem.colors.text.primary,
+              font: 'inherit'
+            }}
+          />
+          <button
+            type="button"
+            aria-label="後一天"
+            disabled={selectedDate >= scheduleEndDate}
+            onClick={() => setSelectedDate(date => addDays(date, 1))}
+            style={{
+              minHeight: '40px',
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.md,
+              background: '#fff',
+              color: selectedDate >= scheduleEndDate ? designSystem.colors.text.disabled : designSystem.colors.text.primary,
+              cursor: selectedDate >= scheduleEndDate ? 'not-allowed' : 'pointer',
+              fontSize: getFontSize('body', isMobile)
+            }}
+          >
+            →
+          </button>
+        </div>
+        {selectedDate !== today && (
+          <button
+            type="button"
+            onClick={() => setSelectedDate(today)}
+            style={{
+              ...getFilterChipStyle(false, 'info'),
+              padding: '4px 10px',
+              marginBottom: '12px',
+              fontSize: getFontSize('caption', isMobile)
+            }}
+          >
+            回到今天
+          </button>
+        )}
         {loading ? (
           <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>載入中...</div>
-        ) : (
+        ) : selectedDateBookings.length > 0 ? (
           <>
             <div style={{
-              display: 'flex',
-              gap: '12px',
-              flexWrap: 'wrap',
-              marginBottom: upcomingGroups.length > 0 ? '14px' : '0',
+              color: designSystem.colors.text.secondary,
               fontSize: getFontSize('bodySmall', isMobile),
-              color: designSystem.colors.text.primary,
-              fontWeight: 600
+              fontWeight: 600,
+              marginBottom: '10px'
             }}>
-              <span>今天 {upcomingSummary.today} 堂</span>
-              <span style={{ color: designSystem.colors.text.disabled }}>·</span>
-              <span>明天 {upcomingSummary.tomorrow} 堂</span>
-              <span style={{ color: designSystem.colors.text.disabled }}>·</span>
-              <span>本週 {upcomingSummary.week} 堂</span>
+              {selectedDate === today ? '今天' : selectedDate}（{getWeekdayText(selectedDate)}）
+              {' · '}{selectedDateBookings.length} 堂
             </div>
-            {upcomingGroups.length === 0 ? (
-              <div style={{ color: designSystem.colors.text.disabled, padding: '4px 0' }}>
-                本週目前沒有排程
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {upcomingGroups.map(group => (
-                  <div key={group.date}>
-                    <div style={{
-                      fontSize: getFontSize('bodySmall', isMobile),
-                      fontWeight: 600,
-                      color: designSystem.colors.text.secondary,
-                      marginBottom: '4px'
-                    }}>
-                      {formatUpcomingHeading(group)} • {group.count} 堂 • {group.minutes} 分
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {group.items.map(booking => (
-                        <BookingRow
-                          key={booking.id}
-                          booking={booking}
-                          coachId={coachId}
-                          isMobile={isMobile}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <DailySchedule bookings={selectedDateBookings} coachId={coachId} isMobile={isMobile} />
           </>
+        ) : (
+          <div style={{ color: designSystem.colors.text.disabled, padding: '6px 0' }}>
+            <div>這天沒有排程</div>
+            {nextBookingDate && (
+              <button
+                type="button"
+                onClick={() => setSelectedDate(nextBookingDate)}
+                style={{
+                  ...getFilterChipStyle(false, 'info'),
+                  padding: '5px 10px',
+                  marginTop: '10px',
+                  fontSize: getFontSize('caption', isMobile)
+                }}
+              >
+                查看下一個排程日：{nextBookingDate}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
-      {/* 本週之後（不重複「接下來」） */}
+      {/* 未來排程 */}
       <div style={{ ...getCardStyle(isMobile), marginBottom: '24px' }}>
-        <div style={sectionTitleStyle}>之後</div>
+        <div style={sectionTitleStyle}>未來排程</div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }} role="tablist" aria-label="排程檢視方式">
           <button
             type="button"
@@ -626,6 +775,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
             padding: 0,
             display: 'flex',
             alignItems: 'center',
+            flexWrap: 'wrap',
             gap: '6px',
             fontSize: getFontSize('bodySmall', isMobile),
             fontWeight: 600,
@@ -640,7 +790,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           }}>
             ▶
           </span>
-          統計
+          未來三個月統計（{formatShortDate(today)}～{formatShortDate(scheduleEndDate)}）
           {!loading && (
             <span style={{ fontWeight: 500, color: designSystem.colors.text.disabled }}>
               （{stats.totalSessions} 堂 · {stats.totalMinutes} 分）
@@ -654,6 +804,42 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
               <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>載入中...</div>
             ) : (
               <>
+                <div
+                  role="group"
+                  aria-label="統計月份"
+                  style={{
+                    display: 'flex',
+                    gap: '7px',
+                    flexWrap: 'wrap',
+                    marginBottom: '14px'
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setStatsMonth('all')}
+                    style={{
+                      ...getFilterChipStyle(statsMonth === 'all', 'info'),
+                      padding: '5px 10px',
+                      fontSize: getFontSize('caption', isMobile)
+                    }}
+                  >
+                    全部
+                  </button>
+                  {statsMonthOptions.map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setStatsMonth(option.value)}
+                      style={{
+                        ...getFilterChipStyle(statsMonth === option.value, 'info'),
+                        padding: '5px 10px',
+                        fontSize: getFontSize('caption', isMobile)
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
                 <div style={{
                   display: 'flex',
                   gap: '16px',
