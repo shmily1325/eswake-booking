@@ -7,7 +7,7 @@ import {
   getVenueDateString,
   parseDbTimestamp,
 } from '../../utils/date'
-import { useToast } from '../../components/ui'
+import { ToastContainer, useToast } from '../../components/ui'
 import { triggerHaptic } from '../../utils/haptic'
 import type { Booking, Member, Transaction, TabType } from './types'
 import {
@@ -537,6 +537,7 @@ export function LiffMyBookings() {
       />
 
       <LiffStyles />
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }
