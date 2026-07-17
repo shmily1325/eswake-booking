@@ -1918,7 +1918,9 @@ function DeductionItemRow({
                 fontSize: getFontSize('bodySmall', isMobile), 
                 color: designSystem.colors.text.secondary,
                 lineHeight: 1.5,
-                paddingInline: designSystem.spacing.xs
+                padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+                background: designSystem.colors.background.hover,
+                borderRadius: designSystem.borderRadius.sm
               }}>
                 {isDesignatedLessonFromBalance ? (
                   coachPrice30min 
@@ -1975,8 +1977,10 @@ function DeductionItemRow({
                 marginTop: designSystem.spacing.sm,
                 fontSize: getFontSize('bodySmall', isMobile), 
                 color: designSystem.colors.text.secondary,
-                paddingInline: designSystem.spacing.xs,
-                lineHeight: 1.5
+                padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+                lineHeight: 1.5,
+                background: designSystem.colors.background.hover,
+                borderRadius: designSystem.borderRadius.sm
               }}>
                 依教練回報 {defaultMinutes} 分鐘帶入
               </div>
@@ -2102,11 +2106,11 @@ function DeductionItemRow({
         ) : (
           <div 
             style={{
-              padding: `${designSystem.spacing.sm} ${designSystem.spacing.xs}`,
-              background: designSystem.colors.background.card,
+              padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+              background: designSystem.colors.background.hover,
               border: validationErrors[`item-${itemIndex}-description`]
                 ? `1px solid ${designSystem.colors.danger[500]}`
-                : '1px solid transparent',
+                : `1px solid ${designSystem.colors.border.main}`,
               borderRadius: designSystem.borderRadius.sm,
               fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
@@ -2149,8 +2153,8 @@ function DeductionItemRow({
             onClick={() => setShowNotes(true)}
             style={{
               padding: '8px 12px',
-              background: designSystem.colors.background.card,
-              border: `1px solid ${designSystem.colors.border.light}`,
+              background: designSystem.colors.secondary[50],
+              border: `1px solid ${designSystem.colors.border.main}`,
               borderRadius: designSystem.borderRadius.md,
               fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
@@ -2222,7 +2226,7 @@ function DeductionItemRow({
           padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
           background: balance.after < 0
             ? designSystem.colors.danger[50]
-            : designSystem.colors.background.card,
+            : designSystem.colors.secondary[50],
           borderRadius: designSystem.borderRadius.md,
           fontSize: getFontSize('bodySmall', isMobile),
           display: 'flex',
@@ -2230,7 +2234,7 @@ function DeductionItemRow({
           alignItems: 'center',
           border: balance.after < 0
             ? `1px solid ${designSystem.colors.danger[500]}`
-            : `1px solid ${designSystem.colors.border.light}`
+            : `1px solid ${designSystem.colors.border.main}`
         }}>
           <span style={{ color: designSystem.colors.text.secondary, fontWeight: '500' }}>
             餘額
