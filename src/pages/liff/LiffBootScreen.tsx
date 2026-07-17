@@ -54,40 +54,38 @@ export function LiffBootScreen({ label = '載入中…', onRetry, liffOpenUrl }:
       {slow && !stuck && (
         <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.mutedLight, marginTop: 10 }}>網路較慢，請稍候…</div>
       )}
-      {stuck && liffOpenUrl && (
+      {stuck && (
         <div style={{ marginTop: 16, maxWidth: 300 }}>
           <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.muted, marginBottom: 12, lineHeight: 1.55 }}>
-            若登入畫面出現錯誤，請改從 LINE 重新開啟：
+            連線時間較久，請重試；若登入異常，可改從 LINE 重新開啟。
           </div>
-          <a
-            href={liffOpenUrl}
-            style={{
-              display: 'inline-block',
-              padding: '12px 24px',
-              borderRadius: 12,
-              background: LIFF_THEME.lineGreen,
-              color: 'white',
-              fontSize: 15,
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-          >
-            在 LINE 中開啟
-          </a>
-        </div>
-      )}
-      {stuck && !liffOpenUrl && (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: LIFF_TYPE.caption, color: LIFF_THEME.muted, marginBottom: 12, lineHeight: 1.55 }}>
-            載入時間較久，請重新整理或再開一次連結。
-          </div>
-          <button
-            type="button"
-            onClick={() => (onRetry ? onRetry() : window.location.reload())}
-            style={{ ...liffPrimaryBtn(true), width: 'auto', padding: '12px 24px' }}
-          >
-            重新整理
-          </button>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              style={{ ...liffPrimaryBtn(true), width: 'auto', padding: '12px 24px' }}
+            >
+              重試連線
+            </button>
+          )}
+          {liffOpenUrl && (
+            <a
+              href={liffOpenUrl}
+              style={{
+                display: 'inline-block',
+                marginLeft: onRetry ? 8 : 0,
+                padding: '12px 24px',
+                borderRadius: 12,
+                background: LIFF_THEME.lineGreen,
+                color: 'white',
+                fontSize: 15,
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              在 LINE 中開啟
+            </a>
+          )}
         </div>
       )}
       <style>

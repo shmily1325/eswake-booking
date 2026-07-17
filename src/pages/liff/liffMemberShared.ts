@@ -1,28 +1,17 @@
 import liff from '@line/liff'
 import type { Member, Transaction } from './types'
+export { buildLiffLoginRedirectUri, buildLiffShareUrl } from './liffUrl'
 
 const LIFF_INIT_MAX_ATTEMPTS = 3
 const LIFF_INIT_RETRY_DELAYS_MS = [400, 800]
 export const LIFF_INIT_FAST_RETRY_DELAYS_MS = [200, 400]
 /** init 後 LINE WebView 橋接就緒前，isLoggedIn 可能短暫回 false */
-const LIFF_LOGIN_POLL_DELAYS_MS = [100, 200, 400, 800]
+const LIFF_LOGIN_POLL_DELAYS_MS = [100, 200, 400, 800, 1200, 1600, 2000]
+
+let liffInitId: string | null = null
+let liffInitPromise: Promise<void> | null = null
 
 export const LIFF_MEMBER_ENDPOINT_PATH = '/liff'
-
-export function buildLiffShareUrl(liffId: string): string {
-  return `https://liff.line.me/${liffId}`
-}
-
-/** OAuth redirectUri 必須以 LIFF Endpoint URL 為前綴（保留供日後需要時使用） */
-export function buildLiffLoginRedirectUri(endpointPath: string): string {
-  const normalized = endpointPath.replace(/\/+$/, '') || '/'
-  const current = window.location.pathname.replace(/\/+$/, '') || '/'
-  const origin = window.location.origin
-  if (current === normalized || current.startsWith(`${normalized}/`)) {
-    return `${origin}${window.location.pathname}${window.location.search}`
-  }
-  return `${origin}${normalized}`
-}
 
 function sleep(ms: number) {
   return new Promise<void>(resolve => setTimeout(resolve, ms))
@@ -33,44 +22,52 @@ export function unknownErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
-/** 第一次從 LINE 開進來是 navigate；自動 reload 後變成 reload，避免無限迴圈。 */
-export function isFirstDocumentLoadThisNavigation(): boolean {
-  try {
-    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
-    if (nav?.type === 'reload') return false
-    return true
-  } catch {
-    return true
-  }
-}
-
 export async function initLiffSdk(
   liffId: string,
   options?: { retryDelaysMs?: number[] },
 ): Promise<void> {
+  if (liffInitPromise && liffInitId === liffId) {
+    return liffInitPromise
+  }
+
   const retryDelays = options?.retryDelaysMs ?? LIFF_INIT_RETRY_DELAYS_MS
-  let lastErr: unknown
-  for (let attempt = 0; attempt < LIFF_INIT_MAX_ATTEMPTS; attempt++) {
-    try {
-      await liff.init({ liffId })
-      return
-    } catch (e) {
-      lastErr = e
-      if (attempt < LIFF_INIT_MAX_ATTEMPTS - 1) {
-        const delay = retryDelays[attempt] ?? 600
-        console.warn(`LIFF init 第 ${attempt + 1} 次失敗，${delay}ms 後重試`, e)
-        await sleep(delay)
+  const currentPromise = (async () => {
+    let lastErr: unknown
+    for (let attempt = 0; attempt < LIFF_INIT_MAX_ATTEMPTS; attempt++) {
+      try {
+        await liff.init({ liffId })
+        return
+      } catch (e) {
+        lastErr = e
+        if (attempt < LIFF_INIT_MAX_ATTEMPTS - 1) {
+          const delay = retryDelays[attempt] ?? 600
+          console.warn(`LIFF init 第 ${attempt + 1} 次失敗，${delay}ms 後重試`, e)
+          await sleep(delay)
+        }
       }
     }
+    throw lastErr
+  })()
+
+  liffInitId = liffId
+  liffInitPromise = currentPromise
+  try {
+    await currentPromise
+  } catch (error) {
+    if (liffInitPromise === currentPromise) {
+      liffInitId = null
+      liffInitPromise = null
+    }
+    throw error
   }
-  throw lastErr
 }
 
-export type EnsureLiffLoggedInResult = 'logged_in' | 'login_redirect' | 'reload'
+export type EnsureLiffLoggedInResult = 'logged_in' | 'login_redirect'
 
 /**
  * init 完成後確認登入狀態。
- * LINE 內建瀏覽器：先輪詢 isLoggedIn（冷啟動常短暫 false），仍失敗則 reload 一次，不呼叫 liff.login()（易 OAuth 400）。
+ * LINE 內建瀏覽器：輪詢 isLoggedIn（冷啟動常短暫 false），不自動 reload，
+ * 避免 WebView 在重新載入文件時出現白屏。
  * 外部瀏覽器：才走 liff.login()。
  */
 export async function ensureLiffLoggedIn(): Promise<EnsureLiffLoggedInResult> {
@@ -82,12 +79,7 @@ export async function ensureLiffLoggedIn(): Promise<EnsureLiffLoggedInResult> {
   }
 
   if (liff.isInClient()) {
-    if (isFirstDocumentLoadThisNavigation()) {
-      console.warn('LIFF 冷啟動登入狀態未就緒，自動重新載入一次')
-      window.location.reload()
-      return 'reload'
-    }
-    throw new Error('無法取得 LINE 登入狀態，請關閉後從 LINE 重新開啟連結')
+    throw new Error('LINE 登入狀態尚未就緒，請點擊重試')
   }
 
   liff.login()
@@ -168,17 +160,29 @@ export async function callLiffMemberApi<T>(
   const accessToken = liff.getAccessToken()
   if (!accessToken) throw new Error('LINE 登入驗證失敗')
 
-  const response = await fetch('/api/liff-member-access', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ action, ...payload }),
-  })
-  const result = await response.json() as T & { error?: string }
-  if (!response.ok) throw new Error(result.error || '服務暫時無法使用')
-  return result
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 15000)
+  try {
+    const response = await fetch('/api/liff-member-access', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action, ...payload }),
+      signal: controller.signal,
+    })
+    const result = await response.json() as T & { error?: string }
+    if (!response.ok) throw new Error(result.error || '服務暫時無法使用')
+    return result
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('會員服務連線逾時，請點擊重試')
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeout)
+  }
 }
 
 export async function fetchMemberByLineUserId(

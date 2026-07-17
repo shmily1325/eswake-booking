@@ -7,7 +7,6 @@ import {
   fetchMemberByLineUserId,
   initLiffSdk,
   ensureLiffLoggedIn,
-  isFirstDocumentLoadThisNavigation,
   unknownErrorMessage,
   liteMemberFromRow,
   LIFF_INIT_FAST_RETRY_DELAYS_MS,
@@ -106,6 +105,8 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
   }, [requireBinding, trackIconId, nonBlockingBinding, lightMember])
 
   const initLiff = useCallback(async () => {
+    setError(null)
+    setLoading(true)
     setBootPhase('init')
     try {
       const liffId = liffIdOverride ?? import.meta.env.VITE_LIFF_ID
@@ -122,7 +123,6 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
         setBootPhase('login')
         return
       }
-      if (loginResult === 'reload') return
 
       if (nonBlockingBinding && readyBeforeProfile) {
         setLoading(false)
@@ -152,11 +152,6 @@ export function useLiffMember(options: UseLiffMemberOptions = {}) {
       }
     } catch (err: unknown) {
       console.error('LIFF 初始化失敗:', err)
-      const msg = unknownErrorMessage(err, '')
-      if (msg.includes('Unable to load client features') && isFirstDocumentLoadThisNavigation()) {
-        window.location.reload()
-        return
-      }
       setError(unknownErrorMessage(err, 'LIFF 初始化失敗'))
       setLoading(false)
     }

@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LiffBootScreen } from './pages/liff/LiffBootScreen'
+import { buildLiffShareUrl, getCurrentLiffDeepLinkSuffix } from './pages/liff/liffUrl'
 
 const LiffMyBookings = lazy(() =>
   import('./pages/LiffMyBookings').then(m => ({ default: m.LiffMyBookings })),
@@ -13,8 +14,24 @@ const LiffShopOrdersPreview = lazy(() =>
   import('./pages/liff/dev/LiffShopOrdersPreview').then(m => ({ default: m.LiffShopOrdersPreview })),
 )
 
+function LiffFallbackRedirect() {
+  const location = useLocation()
+  return (
+    <Navigate
+      to={{ pathname: '/liff', search: location.search, hash: location.hash }}
+      state={location.state}
+      replace
+    />
+  )
+}
+
 /** LIFF 專用入口：不載入 Admin / Shop 路由表 */
 export default function AppLiff() {
+  const memberLiffId = import.meta.env.VITE_LIFF_ID as string | undefined
+  const memberLiffOpenUrl = memberLiffId
+    ? buildLiffShareUrl(memberLiffId, getCurrentLiffDeepLinkSuffix())
+    : null
+
   return (
     <ErrorBoundary>
       <BrowserRouter>
@@ -30,7 +47,7 @@ export default function AppLiff() {
           <Route
             path="/liff"
             element={
-              <Suspense fallback={<LiffBootScreen label="載入會員專區…" />}>
+              <Suspense fallback={<LiffBootScreen label="載入會員專區…" liffOpenUrl={memberLiffOpenUrl} />}>
                 <LiffMyBookings />
               </Suspense>
             }
@@ -45,6 +62,7 @@ export default function AppLiff() {
               }
             />
           )}
+          <Route path="*" element={<LiffFallbackRedirect />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

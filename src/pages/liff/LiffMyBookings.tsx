@@ -33,12 +33,12 @@ import { BrandCopyrightBlock } from '../../components/BrandCopyrightBlock'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { LIFF_THEME } from './liffUiStyles'
 import { LiffBootScreen } from './LiffBootScreen'
+import { buildLiffShareUrl, getCurrentLiffDeepLinkSuffix } from './liffUrl'
 import {
   bindLiffMember,
   ensureLiffLoggedIn,
   fetchLiffMemberBootstrap,
   initLiffSdk,
-  isFirstDocumentLoadThisNavigation,
   fetchLiffMemberTransactions,
   unknownErrorMessage,
 } from './liffMemberShared'
@@ -70,6 +70,10 @@ function startMemberBackgroundLoads(
 export function LiffMyBookings() {
   useRouteDocumentMeta(ROUTE_OG_BY_PATH['/liff'])
   const toast = useToast()
+  const liffId = import.meta.env.VITE_LIFF_ID as string | undefined
+  const liffOpenUrl = liffId
+    ? buildLiffShareUrl(liffId, getCurrentLiffDeepLinkSuffix())
+    : null
   const [bootLoading, setBootLoading] = useState(true)
   const [bootLabel, setBootLabel] = useState('連接 LINE…')
   const [bookingsLoading, setBookingsLoading] = useState(false)
@@ -130,6 +134,8 @@ export function LiffMyBookings() {
   }, [toast])
 
   const loadBookings = async (memberId: string) => {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 15000)
     try {
       const today = getVenueDateString()
 
@@ -137,6 +143,7 @@ export function LiffMyBookings() {
         .from('booking_members')
         .select('booking_id')
         .eq('member_id', memberId)
+        .abortSignal(controller.signal)
 
       if (!bookingMembers?.length) {
         setBookings([])
@@ -158,17 +165,20 @@ export function LiffMyBookings() {
         .in('id', bookingIds)
         .gte('start_at', `${today}T00:00:00`)
         .order('start_at', { ascending: true })
+        .abortSignal(controller.signal)
 
       if (bookingsData?.length) {
         const [{ data: coachData }, { data: driverData }] = await Promise.all([
           supabase
             .from('booking_coaches')
             .select('booking_id, coaches:coach_id(name)')
-            .in('booking_id', bookingsData.map(b => b.id)),
+            .in('booking_id', bookingsData.map(b => b.id))
+            .abortSignal(controller.signal),
           supabase
             .from('booking_drivers')
             .select('booking_id, coaches:coach_id(name)')
-            .in('booking_id', bookingsData.map(b => b.id)),
+            .in('booking_id', bookingsData.map(b => b.id))
+            .abortSignal(controller.signal),
         ])
 
         type StaffJoin = { booking_id: number; coaches: { name: string } | null }
@@ -185,8 +195,11 @@ export function LiffMyBookings() {
       }
     } catch (err: unknown) {
       console.error('載入預約失敗:', err)
-      toast.error('載入預約失敗')
+      const isTimeout = err instanceof DOMException && err.name === 'AbortError'
+      toast.error(isTimeout ? '載入預約逾時，請稍後重試' : '載入預約失敗')
       setBookings([])
+    } finally {
+      window.clearTimeout(timeout)
     }
   }
 
@@ -221,14 +234,15 @@ export function LiffMyBookings() {
       }
     } catch (err: unknown) {
       console.error('查詢綁定失敗:', err)
-      setShowBindingForm(true)
+      setError(unknownErrorMessage(err, '會員資料載入失敗'))
       setBootLoading(false)
     }
   }
 
   const initLiff = async () => {
+    setError(null)
+    setBootLoading(true)
     try {
-      const liffId = import.meta.env.VITE_LIFF_ID
       if (!liffId) {
         setError('LIFF ID 未設置')
         setBootLoading(false)
@@ -239,7 +253,10 @@ export function LiffMyBookings() {
       await initLiffSdk(liffId)
 
       const loginResult = await ensureLiffLoggedIn()
-      if (loginResult !== 'logged_in') return
+      if (loginResult === 'login_redirect') {
+        setBootLabel('正在前往 LINE 登入…')
+        return
+      }
 
       setBootLabel('確認會員…')
       const profile = await liff.getProfile()
@@ -250,12 +267,6 @@ export function LiffMyBookings() {
       await checkBinding(profile.userId, profile.displayName ?? null)
     } catch (err: unknown) {
       console.error('LIFF 初始化失敗:', err)
-      const msg = unknownErrorMessage(err, '')
-      if (msg.includes('Unable to load client features') && isFirstDocumentLoadThisNavigation()) {
-        console.warn('LIFF 冷啟動失敗，自動重新載入一次（等同再開一次連結）')
-        window.location.reload()
-        return
-      }
       setError(unknownErrorMessage(err, 'LIFF 初始化失敗'))
       setBootLoading(false)
     }
@@ -394,7 +405,7 @@ export function LiffMyBookings() {
       <ErrorView
         error={error}
         onRetry={() => {
-          window.location.reload()
+          void initLiff()
         }}
       />
     )
@@ -402,7 +413,7 @@ export function LiffMyBookings() {
 
   // 載入中
   if (bootLoading) {
-    return <LiffBootScreen label={bootLabel} />
+    return <LiffBootScreen label={bootLabel} onRetry={() => void initLiff()} liffOpenUrl={liffOpenUrl} />
   }
 
   // 綁定表單

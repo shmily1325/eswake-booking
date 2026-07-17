@@ -76,4 +76,6 @@ async function bootstrap() {
   }
 }
 
-void bootstrap()
+void bootstrap().catch(() => {
+  window.dispatchEvent(new Event('app-boot-error'))
+})

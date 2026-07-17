@@ -649,7 +649,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           {/* 搜尋按鈕 */}
           <button
             type="submit"
-            data-track="search_submit_member"
+            data-track={selectedMemberId
+              ? `search_submit_member:${selectedMemberId}`
+              : 'search_submit_member'}
             disabled={loading || !searchName.trim()}
             style={{
               ...getButtonStyle('primary', 'medium', isMobile),

@@ -526,6 +526,7 @@ export function MemberTransaction() {
           filteredMembers.map((member) => (
               <div
                 key={member.id}
+                data-track={`member_tx_open:${member.id}`}
                 onClick={() => handleMemberClick(member)}
                 style={{
                   background: designSystem.colors.background.card,

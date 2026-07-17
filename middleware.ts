@@ -66,12 +66,15 @@ export default async function middleware(request: Request) {
   const canonicalPath = normalizeOgPath(url.pathname)
   const canonicalUrl = `${url.origin}${canonicalPath}`
   const html = injectRouteOgTags(await indexRes.text(), meta, canonicalUrl)
+  const isLiffShell = url.pathname === '/liff' || url.pathname.startsWith('/liff/')
 
   return new Response(html, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400',
+      'Cache-Control': isLiffShell
+        ? 'no-store, max-age=0, must-revalidate'
+        : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400',
     },
   })
 }
