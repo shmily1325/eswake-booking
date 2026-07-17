@@ -110,7 +110,7 @@ function AssignmentReferencePanel({
         top: isMobile ? undefined : 16,
         marginBottom: isMobile ? designSystem.spacing.md : undefined,
         background: designSystem.colors.background.card,
-        border: `1px solid ${isMobile ? designSystem.colors.info[500] : designSystem.colors.border.light}`,
+        border: `1px solid ${isMobile ? (expanded ? designSystem.colors.info[500] : designSystem.colors.info[700]) : designSystem.colors.border.light}`,
         borderRadius: designSystem.borderRadius.lg,
         boxShadow: designSystem.shadows.xs,
         overflow: 'hidden',
@@ -129,8 +129,8 @@ function AssignmentReferencePanel({
             justifyContent: 'space-between',
             alignItems: 'center',
             border: 'none',
-            background: expanded ? designSystem.colors.background.card : designSystem.colors.info[50],
-            color: designSystem.colors.text.primary,
+            background: expanded ? designSystem.colors.background.card : designSystem.colors.info[700],
+            color: expanded ? designSystem.colors.text.primary : 'white',
             fontSize: getFontSize('body', true),
             fontWeight: 600,
             cursor: 'pointer',
@@ -140,7 +140,7 @@ function AssignmentReferencePanel({
             <span>排班參考</span>
             {!expanded && (
               <span style={{
-                color: designSystem.colors.info[700],
+                color: 'rgba(255, 255, 255, 0.82)',
                 fontSize: getFontSize('caption', true),
                 fontWeight: 500,
               }}>
@@ -151,8 +151,8 @@ function AssignmentReferencePanel({
           <span style={{
             padding: '3px 8px',
             borderRadius: designSystem.borderRadius.full,
-            background: expanded ? designSystem.colors.background.hover : designSystem.colors.background.card,
-            color: designSystem.colors.info[700],
+            background: expanded ? designSystem.colors.background.hover : 'rgba(255, 255, 255, 0.16)',
+            color: expanded ? designSystem.colors.info[700] : 'white',
             fontSize: getFontSize('caption', true),
           }}>
             {expanded ? '收起' : '展開'}
