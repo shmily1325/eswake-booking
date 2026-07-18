@@ -18,6 +18,8 @@ import {
 } from '../../utils/date'
 import { isAdmin } from '../../utils/auth'
 import { chunkArray, fetchAllPaginated, IN_FILTER_BATCH_SIZE } from '../../utils/supabasePaginate'
+import { setMemberActiveStatus } from '../../services/memberLifecycle'
+import { getMembershipTypeLabel, membershipCountsAsActive } from '../../utils/membership'
 import {
   designSystem,
   getBadgeStyle,
@@ -37,13 +39,13 @@ const cardShadowHover = designSystem.shadows.elevation[2]
 function membershipTypeBadge(type: string): { label: string; variant: 'info' | 'warning' | 'default' } {
   switch (type) {
     case 'guest':
-      return { label: '非會員', variant: 'warning' }
+      return { label: getMembershipTypeLabel(type), variant: 'warning' }
     case 'dual':
-      return { label: '雙人會籍', variant: 'info' }
+      return { label: getMembershipTypeLabel(type), variant: 'info' }
     case 'es':
-      return { label: 'ES', variant: 'default' }
+      return { label: getMembershipTypeLabel(type), variant: 'default' }
     default:
-      return { label: '一般會員', variant: 'info' }
+      return { label: getMembershipTypeLabel(type), variant: 'info' }
   }
 }
 
@@ -151,44 +153,55 @@ export function MemberManagement() {
       // 獲取所有有會籍截止日的會員
       supabase
         .from('members')
-        .select('name, nickname, membership_end_date, status')
+        .select('id, name, nickname, membership_type, membership_end_date, status')
+        .eq('status', 'active')
         .not('membership_end_date', 'is', null)
         .order('membership_end_date', { ascending: true }),
-      
+
       // 獲取所有有到期日的置板
       supabase
         .from('board_storage')
-        .select('slot_number, members:member_id(name, nickname), expires_at')
+        .select('member_id, slot_number, members:member_id(id, name, nickname, status), expires_at')
         .eq('status', 'active')
         .not('expires_at', 'is', null)
         .order('expires_at', { ascending: true })
     ])
 
+    if (membershipResult.error || boardResult.error) {
+      const error = membershipResult.error || boardResult.error
+      console.error('載入到期資料失敗:', error)
+      toast.error('會員資料已更新，但到期提醒刷新失敗，請重新整理頁面')
+      return
+    }
+
     if (membershipResult.data) {
       const filtered = membershipResult.data.filter((m: any) =>
+        membershipCountsAsActive(m.membership_type) &&
         isEndDateInExpiryReminderWindow(m.membership_end_date, EXPIRING_SOON_DAYS)
       )
-      
+
       setExpiringMemberships(filtered)
     }
-    
+
     if (boardResult.data) {
       const filtered = boardResult.data.filter((b: any) =>
+        b.members?.status === 'active' &&
         isEndDateInExpiryReminderWindow(b.expires_at, EXPIRING_SOON_DAYS)
       )
-      
+
       const boardList = filtered.map((b: any) => {
         const member = b.members
-        const displayName = member 
+        const displayName = member
           ? ((member.nickname && member.nickname.trim()) || member.name)
           : '未知'
         return {
+          member_id: b.member_id,
           slot_number: b.slot_number,
           member_name: displayName,
           expires_at: b.expires_at
         }
       })
-      
+
       setExpiringBoards(boardList)
     }
   }
@@ -204,16 +217,16 @@ export function MemberManagement() {
         supabase
           .from('members')
           .select(`
-            id, name, nickname, phone, birthday, notes, 
-            balance, vip_voucher_amount, designated_lesson_minutes, 
-            boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes, 
+            id, name, nickname, phone, birthday, notes,
+            balance, vip_voucher_amount, designated_lesson_minutes,
+            boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes,
             gift_boat_hours, membership_end_date, membership_start_date,
             membership_type, membership_partner_id,
             board_slot_number, board_expiry_date,
             status, created_at, updated_at
           `)
           .in('status', showInactive ? ['active', 'inactive'] : ['active']),
-        
+
         supabase
           .from('board_storage')
           .select('member_id, slot_number, start_date, expires_at')
@@ -227,6 +240,8 @@ export function MemberManagement() {
       ])
 
       if (membersResult.error) throw membersResult.error
+      if (boardResult.error) throw boardResult.error
+      if (lineBindingsResult.error) throw lineBindingsResult.error
 
       const membersData = membersResult.data || []
       const boardData = boardResult.data || []
@@ -280,7 +295,7 @@ export function MemberManagement() {
       const partnerIds = membersData
         .map((m: any) => m.membership_partner_id)
         .filter(Boolean)
-      
+
       let partnersData: any[] = []
       if (partnerIds.length > 0) {
         const { data } = await supabase
@@ -350,109 +365,34 @@ export function MemberManagement() {
 
   const handleArchiveMember = async (memberId: string) => {
     try {
-      // 先取得會員資料
-      const { data: member } = await supabase
-        .from('members')
-        .select('id, name, nickname, membership_type, membership_partner_id')
-        .eq('id', memberId)
-        .single()
-
-      if (!member) throw new Error('找不到會員')
-
-      const today = getVenueDateString()
-      const hasPartner = member.membership_type === 'dual' && member.membership_partner_id
-
-      // 1. 如果有配對，解除配對關係
-      if (hasPartner && member.membership_partner_id) {
-        const partnerId = member.membership_partner_id
-
-        // 配對會員改為一般會員 — 若失敗 throw，避免留下孤兒的 dual 配對
-        const { error: partnerErr } = await supabase
-          .from('members')
-          .update({ 
-            membership_type: 'general',
-            membership_partner_id: null 
-          })
-          .eq('id', partnerId)
-        if (partnerErr) throw new Error(`解除配對會員失敗: ${partnerErr.message}`)
-
-        // 幫配對會員加備忘錄（活動紀錄，失敗不阻斷主流程）
-        // @ts-ignore
-        await supabase.from('member_notes').insert([{
-          member_id: partnerId,
-          event_date: today,
-          event_type: '備註',
-          description: `配對會員 ${member.nickname || member.name} 已隱藏，解除配對，改為一般會員`
-        }])
-      }
-
-      // 2. 隱藏會員（清除配對）
-      const { error } = await supabase
-        .from('members')
-        .update({ 
-          status: 'inactive',
-          membership_partner_id: null
-        })
-        .eq('id', memberId)
-      
-      if (error) throw error
-
-      // 2.5 同步移除該會員的 LINE 綁定 — 若失敗 throw，避免「已隱藏但 LINE 還能登入」
-      const { error: lineErr } = await supabase
-        .from('line_bindings')
-        .update({ status: 'revoked' })
-        .eq('member_id', memberId)
-        .eq('status', 'active')
-      if (lineErr) throw new Error(`撤銷 LINE 綁定失敗: ${lineErr.message}`)
-
-      // 3. 新增備忘錄
-      // @ts-ignore
-      await supabase.from('member_notes').insert([{
-        member_id: memberId,
-        event_date: today,
-        event_type: '備註',
-        description: '會員隱藏'
-      }])
+      await setMemberActiveStatus(memberId, false)
 
       toast.success('已隱藏會員')
-      await loadMembers(true)
-    } catch (err: any) {
+      await Promise.all([loadMembers(true), loadExpiringData()])
+    } catch (err: unknown) {
       console.error('隱藏會員失敗:', err)
-      toast.error('隱藏會員失敗')
+      toast.error(err instanceof Error ? `隱藏會員失敗：${err.message}` : '隱藏會員失敗')
+      throw err
     }
   }
 
   const handleRestoreMember = async (memberId: string) => {
     try {
-      const { error } = await supabase
-        .from('members')
-        .update({ status: 'active' })
-        .eq('id', memberId)
-      
-      if (error) throw error
-
-      // 新增備忘錄
-      const today = getVenueDateString()
-      // @ts-ignore
-      await supabase.from('member_notes').insert([{
-        member_id: memberId,
-        event_date: today,
-        event_type: '備註',
-        description: '會員恢復'
-      }])
+      await setMemberActiveStatus(memberId, true)
 
       toast.success('已恢復會員')
-      await loadMembers(true)
-    } catch (err: any) {
+      await Promise.all([loadMembers(true), loadExpiringData()])
+    } catch (err: unknown) {
       console.error('恢復會員失敗:', err)
-      toast.error('恢復會員失敗')
+      toast.error(err instanceof Error ? `恢復會員失敗：${err.message}` : '恢復會員失敗')
+      throw err
     }
   }
 
   // 使用 useMemo 快取過濾結果，避免不必要的重複計算
   const filteredMembers = useMemo(() => {
     let result = members
-    
+
     // 篩選會員種類
     if (!isMobile && membershipTypeFilter !== 'all') {
       result = result.filter(member => {
@@ -462,11 +402,11 @@ export function MemberManagement() {
         return member.membership_type === membershipTypeFilter
       })
     }
-    
+
     // 篩選搜尋文字
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase()
-      result = result.filter(member => 
+      result = result.filter(member =>
         member.name.toLowerCase().includes(lowerSearch) ||
         member.nickname?.toLowerCase().includes(lowerSearch)
       )
@@ -474,18 +414,11 @@ export function MemberManagement() {
 
     // 手機版以臨時搜尋為主，不套用桌面進階篩選
     if (!isMobile && expiringFilter === 'membership') {
-      const expiringMemberNames = new Set(expiringMemberships.map((m: any) => m.name))
-      const expiringMemberNicknames = new Set(expiringMemberships.map((m: any) => m.nickname).filter(Boolean))
-      result = result.filter(member => 
-        expiringMemberNames.has(member.name) || 
-        (member.nickname && expiringMemberNicknames.has(member.nickname))
-      )
+      const expiringMemberIds = new Set(expiringMemberships.map((m: any) => m.id))
+      result = result.filter(member => expiringMemberIds.has(member.id))
     } else if (!isMobile && expiringFilter === 'board') {
-      const expiringBoardMemberNames = new Set(expiringBoards.map((b: any) => b.member_name))
-      result = result.filter(member => 
-        expiringBoardMemberNames.has(member.name) || 
-        expiringBoardMemberNames.has(member.nickname)
-      )
+      const expiringBoardMemberIds = new Set(expiringBoards.map((b: any) => b.member_id))
+      result = result.filter(member => expiringBoardMemberIds.has(member.id))
     }
 
     if (!isMobile && lineBindingFilter === 'bound') {
@@ -506,24 +439,24 @@ export function MemberManagement() {
       if (!b.updated_at) return -1
       return b.updated_at.localeCompare(a.updated_at) || compareNickname()
     })
-    
+
     return result
   }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards, isMobile])
 
 
   if (loading) {
     return (
-      <div style={{ 
+      <div style={{
         padding: isMobile ? '12px 16px' : '20px',
         minHeight: '100dvh',
         background: pageBg,
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
       }}>
         <div style={getPageContentShellStyle(isMobile)}>
-          <PageHeader 
-            title="會員" 
-            user={user} 
-            showBaoLink={isAdmin(user)} 
+          <PageHeader
+            title="會員"
+            user={user}
+            showBaoLink={isAdmin(user)}
             extraLinks={userIsAdmin ? [
               { label: '儲值', link: '/member-transaction' },
               { label: '🏄 置板', link: '/boards' },
@@ -531,25 +464,25 @@ export function MemberManagement() {
           />
 
           {/* 搜尋框骨架屏 */}
-        <div style={{ 
+        <div style={{
           marginTop: '20px',
           marginBottom: '20px',
           display: 'flex',
           gap: '12px',
           flexWrap: 'wrap'
         }}>
-          <div style={{ 
-            flex: 1, 
+          <div style={{
+            flex: 1,
             minWidth: '200px',
-            height: '48px', 
-            background: designSystem.colors.background.card, 
+            height: '48px',
+            background: designSystem.colors.background.card,
             borderRadius: designSystem.borderRadius.lg,
             border: cardBorder,
           }} />
-          <div style={{ 
-            width: '120px', 
-            height: '48px', 
-            background: designSystem.colors.border.light, 
+          <div style={{
+            width: '120px',
+            height: '48px',
+            background: designSystem.colors.border.light,
             borderRadius: designSystem.borderRadius.lg,
           }} />
         </div>
@@ -585,7 +518,7 @@ export function MemberManagement() {
   }
 
   return (
-    <div style={{ 
+    <div style={{
       padding: isMobile ? '12px 16px' : '20px',
       minHeight: '100dvh',
       background: pageBg,
@@ -607,10 +540,10 @@ export function MemberManagement() {
         paddingBottom: '12px',
         borderBottom: `1px solid ${designSystem.colors.border.light}`,
       }}>
-        <PageHeader 
-          title="會員" 
-          user={user} 
-          showBaoLink={isAdmin(user)} 
+        <PageHeader
+          title="會員"
+          user={user}
+          showBaoLink={isAdmin(user)}
           extraLinks={
             userIsAdmin ? [
               { label: '儲值', link: '/member-transaction' },
@@ -856,7 +789,7 @@ export function MemberManagement() {
             </span>
             <span>{showExpiringDetails ? '收合' : '展開'}</span>
           </button>
-          
+
           {showExpiringDetails && (
             <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${designSystem.colors.border.light}` }}>
               {expiringMemberships.length > 0 && (() => {
@@ -883,7 +816,7 @@ export function MemberManagement() {
                   </div>
                 )
               })()}
-              
+
               {expiringBoards.length > 0 && (() => {
                 const today = getVenueDateString()
                 const expiredBoards = expiringBoards.filter((b: any) => b.expires_at < today)
@@ -915,7 +848,7 @@ export function MemberManagement() {
       )}
 
       {/* 會員列表 */}
-      <div style={{ 
+      <div style={{
         display: 'grid',
         gap: '20px'
       }}>
@@ -1019,8 +952,8 @@ export function MemberManagement() {
                     )}
                   </div>
 
-                  <div style={{ 
-                    display: 'flex', 
+                  <div style={{
+                    display: 'flex',
                     flexDirection: 'column',
                     gap: isMobile ? '4px' : '6px',
                     fontSize: getFontSize('bodySmall', isMobile),
@@ -1034,14 +967,14 @@ export function MemberManagement() {
                         <div>生日 {formatDate(member.birthday)}</div>
                       )}
                       {member.partner && (
-                        <div 
+                        <div
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedMemberId(member.partner!.id)
                             setDetailDialogOpen(true)
                           }}
-                          style={{ 
-                            color: designSystem.colors.info[700], 
+                          style={{
+                            color: designSystem.colors.info[700],
                             cursor: 'pointer',
                             textDecoration: 'underline',
                             textDecorationStyle: 'dotted',
@@ -1089,8 +1022,9 @@ export function MemberManagement() {
                         </button>
                       )}
                     </div>
-                    {(member.membership_start_date || member.membership_end_date) && (
-                      <div style={{ 
+                    {membershipCountsAsActive(member.membership_type) &&
+                      (member.membership_start_date || member.membership_end_date) && (
+                      <div style={{
                         color: isDateExpired(member.membership_end_date)
                           ? designSystem.colors.danger[700]
                           : designSystem.colors.text.secondary
@@ -1104,7 +1038,7 @@ export function MemberManagement() {
                         {member.board_slots.map((slot, index) => {
                           const slotExpired = isDateExpired(slot.expires_at)
                           return (
-                            <div key={index} style={{ 
+                            <div key={index} style={{
                               color: slotExpired
                                 ? designSystem.colors.danger[700]
                                 : designSystem.colors.success[700],
@@ -1120,7 +1054,7 @@ export function MemberManagement() {
                   </div>
 
                   {member.notes && (
-                    <div style={{ 
+                    <div style={{
                       marginTop: '10px',
                       paddingTop: '10px',
                       fontSize: getFontSize('button', isMobile),
@@ -1142,7 +1076,7 @@ export function MemberManagement() {
                   const isExpanded = expandedMemoMemberIds.has(member.id)
                   const visibleNotes = isExpanded ? allNotes : allNotes.slice(-previewCount)
                   return (
-                  <div style={{ 
+                  <div style={{
                     marginTop: '12px',
                     paddingTop: '12px',
                     borderTop: `1px solid ${designSystem.colors.border.light}`,
@@ -1233,7 +1167,9 @@ export function MemberManagement() {
       <AddMemberDialog
         open={addDialogOpen}
         onClose={() => setAddDialogOpen(false)}
-        onSuccess={() => loadMembers(true)}
+        onSuccess={() => {
+          void Promise.all([loadMembers(true), loadExpiringData()])
+        }}
       />
 
       {/* 會員詳情彈窗 */}
@@ -1244,12 +1180,14 @@ export function MemberManagement() {
           setDetailDialogOpen(false)
           setSelectedMemberId(null)
         }}
-        onUpdate={() => loadMembers(true)}
+        onUpdate={() => {
+          void Promise.all([loadMembers(true), loadExpiringData()])
+        }}
         onSwitchMember={(memberId) => setSelectedMemberId(memberId)}
         onArchiveMember={handleArchiveMember}
         onRestoreMember={handleRestoreMember}
       />
-      
+
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )

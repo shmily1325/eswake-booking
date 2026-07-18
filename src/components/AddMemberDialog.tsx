@@ -4,11 +4,17 @@
  * Hierarchy: identity fields → membership → quiet gift hint → board slots → primary save.
  * Primary task: create a member (and optional boards) with calm chrome — no decorative emoji or gradients.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalTimestamp } from '../utils/date'
 import { useToast } from './ui'
+import { createMemberWithMembership } from '../services/memberLifecycle'
+import {
+  isMembershipType,
+  getMembershipTypeLabel,
+  MEMBERSHIP_GIFT_CREDIT_HINT,
+  membershipAllowsDates,
+} from '../utils/membership'
 import {
   designSystem,
   getButtonStyle,
@@ -17,10 +23,6 @@ import {
   getLabelStyle,
   getTextStyle,
 } from '../styles/designSystem'
-
-/** 入會贈送提醒（需人工判斷後至會員儲值記帳，不會自動加） */
-const MEMBERSHIP_GIFT_CREDIT_HINT =
-  '入會贈送提醒：30分鐘指定課程、40分鐘大船時數\n請至「會員儲值」記帳'
 
 interface AddMemberDialogProps {
   open: boolean
@@ -32,6 +34,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
   const { isMobile } = useResponsive()
   const toast = useToast()
   const [loading, setLoading] = useState(false)
+  const submitLockRef = useRef(false)
   const [formData, setFormData] = useState({
     name: '',
     nickname: '',
@@ -45,19 +48,28 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
     board_expiry_date: '',
     free_hours: 0,
   })
-  
-  const [allMembers, setAllMembers] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
-  
+
+  const [allMembers, setAllMembers] = useState<Array<{
+    id: string
+    name: string
+    nickname: string | null
+    membership_type: string | null
+    membership_end_date: string | null
+  }>>([])
+
   // 載入會員列表（用於配對選擇）
   const loadMembers = async () => {
     const { data } = await supabase
       .from('members')
-      .select('id, name, nickname')
+      .select('id, name, nickname, membership_type, membership_end_date')
       .eq('status', 'active')
+      .is('membership_partner_id', null)
+      .neq('membership_type', 'dual')
+      .neq('membership_type', 'es')
       .order('name')
     if (data) setAllMembers(data)
   }
-  
+
   useEffect(() => {
     if (open) {
       loadMembers()
@@ -79,7 +91,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
       setBoards([])
     }
   }, [open])
-  
+
   const [boards, setBoards] = useState<Array<{
     slot_number: string
     start_date: string
@@ -111,7 +123,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.name.trim()) {
       toast.warning('請輸入姓名')
       return
@@ -122,145 +134,82 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
       toast.warning('電話需為 09 開頭的 10 位數字')
       return
     }
+    if (!isMembershipType(formData.membership_type)) {
+      toast.warning('請選擇有效的會籍類型')
+      return
+    }
+    if (formData.membership_type === 'dual' && !formData.membership_partner_id) {
+      toast.warning('雙人會員必須選擇配對會員')
+      return
+    }
+    if (formData.membership_type === 'dual' && !formData.membership_end_date) {
+      toast.warning('雙人會員必須設定到期日')
+      return
+    }
+    if (
+      formData.membership_start_date &&
+      formData.membership_end_date &&
+      formData.membership_start_date > formData.membership_end_date
+    ) {
+      toast.warning('會員開始日期不能晚於截止日期')
+      return
+    }
+    if (formData.membership_type === 'dual') {
+      const partner = allMembers.find((candidate) => candidate.id === formData.membership_partner_id)
+      if (!partner) {
+        toast.warning('找不到可配對的會員，請重新選擇')
+        return
+      }
+      const partnerSummary = [
+        getMembershipTypeLabel(partner.membership_type),
+        partner.membership_end_date ? `目前到期 ${partner.membership_end_date}` : '目前未設定到期日',
+      ].join('、')
+      if (!window.confirm(
+        `確定與「${partner.nickname || partner.name}」建立雙人會籍嗎？\n\n${partnerSummary}\n雙方到期日將統一為 ${formData.membership_end_date}。`
+      )) return
+    }
 
+    if (submitLockRef.current) return
+    submitLockRef.current = true
     setLoading(true)
     try {
-      // 0. 先檢查格位是否可用
-      if (boards.length > 0) {
-        const slotNumbers = boards
-          .filter(b => b.slot_number)
-          .map(b => parseInt(b.slot_number))
-        
-        if (slotNumbers.length > 0) {
-          const { data: existingSlots } = await supabase
-            .from('board_storage')
-            .select('slot_number')
-            .in('slot_number', slotNumbers)
-          
-          if (existingSlots && existingSlots.length > 0) {
-            const occupiedSlots = existingSlots.map(s => `#${s.slot_number}`).join('、')
-            toast.error(`格位 ${occupiedSlots} 已被使用，請選擇其他格位`)
-            setLoading(false)
-            return
-          }
-        }
-      }
+      const normalizedBoards = boards
+        .filter((board) => board.slot_number)
+        .map((board) => ({
+          slot_number: Number(board.slot_number),
+          start_date: board.start_date || null,
+          expires_at: board.expires_at || null,
+          notes: board.notes.trim() || null,
+        }))
 
-      // 1. 新增會員
-      const { data: newMember, error: memberError } = await supabase
-        .from('members')
-        .insert([{
-          name: formData.name.trim(),
-          nickname: formData.nickname.trim() || null,
-          birthday: formData.birthday || null,
-          phone: formData.phone.trim() || null,
-          membership_type: formData.membership_type,
-          membership_start_date: formData.membership_start_date || null,
-          membership_end_date: formData.membership_end_date || null,
-          membership_partner_id: formData.membership_partner_id || null,
-          board_slot_number: formData.board_slot_number.trim() || null,
-          board_expiry_date: formData.board_expiry_date || null,
-          free_hours: formData.free_hours || 0,
-          free_hours_used: 0,
-          balance: 0,
-          designated_lesson_minutes: 0,
-          boat_voucher_g23_minutes: 0,
-          boat_voucher_g21_minutes: 0,
-          status: 'active',
-          created_at: getLocalTimestamp()
-        }])
-        .select()
-        .single()
+      await createMemberWithMembership({
+        name: formData.name,
+        nickname: formData.nickname,
+        birthday: formData.birthday || null,
+        phone: formData.phone,
+        membershipType: formData.membership_type,
+        membershipStartDate: formData.membership_start_date || null,
+        membershipEndDate: formData.membership_end_date || null,
+        membershipPartnerId: formData.membership_partner_id || null,
+        boards: normalizedBoards,
+      })
 
-      if (memberError) throw memberError
-
-      // 2. 如果有置板，批量插入置板記錄
-      if (boards.length > 0) {
-        const boardsToInsert = []
-        
-        for (const board of boards) {
-          if (!board.slot_number) continue
-          
-          const slotNumber = parseInt(board.slot_number)
-          if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 145) {
-            throw new Error(`格位編號 ${board.slot_number} 必須是 1-145 之間的數字`)
-          }
-          
-          boardsToInsert.push({
-            member_id: newMember.id,
-            slot_number: slotNumber,
-            start_date: board.start_date || null,
-            expires_at: board.expires_at || null,
-            notes: board.notes.trim() || null,
-            status: 'active',
-          })
-        }
-
-        if (boardsToInsert.length > 0) {
-          const { error: boardError } = await supabase
-            .from('board_storage')
-            .insert(boardsToInsert)
-
-          if (boardError) {
-            // 如果格位已被佔用
-            if (boardError.code === '23505') {
-              throw new Error('有格位已被使用，請檢查格位編號')
-            }
-            throw boardError
-          }
-        }
-      }
-
-      // 3. 如果選擇了配對會員，更新配對關係（雙向）
-      if (formData.membership_partner_id) {
-        await supabase
-          .from('members')
-          .update({ membership_partner_id: newMember.id })
-          .eq('id', formData.membership_partner_id)
-      }
-
-      // 4. 自動新增備忘錄
-      const notesToAdd: Array<{member_id: string, event_date: string | null, description: string}> = []
-      
-      // 入會備忘錄
-      if (formData.membership_start_date && formData.membership_type !== 'guest') {
-        notesToAdd.push({
-          member_id: newMember.id,
-          event_date: formData.membership_start_date,
-          description: '入會'
-        })
-      }
-      
-      // 置板備忘錄
-      for (const board of boards) {
-        if (board.slot_number && board.start_date) {
-          notesToAdd.push({
-            member_id: newMember.id,
-            event_date: board.start_date,
-            description: `置板開始 #${board.slot_number}`
-          })
-        }
-      }
-      
-      if (notesToAdd.length > 0) {
-        // @ts-ignore
-        await supabase.from('member_notes').insert(notesToAdd)
-      }
       toast.success('會員已新增')
       if (formData.membership_type === 'general' || formData.membership_type === 'dual') {
         toast.warning(MEMBERSHIP_GIFT_CREDIT_HINT, 8000)
       }
       onSuccess()
       onClose()  // useEffect 會在 open=false 時自動重置表單
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('新增會員失敗:', error)
-      const message = error?.message || '未知錯誤'
+      const message = error instanceof Error ? error.message : '未知錯誤'
       if (message.includes('格位')) {
         toast.error(message)
       } else {
         toast.error(`新增會員失敗: ${message}`)
       }
     } finally{
+      submitLockRef.current = false
       setLoading(false)
     }
   }
@@ -409,7 +358,16 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               </label>
               <select
                 value={formData.membership_type}
-                onChange={(e) => setFormData({ ...formData, membership_type: e.target.value })}
+                onChange={(e) => {
+                  const membershipType = e.target.value
+                  setFormData({
+                    ...formData,
+                    membership_type: membershipType,
+                    membership_start_date: membershipType === 'guest' ? '' : formData.membership_start_date,
+                    membership_end_date: membershipType === 'guest' ? '' : formData.membership_end_date,
+                    membership_partner_id: membershipType === 'dual' ? formData.membership_partner_id : '',
+                  })
+                }}
                 style={inputStyle}
                 required
               >
@@ -440,7 +398,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
             )}
 
             {/* 會員日期 */}
-            <div style={{ 
+            <div style={{
               display: 'grid',
               gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
               gap: '12px',
@@ -456,7 +414,8 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                     type="date"
                     value={formData.membership_start_date}
                     onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
-                    style={{ ...inputStyle, flex: 1 }}
+                    disabled={!membershipAllowsDates(formData.membership_type)}
+                    style={{ ...inputStyle, flex: 1, opacity: membershipAllowsDates(formData.membership_type) ? 1 : 0.55 }}
                   />
                 </div>
               </div>
@@ -471,7 +430,8 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                     type="date"
                     value={formData.membership_end_date}
                     onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
-                    style={{ ...inputStyle, flex: 1 }}
+                    disabled={!membershipAllowsDates(formData.membership_type)}
+                    style={{ ...inputStyle, flex: 1, opacity: membershipAllowsDates(formData.membership_type) ? 1 : 0.55 }}
                   />
                 </div>
               </div>
@@ -481,17 +441,19 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
             {formData.membership_type === 'dual' && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={getLabelStyle(isMobile)}>
-                  配對會員 <span style={quietHint}>（選填）</span>
+                  配對會員 <span style={requiredMark}>*</span>
                 </label>
                 <select
                   value={formData.membership_partner_id}
                   onChange={(e) => setFormData({ ...formData, membership_partner_id: e.target.value })}
                   style={inputStyle}
+                  required
                 >
                   <option value="">請選擇配對會員</option>
                   {allMembers.map(member => (
                     <option key={member.id} value={member.id}>
-                      {member.nickname || member.name}
+                      {member.nickname || member.name}（{getMembershipTypeLabel(member.membership_type)}
+                      {member.membership_end_date ? `，至 ${member.membership_end_date}` : ''}）
                     </option>
                   ))}
                 </select>
@@ -506,7 +468,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
             )}
 
             {/* 置板服務 */}
-            <div style={{ 
+            <div style={{
               marginBottom: '16px',
               padding: designSystem.spacing.lg,
               background: designSystem.colors.background.main,

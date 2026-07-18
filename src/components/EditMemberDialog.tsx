@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { useToast } from './ui'
 import { MemoRecordCheckbox } from './MemoRecordCheckbox'
+import { updateMemberMembership } from '../services/memberLifecycle'
 import { getVenueDateString } from '../utils/date'
+import {
+  getMembershipTypeLabel,
+  isMembershipType,
+  membershipAllowsDates,
+  membershipRequiresPartner,
+} from '../utils/membership'
 import {
   designSystem,
   getButtonStyle,
@@ -25,7 +32,12 @@ interface Member {
   membership_partner_id: string | null
   gift_boat_hours: number | null
   notes: string | null
-  partner?: { id: string, name: string, nickname: string | null } | null
+  partner?: {
+    id: string
+    name: string
+    nickname: string | null
+    membership_end_date?: string | null
+  } | null
 }
 
 interface EditMemberDialogProps {
@@ -39,15 +51,29 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const { isMobile } = useResponsive()
   const toast = useToast()
   const [loading, setLoading] = useState(false)
+  const submitLockRef = useRef(false)
   const [boardSlots, setBoardSlots] = useState<Array<{id?: number, slot_number: string, start_date: string, expires_at: string}>>([])
+  const [deletedBoardIds, setDeletedBoardIds] = useState<number[]>([])
   const [addToMemo, setAddToMemo] = useState(true)  // 是否記錄到備忘錄
   const [memoText, setMemoText] = useState('')  // 自訂備忘錄內容
-  
+
   // 配對會員搜尋相關狀態
   const [partnerSearch, setPartnerSearch] = useState('')
-  const [partnerSearchResults, setPartnerSearchResults] = useState<Array<{id: string, name: string, nickname: string | null}>>([])
-  const [selectedPartner, setSelectedPartner] = useState<{id: string, name: string, nickname: string | null} | null>(null)
-  
+  const [partnerSearchResults, setPartnerSearchResults] = useState<Array<{
+    id: string
+    name: string
+    nickname: string | null
+    membership_type: string | null
+    membership_end_date: string | null
+  }>>([])
+  const [selectedPartner, setSelectedPartner] = useState<{
+    id: string
+    name: string
+    nickname: string | null
+    membership_type?: string | null
+    membership_end_date?: string | null
+  } | null>(null)
+
   const [formData, setFormData] = useState({
     name: member.name,
     nickname: member.nickname || '',
@@ -69,14 +95,18 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('id, name, nickname, phone')
+        .select('id, name, nickname, phone, membership_type, membership_end_date, membership_partner_id')
         .or(`name.ilike.%${query}%,nickname.ilike.%${query}%,phone.ilike.%${query}%`)
         .eq('status', 'active')
         .neq('id', member.id)  // 排除自己
+        .neq('membership_type', 'es')
+        .neq('membership_type', 'dual')
         .limit(10)
 
       if (error) throw error
-      setPartnerSearchResults(data || [])
+      setPartnerSearchResults((data || []).filter((candidate) =>
+        !candidate.membership_partner_id || candidate.membership_partner_id === member.id
+      ))
     } catch (error) {
       console.error('搜尋會員失敗:', error)
     }
@@ -104,6 +134,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     if (!open) {
       // 对话框关闭时重置状态
       setBoardSlots([])
+      setDeletedBoardIds([])
       setPartnerSearch('')
       setPartnerSearchResults([])
       setSelectedPartner(null)
@@ -111,7 +142,8 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     }
 
     loadBoardSlots()
-    
+    setDeletedBoardIds([])
+
     setFormData({
       name: member.name,
       nickname: member.nickname || '',
@@ -122,17 +154,19 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       membership_end_date: member.membership_end_date || '',
       membership_partner_id: member.membership_partner_id || '',
     })
-    
+
     // 重置備忘錄相關狀態
     setAddToMemo(true)
     setMemoText('')
-    
+
     // 如果已有配對會員，載入並設定為選中狀態
     if (member.membership_partner_id && member.partner) {
       setSelectedPartner({
         id: member.partner.id,
         name: member.partner.name,
-        nickname: member.partner.nickname
+        nickname: member.partner.nickname,
+        membership_type: 'dual',
+        membership_end_date: member.partner.membership_end_date,
       })
     } else {
       setSelectedPartner(null)
@@ -147,22 +181,11 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   }
 
   // 刪除置板格位
-  const handleRemoveBoardSlot = async (index: number) => {
+  const handleRemoveBoardSlot = (index: number) => {
     const slot = boardSlots[index]
     if (slot.id) {
-      // 如果有 ID，從資料庫真正刪除
-      const { error } = await supabase
-        .from('board_storage')
-        .delete()
-        .eq('id', slot.id)
-      
-      if (error) {
-        toast.error('刪除失敗：' + error.message)
-        return
-      }
-      toast.success(`已刪除格位 #${slot.slot_number}`)
+      setDeletedBoardIds((prev) => [...prev, slot.id!])
     }
-    // 從列表中移除
     setBoardSlots(boardSlots.filter((_, i) => i !== index))
   }
 
@@ -182,8 +205,16 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       Boolean(member.membership_partner_id)
     )
 
+  const membershipChanged =
+    formData.membership_type !== (member.membership_type || 'general') ||
+    formData.membership_start_date !== (member.membership_start_date || '') ||
+    formData.membership_end_date !== (member.membership_end_date || '') ||
+    formData.membership_partner_id !== (member.membership_partner_id || '')
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (submitLockRef.current) return
+    submitLockRef.current = true
     setLoading(true)
 
     try {
@@ -193,179 +224,115 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         setLoading(false)
         return
       }
-
-      const isGuest = formData.membership_type === 'guest'
-      const newPartnerId = formData.membership_type === 'dual'
-        ? (formData.membership_partner_id || null)
-        : null
-      const oldPartnerId = member.membership_partner_id
-
-      // 1. 更新會員資料
-      const { error } = await supabase
-        .from('members')
-        .update({
-          name: formData.name,
-          nickname: formData.nickname || null,
-          birthday: formData.birthday || null,
-          phone: formData.phone || null,
-          membership_type: formData.membership_type,
-          membership_start_date: isGuest ? null : (formData.membership_start_date || null),
-          membership_end_date: isGuest ? null : (formData.membership_end_date || null),
-          membership_partner_id: newPartnerId,
-        })
-        .eq('id', member.id)
-
-      if (error) throw error
-
-      // 處理置板格位
-      for (const slot of boardSlots) {
-        const slotNumber = parseInt(slot.slot_number)
-        if (!slot.slot_number || slot.slot_number.trim() === '') {
-          continue // 跳過空的格位
+      if (!isMembershipType(formData.membership_type)) {
+        toast.warning('請選擇有效的會籍類型')
+        setLoading(false)
+        return
+      }
+      if (membershipRequiresPartner(formData.membership_type) && !formData.membership_partner_id) {
+        toast.warning('雙人會員必須選擇配對會員')
+        setLoading(false)
+        return
+      }
+      if (membershipRequiresPartner(formData.membership_type) && !formData.membership_end_date) {
+        toast.warning('雙人會員必須設定到期日')
+        setLoading(false)
+        return
+      }
+      if (
+        formData.membership_start_date &&
+        formData.membership_end_date &&
+        formData.membership_start_date > formData.membership_end_date
+      ) {
+        toast.warning('會員開始日期不能晚於截止日期')
+        setLoading(false)
+        return
+      }
+      if (
+        member.membership_type === 'guest' &&
+        formData.membership_type !== 'guest' &&
+        (!formData.membership_start_date || !formData.membership_end_date)
+      ) {
+        toast.warning('非會員轉為有效會籍時，必須設定開始日與截止日')
+        setLoading(false)
+        return
+      }
+      if (
+        formData.membership_type === 'dual' &&
+        (
+          formData.membership_partner_id !== (member.membership_partner_id || '') ||
+          selectedPartner?.membership_end_date !== formData.membership_end_date
+        )
+      ) {
+        if (!selectedPartner) {
+          toast.warning('請重新選擇可配對的會員')
+          setLoading(false)
+          return
         }
-        
-        if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 145) {
+        const partnerSummary = [
+          getMembershipTypeLabel(selectedPartner.membership_type),
+          selectedPartner.membership_end_date
+            ? `目前到期 ${selectedPartner.membership_end_date}`
+            : '目前未設定到期日',
+        ].join('、')
+        if (!window.confirm(
+          `確定與「${selectedPartner.nickname || selectedPartner.name}」建立雙人會籍嗎？\n\n${partnerSummary}\n雙方到期日將統一為 ${formData.membership_end_date}。`
+        )) {
+          setLoading(false)
+          return
+        }
+      }
+
+      for (const slot of boardSlots) {
+        if (!slot.slot_number.trim()) continue
+        const slotNumber = Number(slot.slot_number)
+        if (!Number.isInteger(slotNumber) || slotNumber < 1 || slotNumber > 145) {
           toast.warning(`格位編號 ${slot.slot_number} 必須是 1-145 之間的數字`)
           setLoading(false)
           return
         }
-
-        if (slot.id) {
-          // 更新現有置板
-          const { error } = await supabase
-            .from('board_storage')
-            .update({
-              slot_number: slotNumber,
-              start_date: slot.start_date || null,
-              expires_at: slot.expires_at || null,
-              status: 'active'
-            })
-            .eq('id', slot.id)
-          if (error) throw error
-        } else {
-          // 新增置板
-          const { error } = await supabase
-            .from('board_storage')
-            .insert({
-              member_id: member.id,
-              slot_number: slotNumber,
-              start_date: slot.start_date || null,
-              expires_at: slot.expires_at || null,
-              status: 'active'
-            })
-          if (error) {
-            if (error.code === '23505') {
-              toast.warning(`格位 ${slotNumber} 已被使用，請選擇其他格位`)
-              setLoading(false)
-              return
-            }
-            throw error
-          }
-        }
       }
 
-      // 2. 處理配對變更
-      if (oldPartnerId !== newPartnerId) {
-        // 如果有舊配對，解除舊配對；原雙人會員的另一方改為一般會員
-        if (oldPartnerId) {
-          const { error: oldPartnerError } = await supabase
-            .from('members')
-            .update({
-              membership_partner_id: null,
-              ...(member.membership_type === 'dual' ? { membership_type: 'general' } : {}),
-            })
-            .eq('id', oldPartnerId)
-          if (oldPartnerError) throw oldPartnerError
-        }
-
-        // 如果有新配對，建立新配對（雙向）
-        if (newPartnerId) {
-          const { error: newPartnerError } = await supabase
-            .from('members')
-            .update({
-              membership_type: 'dual',
-              membership_partner_id: member.id,
-            })
-            .eq('id', newPartnerId)
-          if (newPartnerError) throw newPartnerError
-        }
-      }
-
-      // 轉非會員時一定留下紀錄，並同步記錄原雙人會員的配對解除
-      if (requiresGuestNormalization) {
-        const today = getVenueDateString()
-        const oldEndDate = member.membership_end_date ? `（原到期：${member.membership_end_date}）` : ''
-        const baseDescription = member.membership_type === 'guest'
-          ? '修正非會員資料，清除會籍日期與配對'
-          : `會籍不續約，轉非會員${oldEndDate}`
-        const description = memoText.trim()
-          ? `${baseDescription}（${memoText.trim()}）`
-          : baseDescription
-
-        // @ts-ignore
-        const { error: memberNoteError } = await supabase.from('member_notes').insert([{
-          member_id: member.id,
-          event_date: today,
-          event_type: '備註',
-          description,
-        }])
-        if (memberNoteError) throw memberNoteError
-
-        if (oldPartnerId) {
-          // @ts-ignore
-          const { error: partnerNoteError } = await supabase.from('member_notes').insert([{
-            member_id: oldPartnerId,
-            event_date: today,
-            event_type: '備註',
-            description: `配對會員 ${member.nickname || member.name} 轉非會員，解除配對，改為一般會員`,
-          }])
-          if (partnerNoteError) throw partnerNoteError
-        }
-      }
-
-      // 3. 如果勾選「記錄到備忘錄」，檢查變更並新增備忘錄
-      if (addToMemo && !requiresGuestNormalization) {
-        const changes: string[] = []
-        const oldStartDate = member.membership_start_date || ''
-        const oldEndDate = member.membership_end_date || ''
-        const newStartDate = formData.membership_start_date || ''
-        const newEndDate = formData.membership_end_date || ''
-
-        if (oldStartDate !== newStartDate) {
-          changes.push(`開始 ${oldStartDate || '無'} → ${newStartDate || '無'}`)
-        }
-        if (oldEndDate !== newEndDate) {
-          changes.push(`到期 ${oldEndDate || '無'} → ${newEndDate || '無'}`)
-        }
-
-        // 有日期變更或有自訂文字時，新增備忘錄
-        if (changes.length > 0 || memoText.trim()) {
-          const today = getVenueDateString()
-          let description = ''
-          
-          if (changes.length > 0) {
-            description = `修改會籍日期：${changes.join('、')}`
-          }
-          if (memoText.trim()) {
-            description = description ? `${description}（${memoText.trim()}）` : memoText.trim()
-          }
-          
-          // @ts-ignore
-          await supabase.from('member_notes').insert([{
-            member_id: member.id,
-            event_date: today,
-            event_type: '備註',
-            description
-          }])
-        }
-      }
+      // 會員、會籍、配對與置板在同一筆資料庫交易完成
+      await updateMemberMembership({
+        memberId: member.id,
+        membershipType: formData.membership_type,
+        membershipStartDate: formData.membership_type === 'guest'
+          ? null
+          : (formData.membership_start_date || null),
+        membershipEndDate: formData.membership_type === 'guest'
+          ? null
+          : (formData.membership_end_date || null),
+        membershipPartnerId: formData.membership_type === 'dual'
+          ? (formData.membership_partner_id || null)
+          : null,
+        memo: requiresGuestNormalization || addToMemo ? memoText : null,
+        recordNote: requiresGuestNormalization || (membershipChanged && addToMemo),
+        profile: {
+          name: formData.name,
+          nickname: formData.nickname || null,
+          birthday: formData.birthday || null,
+          phone: formData.phone || null,
+        },
+        boards: boardSlots
+          .filter((slot) => slot.slot_number.trim())
+          .map((slot) => ({
+            id: slot.id,
+            slot_number: Number(slot.slot_number),
+            start_date: slot.start_date || null,
+            expires_at: slot.expires_at || null,
+            notes: null,
+          })),
+        deletedBoardIds,
+      })
 
       onSuccess()
       onClose()
     } catch (error) {
       console.error('更新失敗:', error)
-      toast.error('更新失敗')
+      toast.error(error instanceof Error ? `更新失敗：${error.message}` : '更新失敗')
     } finally {
+      submitLockRef.current = false
       setLoading(false)
     }
   }
@@ -516,7 +483,11 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                   setFormData({
                     ...formData,
                     membership_type: membershipType,
-                    membership_start_date: membershipType === 'guest' ? '' : formData.membership_start_date,
+                    membership_start_date: membershipType === 'guest'
+                      ? ''
+                      : (member.membership_type === 'guest' && !formData.membership_start_date
+                        ? getVenueDateString()
+                        : formData.membership_start_date),
                     membership_end_date: membershipType === 'guest' ? '' : formData.membership_end_date,
                     membership_partner_id: membershipType === 'dual' ? formData.membership_partner_id : '',
                   })
@@ -548,10 +519,10 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                   type="date"
                   value={formData.membership_start_date}
                   onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
-                  disabled={formData.membership_type === 'guest'}
+                  disabled={!membershipAllowsDates(formData.membership_type)}
                   style={{
                     ...inputStyle,
-                    opacity: formData.membership_type === 'guest' ? 0.55 : 1,
+                    opacity: membershipAllowsDates(formData.membership_type) ? 1 : 0.55,
                   }}
                 />
               </div>
@@ -561,10 +532,10 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                   type="date"
                   value={formData.membership_end_date}
                   onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
-                  disabled={formData.membership_type === 'guest'}
+                  disabled={!membershipAllowsDates(formData.membership_type)}
                   style={{
                     ...inputStyle,
-                    opacity: formData.membership_type === 'guest' ? 0.55 : 1,
+                    opacity: membershipAllowsDates(formData.membership_type) ? 1 : 0.55,
                   }}
                 />
               </div>
@@ -607,7 +578,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             {formData.membership_type === 'dual' && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={getLabelStyle(isMobile)}>
-                  配對會員{' '}
+                  配對會員 <span style={requiredMark}>*</span>{' '}
                   {!selectedPartner && member.partner && (
                     <span style={quietHint}>
                       （目前：{member.partner.nickname || member.partner.name}）
@@ -661,6 +632,10 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                             暱稱：{m.nickname}
                           </div>
                         )}
+                        <div style={{ fontSize: typeSize('caption'), color: designSystem.colors.text.secondary }}>
+                          {getMembershipTypeLabel(m.membership_type)}
+                          {m.membership_end_date ? `，目前到期 ${m.membership_end_date}` : '，目前未設定到期日'}
+                        </div>
                       </div>
                     ))}
                   </div>

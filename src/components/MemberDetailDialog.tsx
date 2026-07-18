@@ -7,6 +7,15 @@ import { useToast } from './ui'
 import { addYearsToDate, getVenueDateString, isDateExpired, normalizeDate } from '../utils/date'
 import { MemoRecordCheckbox } from './MemoRecordCheckbox'
 import {
+  renewMemberMembership,
+  updateMemberMembership,
+} from '../services/memberLifecycle'
+import {
+  getMembershipTypeLabel,
+  MEMBERSHIP_GIFT_CREDIT_HINT,
+  membershipCountsAsActive,
+} from '../utils/membership'
+import {
   designSystem,
   getBadgeStyle,
   getBookingChoiceStyle,
@@ -140,10 +149,6 @@ const requiredMarkStyle: CSSProperties = {
   color: designSystem.colors.danger[500],
 }
 
-/** 入會／續會贈送提醒（需人工判斷後至會員儲值記帳，不會自動加） */
-const MEMBERSHIP_GIFT_CREDIT_HINT =
-  '贈送提醒：30分鐘指定課程、40分鐘大船時數\n請至「會員儲值」記帳'
-
 interface Member {
   id: string
   name: string
@@ -170,7 +175,12 @@ interface Member {
   status: string | null
   created_at: string | null
   updated_at: string | null
-  partner?: { id: string, name: string, nickname: string | null } | null
+  partner?: {
+    id: string
+    name: string
+    nickname: string | null
+    membership_end_date?: string | null
+  } | null
   // 衍生欄位：LINE 綁定
   is_line_bound?: boolean
   line_binding_user_id?: string | null
@@ -239,7 +249,7 @@ export function MemberDetailDialog({
     expires_at: '',
     notes: ''
   })
-  
+
   // 備忘錄相關狀態
   const [noteDialogOpen, setNoteDialogOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<MemberNote | null>(null)
@@ -253,6 +263,7 @@ export function MemberDetailDialog({
   const [renewDialogOpen, setRenewDialogOpen] = useState(false)
   const [renewEndDate, setRenewEndDate] = useState('')
   const [renewBothPartners, setRenewBothPartners] = useState(true) // 雙人會員是否一起續約
+  const [lifecycleSaving, setLifecycleSaving] = useState(false)
 
   // 置板續約相關狀態
   const [boardRenewDialogOpen, setBoardRenewDialogOpen] = useState(false)
@@ -303,7 +314,7 @@ export function MemberDetailDialog({
 
   const loadMemberData = async () => {
     if (!memberId) return
-    
+
     setLoading(true)
     try {
       // 載入會員、置板、LINE 綁定、備忘錄
@@ -335,14 +346,14 @@ export function MemberDetailDialog({
       ])
 
       if (memberResult.error) throw memberResult.error
-      
+
       const memberData = memberResult.data
 
       // LINE 綁定狀態
       const activeBinding = (lineBindingResult.data || [])[0]
       setLineBound(Boolean(activeBinding))
       setLineUserId(activeBinding?.line_user_id || null)
-      
+
       // 如果有配對會員，載入配對會員資料
       let partnerData = null
       if (memberData.membership_partner_id) {
@@ -353,9 +364,9 @@ export function MemberDetailDialog({
           .single()
         partnerData = partner
       }
-      
-      setMember({ 
-        ...memberData, 
+
+      setMember({
+        ...memberData,
         partner: partnerData,
         is_line_bound: Boolean(activeBinding),
         line_binding_user_id: activeBinding?.line_user_id || null
@@ -381,7 +392,7 @@ export function MemberDetailDialog({
   // 載入會員備忘錄
   const loadMemberNotes = async () => {
     if (!memberId) return
-    
+
     try {
       // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
       const { data, error } = await supabase
@@ -401,22 +412,22 @@ export function MemberDetailDialog({
   // 快速編輯電話
   const handleQuickSavePhone = async () => {
     if (!memberId) return
-    
+
     const trimmedPhone = quickEditPhone.trim()
     if (trimmedPhone && !/^09\d{8}$/.test(trimmedPhone)) {
       toast.warning('手機號碼需為 09 開頭的 10 位數字')
       return
     }
-    
+
     setSavingPhone(true)
     try {
       const { error } = await supabase
         .from('members')
         .update({ phone: trimmedPhone || null })
         .eq('id', memberId)
-      
+
       if (error) throw error
-      
+
       toast.success('手機號碼已更新')
       setQuickEditPhoneOpen(false)
       loadMemberData()
@@ -511,10 +522,10 @@ export function MemberDetailDialog({
   // 開啟新增備忘錄
   const handleAddNote = () => {
     setEditingNote(null)
-    setNoteFormData({ 
-      event_date: getVenueDateString(), 
-      event_type: '備註', 
-      description: '' 
+    setNoteFormData({
+      event_date: getVenueDateString(),
+      event_type: '備註',
+      description: ''
     })
     setNoteDialogOpen(true)
   }
@@ -522,61 +533,24 @@ export function MemberDetailDialog({
   // 不續約轉非會員
   const handleConvertToGuest = async () => {
     if (!member || !memberId) return
-    
+    if (lifecycleSaving) return
+
     const hasPartner = member.membership_type === 'dual' && member.membership_partner_id
     const partnerInfo = hasPartner ? `\n• 解除與 ${member.partner?.nickname || member.partner?.name || '配對會員'} 的配對關係` : ''
-    
+
     const confirmMsg = `確定要將 ${member.nickname || member.name} 轉為非會員嗎？\n\n這會：\n• 會籍類型改為「非會員」\n• 清空會籍開始/到期日期${partnerInfo}\n• 新增一則備忘錄記錄\n\n儲值餘額和置板會保留。`
     if (!confirm(confirmMsg)) return
 
+    setLifecycleSaving(true)
     try {
-      // 1. 如果有配對，先解除配對關係
-      if (hasPartner && member.membership_partner_id) {
-        // 將配對會員改為一般會員，並清除配對
-        await supabase
-          .from('members')
-          .update({
-            membership_type: 'general',
-            membership_partner_id: null
-          })
-          .eq('id', member.membership_partner_id)
-        
-        // 幫配對會員加一則備忘錄
-        const today = getVenueDateString()
-        // @ts-ignore
-        await supabase.from('member_notes').insert([{
-          member_id: member.membership_partner_id,
-          event_date: today,
-          event_type: '備註',
-          description: `配對會員 ${member.nickname || member.name} 轉非會員，改為一般會員`
-        }])
-      }
-
-      // 2. 更新會員資料
-      const { error: updateError } = await supabase
-        .from('members')
-        .update({
-          membership_type: 'guest',
-          membership_start_date: null,
-          membership_end_date: null,
-          membership_partner_id: null
-        })
-        .eq('id', memberId)
-
-      if (updateError) throw updateError
-
-      // 3. 新增備忘錄
-      const today = getVenueDateString()
-      const oldEndDate = member.membership_end_date ? `（原到期：${member.membership_end_date}）` : ''
-      // @ts-ignore
-      await supabase
-        .from('member_notes')
-        .insert([{
-          member_id: memberId,
-          event_date: today,
-          event_type: '備註',
-          description: `會籍不續約，轉非會員${oldEndDate}`
-        }])
+      await updateMemberMembership({
+        memberId,
+        membershipType: 'guest',
+        membershipStartDate: null,
+        membershipEndDate: null,
+        membershipPartnerId: null,
+        recordNote: true,
+      })
 
       toast.success('已轉為非會員')
       loadMemberData()
@@ -584,112 +558,37 @@ export function MemberDetailDialog({
       onUpdate()
     } catch (error) {
       console.error('轉換失敗:', error)
-      toast.error('轉換失敗')
+      toast.error(error instanceof Error ? `轉換失敗：${error.message}` : '轉換失敗')
+    } finally {
+      setLifecycleSaving(false)
     }
   }
 
   // 續約 / 轉會員
   const handleRenew = async () => {
+    if (lifecycleSaving) return
     if (!member || !memberId || !renewEndDate) {
       toast.warning('請選擇新的到期日')
+      return
+    }
+    if (renewEndDate < getVenueDateString()) {
+      toast.warning('新的到期日不能早於今天')
       return
     }
 
     const isGuest = member.membership_type === 'guest'
     const isDual = member.membership_type === 'dual'
     const hasPartner = isDual && member.membership_partner_id && member.partner
-    const today = getVenueDateString()
 
+    setLifecycleSaving(true)
     try {
-      // 1. 更新會員資料
-      const updateData: any = {
-        membership_end_date: renewEndDate
-      }
-      
-      // 如果是非會員轉會員，設定開始日期和類型
-      if (isGuest) {
-        updateData.membership_type = 'general'
-        updateData.membership_start_date = today
-      }
-
-      const { error: updateError } = await supabase
-        .from('members')
-        .update(updateData)
-        .eq('id', memberId)
-
-      if (updateError) throw updateError
-
-      // 2. 新增備忘錄
-      // @ts-ignore
-      await supabase
-        .from('member_notes')
-        .insert([{
-          member_id: memberId,
-          event_date: today,
-          event_type: isGuest ? '入會' : '續約',
-          description: isGuest ? `入會，會籍至 ${renewEndDate}` : `續約至 ${renewEndDate}`
-        }])
-
-      // 3. 處理雙人會員
-      if (hasPartner && member.membership_partner_id) {
-        if (renewBothPartners) {
-          // 一起續約：更新配對會員的到期日
-          await supabase
-            .from('members')
-            .update({ membership_end_date: renewEndDate })
-            .eq('id', member.membership_partner_id)
-
-          // 幫配對會員加備忘錄
-          // @ts-ignore
-          await supabase.from('member_notes').insert([{
-            member_id: member.membership_partner_id,
-            event_date: today,
-            event_type: '續約',
-            description: `續約至 ${renewEndDate}（與 ${member.nickname || member.name} 一起續約）`
-          }])
-        } else {
-          // 只續自己：解除配對，雙方都變一般會員
-          // 更新自己為一般會員
-          await supabase
-            .from('members')
-            .update({ 
-              membership_type: 'general',
-              membership_partner_id: null 
-            })
-            .eq('id', memberId)
-
-          // 更新配對會員為一般會員
-          await supabase
-            .from('members')
-            .update({ 
-              membership_type: 'general',
-              membership_partner_id: null 
-            })
-            .eq('id', member.membership_partner_id)
-
-          // 幫配對會員加備忘錄
-          // @ts-ignore
-          await supabase.from('member_notes').insert([{
-            member_id: member.membership_partner_id,
-            event_date: today,
-            event_type: '備註',
-            description: `配對會員 ${member.nickname || member.name} 單獨續約，解除配對，改為一般會員`
-          }])
-
-          // 幫自己加備忘錄（解除配對）
-          // @ts-ignore
-          await supabase.from('member_notes').insert([{
-            member_id: memberId,
-            event_date: today,
-            event_type: '備註',
-            description: `單獨續約，與 ${member.partner?.nickname || member.partner?.name} 解除配對，改為一般會員`
-          }])
-        }
-      }
+      await renewMemberMembership(memberId, renewEndDate, hasPartner ? renewBothPartners : true)
 
       const partnerMsg = hasPartner ? (renewBothPartners ? '（含配對會員）' : '（已解除配對）') : ''
       toast.success(isGuest ? '已轉為會員' : `續約成功${partnerMsg}`)
-      toast.warning(MEMBERSHIP_GIFT_CREDIT_HINT, 8000)
+      if (member.membership_type !== 'es') {
+        toast.warning(MEMBERSHIP_GIFT_CREDIT_HINT, 8000)
+      }
       setRenewDialogOpen(false)
       setRenewEndDate('')
       setRenewBothPartners(true)
@@ -698,7 +597,9 @@ export function MemberDetailDialog({
       onUpdate()
     } catch (error) {
       console.error('操作失敗:', error)
-      toast.error('操作失敗')
+      toast.error(error instanceof Error ? `操作失敗：${error.message}` : '操作失敗')
+    } finally {
+      setLifecycleSaving(false)
     }
   }
 
@@ -895,16 +796,16 @@ export function MemberDetailDialog({
         if (changes.length > 0 || boardEditForm.memoText.trim()) {
           const today = getVenueDateString()
           let description = ''
-          
+
           if (changes.length > 0) {
             description = `置板 #${editingBoard.slot_number} 修改：${changes.join('、')}`
           }
           if (boardEditForm.memoText.trim()) {
-            description = description 
-              ? `${description}（${boardEditForm.memoText.trim()}）` 
+            description = description
+              ? `${description}（${boardEditForm.memoText.trim()}）`
               : `置板 #${editingBoard.slot_number}：${boardEditForm.memoText.trim()}`
           }
-          
+
           // @ts-ignore
           await supabase.from('member_notes').insert([{
             member_id: memberId,
@@ -1015,7 +916,7 @@ export function MemberDetailDialog({
                             member.membership_type === 'guest' ? 'warning' : 'info',
                             'small'
                           )}>
-                            {getMembershipTypeLabel(member.membership_type || 'general')}
+                            {getMembershipTypeLabel(member.membership_type)}
                           </span>
                         </div>
                         {/* 第二行：手機＋修改｜生日 */}
@@ -1104,18 +1005,28 @@ export function MemberDetailDialog({
                             <button
                               type="button"
                               onClick={async () => {
-                                if (!memberId) return
-                                if (member.status === 'inactive') {
-                                  await onRestoreMember?.(memberId)
-                                  await loadMemberData()
-                                  onUpdate()
-                                } else {
+                                if (!memberId || lifecycleSaving) return
+                                if (member.status !== 'inactive') {
                                   const ok = window.confirm(`確定要隱藏「${member.nickname || member.name}」嗎？`)
                                   if (!ok) return
-                                  await onArchiveMember?.(memberId)
-                                  onClose()
+                                }
+                                setLifecycleSaving(true)
+                                try {
+                                  if (member.status === 'inactive') {
+                                    await onRestoreMember?.(memberId)
+                                    await loadMemberData()
+                                    onUpdate()
+                                  } else {
+                                    await onArchiveMember?.(memberId)
+                                    onClose()
+                                  }
+                                } catch {
+                                  // 父層已顯示實際錯誤；失敗時保留詳情視窗。
+                                } finally {
+                                  setLifecycleSaving(false)
                                 }
                               }}
+                              disabled={lifecycleSaving}
                               style={{
                                 ...getButtonStyle('ghost', 'small', isMobile),
                                 color: member.status === 'inactive'
@@ -1123,9 +1034,12 @@ export function MemberDetailDialog({
                                   : designSystem.colors.text.secondary,
                                 fontWeight: 500,
                                 padding: '2px 4px',
+                                opacity: lifecycleSaving ? 0.6 : 1,
                               }}
                             >
-                              {member.status === 'inactive' ? '恢復此會員' : '隱藏此會員'}
+                              {lifecycleSaving
+                                ? '處理中...'
+                                : (member.status === 'inactive' ? '恢復此會員' : '隱藏此會員')}
                             </button>
                           </div>
                         )}
@@ -1133,11 +1047,11 @@ export function MemberDetailDialog({
                     </div>
 
                     {/* 會籍 - 會員 */}
-                    {(member.membership_type === 'general' || member.membership_type === 'dual') && (
+                    {membershipCountsAsActive(member.membership_type) && (
                       <div style={sectionWrapperStyle}>
                         <h3 style={getSectionHeadingStyle(isMobile)}>會籍</h3>
                         <div style={sectionPanelStyle}>
-                          <div style={{ 
+                          <div style={{
                             fontSize: typeSize('body', isMobile),
                             fontWeight: 600,
                             marginBottom: member.membership_type === 'dual' && member.partner ? '8px' : '14px',
@@ -1146,16 +1060,16 @@ export function MemberDetailDialog({
                               : designSystem.colors.text.primary
                           }}>
                             {formatDate(member.membership_start_date) || '?'} → {formatDate(member.membership_end_date) || '?'}
-                            {member.membership_end_date && isExpired(member.membership_end_date) && 
+                            {member.membership_end_date && isExpired(member.membership_end_date) &&
                               <span style={{ marginLeft: '8px', fontWeight: '600' }}>(已過期)</span>
                             }
                           </div>
                           {member.membership_type === 'dual' && member.partner && (
-                            <div 
+                            <div
                               onClick={() => onSwitchMember?.(member.partner!.id)}
-                              style={{ 
-                                fontSize: typeSize('bodySmall', isMobile), 
-                                color: onSwitchMember ? designSystem.colors.info[700] : designSystem.colors.text.secondary, 
+                              style={{
+                                fontSize: typeSize('bodySmall', isMobile),
+                                color: onSwitchMember ? designSystem.colors.info[700] : designSystem.colors.text.secondary,
                                 marginBottom: '14px',
                                 cursor: onSwitchMember ? 'pointer' : 'default',
                                 textDecoration: onSwitchMember ? 'underline' : 'none',
@@ -1174,12 +1088,14 @@ export function MemberDetailDialog({
                                 setRenewEndDate(addYearsToDate(currentEnd, 1))
                                 setRenewDialogOpen(true)
                               }}
+                              disabled={lifecycleSaving}
                               style={getButtonStyle('primary', 'small', isMobile)}
                             >
                               續約
                             </button>
                             <button
                               onClick={handleConvertToGuest}
+                              disabled={lifecycleSaving}
                               style={getButtonStyle('outline', 'small', isMobile)}
                             >
                               轉非會員
@@ -1202,6 +1118,7 @@ export function MemberDetailDialog({
                               setRenewEndDate(addYearsToDate(getVenueDateString(), 1))
                               setRenewDialogOpen(true)
                             }}
+                            disabled={lifecycleSaving}
                             style={getButtonStyle('primary', 'small', isMobile)}
                           >
                             轉為會員
@@ -1228,8 +1145,8 @@ export function MemberDetailDialog({
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {boardStorage.map((board) => (
-                            <div 
-                              key={board.id} 
+                            <div
+                              key={board.id}
                               onClick={() => openBoardEditDialog(board)}
                               style={{
                                 ...sectionPanelStyle,
@@ -1253,7 +1170,7 @@ export function MemberDetailDialog({
                                 <span style={{ color: designSystem.colors.text.secondary, margin: '0 6px' }}>·</span>
                                 {board.start_date && <span style={{ color: designSystem.colors.text.secondary }}>{formatDate(board.start_date)}</span>}
                                 {board.expires_at && <span style={{ color: designSystem.colors.text.secondary }}> → {formatDate(board.expires_at)}</span>}
-                                {board.expires_at && isExpired(board.expires_at) && 
+                                {board.expires_at && isExpired(board.expires_at) &&
                                   <span style={{ color: designSystem.colors.danger[700], marginLeft: '6px' }}>(已過期)</span>
                                 }
                                 {board.notes && (
@@ -1290,15 +1207,15 @@ export function MemberDetailDialog({
                           + 新增
                         </button>
                       </div>
-                      
+
                       {memberNotes.length === 0 ? (
                         <div style={getSectionEmptyStateStyle(isMobile)}>
                           尚無備忘錄
                         </div>
                       ) : (
-                        <div style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
                           gap: '8px',
                           maxHeight: '500px',
                           overflowY: 'auto'
@@ -1325,9 +1242,9 @@ export function MemberDetailDialog({
                                   gap: '8px',
                                 }}>
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ 
-                                      display: 'flex', 
-                                      alignItems: 'center', 
+                                    <div style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
                                       gap: '8px',
                                       marginBottom: '4px',
                                       flexWrap: 'wrap',
@@ -1343,8 +1260,8 @@ export function MemberDetailDialog({
                                         {note.event_date || ''}
                                       </span>
                                     </div>
-                                    <div style={{ 
-                                      fontSize: typeSize('bodySmall', isMobile), 
+                                    <div style={{
+                                      fontSize: typeSize('bodySmall', isMobile),
                                       color: designSystem.colors.text.primary,
                                       lineHeight: '1.45',
                                     }}>
@@ -1385,9 +1302,9 @@ export function MemberDetailDialog({
                     {/* 金流資訊 - 點擊可記帳 */}
                     <div style={sectionWrapperStyle}>
                       <h3 style={getSectionHeadingStyle(isMobile)}>金流</h3>
-                      <div 
+                      <div
                         onClick={() => setTransactionDialogOpen(true)}
-                        style={{ 
+                        style={{
                           ...sectionPanelStyle,
                           cursor: 'pointer',
                           transition: designSystem.transitions.normal,
@@ -1399,8 +1316,8 @@ export function MemberDetailDialog({
                           e.currentTarget.style.borderColor = designSystem.colors.border.light
                         }}
                       >
-                        <div style={{ 
-                          display: 'grid', 
+                        <div style={{
+                          display: 'grid',
                           gridTemplateColumns: 'repeat(2, 1fr)',
                           gap: '12px',
                           fontSize: typeSize('bodySmall', isMobile),
@@ -1680,7 +1597,7 @@ export function MemberDetailDialog({
 
             <div style={dialogBodyStyle}>
               {/* 入會／續會贈送提醒：只提示政策，是否贈送／怎麼記仍由操作者判斷 */}
-              <div
+              {member?.membership_type !== 'es' && <div
                 role="note"
                 style={{
                   marginBottom: '20px',
@@ -1701,7 +1618,7 @@ export function MemberDetailDialog({
                 <div style={{ marginTop: '6px', fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.disabled }}>
                   這裡只改會籍到期日，請至「會員儲值」記帳
                 </div>
-              </div>
+              </div>}
 
               <div style={{ marginBottom: member?.membership_type === 'dual' && member?.partner ? '20px' : '0' }}>
                 <label style={getLabelStyle(isMobile)}>
@@ -1711,6 +1628,7 @@ export function MemberDetailDialog({
                   type="date"
                   value={renewEndDate}
                   onChange={(e) => setRenewEndDate(e.target.value)}
+                  min={getVenueDateString()}
                   style={getInputStyle(isMobile)}
                 />
                 {member?.membership_type === 'guest' ? (
@@ -1787,9 +1705,12 @@ export function MemberDetailDialog({
               </button>
               <button
                 onClick={handleRenew}
+                disabled={lifecycleSaving}
                 style={getButtonStyle('primary', 'medium', isMobile)}
               >
-                {member?.membership_type === 'guest' ? '確認轉為會員' : '確認續約'}
+                {lifecycleSaving
+                  ? '處理中...'
+                  : (member?.membership_type === 'guest' ? '確認轉為會員' : '確認續約')}
               </button>
             </div>
           </div>
@@ -2028,17 +1949,6 @@ export function MemberDetailDialog({
       )}
     </>
   )
-}
-
-// 輔助函數
-function getMembershipTypeLabel(type: string): string {
-  switch (type) {
-    case 'general': return '會員'
-    case 'dual': return '雙人會員'
-    case 'guest': return '非會員'
-    case 'es': return 'ES'
-    default: return type || '會員'
-  }
 }
 
 function isExpired(dateString: string): boolean {

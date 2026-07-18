@@ -166,6 +166,7 @@ export function generateSqlBackup(
 
   lines.push(
     'SET LOCAL session_replication_role = origin;',
+    "DO $$ BEGIN IF to_regprocedure('public.assert_membership_integrity()') IS NOT NULL THEN PERFORM public.assert_membership_integrity(); END IF; END $$;",
     sequenceResetSql(),
     'COMMIT;',
     '',

@@ -1563,6 +1563,28 @@ export type Database = {
         }
         Returns: Json
       }
+      create_member_with_membership: {
+        Args: {
+          p_birthday?: string | null
+          p_boards?: Json
+          p_membership_end_date?: string | null
+          p_membership_partner_id?: string | null
+          p_membership_start_date?: string | null
+          p_membership_type?: string
+          p_name: string
+          p_nickname?: string | null
+          p_phone?: string | null
+        }
+        Returns: string
+      }
+      assert_membership_admin: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
+      assert_membership_integrity: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
       get_liff_member_transactions: {
         Args: {
           p_category: string
@@ -1608,6 +1630,44 @@ export type Database = {
           p_participant_id: number
         }
         Returns: Json
+      }
+      renew_member_membership: {
+        Args: {
+          p_member_id: string
+          p_membership_end_date: string
+          p_renew_both?: boolean
+        }
+        Returns: undefined
+      }
+      set_member_active_status: {
+        Args: {
+          p_active: boolean
+          p_member_id: string
+        }
+        Returns: undefined
+      }
+      update_member_membership: {
+        Args: {
+          p_boards?: Json | null
+          p_deleted_board_ids?: number[]
+          p_member_id: string
+          p_membership_end_date?: string | null
+          p_membership_partner_id?: string | null
+          p_membership_start_date?: string | null
+          p_membership_type: string
+          p_memo?: string | null
+          p_profile?: Json | null
+          p_record_note?: boolean
+        }
+        Returns: undefined
+      }
+      is_valid_membership_date: {
+        Args: { p_value: string }
+        Returns: boolean
+      }
+      membership_venue_date: {
+        Args: Record<string, never>
+        Returns: string
       }
       adjust_shop_order_settlement: {
         Args: {

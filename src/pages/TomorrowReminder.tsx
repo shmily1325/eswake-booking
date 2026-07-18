@@ -12,7 +12,13 @@ import {
 import { Footer } from '../components/Footer'
 import { PageShell } from '../components/PageShell'
 import { BookingDateNav } from '../components/BookingDateNav'
-import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../styles/designSystem'
+import {
+  designSystem,
+  getButtonStyle,
+  getFilterChipStyle,
+  getFontSize,
+  getInputStyle,
+} from '../styles/designSystem'
 import { hasViewAccess } from '../utils/auth'
 import { getFacilityMessageLabel } from '../utils/facility'
 import { displayCoachNameForTomorrowMessage } from '../utils/tomorrowReminderDisplay'
@@ -35,13 +41,17 @@ interface Booking {
   drivers?: { id: string; name: string }[]  // 駕駛資料
 }
 
+type ReminderLanguage = 'zh' | 'en'
+
 export function TomorrowReminder() {
   const user = useAuthUser()
   const navigate = useNavigate()
   const { isMobile } = useResponsive()
   const weatherWarningRef = useRef<HTMLTextAreaElement>(null)
   const footerTextRef = useRef<HTMLTextAreaElement>(null)
-  
+  const englishMessageTemplateRef = useRef<HTMLTextAreaElement>(null)
+  const englishWeatherWarningRef = useRef<HTMLTextAreaElement>(null)
+
   // 權限檢查：需要一般權限
   useEffect(() => {
     const checkAccess = async () => {
@@ -54,18 +64,18 @@ export function TomorrowReminder() {
     }
     checkAccess()
   }, [user, navigate])
-  
+
   const getDefaultDate = () => {
     const today = getVenueDateString()
     const { hours } = getVenueTimeParts()
-    
+
     if (hours < 3) {
       return today
     } else {
       return addDaysToDate(today, 1)
     }
   }
-  
+
   const [selectedDate, setSelectedDate] = useState(getDefaultDate())
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
@@ -73,7 +83,8 @@ export function TomorrowReminder() {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   const [copiedCoachReminder, setCopiedCoachReminder] = useState<string | null>(null)
   const [selectedCoachReminder, setSelectedCoachReminder] = useState<string | null>(null)
-  
+  const [studentLanguages, setStudentLanguages] = useState<Record<string, ReminderLanguage>>({})
+
   const {
     includeWeatherWarning,
     setIncludeWeatherWarning,
@@ -81,6 +92,10 @@ export function TomorrowReminder() {
     setWeatherWarning,
     footerText,
     setFooterText,
+    englishMessageTemplate,
+    setEnglishMessageTemplate,
+    englishWeatherWarning,
+    setEnglishWeatherWarning,
     saveStatus: templateSaveStatus,
   } = useTomorrowReminderTemplates(user?.id)
 
@@ -93,22 +108,31 @@ export function TomorrowReminder() {
 
     fitTextareaToContent(weatherWarningRef.current)
     fitTextareaToContent(footerTextRef.current)
-  }, [weatherWarning, footerText, isMobile])
-  
+    fitTextareaToContent(englishMessageTemplateRef.current)
+    fitTextareaToContent(englishWeatherWarningRef.current)
+  }, [
+    weatherWarning,
+    footerText,
+    englishMessageTemplate,
+    englishWeatherWarning,
+    isMobile,
+  ])
+
   useEffect(() => {
     setSelectedStudent(null)
     setSelectedCoachReminder(null)
+    setStudentLanguages({})
     // 換日時先清空，避免新資料載入前畫面殘留前一天的學員/教練清單
     setBookings([])
     fetchData()
   }, [selectedDate])
-  
+
   const fetchData = async () => {
     setLoading(true)
     try {
       const startOfDay = `${selectedDate}T00:00:00`
       const endOfDay = `${selectedDate}T23:59:59`
-      
+
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select('*, boats:boat_id(id, name, color)')
@@ -116,7 +140,7 @@ export function TomorrowReminder() {
         .lte('start_at', endOfDay)
         .or('is_coach_practice.is.null,is_coach_practice.eq.false')
         .order('start_at', { ascending: true })
-      
+
       if (bookingsData && bookingsData.length > 0) {
         const bookingIds = bookingsData.map((b: any) => b.id)
 
@@ -163,7 +187,7 @@ export function TomorrowReminder() {
             driversByBooking[bookingId].push(driver)
           }
         }
-        
+
         const membersByBooking: { [key: number]: any[] } = {}
         for (const item of bookingMembersData || []) {
           const bookingId = item.booking_id
@@ -175,17 +199,17 @@ export function TomorrowReminder() {
             membersByBooking[bookingId].push(member)
           }
         }
-        
+
         // ✅ 組合教練、駕駛和會員資料，並更新 contact_name 為最新暱稱
         bookingsData.forEach((booking: any) => {
           booking.coaches = coachesByBooking[booking.id] || []
           booking.drivers = driversByBooking[booking.id] || []
-          
+
           // ✅ 如果有會員資料，智能更新名稱：保留訪客，更新會員
           const members = membersByBooking[booking.id] || []
           if (members.length > 0) {
             const originalNames = booking.contact_name.split(',').map((n: string) => n.trim())
-            
+
             // 策略：如果名字數量 = 會員數量，直接全部替換（純會員預約）
             if (members.length === originalNames.length) {
               booking.contact_name = members.map(m => m.nickname || m.name).join(', ')
@@ -193,7 +217,7 @@ export function TomorrowReminder() {
               // 混合預約：需要區分會員和訪客
               const updatedNames: string[] = []
               const processedMemberIds = new Set<string>()
-              
+
               originalNames.forEach((name: string) => {
                 // 嘗試匹配會員（完全匹配或部分匹配）
                 const matchedMember = members.find(m => {
@@ -204,7 +228,7 @@ export function TomorrowReminder() {
                   if (nameParts.some(part => part === m.name || part === m.nickname)) return true
                   return false
                 })
-                
+
                 if (matchedMember && !processedMemberIds.has(matchedMember.id)) {
                   // 找到會員：用最新暱稱
                   updatedNames.push(matchedMember.nickname || matchedMember.name)
@@ -214,14 +238,14 @@ export function TomorrowReminder() {
                   updatedNames.push(name)
                 }
               })
-              
+
               // 確保所有會員都出現（防止遺漏）
               members.forEach(m => {
                 if (!processedMemberIds.has(m.id)) {
                   updatedNames.push(m.nickname || m.name)
                 }
               })
-              
+
               if (updatedNames.length > 0) {
                 booking.contact_name = updatedNames.join(', ')
               }
@@ -230,7 +254,7 @@ export function TomorrowReminder() {
           // 如果沒有會員資料，保持原始的 contact_name（純訪客）
         })
       }
-      
+
       setBookings(bookingsData || [])
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -238,7 +262,7 @@ export function TomorrowReminder() {
       setLoading(false)
     }
   }
-  
+
   const formatTimeNoColon = (dateString: string): string => {
     // 純字符串處理
     const datetime = dateString.substring(0, 16) // "2025-11-01T13:55"
@@ -246,7 +270,7 @@ export function TomorrowReminder() {
     const [hours, minutes] = timeStr.split(':')
     return `${hours}${minutes}`
   }
-  
+
   const getArrivalTimeNoColon = (dateString: string): string => {
     // 純字符串處理，提前30分鐘
     const datetime = dateString.substring(0, 16)
@@ -263,7 +287,7 @@ export function TomorrowReminder() {
     const raw = getArrivalTimeNoColon(dateString)
     return `${raw.slice(0, 2)}:${raw.slice(2, 4)}`
   }
-  
+
   /** 不產生「預約人提醒訊息」條目 */
   const EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS = new Set(['Ming'])
 
@@ -279,14 +303,17 @@ export function TomorrowReminder() {
       .filter((name) => !EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS.has(name))
       .sort()
   }
-  
+
   // ✅ 特殊會員：需要額外顯示船和開船教練資訊
   const SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小', '火隆', '火龍']
 
   /** 明日提醒極簡版：名單為 Safin 時稱呼李伯 */
   const SAFIN_TOMORROW_STUDENT_NAMES = new Set(['Safin'])
-  
-  const generateMessageForStudent = (studentName: string): string => {
+
+  const generateMessageForStudent = (
+    studentName: string,
+    language: ReminderLanguage = studentLanguages[studentName] || 'zh'
+  ): string => {
     // ✅ 找出所有包含此會員的預約
     const studentBookings = bookings
       .filter(b => {
@@ -294,6 +321,21 @@ export function TomorrowReminder() {
         return names.includes(studentName)
       })
       .sort((a, b) => a.start_at.localeCompare(b.start_at)) // 按時間排序
+
+    if (language === 'en') {
+      const appointmentTimes = Array.from(new Set(
+        studentBookings.map(booking => getArrivalTimeWithColon(booking.start_at))
+      ))
+      const appointment = appointmentTimes.length === 1
+        ? `an appointment tomorrow at ${appointmentTimes[0]}`
+        : `appointments tomorrow at ${appointmentTimes.join(' and ')}`
+      const weather = includeWeatherWarning ? `\n\n${englishWeatherWarning}` : ''
+
+      return englishMessageTemplate
+        .split('{username}').join(studentName)
+        .split('{appointment}').join(appointment)
+        .split('{weather}').join(weather)
+    }
 
     if (SAFIN_TOMORROW_STUDENT_NAMES.has(studentName) && studentBookings.length > 0) {
       return [
@@ -303,23 +345,23 @@ export function TomorrowReminder() {
         ),
       ].join('\n')
     }
-    
+
     // ✅ 檢查是否有 PAPA 教練的預約
-    const hasPapaCoach = studentBookings.some(booking => 
-      booking.coaches?.some(coach => 
+    const hasPapaCoach = studentBookings.some(booking =>
+      booking.coaches?.some(coach =>
         coach.name.toUpperCase() === 'PAPA'
       )
     )
-    
+
     let message = `${studentName}你好\n提醒你，明天有預約\n`
-    
+
     // ✅ 如果有 PAPA 教練，加上現金提醒
     if (hasPapaCoach) {
       message += `請幫我帶現金直接給Papa\n`
     }
-    
+
     message += '\n'
-    
+
     // ✅ 特殊會員：加入船和開船教練資訊（從第一個預約取得）
     if (SPECIAL_MEMBERS_FOR_BOAT_INFO.includes(studentName) && studentBookings.length > 0) {
       const firstBooking = studentBookings[0]
@@ -330,7 +372,7 @@ export function TomorrowReminder() {
         : (firstBooking.coaches && firstBooking.coaches.length > 0
             ? firstBooking.coaches.map(c => c.name).join('/')
             : '')
-      
+
       if (boatName) {
         // 有駕駛才顯示開船資訊，沒有就只顯示船名
         if (driverNames) {
@@ -340,10 +382,10 @@ export function TomorrowReminder() {
         }
       }
     }
-    
+
     let previousCoachNames = ''
     let boatCount = 0  // 只計算真正的船（不含彈簧床）
-    
+
     // ✅ 按順序處理每個預約
     studentBookings.forEach((booking, index) => {
       const hasCoach = booking.coaches && booking.coaches.length > 0
@@ -354,12 +396,12 @@ export function TomorrowReminder() {
       const boatName = booking.boats?.name || ''
       const facilityLabel = getFacilityMessageLabel(boatName)
       const isFacilityBooking = !!facilityLabel
-      
+
       // 如果不是彈簧床、陸上課程，船次計數增加
       if (!isFacilityBooking) {
         boatCount++
       }
-      
+
       if (index === 0) {
         // 第一個預約：教練 + 抵達時間 + 下水時間（或設施標籤）
         const arrivalTime = getArrivalTimeNoColon(booking.start_at)
@@ -376,7 +418,7 @@ export function TomorrowReminder() {
           const shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : `第${boatCount}船`
           message += `\n${shipLabel}\n`
         }
-        
+
         // 檢查是否同一個教練（空字串也視為相同，避免重複顯示空內容）
         if (coachNames === previousCoachNames) {
           // 同一個教練：只顯示時間，不顯示教練名稱
@@ -391,20 +433,23 @@ export function TomorrowReminder() {
         }
       }
     })
-    
+
     message += '\n'
-    
+
     if (includeWeatherWarning) {
       message += weatherWarning + '\n\n'
     }
-    
+
     message += footerText
-    
+
     return message
   }
-  
+
   const handleCopyForStudent = (studentName: string) => {
-    const message = generateMessageForStudent(studentName)
+    const message = generateMessageForStudent(
+      studentName,
+      studentLanguages[studentName] || 'zh'
+    )
     navigator.clipboard.writeText(message).then(() => {
       setCopiedStudent(studentName)
       setTimeout(() => setCopiedStudent(null), 2000)
@@ -490,9 +535,9 @@ export function TomorrowReminder() {
           }}>
             編輯文字模板
           </h2>
-          
+
           {/* 天氣警告開關 */}
-          <div style={{ 
+          <div style={{
             marginBottom: isMobile ? '15px' : '18px',
             padding: isMobile ? '12px' : '14px',
             background: designSystem.colors.background.hover,
@@ -521,7 +566,7 @@ export function TomorrowReminder() {
               <span>包含天氣警告</span>
             </label>
           </div>
-          
+
           {/* 天氣提醒 */}
           <div style={{ marginBottom: isMobile ? '12px' : '15px' }}>
             <label style={{
@@ -554,7 +599,7 @@ export function TomorrowReminder() {
               disabled={!includeWeatherWarning}
             />
           </div>
-          
+
           {/* 預約提醒 */}
           <div>
             <label style={{
@@ -585,7 +630,81 @@ export function TomorrowReminder() {
               }}
             />
           </div>
-          
+
+          <div style={{
+            marginTop: designSystem.spacing.lg,
+            paddingTop: designSystem.spacing.lg,
+            borderTop: `1px solid ${designSystem.colors.border.light}`,
+          }}>
+            <label style={{
+              display: 'block',
+              fontSize: getFontSize('bodySmall', isMobile),
+              fontWeight: '600',
+              marginBottom: '6px',
+              color: designSystem.colors.text.secondary,
+            }}>
+              英文提醒模板
+            </label>
+            <div style={{
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.text.disabled,
+              marginBottom: '8px',
+              lineHeight: 1.5,
+            }}>
+              保留 {'{username}'}、{'{appointment}'}、{'{weather}'}，系統會自動代入。
+            </div>
+            <textarea
+              ref={englishMessageTemplateRef}
+              value={englishMessageTemplate}
+              onChange={(e) => setEnglishMessageTemplate(e.target.value)}
+              style={{
+                ...getInputStyle(isMobile),
+                width: '100%',
+                height: 'auto',
+                minHeight: 0,
+                fontSize: getFontSize('body', isMobile),
+                lineHeight: 1.5,
+                fontFamily: 'inherit',
+                resize: 'none',
+                overflow: 'hidden',
+                touchAction: 'manipulation',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          <div style={{ marginTop: designSystem.spacing.md }}>
+            <label style={{
+              display: 'block',
+              fontSize: getFontSize('bodySmall', isMobile),
+              fontWeight: '600',
+              marginBottom: '6px',
+              color: designSystem.colors.text.secondary,
+            }}>
+              英文天氣提醒
+            </label>
+            <textarea
+              ref={englishWeatherWarningRef}
+              value={englishWeatherWarning}
+              onChange={(e) => setEnglishWeatherWarning(e.target.value)}
+              disabled={!includeWeatherWarning}
+              style={{
+                ...getInputStyle(isMobile),
+                width: '100%',
+                height: 'auto',
+                minHeight: 0,
+                fontSize: getFontSize('body', isMobile),
+                lineHeight: 1.5,
+                fontFamily: 'inherit',
+                resize: 'none',
+                overflow: 'hidden',
+                touchAction: 'manipulation',
+                boxSizing: 'border-box',
+                opacity: includeWeatherWarning ? 1 : 0.5,
+              }}
+            />
+          </div>
+
           <div style={{
             marginTop: isMobile ? '12px' : '15px',
             padding: isMobile ? '10px' : '12px',
@@ -632,7 +751,7 @@ export function TomorrowReminder() {
             }}>
               預約人提醒訊息 ({getStudentList().length} 位)
             </h2>
-            
+
             <div style={{
               display: 'grid',
               gap: isMobile ? '10px' : '12px'
@@ -640,19 +759,20 @@ export function TomorrowReminder() {
               {getStudentList().map((studentName) => {
                 const isExpanded = selectedStudent === studentName
                 const isCopied = copiedStudent === studentName
+                const studentLanguage = studentLanguages[studentName] || 'zh'
                 // ✅ 修改：查找包含此會員的所有預約
                 const studentBookings = bookings.filter(b => {
                   const names = b.contact_name.split(',').map(n => n.trim())
                   return names.includes(studentName)
                 })
-                
+
                 const uniqueBookingKeys = new Set<string>()
                 studentBookings.forEach(b => {
                   const key = `${b.boat_id}-${b.start_at}-${b.duration_min}`
                   uniqueBookingKeys.add(key)
                 })
                 const uniqueBookingCount = uniqueBookingKeys.size
-                
+
                 return (
                   <div
                     key={studentName}
@@ -676,7 +796,7 @@ export function TomorrowReminder() {
                         touchAction: 'manipulation'
                       }}
                     >
-                      <div style={{ flex: 1 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           fontSize: getFontSize('bodyLarge', isMobile),
                           fontWeight: '600',
@@ -692,17 +812,58 @@ export function TomorrowReminder() {
                           {uniqueBookingCount} 個預約
                         </div>
                       </div>
-                      
+
                       <div style={{
-                        fontSize: getFontSize('bodyLarge', isMobile),
-                        color: designSystem.colors.text.disabled,
-                        transition: 'transform 0.2s',
-                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: designSystem.spacing.sm,
+                        flexShrink: 0,
                       }}>
-                        ▼
+                        <div
+                          onClick={(event) => event.stopPropagation()}
+                          style={{
+                            display: 'flex',
+                            gap: '6px',
+                          }}
+                        >
+                          {([
+                            { value: 'zh', label: '中' },
+                            { value: 'en', label: 'EN' },
+                          ] as const).map(option => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              data-track={`tomorrow_language_${option.value}`}
+                              aria-pressed={studentLanguage === option.value}
+                              onClick={() => {
+                                setStudentLanguages(current => ({
+                                  ...current,
+                                  [studentName]: option.value,
+                                }))
+                                setCopiedStudent(null)
+                              }}
+                              style={{
+                                ...getFilterChipStyle(studentLanguage === option.value),
+                                minHeight: '44px',
+                                padding: '8px 12px',
+                                fontSize: getFontSize('button', isMobile),
+                              }}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{
+                          fontSize: getFontSize('bodyLarge', isMobile),
+                          color: designSystem.colors.text.disabled,
+                          transition: 'transform 0.2s',
+                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                        }}>
+                          ▼
+                        </div>
                       </div>
                     </div>
-                    
+
                     {/* Expanded Content */}
                     {isExpanded && (
                       <div style={{
@@ -726,9 +887,9 @@ export function TomorrowReminder() {
                           overflowY: 'auto',
                           WebkitOverflowScrolling: 'touch'
                         }}>
-                          {generateMessageForStudent(studentName)}
+                          {generateMessageForStudent(studentName, studentLanguage)}
                         </div>
-                        
+
                         {/* Copy Button */}
                         <button
                           data-track="tomorrow_copy"
