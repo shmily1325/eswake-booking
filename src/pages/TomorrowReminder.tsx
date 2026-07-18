@@ -15,7 +15,6 @@ import { BookingDateNav } from '../components/BookingDateNav'
 import {
   designSystem,
   getButtonStyle,
-  getFilterChipStyle,
   getFontSize,
   getInputStyle,
 } from '../styles/designSystem'
@@ -822,9 +821,16 @@ export function TomorrowReminder() {
                         <div
                           onClick={(event) => event.stopPropagation()}
                           style={{
-                            display: 'flex',
-                            gap: '6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '2px',
+                            padding: '3px',
+                            border: `1px solid ${designSystem.colors.border.main}`,
+                            borderRadius: designSystem.borderRadius.full,
+                            background: designSystem.colors.background.hover,
                           }}
+                          role="group"
+                          aria-label={`${studentName} 的提醒訊息語言`}
                         >
                           {([
                             { value: 'zh', label: '中' },
@@ -843,10 +849,24 @@ export function TomorrowReminder() {
                                 setCopiedStudent(null)
                               }}
                               style={{
-                                ...getFilterChipStyle(studentLanguage === option.value),
-                                minHeight: '44px',
-                                padding: '8px 12px',
+                                minWidth: option.value === 'zh' ? '36px' : '42px',
+                                minHeight: '38px',
+                                padding: '7px 10px',
+                                border: studentLanguage === option.value
+                                  ? `1px solid ${designSystem.colors.primary[500]}`
+                                  : `1px solid ${designSystem.colors.border.light}`,
+                                borderRadius: designSystem.borderRadius.full,
+                                background: studentLanguage === option.value
+                                  ? designSystem.colors.primary[500]
+                                  : designSystem.colors.background.card,
+                                color: studentLanguage === option.value
+                                  ? '#ffffff'
+                                  : designSystem.colors.text.secondary,
                                 fontSize: getFontSize('button', isMobile),
+                                fontWeight: studentLanguage === option.value ? '700' : '600',
+                                lineHeight: 1,
+                                cursor: 'pointer',
+                                transition: designSystem.transitions.fast,
                               }}
                             >
                               {option.label}
