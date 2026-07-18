@@ -173,6 +173,15 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     setBoardSlots(newSlots)
   }
 
+  const requiresGuestNormalization =
+    formData.membership_type === 'guest' &&
+    (
+      member.membership_type !== 'guest' ||
+      Boolean(member.membership_start_date) ||
+      Boolean(member.membership_end_date) ||
+      Boolean(member.membership_partner_id)
+    )
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -185,6 +194,12 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         return
       }
 
+      const isGuest = formData.membership_type === 'guest'
+      const newPartnerId = formData.membership_type === 'dual'
+        ? (formData.membership_partner_id || null)
+        : null
+      const oldPartnerId = member.membership_partner_id
+
       // 1. 更新會員資料
       const { error } = await supabase
         .from('members')
@@ -194,9 +209,9 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
           birthday: formData.birthday || null,
           phone: formData.phone || null,
           membership_type: formData.membership_type,
-          membership_start_date: formData.membership_start_date || null,
-          membership_end_date: formData.membership_end_date || null,
-          membership_partner_id: formData.membership_partner_id || null,
+          membership_start_date: isGuest ? null : (formData.membership_start_date || null),
+          membership_end_date: isGuest ? null : (formData.membership_end_date || null),
+          membership_partner_id: newPartnerId,
         })
         .eq('id', member.id)
 
@@ -250,29 +265,66 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
       }
 
       // 2. 處理配對變更
-      const oldPartnerId = member.membership_partner_id
-      const newPartnerId = formData.membership_partner_id || null
-
       if (oldPartnerId !== newPartnerId) {
-        // 如果有舊配對，解除舊配對
+        // 如果有舊配對，解除舊配對；原雙人會員的另一方改為一般會員
         if (oldPartnerId) {
-          await supabase
+          const { error: oldPartnerError } = await supabase
             .from('members')
-            .update({ membership_partner_id: null })
+            .update({
+              membership_partner_id: null,
+              ...(member.membership_type === 'dual' ? { membership_type: 'general' } : {}),
+            })
             .eq('id', oldPartnerId)
+          if (oldPartnerError) throw oldPartnerError
         }
 
         // 如果有新配對，建立新配對（雙向）
         if (newPartnerId) {
-          await supabase
+          const { error: newPartnerError } = await supabase
             .from('members')
-            .update({ membership_partner_id: member.id })
+            .update({
+              membership_type: 'dual',
+              membership_partner_id: member.id,
+            })
             .eq('id', newPartnerId)
+          if (newPartnerError) throw newPartnerError
+        }
+      }
+
+      // 轉非會員時一定留下紀錄，並同步記錄原雙人會員的配對解除
+      if (requiresGuestNormalization) {
+        const today = getVenueDateString()
+        const oldEndDate = member.membership_end_date ? `（原到期：${member.membership_end_date}）` : ''
+        const baseDescription = member.membership_type === 'guest'
+          ? '修正非會員資料，清除會籍日期與配對'
+          : `會籍不續約，轉非會員${oldEndDate}`
+        const description = memoText.trim()
+          ? `${baseDescription}（${memoText.trim()}）`
+          : baseDescription
+
+        // @ts-ignore
+        const { error: memberNoteError } = await supabase.from('member_notes').insert([{
+          member_id: member.id,
+          event_date: today,
+          event_type: '備註',
+          description,
+        }])
+        if (memberNoteError) throw memberNoteError
+
+        if (oldPartnerId) {
+          // @ts-ignore
+          const { error: partnerNoteError } = await supabase.from('member_notes').insert([{
+            member_id: oldPartnerId,
+            event_date: today,
+            event_type: '備註',
+            description: `配對會員 ${member.nickname || member.name} 轉非會員，解除配對，改為一般會員`,
+          }])
+          if (partnerNoteError) throw partnerNoteError
         }
       }
 
       // 3. 如果勾選「記錄到備忘錄」，檢查變更並新增備忘錄
-      if (addToMemo) {
+      if (addToMemo && !requiresGuestNormalization) {
         const changes: string[] = []
         const oldStartDate = member.membership_start_date || ''
         const oldEndDate = member.membership_end_date || ''
@@ -459,7 +511,21 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
               </label>
               <select
                 value={formData.membership_type}
-                onChange={(e) => setFormData({ ...formData, membership_type: e.target.value })}
+                onChange={(e) => {
+                  const membershipType = e.target.value
+                  setFormData({
+                    ...formData,
+                    membership_type: membershipType,
+                    membership_start_date: membershipType === 'guest' ? '' : formData.membership_start_date,
+                    membership_end_date: membershipType === 'guest' ? '' : formData.membership_end_date,
+                    membership_partner_id: membershipType === 'dual' ? formData.membership_partner_id : '',
+                  })
+                  if (membershipType !== 'dual') {
+                    setSelectedPartner(null)
+                    setPartnerSearch('')
+                    setPartnerSearchResults([])
+                  }
+                }}
                 style={inputStyle}
                 required
               >
@@ -482,7 +548,11 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                   type="date"
                   value={formData.membership_start_date}
                   onChange={(e) => setFormData({ ...formData, membership_start_date: e.target.value })}
-                  style={inputStyle}
+                  disabled={formData.membership_type === 'guest'}
+                  style={{
+                    ...inputStyle,
+                    opacity: formData.membership_type === 'guest' ? 0.55 : 1,
+                  }}
                 />
               </div>
               <div style={{ minWidth: 0 }}>
@@ -491,12 +561,38 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                   type="date"
                   value={formData.membership_end_date}
                   onChange={(e) => setFormData({ ...formData, membership_end_date: e.target.value })}
-                  style={inputStyle}
+                  disabled={formData.membership_type === 'guest'}
+                  style={{
+                    ...inputStyle,
+                    opacity: formData.membership_type === 'guest' ? 0.55 : 1,
+                  }}
                 />
               </div>
             </div>
 
-            {(formData.membership_start_date !== (member.membership_start_date || '') ||
+            {requiresGuestNormalization ? (
+              <div style={{
+                marginBottom: '16px',
+                padding: '12px',
+                color: designSystem.colors.warning[700],
+                background: designSystem.colors.warning[50],
+                border: `1px solid ${designSystem.colors.warning[500]}55`,
+                borderRadius: designSystem.borderRadius.lg,
+                fontSize: typeSize('bodySmall'),
+                lineHeight: 1.5,
+              }}>
+                <div style={{ fontWeight: 600, marginBottom: '8px' }}>
+                  儲存後將清除會籍日期、解除雙方配對，並自動建立備忘錄。
+                </div>
+                <input
+                  type="text"
+                  value={memoText}
+                  onChange={(e) => setMemoText(e.target.value)}
+                  placeholder="補充說明（選填）"
+                  style={inputStyle}
+                />
+              </div>
+            ) : (formData.membership_start_date !== (member.membership_start_date || '') ||
               formData.membership_end_date !== (member.membership_end_date || '')) && (
               <MemoRecordCheckbox
                 checked={addToMemo}

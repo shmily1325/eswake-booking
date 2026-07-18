@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -15,11 +15,16 @@ import {
   parseDbTimestamp,
   timeToMinutes,
 } from '../../utils/date'
-import { getBookingCardStyle, bookingCardContentStyles, designSystem } from '../../styles/designSystem'
+import {
+  getBookingCardStyle,
+  bookingCardContentStyles,
+  getFilterChipStyle,
+  getFontSize,
+  designSystem,
+} from '../../styles/designSystem'
 import { BookingDateNav } from '../../components/BookingDateNav'
 import { getDisplayContactName } from '../../utils/bookingFormat'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
-import { trackClick } from '../../utils/trackClick'
 import {
   mapBoatUnavailableRowsToBlocks,
   findUnavailableBlockForSlot,
@@ -46,6 +51,7 @@ interface Boat {
 interface Coach {
   id: string
   name: string
+  user_email?: string | null
 }
 
 interface Booking {
@@ -108,6 +114,26 @@ export function CoachDailyView() {
 	const [conflictReasons, setConflictReasons] = useState<Map<number, string>>(new Map())
   const [boatUnavailableBlocks, setBoatUnavailableBlocks] = useState<BoatUnavailableBlock[]>([])
   const [restrictionDayBlocks, setRestrictionDayBlocks] = useState<RestrictionDayBlock[]>([])
+  const hasAppliedDefaultCoachFilter = useRef(false)
+
+  useEffect(() => {
+    if (
+      !isMobile ||
+      hasAppliedDefaultCoachFilter.current ||
+      !user?.email ||
+      coaches.length === 0
+    ) {
+      return
+    }
+
+    const userEmail = user.email.trim().toLowerCase()
+    const matchedCoach = coaches.find(
+      coach => coach.user_email?.trim().toLowerCase() === userEmail
+    )
+
+    hasAppliedDefaultCoachFilter.current = true
+    setSelectedCoachId(matchedCoach?.id || '')
+  }, [coaches, isMobile, user?.email])
 
   useEffect(() => {
     // 換日期時，先清掉與日期綁定的舊資料，避免新資料載入前殘留前一天的內容
@@ -167,7 +193,7 @@ export function CoachDailyView() {
   const loadCoaches = async () => {
     const { data } = await supabase
       .from('coaches')
-      .select('id, name')
+      .select('id, name, user_email')
       .eq('status', 'active')
       .order('name')
     
@@ -409,7 +435,6 @@ export function CoachDailyView() {
 
   const handleCoachFilterChange = (coachId: string) => {
     setSelectedCoachId(coachId)
-    trackClick(`coach_daily_filter_coach:${coachId || 'all'}`, user?.email ?? undefined)
   }
 
   // 獲取某個時間點的預約
@@ -508,6 +533,8 @@ export function CoachDailyView() {
     // 判斷當前教練在這個預約中的角色
     const isCoach = booking.coaches?.some(c => c.id === selectedCoachId)
     const isDriver = booking.drivers?.some(d => d.id === selectedCoachId)
+    const coachNames = booking.coaches?.map(c => c.name).join('、') || ''
+    const driverNames = booking.drivers?.map(d => d.name).join('、') || ''
     
     // 決定角色標籤
     // 邏輯：
@@ -606,6 +633,28 @@ export function CoachDailyView() {
             {getDisplayContactName(booking)}
           </div>
         </div>
+
+        {isDriver && coachNames && (
+          <div style={{
+            fontSize: '12px',
+            color: designSystem.colors.text.secondary,
+            marginTop: '6px',
+            lineHeight: '1.4',
+          }}>
+            🎓 {coachNames}
+          </div>
+        )}
+
+        {isCoach && driverNames && (
+          <div style={{
+            fontSize: '12px',
+            color: designSystem.colors.text.secondary,
+            marginTop: '6px',
+            lineHeight: '1.4',
+          }}>
+            🚤 {driverNames}
+          </div>
+        )}
 
         {/* 註解 */}
         {booking.notes && (
@@ -829,45 +878,61 @@ export function CoachDailyView() {
           {/* 教練篩選 */}
           <div style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: designSystem.spacing.sm,
           }}>
-            <label style={{ 
-              fontSize: '14px', 
+            <div style={{
+              fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
               fontWeight: '600',
-              whiteSpace: 'nowrap',
             }}>
               篩選教練
-            </label>
-            <select
-              data-track="coach_daily_filter_coach"
-              value={selectedCoachId}
-              onChange={(e) => handleCoachFilterChange(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '10px 12px',
-                border: `1px solid ${designSystem.colors.border.main}`,
-                borderRadius: designSystem.borderRadius.lg,
-                fontSize: '14px',
-                background: designSystem.colors.background.card,
-                color: designSystem.colors.text.primary,
-                cursor: 'pointer',
-                boxShadow: designSystem.shadows.xs,
-              }}
-            >
-              <option value="">所有教練</option>
+            </div>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: designSystem.spacing.sm,
+            }}>
+              <button
+                type="button"
+                data-track="coach_daily_filter_coach:全部"
+                aria-pressed={selectedCoachId === ''}
+                onClick={() => handleCoachFilterChange('')}
+                style={{
+                  ...getFilterChipStyle(selectedCoachId === '', 'info'),
+                  flex: '0 0 auto',
+                  minHeight: '44px',
+                  padding: '10px 18px',
+                  fontSize: getFontSize('button', isMobile),
+                }}
+              >
+                全部
+              </button>
               {coaches.map(coach => (
-                <option key={coach.id} value={coach.id}>
+                <button
+                  key={coach.id}
+                  type="button"
+                  data-track={`coach_daily_filter_coach:${coach.name}`}
+                  aria-pressed={selectedCoachId === coach.id}
+                  onClick={() => handleCoachFilterChange(coach.id)}
+                  style={{
+                    ...getFilterChipStyle(selectedCoachId === coach.id, 'info'),
+                    flex: '0 0 auto',
+                    minHeight: '44px',
+                    padding: '10px 18px',
+                    fontSize: getFontSize('button', isMobile),
+                  }}
+                >
                   {coach.name}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <div style={{
             paddingTop: '12px',
-            fontSize: '12px',
+            fontSize: getFontSize('caption', isMobile),
             color: designSystem.colors.text.disabled,
             textAlign: 'right',
           }}>

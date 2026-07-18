@@ -1926,6 +1926,36 @@ export function CoachAssignment() {
                                   </span>
                                 )}
                               </div>
+                              {isDriver && assignment.coachIds.length > 0 && (
+                                <div
+                                  title="教練"
+                                  style={{
+                                    color: designSystem.colors.text.secondary,
+                                    fontSize: getFontSize('caption', isMobile),
+                                    marginTop: '4px',
+                                  }}
+                                >
+                                  🎓 {coaches
+                                    .filter(person => assignment.coachIds.includes(person.id))
+                                    .map(person => person.name)
+                                    .join('、')}
+                                </div>
+                              )}
+                              {isCoach && assignment.driverIds.length > 0 && (
+                                <div
+                                  title="駕駛"
+                                  style={{
+                                    color: designSystem.colors.text.secondary,
+                                    fontSize: getFontSize('caption', isMobile),
+                                    marginTop: '4px',
+                                  }}
+                                >
+                                  🚤 {coaches
+                                    .filter(person => assignment.driverIds.includes(person.id))
+                                    .map(person => person.name)
+                                    .join('、')}
+                                </div>
+                              )}
                               {/* 衝突警告 */}
                               {assignment.conflicts.length > 0 && (
                                 <div style={{ 

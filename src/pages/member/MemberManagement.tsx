@@ -958,7 +958,7 @@ export function MemberManagement() {
             return (
             <div
               key={member.id}
-              data-track={`member_open:${member.id}`}
+              data-track={`member_open:${member.nickname || member.name}`}
               style={{
                 background: cardBg,
                 padding: isMobile ? '16px 16px' : '20px 22px',
