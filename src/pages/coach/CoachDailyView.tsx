@@ -37,6 +37,10 @@ import {
   type RestrictionDayBlock,
   type RestrictionViewRow,
 } from '../../utils/restrictionDayBlocks'
+import {
+  filterDayViewAssignments,
+  type DayViewAssignmentAnnouncement,
+} from '../../utils/announcement'
 import { BoatUnavailableDaySummary } from '../../components/BoatUnavailableDaySummary'
 
 /** 手機 + 篩選教練：每 15 分鐘一列的列高 (px)，與 rowSpan、空格 td 一致 */
@@ -114,6 +118,7 @@ export function CoachDailyView() {
 	const [conflictReasons, setConflictReasons] = useState<Map<number, string>>(new Map())
   const [boatUnavailableBlocks, setBoatUnavailableBlocks] = useState<BoatUnavailableBlock[]>([])
   const [restrictionDayBlocks, setRestrictionDayBlocks] = useState<RestrictionDayBlock[]>([])
+  const [assignmentAnnouncements, setAssignmentAnnouncements] = useState<DayViewAssignmentAnnouncement[]>([])
   const hasAppliedDefaultCoachFilter = useRef(false)
 
   useEffect(() => {
@@ -143,6 +148,7 @@ export function CoachDailyView() {
     setConflictReasons(new Map())
     setBoatUnavailableBlocks([])
     setRestrictionDayBlocks([])
+    setAssignmentAnnouncements([])
 
     // 並行載入所有資料以加快速度
     Promise.all([
@@ -331,9 +337,9 @@ export function CoachDailyView() {
         }
       }
 
-		// 全域限制 + 船隻維修/停用 — 兩查詢互相獨立，並行送出可節省一輪 RTT
+		// 全域限制 + 船隻維修/停用 + 純文字交辦 — 與一般預約表使用相同資料來源
 		const targetDate = dateParam
-		const [restrictionResult, boatUnavailableResult] = await Promise.all([
+		const [restrictionResult, boatUnavailableResult, announcementResult, activeRestrictionsResult] = await Promise.all([
 			(supabase as any)
 				.from('reservation_restrictions_with_announcement_view')
 				.select('*')
@@ -345,11 +351,40 @@ export function CoachDailyView() {
 				.select('boat_id, start_date, start_time, end_date, end_time, reason, is_active')
 				.eq('is_active', true)
 				.lte('start_date', targetDate)
-				.gte('end_date', targetDate)
+				.gte('end_date', targetDate),
+			supabase
+				.from('daily_announcements')
+				.select('id, content, display_date, end_date, show_one_day_early, created_at')
+				.lte('display_date', targetDate)
+				.or(`end_date.gte.${targetDate},end_date.is.null`)
+				.order('created_at', { ascending: true }),
+			supabase
+				.from('reservation_restrictions')
+				.select('announcement_id')
+				.eq('is_active', true)
 		])
 
 		const { data: restrictionData, error: restrictionError } = restrictionResult
 		const { data: boatUnavailableData, error: boatUnavailableError } = boatUnavailableResult
+		const { data: announcementData, error: announcementError } = announcementResult
+		const { data: activeRestrictionsData, error: activeRestrictionsError } = activeRestrictionsResult
+
+		if (!announcementError && !activeRestrictionsError) {
+			const restrictedIds = new Set<number>(
+				(activeRestrictionsData ?? [])
+					.map((row: { announcement_id: number }) => row.announcement_id)
+					.filter((id: number | null | undefined): id is number => id != null)
+			)
+			setAssignmentAnnouncements(
+				filterDayViewAssignments(
+					(announcementData ?? []) as DayViewAssignmentAnnouncement[],
+					targetDate,
+					restrictedIds
+				)
+			)
+		} else {
+			setAssignmentAnnouncements([])
+		}
 
 		if (!restrictionError && restrictionData && restrictionData.length > 0) {
 			const resBlocks = mapRestrictionViewRowsToBlocks(
@@ -408,6 +443,7 @@ export function CoachDailyView() {
 		setConflictReasons(new Map())
       setBoatUnavailableBlocks([])
       setRestrictionDayBlocks([])
+      setAssignmentAnnouncements([])
     }
   }
 
@@ -869,7 +905,7 @@ export function CoachDailyView() {
 
         <div style={{
           background: designSystem.colors.background.card,
-          padding: isMobile ? '14px' : '16px 18px',
+          padding: isMobile ? '12px' : '16px 18px',
           borderRadius: designSystem.borderRadius.xl,
           marginBottom: designSystem.spacing.lg,
           boxShadow: designSystem.shadows.sm,
@@ -902,8 +938,8 @@ export function CoachDailyView() {
                 style={{
                   ...getFilterChipStyle(selectedCoachId === '', 'info'),
                   flex: '0 0 auto',
-                  minHeight: '44px',
-                  padding: '10px 18px',
+                  minHeight: isMobile ? '40px' : '44px',
+                  padding: isMobile ? '8px 16px' : '10px 18px',
                   fontSize: getFontSize('button', isMobile),
                 }}
               >
@@ -919,8 +955,8 @@ export function CoachDailyView() {
                   style={{
                     ...getFilterChipStyle(selectedCoachId === coach.id, 'info'),
                     flex: '0 0 auto',
-                    minHeight: '44px',
-                    padding: '10px 18px',
+                    minHeight: isMobile ? '40px' : '44px',
+                    padding: isMobile ? '8px 16px' : '10px 18px',
                     fontSize: getFontSize('button', isMobile),
                   }}
                 >
@@ -931,7 +967,7 @@ export function CoachDailyView() {
           </div>
 
           <div style={{
-            paddingTop: '12px',
+            paddingTop: isMobile ? '8px' : '12px',
             fontSize: getFontSize('caption', isMobile),
             color: designSystem.colors.text.disabled,
             textAlign: 'right',
@@ -948,6 +984,7 @@ export function CoachDailyView() {
           boats={boats}
           isMobile={isMobile}
           restrictionBlocks={restrictionDayBlocks}
+          assignmentAnnouncements={assignmentAnnouncements}
         />
 
         {/* 時間軸表格 */}
