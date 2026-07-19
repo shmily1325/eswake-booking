@@ -504,6 +504,12 @@ export function TomorrowReminder() {
     background: designSystem.colors.background.card,
   } as const
 
+  const memberListStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: designSystem.spacing.sm,
+  } as const
+
   return (
     <PageShell variant="focused" mobilePadding="12px" desktopPadding="20px">
         <PageHeader title="明日提醒" user={user} />
@@ -591,10 +597,35 @@ export function TomorrowReminder() {
             </label>
           </div>
 
-          {/* 天氣提醒 */}
+          {/* 中文結尾文字 */}
           <div style={{ marginBottom: designSystem.spacing.md }}>
             <label style={templateLabelStyle}>
-              天氣提醒
+              中文結尾文字
+            </label>
+            <textarea
+              ref={footerTextRef}
+              value={footerText}
+              onChange={(e) => setFooterText(e.target.value)}
+              style={{
+                ...getInputStyle(isMobile),
+                fontSize: isMobile ? '16px' : getFontSize('body', false),
+                width: '100%',
+                height: 'auto',
+                minHeight: 0,
+                lineHeight: 1.5,
+                fontFamily: 'inherit',
+                resize: 'none',
+                overflow: 'hidden',
+                touchAction: 'manipulation',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          {/* 中文天氣附加文字 */}
+          <div>
+            <label style={templateLabelStyle}>
+              中文天氣附加文字
             </label>
             <textarea
               ref={weatherWarningRef}
@@ -602,6 +633,7 @@ export function TomorrowReminder() {
               onChange={(e) => setWeatherWarning(e.target.value)}
               style={{
                 ...getInputStyle(isMobile),
+                fontSize: isMobile ? '16px' : getFontSize('body', false),
                 width: '100%',
                 height: 'auto',
                 minHeight: 0,
@@ -614,30 +646,6 @@ export function TomorrowReminder() {
                 opacity: includeWeatherWarning ? 1 : 0.5
               }}
               disabled={!includeWeatherWarning}
-            />
-          </div>
-
-          {/* 預約提醒 */}
-          <div>
-            <label style={templateLabelStyle}>
-              預約提醒
-            </label>
-            <textarea
-              ref={footerTextRef}
-              value={footerText}
-              onChange={(e) => setFooterText(e.target.value)}
-              style={{
-                ...getInputStyle(isMobile),
-                width: '100%',
-                height: 'auto',
-                minHeight: 0,
-                lineHeight: 1.5,
-                fontFamily: 'inherit',
-                resize: 'none',
-                overflow: 'hidden',
-                touchAction: 'manipulation',
-                boxSizing: 'border-box'
-              }}
             />
           </div>
 
@@ -655,6 +663,7 @@ export function TomorrowReminder() {
               onChange={(e) => setEnglishMessageTemplate(e.target.value)}
               style={{
                 ...getInputStyle(isMobile),
+                fontSize: isMobile ? '16px' : getFontSize('body', false),
                 width: '100%',
                 height: 'auto',
                 minHeight: 0,
@@ -679,6 +688,7 @@ export function TomorrowReminder() {
               disabled={!includeWeatherWarning}
               style={{
                 ...getInputStyle(isMobile),
+                fontSize: isMobile ? '16px' : getFontSize('body', false),
                 width: '100%',
                 height: 'auto',
                 minHeight: 0,
@@ -739,9 +749,18 @@ export function TomorrowReminder() {
             <h2 style={sectionTitleStyle}>
               預約人提醒訊息 ({getStudentList().length} 位)
             </h2>
+            <div style={{
+              marginTop: isMobile ? '-5px' : '-6px',
+              marginBottom: isMobile ? '10px' : '12px',
+              color: designSystem.colors.text.secondary,
+              fontSize: getFontSize('caption', isMobile),
+              lineHeight: 1.4,
+            }}>
+              點選會員可預覽並複製提醒
+            </div>
 
-            <div style={groupedListStyle}>
-              {getStudentList().map((studentName, studentIndex, students) => {
+            <div style={memberListStyle}>
+              {getStudentList().map((studentName) => {
                 const isExpanded = selectedStudent === studentName
                 const isCopied = copiedStudent === studentName
                 const studentLanguage = studentLanguages[studentName] || 'zh'
@@ -762,17 +781,20 @@ export function TomorrowReminder() {
                   <div
                     key={studentName}
                     style={{
-                      borderBottom: studentIndex < students.length - 1
-                        ? `1px solid ${designSystem.colors.border.light}`
-                        : 'none',
+                      overflow: 'hidden',
+                      border: `1px solid ${designSystem.colors.border.light}`,
+                      borderRadius: designSystem.borderRadius.md,
+                      background: designSystem.colors.background.card,
+                      boxShadow: isExpanded ? designSystem.shadows.xs : 'none',
+                      transition: designSystem.transitions.fast,
                     }}
                   >
                     <div
                       data-track="tomorrow_expand"
                       onClick={() => setSelectedStudent(isExpanded ? null : studentName)}
                       style={{
-                        minHeight: '56px',
-                        padding: isMobile ? '9px 10px 9px 12px' : '11px 12px 11px 14px',
+                        minHeight: isMobile ? '60px' : '56px',
+                        padding: isMobile ? '10px 8px 10px 12px' : '11px 10px 11px 14px',
                         background: isExpanded ? designSystem.colors.secondary[50] : designSystem.colors.background.card,
                         cursor: 'pointer',
                         display: 'flex',
@@ -812,10 +834,10 @@ export function TomorrowReminder() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 0,
-                            padding: '2px',
-                            border: `1px solid ${designSystem.colors.border.light}`,
+                            padding: '3px',
+                            border: `1px solid ${designSystem.colors.border.main}`,
                             borderRadius: designSystem.borderRadius.sm,
-                            background: designSystem.colors.secondary[100],
+                            background: designSystem.colors.secondary[50],
                           }}
                           role="group"
                           aria-label={`${studentName} 的提醒訊息語言`}
@@ -837,37 +859,60 @@ export function TomorrowReminder() {
                                 setCopiedStudent(null)
                               }}
                               style={{
-                                minWidth: option.value === 'zh' ? '34px' : '40px',
-                                minHeight: '34px',
-                                padding: '6px 9px',
-                                border: studentLanguage === option.value
-                                  ? `1px solid ${designSystem.colors.info[500]}`
-                                  : `1px solid ${designSystem.colors.border.light}`,
-                                borderRadius: '8px',
+                                minWidth: option.value === 'zh' ? '36px' : '42px',
+                                minHeight: isMobile ? '40px' : '34px',
+                                padding: isMobile ? '8px 10px' : '6px 9px',
+                                border: 'none',
+                                borderRadius: '7px',
                                 background: studentLanguage === option.value
-                                  ? designSystem.colors.info[50]
-                                  : designSystem.colors.background.card,
+                                  ? designSystem.colors.secondary[200]
+                                  : 'transparent',
                                 color: studentLanguage === option.value
-                                  ? designSystem.colors.info[700]
+                                  ? designSystem.colors.text.primary
                                   : designSystem.colors.text.secondary,
-                                fontSize: getFontSize('bodySmall', isMobile),
+                                fontSize: getFontSize('button', isMobile),
                                 fontWeight: studentLanguage === option.value ? '650' : '500',
                                 lineHeight: 1,
                                 cursor: 'pointer',
                                 transition: designSystem.transitions.fast,
+                                boxShadow: studentLanguage === option.value
+                                  ? designSystem.shadows.xs
+                                  : 'none',
                               }}
                             >
                               {option.label}
                             </button>
                           ))}
                         </div>
-                        <div style={{
-                          fontSize: getFontSize('caption', isMobile),
-                          color: designSystem.colors.text.disabled,
-                          transition: 'transform 0.2s',
-                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
-                        }}>
-                          ▼
+                        <div
+                          aria-hidden="true"
+                          style={{
+                            width: isMobile ? '36px' : '30px',
+                            height: isMobile ? '44px' : '34px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: designSystem.colors.text.secondary,
+                          }}
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            style={{
+                              transition: 'transform 0.18s ease',
+                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            }}
+                          >
+                            <path
+                              d="M4 6L8 10L12 6"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
                         </div>
                       </div>
                     </div>
@@ -907,7 +952,7 @@ export function TomorrowReminder() {
                             touchAction: 'manipulation',
                           }}
                         >
-                          {isCopied ? '已複製' : '複製訊息'}
+                          {isCopied ? '✓ 已複製' : '複製提醒'}
                         </button>
                       </div>
                     )}
