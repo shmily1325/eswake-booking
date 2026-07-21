@@ -650,19 +650,15 @@ export function ProductManagement({
               marginLeft: 'auto',
             }}
           >
-            {canEdit && (
-              <>
-                <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
-                <ImageModeToggle
-                  mode={listImageMode}
-                  isMobile={isMobile}
-                  onChange={(next) => {
-                    setListImageModePersist(next)
-                    trackClick(`product_list_image_${next}`, user?.email ?? undefined)
-                  }}
-                />
-              </>
-            )}
+            <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
+            <ImageModeToggle
+              mode={listImageMode}
+              isMobile={isMobile}
+              onChange={(next) => {
+                setListImageModePersist(next)
+                trackClick(`product_list_image_${next}`, user?.email ?? undefined)
+              }}
+            />
           </div>
         </div>
 
@@ -688,7 +684,7 @@ export function ProductManagement({
               setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
             }}
           />
-        ) : canEdit && layout === 'gallery' ? (
+        ) : layout === 'gallery' ? (
           <ProductGalleryGrid
             items={filteredItems}
             isMobile={isMobile}
