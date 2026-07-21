@@ -134,6 +134,7 @@ export interface CreateProductInput {
   category: string
   brand: string
   model: string
+  model_year?: number | null
   description?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
@@ -146,19 +147,29 @@ export async function findExistingProductIdentity(
   category: string,
   brand: string,
   model: string,
+  modelYear: number | null,
 ): Promise<ProductIdentityCandidate | null> {
   const { data, error } = await supabase
     .from('products')
-    .select('id, category, brand, model')
+    .select('id, category, brand, model, model_year, cover_image_url')
     .eq('is_active', true)
     .eq('category', category)
   if (error) throw error
 
+  const candidates: ProductIdentityCandidate[] = (data ?? []).map((product) => ({
+    id: product.id,
+    category: product.category,
+    brand: product.brand,
+    model: product.model,
+    modelYear: product.model_year,
+    coverImageUrl: product.cover_image_url,
+  }))
   return findExactProductIdentityMatch(
-    (data ?? []) as ProductIdentityCandidate[],
+    candidates,
     category,
     brand,
     model,
+    modelYear,
   )
 }
 
@@ -169,6 +180,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductR
       category: input.category,
       brand: input.brand.trim(),
       model: input.model.trim(),
+      model_year: input.model_year ?? null,
       description: input.description?.trim() || null,
       cover_image_url: input.cover_image_url ?? null,
       cover_image_path: input.cover_image_path ?? null,
@@ -185,6 +197,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductR
 export interface UpdateProductInput {
   brand?: string
   model?: string
+  model_year?: number | null
   description?: string | null
   category?: string
   cover_image_url?: string | null
@@ -197,6 +210,7 @@ export async function updateProduct(productId: string, input: UpdateProductInput
   const patch: Record<string, unknown> = {}
   if (input.brand !== undefined) patch.brand = input.brand.trim()
   if (input.model !== undefined) patch.model = input.model.trim()
+  if (input.model_year !== undefined) patch.model_year = input.model_year
   if (input.description !== undefined) patch.description = input.description?.trim() || null
   if (input.category !== undefined) patch.category = input.category
   if (input.cover_image_url !== undefined) patch.cover_image_url = input.cover_image_url

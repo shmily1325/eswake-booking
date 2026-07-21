@@ -147,8 +147,8 @@ export function ProductManagement({
     })
   }
 
-  // 商品管理可切換庫存列表／畫廊；唯讀商品查詢固定使用列表
-  const [layout, setLayout] = useState<'gallery' | 'table'>('table')
+  // 商品管理預設用商品分組；需要盤點時再切到一列一 SKU 的庫存檢視。
+  const [layout, setLayout] = useState<'gallery' | 'table'>('gallery')
 
   // 列表縮圖：封面優先 or 實拍優先（記憶於 localStorage）
   const [listImageMode, setListImageMode] = useState<ListImageMode>(() => {
@@ -393,6 +393,8 @@ export function ProductManagement({
               category: p.category,
               brand: p.brand,
               model: p.model,
+              modelYear: p.model_year,
+              coverImageUrl: p.cover_image_url,
               variantCount: p.variants.length,
             }))}
             onOpenExistingProduct={(productId) => {
@@ -1486,24 +1488,24 @@ function LayoutToggle({ layout, onChange, isMobile }: LayoutToggleProps) {
       <button
         type="button"
         data-track="product_layout_table"
-        title="庫存列表：含完整規格與庫存資訊"
-        aria-label="庫存列表"
+        title="庫存 SKU：一列代表一個可定價、計庫存的 SKU"
+        aria-label="庫存 SKU"
         aria-pressed={layout === 'table'}
         style={cellStyle(layout === 'table')}
         onClick={() => onChange('table')}
       >
-        庫存
+        庫存 SKU
       </button>
       <button
         type="button"
         data-track="product_layout_gallery"
-        title="畫廊：以圖片瀏覽商品"
-        aria-label="畫廊模式"
+        title="商品：同一商品的 SKU 會收在同一張卡片"
+        aria-label="商品分組"
         aria-pressed={layout === 'gallery'}
         style={{ ...cellStyle(layout === 'gallery'), borderLeft: `1px solid ${colors.border.main}` }}
         onClick={() => onChange('gallery')}
       >
-        畫廊
+        商品
       </button>
     </div>
   )
@@ -1517,6 +1519,15 @@ interface ProductGalleryGridProps {
 }
 
 function ProductGalleryGrid({ items, isMobile, imageMode, onCardClick }: ProductGalleryGridProps) {
+  const groupedItems = Array.from(
+    items.reduce((groups, item) => {
+      const group = groups.get(item.product.id)
+      if (group) group.push(item)
+      else groups.set(item.product.id, [item])
+      return groups
+    }, new Map<string, VariantListItem[]>()),
+  ).map(([, group]) => group)
+
   return (
     <div
       style={{
@@ -1527,12 +1538,12 @@ function ProductGalleryGrid({ items, isMobile, imageMode, onCardClick }: Product
           : 'repeat(auto-fill, minmax(180px, 1fr))',
       }}
     >
-      {items.map((item) => (
+      {groupedItems.map((group) => (
         <GalleryCard
-          key={item.variant.id}
-          item={item}
+          key={group[0].product.id}
+          items={group}
           imageMode={imageMode}
-          onClick={() => onCardClick(item.product.id, item.variant.id)}
+          onClick={() => onCardClick(group[0].product.id, group[0].variant.id)}
         />
       ))}
     </div>
@@ -1540,18 +1551,25 @@ function ProductGalleryGrid({ items, isMobile, imageMode, onCardClick }: Product
 }
 
 function GalleryCard({
-  item,
+  items,
   imageMode,
   onClick,
 }: {
-  item: VariantListItem
+  items: VariantListItem[]
   imageMode: ListImageMode
   onClick: () => void
 }) {
+  const item = items[0]
   const { variant, product } = item
-  const status = inventoryStatusBadge(variant, product.is_public)
-  const attrText = formatAttributes(product.category, variant.attributes)
   const imageUrl = getVariantListImageUrl(variant, imageMode)
+  const totalStock = items.reduce(
+    (sum, current) => sum + getVariantSellableStock(current.variant),
+    0,
+  )
+  const skuLabels = items.map((current) => {
+    const spec = formatAttributes(product.category, current.variant.attributes)
+    return spec || current.variant.vendor_code || '未填規格'
+  })
 
   return (
     <div
@@ -1619,12 +1637,12 @@ function GalleryCard({
             fontWeight: 600,
             padding: '2px 7px',
             borderRadius: 999,
-            background: status.bg,
-            color: status.color,
+            background: colors.background.card,
+            color: colors.text.secondary,
             boxShadow: designSystem.shadows.xs,
           }}
         >
-          {status.label}
+          {items.length} 個 SKU
         </span>
       </div>
 
@@ -1665,21 +1683,32 @@ function GalleryCard({
           }}
         >
           {product.model}
+          {product.model_year != null ? ` · ${product.model_year}` : ''}
         </div>
-        {attrText && (
-          <div
-            title={attrText}
-            style={{
-              fontSize: getFontSize('caption', false),
-              color: colors.text.secondary,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {attrText}
-          </div>
-        )}
+        <div style={{ marginTop: 4, display: 'grid', gap: 3 }}>
+          {skuLabels.slice(0, 3).map((label, index) => (
+            <div
+              key={items[index].variant.id}
+              title={label}
+              style={{
+                fontSize: getFontSize('caption', false),
+                color: colors.text.secondary,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              <strong style={{ color: colors.text.disabled }}>SKU</strong>
+              {' · '}
+              {label}
+            </div>
+          ))}
+          {skuLabels.length > 3 && (
+            <div style={{ fontSize: getFontSize('caption', false), color: colors.text.disabled }}>
+              還有 {skuLabels.length - 3} 個 SKU
+            </div>
+          )}
+        </div>
         {product.description && (
           <div
             title={product.description}
@@ -1697,14 +1726,9 @@ function GalleryCard({
             {product.description}
           </div>
         )}
-        <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', false) }}>
-          <PriceDisplay price={variant.price} />
+        <div style={{ marginTop: 6, fontSize: getFontSize('bodySmall', false), fontWeight: 700 }}>
+          可售庫存 {totalStock}
         </div>
-        {formatStockInAt(variant.last_stock_in_at) && (
-          <div style={{ marginTop: 2, fontSize: getFontSize('caption', false), color: colors.text.secondary }}>
-            入庫 {formatStockInAt(variant.last_stock_in_at)}
-          </div>
-        )}
       </div>
     </div>
   )
@@ -1870,6 +1894,7 @@ function MobileListRow({
                 title={product.model}
               >
                 {product.model}
+                {product.model_year != null ? ` · ${product.model_year}` : ''}
               </div>
             </div>
             {canEdit && (
@@ -1901,6 +1926,8 @@ function MobileListRow({
               }}
               title={attrText}
             >
+              <strong style={{ color: colors.text.disabled }}>SKU</strong>
+              {' · '}
               {attrText}
             </div>
           )}
@@ -2042,7 +2069,7 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
           >
             <tr style={{ background: colors.secondary[50], color: colors.text.secondary, fontWeight: 600 }}>
               <th style={thStyle('60px')}>照片</th>
-              <th style={thStyle('auto')}>商品／規格</th>
+              <th style={thStyle('auto')}>商品 / SKU 規格</th>
               <th style={thStyle('90px', 'right')}>售價</th>
               {canEdit && <th style={thStyle('76px', 'center')}>現有庫存</th>}
               {canEdit && <th style={thStyle('92px', 'center')}>待結帳保留</th>}
@@ -2099,12 +2126,15 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                   <td style={tdStyle()}>
                     <div style={{ fontWeight: 700 }}>
                       {it.product.brand} {it.product.model}
+                      {it.product.model_year != null ? ` · ${it.product.model_year}` : ''}
                     </div>
                     <div style={{ marginTop: 3, fontSize: getFontSize('bodySmall', false), color: colors.text.secondary }}>
                       {showCategoryColumn && (
                         <span>{cat ? getCategoryShopName(cat) : it.product.category} · </span>
                       )}
-                      {attributes || '無規格'}
+                      <strong style={{ color: colors.text.disabled }}>SKU</strong>
+                      {' · '}
+                      {attributes || '未填規格'}
                     </div>
                     {canEdit && it.variant.vendor_code && (
                       <div style={{ marginTop: 2, color: colors.text.disabled, fontSize: getFontSize('caption', false) }}>

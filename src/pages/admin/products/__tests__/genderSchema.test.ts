@@ -3,7 +3,6 @@ import {
   formatAttributes,
   formatGenderDisplay,
   genderSearchTokens,
-  getAllCategories,
   getSkuFields,
   normalizeGenderValue,
   normalizeVariantAttributes,
@@ -39,22 +38,16 @@ describe('gender schema', () => {
   })
 })
 
-describe('year field (all SKUs)', () => {
-  it('prepends optional year to every category', () => {
-    for (const cat of getAllCategories()) {
-      const fields = getSkuFields(cat.id)
-      expect(fields[0]?.key).toBe('year')
-      expect(fields[0]?.required).toBe(false)
-    }
+describe('product-level year', () => {
+  it('does not expose year as an SKU field', () => {
+    expect(getSkuFields('wb_board').some((field) => field.key === 'year')).toBe(false)
   })
 
-  it('formatAttributes includes year when set', () => {
-    expect(formatAttributes('wb_board', { year: '2025', size: '142' })).toBe(
-      '2025 / 142',
-    )
+  it('ignores a legacy year attribute when formatting SKU specifications', () => {
+    expect(formatAttributes('wb_board', { year: '2025', size: '142' })).toBe('142')
   })
 
-  it('validateAttributes does not require year', () => {
+  it('does not require year when validating SKU attributes', () => {
     expect(validateAttributes('wb_board', { size: '142' })).toEqual([])
   })
 })

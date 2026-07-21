@@ -12,6 +12,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "verify:backup-restore": "node scripts/verify-backup-restore.cjs",
+    "cleanup:product-images": "node scripts/cleanup-product-image-orphans.mjs",
     "optimize:shop-heroes": "node tools/optimize-shop-heroes.mjs"
   },
   "dependencies": {

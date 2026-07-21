@@ -8,6 +8,7 @@ function mockItem(vendorCode: string | null): VariantListItem {
       id: 'p1',
       brand: 'LF',
       model: 'Heartbreaker',
+      model_year: 2025,
       category: 'wakeboard',
       description: null,
       created_at: '',
@@ -45,5 +46,9 @@ describe('buildVariantSearchHaystack', () => {
     const item = mockItem(null)
     item.variant.label_code = 'ESWAKE001'
     expect(variantMatchesSearchTokens(item, 'eswake001')).toBe(true)
+  })
+
+  it('matches the product model year', () => {
+    expect(variantMatchesSearchTokens(mockItem(null), '2025')).toBe(true)
   })
 })

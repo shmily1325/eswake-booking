@@ -69,6 +69,7 @@ function itemSearchHaystack(item: ShopOrderItemWithVariant): string {
   const product = variant.product
   if (product) {
     parts.push(product.brand, product.model, product.category)
+    if (product.model_year != null) parts.push(String(product.model_year))
   }
   const code = variant.vendor_code?.trim()
   if (code) {
@@ -173,7 +174,8 @@ export function deliveryMethodLabel(method: string): string {
 export function formatOrderItemLabel(item: ShopOrderItemWithVariant): string {
   const p = item.variant?.product
   if (!p || !item.variant) return '商品'
-  return `${p.brand} ${p.model} · ${formatAttributes(p.category, item.variant.attributes)}`
+  const title = `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''}`
+  return `${title} · ${formatAttributes(p.category, item.variant.attributes)}`
 }
 
 export function formatOrderItemParts(item: ShopOrderItemWithVariant): {
@@ -183,7 +185,7 @@ export function formatOrderItemParts(item: ShopOrderItemWithVariant): {
   const p = item.variant?.product
   if (!p || !item.variant) return { title: '商品', subtitle: '' }
   return {
-    title: `${p.brand} ${p.model}`,
+    title: `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''}`,
     subtitle: formatAttributes(p.category, item.variant.attributes),
   }
 }

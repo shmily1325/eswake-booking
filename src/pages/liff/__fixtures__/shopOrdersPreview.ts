@@ -57,7 +57,7 @@ function item(
       is_active: true,
       created_at: null,
       updated_at: null,
-      product: { id: `p-${rest.id}`, brand, model, category },
+      product: { id: `p-${rest.id}`, brand, model, model_year: null, category },
     },
     ...rest,
   }

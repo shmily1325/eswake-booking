@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   findExactProductIdentityMatch,
   findProductIdentityCandidates,
+  findSameModelCandidates,
   getProductIdentityKey,
   normalizeProductIdentityPart,
   type ProductIdentityCandidate,
@@ -20,6 +21,22 @@ const products: ProductIdentityCandidate[] = [
     category: 'lifejacket',
     brand: 'Follow',
     model: 'Primary',
+    variantCount: 2,
+  },
+  {
+    id: 'ronix-rxt-2022',
+    category: 'wb_board',
+    brand: 'Ronix',
+    model: 'RXT',
+    modelYear: 2022,
+    variantCount: 3,
+  },
+  {
+    id: 'ronix-rxt-2025',
+    category: 'wb_board',
+    brand: 'Ronix',
+    model: 'RXT',
+    modelYear: 2025,
     variantCount: 2,
   },
 ]
@@ -50,6 +67,15 @@ describe('product identity matching', () => {
     expect(getProductIdentityKey('lifejacket', 'ＦＯＬＬＯＷ', ' Signal Ladies ')).toBe(
       getProductIdentityKey('lifejacket', 'follow', 'signal ladies'),
     )
+  })
+
+  it('treats different model years as different product identities', () => {
+    expect(findExactProductIdentityMatch(products, 'wb_board', 'Ronix', 'RXT', 2022)?.id)
+      .toBe('ronix-rxt-2022')
+    expect(findExactProductIdentityMatch(products, 'wb_board', 'Ronix', 'RXT', 2024))
+      .toBeNull()
+    expect(findSameModelCandidates(products, 'wb_board', 'Ronix', 'RXT').map(p => p.id))
+      .toEqual(['ronix-rxt-2022', 'ronix-rxt-2025'])
   })
 
   it('lists models under the same category and brand', () => {

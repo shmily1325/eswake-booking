@@ -4,6 +4,7 @@ import type { ProductWithVariants } from '../../admin/products/types'
 /** 商城列表搜尋用（品牌、型號、貨號、規格含 Male/Female） */
 export function buildShopProductSearchHaystack(p: ProductWithVariants): string {
   const parts: string[] = [p.brand ?? '', p.model ?? '']
+  if (p.model_year != null) parts.push(String(p.model_year))
 
   for (const v of p.variants) {
     const code = v.vendor_code?.trim()

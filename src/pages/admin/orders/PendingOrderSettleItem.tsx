@@ -54,7 +54,7 @@ function buildLineStates(order: ShopOrderWithItems): SettleLineState[] {
     .map((it): SettleLineState => {
       const p = it.variant?.product
       const label = p
-        ? `${p.brand} ${p.model} · ${formatAttributes(p.category, it.variant!.attributes)}`
+        ? `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''} · ${formatAttributes(p.category, it.variant!.attributes)}`
         : '商品'
       const qty = it.qty_pending_bill
       const unit_price = it.unit_price

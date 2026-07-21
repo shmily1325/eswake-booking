@@ -96,7 +96,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
         const { data: variants, error: variantErr } = await supabase
           .from('product_variants')
           .select(
-            'id, vendor_code, attributes, product:products(id, brand, model, category)',
+            'id, vendor_code, attributes, product:products(id, brand, model, model_year, category)',
           )
           .in('id', variantIds)
         if (variantErr) throw variantErr

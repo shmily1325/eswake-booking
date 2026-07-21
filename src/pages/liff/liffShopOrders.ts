@@ -125,7 +125,9 @@ export function formatLiffOrderItemLine(
   item: LiffShopOrder['items'][number],
 ): { title: string; subtitle: string | null; progress: string; chips: LiffItemProgressChip[] } {
   const p = item.variant?.product
-  const title = p ? `${p.brand} ${p.model}` : '商品'
+  const title = p
+    ? `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''}`
+    : '商品'
   const subtitle = p ? formatAttributes(p.category, item.variant!.attributes) : null
   const chips = liffOrderItemProgressChips(item)
   const progress =

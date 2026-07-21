@@ -56,6 +56,7 @@ import { formatDateTime } from '../../../utils/formatters'
 import {
   findExactProductIdentityMatch,
   findProductIdentityCandidates,
+  findSameModelCandidates,
   type ProductIdentityCandidate,
 } from './productIdentity'
 
@@ -197,6 +198,7 @@ export function ProductEditView({
   const [category, setCategory] = useState<string>(defaultCategory ?? Object.keys(CATEGORY_SCHEMAS)[0] ?? 'lifejacket')
   const [brand, setBrand] = useState('')
   const [model, setModel] = useState('')
+  const [modelYear, setModelYear] = useState('')
   const [description, setDescription] = useState('')
   /**
    * 是否上架到商城（/shop 對外可見）。
@@ -208,6 +210,7 @@ export function ProductEditView({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmZeroStock, setConfirmZeroStock] = useState(false)
   const [serverIdentityMatch, setServerIdentityMatch] = useState<ProductIdentityCandidate | null>(null)
+  const [confirmedSeparateProduct, setConfirmedSeparateProduct] = useState(false)
   const [createdProductId, setCreatedProductId] = useState<string | null>(null)
   const [createStep, setCreateStep] = useState<CreateStep>(1)
   const [activeSkuIndex, setActiveSkuIndex] = useState<number | null>(0)
@@ -249,15 +252,34 @@ export function ProductEditView({
     () => findProductIdentityCandidates(existingProducts, category, brand),
     [existingProducts, category, brand],
   )
-  const localIdentityMatch = useMemo(
-    () => findExactProductIdentityMatch(existingProducts, category, brand, model),
+  const parsedModelYear = useMemo(() => {
+    if (!modelYear.trim()) return null
+    const value = Number(modelYear)
+    return Number.isInteger(value) ? value : null
+  }, [modelYear])
+  const sameModelCandidates = useMemo(
+    () => findSameModelCandidates(existingProducts, category, brand, model),
     [existingProducts, category, brand, model],
   )
+  const localIdentityMatch = useMemo(
+    () => findExactProductIdentityMatch(
+      existingProducts,
+      category,
+      brand,
+      model,
+      parsedModelYear,
+    ),
+    [existingProducts, category, brand, model, parsedModelYear],
+  )
   const identityMatch = localIdentityMatch ?? serverIdentityMatch
+  const identityNeedsDecision = isNew
+    && !confirmedSeparateProduct
+    && Boolean(identityMatch || (parsedModelYear == null && sameModelCandidates.length > 0))
 
   useEffect(() => {
     setServerIdentityMatch(null)
-  }, [category, brand, model])
+    setConfirmedSeparateProduct(false)
+  }, [category, brand, model, modelYear])
 
   useEffect(() => {
     if (isNew) return
@@ -275,6 +297,7 @@ export function ProductEditView({
         setCategory(p.category)
         setBrand(p.brand)
         setModel(p.model)
+        setModelYear(p.model_year?.toString() ?? '')
         setDescription(p.description ?? '')
         setIsPublic(p.is_public)
         const loadedDrafts = p.variants.map(variantRowToDraft)
@@ -440,7 +463,15 @@ export function ProductEditView({
   const validateProductIdentity = (): string | null => {
     if (!brand.trim()) return '品牌為必填'
     if (!model.trim()) return '型號為必填'
-    if (isNew && identityMatch) return `「${identityMatch.brand} ${identityMatch.model}」已存在，請改到既有商品新增 SKU`
+    if (modelYear.trim()) {
+      const year = Number(modelYear)
+      if (!Number.isInteger(year) || year < 1900 || year > 2100) {
+        return '年份請填四位數，例如 2025；無法確認可留空'
+      }
+    }
+    if (identityNeedsDecision) {
+      return '請先確認這是既有商品的新 SKU，還是需要獨立顯示的不同商品'
+    }
     return null
   }
 
@@ -567,15 +598,23 @@ export function ProductEditView({
       let pid = productId ?? createdProductId
       if (isNew) {
         if (!pid) {
-          const duplicate = await findExistingProductIdentity(category, brand, model)
-          if (duplicate) {
-            setServerIdentityMatch(duplicate)
-            throw new Error(`「${duplicate.brand} ${duplicate.model}」已存在，請改到既有商品新增 SKU`)
+          if (!confirmedSeparateProduct) {
+            const duplicate = await findExistingProductIdentity(
+              category,
+              brand,
+              model,
+              parsedModelYear,
+            )
+            if (duplicate) {
+              setServerIdentityMatch(duplicate)
+              throw new Error('找到相同型號與年份的商品，請先確認要加入既有商品或另建商品')
+            }
           }
           const created = await createProduct({
             category,
             brand,
             model,
+            model_year: parsedModelYear,
             description: description.trim() || null,
             is_public: isPublic,
             created_by: currentUserEmail ?? null,
@@ -587,6 +626,7 @@ export function ProductEditView({
             category,
             brand,
             model,
+            model_year: parsedModelYear,
             description: description.trim() || null,
             is_public: isPublic,
             updated_by: currentUserEmail ?? null,
@@ -597,6 +637,7 @@ export function ProductEditView({
           category,
           brand,
           model,
+          model_year: parsedModelYear,
           description: description.trim() || null,
           is_public: isPublic,
           updated_by: currentUserEmail ?? null,
@@ -869,12 +910,12 @@ export function ProductEditView({
           type="button"
           data-track={mobileCreateWizard && createStep < 3 ? 'product_create_next' : 'product_edit_save'}
           onClick={mobileCreateWizard && createStep < 3 ? handleCreateNext : () => void handleSave()}
-          disabled={saving || (mobileCreateWizard && createStep === 1 && Boolean(identityMatch))}
+          disabled={saving || (mobileCreateWizard && createStep === 1 && identityNeedsDecision)}
           style={{
             ...getButtonStyle('primary', 'large', isMobile),
             flex: 2,
-            opacity: saving || (mobileCreateWizard && createStep === 1 && Boolean(identityMatch)) ? 0.55 : 1,
-            cursor: saving || (mobileCreateWizard && createStep === 1 && Boolean(identityMatch)) ? 'not-allowed' : 'pointer',
+            opacity: saving || (mobileCreateWizard && createStep === 1 && identityNeedsDecision) ? 0.55 : 1,
+            cursor: saving || (mobileCreateWizard && createStep === 1 && identityNeedsDecision) ? 'not-allowed' : 'pointer',
             touchAction: 'manipulation',
             minHeight: 48,
             background: saving
@@ -941,7 +982,7 @@ export function ProductEditView({
             variant="primary"
             data-track="product_edit_save"
             onClick={handleSave}
-            disabled={saving || (isNew && Boolean(identityMatch))}
+            disabled={saving || identityNeedsDecision}
           >
             {saving ? '儲存中…' : '儲存'}
           </Button>
@@ -1047,7 +1088,7 @@ export function ProductEditView({
                 <option key={m} value={m} />
               ))}
             </datalist>
-            {isNew && identityMatch && (
+            {isNew && sameModelCandidates.length > 0 && (
               <div
                 role="alert"
                 style={{
@@ -1060,24 +1101,63 @@ export function ProductEditView({
                 }}
               >
                 <div style={{ fontSize: getFontSize('bodySmall', isMobile), lineHeight: 1.5 }}>
-                  已有「{identityMatch.brand} {identityMatch.model}」
-                  {identityMatch.variantCount != null ? `，目前 ${identityMatch.variantCount} 個 SKU` : ''}。
-                  尺寸、顏色、年份等差異請加在既有商品下。
+                  <strong>找到同型號商品，請先確認要放在哪一張商品卡。</strong>
+                  <div style={{ marginTop: 4 }}>
+                    尺寸等規格請加入既有商品；不同年份或外觀才建立新商品。年份無法確認可以留空。
+                  </div>
                 </div>
-                {onOpenExistingProduct && (
+                <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                  {sameModelCandidates.slice(0, 4).map((candidate) => (
+                    <div
+                      key={candidate.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        padding: 8,
+                        borderRadius: designSystem.borderRadius.sm,
+                        background: designSystem.colors.background.card,
+                      }}
+                    >
+                      <span style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
+                        {candidate.brand} {candidate.model}
+                        {' · '}
+                        {candidate.modelYear != null ? `${candidate.modelYear} 年` : '年份不詳'}
+                        {candidate.variantCount != null ? ` · ${candidate.variantCount} 個 SKU` : ''}
+                      </span>
+                      {onOpenExistingProduct && (
+                        <Button
+                          variant="warning"
+                          size="small"
+                          data-track="product_create_open_existing"
+                          onClick={() => handleOpenExistingProduct(candidate.id)}
+                        >
+                          加入 SKU
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {identityNeedsDecision && (
                   <Button
-                    variant="warning"
+                    variant="secondary"
                     size="small"
-                    data-track="product_create_open_existing"
-                    onClick={() => handleOpenExistingProduct(identityMatch.id)}
+                    data-track="product_create_confirm_separate"
+                    onClick={() => setConfirmedSeparateProduct(true)}
                     style={{ marginTop: 10 }}
                   >
-                    前往既有商品新增 SKU
+                    確認是不同年份／外觀，建立新商品
                   </Button>
+                )}
+                {confirmedSeparateProduct && (
+                  <div style={{ marginTop: 8, fontSize: getFontSize('caption', isMobile) }}>
+                    已確認獨立建立；請用年份、圖片或備註讓同事容易辨識。
+                  </div>
                 )}
               </div>
             )}
-            {isNew && !identityMatch && brand.trim() && identityCandidates.length > 0 && (
+            {isNew && sameModelCandidates.length === 0 && brand.trim() && identityCandidates.length > 0 && (
               <div
                 style={{
                   marginTop: 8,
@@ -1109,6 +1189,19 @@ export function ProductEditView({
                 ))}
               </div>
             )}
+          </div>
+          <div>
+            <label style={labelStyle}>年份（選填）</label>
+            <NumericTextInput
+              style={inputStyle}
+              value={modelYear}
+              onChange={(value) => setModelYear(value)}
+              placeholder="例如：2025；無法確認可留空"
+              disabled={saving || readOnly}
+            />
+            <div style={{ marginTop: 4, fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
+              年份不同會分成不同商品卡，不確定時不要猜。
+            </div>
           </div>
           {!mobileCreateWizard && <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
             <label style={labelStyle}>備註</label>

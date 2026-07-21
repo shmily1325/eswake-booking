@@ -83,21 +83,10 @@ export const GENDER_FIELD: FieldDef = {
   required: false,
 }
 
-/** 所有 SKU 共用：型號年份（選填） */
-export const YEAR_FIELD: FieldDef = {
-  key: 'year',
-  label: '年份',
-  type: 'text',
-  required: false,
-  placeholder: '例：2025',
-}
-
-/** 分類規格欄位 + 共用年份（置於最前） */
+/** 取得該分類的 SKU 規格欄位；年份屬於商品層，不在 SKU 重複輸入。 */
 export function getSkuFields(categoryId: string | null | undefined): FieldDef[] {
   const cat = getCategory(categoryId)
-  if (!cat) return [YEAR_FIELD]
-  if (cat.fields.some((f) => f.key === 'year')) return cat.fields
-  return [YEAR_FIELD, ...cat.fields]
+  return cat?.fields ?? []
 }
 
 /** 舊值 M/F → Male/Female；無法辨識則回 null */

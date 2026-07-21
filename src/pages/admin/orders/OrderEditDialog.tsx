@@ -686,7 +686,8 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                         lineHeight: 1.35,
                         color: designSystem.colors.text.primary,
                       }}>
-                        {v.product.brand} {v.product.model} ·{' '}
+                        {v.product.brand} {v.product.model}
+                        {v.product.model_year != null ? ` · ${v.product.model_year}` : ''} ·{' '}
                         {formatAttributes(v.product.category, v.variant.attributes)}
                       </div>
                       {meta && (
@@ -935,11 +936,11 @@ function formatSaveError(e: unknown): string {
 }
 
 function lineLabel(
-  product: { brand: string; model: string; category: string } | undefined,
+  product: { brand: string; model: string; model_year?: number | null; category: string } | undefined,
   variant: { attributes: Record<string, string | number | null>; vendor_code?: string | null } | undefined,
 ): string {
   if (!product || !variant) return '商品'
-  const base = `${product.brand} ${product.model} · ${formatAttributes(product.category, variant.attributes)}`
+  const base = `${product.brand} ${product.model}${product.model_year != null ? ` · ${product.model_year}` : ''} · ${formatAttributes(product.category, variant.attributes)}`
   const code = variant.vendor_code?.trim()
   return code ? `${base} · #${code}` : base
 }

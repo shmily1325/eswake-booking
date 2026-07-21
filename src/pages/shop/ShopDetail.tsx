@@ -77,7 +77,11 @@ export function ShopDetail() {
       document.title = ES_BRAND.shopTitle
       return
     }
-    const name = [product.brand, product.model].filter(Boolean).join(' ').trim()
+    const name = [
+      product.brand,
+      product.model,
+      product.model_year != null ? String(product.model_year) : null,
+    ].filter(Boolean).join(' ').trim()
     document.title = name ? `${name} | ${ES_BRAND.shopTitle}` : ES_BRAND.shopTitle
   }, [product])
 
@@ -143,7 +147,11 @@ export function ShopDetail() {
 
   const handleAddToCart = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
-    const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
+    const productName = [
+      product.brand,
+      product.model,
+      product.model_year != null ? String(product.model_year) : null,
+    ].filter(Boolean).join(' ').trim()
     const avail = getVariantAvailability(selectedVariant)
     addItem({
       variantId: selectedVariant.id,
@@ -162,7 +170,11 @@ export function ShopDetail() {
 
   const handleDirectInquiry = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
-    const productName = [product.brand, product.model].filter(Boolean).join(' ').trim()
+    const productName = [
+      product.brand,
+      product.model,
+      product.model_year != null ? String(product.model_year) : null,
+    ].filter(Boolean).join(' ').trim()
     const avail = getVariantAvailability(selectedVariant)
     const payload = buildSingleInquiry({
       productId: product.id,
@@ -369,6 +381,7 @@ function ProductDetailBody({
         )}
         <h1 className="mt-1 text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 tracking-tight leading-tight">
           {product.model || '(Unnamed product)'}
+          {product.model_year != null ? ` · ${product.model_year}` : ''}
         </h1>
 
         <div className="mt-3 sm:mt-4 flex items-baseline gap-3 flex-wrap">

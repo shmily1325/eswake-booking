@@ -79,6 +79,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
         </div>
         <div className="mt-0.5 text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem] leading-snug">
           {product.model || '(Unnamed product)'}
+          {product.model_year != null ? ` · ${product.model_year}` : ''}
         </div>
         <div className="mt-2 min-h-7 flex items-end">
           {isInquiryOnly ? (

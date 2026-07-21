@@ -40,7 +40,7 @@ export interface ShopOrderItemRow {
 export interface ShopOrderItemWithVariant extends ShopOrderItemRow {
   variant: ProductVariantRow & {
     reserved_qty?: number
-    product?: Pick<ProductRow, 'id' | 'brand' | 'model' | 'category'>
+    product?: Pick<ProductRow, 'id' | 'brand' | 'model' | 'model_year' | 'category'>
   }
 }
 
