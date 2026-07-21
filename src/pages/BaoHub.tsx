@@ -151,6 +151,7 @@ export function BaoHub() {
         { title: '人員管理', icon: '🎓', link: '/staff' },
         { title: '船隻管理', icon: '🚤', link: '/boats' },
         { title: '商品管理', icon: '📦', link: '/products' },
+        { title: '商品查詢', icon: '🏷️', link: '/products?mode=readonly' },
       ],
     },
   ]

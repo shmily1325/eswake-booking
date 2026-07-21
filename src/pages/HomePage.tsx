@@ -9,7 +9,6 @@ import {
   getEditorFeatureFlags,
   hasViewAccess,
   isMemberPhoneOnlyEditor,
-  PRODUCT_READONLY_PREVIEW_EMAILS,
   type EditorFeatureKey
 } from '../utils/auth'
 import { supabase } from '../lib/supabase'
@@ -219,9 +218,10 @@ export function HomePage() {
     },
     {
       title: '商品查詢',
-      icon: '📦',
+      icon: '🏷️',
       link: '/products?mode=readonly',
-      visibleForEmails: PRODUCT_READONLY_PREVIEW_EMAILS
+      editorFeature: 'can_products',
+      hideFromHomeForSuperAdmin: true
     },
     {
       title: '會員電話',

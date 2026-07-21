@@ -20,7 +20,6 @@ import { useResponsive } from '../../../hooks/useResponsive'
 import { Footer } from '../../../components/Footer'
 
 import {
-  canPreviewProductsReadOnly,
   hasEditorFeatureAsync,
   hasProductsAccessAsync,
   isAdmin,
@@ -53,7 +52,6 @@ export function ProductHub() {
   const [canEdit, setCanEdit] = useState(false)
   const userIsAdmin = isAdmin(user)
   const forceReadOnly =
-    canPreviewProductsReadOnly(user) &&
     new URLSearchParams(location.search).get('mode') === 'readonly'
   const { count: pendingSettleCount } = usePendingBillOrderCount(userIsAdmin)
   const { isMobile } = useResponsive()
@@ -130,7 +128,7 @@ export function ProductHub() {
       <PageHeader
         user={user}
         title={canEdit ? '商品管理' : '商品查詢'}
-        showBaoLink={userIsAdmin && !forceReadOnly}
+        showBaoLink={userIsAdmin}
         productHubSection={onOrders ? 'orders' : 'inventory'}
         showOrderSettleLink={userIsAdmin && !forceReadOnly}
         pendingSettleCount={pendingSettleCount}

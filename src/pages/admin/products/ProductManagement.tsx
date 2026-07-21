@@ -81,6 +81,7 @@ export function ProductManagement({
   const [stockScannerBusy, setStockScannerBusy] = useState(false)
   const [stockScannerStatus, setStockScannerStatus] = useState<string | null>(null)
   const [scannedItem, setScannedItem] = useState<VariantListItem | null>(null)
+  const [imagePreview, setImagePreview] = useState<{ url: string; alt: string } | null>(null)
 
   // 篩選狀態：缺價 / 沒實拍 / 沒封面 / 缺標籤（從頂部儀表板點擊切換）
   const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
@@ -160,6 +161,8 @@ export function ProductManagement({
     setListImageMode(next)
     if (typeof window !== 'undefined') window.localStorage.setItem('products_list_image', next)
   }
+  // 唯讀商品查詢固定以實拍為主、缺圖才用封面；管理頁仍保留切換選項。
+  const displayImageMode: ListImageMode = canEdit ? listImageMode : 'photo'
 
   // 權限檢查（沿用 BoatManagement 的模式）
   useEffect(() => {
@@ -651,14 +654,16 @@ export function ProductManagement({
             }}
           >
             <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
-            <ImageModeToggle
-              mode={listImageMode}
-              isMobile={isMobile}
-              onChange={(next) => {
-                setListImageModePersist(next)
-                trackClick(`product_list_image_${next}`, user?.email ?? undefined)
-              }}
-            />
+            {canEdit && (
+              <ImageModeToggle
+                mode={listImageMode}
+                isMobile={isMobile}
+                onChange={(next) => {
+                  setListImageModePersist(next)
+                  trackClick(`product_list_image_${next}`, user?.email ?? undefined)
+                }}
+              />
+            )}
           </div>
         </div>
 
@@ -688,13 +693,17 @@ export function ProductManagement({
           <ProductGalleryGrid
             items={filteredItems}
             isMobile={isMobile}
-            imageMode={listImageMode}
+            imageMode={displayImageMode}
+            canEdit={canEdit}
+            onImagePreview={!canEdit
+              ? (url, alt) => setImagePreview({ url, alt })
+              : undefined}
             onCardClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
           />
         ) : isMobile ? (
           <MobileListView
             items={filteredItems}
-            imageMode={listImageMode}
+            imageMode={displayImageMode}
             canEdit={canEdit}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
           />
@@ -702,7 +711,7 @@ export function ProductManagement({
           <DesktopTable
             items={filteredItems}
             showCategoryColumn={showCategoryColumn}
-            imageMode={listImageMode}
+            imageMode={displayImageMode}
             canEdit={canEdit}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
           />
@@ -717,6 +726,13 @@ export function ProductManagement({
         onScan={handleStockLabelScan}
         onClose={() => setStockScannerOpen(false)}
       />
+      {imagePreview && (
+        <ImagePreviewDialog
+          url={imagePreview.url}
+          alt={imagePreview.alt}
+          onClose={() => setImagePreview(null)}
+        />
+      )}
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
@@ -1511,10 +1527,19 @@ interface ProductGalleryGridProps {
   items: VariantListItem[]
   isMobile: boolean
   imageMode: ListImageMode
+  canEdit: boolean
+  onImagePreview?: (url: string, alt: string) => void
   onCardClick: (productId: string, variantId: string) => void
 }
 
-function ProductGalleryGrid({ items, isMobile, imageMode, onCardClick }: ProductGalleryGridProps) {
+function ProductGalleryGrid({
+  items,
+  isMobile,
+  imageMode,
+  canEdit,
+  onImagePreview,
+  onCardClick,
+}: ProductGalleryGridProps) {
   const groupedItems = Array.from(
     items.reduce((groups, item) => {
       const group = groups.get(item.product.id)
@@ -1539,6 +1564,8 @@ function ProductGalleryGrid({ items, isMobile, imageMode, onCardClick }: Product
           key={group[0].product.id}
           items={group}
           imageMode={imageMode}
+          canEdit={canEdit}
+          onImagePreview={onImagePreview}
           onClick={() => onCardClick(group[0].product.id, group[0].variant.id)}
         />
       ))}
@@ -1549,12 +1576,17 @@ function ProductGalleryGrid({ items, isMobile, imageMode, onCardClick }: Product
 function GalleryCard({
   items,
   imageMode,
+  canEdit,
+  onImagePreview,
   onClick,
 }: {
   items: VariantListItem[]
   imageMode: ListImageMode
+  canEdit: boolean
+  onImagePreview?: (url: string, alt: string) => void
   onClick: () => void
 }) {
+  const [expanded, setExpanded] = useState(false)
   const item = items[0]
   const { variant, product } = item
   const imageUrl = getVariantListImageUrl(variant, imageMode)
@@ -1562,18 +1594,17 @@ function GalleryCard({
     (sum, current) => sum + getVariantSellableStock(current.variant),
     0,
   )
-  const skuLabels = items.map((current) => {
-    const spec = formatAttributes(product.category, current.variant.attributes)
-    return spec || current.variant.vendor_code || '未填規格'
-  })
+  const visibleItems = expanded ? items : items.slice(0, 3)
+  const canExpand = !canEdit && items.length > 3
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      data-track="product_edit_open"
-      onClick={onClick}
+      role={canEdit ? 'button' : undefined}
+      tabIndex={canEdit ? 0 : undefined}
+      data-track={canEdit ? 'product_edit_open' : undefined}
+      onClick={canEdit ? onClick : undefined}
       onKeyDown={(event) => {
+        if (!canEdit) return
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           onClick()
@@ -1587,7 +1618,7 @@ function GalleryCard({
         borderRadius: borderRadius.lg,
         padding: 8,
         textAlign: 'left',
-        cursor: 'pointer',
+        cursor: canEdit ? 'pointer' : 'default',
         width: '100%',
         boxSizing: 'border-box',
         transition: designSystem.transitions.fast,
@@ -1602,6 +1633,23 @@ function GalleryCard({
       }}
     >
       <div
+        role={!canEdit && imageUrl && onImagePreview ? 'button' : undefined}
+        tabIndex={!canEdit && imageUrl && onImagePreview ? 0 : undefined}
+        aria-label={!canEdit && imageUrl && onImagePreview ? `放大查看 ${product.brand} ${product.model}` : undefined}
+        onClick={!canEdit && imageUrl && onImagePreview
+          ? (event) => {
+              event.stopPropagation()
+              onImagePreview(imageUrl, `${product.brand} ${product.model}`)
+            }
+          : undefined}
+        onKeyDown={!canEdit && imageUrl && onImagePreview
+          ? (event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return
+              event.preventDefault()
+              event.stopPropagation()
+              onImagePreview(imageUrl, `${product.brand} ${product.model}`)
+            }
+          : undefined}
         style={{
           width: '100%',
           aspectRatio: '9 / 16',
@@ -1612,6 +1660,7 @@ function GalleryCard({
           justifyContent: 'center',
           overflow: 'hidden',
           position: 'relative',
+          cursor: !canEdit && imageUrl && onImagePreview ? 'zoom-in' : undefined,
         }}
       >
         {imageUrl ? (
@@ -1682,27 +1731,56 @@ function GalleryCard({
           {product.model_year != null ? ` · ${product.model_year}` : ''}
         </div>
         <div style={{ marginTop: 4, display: 'grid', gap: 3 }}>
-          {skuLabels.slice(0, 3).map((label, index) => (
+          {visibleItems.map((current) => {
+            const label = formatAttributes(product.category, current.variant.attributes)
+              || current.variant.vendor_code
+              || '未填規格'
+            const sellable = getVariantSellableStock(current.variant)
+            return (
             <div
-              key={items[index].variant.id}
+              key={current.variant.id}
               title={label}
               style={{
+                padding: '5px 0',
+                borderTop: `1px solid ${colors.border.light}`,
                 fontSize: getFontSize('caption', false),
                 color: colors.text.secondary,
-                whiteSpace: 'nowrap',
+                whiteSpace: expanded ? 'normal' : 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
               }}
             >
-              <strong style={{ color: colors.text.disabled }}>SKU</strong>
-              {' · '}
-              {label}
+              <div>
+                <strong style={{ color: colors.text.disabled }}>SKU</strong>
+                {' · '}
+                {label}
+              </div>
+              <div style={{ marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <PriceDisplay price={current.variant.price} />
+                <span>可售 {sellable}</span>
+              </div>
             </div>
-          ))}
-          {skuLabels.length > 3 && (
-            <div style={{ fontSize: getFontSize('caption', false), color: colors.text.disabled }}>
-              還有 {skuLabels.length - 3} 個 SKU
-            </div>
+            )
+          })}
+          {canExpand && (
+            <button
+              type="button"
+              data-track="product_query_expand"
+              onClick={() => setExpanded((current) => !current)}
+              style={{
+                minHeight: 40,
+                padding: '6px 0 0',
+                border: 'none',
+                background: 'transparent',
+                textAlign: 'left',
+                fontSize: getFontSize('caption', false),
+                color: colors.info[700],
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {expanded ? '收合 SKU' : `展開全部 ${items.length} 個 SKU`}
+            </button>
           )}
         </div>
         {product.description && (
@@ -1725,6 +1803,93 @@ function GalleryCard({
         <div style={{ marginTop: 6, fontSize: getFontSize('bodySmall', false), fontWeight: 700 }}>
           可售庫存 {totalStock}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function ImagePreviewDialog({
+  url,
+  alt,
+  onClose,
+}: {
+  url: string
+  alt: string
+  onClose: () => void
+}) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${alt} 大圖預覽`}
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        background: 'rgba(15, 23, 42, 0.56)',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          position: 'relative',
+          width: 'min(720px, 100%)',
+          maxHeight: 'calc(100dvh - 32px)',
+          padding: 12,
+          borderRadius: borderRadius.lg,
+          background: colors.background.card,
+          boxShadow: designSystem.shadows.lg,
+          boxSizing: 'border-box',
+        }}
+      >
+        <button
+          type="button"
+          aria-label="關閉大圖"
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            zIndex: 1,
+            width: 44,
+            height: 44,
+            border: `1px solid ${colors.border.main}`,
+            borderRadius: 999,
+            background: 'rgba(255, 255, 255, 0.94)',
+            color: colors.text.primary,
+            fontSize: 24,
+            lineHeight: 1,
+            cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+        <img
+          src={url}
+          alt={alt}
+          style={{
+            display: 'block',
+            width: '100%',
+            maxHeight: 'calc(100dvh - 56px)',
+            objectFit: 'contain',
+            borderRadius: borderRadius.md,
+            touchAction: 'pinch-zoom',
+          }}
+        />
       </div>
     </div>
   )
