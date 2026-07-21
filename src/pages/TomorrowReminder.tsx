@@ -85,6 +85,7 @@ export function TomorrowReminder() {
   const [copiedCoachReminder, setCopiedCoachReminder] = useState<string | null>(null)
   const [selectedCoachReminder, setSelectedCoachReminder] = useState<string | null>(null)
   const [studentLanguages, setStudentLanguages] = useState<Record<string, ReminderLanguage>>({})
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false)
 
   const {
     includeWeatherWarning,
@@ -117,6 +118,7 @@ export function TomorrowReminder() {
     englishMessageTemplate,
     englishWeatherWarning,
     isMobile,
+    showTemplateEditor,
   ])
 
   useEffect(() => {
@@ -560,11 +562,7 @@ export function TomorrowReminder() {
 
         {/* Text Templates */}
         <div style={pageCardStyle}>
-          <h2 style={sectionTitleStyle}>
-            編輯文字模板
-          </h2>
-
-          {/* 天氣警告開關 */}
+          {/* 常用設定保持在收合區塊外 */}
           <div style={{
             marginBottom: isMobile ? '12px' : '14px',
             padding: isMobile ? '9px 10px' : '10px 12px',
@@ -597,8 +595,59 @@ export function TomorrowReminder() {
             </label>
           </div>
 
-          {/* 中文結尾文字 */}
-          <div style={{ marginBottom: designSystem.spacing.md }}>
+          {templateSaveStatus === 'error' && (
+            <div
+              role="alert"
+              style={{
+                marginBottom: isMobile ? '12px' : '14px',
+                padding: '9px 10px',
+                background: designSystem.colors.danger[50],
+                border: `1px solid ${designSystem.colors.danger[500]}`,
+                borderRadius: designSystem.borderRadius.sm,
+                color: designSystem.colors.danger[700],
+                fontSize: getFontSize('caption', isMobile),
+                lineHeight: 1.4,
+              }}
+            >
+              設定未能儲存，請重新整理後再試
+            </div>
+          )}
+
+          <h2 style={{ ...sectionTitleStyle, marginBottom: showTemplateEditor ? (isMobile ? '10px' : '12px') : 0 }}>
+            <button
+              type="button"
+              aria-expanded={showTemplateEditor}
+              aria-controls="tomorrow-template-editor"
+              onClick={() => setShowTemplateEditor((current) => !current)}
+              style={{
+              display: 'flex',
+              alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                padding: 0,
+                border: 0,
+                background: 'transparent',
+              cursor: 'pointer',
+                color: 'inherit',
+                font: 'inherit',
+                textAlign: 'left',
+              }}
+            >
+              <span>編輯文字模板</span>
+              <span style={{
+                color: designSystem.colors.text.secondary,
+                fontSize: getFontSize('bodySmall', isMobile),
+                fontWeight: '500',
+              }}>
+                {showTemplateEditor ? '收合 ▲' : '展開 ▼'}
+              </span>
+            </button>
+          </h2>
+
+          {showTemplateEditor && (
+            <div id="tomorrow-template-editor">
+              {/* 中文結尾文字 */}
+              <div style={{ marginBottom: designSystem.spacing.md }}>
             <label style={templateLabelStyle}>
               中文結尾文字
             </label>
@@ -620,10 +669,10 @@ export function TomorrowReminder() {
                 boxSizing: 'border-box'
               }}
             />
-          </div>
+              </div>
 
-          {/* 中文天氣附加文字 */}
-          <div>
+              {/* 中文天氣附加文字 */}
+              <div>
             <label style={templateLabelStyle}>
               中文天氣附加文字
             </label>
@@ -647,13 +696,13 @@ export function TomorrowReminder() {
               }}
               disabled={!includeWeatherWarning}
             />
-          </div>
+              </div>
 
-          <div style={{
-            marginTop: designSystem.spacing.md,
-            paddingTop: designSystem.spacing.md,
-            borderTop: `1px solid ${designSystem.colors.border.light}`,
-          }}>
+              <div style={{
+                marginTop: designSystem.spacing.md,
+                paddingTop: designSystem.spacing.md,
+                borderTop: `1px solid ${designSystem.colors.border.light}`,
+              }}>
             <label style={templateLabelStyle}>
               英文提醒模板
             </label>
@@ -675,9 +724,9 @@ export function TomorrowReminder() {
                 boxSizing: 'border-box',
               }}
             />
-          </div>
+              </div>
 
-          <div style={{ marginTop: designSystem.spacing.md }}>
+              <div style={{ marginTop: designSystem.spacing.md }}>
             <label style={templateLabelStyle}>
               英文天氣提醒
             </label>
@@ -701,34 +750,27 @@ export function TomorrowReminder() {
                 opacity: includeWeatherWarning ? 1 : 0.5,
               }}
             />
-          </div>
+              </div>
 
-          <div style={{
-            marginTop: designSystem.spacing.md,
-            padding: templateSaveStatus === 'error' ? '9px 10px' : 0,
-            background: templateSaveStatus === 'error'
-              ? designSystem.colors.danger[50]
-              : 'transparent',
-            border: templateSaveStatus === 'error'
-              ? `1px solid ${designSystem.colors.danger[500]}`
-              : 'none',
-            borderRadius: designSystem.borderRadius.sm,
-            fontSize: getFontSize('caption', isMobile),
-            color: templateSaveStatus === 'error'
-              ? designSystem.colors.danger[700]
-              : designSystem.colors.text.disabled,
-            display: 'flex',
-            alignItems: 'center',
-            gap: designSystem.spacing.xs,
-          }}>
-            <span aria-hidden="true">{templateSaveStatus === 'error' ? '!' : '✓'}</span>
-            <span>
-              {templateSaveStatus === 'loading' && '正在載入共用文字模板…'}
-              {templateSaveStatus === 'saving' && '正在儲存共用文字模板…'}
-              {templateSaveStatus === 'saved' && '修改會自動儲存'}
-              {templateSaveStatus === 'error' && '文字模板未能儲存，請重新整理後再試'}
-            </span>
-          </div>
+              {templateSaveStatus !== 'error' && (
+                <div style={{
+                  marginTop: designSystem.spacing.md,
+                  fontSize: getFontSize('caption', isMobile),
+                  color: designSystem.colors.text.disabled,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: designSystem.spacing.xs,
+                }}>
+                  <span aria-hidden="true">✓</span>
+                  <span>
+                    {templateSaveStatus === 'loading' && '正在載入共用文字模板…'}
+                    {templateSaveStatus === 'saving' && '正在儲存共用文字模板…'}
+                    {templateSaveStatus === 'saved' && '修改會自動儲存'}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Student Messages List */}

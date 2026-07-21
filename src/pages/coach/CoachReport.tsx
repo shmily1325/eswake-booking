@@ -16,6 +16,7 @@ import {
   calculateIsTeaching,
   calculateParticipantStatus
 } from '../../utils/participantValidation'
+import { validateCoachReportSubmission } from '../../utils/coachReportSubmission'
 import {
   assembleBookingsWithRelations,
   extractAvailableCoaches,
@@ -491,6 +492,32 @@ export function CoachReport({
       })
       return
     }
+
+    if (
+      !reportingBookingId ||
+      !reportingCoachId ||
+      !bookings.some((booking) => booking.id === reportingBookingId)
+    ) {
+      toast.warning('缺少必要資訊，請重新開啟回報')
+      return
+    }
+
+    // 所有驗證都必須在任何寫入之前完成，避免驗證中止後仍部分寫入或顯示假成功。
+    const validation = validateCoachReportSubmission(
+      reportType,
+      driverDuration,
+      participants,
+    )
+    if (!validation.valid) {
+      toast.warning(validation.message)
+      return
+    }
+    if (validation.emptyParticipantCount > 0) {
+      const confirmMsg = `⚠️ 提醒\n\n有 ${validation.emptyParticipantCount} 個空的參與者未填寫姓名，將不會被提交。\n\n確定要繼續提交嗎？`
+      if (!confirm(confirmMsg)) {
+        return
+      }
+    }
     
     // 先收起手機鍵盤，避免畫面跳動
     if (document.activeElement instanceof HTMLElement) {
@@ -536,10 +563,14 @@ export function CoachReport({
   }
 
   const submitDriverReport = async () => {
-    if (!reportingBookingId || !reportingCoachId) return
+    if (!reportingBookingId || !reportingCoachId) {
+      throw new Error('缺少必要資訊')
+    }
 
     const booking = bookings.find(b => b.id === reportingBookingId)
-    if (!booking) return
+    if (!booking) {
+      throw new Error('找不到預約資料')
+    }
     
     // 檢查當前角色是否應該回報駕駛
     const reportType = getCoachReportType(booking, reportingCoachId)
@@ -595,46 +626,14 @@ export function CoachReport({
 
   const submitCoachReport = async () => {
     if (!reportingBookingId || !reportingCoachId) {
-      toast.warning('缺少必要資訊')
-      return
+      throw new Error('缺少必要資訊')
     }
 
     try {
-      // 檢查是否有空的參與者
-      const emptyParticipants = participants.filter(p => !p.participant_name.trim())
-      if (emptyParticipants.length > 0) {
-        const confirmMsg = `⚠️ 提醒\n\n有 ${emptyParticipants.length} 個空的參與者未填寫姓名，將不會被提交。\n\n確定要繼續提交嗎？`
-        if (!confirm(confirmMsg)) {
-          return
-        }
-      }
-      
       // 允許單個教練不回報參與者（其他教練可能已經回報了）
       // 只過濾掉空名字的參與者，不強制要求至少一個
       const validParticipants = participants.filter(p => p.participant_name.trim())
-      
-      // 驗證時數（允許空值，但不能是 0 或負數）
-      const invalidDuration = validParticipants.find(p => {
-        const duration = Number(p.duration_min)
-        return isNaN(duration) || duration <= 0
-      })
-      if (invalidDuration) {
-        toast.warning(`「${invalidDuration.participant_name || '未命名'}」的時數必須大於 0`)
-        return
-      }
-      
-      // 檢查：如果是「會員」狀態但沒有選擇具體會員，提示用戶
-      const memberStatusWithoutId = validParticipants.filter(
-        p => p.status === 'pending' && !p.member_id
-      )
-      
-      if (memberStatusWithoutId.length > 0) {
-        const names = memberStatusWithoutId.map(p => p.participant_name || '(未填寫)').join('、')
-        toast.warning(`以下參與者標記為會員但尚未選擇：${names}。請點擊該參與者從會員列表選擇，或刪除後改用「新增客人」`)
-        return
-      }
-      
-      // 继续提交流程
+
       // 步驟 1: 載入現有參與者記錄
       const { data: oldParticipants, error: fetchError } = await supabase
         .from('booking_participants')
@@ -663,10 +662,18 @@ export function CoachReport({
 
       if (participantsToDelete.length > 0) {
         // 先檢查是否有交易記錄
-        const { data: transactionsData } = await supabase
+        const { data: transactionsData, error: transactionsError } = await supabase
           .from('transactions')
           .select('id, booking_participant_id, amount, description')
           .in('booking_participant_id', participantsToDelete.map(p => p.id))
+
+        if (transactionsError) {
+          throw userFacingError(
+            '檢查參與者交易失敗',
+            transactionsError.message,
+            '無法檢查相關交易，尚未刪除回報，請稍後再試'
+          )
+        }
         
         // 如果有交易記錄，警告用戶
         if (transactionsData && transactionsData.length > 0) {

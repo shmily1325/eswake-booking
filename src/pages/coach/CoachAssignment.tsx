@@ -1269,13 +1269,17 @@ export function CoachAssignment() {
       let participantsWithTransactions: any[] = []
       if (participantsCheck.data && participantsCheck.data.length > 0) {
         const participantIds = participantsCheck.data.map((p: any) => p.id)
-        const { data: transactionsData } = await supabase
+        const { data: transactionsData, error: transactionsError } = await supabase
           .from('transactions')
-          .select('id, participant_id, amount, description')
-          .in('participant_id', participantIds)
+          .select('id, booking_participant_id, amount, description')
+          .in('booking_participant_id', participantIds)
+
+        if (transactionsError) {
+          throw new Error(`檢查參與者交易失敗：${transactionsError.message}`)
+        }
         
         const participantIdsWithTransactions = new Set(
-          transactionsData?.map((t: any) => t.participant_id) || []
+          transactionsData?.map(t => t.booking_participant_id) || []
         )
         
         participantsWithTransactions = participantsCheck.data.filter((p: any) => 

@@ -20,6 +20,7 @@ import {
   listSubtotal,
   tryParseDiscountFactor,
 } from './settleUtils'
+import { deliveryMethodLabel } from './orderUtils'
 import type { OrderPaymentMethod, ShopOrderWithItems } from './types'
 
 const { colors, borderRadius, shadows, spacing } = designSystem
@@ -92,6 +93,9 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
 
   const pendingLines = useMemo(() => buildLineStates(order), [order])
   const [lines, setLines] = useState<SettleLineState[]>(pendingLines)
+  const customerNote = order.customer_note?.trim() || ''
+  const internalNotes = order.internal_notes?.trim() || ''
+  const shippingInfo = order.shipping_info?.trim() || ''
 
   const isProxyCharge =
     paymentMethod === 'balance' &&
@@ -250,6 +254,10 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const settleConfirmMessage = [
     `訂單：${order.order_no}`,
     `訂購人：${order.contact_name}`,
+    `交付方式：${deliveryMethodLabel(order.delivery_method)}`,
+    ...(shippingInfo ? [`寄送資訊：${shippingInfo}`] : []),
+    ...(customerNote ? [`客戶備註：${customerNote}`] : []),
+    ...(internalNotes ? [`內部備註：${internalNotes}`] : []),
     `付款方式：${paymentLabel}`,
     ...(paymentMethod === 'balance'
       ? [
@@ -367,6 +375,75 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
           </div>
         </div>
       </div>
+
+      <div
+        data-track="product_order_settle_delivery_details"
+        style={{
+          marginTop: spacing.md,
+          padding: '9px 12px',
+          background: colors.secondary[50],
+          border: `1px solid ${colors.border.light}`,
+          borderRadius: borderRadius.md,
+          fontSize: getFontSize('bodySmall', isMobile),
+          color: colors.text.primary,
+          lineHeight: 1.5,
+        }}
+      >
+        <div>
+          <strong>交付方式：</strong>
+          {deliveryMethodLabel(order.delivery_method)}
+        </div>
+        {shippingInfo && (
+          <div style={{ marginTop: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <strong>寄送資訊：</strong>
+            {shippingInfo}
+          </div>
+        )}
+      </div>
+
+      {(customerNote || internalNotes) && (
+        <div
+          data-track="product_order_settle_order_notes"
+          style={{
+            marginTop: spacing.md,
+            padding: '10px 12px',
+            background: colors.warning[50],
+            border: `1px solid ${colors.warning[500]}55`,
+            borderRadius: borderRadius.md,
+            display: 'grid',
+            gap: 6,
+          }}
+        >
+          {customerNote && (
+            <div
+              style={{
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: colors.text.primary,
+                lineHeight: 1.5,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              <strong>客戶備註：</strong>
+              {customerNote}
+            </div>
+          )}
+          {internalNotes && (
+            <div
+              style={{
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: colors.text.primary,
+                lineHeight: 1.5,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              <strong>內部備註：</strong>
+              {internalNotes}
+            </div>
+          )}
+        </div>
+      )}
 
       {expanded && (
         <div

@@ -226,6 +226,7 @@ export function EditBookingDialog({
 
       if (conflictResult.hasConflict) {
         setError(conflictResult.reason)
+        setLoading(false)
         return
       }
 

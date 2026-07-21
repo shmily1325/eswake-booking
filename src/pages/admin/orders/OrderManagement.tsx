@@ -742,6 +742,8 @@ function OrderCard({
         </div>
       </div>
 
+      <OrderContextDetails order={order} isMobile={isMobile} />
+
       <div
         style={{
           borderTop: `1px solid ${colors.border.light}`,
@@ -819,6 +821,62 @@ function OrderCard({
               </TextAction>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OrderContextDetails({
+  order,
+  isMobile,
+}: {
+  order: ShopOrderWithItems
+  isMobile: boolean
+}) {
+  const shippingInfo = order.shipping_info?.trim() || ''
+  const customerNote = order.customer_note?.trim() || ''
+  const internalNotes = order.internal_notes?.trim() || ''
+
+  if (!shippingInfo && !customerNote && !internalNotes) return null
+
+  const rowStyle = {
+    fontSize: getFontSize('bodySmall', isMobile),
+    color: colors.text.primary,
+    lineHeight: 1.5,
+    whiteSpace: 'pre-wrap' as const,
+    wordBreak: 'break-word' as const,
+  }
+
+  return (
+    <div
+      data-track="product_order_card_context_details"
+      style={{
+        margin: isMobile ? '0 14px 12px' : '0 20px 14px',
+        padding: '9px 12px',
+        background: colors.warning[50],
+        border: `1px solid ${colors.warning[500]}55`,
+        borderRadius: borderRadius.md,
+        display: 'grid',
+        gap: 5,
+      }}
+    >
+      {shippingInfo && (
+        <div style={rowStyle}>
+          <strong>寄送資訊：</strong>
+          {shippingInfo}
+        </div>
+      )}
+      {customerNote && (
+        <div style={rowStyle}>
+          <strong>客戶備註：</strong>
+          {customerNote}
+        </div>
+      )}
+      {internalNotes && (
+        <div style={rowStyle}>
+          <strong>內部備註：</strong>
+          {internalNotes}
         </div>
       )}
     </div>
