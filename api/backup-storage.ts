@@ -22,10 +22,9 @@ const INVENTORY_PAGE_SIZE = 500
 const SYNC_PAGE_SIZE = 50
 const DEFAULT_KEEP_DAYS = 90
 const GOOGLE_METADATA_TIMEOUT_MS = 5_000
-const GOOGLE_UPLOAD_TIMEOUT_MS = 20_000
+const GOOGLE_UPLOAD_TIMEOUT_MS = 60_000
 const SOURCE_DOWNLOAD_TIMEOUT_MS = 20_000
-const MAX_OBJECT_OPERATION_MS = 45_000
-const MIN_OBJECT_OPERATION_RESERVE_MS = 10_000
+const MAX_OBJECT_OPERATION_MS = 90_000
 const SERVER_HARD_STOP_MS = 285_000
 
 type StorageBackupPhase =
@@ -83,6 +82,12 @@ function errorCode(error: unknown): number | undefined {
   if (typeof error !== 'object' || error === null || !('code' in error)) return undefined
   const code = Number((error as { code?: unknown }).code)
   return Number.isFinite(code) ? code : undefined
+}
+
+function deadlineSignal(deadline: number, maximumMs: number = 30_000): AbortSignal {
+  const remainingMs = deadline - Date.now()
+  if (remainingMs <= 0) throw new Error('Storage 備份超過安全時間預算')
+  return AbortSignal.timeout(Math.min(maximumMs, remainingMs))
 }
 
 function requestMode(req: VercelRequest): 'manifest' | 'cloud' {
@@ -330,7 +335,10 @@ async function publishManifestFile(
   })
 }
 
-async function fetchAllStates(supabase: SupabaseClient): Promise<StorageBackupState[]> {
+async function fetchAllStates(
+  supabase: SupabaseClient,
+  deadline: number,
+): Promise<StorageBackupState[]> {
   const rows: StorageBackupState[] = []
   let offset = 0
   while (true) {
@@ -340,6 +348,7 @@ async function fetchAllStates(supabase: SupabaseClient): Promise<StorageBackupSt
       .eq('bucket_id', STORAGE_BACKUP_BUCKET)
       .order('object_path')
       .range(offset, offset + STATE_PAGE_SIZE - 1)
+      .abortSignal(deadlineSignal(deadline))
     if (error) throw new Error(`讀取 Storage 備份進度失敗：${error.message}`)
     rows.push(...((data || []) as StorageBackupState[]))
     if ((data || []).length < STATE_PAGE_SIZE) break
@@ -351,14 +360,19 @@ async function fetchAllStates(supabase: SupabaseClient): Promise<StorageBackupSt
 async function logBackup(
   supabase: SupabaseClient,
   values: Record<string, unknown>,
+  deadline: number = Date.now() + 10_000,
 ): Promise<void> {
-  const { error } = await supabase.from('backup_logs').insert(values)
+  const { error } = await supabase
+    .from('backup_logs')
+    .insert(values)
+    .abortSignal(deadlineSignal(deadline, 10_000))
   if (error) throw new Error(`寫入備份紀錄失敗：${error.message}`)
 }
 
 async function clearTransientStorageLogs(
   supabase: SupabaseClient,
   runStartedAt: string,
+  deadline: number = Date.now() + 10_000,
 ): Promise<void> {
   const { error } = await supabase
     .from('backup_logs')
@@ -366,12 +380,14 @@ async function clearTransientStorageLogs(
     .eq('destination', 'google_drive_storage')
     .in('status', ['running', 'failed'])
     .gte('created_at', runStartedAt)
+    .abortSignal(deadlineSignal(deadline, 10_000))
   if (error) throw new Error(`清理重複 Storage 備份紀錄失敗：${error.message}`)
 }
 
 async function fetchRunEntries(
   supabase: SupabaseClient,
   runId: string,
+  deadline: number,
 ): Promise<StorageInventoryEntry[]> {
   const rows: StorageInventoryEntry[] = []
   let offset = 0
@@ -382,6 +398,7 @@ async function fetchRunEntries(
       .eq('run_id', runId)
       .order('object_path')
       .range(offset, offset + STATE_PAGE_SIZE - 1)
+      .abortSignal(deadlineSignal(deadline))
     if (error) throw new Error(`讀取 Storage inventory 失敗：${error.message}`)
     rows.push(...((data || []) as StorageInventoryEntry[]))
     if ((data || []).length < STATE_PAGE_SIZE) break
@@ -408,10 +425,11 @@ function toStorageEntry(
 async function createRunManifest(
   supabase: SupabaseClient,
   run: StorageBackupRun,
+  deadline: number,
 ): Promise<StorageBackupManifest> {
-  const entries = await fetchRunEntries(supabase, run.run_id)
+  const entries = await fetchRunEntries(supabase, run.run_id, deadline)
   const files = entries.map((entry) => toStorageEntry(supabase, entry))
-  const states = await fetchAllStates(supabase)
+  const states = await fetchAllStates(supabase, deadline)
   const tombstones = states
     .filter((state) => state.source_deleted_at && state.drive_file_id)
     .map((state) => ({
@@ -451,8 +469,22 @@ async function releaseRun(
     p_run_id: runId,
     p_lease_token: leaseToken,
     p_error_message: message || null,
-  })
+  }).abortSignal(AbortSignal.timeout(10_000))
   if (error) console.error('Storage run lease release failed', error)
+}
+
+async function renewRunLease(
+  supabase: SupabaseClient,
+  runId: string,
+  leaseToken: string,
+): Promise<StorageBackupRun> {
+  const { data, error } = await supabase.rpc('renew_storage_backup_inventory_lease', {
+    p_run_id: runId,
+    p_lease_token: leaseToken,
+    p_lease_seconds: 330,
+  })
+  if (error) throw new Error(`延長 Storage 備份 lease 失敗：${error.message}`)
+  return rpcRun(data)
 }
 
 async function processResumableStorageBackup(
@@ -487,10 +519,10 @@ async function processResumableStorageBackup(
       run,
     }
   }
+  run = await renewRunLease(supabase, run.run_id, leaseToken)
 
   let scanned = 0
   let processed = 0
-  let observedObjectDurationMs = 0
   let completed = false
   let manifest: StorageBackupManifest | undefined
   let drive: ReturnType<typeof google.drive> | null = null
@@ -518,6 +550,7 @@ async function processResumableStorageBackup(
   try {
     workLoop: while (Date.now() - startedAt < TIME_BUDGET_MS) {
       if (run.phase === 'inventory') {
+        if (Date.now() - startedAt >= 220_000) break
         const { data, error } = await supabase.rpc('scan_storage_backup_inventory_page', {
           p_run_id: run.run_id,
           p_lease_token: leaseToken,
@@ -559,22 +592,15 @@ async function processResumableStorageBackup(
           const state = stateData as StorageBackupState | null
           let checksum = state?.checksum || null
           let checkpointSaved = false
-          let objectStartedAt: number | null = null
 
           try {
             if (storageEntryChanged(entry, state || undefined)) {
+              run = await renewRunLease(supabase, run.run_id, leaseToken)
               const target = await ensureDrive()
-              const reserveMs = observedObjectDurationMs > 0
-                ? Math.min(
-                    MAX_OBJECT_OPERATION_MS,
-                    Math.max(
-                      MIN_OBJECT_OPERATION_RESERVE_MS,
-                      observedObjectDurationMs * 2 + GOOGLE_METADATA_TIMEOUT_MS,
-                    ),
-                  )
-                : MAX_OBJECT_OPERATION_MS
-              if (Date.now() - startedAt + reserveMs >= SERVER_HARD_STOP_MS) break workLoop
-              objectStartedAt = Date.now()
+              if (
+                Date.now() - startedAt + MAX_OBJECT_OPERATION_MS
+                >= SERVER_HARD_STOP_MS
+              ) break workLoop
               const uploaded = await writeDriveObject(target.drive, target.bucketFolderId, entry)
               checksum = uploaded.checksum
               const { error: upsertError } = await supabase.from('storage_backup_objects').upsert({
@@ -642,12 +668,6 @@ async function processResumableStorageBackup(
             if (ackError) throw new Error(`推進 Storage sync cursor 失敗：${ackError.message}`)
             run = rpcRun(ackData)
             processed += 1
-            if (objectStartedAt !== null) {
-              observedObjectDurationMs = Math.max(
-                observedObjectDurationMs,
-                Date.now() - objectStartedAt,
-              )
-            }
           } catch (error: unknown) {
             if (!checkpointSaved) {
               await supabase.from('storage_backup_objects').upsert({
@@ -669,10 +689,12 @@ async function processResumableStorageBackup(
       }
 
       if (run.phase === 'reconcile') {
+        if (Date.now() - startedAt >= 210_000) break
+        run = await renewRunLease(supabase, run.run_id, leaseToken)
         const { data, error } = await supabase.rpc('reconcile_storage_backup_inventory_run', {
           p_run_id: run.run_id,
           p_lease_token: leaseToken,
-        })
+        }).abortSignal(deadlineSignal(startedAt + 250_000, 30_000))
         if (error?.message.includes('source inventory changed during reconciliation')) {
           throw new StorageSourceChangedError('商品圖片在備份期間有變更，將重新建立清單')
         }
@@ -706,7 +728,13 @@ async function processResumableStorageBackup(
       }
 
       if (run.phase === 'manifest') {
-        manifest = run.manifest_payload || await createRunManifest(supabase, run)
+        if (!run.manifest_payload && Date.now() - startedAt >= 180_000) break
+        run = await renewRunLease(supabase, run.run_id, leaseToken)
+        manifest = run.manifest_payload || await createRunManifest(
+          supabase,
+          run,
+          startedAt + 210_000,
+        )
         if (!run.manifest_payload) {
           const { error: payloadError } = await supabase
             .from('storage_backup_inventory_runs')
@@ -715,8 +743,15 @@ async function processResumableStorageBackup(
           if (payloadError) throw new Error(`保存 Storage manifest 失敗：${payloadError.message}`)
           run = { ...run, manifest_payload: manifest }
         }
-        if (Date.now() - startedAt >= 3_000) break
+        if (
+          Date.now() - startedAt + MAX_OBJECT_OPERATION_MS
+          >= SERVER_HARD_STOP_MS
+        ) break
         const target = await ensureDrive()
+        if (
+          Date.now() - startedAt + MAX_OBJECT_OPERATION_MS
+          >= SERVER_HARD_STOP_MS
+        ) break
         const candidate = await upsertManifestFile(
           target.drive,
           target.bucketFolderId,
@@ -729,7 +764,7 @@ async function processResumableStorageBackup(
           p_manifest_checksum: manifest.checksum,
           p_manifest_file_id: candidate.fileId,
           p_previous_manifest_file_ids: candidate.previousFileIds,
-        })
+        }).abortSignal(deadlineSignal(startedAt + 275_000, 30_000))
         if (error) {
           const { data: committedRun, error: committedRunError } = await supabase
             .from('storage_backup_inventory_runs')
@@ -757,6 +792,8 @@ async function processResumableStorageBackup(
       }
 
       if (run.phase === 'cleanup') {
+        if (Date.now() - startedAt >= 210_000) break
+        run = await renewRunLease(supabase, run.run_id, leaseToken)
         const target = await ensureDrive()
         if (!run.manifest_file_id) throw new Error('Storage cleanup 缺少 manifest file id')
         await publishManifestFile(target.drive, run.manifest_file_id)
@@ -768,7 +805,7 @@ async function processResumableStorageBackup(
         const { data, error } = await supabase.rpc('complete_storage_backup_inventory_run', {
           p_run_id: run.run_id,
           p_lease_token: leaseToken,
-        })
+        }).abortSignal(deadlineSignal(startedAt + 275_000, 30_000))
         if (error) throw new Error(`完成 Storage 備份工作失敗：${error.message}`)
         run = rpcRun(data)
         completed = true
@@ -941,22 +978,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const checksum = result.manifest?.checksum || result.run.manifest_checksum
-    await clearTransientStorageLogs(supabase, result.run.started_at)
-    await logBackup(supabase, {
-      backup_type: 'storage',
-      destination: 'google_drive_storage',
-      status: result.complete ? 'success' : 'running',
-      records_count: Number(result.run.object_count),
-      file_name: `${STORAGE_BACKUP_BUCKET}/manifest.json`,
-      file_size: String(result.run.total_bytes),
-      file_size_bytes: Number(result.run.total_bytes),
-      checksum,
-      format_version: STORAGE_BACKUP_FORMAT_VERSION,
-      execution_time: executionTime,
-      error_message: result.complete
-        ? null
-        : `phase=${result.phase}; 尚有 ${result.remaining} 個檔案等待同步`,
-    })
+    if (Date.now() - startedAt < 280_000) {
+      await clearTransientStorageLogs(
+        supabase,
+        result.run.started_at,
+        startedAt + 295_000,
+      )
+      await logBackup(supabase, {
+        backup_type: 'storage',
+        destination: 'google_drive_storage',
+        status: result.complete ? 'success' : 'running',
+        records_count: Number(result.run.object_count),
+        file_name: `${STORAGE_BACKUP_BUCKET}/manifest.json`,
+        file_size: String(result.run.total_bytes),
+        file_size_bytes: Number(result.run.total_bytes),
+        checksum,
+        format_version: STORAGE_BACKUP_FORMAT_VERSION,
+        execution_time: executionTime,
+        error_message: result.complete
+          ? null
+          : `phase=${result.phase}; 尚有 ${result.remaining} 個檔案等待同步`,
+      }, startedAt + 295_000)
+    }
 
     return res.status(result.complete ? 200 : 202).json({
       success: result.complete,
@@ -979,23 +1022,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: unknown) {
     const message = errorMessage(error)
     try {
-      const { data: latestRun } = await supabase
-        .from('storage_backup_inventory_runs')
-        .select('started_at')
-        .eq('bucket_id', STORAGE_BACKUP_BUCKET)
-        .order('started_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (latestRun?.started_at) {
-        await clearTransientStorageLogs(supabase, latestRun.started_at)
+      if (Date.now() - startedAt < 280_000) {
+        const { data: latestRun } = await supabase
+          .from('storage_backup_inventory_runs')
+          .select('started_at')
+          .eq('bucket_id', STORAGE_BACKUP_BUCKET)
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .abortSignal(deadlineSignal(startedAt + 290_000, 10_000))
+        if (latestRun?.started_at) {
+          await clearTransientStorageLogs(
+            supabase,
+            latestRun.started_at,
+            startedAt + 295_000,
+          )
+        }
+        await logBackup(supabase, {
+          backup_type: 'storage',
+          destination: 'google_drive_storage',
+          status: 'failed',
+          error_message: message.slice(0, 1000),
+          execution_time: Date.now() - startedAt,
+        }, startedAt + 295_000)
       }
-      await logBackup(supabase, {
-        backup_type: 'storage',
-        destination: 'google_drive_storage',
-        status: 'failed',
-        error_message: message.slice(0, 1000),
-        execution_time: Date.now() - startedAt,
-      })
     } catch (logError) {
       console.error('Storage backup failure could not be logged', logError)
     }

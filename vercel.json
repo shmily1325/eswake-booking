@@ -31,13 +31,13 @@
   ],
   "functions": {
     "api/backup-full-database.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/backup-queryable.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/backup-to-cloud-drive.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/backup-report.ts": {
       "maxDuration": 10
@@ -47,6 +47,9 @@
     },
     "api/fetch-product-image.ts": {
       "maxDuration": 30
+    },
+    "api/cron.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [

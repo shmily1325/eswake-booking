@@ -16,6 +16,11 @@ manifest phases. Repeating the manual action or the next Cron invocation resumes
 the same run from its saved cursor. Migration 155 must be applied before this
 endpoint is deployed.
 
+Migration 156 extends the fenced worker lease for five-minute Vercel
+invocations. Apply it before deploying the 300-second Storage backup settings.
+The worker stops starting new transfers early enough to preserve time for lease
+release and health logging.
+
 ## Required secrets
 
 - Vercel: set a high-entropy `CRON_SECRET`. Vercel Cron sends it as

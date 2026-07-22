@@ -21,6 +21,7 @@ export interface BackupManifest {
 
 const PAGE_SIZE = 1000
 const TABLE_FETCH_CONCURRENCY = 4
+const TABLE_PAGE_TIMEOUT_MS = 30_000
 
 async function mapWithConcurrency<T, R>(
   items: readonly T[],
@@ -50,17 +51,21 @@ async function mapWithConcurrency<T, R>(
 async function fetchTableRows(
   supabase: SupabaseClient,
   tableName: BackupTable,
+  deadline: number,
 ): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = []
   let offset = 0
 
   while (true) {
+    const remainingMs = deadline - Date.now()
+    if (remainingMs <= 0) throw new Error('資料庫備份超過安全時間預算')
     const orderColumn = TABLE_ORDER_COLUMN[tableName] || 'id'
     const result = await supabase
       .from(tableName)
       .select('*')
       .order(orderColumn, { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1)
+      .abortSignal(AbortSignal.timeout(Math.min(TABLE_PAGE_TIMEOUT_MS, remainingMs)))
 
     if (result.error) {
       throw new Error(`表 ${tableName} 備份失敗：${result.error.message}`)
@@ -75,7 +80,10 @@ async function fetchTableRows(
   return rows
 }
 
-export async function fetchBackupData(supabase: SupabaseClient): Promise<{
+export async function fetchBackupData(
+  supabase: SupabaseClient,
+  deadline: number = Number.POSITIVE_INFINITY,
+): Promise<{
   data: BackupData
   stats: BackupStats
   totalRecords: number
@@ -88,7 +96,7 @@ export async function fetchBackupData(supabase: SupabaseClient): Promise<{
     TABLE_FETCH_CONCURRENCY,
     async (tableName) => ({
       tableName,
-      rows: await fetchTableRows(supabase, tableName),
+      rows: await fetchTableRows(supabase, tableName, deadline),
     }),
   )
 

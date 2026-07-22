@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -31,6 +31,20 @@ interface BackupLog {
   error_message: string | null
   execution_time: number | null
   created_at: string | null
+}
+
+interface StorageBackupResponse {
+  complete?: boolean
+  busy?: boolean
+  phase?: string
+  scanned?: number
+  processed?: number
+  remaining?: number
+  message?: string
+  error?: string
+  manifest?: {
+    fileCount?: number
+  }
 }
 
 type BackupDestination =
@@ -112,6 +126,8 @@ export function BackupPage() {
   const [cloudBackupLoading, setCloudBackupLoading] = useState(false)
   const [storageBackupLoading, setStorageBackupLoading] = useState(false)
   const [storageBackupProgress, setStorageBackupProgress] = useState<string | null>(null)
+  const storageBackupCancelRef = useRef(false)
+  const storageRequestControllerRef = useRef<AbortController | null>(null)
   const [backupLogs, setBackupLogs] = useState<BackupLog[]>([])
   const [backupLogsLoading, setBackupLogsLoading] = useState(true)
 
@@ -301,20 +317,49 @@ export function BackupPage() {
   }
 
   const backupStorageToCloudDrive = async () => {
+    storageBackupCancelRef.current = false
     setStorageBackupLoading(true)
     setStorageBackupProgress('準備商品圖片同步…')
     try {
       const maximumRounds = 100
       let timeoutRetries = 0
+      let busyWaits = 0
+      let round = 0
       let complete = false
 
-      for (let round = 1; round <= maximumRounds; round += 1) {
+      while (round < maximumRounds && !storageBackupCancelRef.current) {
         const headers = await getBackupRequestHeaders()
-        const response = await fetch('/api/backup-storage?mode=cloud', {
-          method: 'POST',
-          headers,
-        })
-        const result = await response.json()
+        const controller = new AbortController()
+        storageRequestControllerRef.current = controller
+        const requestTimeout = window.setTimeout(() => controller.abort(), 310_000)
+        let response: Response
+        try {
+          response = await fetch('/api/backup-storage?mode=cloud', {
+            method: 'POST',
+            headers,
+            signal: controller.signal,
+          })
+        } catch (error) {
+          if (storageBackupCancelRef.current) break
+          if (timeoutRetries < 3) {
+            timeoutRetries += 1
+            setStorageBackupProgress(`網路中斷，自動重試 ${timeoutRetries}/3…`)
+            await wait(1500)
+            continue
+          }
+          throw error
+        } finally {
+          window.clearTimeout(requestTimeout)
+          storageRequestControllerRef.current = null
+        }
+
+        const responseText = await response.text()
+        let result: StorageBackupResponse
+        try {
+          result = JSON.parse(responseText) as StorageBackupResponse
+        } catch {
+          result = { error: responseText || `HTTP ${response.status}` }
+        }
         if (!response.ok) {
           const message = result.message || result.error || '商品圖片備份失敗'
           if (/timeout|aborted/i.test(message) && timeoutRetries < 3) {
@@ -329,28 +374,34 @@ export function BackupPage() {
         timeoutRetries = 0
         if (result.complete) {
           complete = true
-          toast.success(`商品圖片已同步到 Google Drive，共 ${result.manifest.fileCount} 個檔案。`)
+          toast.success(`商品圖片已同步到 Google Drive，共 ${result.manifest?.fileCount ?? 0} 個檔案。`)
           break
         }
         if (result.busy) {
+          busyWaits += 1
+          if (busyWaits > 180) throw new Error('等待其他同步工作超過 6 分鐘')
           setStorageBackupProgress('已有同步工作執行中，正在等待…')
           await wait(2000)
           continue
         }
 
-        const phaseLabel = storagePhaseLabel(result.phase)
+        busyWaits = 0
+        round += 1
+        const phaseLabel = storagePhaseLabel(result.phase || '')
         const progress =
           result.phase === 'inventory'
-            ? `本次新增清點 ${result.scanned} 個，目前共 ${result.manifest.fileCount} 個`
+            ? `本次新增清點 ${result.scanned ?? 0} 個，目前共 ${result.manifest?.fileCount ?? 0} 個`
             : result.phase === 'sync'
-              ? `本次處理 ${result.processed} 個，尚有 ${result.remaining} 個`
+              ? `本次處理 ${result.processed ?? 0} 個，尚有 ${result.remaining ?? 0} 個`
               : '本階段已完成'
         setStorageBackupProgress(`${phaseLabel}：${progress}（第 ${round} 批）`)
         if (round % 5 === 0) await fetchBackupLogs()
         await wait(750)
       }
 
-      if (!complete) {
+      if (storageBackupCancelRef.current) {
+        toast.info('已停止自動續跑；目前進度已保存。', 5000)
+      } else if (!complete) {
         toast.info('自動同步已達 100 批，進度已保存；可再按一次繼續。', 7000)
       }
       await fetchBackupLogs()
@@ -358,9 +409,16 @@ export function BackupPage() {
       console.error('Storage backup error:', error)
       toast.error(`商品圖片備份失敗：${(error as Error).message}`, 5000)
     } finally {
+      storageRequestControllerRef.current = null
       setStorageBackupProgress(null)
       setStorageBackupLoading(false)
     }
+  }
+
+  const cancelStorageBackup = () => {
+    storageBackupCancelRef.current = true
+    storageRequestControllerRef.current?.abort()
+    setStorageBackupProgress('正在停止自動續跑…')
   }
 
   const downloadOfflineTool = async () => {
@@ -732,17 +790,18 @@ export function BackupPage() {
             <button
               type="button"
               data-track="backup_cloud_storage"
-              onClick={backupStorageToCloudDrive}
-              disabled={isAnyLoading}
+              onClick={storageBackupLoading ? cancelStorageBackup : backupStorageToCloudDrive}
+              disabled={fullBackupLoading || cloudBackupLoading}
+              title={storageBackupProgress || undefined}
               style={{
-                ...getButtonStyle('primary', 'large', isMobile),
+                ...getButtonStyle(storageBackupLoading ? 'danger' : 'primary', 'large', isMobile),
                 width: '100%',
-                opacity: isAnyLoading ? 0.6 : 1,
-                cursor: isAnyLoading ? 'not-allowed' : 'pointer',
+                opacity: fullBackupLoading || cloudBackupLoading ? 0.6 : 1,
+                cursor: fullBackupLoading || cloudBackupLoading ? 'not-allowed' : 'pointer',
               }}
             >
               {storageBackupLoading
-                ? storageBackupProgress || '圖片同步中…'
+                ? '停止圖片同步（進度會保留）'
                 : '同步商品圖片到 Google Drive'}
             </button>
             <button
@@ -772,6 +831,19 @@ export function BackupPage() {
               下載離線工具
             </button>
           </div>
+          {storageBackupLoading && storageBackupProgress && (
+            <p
+              aria-live="polite"
+              style={{
+                margin: '10px 0 0',
+                fontSize: 13,
+                color: designSystem.colors.text.secondary,
+                lineHeight: 1.5,
+              }}
+            >
+              {storageBackupProgress}
+            </p>
+          )}
           <p
             style={{
               margin: '14px 0 0',

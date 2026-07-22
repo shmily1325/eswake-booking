@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
+import type { JWT, OAuth2Client } from 'google-auth-library';
 import { createClient } from '@supabase/supabase-js';
 import { createHash } from 'node:crypto';
 import { authorizeBackupRequest, setBackupResponseHeaders } from '../src/server/backup-auth.js';
@@ -9,6 +10,43 @@ import {
   getBackupIntegrity,
 } from '../src/server/backup-data.js';
 import { BACKUP_FORMAT_VERSION } from '../src/server/backup-config.js';
+
+const GOOGLE_METADATA_TIMEOUT_MS = 15_000;
+const GOOGLE_UPLOAD_TIMEOUT_MS = 60_000;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function errorCode(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
+  const code = Number((error as { code?: unknown }).code);
+  return Number.isFinite(code) ? code : undefined;
+}
+
+function deadlineSignal(deadline: number, maximumMs: number = 10_000): AbortSignal {
+  const remainingMs = deadline - Date.now();
+  if (remainingMs <= 0) throw new Error('SQL 雲端備份超過安全時間預算');
+  return AbortSignal.timeout(Math.min(maximumMs, remainingMs));
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 function getLocalTimestamp(date: Date = new Date()): string {
   const year = date.getFullYear();
@@ -30,7 +68,7 @@ function getKeepDays(): number {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
   setBackupResponseHeaders(res);
-  const logStep = (step: string, data?: any) => {
+  const logStep = (step: string, data?: unknown) => {
     const elapsed = Date.now() - startTime;
     console.log(`[${elapsed}ms] ${step}`, data ? JSON.stringify(data).substring(0, 200) : '');
   };
@@ -74,7 +112,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 初始化 Google Drive 客户端
     logStep('3. 初始化 Google Drive 客戶端');
-    let auth: any;
+    let auth: OAuth2Client | JWT;
     let authType: string;
 
     // 優先使用 OAuth 2.0（如果已配置）
@@ -92,13 +130,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         
         // 測試 token 是否有效（嘗試獲取 access token）
-        await oauth2Client.getAccessToken();
+        await withTimeout(
+          oauth2Client.getAccessToken(),
+          GOOGLE_METADATA_TIMEOUT_MS,
+          'Google OAuth token 取得逾時',
+        );
         logStep('3.0.1 OAuth token 驗證成功');
-      } catch (tokenError: any) {
-        logStep('3.0.1 OAuth token 驗證失敗', { error: tokenError.message });
+      } catch (tokenError: unknown) {
+        const tokenMessage = errorMessage(tokenError);
+        logStep('3.0.1 OAuth token 驗證失敗', { error: tokenMessage });
         
         // 檢查是否是 invalid_grant 錯誤
-        if (tokenError.message?.includes('invalid_grant') || tokenError.code === 400) {
+        if (tokenMessage.includes('invalid_grant') || errorCode(tokenError) === 400) {
           throw new Error(
             'OAuth 刷新令牌無效或已過期。請重新取得刷新令牌：\n\n' +
             '1. 訪問：https://eswake-booking.vercel.app/api/oauth2-auth-url\n' +
@@ -139,7 +182,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     logStep('5. 開始生成完整資料庫備份');
     
     const backupTime = getLocalTimestamp();
-    const { data, stats, totalRecords } = await fetchBackupData(supabase);
+    const { data, stats, totalRecords } = await fetchBackupData(supabase, startTime + 180_000);
     const sqlContent = generateSqlBackup(data, stats, backupTime);
     const integrity = getBackupIntegrity(sqlContent);
     const uploadMd5 = createHash('md5').update(sqlContent, 'utf8').digest('hex');
@@ -148,6 +191,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       totalRecords,
       sqlSize: `${(sqlContent.length / 1024).toFixed(2)} KB`
     });
+    if (Date.now() - startTime >= 210_000) {
+      throw new Error('SQL 備份內容生成超過安全時間預算');
+    }
 
     // 上传到 Google Drive
     logStep('7. 開始上傳到 Google Drive');
@@ -172,6 +218,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fields: 'id, name, webViewLink, size, createdTime, md5Checksum',
       supportsAllDrives: true, // 支援共享雲端硬碟
       supportsTeamDrives: true, // 支援團隊雲端硬碟（舊版 API）
+    }, {
+      timeout: GOOGLE_UPLOAD_TIMEOUT_MS,
     });
 
     logStep('8. 檔案上傳完成', {
@@ -185,6 +233,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await drive.files.delete({
           fileId: uploadResponse.data.id,
           supportsAllDrives: true,
+        }, {
+          timeout: GOOGLE_METADATA_TIMEOUT_MS,
         });
       }
       throw new Error('Google Drive 上傳檔案大小驗證失敗');
@@ -194,6 +244,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await drive.files.delete({
         fileId: uploadResponse.data.id!,
         supportsAllDrives: true,
+      }, {
+        timeout: GOOGLE_METADATA_TIMEOUT_MS,
       });
       throw new Error('Google Drive 上傳檔案 MD5 驗證失敗');
     }
@@ -205,7 +257,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     cutoffDate.setDate(cutoffDate.getDate() - keepDays);
     const cutoffDateStr = cutoffDate.toISOString();
 
-    try {
+    if (Date.now() - startTime < 240_000) {
+      try {
       // 查詢所有備份檔案
       // 注意：Google Drive API 不支援 endsWith，使用 contains 並在程式碼中過濾
       const query = `'${googleDriveFolderId}' in parents and trashed = false and appProperties has { key='eswakeBackup' and value='database-sql' }`;
@@ -217,6 +270,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }> = [];
       let pageToken: string | undefined;
       do {
+        if (Date.now() - startTime >= 240_000) {
+          logStep('舊備份清理分頁已達安全時間上限');
+          break;
+        }
         const listResponse = await drive.files.list({
           q: query,
           fields: 'nextPageToken, files(id, name, createdTime)',
@@ -226,6 +283,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           supportsAllDrives: true,
           includeItemsFromAllDrives: true,
           supportsTeamDrives: true,
+        }, {
+          timeout: GOOGLE_METADATA_TIMEOUT_MS,
         });
         listedFiles.push(...(listResponse.data.files || []));
         pageToken = listResponse.data.nextPageToken || undefined;
@@ -239,11 +298,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
         
         for (const file of backupFiles) {
+          if (Date.now() - startTime >= 240_000) {
+            logStep('舊備份刪除已達安全時間上限');
+            break;
+          }
           if (file.createdTime && file.createdTime < cutoffDateStr) {
             try {
-              await drive.files.delete({ 
+              await drive.files.delete({
                 fileId: file.id!,
                 supportsAllDrives: true, // 支援共享雲端硬碟
+              }, {
+                timeout: GOOGLE_METADATA_TIMEOUT_MS,
               });
               deletedCount++;
               logStep(`刪除舊備份: ${file.name}`, { createdTime: file.createdTime });
@@ -256,9 +321,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           logStep(`清理完成: 刪除 ${deletedCount} 個舊備份`, { keepDays });
         }
       }
-    } catch (cleanupError) {
-      console.error('清理舊備份時出錯:', cleanupError);
-      // 清理失敗不影響備份成功
+      } catch (cleanupError) {
+        console.error('清理舊備份時出錯:', cleanupError);
+        // 清理失敗不影響備份成功
+      }
+    } else {
+      logStep('略過舊備份清理：接近函式安全時間上限');
     }
 
     const totalTime = Date.now() - startTime;
@@ -266,28 +334,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 記錄備份成功到 backup_logs
     try {
-      await supabase.from('backup_logs').insert({
-        backup_type: 'cloud_drive',
-        destination: 'google_drive',
-        status: 'success',
-        records_count: totalRecords,
-        file_name: uploadResponse.data.name,
-        file_size: uploadResponse.data.size,
-        file_size_bytes: integrity.bytes,
-        checksum: integrity.checksum,
-        format_version: BACKUP_FORMAT_VERSION,
-        file_url: uploadResponse.data.webViewLink,
-        execution_time: totalTime,
-      });
-      const logCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
-      const { error: purgeLogError } = await supabase
-        .from('backup_logs')
-        .delete()
-        .lt('created_at', logCutoff);
-      if (purgeLogError) {
-        console.error('清理過期備份紀錄失敗:', purgeLogError);
+      if (Date.now() - startTime < 280_000) {
+        await supabase.from('backup_logs').insert({
+          backup_type: 'cloud_drive',
+          destination: 'google_drive',
+          status: 'success',
+          records_count: totalRecords,
+          file_name: uploadResponse.data.name,
+          file_size: uploadResponse.data.size,
+          file_size_bytes: integrity.bytes,
+          checksum: integrity.checksum,
+          format_version: BACKUP_FORMAT_VERSION,
+          file_url: uploadResponse.data.webViewLink,
+          execution_time: totalTime,
+        }).abortSignal(deadlineSignal(startTime + 290_000));
+        const logCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+        const { error: purgeLogError } = await supabase
+          .from('backup_logs')
+          .delete()
+          .lt('created_at', logCutoff)
+          .abortSignal(deadlineSignal(startTime + 290_000));
+        if (purgeLogError) {
+          console.error('清理過期備份紀錄失敗:', purgeLogError);
+        }
+        logStep('11. 備份記錄已寫入 backup_logs');
+      } else {
+        logStep('略過備份紀錄寫入：接近函式安全時間上限');
       }
-      logStep('11. 備份記錄已寫入 backup_logs');
     } catch (logError) {
       // 記錄失敗不影響備份結果
       console.error('寫入 backup_logs 失敗:', logError);
@@ -306,11 +379,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       executionTime: totalTime,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     const totalTime = Date.now() - startTime;
+    const message = errorMessage(error);
     logStep('錯誤: 備份失敗', { 
-      error: error.message, 
-      stack: error.stack?.substring(0, 500),
+      error: message,
+      stack: error instanceof Error ? error.stack?.substring(0, 500) : undefined,
       totalTime: `${totalTime}ms`
     });
     console.error('Backup error:', error);
@@ -319,28 +393,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
       const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (supabaseUrl && supabaseServiceKey) {
+      if (supabaseUrl && supabaseServiceKey && Date.now() - startTime < 285_000) {
         const supabaseForLog = createClient(supabaseUrl, supabaseServiceKey);
         await supabaseForLog.from('backup_logs').insert({
           backup_type: 'cloud_drive',
           destination: 'google_drive',
           status: 'failed',
-          error_message: error.message || 'Unknown error',
+          error_message: message,
           execution_time: totalTime,
-        });
+        }).abortSignal(deadlineSignal(startTime + 295_000));
       }
     } catch (logError) {
       console.error('寫入 backup_logs 失敗:', logError);
     }
 
     // 檢查是否是 invalid_grant 錯誤（OAuth token 問題）
-    if (error.message?.includes('invalid_grant') || 
-        error.message?.includes('Token has been expired') ||
-        error.message?.includes('Token has been revoked') ||
-        error.code === 400) {
+    if (message.includes('invalid_grant') ||
+        message.includes('Token has been expired') ||
+        message.includes('Token has been revoked') ||
+        errorCode(error) === 400) {
       return res.status(401).json({
         error: 'OAuth 授權失敗',
-        message: error.message || '刷新令牌無效或已過期',
+        message: message || '刷新令牌無效或已過期',
         solution: {
           title: '如何修復：',
           steps: [
@@ -359,7 +433,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 檢查是否是存儲配額錯誤
-    if (error.message?.includes('storage quota') || error.message?.includes('Service Accounts do not have storage quota')) {
+    if (message.includes('storage quota') || message.includes('Service Accounts do not have storage quota')) {
       return res.status(500).json({
         error: '備份失敗：服務帳號儲存配額限制',
         message: '服務帳號無法在共享資料夾中建立檔案。請使用以下解決方案：\n\n' +
@@ -380,7 +454,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(500).json({
       error: '備份失敗',
-      message: error.message || 'Unknown error',
+      message,
       executionTime: totalTime,
     });
   }

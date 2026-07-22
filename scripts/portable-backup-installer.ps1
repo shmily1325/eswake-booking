@@ -116,7 +116,8 @@ $config | ConvertTo-Json | Set-Content -LiteralPath $configPath -Encoding UTF8
 $worker = @'
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)][string]$ConfigPath
+    [Parameter(Mandatory = $true)][string]$ConfigPath,
+    [switch]$SkipStorage
 )
 
 $ErrorActionPreference = 'Stop'
@@ -179,6 +180,7 @@ function Send-BackupReport {
         -Headers $script:Headers `
         -ContentType 'application/json; charset=utf-8' `
         -Body $body `
+        -TimeoutSec 30 `
         -UseBasicParsing | Out-Null
 }
 
@@ -229,6 +231,7 @@ function Sync-StorageBackup {
                 -Uri $pageUrl `
                 -Method Get `
                 -Headers $script:Headers `
+                -TimeoutSec 120 `
                 -UseBasicParsing
             if ($null -eq $remoteManifest) {
                 $remoteManifest = $manifestPage
@@ -281,6 +284,7 @@ function Sync-StorageBackup {
                         -Uri ([string]$item.publicUrl) `
                         -Method Get `
                         -OutFile $temp `
+                        -TimeoutSec 300 `
                         -UseBasicParsing
                     $download = Get-Item -LiteralPath $temp
                     if ([long]$download.Length -ne [long]$item.size) {
@@ -414,6 +418,7 @@ try {
         -Method Get `
         -Headers $script:Headers `
         -OutFile $tempPath `
+        -TimeoutSec 330 `
         -UseBasicParsing
 
     $downloadedFile = Get-Item -LiteralPath $tempPath
@@ -468,7 +473,9 @@ try {
         }
 
     Write-BackupLog "資料庫備份成功：$filePath" 'SUCCESS'
-    Sync-StorageBackup
+    if (-not $SkipStorage) {
+        Sync-StorageBackup
+    }
 }
 catch {
     if (Test-Path -LiteralPath $tempPath) {
@@ -501,8 +508,8 @@ finally {
 Set-Content -LiteralPath $workerPath -Value $worker -Encoding UTF8
 
 Write-Host ''
-Write-Host '正在測試第一次備份，通常需要幾秒鐘……' -ForegroundColor Yellow
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $workerPath -ConfigPath $configPath
+Write-Host '正在測試資料庫備份；商品圖片將由每日排程同步……' -ForegroundColor Yellow
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $workerPath -ConfigPath $configPath -SkipStorage
 if ($LASTEXITCODE -ne 0) {
     throw "測試失敗。請查看 $backupRoot\backup-log.txt"
 }

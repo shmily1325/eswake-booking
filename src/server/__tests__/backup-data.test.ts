@@ -105,7 +105,11 @@ describe('fetchBackupData', () => {
                       : table === 'members'
                         ? [{ id: 1000 }]
                         : []
-                    return Promise.resolve({ data, error: null })
+                    return {
+                      abortSignal() {
+                        return Promise.resolve({ data, error: null })
+                      },
+                    }
                   },
                 }
               },
@@ -131,12 +135,16 @@ describe('fetchBackupData', () => {
             return {
               order() {
                 return {
-                  async range() {
-                    active += 1
-                    maxActive = Math.max(maxActive, active)
-                    await new Promise((resolve) => setTimeout(resolve, 1))
-                    active -= 1
-                    return { data: [], error: null }
+                  range() {
+                    return {
+                      async abortSignal() {
+                        active += 1
+                        maxActive = Math.max(maxActive, active)
+                        await new Promise((resolve) => setTimeout(resolve, 1))
+                        active -= 1
+                        return { data: [], error: null }
+                      },
+                    }
                   },
                 }
               },
@@ -149,5 +157,10 @@ describe('fetchBackupData', () => {
     await fetchBackupData(supabase as unknown as SupabaseClient)
     expect(maxActive).toBeGreaterThan(1)
     expect(maxActive).toBeLessThanOrEqual(4)
+  })
+
+  it('stops before the caller safety deadline', async () => {
+    await expect(fetchBackupData({} as SupabaseClient, Date.now() - 1))
+      .rejects.toThrow('資料庫備份超過安全時間預算')
   })
 })

@@ -14,7 +14,7 @@
         body {
             font-family: 'PingFang TC', 'Microsoft JhengHei UI', 'Microsoft JhengHei',
                 system-ui, sans-serif;
-            background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+            background: #f4f5f7;
             min-height: 100vh;
             color: #213547;
         }
@@ -70,8 +70,7 @@
         }
         
         .menu-item {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
+            background: #fff;
             border-radius: 16px;
             padding: 35px 20px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
@@ -163,7 +162,7 @@
         .file-input {
             width: 100%;
             padding: 12px;
-            border: 2px dashed #667eea;
+            border: 1px dashed #aeb3bc;
             border-radius: 8px;
             background: #f8f9fa;
             cursor: pointer;
@@ -187,7 +186,7 @@
         }
         
         .btn-primary {
-            background: #667eea;
+            background: #1d1d1f;
             color: white;
         }
         
@@ -224,7 +223,7 @@
         
         .spinner {
             border: 3px solid #f3f4f6;
-            border-top: 3px solid #667eea;
+            border-top: 3px solid #1d1d1f;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -436,48 +435,728 @@
         .hidden {
             display: none;
         }
+
+        /* ES Wake offline recovery design tokens. Keep these aligned with docs/design.md. */
+        :root {
+            --es-ink: #1d1d1f;
+            --es-ink-strong: #000000;
+            --es-muted: #6b6f7a;
+            --es-disabled: #a1a5b0;
+            --es-page: #f4f5f7;
+            --es-surface: #ffffff;
+            --es-surface-hover: #eef0f3;
+            --es-border: #e0e3e8;
+            --es-border-light: #eceef2;
+            --es-success-bg: #edf7f1;
+            --es-success: #2f6847;
+            --es-warning-bg: #fbf3e5;
+            --es-warning: #7d5521;
+            --es-danger-bg: #fbeeed;
+            --es-danger: #88382f;
+            --es-info-bg: #edf3f5;
+            --es-info: #365d66;
+            --es-radius-sm: 10px;
+            --es-radius-md: 12px;
+            --es-radius-lg: 16px;
+            --es-shadow: 0 4px 14px rgba(31, 27, 23, 0.05);
+        }
+
+        body {
+            background: var(--es-page);
+            color: var(--es-ink);
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit;
+        }
+
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible,
+        [role="button"]:focus-visible {
+            outline: 3px solid rgba(95, 135, 145, 0.25);
+            outline-offset: 2px;
+        }
+
+        .container,
+        .container.full-width {
+            max-width: none;
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .es-page {
+            min-height: 100vh;
+            background: var(--es-page);
+            padding-bottom: 64px;
+        }
+
+        .es-brand-bar {
+            position: relative;
+            z-index: 10;
+            width: min(100% - 32px, 1200px);
+            margin: 24px auto 0;
+            background: #000;
+            color: #fff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 22px;
+            box-shadow: var(--es-shadow);
+        }
+
+        .es-brand-bar-inner {
+            width: min(100% - 32px, 1200px);
+            min-height: 64px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .es-brand-lockup {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .es-brand-mark {
+            width: 34px;
+            height: 34px;
+            flex: 0 0 auto;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .es-brand-name {
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .es-brand-subtitle {
+            margin-top: 2px;
+            color: rgba(255, 255, 255, 0.66);
+            font-size: 12px;
+            line-height: 1.25;
+        }
+
+        .es-header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .es-shell {
+            width: min(100% - 32px, 960px);
+            margin: 0 auto;
+            padding: 28px 0;
+        }
+
+        .es-shell.es-shell-wide {
+            width: min(100% - 32px, 1200px);
+        }
+
+        .es-intro {
+            margin-bottom: 24px;
+        }
+
+        .es-intro h1 {
+            margin: 0;
+            color: var(--es-ink);
+            font-size: 24px;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        .es-intro p {
+            max-width: 720px;
+            margin: 8px 0 0;
+            color: var(--es-muted);
+            font-size: 14px;
+        }
+
+        .es-section {
+            margin-top: 24px;
+        }
+
+        .es-section-heading {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 0 2px 10px;
+        }
+
+        .es-section-heading h2 {
+            margin: 0;
+            color: var(--es-ink);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .es-section-heading span {
+            color: var(--es-muted);
+            font-size: 12px;
+        }
+
+        .es-group {
+            overflow: hidden;
+            background: var(--es-surface);
+            border: 1px solid var(--es-border-light);
+            border-radius: var(--es-radius-lg);
+            box-shadow: var(--es-shadow);
+        }
+
+        .es-nav-row {
+            width: 100%;
+            min-height: 64px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border: 0;
+            border-bottom: 1px solid var(--es-border-light);
+            background: var(--es-surface);
+            color: var(--es-ink);
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .es-nav-row:last-child {
+            border-bottom: 0;
+        }
+
+        .es-nav-row:hover {
+            background: var(--es-surface-hover);
+        }
+
+        .es-nav-symbol {
+            width: 34px;
+            height: 34px;
+            flex: 0 0 auto;
+            display: grid;
+            place-items: center;
+            border-radius: var(--es-radius-sm);
+            background: #f4f5f7;
+            color: var(--es-ink);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+
+        .es-nav-copy {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .es-nav-title {
+            display: block;
+            font-size: 15px;
+            font-weight: 650;
+        }
+
+        .es-nav-description {
+            display: block;
+            margin-top: 2px;
+            color: var(--es-muted);
+            font-size: 12px;
+            font-weight: 400;
+        }
+
+        .es-nav-chevron {
+            color: var(--es-disabled);
+            font-size: 18px;
+        }
+
+        .es-card {
+            padding: 18px;
+            background: var(--es-surface);
+            border: 1px solid var(--es-border-light);
+            border-radius: var(--es-radius-lg);
+            box-shadow: var(--es-shadow);
+        }
+
+        .es-status {
+            padding: 14px 16px;
+            border: 1px solid var(--es-border);
+            border-radius: var(--es-radius-md);
+            color: var(--es-muted);
+            font-size: 13px;
+        }
+
+        .es-status strong {
+            color: inherit;
+        }
+
+        .es-status.success {
+            background: var(--es-success-bg);
+            border-color: #cfe6d4;
+            color: var(--es-success);
+        }
+
+        .es-status.warning {
+            background: var(--es-warning-bg);
+            border-color: #ead7b6;
+            color: var(--es-warning);
+        }
+
+        .es-status.danger {
+            background: var(--es-danger-bg);
+            border-color: #e9c8c4;
+            color: var(--es-danger);
+        }
+
+        .es-status.info {
+            background: var(--es-info-bg);
+            border-color: #d6e3e6;
+            color: var(--es-info);
+        }
+
+        .es-button {
+            min-height: 40px;
+            padding: 9px 14px;
+            border: 1px solid var(--es-border);
+            border-radius: var(--es-radius-sm);
+            background: var(--es-surface);
+            color: var(--es-ink);
+            font-size: 13px;
+            font-weight: 650;
+            cursor: pointer;
+        }
+
+        .es-button:hover {
+            background: var(--es-surface-hover);
+        }
+
+        .es-button.primary {
+            border-color: var(--es-ink);
+            background: var(--es-ink);
+            color: #fff;
+        }
+
+        .es-button.on-dark {
+            border-color: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .es-button.warning {
+            border-color: #d9b779;
+            background: var(--es-warning-bg);
+            color: var(--es-warning);
+        }
+
+        .es-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .es-field {
+            min-width: 0;
+            flex: 1 1 220px;
+        }
+
+        .es-field label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--es-muted);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .es-input,
+        .es-field input,
+        .es-field select,
+        .es-field textarea {
+            width: 100%;
+            min-height: 42px;
+            padding: 10px 12px;
+            border: 1px solid var(--es-border);
+            border-radius: var(--es-radius-sm);
+            background: #fff;
+            color: var(--es-ink);
+            font-size: 14px;
+        }
+
+        .es-tabs {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding: 5px;
+            background: #e9eaee;
+            border-radius: var(--es-radius-md);
+        }
+
+        .es-tab {
+            min-height: 38px;
+            padding: 8px 12px;
+            border: 1px solid transparent;
+            border-radius: 9px;
+            background: transparent;
+            color: var(--es-muted);
+            font-size: 13px;
+            font-weight: 650;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .es-tab.active {
+            border-color: var(--es-border);
+            background: #fff;
+            color: var(--es-ink);
+            box-shadow: 0 1px 2px rgba(31, 27, 23, 0.04);
+        }
+
+        .es-record-list {
+            display: grid;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .es-record {
+            padding: 16px;
+            background: #fff;
+            border: 1px solid var(--es-border-light);
+            border-radius: var(--es-radius-md);
+        }
+
+        .es-record-title {
+            margin: 0;
+            color: var(--es-ink);
+            font-size: 15px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .es-record-meta {
+            margin-top: 4px;
+            color: var(--es-muted);
+            font-size: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        .es-record-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 8px 16px;
+            margin-top: 12px;
+        }
+
+        .es-record-value {
+            min-width: 0;
+            color: var(--es-ink);
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
+        .es-record-value span {
+            display: block;
+            margin-bottom: 2px;
+            color: var(--es-muted);
+            font-size: 11px;
+        }
+
+        .es-raw-details {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid var(--es-border-light);
+            color: var(--es-muted);
+            font-size: 12px;
+        }
+
+        .es-raw-details pre {
+            max-height: 320px;
+            overflow: auto;
+            margin: 10px 0 0;
+            padding: 12px;
+            border-radius: var(--es-radius-sm);
+            background: #f7f8fa;
+            color: var(--es-ink);
+            font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .es-empty {
+            padding: 36px 18px;
+            color: var(--es-muted);
+            text-align: center;
+        }
+
+        .es-footer {
+            margin-top: 32px;
+            color: var(--es-muted);
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .modal {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.62);
+        }
+
+        .modal-content,
+        .es-loader-card {
+            width: min(100%, 520px);
+            max-width: 520px;
+            padding: 24px;
+            border: 1px solid var(--es-border-light);
+            border-radius: var(--es-radius-lg);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+        }
+
+        .modal-title {
+            margin: 0;
+            color: var(--es-ink);
+            font-size: 19px;
+            text-align: left;
+        }
+
+        .file-input {
+            padding: 22px 16px;
+            border: 1px dashed #aeb3bc;
+            border-radius: var(--es-radius-md);
+            background: #f7f8fa;
+            color: var(--es-ink);
+        }
+
+        .file-input:hover {
+            border-color: var(--es-ink);
+            background: var(--es-surface-hover);
+        }
+
+        .btn,
+        .offline-booking-submit {
+            border-radius: var(--es-radius-sm);
+            background: var(--es-ink);
+        }
+
+        .btn-primary,
+        .btn-primary:hover,
+        .offline-booking-submit {
+            background: var(--es-ink);
+            color: #fff;
+        }
+
+        .spinner {
+            border-color: #e3e5ea;
+            border-top-color: var(--es-ink);
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 15px;
+            margin: 24px 0 30px;
+        }
+
+        .es-menu-divider {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 10px 0 2px;
+            color: rgba(0, 0, 0, 0.45);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+        }
+
+        .es-menu-divider::before,
+        .es-menu-divider::after {
+            content: "";
+            height: 1px;
+            flex: 1;
+            background: rgba(0, 0, 0, 0.12);
+        }
+
+        .es-menu-card,
+        .menu-item {
+            aspect-ratio: 1 / 1;
+            min-width: 0;
+            padding: 28px 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 12px;
+            background: #fff;
+            color: var(--es-ink);
+            border: 1px solid var(--es-border-light);
+            border-radius: 22px;
+            box-shadow: 0 1px 2px rgba(31, 27, 23, 0.03);
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .es-menu-card:hover,
+        .menu-item:hover {
+            transform: translateY(-2px);
+            background: #fff;
+            border-color: var(--es-border);
+            box-shadow: var(--es-shadow);
+        }
+
+        .es-menu-card:active,
+        .menu-item:active {
+            transform: scale(0.97);
+        }
+
+        .es-menu-icon,
+        .menu-icon {
+            width: auto;
+            height: auto;
+            margin: 0 0 5px;
+            background: transparent;
+            font-size: 38px;
+            line-height: 1;
+        }
+
+        .es-menu-title,
+        .menu-title {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .es-menu-subtitle {
+            margin: -6px 0 0;
+            color: var(--es-muted);
+            font-size: 11px;
+        }
+
+        #search-bookings-content form input,
+        #search-bookings-content form select {
+            border: 1px solid var(--es-border) !important;
+            border-radius: var(--es-radius-sm) !important;
+        }
+
+        #search-bookings-content form button[type="submit"] {
+            border: 1px solid var(--es-ink) !important;
+            border-radius: var(--es-radius-sm) !important;
+            background: var(--es-ink) !important;
+        }
+
+        #search-bookings-content > div,
+        #coach-daily-content > div {
+            box-shadow: var(--es-shadow) !important;
+        }
+
+        #member-management-content,
+        #member-transaction-content,
+        #board-management-content {
+            color: var(--es-ink);
+        }
+
+        @media (max-width: 640px) {
+            .es-brand-bar-inner,
+            .es-shell,
+            .es-shell.es-shell-wide {
+                width: min(100% - 24px, 1200px);
+            }
+
+            .es-brand-bar {
+                width: min(100% - 24px, 1200px);
+                margin-top: 12px;
+                border-radius: 16px;
+            }
+
+            .es-brand-bar-inner {
+                min-height: 58px;
+            }
+
+            .es-brand-name {
+                font-size: 15px;
+            }
+
+            .es-header-actions .es-button {
+                min-height: 36px;
+                padding: 7px 10px;
+            }
+
+            .es-shell {
+                padding-top: 20px;
+            }
+
+            .es-intro h1 {
+                font-size: 22px;
+            }
+
+            .es-record-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .menu-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .es-menu-icon,
+            .menu-icon {
+                font-size: 34px;
+            }
+
+            .modal {
+                align-items: flex-end;
+                padding: 0;
+            }
+
+            .modal-content,
+            .es-loader-card {
+                width: 100%;
+                max-width: none;
+                max-height: 92vh;
+                border-radius: 20px 20px 0 0;
+                padding-bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+            }
+        }
     </style>
 </head>
 <body>
     <div id="app" class="container">
         <!-- 資料庫載入器 -->
         <div id="db-loader" class="modal">
-            <div class="modal-content">
-                <div class="modal-title">💾 載入離線備份</div>
-                <p style="font-size: 13px; color: #666; line-height: 1.5; margin: 0 0 14px;">
-                    資料只會儲存在此裝置，不會同步回線上系統。匯入新備份前會先完整驗證。
+            <div class="modal-content es-loader-card">
+                <div class="modal-title">載入完整備份</div>
+                <p style="font-size: 13px; color: var(--es-muted); line-height: 1.6; margin: 8px 0 18px;">
+                    選擇 ES Wake 完整 SQL 備份。系統會先在暫存資料庫匯入並逐表驗證，成功後才切換使用。
                 </p>
                 <div id="db-alert"></div>
                 <div class="file-input-wrapper">
                     <label class="file-input" for="sql-file">
                         <input type="file" id="sql-file" accept=".sql,.txt" style="display: none;">
-                        <span>📁 點擊選擇 SQL 備份檔案</span>
+                        <span><strong>選擇 SQL 備份檔案</strong><br><small style="color:var(--es-muted);">資料只留在此裝置，不會同步回線上系統</small></span>
                     </label>
-                    <div id="file-name" style="margin-top: 10px; font-size: 12px; color: #666; text-align: center;"></div>
+                    <div id="file-name" style="margin-top: 10px; font-size: 12px; color: var(--es-muted); text-align: center;"></div>
                 </div>
                 <div id="db-loading" class="hidden">
                     <div class="spinner"></div>
-                    <p style="text-align: center; margin-top: 10px;">處理中...</p>
+                    <p style="text-align: center; margin-top: 10px;">正在匯入並驗證…</p>
                 </div>
             </div>
         </div>
         
         <!-- 主頁面 -->
         <div id="main-content">
-            <div class="header">
-                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23000'/%3E%3Ctext x='50' y='65' font-size='40' fill='white' text-anchor='middle' font-weight='bold'%3EES%3C/text%3E%3C/svg%3E" 
-                     alt="ES Wake Logo" class="logo" onerror="this.style.display='none'">
-                <h1 class="title">ES Wake</h1>
-            </div>
-            
-            <div class="menu-grid" id="menu-grid">
-                <!-- 選單項目將由 JavaScript 動態生成 -->
-            </div>
-            
-            <div class="footer">
-                <p>© 2025 ES Wake. All Rights Reserved.</p>
-                <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">滑水預約管理系統 - 離線查詢工具</p>
-            </div>
+            <!-- 由 showHomePage 建立 -->
         </div>
         
         <!-- 唯讀詳情對話框容器 -->
@@ -538,14 +1217,40 @@
             line_bindings: { keyPath: 'id', autoIncrement: true },
             backup_logs: { keyPath: 'id', autoIncrement: true }
         };
-        // 選單項目配置
-        const menuItems = [
-            { title: '今日預約', icon: '📅', link: '#', action: 'coach-daily' },
-            { title: '預約查詢', icon: '🔍', link: '#', action: 'search' },
-            { title: '明日提醒', icon: '⏰', link: '#', action: 'tomorrow' },
-            { title: '異動暫存', icon: '📝', link: '#', action: 'change-journal' },
-            { title: 'BAO', icon: '🔧', link: '#', action: 'bao' }
+        // 首頁只呈現任務導向的入口；完整資料集放在「營運資料」與「系統參考」次層。
+        const menuGroups = [
+            {
+                title: '斷網作業',
+                description: '最常用的現場流程',
+                items: [
+                    { title: '今日預約', symbol: '📅', description: '依船隻與時間查看當日安排', action: 'coach-daily' },
+                    { title: '預約清單', symbol: '🗓️', description: '依日期查看限制、停用船隻與完整預約', action: 'day' },
+                    { title: '預約查詢', symbol: '🔍', description: '依會員、船隻或教練搜尋', action: 'search' },
+                    { title: '明日提醒', symbol: '⏰', description: '產生會員與教練提醒文字', action: 'tomorrow' },
+                    { title: '異動暫存', symbol: '📝', description: '斷網時記錄待補登預約', action: 'change-journal' }
+                ]
+            },
+            {
+                title: '營運資料',
+                description: '完整備份中的唯讀資料',
+                items: [
+                    { title: '會員與櫃台', symbol: '👥', description: '會員、交易、置板與 LINE 綁定', action: 'bao' },
+                    { title: '教練營運', symbol: '🏄', description: '回報、參與者、拆帳與休假', action: 'coach-operations' },
+                    { title: '商品與訂單', symbol: '📦', description: '庫存、全部訂單與結算歷史', action: 'shop-recovery' },
+                    { title: '公告與限制', symbol: '📣', description: '公告、預約限制與船隻停用', action: 'restrictions' },
+                    { title: '異動記錄', symbol: '📋', description: '查看完整 audit log', action: 'audit-log' }
+                ]
+            },
+            {
+                title: '備援參考',
+                description: '低頻但重建系統時需要',
+                items: [
+                    { title: '備份紀錄', symbol: '💾', description: '確認各類備份成功與失敗紀錄', action: 'backup-logs' },
+                    { title: '系統參考', symbol: '⚙️', description: '設定、人員權限與技術資料', action: 'system-reference' }
+                ]
+            }
         ];
+        const menuItems = menuGroups.flatMap(group => group.items);
         
         // 顯示訊息
         function showAlert(message, type = 'success') {
@@ -903,6 +1608,22 @@
                 const request = indexedDB.deleteDatabase(name);
                 request.onsuccess = request.onerror = request.onblocked = () => resolve();
             });
+        }
+
+        function normalizePostgresArrayValue(value) {
+            if (Array.isArray(value)) return value.map(item => String(item)).filter(Boolean);
+            if (value == null || value === '') return [];
+            let text = String(value).trim();
+            if (/^ARRAY\[/i.test(text) && text.endsWith(']')) {
+                text = text.slice(text.indexOf('[') + 1, -1);
+            } else if (text.startsWith('{') && text.endsWith('}')) {
+                text = text.slice(1, -1);
+            } else {
+                return [text];
+            }
+            return text.split(',')
+                .map(item => item.trim().replace(/^['"]|['"]$/g, '').replace(/''/g, "'"))
+                .filter(Boolean);
         }
         
         // 載入 SQL 檔案
@@ -1284,6 +2005,7 @@
                                     let inString = false;
                                     let stringChar = '';
                                     let parenDepth = 0;
+                                    let bracketDepth = 0;
                                     
                                     for (let i = 0; i < valuesStr.length; i++) {
                                         const char = valuesStr[i];
@@ -1310,7 +2032,13 @@
                                         } else if (!inString && char === ')') {
                                             parenDepth--;
                                             current += char;
-                                        } else if (!inString && parenDepth === 0 && char === ',') {
+                                        } else if (!inString && char === '[') {
+                                            bracketDepth++;
+                                            current += char;
+                                        } else if (!inString && char === ']') {
+                                            bracketDepth--;
+                                            current += char;
+                                        } else if (!inString && parenDepth === 0 && bracketDepth === 0 && char === ',') {
                                             // 值分隔符
                                             values.push(current.trim());
                                             current = '';
@@ -1337,6 +2065,10 @@
 
                                         // 移除 PostgreSQL 型別轉換（例如 ::jsonb）
                                         v = v.replace(/::[a-z_][a-z0-9_]*(?:\[\])?$/i, '').trim();
+
+                                        if (/^ARRAY\[/i.test(v) && v.endsWith(']')) {
+                                            return normalizePostgresArrayValue(v);
+                                        }
                                         
                                         // 處理字串值
                                         if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
@@ -1589,12 +2321,46 @@
         // 渲染選單
         function renderMenu() {
             const menuGrid = document.getElementById('menu-grid');
-            menuGrid.innerHTML = menuItems.map(item => `
-                <div class="menu-item" onclick="handleMenuClick('${item.action}')">
-                    <div class="menu-icon">${item.icon}</div>
-                    <h2 class="menu-title">${item.title}</h2>
-                </div>
+            if (!menuGrid) return;
+            menuGrid.innerHTML = menuGroups.map((group, groupIndex) => `
+                ${groupIndex ? `<div class="es-menu-divider">${escapeHtml(group.title)}</div>` : ''}
+                ${group.items.map(item => `
+                    <button type="button" class="es-menu-card" onclick="handleMenuClick('${item.action}')"
+                        aria-label="${escapeHtml(item.title)}">
+                        <span class="es-menu-icon" aria-hidden="true">${escapeHtml(item.symbol)}</span>
+                        <span class="es-menu-title">${escapeHtml(item.title)}</span>
+                        <span class="es-menu-subtitle">${escapeHtml(item.description)}</span>
+                    </button>
+                `).join('')}
             `).join('');
+        }
+
+        function renderBrandHeader(subtitle, actionsHtml = '') {
+            return `
+                <header class="es-brand-bar">
+                    <div class="es-brand-bar-inner">
+                        <div class="es-brand-lockup">
+                            <div class="es-brand-mark" aria-hidden="true">ES</div>
+                            <div>
+                                <div class="es-brand-name">ES Wake</div>
+                                <div class="es-brand-subtitle">${escapeHtml(subtitle || '離線備援')}</div>
+                            </div>
+                        </div>
+                        ${actionsHtml ? `<div class="es-header-actions">${actionsHtml}</div>` : ''}
+                    </div>
+                </header>
+            `;
+        }
+
+        function setOfflinePageLayout() {
+            const appContainer = document.getElementById('app');
+            appContainer.style.maxWidth = '';
+            appContainer.style.padding = '';
+            appContainer.classList.add('full-width');
+        }
+
+        function renderHomeButton(label = '首頁') {
+            return `<button type="button" class="es-button on-dark" onclick="showHomePage()">${escapeHtml(label)}</button>`;
         }
         
         // 處理選單點擊
@@ -1609,74 +2375,40 @@
                 showOfflineChangeJournal();
             } else if (action === 'bao') {
                 showBaoHub();
+            } else if (action === 'day') {
+                showRecoveryDayView();
+            } else if (action === 'coach-operations') {
+                showRecoveryDataset('coach-operations');
+            } else if (action === 'shop-recovery') {
+                showRecoveryDataset('shop-recovery');
+            } else if (action === 'restrictions') {
+                showRecoveryDataset('restrictions');
+            } else if (action === 'audit-log') {
+                showRecoveryDataset('audit-log');
+            } else if (action === 'backup-logs') {
+                showRecoveryDataset('backup-logs');
+            } else if (action === 'system-reference') {
+                showRecoveryDataset('system-reference');
             } else {
-                alert(`功能「${action}」正在開發中\n\n此為離線版本，目前僅提供資料庫載入、今日預約與基本預約查詢功能。\n完整功能請使用線上版本。`);
+                alert(`找不到離線功能「${action}」。`);
             }
         }
         
         // 顯示今日預約頁面
         async function showCoachDailyView(dateParam) {
             const mainContent = document.getElementById('main-content');
-            const appContainer = document.getElementById('app');
             const selectedDate = dateParam || getVenueDateString();
-            
-            // 移除 container 的寬度限制，讓表格可以全寬顯示
-            appContainer.style.maxWidth = '100%';
-            appContainer.style.padding = '0';
+            setOfflinePageLayout();
             
             mainContent.innerHTML = `
-                <div style="min-height: 100vh; background: #f5f5f5; padding-bottom: 80px;">
-                    <!-- PageHeader (與網頁版完全一致) -->
-                    <div style="
-                        margin-bottom: 20px;
-                        background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%);
-                        padding: 16px;
-                        border-radius: 8px;
-                        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-                    ">
-                        <div style="
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                        ">
-                            <h1 style="
-                                font-size: 20px;
-                                font-weight: bold;
-                                color: white;
-                                margin: 0;
-                            ">今日預約</h1>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button onclick="showOfflineChangeJournal()" style="
-                                    padding: 6px 12px;
-                                    background: #f59e0b;
-                                    color: #422006;
-                                    border-radius: 4px;
-                                    font-size: 13px;
-                                    border: 1px solid rgba(255, 255, 255, 0.25);
-                                    white-space: nowrap;
-                                    cursor: pointer;
-                                    font-weight: 700;
-                                ">＋ 離線新增</button>
-                                <button onclick="showHomePage()" style="
-                                    padding: 6px 12px;
-                                    background: rgba(255, 255, 255, 0.15);
-                                    color: white;
-                                    text-decoration: none;
-                                    border-radius: 4px;
-                                    font-size: 13px;
-                                    border: 1px solid rgba(255, 255, 255, 0.2);
-                                    white-space: nowrap;
-                                    display: inline-flex;
-                                    align-items: center;
-                                    cursor: pointer;
-                                    font-weight: 500;
-                                ">← HOME</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="coach-daily-content" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+                <div class="es-page">
+                    ${renderBrandHeader('今日預約', `
+                        <button type="button" class="es-button warning" onclick="showOfflineChangeJournal()">離線新增</button>
+                        ${renderHomeButton()}
+                    `)}
+                    <div id="coach-daily-content" class="es-shell es-shell-wide">
                         <div class="spinner"></div>
-                        <p style="text-align: center; margin-top: 10px;">載入中...</p>
+                        <p style="text-align: center; margin-top: 10px; color:var(--es-muted);">載入中…</p>
                     </div>
                 </div>
             `;
@@ -1691,7 +2423,6 @@
         // 返回首頁
         function showHomePage() {
             const mainContent = document.getElementById('main-content');
-            const appContainer = document.getElementById('app');
             let backupMeta = null;
             try {
                 backupMeta = JSON.parse(localStorage.getItem('eswake-offline-backup-meta') || 'null');
@@ -1699,46 +2430,34 @@
                 backupMeta = null;
             }
             const backupMetaHtml = backupMeta ? `
-                <div style="background:#eef7f0; border:1px solid #cfe6d4; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13px; line-height:1.6; color:#245b31;">
-                    已載入 ${backupMeta.backupTime} 的備份 · ${Number(backupMeta.totalRecords || 0).toLocaleString()} 筆
-                    ${backupMeta.checksum ? `<br>SHA-256 ${backupMeta.checksum.slice(0, 16)}…` : ''}
-                    <br><strong>資料只在此裝置，不會同步回線上系統。</strong>
+                <div class="es-status success">
+                    <strong>備份已驗證</strong><br>
+                    ${escapeHtml(backupMeta.backupTime || '時間未知')} · ${Number(backupMeta.totalRecords || 0).toLocaleString()} 筆資料
+                    ${backupMeta.checksum ? `<br><span style="font-family:ui-monospace,Consolas,monospace;">SHA-256 ${escapeHtml(backupMeta.checksum.slice(0, 16))}…</span>` : ''}
                 </div>
             ` : `
-                <div style="background:#fff4dd; border:1px solid #eed59c; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:#76531a;">
-                    尚未載入已驗證的完整備份。
+                <div class="es-status warning">
+                    <strong>尚未載入完整備份</strong><br>請先選擇由備份頁下載的 SQL 檔案。
                 </div>
             `;
-            
-            // 恢復 container 的原始樣式
-            appContainer.style.maxWidth = '600px';
-            appContainer.style.padding = '40px 20px';
-            appContainer.classList.remove('full-width');
+            setOfflinePageLayout();
             
             mainContent.innerHTML = `
-                <div class="header">
-                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23000'/%3E%3Ctext x='50' y='65' font-size='40' fill='white' text-anchor='middle' font-weight='bold'%3EES%3C/text%3E%3C/svg%3E" 
-                         alt="ES Wake Logo" class="logo" onerror="this.style.display='none'">
-                    <h1 class="title">ES Wake 離線查詢工具</h1>
-                </div>
-                <div style="text-align: center; margin-bottom: 20px;">
-                    ${backupMetaHtml}
-                    <button onclick="showDatabaseLoader()" style="
-                        padding: 10px 20px;
-                        background: #667eea;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-size: 14px;
-                        font-weight: 600;
-                    ">🔄 重新載入資料庫</button>
-                </div>
-                <div id="home-announcement" style="display: none; background: white; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e0e0e0;"></div>
-                <div class="menu-grid" id="menu-grid"></div>
-                <div class="footer">
-                    <p>© 2025 ES Wake. All Rights Reserved.</p>
-                    <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">滑水預約管理系統 - 離線查詢工具</p>
+                <div class="es-page">
+                    <main class="es-shell">
+                        <div style="text-align:center;margin:4px 0 24px;">
+                            <div style="width:96px;height:96px;margin:0 auto 12px;border-radius:50%;background:#000;color:#fff;display:grid;place-items:center;font-size:34px;font-weight:800;box-shadow:var(--es-shadow);">ES</div>
+                            <h1 style="margin:0;font-size:36px;font-weight:800;letter-spacing:2px;">ES Wake</h1>
+                            <div style="margin-top:8px;color:var(--es-muted);font-size:13px;">離線備援 · 唯讀資料</div>
+                        </div>
+                        ${backupMetaHtml}
+                        <div style="display:flex;justify-content:center;margin-top:12px;">
+                            <button type="button" class="es-button" onclick="showDatabaseLoader()">${backupMeta ? '更換備份' : '載入備份'}</button>
+                        </div>
+                        <div id="home-announcement" class="es-status info" style="display:none; margin-top:12px;"></div>
+                        <div class="menu-grid" id="menu-grid"></div>
+                        <div class="es-footer">ES Wake · Offline recovery artifact</div>
+                    </main>
                 </div>
             `;
             renderMenu();
@@ -1842,17 +2561,17 @@
 
         async function showOfflineChangeJournal() {
             const mainContent = document.getElementById('main-content');
-            const appContainer = document.getElementById('app');
             if (!db) await initDatabase();
             const boats = await safeGetAllFromStore('boats');
             const coaches = await safeGetAllFromStore('coaches');
             const activeCoaches = coaches.filter(coach => !coach.status || coach.status === 'active');
-            appContainer.style.maxWidth = '820px';
-            appContainer.style.padding = '16px';
-            appContainer.classList.remove('full-width');
+            setOfflinePageLayout();
 
             mainContent.innerHTML = `
-                <div class="offline-journal-page">
+                <div class="es-page">
+                    ${renderBrandHeader('離線預約暫存', renderHomeButton())}
+                    <main class="es-shell">
+                    <div class="offline-journal-page">
                     <div class="offline-journal-header">
                         <div class="offline-journal-title">
                             <div class="offline-journal-title-icon">＋</div>
@@ -1861,7 +2580,6 @@
                                 <div style="font-size:12px; color:#64748b; margin-top:3px;">斷網時先記下，恢復後再補登</div>
                             </div>
                         </div>
-                        <button onclick="showHomePage()" style="padding:8px 13px; border:1px solid #d1d5db; border-radius:8px; background:white; color:#374151; cursor:pointer;">HOME</button>
                     </div>
 
                     <div class="offline-journal-notice">
@@ -1927,6 +2645,8 @@
                         </div>
                     </div>
                     <div id="offline-change-list" style="display:grid; gap:10px;"></div>
+                    </div>
+                    </main>
                 </div>
             `;
             renderOfflineChangeJournalList();
@@ -2108,78 +2828,396 @@
         // 顯示 BAO Hub 頁面
         function showBaoHub() {
             const mainContent = document.getElementById('main-content');
-            const appContainer = document.getElementById('app');
-            
-            // 恢復 container 的原始樣式
-            appContainer.style.maxWidth = '750px';
-            appContainer.style.padding = '40px 20px';
-            appContainer.classList.remove('full-width');
+            setOfflinePageLayout();
             
             mainContent.innerHTML = `
-                <div style="min-height: 100vh; background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);">
-                    <!-- Header -->
-                    <div style="text-align: center; margin-bottom: 50px;">
-                        <div style="font-size: 100px; margin-bottom: 20px;">🔧</div>
-                        <h1 style="margin: 0 0 10px 0; font-size: 42px; font-weight: 800; color: #000; letter-spacing: 2px;">
-                            BAO
-                        </h1>
-                        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
-                            <button onclick="showHomePage()" style="
-                                padding: 10px 20px;
-                                background: rgba(255, 255, 255, 0.7);
-                                color: #333;
-                                text-decoration: none;
-                                border-radius: 8px;
-                                font-size: 14px;
-                                border: 1px solid rgba(224, 224, 224, 0.5);
-                                font-weight: 500;
-                                cursor: pointer;
-                            ">← HOME</button>
+                <div class="es-page">
+                    <main class="es-shell">
+                        <div style="text-align:center;margin:4px 0 28px;">
+                            <div style="font-size:72px;line-height:1;margin-bottom:12px;" aria-hidden="true">🔧</div>
+                            <h1 style="margin:0;font-size:34px;font-weight:800;letter-spacing:2px;">BAO</h1>
+                            <button class="es-button" style="margin-top:16px;border:0;background:transparent;" onclick="showHomePage()">← HOME</button>
                         </div>
-                    </div>
-                    
-                    <!-- 會員相關區塊 -->
-                    <div style="margin-bottom: 40px;">
-                        <h3 style="margin: 0 0 20px 0; font-size: 20px; font-weight: 700; color: #333; padding-bottom: 12px; border-bottom: 2px solid rgba(0, 0, 0, 0.1); letter-spacing: 0.5px;">
-                            👥 會員相關
-                        </h3>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                            <div class="menu-item" onclick="showMemberManagement()">
-                                <div class="menu-icon">👥</div>
-                                <h2 class="menu-title">會員查詢</h2>
+                        <section class="es-section">
+                            <div class="es-section-heading"><h2>櫃台</h2><span>離線唯讀</span></div>
+                            <div class="menu-grid" style="margin-top:0;">
+                                <button class="es-menu-card" onclick="showMemberManagement()"><span class="es-menu-icon">👥</span><span class="es-menu-title">會員</span></button>
+                                <button class="es-menu-card" onclick="showMemberTransaction()"><span class="es-menu-icon">💰</span><span class="es-menu-title">儲值</span></button>
+                                <button class="es-menu-card" onclick="showBoardManagement()"><span class="es-menu-icon">🏄</span><span class="es-menu-title">置板</span></button>
+                                <button class="es-menu-card" onclick="showRecoveryDataset('coach-operations')"><span class="es-menu-icon">📝</span><span class="es-menu-title">回報管理</span></button>
+                                <button class="es-menu-card" onclick="showUnsettledOrders()"><span class="es-menu-icon">🧾</span><span class="es-menu-title">商品訂單</span></button>
+                                <button class="es-menu-card" onclick="showRecoveryDataset('member-reference')"><span class="es-menu-icon">📋</span><span class="es-menu-title">會員完整資料</span></button>
                             </div>
-                            <div class="menu-item" onclick="showMemberTransaction()">
-                                <div class="menu-icon">💰</div>
-                                <h2 class="menu-title">交易查詢</h2>
+                        </section>
+                        <section class="es-section">
+                            <div class="es-section-heading"><h2>營運</h2><span>離線唯讀</span></div>
+                            <div class="menu-grid" style="margin-top:0;">
+                                <button class="es-menu-card" onclick="showRecoveryDataset('restrictions')"><span class="es-menu-icon">📢</span><span class="es-menu-title">公告</span></button>
+                                <button class="es-menu-card" onclick="showRecoveryDataset('system-reference')"><span class="es-menu-icon">🎓</span><span class="es-menu-title">人員管理</span></button>
+                                <button class="es-menu-card" onclick="showRecoveryDataset('restrictions')"><span class="es-menu-icon">🚤</span><span class="es-menu-title">船隻管理</span></button>
+                                <button class="es-menu-card" onclick="showProductInventory()"><span class="es-menu-icon">📦</span><span class="es-menu-title">商品管理</span></button>
+                                <button class="es-menu-card" onclick="showRecoveryDataset('shop-recovery')"><span class="es-menu-icon">🏷️</span><span class="es-menu-title">商品查詢</span></button>
+                                <button class="es-menu-card" onclick="showRecoveryDataset('backup-logs')"><span class="es-menu-icon">💾</span><span class="es-menu-title">備份紀錄</span></button>
                             </div>
-                            <div class="menu-item" onclick="showBoardManagement()">
-                                <div class="menu-icon">🏄</div>
-                                <h2 class="menu-title">置板查詢</h2>
-                            </div>
-                        </div>
-                    </div>
+                        </section>
+                    </main>
+                </div>
+            `;
+        }
 
-                    <!-- 商品相關區塊 -->
-                    <div style="margin-bottom: 40px;">
-                        <h3 style="margin: 0 0 20px 0; font-size: 20px; font-weight: 700; color: #333; padding-bottom: 12px; border-bottom: 2px solid rgba(0, 0, 0, 0.1); letter-spacing: 0.5px;">
-                            📦 商品相關
-                        </h3>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                            <div class="menu-item" onclick="showProductInventory()">
-                                <div class="menu-icon">📦</div>
-                                <h2 class="menu-title">商品庫存</h2>
+        // ==================== 完整備份唯讀瀏覽器 ====================
+        const RECOVERY_DATASETS = {
+            'member-reference': {
+                title: '會員完整資料',
+                subtitle: '會員與櫃台 · 原始備份欄位',
+                description: '包含停用會員、歷史置板、備忘錄、交易與 LINE 綁定。',
+                tables: [
+                    ['members', '會員'],
+                    ['member_notes', '會員備忘錄'],
+                    ['board_storage', '置板'],
+                    ['transactions', '交易'],
+                    ['line_bindings', 'LINE 綁定']
+                ]
+            },
+            'coach-operations': {
+                title: '教練營運',
+                subtitle: '回報、參與者、拆帳與休假',
+                description: '完整呈現教練回報相關資料；每筆記錄皆可展開查看所有原始欄位。',
+                tables: [
+                    ['coach_reports', '教練回報'],
+                    ['booking_participants', '預約參與者'],
+                    ['billing_relations', '拆帳關係'],
+                    ['coach_time_off', '教練休假'],
+                    ['coaches', '教練名冊']
+                ]
+            },
+            'shop-recovery': {
+                title: '商品與訂單',
+                subtitle: '完整訂單與結算歷史',
+                description: '除了現行未結訂單，也可查閱已結清／作廢訂單、品項與結算快照。',
+                tables: [
+                    ['products', '商品'],
+                    ['product_variants', '商品規格'],
+                    ['shop_orders', '全部訂單'],
+                    ['shop_order_items', '訂單品項'],
+                    ['shop_order_settlements', '結算歷史']
+                ]
+            },
+            restrictions: {
+                title: '公告與限制',
+                subtitle: '營運規則參考',
+                description: '查閱公告、預約限制、船隻停用與教練休假。',
+                tables: [
+                    ['daily_announcements', '每日公告'],
+                    ['reservation_restrictions', '預約限制'],
+                    ['boat_unavailable_dates', '船隻停用'],
+                    ['coach_time_off', '教練休假'],
+                    ['boats', '船隻名冊']
+                ]
+            },
+            'audit-log': {
+                title: '異動記錄',
+                subtitle: '完整 Audit Log',
+                description: '依關鍵字搜尋操作人、動作、資料表、詳情與 changes。',
+                tables: [['audit_log', '異動記錄']]
+            },
+            'backup-logs': {
+                title: '備份紀錄',
+                subtitle: '備援狀態參考',
+                description: '這是匯入備份當下所包含的備份歷史，不會即時更新。',
+                tables: [['backup_logs', '備份紀錄']]
+            },
+            'system-reference': {
+                title: '系統參考',
+                subtitle: '低頻技術與權限資料',
+                description: '重建系統時使用。此處僅供查閱，不代表目前線上權限狀態。',
+                tables: [
+                    ['system_settings', '系統設定'],
+                    ['admin_users', '管理員'],
+                    ['allowed_users', '允許使用者'],
+                    ['editor_users', '編輯者'],
+                    ['view_users', '檢視者'],
+                    ['line_bindings', 'LINE 綁定'],
+                    ['shop_order_no_seq', '訂單流水號']
+                ]
+            }
+        };
+        let activeRecoveryDataset = null;
+        let activeRecoveryTable = '';
+        let recoveryRowsByTable = {};
+
+        const RECOVERY_FIELD_LABELS = {
+            id: 'ID',
+            name: '姓名／名稱',
+            nickname: '暱稱',
+            status: '狀態',
+            action: '動作',
+            table_name: '資料表',
+            record_id: '記錄 ID',
+            user_email: '操作人',
+            details: '詳情',
+            changes: '變更內容',
+            created_at: '建立時間',
+            updated_at: '更新時間',
+            start_at: '開始時間',
+            start_date: '開始日期',
+            end_date: '結束日期',
+            reason: '原因',
+            notes: '備註',
+            booking_id: '預約 ID',
+            coach_id: '教練 ID',
+            member_id: '會員 ID',
+            participant_name: '參與者',
+            duration_min: '分鐘',
+            payment_method: '付款方式',
+            fuel_amount: '油量',
+            driver_duration_min: '駕駛分鐘',
+            reported_at: '回報時間',
+            setting_key: '設定鍵',
+            setting_value: '設定值',
+            backup_type: '備份類型',
+            records_count: '記錄數',
+            file_name: '檔名',
+            file_size: '檔案大小',
+            error_message: '錯誤',
+            execution_time: '執行毫秒',
+            contact_name: '預約人',
+            contact_phone: '電話',
+            schedule_notes: '行程備註',
+            activity_types: '活動'
+        };
+
+        function recoveryFieldLabel(key) {
+            return RECOVERY_FIELD_LABELS[key] || String(key).replace(/_/g, ' ');
+        }
+
+        function recoveryDisplayValue(value) {
+            if (value == null || value === '') return '—';
+            if (Array.isArray(value)) return value.map(recoveryDisplayValue).join('、');
+            if (typeof value === 'object') return JSON.stringify(value);
+            if (typeof value === 'boolean') return value ? '是' : '否';
+            return String(value);
+        }
+
+        function recoverySortValue(row) {
+            return String(
+                row.updated_at || row.created_at || row.reported_at ||
+                row.start_at || row.start_date || row.transaction_date || row.id || ''
+            );
+        }
+
+        function recoveryRecordTitle(row, tableName) {
+            if (tableName === 'audit_log') {
+                return [row.action, row.table_name, row.record_id].filter(Boolean).join(' · ') || '異動記錄';
+            }
+            if (tableName === 'backup_logs') {
+                return [row.backup_type, row.status].filter(Boolean).join(' · ') || '備份記錄';
+            }
+            if (tableName === 'shop_orders') {
+                return row.order_no || row.customer_name || `訂單 ${row.id || ''}`;
+            }
+            return row.nickname || row.name || row.participant_name || row.title ||
+                row.setting_key || row.reason || row.file_name || `記錄 ${row.id ?? '—'}`;
+        }
+
+        function recoveryPreferredFields(tableName, row) {
+            const byTable = {
+                audit_log: ['created_at', 'user_email', 'action', 'table_name', 'record_id', 'details'],
+                backup_logs: ['created_at', 'backup_type', 'status', 'records_count', 'file_name', 'file_size', 'error_message'],
+                coach_reports: ['booking_id', 'coach_id', 'fuel_amount', 'driver_duration_min', 'reported_at'],
+                booking_participants: ['booking_id', 'participant_name', 'duration_min', 'payment_method', 'coach_id', 'member_id'],
+                billing_relations: ['member_id', 'billing_member_id', 'relationship_type', 'created_at'],
+                coach_time_off: ['coach_id', 'start_date', 'end_date', 'reason', 'notes'],
+                reservation_restrictions: ['start_date', 'end_date', 'reason', 'notes', 'is_active'],
+                boat_unavailable_dates: ['boat_id', 'start_date', 'end_date', 'reason', 'notes', 'is_active'],
+                shop_orders: ['order_no', 'customer_name', 'status', 'created_at', 'updated_at', 'customer_note'],
+                shop_order_items: ['order_id', 'variant_id', 'qty', 'qty_paid', 'qty_pending_bill', 'created_at'],
+                shop_order_settlements: ['order_id', 'member_id', 'settled_at', 'created_at', 'items_snapshot'],
+                members: ['name', 'nickname', 'phone', 'membership_type', 'membership_end_date', 'status'],
+                system_settings: ['setting_key', 'setting_value', 'description', 'updated_at']
+            };
+            const preferred = (byTable[tableName] || []).filter(key => Object.prototype.hasOwnProperty.call(row, key));
+            return preferred.length ? preferred : Object.keys(row).slice(0, 6);
+        }
+
+        function renderRecoveryRecord(row, tableName) {
+            const fields = recoveryPreferredFields(tableName, row);
+            const rawJson = JSON.stringify(row, null, 2);
+            return `
+                <article class="es-record">
+                    <h3 class="es-record-title">${escapeHtml(recoveryRecordTitle(row, tableName))}</h3>
+                    <div class="es-record-grid">
+                        ${fields.map(key => `
+                            <div class="es-record-value">
+                                <span>${escapeHtml(recoveryFieldLabel(key))}</span>
+                                ${escapeHtml(recoveryDisplayValue(row[key]))}
                             </div>
-                            <div class="menu-item" onclick="showUnsettledOrders()">
-                                <div class="menu-icon">🧾</div>
-                                <h2 class="menu-title">未結訂單</h2>
+                        `).join('')}
+                    </div>
+                    <details class="es-raw-details">
+                        <summary>查看所有原始欄位</summary>
+                        <pre>${escapeHtml(rawJson)}</pre>
+                    </details>
+                </article>
+            `;
+        }
+
+        function renderRecoveryDatasetRows() {
+            const container = document.getElementById('recovery-record-list');
+            const summary = document.getElementById('recovery-summary');
+            const input = document.getElementById('recovery-search');
+            if (!container || !summary || !activeRecoveryTable) return;
+            const term = String(input?.value || '').trim().toLocaleLowerCase();
+            const allRows = recoveryRowsByTable[activeRecoveryTable] || [];
+            const visibleRows = allRows.filter(row =>
+                !term || JSON.stringify(row).toLocaleLowerCase().includes(term)
+            );
+            summary.textContent = `${visibleRows.length.toLocaleString()} / ${allRows.length.toLocaleString()} 筆`;
+            container.innerHTML = visibleRows.length
+                ? visibleRows.slice(0, 500).map(row => renderRecoveryRecord(row, activeRecoveryTable)).join('')
+                : '<div class="es-card es-empty">沒有符合條件的資料</div>';
+            if (visibleRows.length > 500) {
+                container.insertAdjacentHTML('beforeend', '<div class="es-status info">為維持效能，目前顯示前 500 筆；請輸入關鍵字縮小範圍。</div>');
+            }
+        }
+
+        function selectRecoveryTable(tableName) {
+            activeRecoveryTable = tableName;
+            document.querySelectorAll('[data-recovery-table]').forEach(button => {
+                button.classList.toggle('active', button.dataset.recoveryTable === tableName);
+            });
+            const input = document.getElementById('recovery-search');
+            if (input) input.value = '';
+            renderRecoveryDatasetRows();
+        }
+
+        async function showRecoveryDataset(key) {
+            const config = RECOVERY_DATASETS[key];
+            if (!config) return alert('找不到資料集設定');
+            if (!db) await initDatabase();
+            activeRecoveryDataset = key;
+            recoveryRowsByTable = {};
+            await Promise.all(config.tables.map(async ([tableName]) => {
+                const rows = await safeGetAllFromStore(tableName);
+                recoveryRowsByTable[tableName] = rows
+                    .slice()
+                    .sort((a, b) => recoverySortValue(b).localeCompare(recoverySortValue(a)));
+            }));
+            activeRecoveryTable = config.tables[0][0];
+            setOfflinePageLayout();
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = `
+                <div class="es-page">
+                    ${renderBrandHeader(config.subtitle, renderHomeButton())}
+                    <main class="es-shell">
+                        <div class="es-intro">
+                            <h1>${escapeHtml(config.title)}</h1>
+                            <p>${escapeHtml(config.description)}</p>
+                        </div>
+                        <div class="es-tabs" role="tablist">
+                            ${config.tables.map(([tableName, label], index) => `
+                                <button type="button" class="es-tab${index === 0 ? ' active' : ''}"
+                                    data-recovery-table="${escapeHtml(tableName)}"
+                                    onclick="selectRecoveryTable('${tableName}')">
+                                    ${escapeHtml(label)} · ${(recoveryRowsByTable[tableName] || []).length.toLocaleString()}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <div class="es-card" style="margin-top:12px;">
+                            <div class="es-toolbar">
+                                <div class="es-field">
+                                    <label for="recovery-search">搜尋目前資料集</label>
+                                    <input id="recovery-search" class="es-input" type="search" placeholder="輸入姓名、日期、狀態或任意欄位" oninput="renderRecoveryDatasetRows()">
+                                </div>
+                                <div id="recovery-summary" style="color:var(--es-muted);font-size:12px;"></div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Footer -->
-                    <div class="footer">
-                        <p>© 2025 ES Wake. All Rights Reserved.</p>
-                    </div>
+                        <div id="recovery-record-list" class="es-record-list"></div>
+                    </main>
+                </div>
+            `;
+            renderRecoveryDatasetRows();
+        }
+
+        function dateFallsInRange(date, row) {
+            const start = String(row.start_date || row.date || row.restriction_date || '').slice(0, 10);
+            const end = String(row.end_date || row.date || row.restriction_date || start).slice(0, 10);
+            return (!start || date >= start) && (!end || date <= end);
+        }
+
+        async function showRecoveryDayView(dateParam) {
+            const selectedDate = dateParam || getVenueDateString();
+            if (!db) await initDatabase();
+            const [allBookings, boats, restrictions, unavailable] = await Promise.all([
+                safeGetAllFromStore('bookings'),
+                safeGetAllFromStore('boats'),
+                safeGetAllFromStore('reservation_restrictions'),
+                safeGetAllFromStore('boat_unavailable_dates')
+            ]);
+            const dayBookings = allBookings
+                .filter(row => String(row.start_at || '').slice(0, 10) === selectedDate)
+                .sort((a, b) => String(a.start_at || '').localeCompare(String(b.start_at || '')));
+            const enriched = await enrichBookingsWithDetails(dayBookings);
+            const boatMap = new Map(boats.map(boat => [String(boat.id), boat]));
+            const dayRestrictions = restrictions.filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row));
+            const dayUnavailable = unavailable.filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row));
+            setOfflinePageLayout();
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = `
+                <div class="es-page">
+                    ${renderBrandHeader('預約清單', renderHomeButton())}
+                    <main class="es-shell">
+                        <div class="es-intro">
+                            <h1>預約清單</h1>
+                            <p>同時查看當日預約、預約限制與停用船隻。</p>
+                        </div>
+                        <div class="es-card">
+                            <div class="es-toolbar">
+                                <button class="es-button" onclick="showRecoveryDayView('${addDaysToDateStr(selectedDate, -1)}')">前一天</button>
+                                <div class="es-field">
+                                    <label for="recovery-day-date">日期</label>
+                                    <input id="recovery-day-date" type="date" value="${escapeHtml(selectedDate)}" onchange="showRecoveryDayView(this.value)">
+                                </div>
+                                <button class="es-button" onclick="showRecoveryDayView('${addDaysToDateStr(selectedDate, 1)}')">後一天</button>
+                            </div>
+                        </div>
+                        ${(dayRestrictions.length || dayUnavailable.length) ? `
+                            <section class="es-section">
+                                <div class="es-section-heading"><h2>當日限制</h2><span>${dayRestrictions.length + dayUnavailable.length} 項</span></div>
+                                <div class="es-record-list">
+                                    ${dayRestrictions.map(row => `
+                                        <div class="es-status warning"><strong>預約限制</strong><br>${escapeHtml(row.reason || row.title || row.description || '限制生效中')}${row.notes ? `<br>${escapeHtml(row.notes)}` : ''}</div>
+                                    `).join('')}
+                                    ${dayUnavailable.map(row => {
+                                        const boat = boatMap.get(String(row.boat_id));
+                                        return `<div class="es-status danger"><strong>${escapeHtml(boat?.name || '船隻')}停用</strong><br>${escapeHtml(row.reason || '停用')}${row.notes ? `<br>${escapeHtml(row.notes)}` : ''}</div>`;
+                                    }).join('')}
+                                </div>
+                            </section>
+                        ` : ''}
+                        <section class="es-section">
+                            <div class="es-section-heading"><h2>預約</h2><span>${enriched.length} 筆</span></div>
+                            <div class="es-record-list">
+                                ${enriched.length ? enriched.map(booking => {
+                                    const activities = normalizePostgresArrayValue(booking.activity_types).join('、');
+                                    return `
+                                        <article class="es-record">
+                                            <h3 class="es-record-title">${escapeHtml(String(booking.start_at || '').slice(11, 16))} · ${escapeHtml(getDisplayContactName(booking))}</h3>
+                                            <div class="es-record-meta">${escapeHtml(booking.boats?.name || '未指定船隻')} · ${Number(booking.duration_min || 0)} 分 · ${escapeHtml(booking.status || '')}</div>
+                                            <div class="es-record-grid">
+                                                <div class="es-record-value"><span>電話</span>${escapeHtml(booking.contact_phone || '—')}</div>
+                                                <div class="es-record-value"><span>教練</span>${escapeHtml((booking.coaches || []).map(item => item.name).join('、') || '—')}</div>
+                                                <div class="es-record-value"><span>活動</span>${escapeHtml(activities || '—')}</div>
+                                                <div class="es-record-value"><span>行程備註</span>${escapeHtml(booking.schedule_notes || '—')}</div>
+                                                <div class="es-record-value"><span>備註</span>${escapeHtml(booking.notes || '—')}</div>
+                                            </div>
+                                            <details class="es-raw-details"><summary>查看所有原始欄位</summary><pre>${escapeHtml(JSON.stringify(booking, null, 2))}</pre></details>
+                                        </article>
+                                    `;
+                                }).join('') : '<div class="es-card es-empty">這一天沒有預約</div>'}
+                            </div>
+                        </section>
+                    </main>
                 </div>
             `;
         }
@@ -2590,9 +3628,9 @@
                 var html = '<div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px;">📢 今日公告</div>';
                 html += '<div style="font-size: 14px; color: #555; line-height: 1.7;">';
                 if (todayAnnouncements.length > 0) {
-                    html += '<div style="margin-bottom: 6px; color: #667eea; font-weight: 500;">📋 交辦事項</div>';
+                    html += '<div style="margin-bottom: 6px; color: #365d66; font-weight: 500;">📋 交辦事項</div>';
                     todayAnnouncements.forEach(function(a) {
-                        html += '<div style="padding-left: 1.5em; margin-bottom: 4px; color: #667eea; font-weight: 500; white-space: pre-wrap;">'
+                        html += '<div style="padding-left: 1.5em; margin-bottom: 4px; color: #365d66; font-weight: 500; white-space: pre-wrap;">'
                             + ' - ' + escapeHtml(a.content || '') + '</div>';
                     });
                 }
@@ -3072,7 +4110,7 @@
                         const displayContactName = escapeHtml(getDisplayContactName(booking));
                         
                         // 構建卡片 HTML（與網頁版樣式一致）
-                        const cardStyle = 'padding: 14px 12px; background: linear-gradient(135deg, ' + boatColor + '08 0%, ' + boatColor + '15 100%); border: 2px solid ' + boatColor + '; vertical-align: top; position: relative; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
+                        const cardStyle = 'padding: 14px 12px; background: ' + boatColor + '0d; border: 2px solid ' + boatColor + '; vertical-align: top; position: relative; border-radius: 10px; box-shadow: 0 1px 2px rgba(31,27,23,0.03);';
                         
                         // 教練練習標籤（如果有）
                         const coachPracticeHtml = booking.is_coach_practice ? '<div style="display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; background: #fff3e0; color: #e65100; border-radius: 4px; margin-bottom: 6px; border: 1px solid #ff9800;">🏄 教練練習</div>' : '';
@@ -3226,30 +4264,23 @@
         // 顯示預約查詢頁面
         async function showSearchBookings(initialTab) {
             const mainContent = document.getElementById('main-content');
-            const appContainer = document.getElementById('app');
-
-            appContainer.style.maxWidth = '100%';
-            appContainer.style.padding = '0';
-            appContainer.classList.add('full-width');
+            setOfflinePageLayout();
 
             searchActiveTab = initialTab || 'member';
             searchHasSearched = false;
             currentSearchBookings = [];
 
             mainContent.innerHTML = `
-                <div style="min-height: 100vh; background: #f5f5f5; padding-bottom: 80px;">
-                    <!-- PageHeader -->
-                    <div style="position: sticky; top: 0; z-index: 100; background: #f5f5f5; margin: 0; padding: 20px; border-bottom: 1px solid #e0e0e0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto;">
-                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">🔍 預約查詢</h1>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button onclick="showCoachDailyView()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">📋 今日預約</button>
-                                <button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">HOME</button>
-                            </div>
+                <div class="es-page">
+                    ${renderBrandHeader('🔍 預約查詢', `
+                        <button class="es-button on-dark" onclick="showCoachDailyView()">今日預約</button>
+                        ${renderHomeButton()}
+                    `)}
+                    <div id="search-bookings-content" class="es-shell es-shell-wide">
+                        <div class="es-intro">
+                            <h1>預約查詢</h1>
+                            <p>依預約人、船隻或教練查閱備份中的完整預約資料。</p>
                         </div>
-                    </div>
-
-                    <div id="search-bookings-content" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
                         <!-- Tabs -->
                         <div style="
                             display: flex;
@@ -3354,7 +4385,7 @@
                                         padding: 10px 18px;
                                         border-radius: 8px;
                                         border: none;
-                                        background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%);
+                                        background: #1d1d1f;
                                         color: white;
                                         font-size: 14px;
                                         font-weight: 600;
@@ -3420,7 +4451,7 @@
                                         padding: 10px 18px;
                                         border-radius: 8px;
                                         border: none;
-                                        background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%);
+                                        background: #1d1d1f;
                                         color: white;
                                         font-size: 14px;
                                         font-weight: 600;
@@ -3486,7 +4517,7 @@
                                         padding: 10px 18px;
                                         border-radius: 8px;
                                         border: none;
-                                        background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%);
+                                        background: #1d1d1f;
                                         color: white;
                                         font-size: 14px;
                                         font-weight: 600;
@@ -3698,7 +4729,8 @@
         }
 
         function getActiveMembersForSearch(allMembers) {
-            return (allMembers || []).filter(function (m) { return m.status === 'active'; });
+            // 災難備援必須能查到已停用會員與歷史預約。
+            return allMembers || [];
         }
 
         function memberIdsMatchingKeywordOffline(members, searchTerm) {
@@ -4060,34 +5092,7 @@
                     ? booking.drivers.map(function (d) { return d.name; }).join(' / ')
                     : '';
                 const durationText = (booking.duration_min || 0) + ' 分';
-                // 活動類型：IndexedDB 可能是字串或陣列，統一轉成乾淨的字串顯示
-                let activitiesText = '';
-                if (Array.isArray(booking.activity_types)) {
-                    if (booking.activity_types.length > 0) {
-                        activitiesText = booking.activity_types.join(' + ');
-                    }
-                } else if (typeof booking.activity_types === 'string') {
-                    let s = booking.activity_types.trim();
-                    if (s) {
-                        // 移除前綴 "ARRAY[" 和尾端 "]"
-                        if (s.toUpperCase().indexOf('ARRAY[') === 0 && s.endsWith(']')) {
-                            s = s.substring(6, s.length - 1);
-                        }
-                        // 移除大括號 { ... }
-                        if (s.startsWith('{') && s.endsWith('}')) {
-                            s = s.substring(1, s.length - 1);
-                        }
-                        // 嘗試以逗號分隔，再去掉引號
-                        const parts = s.split(',').map(function (p) {
-                            return p.replace(/['"\s]/g, '').trim();
-                        }).filter(function (p) { return p; });
-                        if (parts.length > 0) {
-                            activitiesText = parts.join(' + ');
-                        } else {
-                            activitiesText = s;
-                        }
-                    }
-                }
+                const activitiesText = normalizePostgresArrayValue(booking.activity_types).join(' + ');
                 const boatColor = booking.boats && booking.boats.color ? booking.boats.color : '#ccc';
 
                 return (
@@ -4117,9 +5122,17 @@
                                 ? '<div><span style="color: #666;">🏄 活動：</span><span style="font-weight: 500; color: #000;">' + activitiesText + '</span></div>'
                                 : ''
                             ) +
+                            (booking.contact_phone
+                                ? '<div><span style="color: #666;">📱 電話：</span><span style="font-weight: 500; color: #000;">' + escapeHtml(booking.contact_phone) + '</span></div>'
+                                : ''
+                            ) +
                         '</div>' +
+                        (booking.schedule_notes
+                            ? '<div style="margin-top: 12px; padding: 8px; background-color: #fbf3e5; border-radius: 8px; font-size: 13px; color: #7d5521;">行程備註：' + escapeHtml(booking.schedule_notes) + '</div>'
+                            : ''
+                        ) +
                         (booking.notes
-                            ? '<div style="margin-top: 12px; padding: 8px; background-color: #f8f9fa; border-radius: 4px; font-size: 13px; color: #666;">📝 ' + booking.notes + '</div>'
+                            ? '<div style="margin-top: 12px; padding: 8px; background-color: #f8f9fa; border-radius: 8px; font-size: 13px; color: #666;">📝 ' + escapeHtml(booking.notes) + '</div>'
                             : ''
                         ) +
                         '<button type="button" onclick="copyBookingForLine(' + currentSearchBookings.indexOf(booking) + ')" style="margin-top:12px; padding:7px 12px; border:1px solid #bbb; border-radius:6px; background:white; cursor:pointer;">📋 複製 LINE</button>' +
@@ -4386,10 +5399,7 @@
         
         async function showTomorrowReminder() {
             var mainContent = document.getElementById('main-content');
-            var appContainer = document.getElementById('app');
-            appContainer.style.maxWidth = '900px';
-            appContainer.style.padding = '20px';
-            appContainer.classList.remove('full-width');
+            setOfflinePageLayout();
             
             var defaultDate = getTomorrowDefaultDate();
             var weatherWarning = '由於近期天氣變化較大，請務必在『啟程前』\n透過官方訊息與我們確認最新天氣狀況\n別忘了在出發前查收最新訊息哦！';
@@ -4402,15 +5412,11 @@
             footerText = settingMap.get('tomorrow_reminder_footer_text') || footerText;
             window._tomorrowIncludeWeatherWarning = includeWeatherWarning;
             
-            mainContent.innerHTML = '<div style="min-height: 100vh; background: #f8f9fa; padding-bottom: 80px;">' +
-                '<div style="position: sticky; top: 0; z-index: 100; background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e0e0e0;">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center; max-width: 900px; margin: 0 auto;">' +
-                        '<h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">⏰ 明日提醒</h1>' +
-                        '<button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255,255,255,0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer;">HOME</button>' +
-                    '</div>' +
-                '</div>' +
-                '<div id="tomorrow-reminder-content" style="max-width: 900px; margin: 0 auto; padding: 20px;">' +
-                    '<div class="spinner"></div><p style="text-align: center;">載入中...</p>' +
+            mainContent.innerHTML = '<div class="es-page">' +
+                renderBrandHeader('⏰ 明日提醒', renderHomeButton()) +
+                '<div id="tomorrow-reminder-content" class="es-shell">' +
+                    '<div class="es-intro"><h1>明日提醒</h1><p>模板與設定來自目前載入的完整備份。</p></div>' +
+                    '<div class="spinner"></div><p style="text-align: center;">載入中…</p>' +
                 '</div></div>';
             
             var content = document.getElementById('tomorrow-reminder-content');
@@ -4564,26 +5570,16 @@
         // 顯示會員管理頁面
         async function showMemberManagement() {
             const mainContent = document.getElementById('main-content');
-            const appContainer = document.getElementById('app');
-            
-            appContainer.style.maxWidth = '100%';
-            appContainer.style.padding = '0';
-            appContainer.classList.add('full-width');
+            setOfflinePageLayout();
             
             mainContent.innerHTML = `
-                <div style="min-height: 100vh; background: #f5f5f5; padding-bottom: 80px;">
-                    <!-- PageHeader -->
-                    <div style="position: sticky; top: 0; z-index: 100; background: #f5f5f5; margin: 0; padding: 20px; border-bottom: 1px solid #e0e0e0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto;">
-                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">👥 會員查詢</h1>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button onclick="showMemberTransaction()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">💰 交易查詢</button>
-                                <button onclick="showBaoHub()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">← BAO</button>
-                                <button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">HOME</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="member-management-content" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+                <div class="es-page">
+                    ${renderBrandHeader('👥 會員查詢', `
+                        <button class="es-button on-dark" onclick="showMemberTransaction()">交易查詢</button>
+                        <button class="es-button on-dark" onclick="showBaoHub()">BAO</button>
+                        ${renderHomeButton()}
+                    `)}
+                    <div id="member-management-content" class="es-shell es-shell-wide">
                         <div class="spinner"></div>
                         <p style="text-align: center; margin-top: 10px;">載入中...</p>
                     </div>
@@ -4596,26 +5592,16 @@
         // 顯示會員儲值頁面
         async function showMemberTransaction() {
             const mainContent = document.getElementById('main-content');
-            const appContainer = document.getElementById('app');
-            
-            appContainer.style.maxWidth = '100%';
-            appContainer.style.padding = '0';
-            appContainer.classList.add('full-width');
+            setOfflinePageLayout();
             
             mainContent.innerHTML = `
-                <div style="min-height: 100vh; background: #f5f5f5; padding-bottom: 80px;">
-                    <!-- PageHeader -->
-                    <div style="position: sticky; top: 0; z-index: 100; background: #f5f5f5; margin: 0; padding: 20px; border-bottom: 1px solid #e0e0e0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto;">
-                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">💰 交易查詢</h1>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button onclick="showMemberManagement()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">👥 會員查詢</button>
-                                <button onclick="showBaoHub()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">← BAO</button>
-                                <button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">HOME</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="member-transaction-content" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+                <div class="es-page">
+                    ${renderBrandHeader('💰 交易查詢', `
+                        <button class="es-button on-dark" onclick="showMemberManagement()">會員查詢</button>
+                        <button class="es-button on-dark" onclick="showBaoHub()">BAO</button>
+                        ${renderHomeButton()}
+                    `)}
+                    <div id="member-transaction-content" class="es-shell es-shell-wide">
                         <div class="spinner"></div>
                         <p style="text-align: center; margin-top: 10px;">載入中...</p>
                     </div>
@@ -4628,25 +5614,15 @@
         // 顯示置板管理頁面
         async function showBoardManagement() {
             const mainContent = document.getElementById('main-content');
-            const appContainer = document.getElementById('app');
-            
-            appContainer.style.maxWidth = '100%';
-            appContainer.style.padding = '0';
-            appContainer.classList.add('full-width');
+            setOfflinePageLayout();
             
             mainContent.innerHTML = `
-                <div style="min-height: 100vh; background: #f5f5f5; padding-bottom: 80px;">
-                    <!-- PageHeader -->
-                    <div style="position: sticky; top: 0; z-index: 100; background: #f5f5f5; margin: 0; padding: 20px; border-bottom: 1px solid #e0e0e0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto;">
-                            <h1 style="font-size: 20px; font-weight: bold; color: #333; margin: 0;">🏄 置板查詢</h1>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button onclick="showBaoHub()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">← BAO</button>
-                                <button onclick="showHomePage()" style="padding: 6px 12px; background: rgba(255, 255, 255, 0.8); color: #333; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500;">HOME</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="board-management-content" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+                <div class="es-page">
+                    ${renderBrandHeader('🏄 置板查詢', `
+                        <button class="es-button on-dark" onclick="showBaoHub()">BAO</button>
+                        ${renderHomeButton()}
+                    `)}
+                    <div id="board-management-content" class="es-shell es-shell-wide">
                         <div class="spinner"></div>
                         <p style="text-align: center; margin-top: 10px;">載入中...</p>
                     </div>
@@ -4684,7 +5660,7 @@
                         console.log('選擇了檔案:', file.name, '大小:', file.size, 'bytes');
                         if (fileNameDiv) {
                             fileNameDiv.textContent = `已選擇: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
-                            fileNameDiv.style.color = '#667eea';
+                            fileNameDiv.style.color = '#365d66';
                         }
                         // loadSQLFile 函數內部會設置 isFileLoading 標記並禁用 input
                         loadSQLFile(file);
@@ -4731,7 +5707,7 @@
                 
                 // 載入會員資料
                 const members = await getAllFromStore('members');
-                const activeMembers = members.filter(m => m.status === 'active');
+                const activeMembers = members;
                 
                 // 載入置板資料
                 let boardStorage = [];
@@ -4930,7 +5906,7 @@
                 
                 // 載入會員和交易記錄
                 const members = await getAllFromStore('members');
-                const activeMembers = members.filter(m => m.status === 'active');
+                const activeMembers = members;
                 
                 let transactions = [];
                 try {
@@ -5049,7 +6025,7 @@
                     cursor: pointer;
                     transition: all 0.2s;
                     border: 2px solid transparent;
-                " onmouseenter="this.style.borderColor='#667eea'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(102, 126, 234, 0.2)'" 
+                " onmouseenter="this.style.borderColor='#1d1d1f'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 14px rgba(31,27,23,0.08)'"
                    onmouseleave="this.style.borderColor='transparent'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'">
                     <div style="background: #f8f9fa; padding: 14px 16px; border-radius: 8px; margin-bottom: 12px;">
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
@@ -5199,7 +6175,7 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
                     <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
                         <div style="font-size: 14px; color: #666; margin-bottom: 8px;">總格位數</div>
-                        <div style="font-size: 32px; font-weight: bold; color: #667eea;">145</div>
+                        <div style="font-size: 32px; font-weight: bold; color: #1d1d1f;">145</div>
                     </div>
                     <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
                         <div style="font-size: 14px; color: #666; margin-bottom: 8px;">已使用</div>
@@ -5239,7 +6215,7 @@
             
             return `
                 <div style="margin-bottom: 30px;">
-                    <h3 style="margin: 0 0 15px 0; font-size: 18px; font-weight: bold; color: white; background: linear-gradient(135deg, #5a5a5a 0%, #4a4a4a 100%); padding: 12px; border-radius: 8px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 18px; font-weight: bold; color: white; background: #1d1d1f; padding: 12px; border-radius: 12px;">
                         ${section.name} (${section.start}-${section.end})
                     </h3>
                     <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -5279,19 +6255,19 @@
             
             if (expiryStatus === 'expired') {
                 slotStyles = {
-                    background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)',
+                    background: '#fbeeed',
                     color: '#c62828',
                     border: '2px solid #ef9a9a'
                 };
             } else if (expiryStatus === 'expiring') {
                 slotStyles = {
-                    background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)',
+                    background: '#fbf3e5',
                     color: '#e65100',
                     border: '2px solid #ffcc80'
                 };
             } else if (expiryStatus === 'normal') {
                 slotStyles = {
-                    background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+                    background: '#edf7f1',
                     color: '#2e7d32',
                     border: '2px solid #a5d6a7'
                 };
@@ -5393,26 +6369,20 @@
 
         function showOfflineShopPage(title, icon, controlsHtml, contentId) {
             const mainContent = document.getElementById('main-content');
-            const appContainer = document.getElementById('app');
-            appContainer.style.maxWidth = '1200px';
-            appContainer.style.padding = '24px 16px';
-            appContainer.classList.add('full-width');
+            setOfflinePageLayout();
             mainContent.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px;">
-                    <div>
-                        <h1 style="margin:0; font-size:28px;">${icon} ${title}</h1>
-                        <div style="font-size:13px; color:#777; margin-top:6px;">離線備份唯讀查詢</div>
-                    </div>
-                    <div style="display:flex; gap:8px;">
-                        <button onclick="showBaoHub()" style="padding:10px 16px; border:1px solid #ccc; border-radius:8px; background:white; cursor:pointer;">← BAO</button>
-                        <button onclick="showHomePage()" style="padding:10px 16px; border:1px solid #ccc; border-radius:8px; background:white; cursor:pointer;">HOME</button>
-                    </div>
-                </div>
-                <div style="background:white; border:1px solid #e0e0e0; border-radius:12px; padding:16px; margin-bottom:16px;">
-                    ${controlsHtml}
-                </div>
-                <div id="${contentId}">
-                    <div style="padding:40px; text-align:center; color:#777;">載入中...</div>
+                <div class="es-page">
+                    ${renderBrandHeader(`${icon} ${title}`, `
+                        <button class="es-button on-dark" onclick="showBaoHub()">BAO</button>
+                        ${renderHomeButton()}
+                    `)}
+                    <main class="es-shell es-shell-wide">
+                        <div class="es-intro"><h1>${icon} ${title}</h1><p>離線備份唯讀查詢</p></div>
+                        <div class="es-card" style="margin-bottom:16px;">${controlsHtml}</div>
+                        <div id="${contentId}">
+                            <div style="padding:40px; text-align:center; color:#777;">載入中…</div>
+                        </div>
+                    </main>
                 </div>
             `;
         }

@@ -52,6 +52,23 @@ describe('resumable Storage backup migration', () => {
   })
 })
 
+describe('extended Storage backup lease migration', () => {
+  const sql = fs.readFileSync(
+    path.join(root, 'migrations/156_extend_storage_backup_lease.sql'),
+    'utf8',
+  )
+
+  it('renews only the current fenced worker for five-minute functions', () => {
+    expect(sql).toContain('renew_storage_backup_inventory_lease')
+    expect(sql).toContain('p_lease_seconds integer DEFAULT 330')
+    expect(sql).toContain('lease_token = p_lease_token')
+    expect(sql).toContain('lease_expires_at > now()')
+    expect(sql).toContain("SET lock_timeout TO '10s'")
+    expect(sql).toContain("SET statement_timeout TO '30s'")
+    expect(sql).toContain('TO service_role')
+  })
+})
+
 describe('Vercel backup limits', () => {
   const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'))
   const apiFiles = fs.readdirSync(path.join(root, 'api')).filter((file) => file.endsWith('.ts'))
@@ -61,6 +78,10 @@ describe('Vercel backup limits', () => {
     expect(apiFiles).toContain('backup-storage.ts')
     expect(apiFiles).not.toContain('backup-to-drive.ts')
     expect(vercel.functions['api/backup-storage.ts'].maxDuration).toBe(300)
+    expect(vercel.functions['api/backup-full-database.ts'].maxDuration).toBe(300)
+    expect(vercel.functions['api/backup-queryable.ts'].maxDuration).toBe(300)
+    expect(vercel.functions['api/backup-to-cloud-drive.ts'].maxDuration).toBe(300)
+    expect(vercel.functions['api/cron.ts'].maxDuration).toBe(300)
   })
 
   it('schedules SQL and Storage without adding a third cron', () => {

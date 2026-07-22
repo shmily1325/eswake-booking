@@ -131,6 +131,7 @@ try {
             -Uri $pageUrl `
             -Method Get `
             -Headers $headers `
+            -TimeoutSec 120 `
             -UseBasicParsing
         if ($null -eq $remoteManifest) {
             $remoteManifest = $manifestPage
@@ -152,7 +153,11 @@ try {
     foreach ($item in @($remoteManifest.files)) {
         $destination = Get-StorageFilePath -Root $storageFilesRoot -ObjectPath ([string]$item.path)
         New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
-        Invoke-WebRequest -Uri ([string]$item.publicUrl) -OutFile $destination -UseBasicParsing
+        Invoke-WebRequest `
+            -Uri ([string]$item.publicUrl) `
+            -OutFile $destination `
+            -TimeoutSec 300 `
+            -UseBasicParsing
         $file = Get-Item -LiteralPath $destination
         if ([long]$file.Length -ne [long]$item.size) {
             throw "$($item.path) 大小驗證失敗。"

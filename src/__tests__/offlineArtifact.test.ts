@@ -45,12 +45,53 @@ describe('offline disaster-recovery artifact', () => {
     }
   })
 
-  it('does not expose known broken or placeholder menu actions', () => {
-    expect(html).not.toContain("action: 'day'")
+  it('exposes complete read-only recovery navigation without placeholder actions', () => {
+    expect(html).toContain("action: 'day'")
+    expect(html).toContain("action: 'audit-log'")
+    expect(html).toContain("action: 'coach-operations'")
+    expect(html).toContain("action: 'shop-recovery'")
+    expect(html).toContain("action: 'restrictions'")
+    expect(html).toContain("action: 'backup-logs'")
+    expect(html).toContain("action: 'system-reference'")
     expect(html).not.toContain("action: 'my-report'")
-    expect(html).not.toContain("action: 'audit-log'")
     expect(html).not.toContain("action: 'boats'")
     expect(html).not.toContain('showDayView()')
+    expect(html).not.toContain('正在開發中')
+  })
+
+  it('keeps recovery views aligned with the current product frame', () => {
+    expect(html).toContain('--es-page: #f4f5f7')
+    expect(html).toContain('--es-ink: #1d1d1f')
+    expect(html).toContain('class="es-brand-bar"')
+    expect(html).toContain('class="es-menu-card"')
+    expect(html).toContain('ES Wake')
+    expect(html).toContain('📅')
+    expect(html).toContain('🔍')
+    expect(html).toContain('📦')
+  })
+
+  it('makes operational backup datasets visible in read-only views', () => {
+    for (const table of [
+      'audit_log',
+      'coach_reports',
+      'booking_participants',
+      'billing_relations',
+      'coach_time_off',
+      'reservation_restrictions',
+      'boat_unavailable_dates',
+      'shop_order_settlements',
+      'backup_logs',
+      'admin_users',
+      'allowed_users',
+      'editor_users',
+      'view_users',
+      'shop_order_no_seq',
+    ]) {
+      expect(html).toContain(`['${table}'`)
+    }
+    expect(html).toContain('showRecoveryDataset')
+    expect(html).toContain('showRecoveryDayView')
+    expect(html).toContain('查看所有原始欄位')
   })
 
   it('validates imports before activating the staged IndexedDB database', () => {
@@ -204,6 +245,18 @@ describe('offline disaster-recovery artifact', () => {
     expect(evaluateOffline<boolean>("bookingRangesOverlap('09:00', 60, '09:30', 30)")).toBe(true)
     expect(evaluateOffline<boolean>("bookingRangesOverlap('09:00', 60, '10:00', 30)")).toBe(false)
     expect(evaluateOffline<boolean>("bookingRangesOverlap('10:00', 30, '09:00', 60)")).toBe(false)
+  })
+
+  it('normalizes PostgreSQL array values for offline import and display', () => {
+    expect(evaluateOffline<string[]>("normalizePostgresArrayValue(\"ARRAY['WB','WS']\")")).toEqual([
+      'WB',
+      'WS',
+    ])
+    expect(evaluateOffline<string[]>("normalizePostgresArrayValue('{WB,WS}')")).toEqual(['WB', 'WS'])
+    expect(evaluateOffline<string[]>("normalizePostgresArrayValue(['WB', 'WS'])")).toEqual([
+      'WB',
+      'WS',
+    ])
   })
 
   it('keeps booking display names aligned with the current member rules', () => {

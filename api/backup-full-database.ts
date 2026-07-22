@@ -47,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('开始完整数据库备份...');
 
     const backupTime = getLocalTimestamp();
-    const { data, stats, totalRecords } = await fetchBackupData(supabase);
+    const { data, stats, totalRecords } = await fetchBackupData(supabase, startTime + 220_000);
     const sqlContent = generateSqlBackup(data, stats, backupTime);
     const integrity = getBackupIntegrity(sqlContent);
     console.log(`已備份 ${totalRecords} 筆資料`);
@@ -77,8 +77,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).send(sqlContent);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     const totalTime = Date.now() - startTime;
+    const message = error instanceof Error ? error.message : String(error);
     console.error('备份失败:', error);
     if (req.method === 'POST') {
       try {
@@ -89,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             backup_type: 'full_database',
             destination: 'manual_download',
             status: 'failed',
-            error_message: String(error?.message || error).slice(0, 1000),
+            error_message: message.slice(0, 1000),
             execution_time: totalTime,
           });
         }
@@ -99,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     return res.status(500).json({
       error: '备份失败',
-      message: error.message || 'Unknown error',
+      message,
       executionTime: totalTime,
     });
   }

@@ -38,7 +38,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     console.log('开始生成可查询备份（CSV格式）...');
 
-    const { data: backupData, stats: backupStats } = await fetchBackupData(supabase);
+    const { data: backupData, stats: backupStats } = await fetchBackupData(
+      supabase,
+      startTime + 220_000,
+    );
 
     // 生成 JSON 备份
     const jsonBackup = {
@@ -64,12 +67,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('X-Backup-SHA256', integrity.checksum);
     return res.status(200).send(jsonContent);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     const totalTime = Date.now() - startTime;
+    const message = error instanceof Error ? error.message : String(error);
     console.error('备份失败:', error);
     return res.status(500).json({
       error: '备份失败',
-      message: error.message || 'Unknown error',
+      message,
       executionTime: totalTime,
     });
   }
