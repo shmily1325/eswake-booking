@@ -12,54 +12,14 @@ import { ExternalNavLink } from '../components/ExternalNavLink'
 import { PageShell } from '../components/PageShell'
 import { designSystem, getFontSize } from '../styles/designSystem'
 import { supabase } from '../lib/supabase'
-
-type BackupHealthStatus = 'ok' | 'warning' | 'error' | 'unknown'
+import {
+  getBackupHealth,
+  type BackupHealthStatus,
+} from '../utils/backupHealth'
 
 type BackupHealth = {
   status: BackupHealthStatus
   message: string
-}
-
-function getBackupHealthFromLog(log: {
-  status: string
-  created_at: string | null
-} | null): BackupHealth {
-  if (!log) {
-    return { status: 'unknown', message: '尚無備份記錄' }
-  }
-  if (!log.created_at) {
-    return { status: 'unknown', message: '備份時間未知' }
-  }
-
-  const hoursSinceLastBackup =
-    (Date.now() - new Date(log.created_at).getTime()) / (1000 * 60 * 60)
-
-  if (log.status === 'failed') {
-    return { status: 'error', message: '最近一次備份失敗' }
-  }
-
-  if (hoursSinceLastBackup > 48) {
-    return {
-      status: 'warning',
-      message: `超過 ${Math.floor(hoursSinceLastBackup)} 小時未備份`,
-    }
-  }
-
-  if (hoursSinceLastBackup > 24) {
-    return {
-      status: 'warning',
-      message: `${Math.floor(hoursSinceLastBackup)} 小時前備份`,
-    }
-  }
-
-  if (hoursSinceLastBackup < 1) {
-    return { status: 'ok', message: '備份正常 · 剛剛' }
-  }
-
-  return {
-    status: 'ok',
-    message: `備份正常 · ${Math.floor(hoursSinceLastBackup)} 小時前`,
-  }
 }
 
 function backupHealthColor(status: BackupHealthStatus): string {
@@ -97,20 +57,45 @@ export function BaoHub() {
 
     const loadBackupHealth = async () => {
       try {
-        const { data, error } = await supabase
-          .from('backup_logs')
-          .select('status, created_at')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
+        const destinations = [
+          'google_drive',
+          'google_drive_storage',
+          'wd_local',
+          'wd_local_storage',
+        ]
+        const results = await Promise.all(
+          destinations.map((destination) =>
+            supabase
+              .from('backup_logs')
+              .select('status, checksum, file_size_bytes, format_version, created_at')
+              .eq('destination', destination)
+              .order('created_at', { ascending: false })
+              .limit(30),
+          ),
+        )
 
         if (cancelled) return
-        if (error) {
-          console.error('載入備份狀態失敗:', error)
+        const failedResult = results.find((result) => result.error)
+        if (failedResult?.error) {
+          console.error('載入備份狀態失敗:', failedResult.error)
           setBackupHealth({ status: 'unknown', message: '無法讀取備份狀態' })
           return
         }
-        setBackupHealth(getBackupHealthFromLog(data))
+        const health = results.map((result) => getBackupHealth(result.data || []))
+        const cloudHealth = health.slice(0, 2)
+        const desktopHealth = health.slice(2)
+        const problem = health.find((item) => item.status === 'error')
+          || health.find((item) => item.status === 'warning')
+          || cloudHealth.find((item) => item.status === 'unknown')
+        if (problem) {
+          setBackupHealth({ status: problem.status, message: problem.message })
+          return
+        }
+        const desktopConfigured = desktopHealth.every((item) => item.status !== 'unknown')
+        setBackupHealth({
+          status: 'ok',
+          message: desktopConfigured ? '四項備份正常' : '雲端正常 · 桌機未設定',
+        })
       } catch (err) {
         if (cancelled) return
         console.error('載入備份狀態失敗:', err)

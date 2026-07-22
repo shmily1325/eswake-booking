@@ -186,7 +186,8 @@ Vercel 會自動執行以下 Cron Jobs：
 
 | 路徑 | 時間 | 說明 |
 |-----|------|------|
-| `/api/backup-to-drive` | 每天 19:20 | 資料備份 |
+| `/api/backup-to-cloud-drive` | 每天 02:00 | Google Drive SQL 備份 |
+| `/api/backup-storage?mode=cloud` | 每天 02:30 | Google Drive 商品圖片增量備份 |
 | `/api/line-reminder` | 每天 19:00 | 發送明日預約提醒 |
 
 ---

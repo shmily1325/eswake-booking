@@ -1,92 +1,33 @@
-# 🚀 备份功能快速开始
+# Backup quick start
 
-## 📦 新增的备份功能
+## Daily status
 
-### 1. 完整数据库备份（SQL格式）
+Open the admin Backup page. It shows four independent checks:
 
-**用途**：完整恢复数据库
+- Google Drive database
+- Google Drive product images
+- Windows database
+- Windows product images
 
-**使用方法**：
-1. 进入「匯出」页面
-2. 点击「💾 完整數據庫備份 (SQL)」
-3. 下载 `.sql` 文件
-4. 保存到 WD MY BOOK 硬盘
+Green means a verified success within 26 hours. A Windows item shows `未設定`
+until that computer completes its first backup.
 
-**恢复方法**：
-- 在 Supabase SQL Editor 执行 SQL 文件
+## Windows installation
 
----
+1. Copy and unzip `ESWake-Backup-Installer.zip`.
+2. Connect the external backup drive.
+3. Run `install-portable-backup.cmd`.
+4. Select the drive and paste the Vercel `CRON_SECRET`.
+5. Wait for the immediate SQL and product-image tests to pass.
 
-### 2. 可查询备份（JSON格式）⭐ 推荐
+The task then runs daily at 10:00 while that Windows user is logged in.
 
-**用途**：在系统故障时查询数据
+## Manual recovery checks
 
-**使用方法**：
-1. 进入「匯出」页面
-2. 点击「🔍 可查詢備份 (JSON)」
-3. 下载 `.json` 文件
-4. 保存到 WD MY BOOK 硬盘
+```powershell
+npm run verify:backup-restore -- "D:\ESWake-Backups\Full-Database-Backups\eswake_backup_....sql"
+npm run restore:product-images -- "D:\ESWake-Backups\Storage-Backups\product-images" --verify-only
+```
 
-**查询方法**：
-1. 打开 `/backup-query-tool.html`（离线查询工具）
-2. 选择备份 JSON 文件
-3. 查询预约、会员、交易等数据
-
----
-
-## 🔍 离线查询工具
-
-**位置**：`/backup-query-tool.html`
-
-**功能**：
-- ✅ 无需网络连接
-- ✅ 查询预约记录
-- ✅ 查询会员信息
-- ✅ 查询交易记录
-- ✅ 导出查询结果为 CSV
-
-**使用方法**：
-1. 在浏览器打开 `/backup-query-tool.html`
-2. 选择备份 JSON 文件
-3. 使用快速查询或自定义查询
-4. 导出结果（可选）
-
----
-
-## 📅 备份建议
-
-| 备份类型 | 频率 | 存储位置 |
-|---------|------|---------|
-| 完整数据库备份 | 每周一次 | WD MY BOOK |
-| 可查询备份 | 每天一次 | WD MY BOOK |
-| CSV 导出 | 按需 | WD MY BOOK |
-| Google Sheets | 每天自动 | Google Drive |
-
----
-
-## 🚨 灾难恢复流程
-
-### 场景：网页和数据库都挂掉了
-
-1. **打开 WD MY BOOK 硬盘**
-   - 找到最新的备份文件
-
-2. **使用可查询备份查询数据**
-   - 打开 `/backup-query-tool.html`
-   - 选择备份 JSON 文件
-   - 查询预约、会员、交易等
-
-3. **处理新预约（手动记录）**
-   - 在 Excel 或 Google Sheets 中记录
-   - 系统恢复后手动录入
-
-4. **恢复数据库（如果可能）**
-   - 在 Supabase SQL Editor 执行完整备份 SQL 文件
-
----
-
-## 📚 详细文档
-
-- [完整备份策略](./BACKUP_STRATEGY.md)
-- [NAS 推荐](./BACKUP_STRATEGY.md#nas-推荐可选升级)
-
+See [`BACKUP_RUNBOOK.md`](BACKUP_RUNBOOK.md) before writing to any recovery
+database or Storage bucket.

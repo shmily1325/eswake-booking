@@ -30,6 +30,7 @@ dist-ssr
 # Temporary and backup files
 *.tmp
 *.backup.*
+DR-Exports/
 
 # Test coverage
 coverage

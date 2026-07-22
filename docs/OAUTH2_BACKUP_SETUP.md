@@ -162,7 +162,7 @@ https://eswake-booking.vercel.app/api/oauth2-auth-url
   "crons": [
     {
       "path": "/api/backup-to-cloud-drive",
-      "schedule": "0 2 * * *"
+      "schedule": "0 18 * * *"
     }
   ]
 }

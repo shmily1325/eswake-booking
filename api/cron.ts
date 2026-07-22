@@ -2,22 +2,8 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { authorizeBackupRequest, setBackupResponseHeaders } from '../src/server/backup-auth.js';
 
 /**
- * 統一的備份 Cron 端點（可選用）
- * 
- * 由於 Vercel Hobby 方案限制：
- * - 最多 2 個 Cron Jobs
- * - 每個 Cron Job 每天只能執行一次
- * 
- * 目前配置（vercel.json）：
- * - 18:00 UTC: /api/backup-to-cloud-drive (Google Drive 備份)
- * - 19:00 UTC: /api/line-reminder (LINE 提醒)
- * 
- * 注意：Google Sheets 備份（原定 19:20）已移除，需要手動執行或升級方案
- * 
- * 如需將 Google Sheets 備份也自動執行，可以：
- * 1. 在此端點中合併執行（18:00 一起執行）
- * 2. 升級到 Pro 方案以獲得更多 Cron Jobs
- * 3. 使用外部 Cron 服務（如 GitHub Actions）
+ * Optional unified backup endpoint kept for external schedulers.
+ * The active Vercel schedules call the SQL and Storage endpoints directly.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setBackupResponseHeaders(res);
@@ -40,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log(`[Cron] 執行時間: ${currentTime} UTC`);
 
   try {
-    // 18:00 - 執行兩個備份任務
+    // 18:00 UTC - SQL backup
     if (hours === 18 && minutes === 0) {
       console.log('[Cron] 開始執行備份任務...');
       
@@ -66,25 +52,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         results.push({ type: 'cloud-drive', error: error.message });
       }
       
-      // 2. Google Sheets 備份
-      try {
-        console.log('[Cron] 執行 Google Sheets 備份...');
-        const driveBackupHandler = (await import('./backup-to-drive.js')).default;
-        const mockRes = {
-          setHeader: () => mockRes,
-          status: (code: number) => ({
-            json: (data: any) => {
-              results.push({ type: 'sheets', status: code, data });
-              return mockRes;
-            }
-          })
-        } as any;
-        await driveBackupHandler(req, mockRes);
-      } catch (error: any) {
-        console.error('[Cron] Google Sheets 備份失敗:', error);
-        results.push({ type: 'sheets', error: error.message });
-      }
-      
       return res.status(200).json({
         success: true,
         message: '備份任務執行完成',
@@ -93,11 +60,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    // 18:30 UTC - incremental product-image backup
+    if (hours === 18 && minutes === 30) {
+      const storageHandler = (await import('./backup-storage.js')).default;
+      const storageReq = {
+        ...req,
+        query: { ...req.query, mode: 'cloud' },
+      } as VercelRequest;
+      return storageHandler(storageReq, res);
+    }
+
     // 如果時間不匹配，返回提示
     return res.status(200).json({
       message: 'Cron 端點已接收請求，但當前時間不匹配',
       currentTime: `${currentTime} UTC`,
-      note: '此端點在 18:00 UTC 執行備份任務',
+      note: '此端點在 18:00 UTC 執行 SQL、18:30 UTC 執行商品圖片備份',
     });
 
   } catch (error: any) {

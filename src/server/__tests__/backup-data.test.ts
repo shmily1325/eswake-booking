@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BACKUP_TABLES } from '../backup-config.js'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { BACKUP_TABLES, EXCLUDED_BACKUP_TABLES } from '../backup-config.js'
 import {
   fetchBackupData,
   generateSqlBackup,
@@ -72,6 +73,8 @@ describe('generateSqlBackup', () => {
     expect(BACKUP_TABLES.indexOf('bookings'))
       .toBeLessThan(BACKUP_TABLES.indexOf('booking_members'))
     expect(new Set(BACKUP_TABLES).size).toBe(BACKUP_TABLES.length)
+    expect(EXCLUDED_BACKUP_TABLES).toEqual(['user_click_events'])
+    expect(BACKUP_TABLES).not.toContain('user_click_events')
   })
 
   it('emits empty tables and one atomic restore transaction', () => {
@@ -112,9 +115,39 @@ describe('fetchBackupData', () => {
       },
     }
 
-    const result = await fetchBackupData(supabase)
+    const result = await fetchBackupData(supabase as unknown as SupabaseClient)
     expect(result.stats.members).toBe(1001)
     expect(calls.get('members')).toBe(2)
     expect(result.totalRecords).toBe(1001)
+  })
+
+  it('limits concurrent table reads', async () => {
+    let active = 0
+    let maxActive = 0
+    const supabase = {
+      from() {
+        return {
+          select() {
+            return {
+              order() {
+                return {
+                  async range() {
+                    active += 1
+                    maxActive = Math.max(maxActive, active)
+                    await new Promise((resolve) => setTimeout(resolve, 1))
+                    active -= 1
+                    return { data: [], error: null }
+                  },
+                }
+              },
+            }
+          },
+        }
+      },
+    }
+
+    await fetchBackupData(supabase as unknown as SupabaseClient)
+    expect(maxActive).toBeGreaterThan(1)
+    expect(maxActive).toBeLessThanOrEqual(4)
   })
 })

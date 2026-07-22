@@ -18,6 +18,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const status = req.body?.status === 'success' ? 'success' : 'failed'
+  const backupType = req.body?.backupType === 'storage' ? 'storage' : 'full_database'
+  const destination = backupType === 'storage' ? 'wd_local_storage' : 'wd_local'
   const checksum = typeof req.body?.checksum === 'string' && /^[a-f0-9]{64}$/i.test(req.body.checksum)
     ? req.body.checksum.toLowerCase()
     : null
@@ -43,8 +45,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const supabase = createClient(supabaseUrl, serviceKey)
   const { error } = await supabase.from('backup_logs').insert({
-    backup_type: 'full_database',
-    destination: 'wd_local',
+    backup_type: backupType,
+    destination,
     status,
     file_name: fileName,
     file_size: fileSizeBytes == null ? null : String(fileSizeBytes),

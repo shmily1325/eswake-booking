@@ -38,6 +38,9 @@ export const BACKUP_TABLES = [
 
 export type BackupTable = (typeof BACKUP_TABLES)[number]
 
+/** Non-operational analytics data intentionally omitted from disaster-recovery backups. */
+export const EXCLUDED_BACKUP_TABLES = ['user_click_events'] as const
+
 export const BACKUP_FORMAT_VERSION = 3
 
 export const TABLE_ORDER_COLUMN: Partial<Record<BackupTable, string>> = {

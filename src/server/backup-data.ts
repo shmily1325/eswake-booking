@@ -6,6 +6,7 @@ import {
   type BackupTable,
 } from './backup-config.js'
 import { createHash } from 'node:crypto'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type BackupData = Record<BackupTable, Record<string, unknown>[]>
 export type BackupStats = Record<BackupTable, number>
@@ -19,8 +20,62 @@ export interface BackupManifest {
 }
 
 const PAGE_SIZE = 1000
+const TABLE_FETCH_CONCURRENCY = 4
 
-export async function fetchBackupData(supabase: any): Promise<{
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  callback: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let nextIndex = 0
+
+  async function worker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const index = nextIndex
+      nextIndex += 1
+      results[index] = await callback(items[index])
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(concurrency, items.length) },
+      () => worker(),
+    ),
+  )
+  return results
+}
+
+async function fetchTableRows(
+  supabase: SupabaseClient,
+  tableName: BackupTable,
+): Promise<Record<string, unknown>[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+
+  while (true) {
+    const orderColumn = TABLE_ORDER_COLUMN[tableName] || 'id'
+    const result = await supabase
+      .from(tableName)
+      .select('*')
+      .order(orderColumn, { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1)
+
+    if (result.error) {
+      throw new Error(`表 ${tableName} 備份失敗：${result.error.message}`)
+    }
+
+    const page = (result.data || []) as Record<string, unknown>[]
+    rows.push(...page)
+    if (page.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
+  }
+
+  return rows
+}
+
+export async function fetchBackupData(supabase: SupabaseClient): Promise<{
   data: BackupData
   stats: BackupStats
   totalRecords: number
@@ -28,28 +83,16 @@ export async function fetchBackupData(supabase: any): Promise<{
   const data = {} as BackupData
   const stats = {} as BackupStats
 
-  for (const tableName of BACKUP_TABLES) {
-    const rows: Record<string, unknown>[] = []
-    let offset = 0
+  const tableResults = await mapWithConcurrency(
+    BACKUP_TABLES,
+    TABLE_FETCH_CONCURRENCY,
+    async (tableName) => ({
+      tableName,
+      rows: await fetchTableRows(supabase, tableName),
+    }),
+  )
 
-    while (true) {
-      const orderColumn = TABLE_ORDER_COLUMN[tableName] || 'id'
-      const result = await supabase
-        .from(tableName)
-        .select('*')
-        .order(orderColumn, { ascending: true })
-        .range(offset, offset + PAGE_SIZE - 1)
-
-      if (result.error) {
-        throw new Error(`表 ${tableName} 備份失敗：${result.error.message}`)
-      }
-
-      const page = (result.data || []) as Record<string, unknown>[]
-      rows.push(...page)
-      if (page.length < PAGE_SIZE) break
-      offset += PAGE_SIZE
-    }
-
+  for (const { tableName, rows } of tableResults) {
     data[tableName] = rows
     stats[tableName] = rows.length
   }

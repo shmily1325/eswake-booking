@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
+import { createHash } from 'node:crypto';
 import { authorizeBackupRequest, setBackupResponseHeaders } from '../src/server/backup-auth.js';
 import {
   fetchBackupData,
@@ -17,6 +18,13 @@ function getLocalTimestamp(date: Date = new Date()): string {
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
   return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`;
+}
+
+function getKeepDays(): number {
+  const configured = Number(process.env.GOOGLE_DRIVE_KEEP_DAYS || 90);
+  return Number.isInteger(configured) && configured >= 1 && configured <= 3650
+    ? configured
+    : 90;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -134,6 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data, stats, totalRecords } = await fetchBackupData(supabase);
     const sqlContent = generateSqlBackup(data, stats, backupTime);
     const integrity = getBackupIntegrity(sqlContent);
+    const uploadMd5 = createHash('md5').update(sqlContent, 'utf8').digest('hex');
 
     logStep('6. 備份 SQL 內容生成完成', { 
       totalRecords,
@@ -147,6 +156,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       name: fileName,
       mimeType: 'text/plain',
       parents: [googleDriveFolderId], // 必須上傳到共享資料夾
+      appProperties: {
+        eswakeBackup: 'database-sql',
+      },
     };
 
     const media = {
@@ -157,7 +169,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const uploadResponse = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
-      fields: 'id, name, webViewLink, size, createdTime',
+      fields: 'id, name, webViewLink, size, createdTime, md5Checksum',
       supportsAllDrives: true, // 支援共享雲端硬碟
       supportsTeamDrives: true, // 支援團隊雲端硬碟（舊版 API）
     });
@@ -178,27 +190,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('Google Drive 上傳檔案大小驗證失敗');
     }
 
-    const verificationDownload = await drive.files.get(
-      {
-        fileId: uploadResponse.data.id!,
-        alt: 'media',
-        supportsAllDrives: true,
-      },
-      { responseType: 'arraybuffer' },
-    );
-    const uploadedContent = Buffer.from(verificationDownload.data as ArrayBuffer).toString('utf8');
-    const uploadedIntegrity = getBackupIntegrity(uploadedContent);
-    if (uploadedIntegrity.checksum !== integrity.checksum) {
+    if (uploadResponse.data.md5Checksum !== uploadMd5) {
       await drive.files.delete({
         fileId: uploadResponse.data.id!,
         supportsAllDrives: true,
       });
-      throw new Error('Google Drive 上傳檔案 SHA-256 驗證失敗');
+      throw new Error('Google Drive 上傳檔案 MD5 驗證失敗');
     }
 
     // 清理舊備份（保留最近 90 天的備份）
     logStep('9. 開始清理舊備份');
-    const keepDays = 90;
+    const keepDays = getKeepDays();
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - keepDays);
     const cutoffDateStr = cutoffDate.toISOString();
@@ -206,22 +208,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       // 查詢所有備份檔案
       // 注意：Google Drive API 不支援 endsWith，使用 contains 並在程式碼中過濾
-      const query = `'${googleDriveFolderId}' in parents and name contains 'eswake_backup_' and name contains '.sql'`;
+      const query = `'${googleDriveFolderId}' in parents and trashed = false and appProperties has { key='eswakeBackup' and value='database-sql' }`;
 
-      const listResponse = await drive.files.list({
-        q: query,
-        fields: 'files(id, name, createdTime)',
-        orderBy: 'createdTime desc',
-        supportsAllDrives: true, // 支援共享雲端硬碟
-        includeItemsFromAllDrives: true, // 包含所有雲端硬碟的檔案
-        supportsTeamDrives: true, // 支援團隊雲端硬碟（舊版 API）
-      });
+      const listedFiles: Array<{
+        id?: string | null
+        name?: string | null
+        createdTime?: string | null
+      }> = [];
+      let pageToken: string | undefined;
+      do {
+        const listResponse = await drive.files.list({
+          q: query,
+          fields: 'nextPageToken, files(id, name, createdTime)',
+          orderBy: 'createdTime desc',
+          pageSize: 1000,
+          pageToken,
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
+          supportsTeamDrives: true,
+        });
+        listedFiles.push(...(listResponse.data.files || []));
+        pageToken = listResponse.data.nextPageToken || undefined;
+      } while (pageToken);
 
-      if (listResponse.data.files) {
+      if (listedFiles.length > 0) {
         let deletedCount = 0;
         // 過濾出以 .sql 結尾的檔案（因為 API 不支援 endsWith）
-        const backupFiles = listResponse.data.files.filter(file => 
-          file.name && file.name.endsWith('.sql')
+        const backupFiles = listedFiles.filter(file =>
+          file.name && /^eswake_backup_\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.sql$/.test(file.name)
         );
         
         for (const file of backupFiles) {
@@ -265,6 +279,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         file_url: uploadResponse.data.webViewLink,
         execution_time: totalTime,
       });
+      const logCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+      const { error: purgeLogError } = await supabase
+        .from('backup_logs')
+        .delete()
+        .lt('created_at', logCutoff);
+      if (purgeLogError) {
+        console.error('清理過期備份紀錄失敗:', purgeLogError);
+      }
       logStep('11. 備份記錄已寫入 backup_logs');
     } catch (logError) {
       // 記錄失敗不影響備份結果
@@ -301,6 +323,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const supabaseForLog = createClient(supabaseUrl, supabaseServiceKey);
         await supabaseForLog.from('backup_logs').insert({
           backup_type: 'cloud_drive',
+          destination: 'google_drive',
           status: 'failed',
           error_message: error.message || 'Unknown error',
           execution_time: totalTime,

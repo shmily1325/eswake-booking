@@ -7,6 +7,7 @@ import { Footer } from '../../components/Footer'
 import { useToast, ToastContainer } from '../../components/ui'
 import { useResponsive } from '../../hooks/useResponsive'
 import { isAdmin } from '../../utils/auth'
+import { getBackupHealth } from '../../utils/backupHealth'
 import {
   designSystem,
   getButtonStyle,
@@ -32,7 +33,17 @@ interface BackupLog {
   created_at: string | null
 }
 
-function getLogDestination(log: BackupLog): 'google_drive' | 'wd_local' | 'manual_download' | 'other' {
+type BackupDestination =
+  | 'google_drive'
+  | 'wd_local'
+  | 'google_drive_storage'
+  | 'wd_local_storage'
+  | 'manual_download'
+  | 'other'
+
+function getLogDestination(log: BackupLog): BackupDestination {
+  if (log.destination === 'google_drive_storage') return 'google_drive_storage'
+  if (log.destination === 'wd_local_storage') return 'wd_local_storage'
   if (log.destination === 'google_drive' || log.backup_type === 'cloud_drive') return 'google_drive'
   if (log.destination === 'wd_local') return 'wd_local'
   if (log.destination === 'manual_download' || log.backup_type === 'full_database') return 'manual_download'
@@ -42,74 +53,11 @@ function getLogDestination(log: BackupLog): 'google_drive' | 'wd_local' | 'manua
 function destinationLabel(log: BackupLog): string {
   const destination = getLogDestination(log)
   if (destination === 'google_drive') return 'Google Drive'
-  if (destination === 'wd_local') return '本機 WD'
+  if (destination === 'wd_local') return '桌機備份'
+  if (destination === 'google_drive_storage') return 'Google Drive 商品圖片'
+  if (destination === 'wd_local_storage') return '桌機商品圖片'
   if (destination === 'manual_download') return '手動下載'
   return log.backup_type
-}
-
-type HealthStatus = 'ok' | 'warning' | 'error' | 'unknown'
-
-function getBackupHealth(logs: BackupLog[]): {
-  status: HealthStatus
-  message: string
-  color: string
-  light: string
-} {
-  if (logs.length === 0) {
-    return {
-      status: 'unknown',
-      message: '尚無備份記錄',
-      color: designSystem.colors.text.secondary,
-      light: designSystem.colors.border.main,
-    }
-  }
-
-  const latestBackup = logs[0]
-  if (!latestBackup.created_at) {
-    return {
-      status: 'unknown',
-      message: '備份時間未知',
-      color: designSystem.colors.text.secondary,
-      light: designSystem.colors.border.main,
-    }
-  }
-
-  const hoursSinceLastBackup =
-    (Date.now() - new Date(latestBackup.created_at).getTime()) / (1000 * 60 * 60)
-
-  if (latestBackup.status === 'failed') {
-    return {
-      status: 'error',
-      message: '最近一次備份失敗',
-      color: designSystem.colors.danger[700],
-      light: designSystem.colors.danger[500],
-    }
-  }
-
-  if (hoursSinceLastBackup > 48) {
-    return {
-      status: 'warning',
-      message: `超過 ${Math.floor(hoursSinceLastBackup)} 小時未備份`,
-      color: designSystem.colors.warning[700],
-      light: designSystem.colors.warning[500],
-    }
-  }
-
-  if (hoursSinceLastBackup > 24) {
-    return {
-      status: 'warning',
-      message: `${Math.floor(hoursSinceLastBackup)} 小時前備份`,
-      color: designSystem.colors.warning[700],
-      light: designSystem.colors.warning[500],
-    }
-  }
-
-  return {
-    status: 'ok',
-    message: '備份正常',
-    color: designSystem.colors.success[700],
-    light: designSystem.colors.success[500],
-  }
 }
 
 function formatLogTime(iso: string | null): string {
@@ -120,6 +68,13 @@ function formatLogTime(iso: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+async function sha256Hex(blob: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 async function getBackupRequestHeaders(): Promise<Record<string, string>> {
@@ -153,18 +108,44 @@ export function BackupPage() {
 
   const fetchBackupLogs = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('backup_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(30)
-
-      if (error) {
-        console.error('載入備份記錄失敗:', error)
+      const healthDestinations = [
+        'google_drive',
+        'google_drive_storage',
+        'wd_local',
+        'wd_local_storage',
+      ]
+      const results = await Promise.all([
+        supabase
+          .from('backup_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(30),
+        ...healthDestinations.map((destination) =>
+          supabase
+            .from('backup_logs')
+            .select('*')
+            .eq('destination', destination)
+            .order('created_at', { ascending: false })
+            .limit(30),
+        ),
+      ])
+      const failedResult = results.find((result) => result.error)
+      if (failedResult?.error) {
+        console.error('載入備份記錄失敗:', failedResult.error)
         return
       }
-
-      setBackupLogs(data || [])
+      const uniqueLogs = new Map<number, BackupLog>()
+      results.forEach((result) => {
+        const logs = result.data || []
+        logs.forEach((log) => uniqueLogs.set(log.id, log as BackupLog))
+      })
+      setBackupLogs(
+        Array.from(uniqueLogs.values()).sort(
+          (left, right) =>
+            new Date(right.created_at || 0).getTime()
+            - new Date(left.created_at || 0).getTime(),
+        ),
+      )
     } catch (err) {
       console.error('載入備份記錄失敗:', err)
     } finally {
@@ -176,18 +157,45 @@ export function BackupPage() {
     fetchBackupLogs()
   }, [fetchBackupLogs])
 
-  const backupHealth = getBackupHealth(backupLogs)
   const cloudLogs = backupLogs.filter((log) => getLogDestination(log) === 'google_drive')
   const wdLogs = backupLogs.filter((log) => getLogDestination(log) === 'wd_local')
-  const cloudHealth = getBackupHealth(cloudLogs)
-  const wdHealth = getBackupHealth(wdLogs)
-  const requiredHealth = cloudHealth.status !== 'ok'
-    ? { ...cloudHealth, message: `Google Drive：${cloudHealth.message}` }
-    : wdLogs.length > 0 && wdHealth.status !== 'ok'
-      ? { ...wdHealth, message: `本機 WD：${wdHealth.message}` }
-      : backupHealth
+  const cloudStorageLogs = backupLogs.filter(
+    (log) => getLogDestination(log) === 'google_drive_storage',
+  )
+  const wdStorageLogs = backupLogs.filter(
+    (log) => getLogDestination(log) === 'wd_local_storage',
+  )
   const isAnyLoading = fullBackupLoading || cloudBackupLoading
-  const lastSuccess = backupLogs.find((log) => log.status === 'success')
+  const backupDestinations = [
+    {
+      label: 'Google Drive',
+      schedule: '資料庫每天 02:00 · 商品圖片每天 02:30',
+      items: [
+        { label: '資料庫', logs: cloudLogs },
+        { label: '商品圖片', logs: cloudStorageLogs },
+      ],
+    },
+    {
+      label: '桌機備份',
+      schedule: '每天 10:00，未登入則略過',
+      items: [
+        { label: '資料庫', logs: wdLogs },
+        { label: '商品圖片', logs: wdStorageLogs },
+      ],
+    },
+  ].map((destination) => ({
+    ...destination,
+    items: destination.items.map((item) => {
+      const health = getBackupHealth(item.logs)
+      return {
+        ...item,
+        health: destination.label === '桌機備份' && item.logs.length === 0
+          ? { ...health, message: '未設定' }
+          : health,
+        lastSuccess: item.logs.find((log) => log.status === 'success'),
+      }
+    }),
+  }))
 
   const backupFullDatabase = async () => {
     setFullBackupLoading(true)
@@ -204,6 +212,15 @@ export function BackupPage() {
       }
 
       const blob = await response.blob()
+      const expectedChecksum = response.headers.get('X-Backup-SHA256')?.toLowerCase()
+      if (!expectedChecksum?.match(/^[a-f0-9]{64}$/)) {
+        throw new Error('伺服器未提供有效的備份校驗碼')
+      }
+      const actualChecksum = await sha256Hex(blob)
+      if (actualChecksum !== expectedChecksum) {
+        throw new Error('下載檔案校驗失敗，已取消保存')
+      }
+
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -312,85 +329,137 @@ export function BackupPage() {
           </p>
           <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
               gap: 12,
             }}
           >
-            <span
-              aria-hidden
-              title={
-                requiredHealth.status === 'ok'
-                  ? '綠燈'
-                  : requiredHealth.status === 'warning'
-                    ? '黃燈'
-                    : requiredHealth.status === 'error'
-                      ? '紅燈'
-                      : '無資料'
-              }
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: '50%',
-                background: requiredHealth.light,
-                flexShrink: 0,
-                boxShadow:
-                  requiredHealth.status === 'unknown'
-                    ? 'none'
-                    : `0 0 0 3px ${requiredHealth.light}33`,
-              }}
-            />
-            <h2
-              style={{
-                margin: 0,
-                fontSize: isMobile ? 22 : 28,
-                fontWeight: 700,
-                letterSpacing: '-0.02em',
-                color: requiredHealth.color,
-                lineHeight: 1.25,
-              }}
-            >
-              {requiredHealth.message}
-            </h2>
-          </div>
-          {lastSuccess?.created_at && (
-            <p
-              style={{
-                margin: '10px 0 0 0',
-                fontSize: 14,
-                color: designSystem.colors.text.secondary,
-                lineHeight: 1.5,
-              }}
-            >
-              最近成功 {new Date(lastSuccess.created_at).toLocaleString('zh-TW')}
-              {lastSuccess.records_count != null
-                ? ` · ${lastSuccess.records_count.toLocaleString()} 筆`
-                : ''}
-            </p>
-          )}
-          <p
-            style={{
-              margin: '6px 0 0 0',
-              fontSize: 13,
-              color: designSystem.colors.text.secondary,
-              lineHeight: 1.5,
-            }}
-          >
-            系統每天自動備份（台灣時間 02:00）
-          </p>
-            {(requiredHealth.status === 'error' || requiredHealth.status === 'warning') && (
-              <p
+            {backupDestinations.map(({ label, items, schedule }) => (
+              <div
+                key={label}
                 style={{
-                  margin: '12px 0 0 0',
-                  fontSize: 14,
-                  fontWeight: 500,
-                    color: requiredHealth.color,
-                  lineHeight: 1.5,
+                  padding: isMobile ? 16 : 18,
+                  border: `1px solid ${designSystem.colors.border.light}`,
+                  borderRadius: 12,
+                  background: designSystem.colors.background.card,
                 }}
               >
-                {requiredHealth.status === 'error' ? '請通知工程師' : '請檢查該備份目的地'}
-              </p>
-            )}
+                <h2
+                  style={{
+                    margin: '0 0 4px 0',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: designSystem.colors.text.primary,
+                  }}
+                >
+                  {label}
+                </h2>
+                {items.map(({ label: itemLabel, health, lastSuccess }) => (
+                  <div
+                    key={itemLabel}
+                    style={{
+                      marginTop: 12,
+                      paddingTop: 12,
+                      borderTop: `1px solid ${designSystem.colors.border.light}`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                        <span
+                          aria-hidden
+                          title={
+                            health.status === 'ok'
+                              ? '綠燈'
+                              : health.status === 'warning'
+                                ? '黃燈'
+                                : health.status === 'error'
+                                  ? '紅燈'
+                                  : '無資料'
+                          }
+                          style={{
+                            width: 9,
+                            height: 9,
+                            borderRadius: '50%',
+                            background: health.light,
+                            flexShrink: 0,
+                            boxShadow:
+                              health.status === 'unknown'
+                                ? 'none'
+                                : `0 0 0 3px ${health.light}33`,
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: designSystem.colors.text.primary,
+                          }}
+                        >
+                          {itemLabel}
+                        </span>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: health.color,
+                          textAlign: 'right',
+                        }}
+                      >
+                        {health.message}
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        margin: '7px 0 0 18px',
+                        fontSize: 13,
+                        color: designSystem.colors.text.secondary,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {lastSuccess?.created_at
+                        ? `最近成功 ${new Date(lastSuccess.created_at).toLocaleString('zh-TW')}${
+                            lastSuccess.records_count != null
+                              ? ` · ${lastSuccess.records_count.toLocaleString()} 筆`
+                              : ''
+                          }`
+                        : '尚無成功記錄'}
+                    </p>
+                    {(health.status === 'error' || health.status === 'warning') && (
+                      <p
+                        style={{
+                          margin: '5px 0 0 18px',
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: health.color,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {health.status === 'error' ? '請通知工程師' : '請檢查該備份項目'}
+                      </p>
+                    )}
+                  </div>
+                ))}
+                <p
+                  style={{
+                    margin: '14px 0 0 0',
+                    fontSize: 13,
+                    color: designSystem.colors.text.secondary,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {schedule}
+                </p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section style={getCardStyle(isMobile)}>
@@ -426,6 +495,7 @@ export function BackupPage() {
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {backupLogs.slice(0, 7).map((log, index, list) => {
                 const ok = log.status === 'success'
+                const running = log.status === 'running'
                 return (
                   <li
                     key={log.id}
@@ -453,7 +523,7 @@ export function BackupPage() {
                         {destinationLabel(log)} · {formatLogTime(log.created_at)}
                         {log.checksum ? ` · ${log.checksum.slice(0, 10)}…` : ''}
                       </div>
-                      {!ok && (
+                      {!ok && !running && (
                         <div
                           style={{
                             marginTop: 4,
@@ -475,7 +545,9 @@ export function BackupPage() {
                         fontWeight: 500,
                         color: ok
                           ? designSystem.colors.text.secondary
-                          : designSystem.colors.danger[700],
+                          : running
+                            ? designSystem.colors.warning[700]
+                            : designSystem.colors.danger[700],
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -487,7 +559,9 @@ export function BackupPage() {
                           borderRadius: '50%',
                           background: ok
                             ? designSystem.colors.success[500]
-                            : designSystem.colors.danger[500],
+                            : running
+                              ? designSystem.colors.warning[500]
+                              : designSystem.colors.danger[500],
                         }}
                       />
                       {ok
@@ -501,7 +575,9 @@ export function BackupPage() {
                           ]
                             .filter(Boolean)
                             .join(' · ')
-                        : '失敗'}
+                        : running
+                          ? '同步中'
+                          : '失敗'}
                     </div>
                   </li>
                 )

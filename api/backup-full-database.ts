@@ -80,6 +80,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: any) {
     const totalTime = Date.now() - startTime;
     console.error('备份失败:', error);
+    if (req.method === 'POST') {
+      try {
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (supabaseUrl && serviceKey) {
+          await createClient(supabaseUrl, serviceKey).from('backup_logs').insert({
+            backup_type: 'full_database',
+            destination: 'manual_download',
+            status: 'failed',
+            error_message: String(error?.message || error).slice(0, 1000),
+            execution_time: totalTime,
+          });
+        }
+      } catch (logError) {
+        console.error('寫入手動備份失敗紀錄時出錯:', logError);
+      }
+    }
     return res.status(500).json({
       error: '备份失败',
       message: error.message || 'Unknown error',

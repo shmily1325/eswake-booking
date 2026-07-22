@@ -42,7 +42,7 @@
     "api/backup-report.ts": {
       "maxDuration": 10
     },
-    "api/backup-to-drive.ts": {
+    "api/backup-storage.ts": {
       "maxDuration": 60
     },
     "api/fetch-product-image.ts": {
@@ -53,6 +53,10 @@
     {
       "path": "/api/backup-to-cloud-drive",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/backup-storage?mode=cloud",
+      "schedule": "30 18 * * *"
     }
   ]
 }

@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const { spawnSync } = require('child_process');
+const crypto = require('crypto');
 
 function fail(message) {
   console.error(`Restore verification aborted: ${message}`);
@@ -19,6 +20,13 @@ if (process.env.ESWAKE_RESTORE_CONFIRM !== 'STAGING_ONLY') {
 if (process.env.PRODUCTION_DATABASE_URL && databaseUrl === process.env.PRODUCTION_DATABASE_URL) {
   fail('target matches PRODUCTION_DATABASE_URL');
 }
+
+const checksumPath = `${backupPath}.sha256`;
+if (!fs.existsSync(checksumPath)) fail(`checksum sidecar is missing: ${checksumPath}`);
+const expectedChecksum = fs.readFileSync(checksumPath, 'utf8').trim().split(/\s+/)[0]?.toLowerCase();
+if (!/^[a-f0-9]{64}$/.test(expectedChecksum)) fail('checksum sidecar is invalid');
+const actualChecksum = crypto.createHash('sha256').update(fs.readFileSync(backupPath)).digest('hex');
+if (actualChecksum !== expectedChecksum) fail('backup SHA-256 does not match its sidecar');
 
 const parsedUrl = new URL(databaseUrl);
 const localHosts = new Set(['localhost', '127.0.0.1', '::1']);
