@@ -57,6 +57,8 @@ describe('offline disaster-recovery artifact', () => {
     expect(html).not.toContain("action: 'boats'")
     expect(html).not.toContain('showDayView()')
     expect(html).not.toContain('正在開發中')
+    expect(html).toContain("showRecoveryDataset('system-reference', 'admin_users')")
+    expect(html).toContain("showRecoveryDataset('restrictions', 'boats')")
   })
 
   it('keeps recovery views aligned with the current product frame', () => {
@@ -245,6 +247,22 @@ describe('offline disaster-recovery artifact', () => {
     expect(evaluateOffline<boolean>("bookingRangesOverlap('09:00', 60, '09:30', 30)")).toBe(true)
     expect(evaluateOffline<boolean>("bookingRangesOverlap('09:00', 60, '10:00', 30)")).toBe(false)
     expect(evaluateOffline<boolean>("bookingRangesOverlap('10:00', 30, '09:00', 60)")).toBe(false)
+  })
+
+  it('formats reservation restriction windows and links announcement content', () => {
+    expect(
+      evaluateOffline<string>(
+        "formatRestrictionTimeWindow({ start_date: '2026-07-23', end_date: '2026-07-23', start_time: '09:00:00', end_time: '12:30:00' })",
+      ),
+    ).toBe('09:00–12:30')
+    expect(
+      evaluateOffline<string>(
+        "formatRestrictionTimeWindow({ start_date: '2026-07-23', end_date: '2026-07-24', start_time: null, end_time: null })",
+      ),
+    ).toBe('2026-07-23 → 2026-07-24 · 全天')
+    expect(html).toContain("safeGetAllFromStore('daily_announcements')")
+    expect(html).toContain('announcementMap.get(String(row.announcement_id))')
+    expect(html).toContain("announcement?.content || '限制生效中'")
   })
 
   it('normalizes PostgreSQL array values for offline import and display', () => {

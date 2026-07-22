@@ -2853,8 +2853,8 @@
                             <div class="es-section-heading"><h2>營運</h2><span>離線唯讀</span></div>
                             <div class="menu-grid" style="margin-top:0;">
                                 <button class="es-menu-card" onclick="showRecoveryDataset('restrictions')"><span class="es-menu-icon">📢</span><span class="es-menu-title">公告</span></button>
-                                <button class="es-menu-card" onclick="showRecoveryDataset('system-reference')"><span class="es-menu-icon">🎓</span><span class="es-menu-title">人員管理</span></button>
-                                <button class="es-menu-card" onclick="showRecoveryDataset('restrictions')"><span class="es-menu-icon">🚤</span><span class="es-menu-title">船隻管理</span></button>
+                                <button class="es-menu-card" onclick="showRecoveryDataset('system-reference', 'admin_users')"><span class="es-menu-icon">🎓</span><span class="es-menu-title">人員管理</span></button>
+                                <button class="es-menu-card" onclick="showRecoveryDataset('restrictions', 'boats')"><span class="es-menu-icon">🚤</span><span class="es-menu-title">船隻管理</span></button>
                                 <button class="es-menu-card" onclick="showProductInventory()"><span class="es-menu-icon">📦</span><span class="es-menu-title">商品管理</span></button>
                                 <button class="es-menu-card" onclick="showRecoveryDataset('shop-recovery')"><span class="es-menu-icon">🏷️</span><span class="es-menu-title">商品查詢</span></button>
                                 <button class="es-menu-card" onclick="showRecoveryDataset('backup-logs')"><span class="es-menu-icon">💾</span><span class="es-menu-title">備份紀錄</span></button>
@@ -3091,7 +3091,7 @@
             renderRecoveryDatasetRows();
         }
 
-        async function showRecoveryDataset(key) {
+        async function showRecoveryDataset(key, preferredTable = '') {
             const config = RECOVERY_DATASETS[key];
             if (!config) return alert('找不到資料集設定');
             if (!db) await initDatabase();
@@ -3103,7 +3103,9 @@
                     .slice()
                     .sort((a, b) => recoverySortValue(b).localeCompare(recoverySortValue(a)));
             }));
-            activeRecoveryTable = config.tables[0][0];
+            activeRecoveryTable = config.tables.some(([tableName]) => tableName === preferredTable)
+                ? preferredTable
+                : config.tables[0][0];
             setOfflinePageLayout();
             const mainContent = document.getElementById('main-content');
             mainContent.innerHTML = `
@@ -3115,8 +3117,8 @@
                             <p>${escapeHtml(config.description)}</p>
                         </div>
                         <div class="es-tabs" role="tablist">
-                            ${config.tables.map(([tableName, label], index) => `
-                                <button type="button" class="es-tab${index === 0 ? ' active' : ''}"
+                            ${config.tables.map(([tableName, label]) => `
+                                <button type="button" class="es-tab${tableName === activeRecoveryTable ? ' active' : ''}"
                                     data-recovery-table="${escapeHtml(tableName)}"
                                     onclick="selectRecoveryTable('${tableName}')">
                                     ${escapeHtml(label)} · ${(recoveryRowsByTable[tableName] || []).length.toLocaleString()}
@@ -3145,20 +3147,38 @@
             return (!start || date >= start) && (!end || date <= end);
         }
 
+        function formatRestrictionTimeWindow(row) {
+            const startDate = String(row.start_date || '').slice(0, 10);
+            const endDate = String(row.end_date || startDate).slice(0, 10);
+            const startTime = String(row.start_time || '').slice(0, 5);
+            const endTime = String(row.end_time || '').slice(0, 5);
+            if (!startTime && !endTime) {
+                return startDate && endDate && startDate !== endDate
+                    ? `${startDate} → ${endDate} · 全天`
+                    : '全天';
+            }
+            const timeRange = `${startTime || '00:00'}–${endTime || '24:00'}`;
+            return startDate && endDate && startDate !== endDate
+                ? `${startDate} ${startTime || '00:00'} → ${endDate} ${endTime || '24:00'}`
+                : timeRange;
+        }
+
         async function showRecoveryDayView(dateParam) {
             const selectedDate = dateParam || getVenueDateString();
             if (!db) await initDatabase();
-            const [allBookings, boats, restrictions, unavailable] = await Promise.all([
+            const [allBookings, boats, restrictions, unavailable, announcements] = await Promise.all([
                 safeGetAllFromStore('bookings'),
                 safeGetAllFromStore('boats'),
                 safeGetAllFromStore('reservation_restrictions'),
-                safeGetAllFromStore('boat_unavailable_dates')
+                safeGetAllFromStore('boat_unavailable_dates'),
+                safeGetAllFromStore('daily_announcements')
             ]);
             const dayBookings = allBookings
                 .filter(row => String(row.start_at || '').slice(0, 10) === selectedDate)
                 .sort((a, b) => String(a.start_at || '').localeCompare(String(b.start_at || '')));
             const enriched = await enrichBookingsWithDetails(dayBookings);
             const boatMap = new Map(boats.map(boat => [String(boat.id), boat]));
+            const announcementMap = new Map(announcements.map(row => [String(row.id), row]));
             const dayRestrictions = restrictions.filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row));
             const dayUnavailable = unavailable.filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row));
             setOfflinePageLayout();
@@ -3185,9 +3205,13 @@
                             <section class="es-section">
                                 <div class="es-section-heading"><h2>當日限制</h2><span>${dayRestrictions.length + dayUnavailable.length} 項</span></div>
                                 <div class="es-record-list">
-                                    ${dayRestrictions.map(row => `
-                                        <div class="es-status warning"><strong>預約限制</strong><br>${escapeHtml(row.reason || row.title || row.description || '限制生效中')}${row.notes ? `<br>${escapeHtml(row.notes)}` : ''}</div>
-                                    `).join('')}
+                                    ${dayRestrictions.map(row => {
+                                        const announcement = announcementMap.get(String(row.announcement_id));
+                                        return `<div class="es-status warning">
+                                            <strong>預約限制 · ${escapeHtml(formatRestrictionTimeWindow(row))}</strong><br>
+                                            ${escapeHtml(announcement?.content || '限制生效中')}
+                                        </div>`;
+                                    }).join('')}
                                     ${dayUnavailable.map(row => {
                                         const boat = boatMap.get(String(row.boat_id));
                                         return `<div class="es-status danger"><strong>${escapeHtml(boat?.name || '船隻')}停用</strong><br>${escapeHtml(row.reason || '停用')}${row.notes ? `<br>${escapeHtml(row.notes)}` : ''}</div>`;
