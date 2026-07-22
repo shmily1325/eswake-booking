@@ -544,7 +544,8 @@ async function processResumableStorageBackup(
 
           try {
             if (storageEntryChanged(entry, state || undefined)) {
-              if (Date.now() - startedAt >= 3_000) break workLoop
+              const safeUploadStartMs = run.drive_folder_id ? 25_000 : 3_000
+              if (Date.now() - startedAt >= safeUploadStartMs) break workLoop
               const target = await ensureDrive()
               const uploaded = await writeDriveObject(target.drive, target.bucketFolderId, entry)
               checksum = uploaded.checksum
