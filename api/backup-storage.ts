@@ -356,6 +356,19 @@ async function logBackup(
   if (error) throw new Error(`寫入備份紀錄失敗：${error.message}`)
 }
 
+async function clearTransientStorageLogs(
+  supabase: SupabaseClient,
+  runStartedAt: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('backup_logs')
+    .delete()
+    .eq('destination', 'google_drive_storage')
+    .in('status', ['running', 'failed'])
+    .gte('created_at', runStartedAt)
+  if (error) throw new Error(`清理重複 Storage 備份紀錄失敗：${error.message}`)
+}
+
 async function fetchRunEntries(
   supabase: SupabaseClient,
   runId: string,
@@ -928,6 +941,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const checksum = result.manifest?.checksum || result.run.manifest_checksum
+    await clearTransientStorageLogs(supabase, result.run.started_at)
     await logBackup(supabase, {
       backup_type: 'storage',
       destination: 'google_drive_storage',
@@ -965,6 +979,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: unknown) {
     const message = errorMessage(error)
     try {
+      const { data: latestRun } = await supabase
+        .from('storage_backup_inventory_runs')
+        .select('started_at')
+        .eq('bucket_id', STORAGE_BACKUP_BUCKET)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (latestRun?.started_at) {
+        await clearTransientStorageLogs(supabase, latestRun.started_at)
+      }
       await logBackup(supabase, {
         backup_type: 'storage',
         destination: 'google_drive_storage',
