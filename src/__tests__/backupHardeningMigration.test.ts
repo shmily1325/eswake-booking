@@ -26,6 +26,32 @@ describe('backup hardening migration', () => {
   })
 })
 
+describe('resumable Storage backup migration', () => {
+  const sql = fs.readFileSync(
+    path.join(root, 'migrations/155_add_resumable_storage_backup.sql'),
+    'utf8',
+  )
+
+  it('persists run phases and immutable inventory entries', () => {
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS public.storage_backup_inventory_runs')
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS public.storage_backup_inventory_entries')
+    expect(sql).toContain('inventory_cursor text')
+    expect(sql).toContain('sync_cursor text')
+    expect(sql).toContain("'cleanup'")
+    expect(sql).toContain('last_seen_run_id uuid')
+  })
+
+  it('uses service-only keyset and lease RPCs', () => {
+    expect(sql).toContain('o.name > v_run.inventory_cursor')
+    expect(sql).toContain('lease_expires_at')
+    expect(sql).toContain('pg_advisory_xact_lock')
+    expect(sql).toContain('LOCK TABLE storage.objects IN SHARE MODE')
+    expect(sql).toContain('commit_storage_backup_manifest')
+    expect(sql).toContain('TO service_role')
+    expect(sql).toContain('FROM PUBLIC, anon, authenticated')
+  })
+})
+
 describe('Vercel backup limits', () => {
   const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'))
   const apiFiles = fs.readdirSync(path.join(root, 'api')).filter((file) => file.endsWith('.ts'))

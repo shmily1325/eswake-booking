@@ -10,6 +10,12 @@
 The application-managed Google Drive and Windows backups continue to work after
 the Supabase project is downgraded from Pro.
 
+The product-image cloud job is resumable. A `202 running` result is expected
+while it advances through inventory, sync, deletion reconciliation, and
+manifest phases. Repeating the manual action or the next Cron invocation resumes
+the same run from its saved cursor. Migration 155 must be applied before this
+endpoint is deployed.
+
 ## Required secrets
 
 - Vercel: set a high-entropy `CRON_SECRET`. Vercel Cron sends it as

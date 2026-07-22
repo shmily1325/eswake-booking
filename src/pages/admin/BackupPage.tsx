@@ -46,7 +46,8 @@ function getLogDestination(log: BackupLog): BackupDestination {
   if (log.destination === 'wd_local_storage') return 'wd_local_storage'
   if (log.destination === 'google_drive' || log.backup_type === 'cloud_drive') return 'google_drive'
   if (log.destination === 'wd_local') return 'wd_local'
-  if (log.destination === 'manual_download' || log.backup_type === 'full_database') return 'manual_download'
+  if (log.destination === 'manual_download' || log.backup_type === 'full_database')
+    return 'manual_download'
   return 'other'
 }
 
@@ -87,6 +88,15 @@ async function getBackupRequestHeaders(): Promise<Record<string, string>> {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${session.access_token}`,
   }
+}
+
+function storagePhaseLabel(phase: string): string {
+  if (phase === 'inventory') return '建立商品圖片清單'
+  if (phase === 'sync') return '同步商品圖片'
+  if (phase === 'reconcile') return '整理已刪除圖片'
+  if (phase === 'manifest') return '產生完整性清單'
+  if (phase === 'cleanup') return '完成 Google Drive 清單切換'
+  return '處理商品圖片備份'
 }
 
 export function BackupPage() {
@@ -143,8 +153,7 @@ export function BackupPage() {
       setBackupLogs(
         Array.from(uniqueLogs.values()).sort(
           (left, right) =>
-            new Date(right.created_at || 0).getTime()
-            - new Date(left.created_at || 0).getTime(),
+            new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime(),
         ),
       )
     } catch (err) {
@@ -163,9 +172,7 @@ export function BackupPage() {
   const cloudStorageLogs = backupLogs.filter(
     (log) => getLogDestination(log) === 'google_drive_storage',
   )
-  const wdStorageLogs = backupLogs.filter(
-    (log) => getLogDestination(log) === 'wd_local_storage',
-  )
+  const wdStorageLogs = backupLogs.filter((log) => getLogDestination(log) === 'wd_local_storage')
   const isAnyLoading = fullBackupLoading || cloudBackupLoading || storageBackupLoading
   const backupDestinations = [
     {
@@ -192,9 +199,7 @@ export function BackupPage() {
       return {
         ...item,
         unconfigured,
-        health: unconfigured
-          ? { ...health, message: '未設定' }
-          : health,
+        health: unconfigured ? { ...health, message: '未設定' } : health,
         lastSuccess: item.logs.find((log) => log.status === 'success'),
       }
     }),
@@ -254,7 +259,8 @@ export function BackupPage() {
         const error = await response.json()
 
         if (error.errorCode === 'INVALID_GRANT' && error.solution) {
-          const solutionText = error.solution.steps.join('\n') + '\n\n' + error.solution.documentation
+          const solutionText =
+            error.solution.steps.join('\n') + '\n\n' + error.solution.documentation
           toast.error(`${error.error}\n\n${error.message}\n\n${solutionText}`, 10000)
           if (confirm('是否要開啟取得新刷新令牌的頁面？')) {
             window.open('/api/oauth2-auth-url', '_blank')
@@ -303,11 +309,17 @@ export function BackupPage() {
       }
       if (result.complete) {
         toast.success(`商品圖片已同步到 Google Drive，共 ${result.manifest.fileCount} 個檔案。`)
+      } else if (result.busy) {
+        toast.info('已有商品圖片備份正在執行，請稍後再試。', 5000)
       } else {
-        toast.info(
-          `本次已同步 ${result.processed} 個檔案，尚有 ${result.remaining} 個；可再次按下繼續。`,
-          7000,
-        )
+        const phaseLabel = storagePhaseLabel(result.phase)
+        const progress =
+          result.phase === 'inventory'
+            ? `本次新增清點 ${result.scanned} 個，目前共 ${result.manifest.fileCount} 個`
+            : result.phase === 'sync'
+              ? `本次處理 ${result.processed} 個，尚有 ${result.remaining} 個`
+              : '本階段已完成，可再次按下繼續'
+        toast.info(`${phaseLabel}：${progress}；可再次按下繼續。`, 7000)
       }
       await fetchBackupLogs()
     } catch (error) {
@@ -403,7 +415,13 @@ export function BackupPage() {
                         gap: 12,
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 9,
+                        }}
+                      >
                         <span
                           aria-hidden
                           title={
@@ -422,9 +440,7 @@ export function BackupPage() {
                             background: health.light,
                             flexShrink: 0,
                             boxShadow:
-                              health.status === 'unknown'
-                                ? 'none'
-                                : `0 0 0 3px ${health.light}33`,
+                              health.status === 'unknown' ? 'none' : `0 0 0 3px ${health.light}33`,
                           }}
                         />
                         <span
@@ -518,11 +534,23 @@ export function BackupPage() {
           </p>
 
           {backupLogsLoading ? (
-            <p style={{ margin: 0, fontSize: 14, color: designSystem.colors.text.secondary }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 14,
+                color: designSystem.colors.text.secondary,
+              }}
+            >
               載入中…
             </p>
           ) : backupLogs.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 14, color: designSystem.colors.text.secondary }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 14,
+                color: designSystem.colors.text.secondary,
+              }}
+            >
               尚無備份記錄。可先執行一次雲端備份。
             </p>
           ) : (
@@ -620,7 +648,12 @@ export function BackupPage() {
           )}
         </section>
 
-        <section style={{ marginTop: isMobile ? 8 : 4, marginBottom: isMobile ? 24 : 32 }}>
+        <section
+          style={{
+            marginTop: isMobile ? 8 : 4,
+            marginBottom: isMobile ? 24 : 32,
+          }}
+        >
           <h3
             style={{
               margin: '0 0 6px 0',
