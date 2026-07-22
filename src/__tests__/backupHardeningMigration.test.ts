@@ -69,9 +69,34 @@ describe('extended Storage backup lease migration', () => {
   })
 })
 
+describe('batched Storage checkpoint migration', () => {
+  const sql = fs.readFileSync(
+    path.join(root, 'migrations/157_batch_ack_storage_backup_entries.sql'),
+    'utf8',
+  )
+
+  it('atomically acknowledges up to 50 ordered unchanged entries', () => {
+    expect(sql).toContain('ack_storage_backup_inventory_entries')
+    expect(sql).toContain('v_count < 1 OR v_count > 50')
+    expect(sql).toContain('storage backup cursor mismatch')
+    expect(sql).toContain('source object changed during backup')
+    expect(sql).toContain('storage backup entry is not unchanged')
+    expect(sql).toContain('synced_count = synced_count + v_count')
+  })
+
+  it('keeps the batch RPC fenced and service-only', () => {
+    expect(sql).toContain('FOR UPDATE')
+    expect(sql).toContain('lease_token IS DISTINCT FROM p_lease_token')
+    expect(sql).toContain("SET statement_timeout TO '15s'")
+    expect(sql).toContain('FROM PUBLIC, anon, authenticated')
+    expect(sql).toContain('TO service_role')
+  })
+})
+
 describe('Vercel backup limits', () => {
   const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'))
   const apiFiles = fs.readdirSync(path.join(root, 'api')).filter((file) => file.endsWith('.ts'))
+  const storageApi = fs.readFileSync(path.join(root, 'api/backup-storage.ts'), 'utf8')
 
   it('stays within the 12 function limit', () => {
     expect(apiFiles.length).toBeLessThanOrEqual(12)
@@ -89,5 +114,9 @@ describe('Vercel backup limits', () => {
       { path: '/api/backup-to-cloud-drive', schedule: '0 18 * * *' },
       { path: '/api/backup-storage?mode=cloud', schedule: '30 18 * * *' },
     ])
+  })
+
+  it('returns the completion flag used by the automatic UI loop', () => {
+    expect(storageApi).toContain('complete: result.complete')
   })
 })

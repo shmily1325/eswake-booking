@@ -34,6 +34,7 @@ interface BackupLog {
 }
 
 interface StorageBackupResponse {
+  success?: boolean
   complete?: boolean
   busy?: boolean
   phase?: string
@@ -372,7 +373,7 @@ export function BackupPage() {
         }
 
         timeoutRetries = 0
-        if (result.complete) {
+        if (result.complete || result.success) {
           complete = true
           toast.success(`商品圖片已同步到 Google Drive，共 ${result.manifest?.fileCount ?? 0} 個檔案。`)
           break

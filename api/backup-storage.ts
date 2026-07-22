@@ -572,76 +572,109 @@ async function processResumableStorageBackup(
           .limit(SYNC_PAGE_SIZE)
         const { data, error } = run.sync_cursor
           ? await query.gt('object_path', run.sync_cursor)
-          : await query
+            .abortSignal(deadlineSignal(startedAt + 250_000))
+          : await query.abortSignal(deadlineSignal(startedAt + 250_000))
         if (error) throw new Error(`讀取待同步圖片失敗：${error.message}`)
         const entries = (data || []) as StorageInventoryEntry[]
         if (entries.length === 0) {
           throw new Error('Storage sync cursor 沒有可處理項目')
         }
 
-        for (const inventoryEntry of entries) {
+        const paths = entries.map((entry) => entry.object_path)
+        const { data: stateData, error: stateError } = await supabase
+          .from('storage_backup_objects')
+          .select('*')
+          .eq('bucket_id', STORAGE_BACKUP_BUCKET)
+          .in('object_path', paths)
+          .abortSignal(deadlineSignal(startedAt + 250_000))
+        if (stateError) throw new Error(`批次讀取圖片 checkpoint 失敗：${stateError.message}`)
+        const stateByPath = new Map<string, StorageBackupState>(
+          ((stateData || []) as StorageBackupState[]).map((state) => [state.object_path, state]),
+        )
+
+        let entryIndex = 0
+        while (entryIndex < entries.length) {
           if (Date.now() - startedAt >= TIME_BUDGET_MS) break
+          const inventoryEntry = entries[entryIndex]
           const entry = toStorageEntry(supabase, inventoryEntry)
-          const { data: stateData, error: stateError } = await supabase
-            .from('storage_backup_objects')
-            .select('*')
-            .eq('bucket_id', STORAGE_BACKUP_BUCKET)
-            .eq('object_path', entry.path)
-            .maybeSingle()
-          if (stateError) throw new Error(`讀取圖片 checkpoint 失敗：${stateError.message}`)
-          const state = stateData as StorageBackupState | null
+          const state = stateByPath.get(entry.path) || null
+
+          if (!storageEntryChanged(entry, state || undefined)) {
+            const unchangedEntries: Array<{ object_path: string; checksum: string }> = []
+            while (entryIndex < entries.length) {
+              const candidateEntry = toStorageEntry(supabase, entries[entryIndex])
+              const candidateState = stateByPath.get(candidateEntry.path)
+              if (storageEntryChanged(candidateEntry, candidateState)) break
+              unchangedEntries.push({
+                object_path: candidateEntry.path,
+                checksum: candidateState!.checksum!,
+              })
+              entryIndex += 1
+            }
+
+            if (Date.now() - startedAt >= TIME_BUDGET_MS) break
+            run = await renewRunLease(supabase, run.run_id, leaseToken)
+            const { data: batchData, error: batchError } = await supabase.rpc(
+              'ack_storage_backup_inventory_entries',
+              {
+                p_run_id: run.run_id,
+                p_lease_token: leaseToken,
+                p_entries: unchangedEntries,
+              },
+            ).abortSignal(deadlineSignal(startedAt + 250_000, 30_000))
+            if (batchError?.message.includes('source object changed during backup')) {
+              throw new StorageSourceChangedError('商品圖片在批次確認期間已變更')
+            }
+            if (batchError) {
+              throw new Error(`批次推進 Storage sync cursor 失敗：${batchError.message}`)
+            }
+            const acknowledged = batchData as { run: StorageBackupRun; acked_count: number }
+            if (Number(acknowledged.acked_count) !== unchangedEntries.length) {
+              throw new Error('Storage 批次確認筆數不一致')
+            }
+            run = rpcRun(acknowledged.run)
+            processed += unchangedEntries.length
+            continue
+          }
+
           let checksum = state?.checksum || null
           let checkpointSaved = false
 
           try {
-            if (storageEntryChanged(entry, state || undefined)) {
-              run = await renewRunLease(supabase, run.run_id, leaseToken)
-              const target = await ensureDrive()
-              if (
-                Date.now() - startedAt + MAX_OBJECT_OPERATION_MS
-                >= SERVER_HARD_STOP_MS
-              ) break workLoop
-              const uploaded = await writeDriveObject(target.drive, target.bucketFolderId, entry)
-              checksum = uploaded.checksum
-              const { error: upsertError } = await supabase.from('storage_backup_objects').upsert({
-                bucket_id: STORAGE_BACKUP_BUCKET,
-                object_path: entry.path,
-                source_updated_at: entry.updatedAt,
-                source_size: entry.size,
-                drive_file_id: uploaded.fileId,
-                checksum,
-                status: 'success',
-                last_backed_up_at: new Date().toISOString(),
-                last_seen_run_id: run.run_id,
-                source_deleted_at: null,
-                error_message: null,
-                updated_at: new Date().toISOString(),
-              })
-              if (upsertError) {
-                await deleteDriveFile(target.drive, uploaded.fileId).catch(() => undefined)
-                throw upsertError
-              }
-              checkpointSaved = true
-              if (state?.drive_file_id && state.drive_file_id !== uploaded.fileId) {
-                await deleteDriveFile(target.drive, state.drive_file_id)
-                  .catch((deleteError: unknown) => {
+            run = await renewRunLease(supabase, run.run_id, leaseToken)
+            const target = await ensureDrive()
+            if (
+              Date.now() - startedAt + MAX_OBJECT_OPERATION_MS
+              >= SERVER_HARD_STOP_MS
+            ) break workLoop
+            const uploaded = await writeDriveObject(target.drive, target.bucketFolderId, entry)
+            checksum = uploaded.checksum
+            const { error: upsertError } = await supabase.from('storage_backup_objects').upsert({
+              bucket_id: STORAGE_BACKUP_BUCKET,
+              object_path: entry.path,
+              source_updated_at: entry.updatedAt,
+              source_size: entry.size,
+              drive_file_id: uploaded.fileId,
+              checksum,
+              status: 'success',
+              last_backed_up_at: new Date().toISOString(),
+              last_seen_run_id: run.run_id,
+              source_deleted_at: null,
+              error_message: null,
+              updated_at: new Date().toISOString(),
+            })
+            if (upsertError) {
+              await deleteDriveFile(target.drive, uploaded.fileId).catch(() => undefined)
+              throw upsertError
+            }
+            checkpointSaved = true
+            if (state?.drive_file_id && state.drive_file_id !== uploaded.fileId) {
+              await deleteDriveFile(target.drive, state.drive_file_id)
+                .catch((deleteError: unknown) => {
                   if (errorCode(deleteError) !== 404) {
                     console.error(`舊 Storage 備份檔刪除失敗：${entry.path}`, deleteError)
                   }
                 })
-              }
-            } else {
-              const { error: seenError } = await supabase
-                .from('storage_backup_objects')
-                .update({
-                  last_seen_run_id: run.run_id,
-                  source_deleted_at: null,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('bucket_id', STORAGE_BACKUP_BUCKET)
-                .eq('object_path', entry.path)
-              if (seenError) throw seenError
-              checkpointSaved = true
             }
 
             if (!checksum?.match(/^[a-f0-9]{64}$/)) {
@@ -668,6 +701,7 @@ async function processResumableStorageBackup(
             if (ackError) throw new Error(`推進 Storage sync cursor 失敗：${ackError.message}`)
             run = rpcRun(ackData)
             processed += 1
+            entryIndex += 1
           } catch (error: unknown) {
             if (!checkpointSaved) {
               await supabase.from('storage_backup_objects').upsert({
@@ -1003,6 +1037,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(result.complete ? 200 : 202).json({
       success: result.complete,
+      complete: result.complete,
       status: result.complete ? 'success' : 'running',
       busy: false,
       phase: result.phase,
@@ -1029,8 +1064,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .eq('bucket_id', STORAGE_BACKUP_BUCKET)
           .order('started_at', { ascending: false })
           .limit(1)
-          .maybeSingle()
           .abortSignal(deadlineSignal(startedAt + 290_000, 10_000))
+          .maybeSingle()
         if (latestRun?.started_at) {
           await clearTransientStorageLogs(
             supabase,
