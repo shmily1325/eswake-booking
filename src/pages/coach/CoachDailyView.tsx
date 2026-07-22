@@ -110,6 +110,7 @@ export function CoachDailyView() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [selectedCoachId, setSelectedCoachId] = useState<string>('')
+  const [loadedBookingsDate, setLoadedBookingsDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [dateChanging, setDateChanging] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
@@ -121,6 +122,36 @@ export function CoachDailyView() {
   const [assignmentAnnouncements, setAssignmentAnnouncements] = useState<DayViewAssignmentAnnouncement[]>([])
   const hasAppliedDefaultCoachFilter = useRef(false)
 
+  const currentUserCoach = useMemo(() => {
+    const userEmail = user?.email?.trim().toLowerCase()
+    if (!userEmail) return undefined
+
+    return coaches.find(
+      coach => coach.user_email?.trim().toLowerCase() === userEmail
+    )
+  }, [coaches, user?.email])
+
+  const visibleCoaches = useMemo(() => {
+    const visibleCoachIds = new Set<string>()
+
+    bookings.forEach(booking => {
+      booking.coaches?.forEach(coach => visibleCoachIds.add(coach.id))
+      booking.drivers?.forEach(driver => visibleCoachIds.add(driver.id))
+    })
+
+    if (currentUserCoach) {
+      visibleCoachIds.add(currentUserCoach.id)
+    }
+
+    const availableCoaches = coaches.filter(coach => visibleCoachIds.has(coach.id))
+    if (!currentUserCoach) return availableCoaches
+
+    return [
+      currentUserCoach,
+      ...availableCoaches.filter(coach => coach.id !== currentUserCoach.id),
+    ]
+  }, [bookings, coaches, currentUserCoach])
+
   useEffect(() => {
     if (
       !isMobile ||
@@ -131,19 +162,27 @@ export function CoachDailyView() {
       return
     }
 
-    const userEmail = user.email.trim().toLowerCase()
-    const matchedCoach = coaches.find(
-      coach => coach.user_email?.trim().toLowerCase() === userEmail
-    )
-
     hasAppliedDefaultCoachFilter.current = true
-    setSelectedCoachId(matchedCoach?.id || '')
-  }, [coaches, isMobile, user?.email])
+    setSelectedCoachId(currentUserCoach?.id || '')
+  }, [coaches.length, currentUserCoach?.id, isMobile, user?.email])
+
+  useEffect(() => {
+    if (
+      !selectedCoachId ||
+      loadedBookingsDate !== dateParam ||
+      visibleCoaches.some(coach => coach.id === selectedCoachId)
+    ) {
+      return
+    }
+
+    setSelectedCoachId('')
+  }, [dateParam, loadedBookingsDate, selectedCoachId, visibleCoaches])
 
   useEffect(() => {
     // 換日期時，先清掉與日期綁定的舊資料，避免新資料載入前殘留前一天的內容
     // 注意：清空動作只放在 date useEffect 開頭，realtime 訂閱觸發的 loadBookings 不會走到這裡
     setBookings([])
+    setLoadedBookingsDate(null)
     setConflictedIds(new Set())
     setConflictReasons(new Map())
     setBoatUnavailableBlocks([])
@@ -209,6 +248,7 @@ export function CoachDailyView() {
   }
 
   const loadBookings = async () => {
+    const requestedDate = dateParam
     const isInitialLoad = boats.length === 0
     if (isInitialLoad) {
       setLoading(true)
@@ -216,8 +256,8 @@ export function CoachDailyView() {
       setDateChanging(true)
     }
     try {
-      const startOfDay = `${dateParam}T00:00:00`
-      const endOfDay = `${dateParam}T23:59:59`
+      const startOfDay = `${requestedDate}T00:00:00`
+      const endOfDay = `${requestedDate}T23:59:59`
 
       const { data, error } = await supabase
         .from('bookings')
@@ -284,6 +324,7 @@ export function CoachDailyView() {
       }))
 
       setBookings(formattedData)
+      setLoadedBookingsDate(requestedDate)
       setLastUpdate(new Date())
 
       // 計算當日衝突（教練/駕駛跨船重疊 + 全域限制）
@@ -945,7 +986,7 @@ export function CoachDailyView() {
               >
                 全部
               </button>
-              {coaches.map(coach => (
+              {visibleCoaches.map(coach => (
                 <button
                   key={coach.id}
                   type="button"
