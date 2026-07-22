@@ -99,6 +99,10 @@ function storagePhaseLabel(phase: string): string {
   return '處理商品圖片備份'
 }
 
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+}
+
 export function BackupPage() {
   const user = useAuthUser()
   const navigate = useNavigate()
@@ -107,6 +111,7 @@ export function BackupPage() {
   const [fullBackupLoading, setFullBackupLoading] = useState(false)
   const [cloudBackupLoading, setCloudBackupLoading] = useState(false)
   const [storageBackupLoading, setStorageBackupLoading] = useState(false)
+  const [storageBackupProgress, setStorageBackupProgress] = useState<string | null>(null)
   const [backupLogs, setBackupLogs] = useState<BackupLog[]>([])
   const [backupLogsLoading, setBackupLogsLoading] = useState(true)
 
@@ -297,35 +302,63 @@ export function BackupPage() {
 
   const backupStorageToCloudDrive = async () => {
     setStorageBackupLoading(true)
+    setStorageBackupProgress('準備商品圖片同步…')
     try {
-      const headers = await getBackupRequestHeaders()
-      const response = await fetch('/api/backup-storage?mode=cloud', {
-        method: 'POST',
-        headers,
-      })
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.message || result.error || '商品圖片備份失敗')
-      }
-      if (result.complete) {
-        toast.success(`商品圖片已同步到 Google Drive，共 ${result.manifest.fileCount} 個檔案。`)
-      } else if (result.busy) {
-        toast.info('已有商品圖片備份正在執行，請稍後再試。', 5000)
-      } else {
+      const maximumRounds = 100
+      let timeoutRetries = 0
+      let complete = false
+
+      for (let round = 1; round <= maximumRounds; round += 1) {
+        const headers = await getBackupRequestHeaders()
+        const response = await fetch('/api/backup-storage?mode=cloud', {
+          method: 'POST',
+          headers,
+        })
+        const result = await response.json()
+        if (!response.ok) {
+          const message = result.message || result.error || '商品圖片備份失敗'
+          if (/timeout|aborted/i.test(message) && timeoutRetries < 3) {
+            timeoutRetries += 1
+            setStorageBackupProgress(`單張圖片逾時，自動重試 ${timeoutRetries}/3…`)
+            await wait(1500)
+            continue
+          }
+          throw new Error(message)
+        }
+
+        timeoutRetries = 0
+        if (result.complete) {
+          complete = true
+          toast.success(`商品圖片已同步到 Google Drive，共 ${result.manifest.fileCount} 個檔案。`)
+          break
+        }
+        if (result.busy) {
+          setStorageBackupProgress('已有同步工作執行中，正在等待…')
+          await wait(2000)
+          continue
+        }
+
         const phaseLabel = storagePhaseLabel(result.phase)
         const progress =
           result.phase === 'inventory'
             ? `本次新增清點 ${result.scanned} 個，目前共 ${result.manifest.fileCount} 個`
             : result.phase === 'sync'
               ? `本次處理 ${result.processed} 個，尚有 ${result.remaining} 個`
-              : '本階段已完成，可再次按下繼續'
-        toast.info(`${phaseLabel}：${progress}；可再次按下繼續。`, 7000)
+              : '本階段已完成'
+        setStorageBackupProgress(`${phaseLabel}：${progress}（第 ${round} 批）`)
+        if (round % 5 === 0) await fetchBackupLogs()
+        await wait(750)
+      }
+
+      if (!complete) {
+        toast.info('自動同步已達 100 批，進度已保存；可再按一次繼續。', 7000)
       }
       await fetchBackupLogs()
     } catch (error) {
       console.error('Storage backup error:', error)
       toast.error(`商品圖片備份失敗：${(error as Error).message}`, 5000)
     } finally {
+      setStorageBackupProgress(null)
       setStorageBackupLoading(false)
     }
   }
@@ -708,7 +741,9 @@ export function BackupPage() {
                 cursor: isAnyLoading ? 'not-allowed' : 'pointer',
               }}
             >
-              {storageBackupLoading ? '圖片同步中…' : '同步商品圖片到 Google Drive'}
+              {storageBackupLoading
+                ? storageBackupProgress || '圖片同步中…'
+                : '同步商品圖片到 Google Drive'}
             </button>
             <button
               type="button"
