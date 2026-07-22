@@ -135,36 +135,23 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 
 async function createBookingShareImages(bookings: Booking[], title: string): Promise<File[]> {
   const width = 1170
-  const headerHeight = 180
-  const pagePadding = 72
-  const bottomPadding = 72
-  const cardGap = 54
+  const headerHeight = 150
+  const pagePadding = 60
+  const bottomPadding = 60
+  const cardGap = 36
   const cardWidth = width - pagePadding * 2
 
   const measurementCanvas = document.createElement('canvas')
   const measurementContext = measurementCanvas.getContext('2d')
   if (!measurementContext) throw new Error('此裝置無法產生預約圖片')
-  measurementContext.font = '400 42px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+  measurementContext.font = '400 40px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
 
   const layouts = bookings.map(booking => {
-    const coachNames = booking.coaches.length > 0
-      ? booking.coaches.map(coach => `${coach.name}教練`).join(' / ')
-      : '未指定教練'
-    const detailText = [
-      booking.boats?.name || '未指定船隻',
-      `${booking.duration_min} 分鐘`,
-      coachNames,
-      ...(booking.activity_types || []),
-    ].join(' · ')
-    const detailLines = wrapCanvasText(measurementContext, detailText, cardWidth - 120, 3)
     const noteLines = booking.notes
-      ? wrapCanvasText(measurementContext, `備註　${booking.notes}`, cardWidth - 120)
+      ? wrapCanvasText(measurementContext, booking.notes, cardWidth - 144)
       : []
-    const detailBottom = 214 + (detailLines.length - 1) * 52
-    const cardHeight = noteLines.length > 0
-      ? detailBottom + 150 + (noteLines.length - 1) * 52
-      : detailBottom + 66
-    return { booking, detailLines, noteLines, cardHeight }
+    const cardHeight = noteLines.length > 0 ? 448 + noteLines.length * 52 : 390
+    return { booking, noteLines, cardHeight }
   })
 
   const pages: typeof layouts[] = []
@@ -187,21 +174,33 @@ async function createBookingShareImages(bookings: Booking[], title: string): Pro
     const context = canvas.getContext('2d')
     if (!context) throw new Error('此裝置無法產生預約圖片')
 
-    context.fillStyle = designSystem.colors.background.main
+    context.fillStyle = '#f5f7fa'
     context.fillRect(0, 0, width, height)
 
-    context.fillStyle = designSystem.colors.text.primary
-    context.font = '600 72px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-    context.fillText(truncateCanvasText(context, title, width - pagePadding * 2), pagePadding, 108)
+    context.fillStyle = '#172033'
+    context.font = '600 57px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+    context.fillText(truncateCanvasText(context, title, width - pagePadding * 2), pagePadding, 90)
 
     let cardY = headerHeight
-    pageLayouts.forEach(({ booking, detailLines, noteLines, cardHeight }) => {
+    pageLayouts.forEach(({ booking, noteLines, cardHeight }) => {
       const cardX = pagePadding
 
       context.save()
-      drawRoundedRect(context, cardX, cardY, cardWidth, cardHeight, 48)
-      context.fillStyle = designSystem.colors.background.card
+      context.shadowColor = 'rgba(23, 32, 51, 0.08)'
+      context.shadowBlur = 22
+      context.shadowOffsetY = 8
+      drawRoundedRect(context, cardX, cardY, cardWidth, cardHeight, 32)
+      context.fillStyle = '#ffffff'
       context.fill()
+      context.restore()
+
+      drawRoundedRect(context, cardX, cardY, cardWidth, cardHeight, 32)
+      context.strokeStyle = '#edf0f5'
+      context.lineWidth = 2
+      context.stroke()
+
+      context.save()
+      drawRoundedRect(context, cardX, cardY, cardWidth, cardHeight, 32)
       context.clip()
       context.fillStyle = booking.boats?.color || '#3478f6'
       context.fillRect(cardX, cardY, 12, cardHeight)
@@ -214,29 +213,64 @@ async function createBookingShareImages(bookings: Booking[], title: string): Pro
       const weekdays = ['日', '一', '二', '三', '四', '五', '六']
       const dateText = `${year}/${month}/${day}（${weekdays[dateValue.getDay()]}） ${time}`
 
-      context.fillStyle = designSystem.colors.text.primary
-      context.font = '500 48px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.fillStyle = '#172033'
+      context.font = '500 54px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
       context.fillText(
-        truncateCanvasText(context, getDisplayContactName(booking), cardWidth - 120),
+        truncateCanvasText(context, getDisplayContactName(booking), cardWidth - 132),
         cardX + 60,
-        cardY + 72,
+        cardY + 76,
       )
 
-      context.fillStyle = designSystem.colors.text.secondary
+      context.fillStyle = '#52606d'
       context.font = '400 42px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-      context.fillText(dateText, cardX + 60, cardY + 130)
+      context.fillText(dateText, cardX + 60, cardY + 138)
 
-      context.font = '400 42px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-      detailLines.forEach((line, lineIndex) => {
-        context.fillText(line, cardX + 60, cardY + 214 + lineIndex * 52)
-      })
+      const coachNames = booking.coaches.length > 0
+        ? booking.coaches.map(coach => coach.name).join(' / ')
+        : '未指定'
+      const activityText = booking.activity_types?.length
+        ? booking.activity_types.join(' + ')
+        : '未指定'
+      const leftX = cardX + 60
+      const rightX = cardX + cardWidth / 2 + 24
+
+      context.font = '400 40px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.fillStyle = '#697386'
+      context.fillText('船隻：', leftX, cardY + 224)
+      context.fillText('教練：', rightX, cardY + 224)
+      context.fillText('時長：', leftX, cardY + 306)
+      context.fillText('活動：', rightX, cardY + 306)
+
+      context.fillStyle = '#475467'
+      context.font = '400 40px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.fillText(
+        truncateCanvasText(context, booking.boats?.name || '未指定', cardWidth / 2 - 210),
+        leftX + 126,
+        cardY + 224,
+      )
+      context.fillText(
+        truncateCanvasText(context, coachNames, cardWidth / 2 - 210),
+        rightX + 126,
+        cardY + 224,
+      )
+      context.fillText(`${booking.duration_min} 分`, leftX + 126, cardY + 306)
+      context.fillText(
+        truncateCanvasText(context, activityText, cardWidth / 2 - 210),
+        rightX + 126,
+        cardY + 306,
+      )
 
       if (noteLines.length > 0) {
-        const noteY = cardY + 214 + detailLines.length * 52 + 32
-        context.fillStyle = designSystem.colors.secondary[400]
-        context.font = '400 39px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+        const noteBoxY = cardY + 350
+        const noteBoxHeight = 56 + noteLines.length * 52
+        drawRoundedRect(context, cardX + 48, noteBoxY, cardWidth - 96, noteBoxHeight, 20)
+        context.fillStyle = '#f5f7fa'
+        context.fill()
+
+        context.fillStyle = '#52606d'
+        context.font = '400 40px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
         noteLines.forEach((line, lineIndex) => {
-          context.fillText(line, cardX + 60, noteY + lineIndex * 52)
+          context.fillText(line, cardX + 72, noteBoxY + 48 + lineIndex * 52)
         })
       }
 
