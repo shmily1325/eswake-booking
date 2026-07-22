@@ -60,6 +60,7 @@ describe('Vercel backup limits', () => {
     expect(apiFiles.length).toBeLessThanOrEqual(12)
     expect(apiFiles).toContain('backup-storage.ts')
     expect(apiFiles).not.toContain('backup-to-drive.ts')
+    expect(vercel.functions['api/backup-storage.ts'].maxDuration).toBe(300)
   })
 
   it('schedules SQL and Storage without adding a third cron', () => {

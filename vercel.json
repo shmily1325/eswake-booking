@@ -43,7 +43,7 @@
       "maxDuration": 10
     },
     "api/backup-storage.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/fetch-product-image.ts": {
       "maxDuration": 30
@@ -60,4 +60,3 @@
     }
   ]
 }
-

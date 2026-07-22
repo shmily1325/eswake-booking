@@ -16,7 +16,7 @@ import {
   type StorageBackupManifest,
 } from '../src/server/backup-storage.js'
 
-const TIME_BUDGET_MS = 30_000
+const TIME_BUDGET_MS = 240_000
 const STATE_PAGE_SIZE = 1000
 const INVENTORY_PAGE_SIZE = 500
 const SYNC_PAGE_SIZE = 50
@@ -26,7 +26,7 @@ const GOOGLE_UPLOAD_TIMEOUT_MS = 20_000
 const SOURCE_DOWNLOAD_TIMEOUT_MS = 20_000
 const MAX_OBJECT_OPERATION_MS = 45_000
 const MIN_OBJECT_OPERATION_RESERVE_MS = 10_000
-const SERVER_HARD_STOP_MS = 55_000
+const SERVER_HARD_STOP_MS = 285_000
 
 type StorageBackupPhase =
   | 'inventory'
