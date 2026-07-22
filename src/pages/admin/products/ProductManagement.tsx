@@ -695,9 +695,7 @@ export function ProductManagement({
             isMobile={isMobile}
             imageMode={displayImageMode}
             canEdit={canEdit}
-            onImagePreview={!canEdit
-              ? (url, alt) => setImagePreview({ url, alt })
-              : undefined}
+            onImagePreview={(url, alt) => setImagePreview({ url, alt })}
             onCardClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
           />
         ) : isMobile ? (
@@ -705,6 +703,7 @@ export function ProductManagement({
             items={filteredItems}
             imageMode={displayImageMode}
             canEdit={canEdit}
+            onImagePreview={(url, alt) => setImagePreview({ url, alt })}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
           />
         ) : (
@@ -713,6 +712,7 @@ export function ProductManagement({
             showCategoryColumn={showCategoryColumn}
             imageMode={displayImageMode}
             canEdit={canEdit}
+            onImagePreview={(url, alt) => setImagePreview({ url, alt })}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
           />
         )}
@@ -1633,16 +1633,16 @@ function GalleryCard({
       }}
     >
       <div
-        role={!canEdit && imageUrl && onImagePreview ? 'button' : undefined}
-        tabIndex={!canEdit && imageUrl && onImagePreview ? 0 : undefined}
-        aria-label={!canEdit && imageUrl && onImagePreview ? `放大查看 ${product.brand} ${product.model}` : undefined}
-        onClick={!canEdit && imageUrl && onImagePreview
+        role={imageUrl && onImagePreview ? 'button' : undefined}
+        tabIndex={imageUrl && onImagePreview ? 0 : undefined}
+        aria-label={imageUrl && onImagePreview ? `放大查看 ${product.brand} ${product.model}` : undefined}
+        onClick={imageUrl && onImagePreview
           ? (event) => {
               event.stopPropagation()
               onImagePreview(imageUrl, `${product.brand} ${product.model}`)
             }
           : undefined}
-        onKeyDown={!canEdit && imageUrl && onImagePreview
+        onKeyDown={imageUrl && onImagePreview
           ? (event) => {
               if (event.key !== 'Enter' && event.key !== ' ') return
               event.preventDefault()
@@ -1660,7 +1660,7 @@ function GalleryCard({
           justifyContent: 'center',
           overflow: 'hidden',
           position: 'relative',
-          cursor: !canEdit && imageUrl && onImagePreview ? 'zoom-in' : undefined,
+          cursor: imageUrl && onImagePreview ? 'zoom-in' : undefined,
         }}
       >
         {imageUrl ? (
@@ -1871,12 +1871,25 @@ function ImagePreviewDialog({
             borderRadius: 999,
             background: 'rgba(255, 255, 255, 0.94)',
             color: colors.text.primary,
-            fontSize: 24,
-            lineHeight: 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
             cursor: 'pointer',
           }}
         >
-          ×
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
         </button>
         <img
           src={url}
@@ -1936,9 +1949,10 @@ interface MobileListViewProps {
   items: VariantListItem[]
   imageMode: ListImageMode
   canEdit: boolean
+  onImagePreview: (url: string, alt: string) => void
   onRowClick: (productId: string, variantId: string) => void
 }
-function MobileListView({ items, imageMode, canEdit, onRowClick }: MobileListViewProps) {
+function MobileListView({ items, imageMode, canEdit, onImagePreview, onRowClick }: MobileListViewProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {items.map((it) => (
@@ -1947,6 +1961,7 @@ function MobileListView({ items, imageMode, canEdit, onRowClick }: MobileListVie
           item={it}
           imageMode={imageMode}
           canEdit={canEdit}
+          onImagePreview={onImagePreview}
           onClick={() => onRowClick(it.product.id, it.variant.id)}
         />
       ))}
@@ -1958,11 +1973,13 @@ function MobileListRow({
   item,
   imageMode,
   canEdit,
+  onImagePreview,
   onClick,
 }: {
   item: VariantListItem
   imageMode: ListImageMode
   canEdit: boolean
+  onImagePreview: (url: string, alt: string) => void
   onClick: () => void
 }) {
   const { variant, product } = item
@@ -2000,6 +2017,23 @@ function MobileListRow({
       {/* 查詢模式採圖片／商品資料／價格庫存三欄；管理資訊維持卡片全寬 */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <div
+          role={imageUrl ? 'button' : undefined}
+          tabIndex={imageUrl ? 0 : undefined}
+          aria-label={imageUrl ? `放大查看 ${product.brand} ${product.model}` : undefined}
+          onClick={imageUrl
+            ? (event) => {
+                event.stopPropagation()
+                onImagePreview(imageUrl, `${product.brand} ${product.model}`)
+              }
+            : undefined}
+          onKeyDown={imageUrl
+            ? (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return
+                event.preventDefault()
+                event.stopPropagation()
+                onImagePreview(imageUrl, `${product.brand} ${product.model}`)
+              }
+            : undefined}
           style={{
             width: 58,
             height: 86,
@@ -2010,6 +2044,7 @@ function MobileListRow({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            cursor: imageUrl ? 'zoom-in' : undefined,
           }}
         >
           {imageUrl ? (
@@ -2206,9 +2241,17 @@ interface DesktopTableProps {
   showCategoryColumn: boolean
   imageMode: ListImageMode
   canEdit: boolean
+  onImagePreview: (url: string, alt: string) => void
   onRowClick: (productId: string, variantId: string) => void
 }
-function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClick }: DesktopTableProps) {
+function DesktopTable({
+  items,
+  showCategoryColumn,
+  imageMode,
+  canEdit,
+  onImagePreview,
+  onRowClick,
+}: DesktopTableProps) {
   return (
     <div
       style={{
@@ -2262,6 +2305,23 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                   <td style={tdStyle()}>
                     {/* portrait 直式縮圖（9:16） */}
                     <div
+                      role={imageUrl ? 'button' : undefined}
+                      tabIndex={imageUrl ? 0 : undefined}
+                      aria-label={imageUrl ? `放大查看 ${it.product.brand} ${it.product.model}` : undefined}
+                      onClick={imageUrl
+                        ? (event) => {
+                            event.stopPropagation()
+                            onImagePreview(imageUrl, `${it.product.brand} ${it.product.model}`)
+                          }
+                        : undefined}
+                      onKeyDown={imageUrl
+                        ? (event) => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return
+                            event.preventDefault()
+                            event.stopPropagation()
+                            onImagePreview(imageUrl, `${it.product.brand} ${it.product.model}`)
+                          }
+                        : undefined}
                       style={{
                         width: 32,
                         height: 57,
@@ -2273,6 +2333,7 @@ function DesktopTable({ items, showCategoryColumn, imageMode, canEdit, onRowClic
                         overflow: 'hidden',
                         fontSize: 18,
                         color: colors.text.disabled,
+                        cursor: imageUrl ? 'zoom-in' : undefined,
                       }}
                     >
                       {imageUrl ? (
