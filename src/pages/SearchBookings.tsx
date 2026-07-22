@@ -1126,19 +1126,21 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         {copySuccess ? '已複製' : '複製文字'}
                       </button>
 
-                      <button
-                        data-track="search_save_photos"
-                        onClick={handleSaveToPhotos}
-                        disabled={savingImages}
-                        style={{
-                          ...getButtonStyle('outline', 'small', isMobile),
-                          whiteSpace: 'nowrap',
-                          opacity: savingImages ? 0.65 : 1,
-                          cursor: savingImages ? 'wait' : 'pointer',
-                        }}
-                      >
-                        {savingImages ? '產生圖片中…' : '儲存到相簿'}
-                      </button>
+                      {isMobile && (
+                        <button
+                          data-track="search_save_photos"
+                          onClick={handleSaveToPhotos}
+                          disabled={savingImages}
+                          style={{
+                            ...getButtonStyle('outline', 'small', isMobile),
+                            whiteSpace: 'nowrap',
+                            opacity: savingImages ? 0.65 : 1,
+                            cursor: savingImages ? 'wait' : 'pointer',
+                          }}
+                        >
+                          {savingImages ? '產生圖片中…' : '儲存到相簿'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
