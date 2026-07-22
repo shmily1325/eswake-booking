@@ -48,11 +48,9 @@ describe('offline disaster-recovery artifact', () => {
   it('exposes complete read-only recovery navigation without placeholder actions', () => {
     expect(html).toContain("action: 'day'")
     expect(html).toContain("action: 'audit-log'")
-    expect(html).toContain("action: 'coach-operations'")
-    expect(html).toContain("action: 'shop-recovery'")
-    expect(html).toContain("action: 'restrictions'")
-    expect(html).toContain("action: 'backup-logs'")
-    expect(html).toContain("action: 'system-reference'")
+    expect(html).toContain("action: 'coach-report'")
+    expect(html).toContain("action: 'coach-time-off'")
+    expect(html).toContain("action: 'bao'")
     expect(html).not.toContain("action: 'my-report'")
     expect(html).not.toContain("action: 'boats'")
     expect(html).not.toContain('showDayView()')
@@ -70,6 +68,18 @@ describe('offline disaster-recovery artifact', () => {
     expect(html).toContain('📅')
     expect(html).toContain('🔍')
     expect(html).toContain('📦')
+    expect(html).toContain('.es-shell.es-shell-hub')
+    expect(html).toContain('width: min(100% - 40px, 600px)')
+    expect(html).toContain('padding: 35px 20px')
+    expect(html).toContain('font-size: 38px')
+    expect(html).toContain('class="home-logo" src="data:image/png;base64,')
+    expect(html).toContain('class="home-title">ES Wake</h1>')
+    expect(html).toContain('<span class="es-menu-title">Dashboard</span>')
+    expect(html).toContain('<h3 class="bao-section-title">櫃台</h3>')
+    expect(html).toContain('<h3 class="bao-section-title">營運</h3>')
+    expect(html).not.toContain('data:image/svg+xml')
+    expect(html).not.toContain('<span class="es-menu-subtitle">')
+    expect(html).toContain('document.documentElement.scrollTop = 0')
   })
 
   it('makes operational backup datasets visible in read-only views', () => {
@@ -134,119 +144,13 @@ describe('offline disaster-recovery artifact', () => {
     expect(html).not.toContain("localStorage.getItem('includeWeatherWarning')")
   })
 
-  it('keeps the offline change journal separate from imported backup databases', () => {
-    expect(html).toContain("action: 'change-journal'")
-    expect(html).toContain(
-      "const OFFLINE_CHANGE_JOURNAL_KEY = 'eswake-offline-change-journal-v1'",
-    )
-    expect(html).toContain('id="offline-booking-date"')
-    expect(html).toContain('id="offline-booking-time"')
-    expect(html).toContain('id="offline-booking-boat"')
-    expect(html).toContain('id="offline-booking-contact"')
-    expect(html).toContain('直接新增預約')
-    expect(html).toContain('離線待補')
-    expect(html).not.toContain('const OFFLINE_CHANGE_TYPES')
-    const { context, storage } = createOfflineContext({
-      'eswake-offline-active-db': 'eswake-offline-before-import',
-    })
-
-    new vm.Script(`
-      saveOfflineChangeJournal([{
-        id: 'change-1',
-        created_at: '2026-07-16T08:00:00.000Z',
-        type: '預約',
-        operator: '阿寶',
-        booking_date: '2026-07-17',
-        start_time: '09:00',
-        duration_min: 60,
-        boat_name: 'G21',
-        contact_name: 'Stan',
-        phone: '0912345678',
-        coach_name: 'Jerry',
-        activity_types: 'WB',
-        notes: '',
-        status: 'pending',
-        completed_at: null
-      }])
-      localStorage.setItem('eswake-offline-active-db', 'eswake-offline-after-import')
-    `).runInContext(context)
-
-    expect(storage.get('eswake-offline-active-db')).toBe('eswake-offline-after-import')
-    expect(JSON.parse(storage.get('eswake-offline-change-journal-v1') ?? '[]')).toEqual([
-      expect.objectContaining({
-        id: 'change-1',
-        status: 'pending',
-        booking_date: '2026-07-17',
-        contact_name: 'Stan',
-        boat_name: 'G21',
-      }),
-    ])
-  })
-
-  it('projects pending offline records into the daily booking view', () => {
-    const projected = evaluateOffline<Array<Record<string, unknown>>>(`
-      JSON.parse(JSON.stringify(buildPendingOfflineBookings([
-        {
-          id: 'pending-1',
-          status: 'pending',
-          booking_date: '2026-07-17',
-          start_time: '09:30',
-          duration_min: 60,
-          boat_name: 'g21',
-          contact_name: 'Stan',
-          phone: '0912345678',
-          coach_name: 'Jerry、臨時教練',
-          activity_types: 'WB',
-          notes: '電話預約'
-        },
-        {
-          id: 'completed-1',
-          status: 'completed',
-          booking_date: '2026-07-17',
-          start_time: '10:30',
-          duration_min: 60,
-          boat_name: 'G21',
-          contact_name: '已補登'
-        },
-        {
-          id: 'other-date',
-          status: 'pending',
-          booking_date: '2026-07-18',
-          start_time: '11:30',
-          duration_min: 60,
-          boat_name: 'G21',
-          contact_name: '其他日期'
-        }
-      ], [
-        { id: 'boat-21', name: 'G21', color: '#123456' }
-      ], [
-        { id: 'coach-jerry', name: 'Jerry', status: 'active' }
-      ], '2026-07-17')))
-    `)
-
-    expect(projected).toEqual([
-      expect.objectContaining({
-        id: 'offline:pending-1',
-        is_offline_pending: true,
-        status: 'confirmed',
-        start_at: '2026-07-17T09:30:00',
-        duration_min: 60,
-        boat_id: 'boat-21',
-        contact_name: 'Stan',
-        schedule_notes: '活動：WB',
-        notes: '電話預約',
-        coaches: [
-          { id: 'coach-jerry', name: 'Jerry', status: 'active' },
-          { id: 'offline-coach:臨時教練', name: '臨時教練' },
-        ],
-      }),
-    ])
-  })
-
-  it('detects offline booking time overlaps without blocking adjacent slots', () => {
-    expect(evaluateOffline<boolean>("bookingRangesOverlap('09:00', 60, '09:30', 30)")).toBe(true)
-    expect(evaluateOffline<boolean>("bookingRangesOverlap('09:00', 60, '10:00', 30)")).toBe(false)
-    expect(evaluateOffline<boolean>("bookingRangesOverlap('10:00', 30, '09:00', 60)")).toBe(false)
+  it('keeps the recovery artifact strictly read-only', () => {
+    expect(html).not.toContain("action: 'change-journal'")
+    expect(html).not.toContain('OFFLINE_CHANGE_JOURNAL_KEY')
+    expect(html).not.toContain('showOfflineChangeJournal')
+    expect(html).not.toContain('addOfflineChange')
+    expect(html).not.toContain('離線新增')
+    expect(html).not.toContain('離線待補')
   })
 
   it('formats reservation restriction windows and links announcement content', () => {
