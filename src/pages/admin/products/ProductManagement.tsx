@@ -110,28 +110,40 @@ export function ProductManagement({
   const toggleMissingPrice = () => {
     setOnlyMissingPrice((v) => {
       const next = !v
-      if (next) setOnlySoldOut(false)
+      if (next) {
+        setOnlySoldOut(false)
+        setLayout('table')
+      }
       return next
     })
   }
   const toggleMissingImage = () => {
     setOnlyMissingImage((v) => {
       const next = !v
-      if (next) setOnlySoldOut(false)
+      if (next) {
+        setOnlySoldOut(false)
+        setLayout('table')
+      }
       return next
     })
   }
   const toggleMissingCover = () => {
     setOnlyMissingCover((v) => {
       const next = !v
-      if (next) setOnlySoldOut(false)
+      if (next) {
+        setOnlySoldOut(false)
+        setLayout('table')
+      }
       return next
     })
   }
   const toggleMissingLabel = () => {
     setOnlyMissingLabel((v) => {
       const next = !v
-      if (next) setOnlySoldOut(false)
+      if (next) {
+        setOnlySoldOut(false)
+        setLayout('table')
+      }
       return next
     })
   }
@@ -143,6 +155,7 @@ export function ProductManagement({
         setOnlyMissingImage(false)
         setOnlyMissingCover(false)
         setOnlyMissingLabel(false)
+        setLayout('table')
       }
       return next
     })
