@@ -14,6 +14,7 @@ import { designSystem, getFontSize } from '../styles/designSystem'
 import { supabase } from '../lib/supabase'
 import {
   getBackupHealth,
+  summarizeBackupHealth,
   type BackupHealthStatus,
 } from '../utils/backupHealth'
 
@@ -82,20 +83,10 @@ export function BaoHub() {
           return
         }
         const health = results.map((result) => getBackupHealth(result.data || []))
-        const cloudHealth = health.slice(0, 2)
-        const desktopHealth = health.slice(2)
-        const problem = health.find((item) => item.status === 'error')
-          || health.find((item) => item.status === 'warning')
-          || cloudHealth.find((item) => item.status === 'unknown')
-        if (problem) {
-          setBackupHealth({ status: problem.status, message: problem.message })
-          return
-        }
-        const desktopConfigured = desktopHealth.every((item) => item.status !== 'unknown')
-        setBackupHealth({
-          status: 'ok',
-          message: desktopConfigured ? '四項備份正常' : '雲端正常 · 桌機未設定',
-        })
+        setBackupHealth(summarizeBackupHealth(
+          [health[0], health[1]],
+          [health[2], health[3]],
+        ))
       } catch (err) {
         if (cancelled) return
         console.error('載入備份狀態失敗:', err)

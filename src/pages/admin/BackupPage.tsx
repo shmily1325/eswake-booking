@@ -96,6 +96,7 @@ export function BackupPage() {
   const { isMobile } = useResponsive()
   const [fullBackupLoading, setFullBackupLoading] = useState(false)
   const [cloudBackupLoading, setCloudBackupLoading] = useState(false)
+  const [storageBackupLoading, setStorageBackupLoading] = useState(false)
   const [backupLogs, setBackupLogs] = useState<BackupLog[]>([])
   const [backupLogsLoading, setBackupLogsLoading] = useState(true)
 
@@ -165,7 +166,7 @@ export function BackupPage() {
   const wdStorageLogs = backupLogs.filter(
     (log) => getLogDestination(log) === 'wd_local_storage',
   )
-  const isAnyLoading = fullBackupLoading || cloudBackupLoading
+  const isAnyLoading = fullBackupLoading || cloudBackupLoading || storageBackupLoading
   const backupDestinations = [
     {
       label: 'Google Drive',
@@ -187,9 +188,11 @@ export function BackupPage() {
     ...destination,
     items: destination.items.map((item) => {
       const health = getBackupHealth(item.logs)
+      const unconfigured = destination.label === '桌機備份' && item.logs.length === 0
       return {
         ...item,
-        health: destination.label === '桌機備份' && item.logs.length === 0
+        unconfigured,
+        health: unconfigured
           ? { ...health, message: '未設定' }
           : health,
         lastSuccess: item.logs.find((log) => log.status === 'success'),
@@ -286,6 +289,35 @@ export function BackupPage() {
     }
   }
 
+  const backupStorageToCloudDrive = async () => {
+    setStorageBackupLoading(true)
+    try {
+      const headers = await getBackupRequestHeaders()
+      const response = await fetch('/api/backup-storage?mode=cloud', {
+        method: 'POST',
+        headers,
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.message || result.error || '商品圖片備份失敗')
+      }
+      if (result.complete) {
+        toast.success(`商品圖片已同步到 Google Drive，共 ${result.manifest.fileCount} 個檔案。`)
+      } else {
+        toast.info(
+          `本次已同步 ${result.processed} 個檔案，尚有 ${result.remaining} 個；可再次按下繼續。`,
+          7000,
+        )
+      }
+      await fetchBackupLogs()
+    } catch (error) {
+      console.error('Storage backup error:', error)
+      toast.error(`商品圖片備份失敗：${(error as Error).message}`, 5000)
+    } finally {
+      setStorageBackupLoading(false)
+    }
+  }
+
   const downloadOfflineTool = async () => {
     try {
       const response = await fetch('/offline.html', { cache: 'no-store' })
@@ -354,7 +386,7 @@ export function BackupPage() {
                 >
                   {label}
                 </h2>
-                {items.map(({ label: itemLabel, health, lastSuccess }) => (
+                {items.map(({ label: itemLabel, health, lastSuccess, unconfigured }) => (
                   <div
                     key={itemLabel}
                     style={{
@@ -430,7 +462,9 @@ export function BackupPage() {
                               ? ` · ${lastSuccess.records_count.toLocaleString()} 筆`
                               : ''
                           }`
-                        : '尚無成功記錄'}
+                        : unconfigured
+                          ? '桌機安裝完成後才會開始記錄'
+                          : '尚無成功記錄'}
                     </p>
                     {(health.status === 'error' || health.status === 'warning') && (
                       <p
@@ -605,12 +639,12 @@ export function BackupPage() {
               lineHeight: 1.5,
             }}
           >
-            雲端備份會上傳到 Google Drive；下載則保存完整 SQL 到本機，可載入離線查詢工具。
+            雲端資料庫與商品圖片可分別立即執行；下載則保存完整 SQL 到本機。
           </p>
           <div
             style={{
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
               gap: 10,
             }}
           >
@@ -627,7 +661,21 @@ export function BackupPage() {
                 cursor: isAnyLoading ? 'not-allowed' : 'pointer',
               }}
             >
-              {cloudBackupLoading ? '上傳中…' : '備份到 Google Drive'}
+              {cloudBackupLoading ? '資料庫上傳中…' : '備份資料庫到 Google Drive'}
+            </button>
+            <button
+              type="button"
+              data-track="backup_cloud_storage"
+              onClick={backupStorageToCloudDrive}
+              disabled={isAnyLoading}
+              style={{
+                ...getButtonStyle('primary', 'large', isMobile),
+                width: '100%',
+                opacity: isAnyLoading ? 0.6 : 1,
+                cursor: isAnyLoading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {storageBackupLoading ? '圖片同步中…' : '同步商品圖片到 Google Drive'}
             </button>
             <button
               type="button"
@@ -656,6 +704,17 @@ export function BackupPage() {
               下載離線工具
             </button>
           </div>
+          <p
+            style={{
+              margin: '14px 0 0',
+              fontSize: 13,
+              color: designSystem.colors.text.secondary,
+              lineHeight: 1.5,
+            }}
+          >
+            桌機安裝後如需手動備份，請在 Windows 工作排程器執行「ESWake 自動備份」；
+            資料庫與商品圖片會一起備份。
+          </p>
         </section>
 
         <Footer />

@@ -10,12 +10,19 @@ export interface BackupHealthLog {
   created_at: string | null
 }
 
-export function getBackupHealth(logs: BackupHealthLog[]): {
+export interface BackupHealth {
   status: BackupHealthStatus
   message: string
   color: string
   light: string
-} {
+}
+
+export interface BackupHealthSummary {
+  status: BackupHealthStatus
+  message: string
+}
+
+export function getBackupHealth(logs: BackupHealthLog[]): BackupHealth {
   if (logs.length === 0) {
     return {
       status: 'unknown',
@@ -86,4 +93,48 @@ export function getBackupHealth(logs: BackupHealthLog[]): {
     color: designSystem.colors.success[700],
     light: designSystem.colors.success[500],
   }
+}
+
+export function summarizeBackupHealth(
+  cloud: [BackupHealth, BackupHealth],
+  desktop: [BackupHealth, BackupHealth],
+): BackupHealthSummary {
+  const cloudErrors = cloud.filter((item) => item.status === 'error').length
+  if (cloudErrors > 0) {
+    return {
+      status: 'error',
+      message: cloudErrors === 1 ? '1 項雲端備份異常' : '雲端備份異常',
+    }
+  }
+  if (cloud.some((item) => item.status === 'warning')) {
+    return { status: 'warning', message: '雲端備份待確認' }
+  }
+  const unknownCloud = cloud
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.status === 'unknown')
+  if (unknownCloud.length === 2) {
+    return { status: 'unknown', message: '等待首次雲端備份' }
+  }
+  if (unknownCloud[0]?.index === 0) {
+    return { status: 'unknown', message: '雲端資料庫待首次備份' }
+  }
+  if (unknownCloud[0]?.index === 1) {
+    return { status: 'unknown', message: '雲端圖片待首次備份' }
+  }
+
+  const desktopConfigured = desktop.every((item) => item.status !== 'unknown')
+  if (!desktopConfigured) {
+    return { status: 'ok', message: '雲端備份正常' }
+  }
+
+  const all = [...cloud, ...desktop]
+  const errors = all.filter((item) => item.status === 'error').length
+  if (errors > 0) {
+    return { status: 'error', message: `${errors} 項備份異常` }
+  }
+  const warnings = all.filter((item) => item.status === 'warning').length
+  if (warnings > 0) {
+    return { status: 'warning', message: `${warnings} 項備份待確認` }
+  }
+  return { status: 'ok', message: '4/4 備份正常' }
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getBackupHealth, type BackupHealthLog } from './backupHealth'
+import {
+  getBackupHealth,
+  summarizeBackupHealth,
+  type BackupHealth,
+  type BackupHealthLog,
+} from './backupHealth'
 
 function log(overrides: Partial<BackupHealthLog> = {}): BackupHealthLog {
   return {
@@ -10,6 +15,10 @@ function log(overrides: Partial<BackupHealthLog> = {}): BackupHealthLog {
     created_at: '2026-07-22T00:00:00.000Z',
     ...overrides,
   }
+}
+
+function health(status: BackupHealth['status']): BackupHealth {
+  return { status, message: status, color: '', light: '' }
 }
 
 describe('getBackupHealth', () => {
@@ -38,5 +47,28 @@ describe('getBackupHealth', () => {
       log({ status: 'running', created_at: '2026-07-22T00:00:00.000Z' }),
     ]).message).toBe('同步尚未完成')
     vi.useRealTimers()
+  })
+})
+
+describe('summarizeBackupHealth', () => {
+  it('ignores an unconfigured desktop when cloud backups are healthy', () => {
+    expect(summarizeBackupHealth(
+      [health('ok'), health('ok')],
+      [health('unknown'), health('unknown')],
+    )).toEqual({ status: 'ok', message: '雲端備份正常' })
+  })
+
+  it('explains which cloud backup is waiting for its first run', () => {
+    expect(summarizeBackupHealth(
+      [health('ok'), health('unknown')],
+      [health('unknown'), health('unknown')],
+    ).message).toBe('雲端圖片待首次備份')
+  })
+
+  it('summarizes all four after desktop setup', () => {
+    expect(summarizeBackupHealth(
+      [health('ok'), health('ok')],
+      [health('ok'), health('ok')],
+    ).message).toBe('4/4 備份正常')
   })
 })
