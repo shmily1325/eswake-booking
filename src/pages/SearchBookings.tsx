@@ -54,6 +54,250 @@ interface SearchBookingsProps {
   isEmbedded?: boolean
 }
 
+const BOOKINGS_PER_SHARE_IMAGE = 5
+
+function wrapCanvasText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxLines = 24,
+): string[] {
+  const lines: string[] = []
+
+  for (const paragraph of text.split(/\r?\n/)) {
+    let currentLine = ''
+    for (const character of paragraph || ' ') {
+      const nextLine = currentLine + character
+      if (currentLine && context.measureText(nextLine).width > maxWidth) {
+        lines.push(currentLine)
+        currentLine = character
+        if (lines.length === maxLines) break
+      } else {
+        currentLine = nextLine
+      }
+    }
+    if (lines.length === maxLines) break
+    if (currentLine) lines.push(currentLine)
+  }
+
+  if (lines.length === maxLines && context.measureText(text).width > maxWidth) {
+    lines[maxLines - 1] = `${lines[maxLines - 1].replace(/…$/, '')}…`
+  }
+  return lines
+}
+
+function truncateCanvasText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string {
+  if (context.measureText(text).width <= maxWidth) return text
+
+  let truncated = text
+  while (truncated.length > 0 && context.measureText(`${truncated}…`).width > maxWidth) {
+    truncated = truncated.slice(0, -1)
+  }
+  return `${truncated}…`
+}
+
+function drawRoundedRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  context.beginPath()
+  context.moveTo(x + radius, y)
+  context.lineTo(x + width - radius, y)
+  context.quadraticCurveTo(x + width, y, x + width, y + radius)
+  context.lineTo(x + width, y + height - radius)
+  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
+  context.lineTo(x + radius, y + height)
+  context.quadraticCurveTo(x, y + height, x, y + height - radius)
+  context.lineTo(x, y + radius)
+  context.quadraticCurveTo(x, y, x + radius, y)
+  context.closePath()
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob) {
+        resolve(blob)
+      } else {
+        reject(new Error('無法產生預約圖片'))
+      }
+    }, 'image/png')
+  })
+}
+
+async function createBookingShareImages(bookings: Booking[], title: string): Promise<File[]> {
+  const width = 1170
+  const height = 2532
+  const headerHeight = 180
+  const footerHeight = 72
+  const pagePadding = 48
+  const cardGap = 30
+  const cardWidth = width - pagePadding * 2
+  const availableCardHeight = height - headerHeight - footerHeight - pagePadding
+
+  const measurementCanvas = document.createElement('canvas')
+  const measurementContext = measurementCanvas.getContext('2d')
+  if (!measurementContext) throw new Error('此裝置無法產生預約圖片')
+  measurementContext.font = '400 39px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+
+  const layouts = bookings.map(booking => {
+    const noteLines = booking.notes
+      ? wrapCanvasText(measurementContext, booking.notes, cardWidth - 112)
+      : []
+    const cardHeight = noteLines.length > 0 ? 408 + noteLines.length * 48 : 330
+    return { booking, noteLines, cardHeight }
+  })
+
+  const pages: typeof layouts[] = []
+  let currentPage: typeof layouts = []
+  let currentHeight = 0
+
+  for (const layout of layouts) {
+    const nextHeight = currentHeight + (currentPage.length > 0 ? cardGap : 0) + layout.cardHeight
+    if (
+      currentPage.length > 0
+      && (currentPage.length >= BOOKINGS_PER_SHARE_IMAGE || nextHeight > availableCardHeight)
+    ) {
+      pages.push(currentPage)
+      currentPage = []
+      currentHeight = 0
+    }
+    currentHeight += (currentPage.length > 0 ? cardGap : 0) + layout.cardHeight
+    currentPage.push(layout)
+  }
+  if (currentPage.length > 0) pages.push(currentPage)
+
+  const pageCount = pages.length
+  const files: File[] = []
+
+  for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('此裝置無法產生預約圖片')
+
+    context.fillStyle = '#f5f7fa'
+    context.fillRect(0, 0, width, height)
+
+    context.fillStyle = '#172033'
+    context.font = '700 54px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+    context.fillText(truncateCanvasText(context, title, width - pagePadding * 2), pagePadding, 72)
+
+    context.fillStyle = '#697386'
+    context.font = '400 36px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+    context.fillText(`共 ${bookings.length} 筆預約`, pagePadding, 130)
+
+    let cardY = headerHeight
+    pages[pageIndex].forEach(({ booking, noteLines, cardHeight }) => {
+      const cardX = pagePadding
+
+      drawRoundedRect(context, cardX, cardY, cardWidth, cardHeight, 30)
+      context.fillStyle = '#ffffff'
+      context.fill()
+
+      context.save()
+      drawRoundedRect(context, cardX, cardY, cardWidth, cardHeight, 30)
+      context.clip()
+      context.fillStyle = booking.boats?.color || '#3478f6'
+      context.fillRect(cardX, cardY, 15, cardHeight)
+      context.restore()
+
+      const datetime = booking.start_at.substring(0, 16)
+      const [date, time] = datetime.split('T')
+      const [year, month, day] = date.split('-')
+      const dateValue = new Date(Number(year), Number(month) - 1, Number(day))
+      const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+      const dateText = `${year}/${month}/${day}（${weekdays[dateValue.getDay()]}） ${time}`
+
+      context.fillStyle = '#172033'
+      context.font = '600 51px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.fillText(
+        truncateCanvasText(context, getDisplayContactName(booking), cardWidth - 112),
+        cardX + 48,
+        cardY + 66,
+      )
+
+      context.fillStyle = '#52606d'
+      context.font = '400 42px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.fillText(dateText, cardX + 48, cardY + 120)
+
+      const coachNames = booking.coaches.length > 0
+        ? booking.coaches.map(coach => coach.name).join(' / ')
+        : '未指定'
+      const activityText = booking.activity_types?.length
+        ? booking.activity_types.join(' + ')
+        : '未指定'
+      const leftX = cardX + 48
+      const rightX = cardX + cardWidth / 2
+
+      context.font = '400 39px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.fillStyle = '#697386'
+      context.fillText('船隻：', leftX, cardY + 190)
+      context.fillText('教練：', rightX, cardY + 190)
+      context.fillText('時長：', leftX, cardY + 254)
+      context.fillText('活動：', rightX, cardY + 254)
+
+      context.fillStyle = '#172033'
+      context.font = '500 39px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.fillText(
+        truncateCanvasText(context, booking.boats?.name || '未指定', cardWidth / 2 - 190),
+        leftX + 117,
+        cardY + 190,
+      )
+      context.fillText(
+        truncateCanvasText(context, coachNames, cardWidth / 2 - 190),
+        rightX + 117,
+        cardY + 190,
+      )
+      context.fillText(`${booking.duration_min} 分`, leftX + 117, cardY + 254)
+      context.fillText(
+        truncateCanvasText(context, activityText, cardWidth / 2 - 190),
+        rightX + 117,
+        cardY + 254,
+      )
+
+      if (noteLines.length > 0) {
+        const noteBoxY = cardY + 294
+        const noteBoxHeight = 72 + noteLines.length * 48
+        drawRoundedRect(context, cardX + 36, noteBoxY, cardWidth - 72, noteBoxHeight, 18)
+        context.fillStyle = '#f5f7fa'
+        context.fill()
+
+        context.fillStyle = '#52606d'
+        context.font = '400 39px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+        noteLines.forEach((line, lineIndex) => {
+          context.fillText(line, cardX + 56, noteBoxY + 52 + lineIndex * 48)
+        })
+      }
+
+      cardY += cardHeight + cardGap
+    })
+
+    context.fillStyle = '#98a2b3'
+    context.font = '400 30px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+    context.textAlign = 'center'
+    context.fillText('ESWake 預約資訊', width / 2, height - 30)
+
+    const blob = await canvasToPngBlob(canvas)
+    files.push(new File(
+      [blob],
+      `ESWake-預約-${pageIndex + 1}.png`,
+      { type: 'image/png', lastModified: Date.now() },
+    ))
+  }
+
+  return files
+}
+
 export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
@@ -65,6 +309,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const [hasSearched, setHasSearched] = useState(false)
 
   const [copySuccess, setCopySuccess] = useState(false)
+  const [savingImages, setSavingImages] = useState(false)
 
   // 日期區間篩選
   const [startDate, setStartDate] = useState('')
@@ -299,10 +544,17 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     return datetime < nowStr
   }
 
+  const displayedBookings = bookings
+    .filter(booking => showPastBookings || !isPastBooking(booking.start_at))
+    .sort((a, b) => {
+      const comparison = a.start_at.localeCompare(b.start_at)
+      return sortOrder === 'asc' ? comparison : -comparison
+    })
+
   // 生成 LINE 格式的文字（簡化版）
   const generateLineMessage = () => {
-    if (bookings.length === 0) return ''
-    return formatBookingsForLine(bookings, `${searchName}的預約`)
+    if (displayedBookings.length === 0) return ''
+    return formatBookingsForLine(displayedBookings, `${searchName}的預約`)
   }
 
   // 清除搜尋
@@ -322,6 +574,35 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
     } catch (err) {
       console.error('Failed to copy:', err)
       toast.error('複製失敗，請手動複製')
+    }
+  }
+
+  const handleSaveToPhotos = async () => {
+    if (displayedBookings.length === 0 || savingImages) return
+
+    setSavingImages(true)
+    try {
+      const titleName = selectedMember
+        ? selectedMember.nickname || selectedMember.name
+        : searchName.trim()
+      const files = await createBookingShareImages(displayedBookings, `${titleName}的預約`)
+      const shareData: ShareData = {
+        files,
+        title: `${titleName}的預約`,
+      }
+
+      if (!navigator.share || !navigator.canShare?.(shareData)) {
+        toast.error('此 iPhone 不支援儲存到相簿，請使用系統截圖')
+        return
+      }
+
+      await navigator.share(shareData)
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      console.error('Failed to save booking images:', err)
+      toast.error('無法開啟相簿儲存選單，請使用系統截圖')
+    } finally {
+      setSavingImages(false)
     }
   }
 
@@ -776,6 +1057,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
+                      flexWrap: 'wrap',
                     }}>
                       {/* 排序按鈕 */}
                       <button
@@ -841,7 +1123,21 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {copySuccess ? '已複製' : '複製'}
+                        {copySuccess ? '已複製' : '複製文字'}
+                      </button>
+
+                      <button
+                        data-track="search_save_photos"
+                        onClick={handleSaveToPhotos}
+                        disabled={savingImages}
+                        style={{
+                          ...getButtonStyle('outline', 'small', isMobile),
+                          whiteSpace: 'nowrap',
+                          opacity: savingImages ? 0.65 : 1,
+                          cursor: savingImages ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {savingImages ? '產生圖片中…' : '儲存到相簿'}
                       </button>
                     </div>
                   )}
@@ -935,14 +1231,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             </div>
           ) : bookings.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {bookings
-                // 過濾過去預約
-                .filter(booking => showPastBookings || !isPastBooking(booking.start_at))
-                // 排序
-                .sort((a, b) => {
-                  const comparison = a.start_at.localeCompare(b.start_at)
-                  return sortOrder === 'asc' ? comparison : -comparison
-                })
+              {displayedBookings
                 .map((booking) => {
                 const isPast = isPastBooking(booking.start_at)
                 const isLoadingThis = loadingBookingId === booking.id
