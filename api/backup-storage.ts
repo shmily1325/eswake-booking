@@ -22,7 +22,11 @@ const INVENTORY_PAGE_SIZE = 500
 const SYNC_PAGE_SIZE = 50
 const DEFAULT_KEEP_DAYS = 90
 const GOOGLE_METADATA_TIMEOUT_MS = 5_000
-const GOOGLE_UPLOAD_TIMEOUT_MS = 15_000
+const GOOGLE_UPLOAD_TIMEOUT_MS = 20_000
+const SOURCE_DOWNLOAD_TIMEOUT_MS = 20_000
+const MAX_OBJECT_OPERATION_MS = 45_000
+const MIN_OBJECT_OPERATION_RESERVE_MS = 10_000
+const SERVER_HARD_STOP_MS = 55_000
 
 type StorageBackupPhase =
   | 'inventory'
@@ -201,7 +205,7 @@ async function writeDriveObject(
 ): Promise<{ fileId: string; checksum: string }> {
   const response = await fetch(entry.publicUrl, {
     headers: { 'User-Agent': 'ESWake-Storage-Backup/1.0' },
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(SOURCE_DOWNLOAD_TIMEOUT_MS),
   })
   if (!response.ok) {
     if (response.status === 404) {
@@ -473,6 +477,7 @@ async function processResumableStorageBackup(
 
   let scanned = 0
   let processed = 0
+  let observedObjectDurationMs = 0
   let completed = false
   let manifest: StorageBackupManifest | undefined
   let drive: ReturnType<typeof google.drive> | null = null
@@ -541,12 +546,22 @@ async function processResumableStorageBackup(
           const state = stateData as StorageBackupState | null
           let checksum = state?.checksum || null
           let checkpointSaved = false
+          let objectStartedAt: number | null = null
 
           try {
             if (storageEntryChanged(entry, state || undefined)) {
-              const safeUploadStartMs = run.drive_folder_id ? 25_000 : 3_000
-              if (Date.now() - startedAt >= safeUploadStartMs) break workLoop
               const target = await ensureDrive()
+              const reserveMs = observedObjectDurationMs > 0
+                ? Math.min(
+                    MAX_OBJECT_OPERATION_MS,
+                    Math.max(
+                      MIN_OBJECT_OPERATION_RESERVE_MS,
+                      observedObjectDurationMs * 2 + GOOGLE_METADATA_TIMEOUT_MS,
+                    ),
+                  )
+                : MAX_OBJECT_OPERATION_MS
+              if (Date.now() - startedAt + reserveMs >= SERVER_HARD_STOP_MS) break workLoop
+              objectStartedAt = Date.now()
               const uploaded = await writeDriveObject(target.drive, target.bucketFolderId, entry)
               checksum = uploaded.checksum
               const { error: upsertError } = await supabase.from('storage_backup_objects').upsert({
@@ -614,6 +629,12 @@ async function processResumableStorageBackup(
             if (ackError) throw new Error(`推進 Storage sync cursor 失敗：${ackError.message}`)
             run = rpcRun(ackData)
             processed += 1
+            if (objectStartedAt !== null) {
+              observedObjectDurationMs = Math.max(
+                observedObjectDurationMs,
+                Date.now() - objectStartedAt,
+              )
+            }
           } catch (error: unknown) {
             if (!checkpointSaved) {
               await supabase.from('storage_backup_objects').upsert({
