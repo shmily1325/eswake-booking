@@ -372,7 +372,7 @@
         }
 
         .es-shell.es-shell-wide {
-            width: min(100% - 32px, 1200px);
+            width: min(100% - 32px, 1400px);
         }
 
         .es-shell.es-shell-hub {
@@ -531,6 +531,242 @@
 
         .bao-grid {
             margin: 0;
+        }
+
+        .day-date-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .day-nav-arrow,
+        .day-today-button {
+            min-width: 40px;
+            padding: 8px 12px;
+            border: 1px solid var(--es-border);
+            border-radius: var(--es-radius-lg);
+            background: transparent;
+            color: var(--es-ink);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .day-nav-arrow {
+            font-size: 18px;
+        }
+
+        .day-today-button {
+            min-width: 100px;
+            background: var(--es-surface-hover);
+        }
+
+        .day-date-input {
+            padding: 8px 14px;
+            border: 1px solid var(--es-border);
+            border-radius: var(--es-radius-lg);
+            background: var(--es-surface);
+            box-shadow: 0 1px 2px rgba(31, 27, 23, 0.03);
+            color: var(--es-ink);
+            font-size: 16px;
+        }
+
+        .day-weekday {
+            padding: 8px 12px;
+            border: 1px solid var(--es-border-light);
+            border-radius: 999px;
+            background: var(--es-surface-hover);
+            color: var(--es-muted);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .day-overview {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .day-overview-card {
+            padding: 14px 16px;
+            border: 1px solid var(--es-border-light);
+            border-radius: var(--es-radius-lg);
+            background: var(--es-surface);
+            box-shadow: 0 1px 2px rgba(31, 27, 23, 0.03);
+        }
+
+        .day-overview-label {
+            color: var(--es-muted);
+            font-size: 12px;
+        }
+
+        .day-overview-value {
+            margin-top: 4px;
+            color: var(--es-ink);
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .day-boat-list {
+            overflow: hidden;
+            border: 1px solid var(--es-border-light);
+            border-radius: var(--es-radius-lg);
+            background: var(--es-surface);
+            box-shadow: var(--es-shadow);
+        }
+
+        .day-boat-row {
+            display: flex;
+            border-top: 1px solid var(--es-border-light);
+        }
+
+        .day-boat-row:first-child {
+            border-top: 0;
+        }
+
+        .day-boat-sidebar {
+            width: 120px;
+            min-width: 120px;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            background: #34373d;
+            color: #fff;
+            text-align: center;
+        }
+
+        .day-boat-dot {
+            width: 8px;
+            height: 8px;
+            margin-bottom: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            border-radius: 50%;
+        }
+
+        .day-boat-name {
+            width: 100%;
+            overflow: hidden;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .day-boat-alert {
+            max-width: 100%;
+            margin: 4px 0;
+            padding: 2px 4px;
+            border: 1px solid rgba(234, 179, 8, 0.35);
+            border-radius: var(--es-radius-sm);
+            background: var(--es-warning-bg);
+            color: var(--es-warning);
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .day-boat-count {
+            margin-top: 4px;
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 12px;
+        }
+
+        .day-booking-column {
+            min-width: 0;
+            flex: 1;
+            background: var(--es-surface);
+        }
+
+        .day-empty {
+            min-height: 100px;
+            display: grid;
+            place-items: center;
+            color: var(--es-disabled);
+            font-size: 15px;
+            font-style: italic;
+        }
+
+        .day-booking-card {
+            margin: 0;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border: 0;
+            border-bottom: 1px solid var(--es-border-light);
+            background: var(--es-surface);
+        }
+
+        .day-booking-card:last-child {
+            border-bottom: 0;
+        }
+
+        .day-booking-time {
+            min-width: 85px;
+            padding: 8px 10px;
+            border-left: 3px solid var(--boat-color, var(--es-border));
+            border-radius: var(--es-radius-md);
+            background: var(--es-surface-hover);
+            color: var(--es-ink);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.3;
+            text-align: center;
+        }
+
+        .day-booking-duration {
+            margin-top: 3px;
+            padding: 2px;
+            border-radius: var(--es-radius-sm);
+            color: var(--es-muted);
+            font-size: 10px;
+        }
+
+        .day-booking-content {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .day-booking-name {
+            overflow: hidden;
+            margin-bottom: 4px;
+            color: var(--es-ink);
+            font-size: 17px;
+            font-weight: 700;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .day-booking-meta {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            color: var(--es-muted);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .day-booking-chip {
+            padding: 2px 6px;
+            border: 1px solid var(--es-border-light);
+            border-radius: 999px;
+            background: var(--es-surface-hover);
+            color: var(--es-ink);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .day-booking-note {
+            margin-top: 3px;
+            color: var(--es-disabled);
+            font-size: 12px;
+            font-style: italic;
+            line-height: 1.4;
         }
 
         .es-intro {
@@ -1142,6 +1378,59 @@
                 font-size: 16px;
             }
 
+            .day-date-nav {
+                flex-wrap: nowrap;
+                gap: 8px;
+            }
+
+            .day-nav-arrow {
+                width: 44px;
+                height: 44px;
+                padding: 0;
+            }
+
+            .day-date-input {
+                width: 100%;
+                height: 44px;
+                box-sizing: border-box;
+                padding: 0 8px;
+            }
+
+            .day-weekday,
+            .day-today-button {
+                display: none;
+            }
+
+            .day-overview {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .day-boat-sidebar {
+                width: 100px;
+                min-width: 100px;
+                padding: 12px 6px;
+            }
+
+            .day-booking-card {
+                padding: 12px;
+                gap: 10px;
+            }
+
+            .day-booking-time {
+                min-width: 70px;
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+
+            .day-booking-name {
+                font-size: 14px;
+            }
+
+            .day-booking-meta {
+                font-size: 12px;
+            }
+
             .modal {
                 align-items: flex-end;
                 padding: 0;
@@ -1252,9 +1541,7 @@
                 items: [
                     { title: '今日預約', symbol: '📅', description: '依船隻與時間查看當日安排', action: 'coach-daily' },
                     { title: '預約表', symbol: '📝', description: '依日期查看完整預約', action: 'day' },
-                    { title: '預約查詢', symbol: '🔍', description: '依會員、船隻或教練搜尋', action: 'search' },
-                    { title: '教練回報', symbol: '✅', description: '查看教練回報資料', action: 'coach-report' },
-                    { title: '教練休假', symbol: '🏖️', description: '查看教練休假資料', action: 'coach-time-off' },
+                    { title: '預約查詢', symbol: '🔍', description: '依預約人搜尋', action: 'search' },
                     { title: '明日提醒', symbol: '⏰', description: '產生會員與教練提醒文字', action: 'tomorrow' },
                     { title: '編輯記錄', symbol: '📋', description: '查看完整 audit log', action: 'audit-log' }
                 ]
@@ -2392,10 +2679,6 @@
                 showBaoHub();
             } else if (action === 'day') {
                 showRecoveryDayView();
-            } else if (action === 'coach-report') {
-                showRecoveryDataset('coach-operations', 'coach_reports');
-            } else if (action === 'coach-time-off') {
-                showRecoveryDataset('coach-operations', 'coach_time_off');
             } else if (action === 'coach-operations') {
                 showRecoveryDataset('coach-operations');
             } else if (action === 'shop-recovery') {
@@ -2505,8 +2788,6 @@
                             <h3 class="bao-section-title">櫃台</h3>
                             <div class="menu-grid bao-grid">
                                 <button class="es-menu-card" onclick="showCoachDailyView()"><span class="es-menu-icon">📅</span><span class="es-menu-title">排班</span></button>
-                                <button class="es-menu-card" onclick="showRecoveryDataset('coach-operations', 'coach_reports')"><span class="es-menu-icon">📝</span><span class="es-menu-title">回報</span></button>
-                                <button class="es-menu-card" onclick="showRecoveryDataset('coach-operations', 'coach_reports')"><span class="es-menu-icon">💼</span><span class="es-menu-title">回報管理</span></button>
                                 <button class="es-menu-card" onclick="showMemberManagement()"><span class="es-menu-icon">👥</span><span class="es-menu-title">會員</span></button>
                                 <button class="es-menu-card" onclick="showMemberTransaction()"><span class="es-menu-icon">💰</span><span class="es-menu-title">儲值</span></button>
                                 <button class="es-menu-card" onclick="showUnsettledOrders()"><span class="es-menu-icon">🧾</span><span class="es-menu-title">商品訂單</span></button>
@@ -2833,81 +3114,124 @@
         async function showRecoveryDayView(dateParam) {
             const selectedDate = dateParam || getVenueDateString();
             if (!db) await initDatabase();
-            const [allBookings, boats, restrictions, unavailable, announcements] = await Promise.all([
+            const [allBookings, boats, restrictions, unavailable, announcements, coaches, timeOffRows] = await Promise.all([
                 safeGetAllFromStore('bookings'),
                 safeGetAllFromStore('boats'),
                 safeGetAllFromStore('reservation_restrictions'),
                 safeGetAllFromStore('boat_unavailable_dates'),
-                safeGetAllFromStore('daily_announcements')
+                safeGetAllFromStore('daily_announcements'),
+                safeGetAllFromStore('coaches'),
+                safeGetAllFromStore('coach_time_off')
             ]);
             const dayBookings = allBookings
-                .filter(row => String(row.start_at || '').slice(0, 10) === selectedDate)
+                .filter(row => row.status === 'confirmed' && String(row.start_at || '').slice(0, 10) === selectedDate)
                 .sort((a, b) => String(a.start_at || '').localeCompare(String(b.start_at || '')));
             const enriched = await enrichBookingsWithDetails(dayBookings);
-            const boatMap = new Map(boats.map(boat => [String(boat.id), boat]));
             const announcementMap = new Map(announcements.map(row => [String(row.id), row]));
             const dayRestrictions = restrictions.filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row));
             const dayUnavailable = unavailable.filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row));
+            const visibleBoats = boats
+                .filter(boat => boat.status === 'active' || enriched.some(booking => String(booking.boat_id) === String(boat.id)))
+                .sort((a, b) => Number(a.display_order || 999) - Number(b.display_order || 999) || Number(a.id || 0) - Number(b.id || 0));
+            const activeCoaches = coaches.filter(coach => coach.status === 'active');
+            const staffStripHtml = renderDailyStaffStripHtml(
+                buildDailyStaffForDate(activeCoaches, selectedDate, timeOffRows),
+                selectedDate
+            );
+            const usedBoatCount = new Set(enriched.map(booking => String(booking.boat_id))).size;
+            const totalMinutes = enriched.reduce((sum, booking) => sum + Number(booking.duration_min || 0), 0);
+            const dateDisplay = formatDisplayDate(selectedDate);
+            const boatRowsHtml = visibleBoats.map(boat => {
+                const boatBookings = enriched
+                    .filter(booking => String(booking.boat_id) === String(boat.id))
+                    .sort((a, b) => String(a.start_at || '').localeCompare(String(b.start_at || '')));
+                const unavailableRow = dayUnavailable.find(row => String(row.boat_id) === String(boat.id));
+                const globalRestriction = dayRestrictions[0];
+                const alertLabel = unavailableRow
+                    ? (unavailableRow.reason || '停用')
+                    : (globalRestriction ? '限制' : '');
+                const alertTitle = unavailableRow
+                    ? [unavailableRow.reason, unavailableRow.notes].filter(Boolean).join(' · ')
+                    : (globalRestriction
+                        ? (announcementMap.get(String(globalRestriction.announcement_id))?.content || '預約限制生效中')
+                        : '');
+                return `
+                    <div class="day-boat-row">
+                        <aside class="day-boat-sidebar"${alertTitle ? ` title="${escapeHtml(alertTitle)}"` : ''}>
+                            <span class="day-boat-dot" style="background:${escapeHtml(boat.color || '#cfd3da')}"></span>
+                            <div class="day-boat-name">${escapeHtml(boat.name || '未命名')}</div>
+                            ${alertLabel ? `<div class="day-boat-alert">${escapeHtml(alertLabel)}</div>` : ''}
+                            <div class="day-boat-count">${boatBookings.length} 筆</div>
+                        </aside>
+                        <div class="day-booking-column">
+                            ${boatBookings.length ? boatBookings.map(booking => {
+                                const startTime = String(booking.start_at || '').slice(11, 16);
+                                const endTime = addMinutesToTimeStr(startTime, booking.duration_min);
+                                const coachNames = (booking.coaches || []).filter(item => item?.name).map(item => item.name).join('/');
+                                const driverNames = (booking.drivers || []).filter(item => item?.name).map(item => item.name).join('/');
+                                const activities = normalizePostgresArrayValue(booking.activity_types);
+                                const meta = [
+                                    coachNames ? `🎓 ${coachNames}` : '',
+                                    driverNames ? `🚤 ${driverNames}` : '',
+                                ].filter(Boolean);
+                                return `
+                                    <article class="day-booking-card" style="--boat-color:${escapeHtml(boat.color || '#cfd3da')}">
+                                        <div class="day-booking-time">
+                                            <div>${escapeHtml(startTime)}</div>
+                                            <div style="font-size:10px;opacity:.7;margin:2px 0;">↓</div>
+                                            <div>${escapeHtml(endTime)}</div>
+                                            <div class="day-booking-duration">${Number(booking.duration_min || 0)}分</div>
+                                        </div>
+                                        <div class="day-booking-content">
+                                            ${booking.is_coach_practice ? '<div class="es-badge warning" style="margin-bottom:6px;">教練練習</div>' : ''}
+                                            <div class="day-booking-name">${escapeHtml(getDisplayContactName(booking) || '未命名')}</div>
+                                            <div class="day-booking-meta">
+                                                ${meta.map((item, index) => `${index ? '<span style="margin:0 4px;opacity:.5;">•</span>' : ''}<span>${escapeHtml(item)}</span>`).join('')}
+                                                ${activities.length ? `${meta.length ? '<span style="margin:0 4px;opacity:.5;">•</span>' : ''}<span class="day-booking-chip">${escapeHtml(activities.join('+'))}</span>` : ''}
+                                            </div>
+                                            ${(booking.notes || booking.schedule_notes) ? `
+                                                <div class="day-booking-note">
+                                                    ${booking.notes ? escapeHtml(booking.notes) : ''}
+                                                    ${booking.notes && booking.schedule_notes ? ' · ' : ''}
+                                                    ${booking.schedule_notes ? escapeHtml(booking.schedule_notes) : ''}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </article>
+                                `;
+                            }).join('') : '<div class="day-empty">今日無預約</div>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
             setOfflinePageLayout();
             const mainContent = document.getElementById('main-content');
             mainContent.innerHTML = `
                 <div class="es-page">
-                    ${renderBrandHeader('預約清單', renderHomeButton())}
-                    <main class="es-shell">
-                        <div class="es-intro">
-                            <h1>預約清單</h1>
-                            <p>同時查看當日預約、預約限制與停用船隻。</p>
-                        </div>
-                        <div class="es-card">
-                            <div class="es-toolbar">
-                                <button class="es-button" onclick="showRecoveryDayView('${addDaysToDateStr(selectedDate, -1)}')">前一天</button>
-                                <div class="es-field">
-                                    <label for="recovery-day-date">日期</label>
-                                    <input id="recovery-day-date" type="date" value="${escapeHtml(selectedDate)}" onchange="showRecoveryDayView(this.value)">
-                                </div>
-                                <button class="es-button" onclick="showRecoveryDayView('${addDaysToDateStr(selectedDate, 1)}')">後一天</button>
+                    ${renderBrandHeader('預約表', renderHomeButton())}
+                    <main class="es-shell es-shell-wide">
+                        <div class="day-date-nav">
+                            <button class="day-nav-arrow" onclick="showRecoveryDayView('${addDaysToDateStr(selectedDate, -1)}')" aria-label="前一天">←</button>
+                            <div style="flex:0 1 auto;min-width:0;">
+                                <input class="day-date-input" type="date" value="${escapeHtml(selectedDate)}" onchange="showRecoveryDayView(this.value)">
                             </div>
+                            <span class="day-weekday">${escapeHtml(dateDisplay.weekday)}</span>
+                            <button class="day-nav-arrow" onclick="showRecoveryDayView('${addDaysToDateStr(selectedDate, 1)}')" aria-label="後一天">→</button>
+                            <button class="day-today-button" onclick="showRecoveryDayView('${getVenueDateString()}')">今天</button>
                         </div>
-                        ${(dayRestrictions.length || dayUnavailable.length) ? `
-                            <section class="es-section">
-                                <div class="es-section-heading"><h2>當日限制</h2><span>${dayRestrictions.length + dayUnavailable.length} 項</span></div>
-                                <div class="es-record-list">
-                                    ${dayRestrictions.map(row => {
-                                        const announcement = announcementMap.get(String(row.announcement_id));
-                                        return `<div class="es-status warning">
-                                            <strong>預約限制 · ${escapeHtml(formatRestrictionTimeWindow(row))}</strong><br>
-                                            ${escapeHtml(announcement?.content || '限制生效中')}
-                                        </div>`;
-                                    }).join('')}
-                                    ${dayUnavailable.map(row => {
-                                        const boat = boatMap.get(String(row.boat_id));
-                                        return `<div class="es-status danger"><strong>${escapeHtml(boat?.name || '船隻')}停用</strong><br>${escapeHtml(row.reason || '停用')}${row.notes ? `<br>${escapeHtml(row.notes)}` : ''}</div>`;
-                                    }).join('')}
-                                </div>
-                            </section>
+                        ${enriched.length ? `
+                            <div class="day-overview">
+                                <div class="day-overview-card"><div class="day-overview-label">今日預約</div><div class="day-overview-value">${enriched.length} 筆</div></div>
+                                <div class="day-overview-card"><div class="day-overview-label">使用船隻</div><div class="day-overview-value">${usedBoatCount} 艘</div></div>
+                                <div class="day-overview-card"><div class="day-overview-label">預約時數</div><div class="day-overview-value">${(totalMinutes / 60).toFixed(1)} 小時</div></div>
+                            </div>
                         ` : ''}
-                        <section class="es-section">
-                            <div class="es-section-heading"><h2>預約</h2><span>${enriched.length} 筆</span></div>
-                            <div class="es-record-list">
-                                ${enriched.length ? enriched.map(booking => {
-                                    const activities = normalizePostgresArrayValue(booking.activity_types).join('、');
-                                    return `
-                                        <article class="es-record">
-                                            <h3 class="es-record-title">${escapeHtml(String(booking.start_at || '').slice(11, 16))} · ${escapeHtml(getDisplayContactName(booking))}</h3>
-                                            <div class="es-record-meta">${escapeHtml(booking.boats?.name || '未指定船隻')} · ${Number(booking.duration_min || 0)} 分 · ${escapeHtml(booking.status || '')}</div>
-                                            <div class="es-record-grid">
-                                                <div class="es-record-value"><span>電話</span>${escapeHtml(booking.contact_phone || '—')}</div>
-                                                <div class="es-record-value"><span>教練</span>${escapeHtml((booking.coaches || []).map(item => item.name).join('、') || '—')}</div>
-                                                <div class="es-record-value"><span>活動</span>${escapeHtml(activities || '—')}</div>
-                                                <div class="es-record-value"><span>行程備註</span>${escapeHtml(booking.schedule_notes || '—')}</div>
-                                                <div class="es-record-value"><span>備註</span>${escapeHtml(booking.notes || '—')}</div>
-                                            </div>
-                                            <details class="es-raw-details"><summary>查看所有原始欄位</summary><pre>${escapeHtml(JSON.stringify(booking, null, 2))}</pre></details>
-                                        </article>
-                                    `;
-                                }).join('') : '<div class="es-card es-empty">這一天沒有預約</div>'}
-                            </div>
-                        </section>
+                        ${staffStripHtml}
+                        <div class="day-boat-list">${boatRowsHtml || '<div class="day-empty">沒有可用的船隻</div>'}</div>
+                        <div class="es-footer">
+                            © ${new Date().getFullYear()} ES Wake. All Rights Reserved.
+                            <div class="es-footer-subtitle">滑水預約管理系統 · 離線唯讀</div>
+                        </div>
                     </main>
                 </div>
             `;
@@ -3899,8 +4223,6 @@
 
         // ==================== 預約查詢（參考線上版 SearchBookings） ====================
 
-        // 預約查詢目前選中的分頁：member | boat | coach
-        let searchActiveTab = 'member';
         let searchHasSearched = false;
         let currentSearchBookings = [];
         let searchShowPastBookings = false;
@@ -3940,11 +4262,10 @@
         }
 
         // 顯示預約查詢頁面
-        async function showSearchBookings(initialTab) {
+        async function showSearchBookings() {
             const mainContent = document.getElementById('main-content');
             setOfflinePageLayout();
 
-            searchActiveTab = initialTab || 'member';
             searchHasSearched = false;
             currentSearchBookings = [];
 
@@ -3957,48 +4278,7 @@
                     <div id="search-bookings-content" class="es-shell es-shell-wide">
                         <div class="es-intro">
                             <h1>預約查詢</h1>
-                            <p>依預約人、船隻或教練查閱備份中的完整預約資料。</p>
-                        </div>
-                        <!-- Tabs -->
-                        <div style="
-                            display: flex;
-                            gap: 0;
-                            margin-bottom: 15px;
-                            background: white;
-                            border-radius: 12px;
-                            padding: 4px;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                        ">
-                            <button id="search-tab-member" type="button" onclick="switchSearchTab('member')" style="
-                                flex: 1;
-                                padding: 12px 10px;
-                                border: none;
-                                border-radius: 8px;
-                                font-size: 14px;
-                                font-weight: 600;
-                                cursor: pointer;
-                                transition: all 0.2s;
-                            ">👤 預約人</button>
-                            <button id="search-tab-boat" type="button" onclick="switchSearchTab('boat')" style="
-                                flex: 1;
-                                padding: 12px 10px;
-                                border: none;
-                                border-radius: 8px;
-                                font-size: 14px;
-                                font-weight: 600;
-                                cursor: pointer;
-                                transition: all 0.2s;
-                            ">🚤 船</button>
-                            <button id="search-tab-coach" type="button" onclick="switchSearchTab('coach')" style="
-                                flex: 1;
-                                padding: 12px 10px;
-                                border: none;
-                                border-radius: 8px;
-                                font-size: 14px;
-                                font-weight: 600;
-                                cursor: pointer;
-                                transition: all 0.2s;
-                            ">🎓 教練</button>
+                            <p>依預約人姓名或電話查閱備份中的完整預約資料。</p>
                         </div>
 
                         <!-- 搜尋表單 -->
@@ -4072,137 +4352,6 @@
                                 </div>
                             </form>
 
-                            <!-- 船隻搜尋 -->
-                            <form id="search-form-boat" onsubmit="handleBoatBookingSearch(event)" style="display: none;">
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                                    <div>
-                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">船隻</label>
-                                        <select id="search-boat-select" required style="
-                                            width: 100%;
-                                            padding: 10px 12px;
-                                            font-size: 14px;
-                                            border: 2px solid #e0e0e0;
-                                            border-radius: 8px;
-                                            outline: none;
-                                            box-sizing: border-box;
-                                            background: white;
-                                        ">
-                                            <option value="">請選擇船隻</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">開始日期（選填）</label>
-                                        <input id="search-boat-start" type="date" style="
-                                            width: 100%;
-                                            padding: 10px 12px;
-                                            font-size: 14px;
-                                            border: 2px solid #e0e0e0;
-                                            border-radius: 8px;
-                                            outline: none;
-                                            box-sizing: border-box;
-                                        ">
-                                    </div>
-                                    <div>
-                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">結束日期（選填）</label>
-                                        <input id="search-boat-end" type="date" style="
-                                            width: 100%;
-                                            padding: 10px 12px;
-                                            font-size: 14px;
-                                            border: 2px solid #e0e0e0;
-                                            border-radius: 8px;
-                                            outline: none;
-                                            box-sizing: border-box;
-                                        ">
-                                    </div>
-                                </div>
-                                <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                                    <button type="button" onclick="resetBookingSearchForm('boat')" style="
-                                        padding: 10px 18px;
-                                        border-radius: 8px;
-                                        border: 1px solid #dee2e6;
-                                        background: white;
-                                        color: #495057;
-                                        font-size: 14px;
-                                        cursor: pointer;
-                                    ">清除</button>
-                                    <button type="submit" style="
-                                        padding: 10px 18px;
-                                        border-radius: 8px;
-                                        border: none;
-                                        background: #1d1d1f;
-                                        color: white;
-                                        font-size: 14px;
-                                        font-weight: 600;
-                                        cursor: pointer;
-                                    ">開始搜尋</button>
-                                </div>
-                            </form>
-
-                            <!-- 教練搜尋 -->
-                            <form id="search-form-coach" onsubmit="handleCoachBookingSearch(event)" style="display: none;">
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                                    <div>
-                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">教練</label>
-                                        <select id="search-coach-select" required style="
-                                            width: 100%;
-                                            padding: 10px 12px;
-                                            font-size: 14px;
-                                            border: 2px solid #e0e0e0;
-                                            border-radius: 8px;
-                                            outline: none;
-                                            box-sizing: border-box;
-                                            background: white;
-                                        ">
-                                            <option value="">請選擇教練</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">開始日期（選填）</label>
-                                        <input id="search-coach-start" type="date" style="
-                                            width: 100%;
-                                            padding: 10px 12px;
-                                            font-size: 14px;
-                                            border: 2px solid #e0e0e0;
-                                            border-radius: 8px;
-                                            outline: none;
-                                            box-sizing: border-box;
-                                        ">
-                                    </div>
-                                    <div>
-                                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #868e96;">結束日期（選填）</label>
-                                        <input id="search-coach-end" type="date" style="
-                                            width: 100%;
-                                            padding: 10px 12px;
-                                            font-size: 14px;
-                                            border: 2px solid #e0e0e0;
-                                            border-radius: 8px;
-                                            outline: none;
-                                            box-sizing: border-box;
-                                        ">
-                                    </div>
-                                </div>
-                                <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                                    <button type="button" onclick="resetBookingSearchForm('coach')" style="
-                                        padding: 10px 18px;
-                                        border-radius: 8px;
-                                        border: 1px solid #dee2e6;
-                                        background: white;
-                                        color: #495057;
-                                        font-size: 14px;
-                                        cursor: pointer;
-                                    ">清除</button>
-                                    <button type="submit" style="
-                                        padding: 10px 18px;
-                                        border-radius: 8px;
-                                        border: none;
-                                        background: #1d1d1f;
-                                        color: white;
-                                        font-size: 14px;
-                                        font-weight: 600;
-                                        cursor: pointer;
-                                    ">開始搜尋</button>
-                                </div>
-                            </form>
                         </div>
 
                         <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
@@ -4222,71 +4371,8 @@
                 </div>
             `;
 
-            // 初始化 Tab 樣式與下拉選單
-            switchSearchTab(searchActiveTab);
-            await initSearchFilters();
             // 初始沒有結果
             renderBookingSearchResults([]);
-        }
-
-        // 初始化船隻、教練下拉選單
-        async function initSearchFilters() {
-            try {
-                if (!db) await initDatabase();
-                const boats = await getAllFromStore('boats').catch(function () { return []; });
-                const coaches = await getAllFromStore('coaches').catch(function () { return []; });
-
-                const boatSelect = document.getElementById('search-boat-select');
-                if (boatSelect && boats && boats.length > 0) {
-                    boatSelect.innerHTML = '<option value=\"\">請選擇船隻</option>' + boats.map(function (boat) {
-                        return '<option value=\"' + boat.id + '\">' + boat.name + '</option>';
-                    }).join('');
-                }
-
-                const coachSelect = document.getElementById('search-coach-select');
-                if (coachSelect && coaches && coaches.length > 0) {
-                    // 只顯示啟用教練
-                    const activeCoaches = coaches.filter(function (c) { return !c.status || c.status === 'active'; });
-                    coachSelect.innerHTML = '<option value=\"\">請選擇教練</option>' + activeCoaches.map(function (coach) {
-                        return '<option value=\"' + coach.id + '\">' + coach.name + '</option>';
-                    }).join('');
-                }
-            } catch (error) {
-                console.error('初始化預約查詢篩選條件失敗:', error);
-            }
-        }
-
-        // 切換分頁
-        function switchSearchTab(tab) {
-            searchActiveTab = tab;
-            const memberBtn = document.getElementById('search-tab-member');
-            const boatBtn = document.getElementById('search-tab-boat');
-            const coachBtn = document.getElementById('search-tab-coach');
-            const memberForm = document.getElementById('search-form-member');
-            const boatForm = document.getElementById('search-form-boat');
-            const coachForm = document.getElementById('search-form-coach');
-
-            if (!memberBtn || !boatBtn || !coachBtn || !memberForm || !boatForm || !coachForm) {
-                return;
-            }
-
-            // 更新按鈕樣式
-            const activeBg = '#5a5a5a';
-            const activeColor = 'white';
-            const inactiveBg = 'transparent';
-            const inactiveColor = '#666';
-
-            memberBtn.style.background = (tab === 'member') ? activeBg : inactiveBg;
-            memberBtn.style.color = (tab === 'member') ? activeColor : inactiveColor;
-            boatBtn.style.background = (tab === 'boat') ? activeBg : inactiveBg;
-            boatBtn.style.color = (tab === 'boat') ? activeColor : inactiveColor;
-            coachBtn.style.background = (tab === 'coach') ? activeBg : inactiveBg;
-            coachBtn.style.color = (tab === 'coach') ? activeColor : inactiveColor;
-
-            // 顯示對應表單
-            memberForm.style.display = (tab === 'member') ? 'block' : 'none';
-            boatForm.style.display = (tab === 'boat') ? 'block' : 'none';
-            coachForm.style.display = (tab === 'coach') ? 'block' : 'none';
         }
 
         // 重設表單
@@ -4306,20 +4392,6 @@
                 searchSelectedMemberHint = '';
                 hideMemberSearchDropdown();
                 updateMemberSearchSelectedHint();
-            } else if (type === 'boat') {
-                const boatSelect = document.getElementById('search-boat-select');
-                const startInput = document.getElementById('search-boat-start');
-                const endInput = document.getElementById('search-boat-end');
-                if (boatSelect) boatSelect.value = '';
-                if (startInput) startInput.value = '';
-                if (endInput) endInput.value = '';
-            } else if (type === 'coach') {
-                const coachSelect = document.getElementById('search-coach-select');
-                const startInput = document.getElementById('search-coach-start');
-                const endInput = document.getElementById('search-coach-end');
-                if (coachSelect) coachSelect.value = '';
-                if (startInput) startInput.value = '';
-                if (endInput) endInput.value = '';
             }
         }
 

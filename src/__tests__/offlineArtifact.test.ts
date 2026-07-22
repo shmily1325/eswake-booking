@@ -48,9 +48,9 @@ describe('offline disaster-recovery artifact', () => {
   it('exposes complete read-only recovery navigation without placeholder actions', () => {
     expect(html).toContain("action: 'day'")
     expect(html).toContain("action: 'audit-log'")
-    expect(html).toContain("action: 'coach-report'")
-    expect(html).toContain("action: 'coach-time-off'")
     expect(html).toContain("action: 'bao'")
+    expect(html).not.toContain("action: 'coach-report'")
+    expect(html).not.toContain("action: 'coach-time-off'")
     expect(html).not.toContain("action: 'my-report'")
     expect(html).not.toContain("action: 'boats'")
     expect(html).not.toContain('showDayView()')
@@ -153,6 +153,14 @@ describe('offline disaster-recovery artifact', () => {
     expect(html).not.toContain('離線待補')
   })
 
+  it('keeps booking search aligned with the member-only online flow', () => {
+    expect(html).toContain('id="search-form-member"')
+    expect(html).not.toContain('id="search-tab-boat"')
+    expect(html).not.toContain('id="search-tab-coach"')
+    expect(html).not.toContain('id="search-form-boat"')
+    expect(html).not.toContain('id="search-form-coach"')
+  })
+
   it('formats reservation restriction windows and links announcement content', () => {
     expect(
       evaluateOffline<string>(
@@ -165,8 +173,8 @@ describe('offline disaster-recovery artifact', () => {
       ),
     ).toBe('2026-07-23 → 2026-07-24 · 全天')
     expect(html).toContain("safeGetAllFromStore('daily_announcements')")
-    expect(html).toContain('announcementMap.get(String(row.announcement_id))')
-    expect(html).toContain("announcement?.content || '限制生效中'")
+    expect(html).toContain('announcementMap.get(String(globalRestriction.announcement_id))')
+    expect(html).toContain("?.content || '預約限制生效中'")
   })
 
   it('normalizes PostgreSQL array values for offline import and display', () => {
