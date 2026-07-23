@@ -55,14 +55,22 @@ describe('offline disaster-recovery artifact', () => {
     expect(html).not.toContain("action: 'boats'")
     expect(html).not.toContain('showDayView()')
     expect(html).not.toContain('正在開發中')
-    expect(html).toContain("showRecoveryDataset('system-reference', 'admin_users')")
-    expect(html).toContain("showRecoveryDataset('restrictions', 'boats')")
+    expect(html).toContain('showOfflineAnnouncements()')
+    expect(html).toContain('showOfflineStaff()')
+    expect(html).toContain('showOfflineBoats()')
+    expect(html).toContain('showOfflineBackupStatus()')
+    expect(html).toContain('showOfflineOrders()')
+    expect(html).not.toContain('showOfflineStatistics')
+    expect(html).toContain("showProductInventory('商品查詢')")
+    expect(html).not.toContain("onclick=\"showRecoveryDataset('system-reference'")
+    expect(html).not.toContain("onclick=\"showRecoveryDataset('restrictions'")
+    expect(html).not.toContain("onclick=\"showRecoveryDataset('shop-recovery')")
   })
 
   it('keeps recovery views aligned with the current product frame', () => {
     expect(html).toContain('--es-page: #f4f5f7')
     expect(html).toContain('--es-ink: #1d1d1f')
-    expect(html).toContain('class="es-brand-bar"')
+    expect(html).toContain('class="es-brand-bar ')
     expect(html).toContain('class="es-menu-card"')
     expect(html).toContain('ES Wake')
     expect(html).toContain('📅')
@@ -74,7 +82,7 @@ describe('offline disaster-recovery artifact', () => {
     expect(html).toContain('font-size: 38px')
     expect(html).toContain('class="home-logo" src="data:image/png;base64,')
     expect(html).toContain('class="home-title">ES Wake</h1>')
-    expect(html).toContain('<span class="es-menu-title">Dashboard</span>')
+    expect(html).not.toContain('<span class="es-menu-title">Dashboard</span>')
     expect(html).toContain('<h3 class="bao-section-title">櫃台</h3>')
     expect(html).toContain('<h3 class="bao-section-title">營運</h3>')
     expect(html).not.toContain('data:image/svg+xml')
@@ -106,6 +114,43 @@ describe('offline disaster-recovery artifact', () => {
     expect(html).toContain('查看所有原始欄位')
   })
 
+  it('uses current backup fields in the dedicated recovery pages', () => {
+    expect(html).toContain('function formatOfflineDateTime(value)')
+    expect(html).not.toContain('formatRecoveryDateTime')
+    expect(html).not.toContain('formatRecoveryValue')
+    expect(html).toContain('boat.is_active !== false')
+    expect(html).not.toContain('boat.status')
+    expect(html).toContain('<option value="settled">已結清</option>')
+    expect(html).toContain('查看結帳紀錄')
+  })
+
+  it('keeps familiar online page structures available in read-only mode', () => {
+    expect(html).toContain("renderBrandHeader(assignmentMode ? '排班' : '今日預約'")
+    expect(html).toContain('async function showOfflineCoachAssignment(dateParam)')
+    expect(html).toContain('需要駕駛／尚未安排')
+    expect(html).toContain('title="離線模式不提供儲存">儲存</button>')
+    expect(html).toContain('日期區間')
+    expect(html).toContain('不設定則顯示未來預約')
+    expect(html).toContain('copyAllSearchBookings()')
+    expect(html).toContain('包含天氣警告')
+    expect(html).toContain('offline-language-toggle')
+    expect(html).toContain('data-member-filter="membership-expiry"')
+    expect(html).toContain('data-transaction-sort="line"')
+    expect(html).toContain('offline-board-grid')
+    expect(html).toContain('coach-mobile-list')
+    expect(html).toContain('船隻列表')
+    expect(html).toContain('價格設定')
+    expect(html).toContain('data-panel="permissions"')
+    expect(html).toContain('開單')
+    expect(html).toContain('結帳')
+    expect(html).toContain('統計')
+    expect(html).toContain('商品與庫存')
+    expect(html).toContain('銷售排行')
+    expect(html).toContain('offline-product-mobile-list')
+    expect(html).toContain('最近 30 天')
+    expect(html).toContain('預約規則')
+  })
+
   it('validates imports before activating the staged IndexedDB database', () => {
     expect(html).toContain('parseBackupManifest(text)')
     expect(html).toContain('await verifyImportedManifest(manifest)')
@@ -121,13 +166,14 @@ describe('offline disaster-recovery artifact', () => {
     )
 
     expect(script.match(/['"]readwrite['"]/g)).toHaveLength(2)
-    const storedKeys = [...script.matchAll(/localStorage\.setItem\(['"]([^'"]+)/g)].map(
-      match => match[1],
+    const storedKeys = new Set(
+      [...script.matchAll(/localStorage\.setItem\(['"]([^'"]+)/g)].map(match => match[1]),
     )
-    expect(storedKeys).toEqual([
+    expect(storedKeys).toEqual(new Set([
       'eswake-offline-active-db',
       'eswake-offline-backup-meta',
-    ])
+      'eswake-offline-last-import-summary',
+    ]))
   })
 
   it('contains current tomorrow-reminder settings and business rules', () => {
