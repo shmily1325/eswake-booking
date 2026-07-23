@@ -1022,7 +1022,6 @@ export function EditBookingDialog({
             <BookingAlternativeSuggestions
               status={alternatives.status}
               nearbyTimes={alternatives.nearbyTimes}
-              nearbyTimeGap={alternatives.nearbyTimeGap}
               otherBoats={alternatives.otherBoats}
               originalTime={startTime}
               hasSelectedCoach={selectedCoaches.length > 0}

@@ -9,6 +9,7 @@ const boats = [
   { id: 2, name: '黑豹' },
   { id: 3, name: 'G23' },
   { id: 4, name: '粉紅' },
+  { id: 5, name: '200' },
 ]
 
 function booking(
@@ -49,19 +50,19 @@ const baseInput = {
 }
 
 describe('findBookingAlternatives', () => {
-  it('有前後 30 分鐘方案時，不顯示較近的 15 分鐘方案', () => {
+  it('原時間前後各顯示最近的 15 與 30 分鐘方案', () => {
     const result = findBookingAlternatives(
       baseInput,
       context({ boatBookings: [booking(1, 1, '12:00', 60)] }),
     )
 
-    expect(result.nearbyTimeGap).toBe(30)
-    expect(result.nearbyTimes[0]).toBe('13:30')
-    expect(result.nearbyTimes).not.toContain('13:15')
+    expect(result.nearbyTimes[0]).toEqual({ time: '13:15', gap: 15 })
+    expect(result.nearbyTimes.filter(({ gap }) => gap === 15)).toHaveLength(2)
+    expect(result.nearbyTimes.filter(({ gap }) => gap === 30)).toHaveLength(2)
     expect(result.nearbyTimes).toHaveLength(4)
   })
 
-  it('附近沒有 30 分鐘方案時，退回顯示符合最低接船間隔的方案', () => {
+  it('整天沒有 30 分鐘方案時，退回顯示符合最低接船間隔的方案', () => {
     const result = findBookingAlternatives(
       { ...baseInput, durationMin: 30 },
       context({
@@ -69,11 +70,27 @@ describe('findBookingAlternatives', () => {
           booking(1, 1, '09:00', 120),
           booking(2, 1, '12:00', 150),
         ],
+        restrictions: [
+          {
+            start_date: '2026-07-25',
+            start_time: '05:00',
+            end_date: '2026-07-25',
+            end_time: '09:00',
+          },
+          {
+            start_date: '2026-07-25',
+            start_time: '14:30',
+            end_date: '2026-07-25',
+            end_time: '19:00',
+          },
+        ],
       }),
     )
 
-    expect(result.nearbyTimeGap).toBe(15)
-    expect(result.nearbyTimes).toEqual(['11:15'])
+    expect(result.nearbyTimes).toContainEqual({ time: '11:15', gap: 15 })
+    expect(result.nearbyTimes.every(({ gap }) => gap === 15)).toBe(true)
+    expect(result.nearbyTimes.length).toBeGreaterThanOrEqual(1)
+    expect(result.nearbyTimes.length).toBeLessThanOrEqual(4)
   })
 
   it('30 分鐘判斷會同時考慮前船與後船', () => {
@@ -84,11 +101,24 @@ describe('findBookingAlternatives', () => {
           booking(1, 1, '09:00', 120),
           booking(2, 1, '12:00', 150),
         ],
+        restrictions: [
+          {
+            start_date: '2026-07-25',
+            start_time: '05:00',
+            end_date: '2026-07-25',
+            end_time: '09:00',
+          },
+          {
+            start_date: '2026-07-25',
+            start_time: '14:30',
+            end_date: '2026-07-25',
+            end_time: '19:00',
+          },
+        ],
       }),
     )
 
-    expect(result.nearbyTimeGap).toBe(15)
-    expect(result.nearbyTimes).toContain('11:15')
+    expect(result.nearbyTimes).toContainEqual({ time: '11:15', gap: 15 })
   })
 
   it('有指定教練才排除教練或駕駛已有預約的時段', () => {
@@ -108,8 +138,8 @@ describe('findBookingAlternatives', () => {
       busyCoachContext,
     )
 
-    expect(withoutCoach.nearbyTimes).toContain('13:30')
-    expect(withCoach.nearbyTimes).not.toContain('13:30')
+    expect(withoutCoach.nearbyTimes.map(({ time }) => time)).toContain('13:30')
+    expect(withCoach.nearbyTimes.map(({ time }) => time)).not.toContain('13:30')
   })
 
   it('其他船只推薦原時段可用的三艘目標船', () => {
@@ -124,6 +154,18 @@ describe('findBookingAlternatives', () => {
     )
 
     expect(result.otherBoats).toEqual([{ id: 2, name: '黑豹' }])
+  })
+
+  it('粉紅與 200 為獨立替代群組，不會推薦大船', () => {
+    const result = findBookingAlternatives(
+      { ...baseInput, selectedBoatId: 4 },
+      context({
+        boatBookings: [booking(1, 4, '12:00', 60)],
+      }),
+    )
+
+    expect(result.otherBoats).toEqual([{ id: 5, name: '200' }])
+    expect(result.nearbyTimes).toHaveLength(4)
   })
 
   it('編輯時排除原預約，不把自己視為船或教練衝突', () => {
@@ -141,7 +183,7 @@ describe('findBookingAlternatives', () => {
       }),
     )
 
-    expect(result.nearbyTimes).toContain('12:00')
+    expect(result.nearbyTimes.map(({ time }) => time)).toEqual(['12:45', '12:15'])
     expect(result.otherBoats).toEqual([
       { id: 2, name: '黑豹' },
       { id: 3, name: 'G23' },
@@ -174,5 +216,35 @@ describe('findBookingAlternatives', () => {
 
     expect(result.nearbyTimes).toEqual([])
     expect(result.otherBoats).toEqual([])
+  })
+
+  it('搜尋整天，前後兩側各最多提供一個 15 與一個 30 分鐘方案', () => {
+    const result = findBookingAlternatives(
+      baseInput,
+      context({
+        boatBookings: [booking(1, 1, '10:00', 240)],
+      }),
+    )
+
+    expect(result.nearbyTimes[0]).toEqual({ time: '14:15', gap: 15 })
+    expect(result.nearbyTimes.filter(({ gap }) => gap === 15)).toHaveLength(2)
+    expect(result.nearbyTimes).toHaveLength(4)
+    expect(result.nearbyTimes.every(({ time }) => time >= '05:00')).toBe(true)
+  })
+
+  it('推薦不得早於 05:00，結束時間不得晚於 19:00', () => {
+    const result = findBookingAlternatives(
+      { ...baseInput, startTime: '04:00', durationMin: 60 },
+      context(),
+    )
+
+    expect(result.nearbyTimes[0].time).toBe('05:00')
+    expect(result.nearbyTimes.every(({ time }) => time >= '05:00')).toBe(true)
+    expect(
+      result.nearbyTimes.every(({ time }) => {
+        const [hour, minute] = time.split(':').map(Number)
+        return hour * 60 + minute + 60 <= 19 * 60
+      }),
+    ).toBe(true)
   })
 })

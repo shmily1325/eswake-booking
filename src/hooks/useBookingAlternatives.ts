@@ -25,7 +25,6 @@ interface BookingAlternativeState extends BookingAlternatives {
 const EMPTY_STATE: BookingAlternativeState = {
   status: 'idle',
   nearbyTimes: [],
-  nearbyTimeGap: null,
   otherBoats: [],
 }
 
@@ -75,7 +74,6 @@ export function useBookingAlternatives({
     setState({
       status: 'loading',
       nearbyTimes: [],
-      nearbyTimeGap: null,
       otherBoats: [],
     })
 
@@ -107,7 +105,6 @@ export function useBookingAlternatives({
         setState({
           status: 'error',
           nearbyTimes: [],
-          nearbyTimeGap: null,
           otherBoats: [],
         })
       }

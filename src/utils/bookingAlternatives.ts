@@ -6,13 +6,18 @@ import {
   timeToMinutes,
 } from './bookingConflict'
 
-export const ALTERNATIVE_BOAT_NAMES = ['G21', '黑豹', 'G23'] as const
-export const ALTERNATIVE_SEARCH_RADIUS_MINUTES = 120
+export const ALTERNATIVE_BOAT_GROUPS = [
+  ['G21', '黑豹', 'G23'],
+  ['粉紅', '200'],
+] as const
+export const ALTERNATIVE_BOAT_NAMES = ['G21', '黑豹', 'G23', '粉紅', '200'] as const
 export const ALTERNATIVE_LIMIT = 4
 
 const SLOT_STEP_MINUTES = 15
 const COMFORTABLE_GAP_MINUTES = 30
 const MINUTES_PER_DAY = 24 * 60
+const EARLIEST_ALTERNATIVE_START_MINUTES = 5 * 60
+const LATEST_ALTERNATIVE_END_MINUTES = 19 * 60
 
 export interface AlternativeBoat {
   id: number
@@ -55,8 +60,7 @@ export interface BookingAlternativeContext {
 }
 
 export interface BookingAlternatives {
-  nearbyTimes: string[]
-  nearbyTimeGap: 30 | 15 | null
+  nearbyTimes: Array<{ time: string; gap: 30 | 15 }>
   otherBoats: AlternativeBoat[]
 }
 
@@ -343,51 +347,86 @@ export function findBookingAlternatives(
   input: FindBookingAlternativesInput,
   context: BookingAlternativeContext,
 ): BookingAlternatives {
-  const supportedBoats = input.boats.filter((boat) =>
-    ALTERNATIVE_BOAT_NAMES.includes(boat.name as (typeof ALTERNATIVE_BOAT_NAMES)[number]),
+  const selectedBoat = input.boats.find((boat) => boat.id === input.selectedBoatId)
+  const selectedGroup = ALTERNATIVE_BOAT_GROUPS.find((group) =>
+    group.some((name) => name === selectedBoat?.name),
   )
-  if (!supportedBoats.some((boat) => boat.id === input.selectedBoatId)) {
-    return { nearbyTimes: [], nearbyTimeGap: null, otherBoats: [] }
+  if (!selectedBoat || !selectedGroup) {
+    return { nearbyTimes: [], otherBoats: [] }
   }
+  const supportedBoats = input.boats.filter((boat) =>
+    selectedGroup.some((name) => name === boat.name),
+  )
 
   const referenceMinutes = timeToMinutes(input.startTime)
-  const availableNearbyTimes: string[] = []
+  const allAvailableTimes: string[] = []
 
+  // Scan all operating hours. Start no earlier than 05:00 and finish by 19:00.
   for (
-    let offset = -ALTERNATIVE_SEARCH_RADIUS_MINUTES;
-    offset <= ALTERNATIVE_SEARCH_RADIUS_MINUTES;
-    offset += SLOT_STEP_MINUTES
+    let candidateMinutes = EARLIEST_ALTERNATIVE_START_MINUTES;
+    candidateMinutes + input.durationMin <= LATEST_ALTERNATIVE_END_MINUTES;
+    candidateMinutes += SLOT_STEP_MINUTES
   ) {
-    if (offset === 0) continue
-    const candidateMinutes = referenceMinutes + offset
-    if (candidateMinutes < 0 || candidateMinutes + input.durationMin > MINUTES_PER_DAY) continue
+    if (candidateMinutes === referenceMinutes) continue
     const candidateTime = minutesToTime(candidateMinutes)
     if (
-      isCandidateAvailable(
+      !isCandidateAvailable(
         input,
         context,
         input.selectedBoatId,
         candidateTime,
       )
     ) {
-      availableNearbyTimes.push(candidateTime)
+      continue
+    }
+
+    allAvailableTimes.push(candidateTime)
+  }
+
+  const comfortableTimes = allAvailableTimes
+    .filter((time) =>
+      hasComfortableBoatGap(
+        input.selectedBoatId,
+        time,
+        input.durationMin,
+        context.boatBookings,
+        input.excludeBookingId,
+      ),
+    )
+    .sort(byDistanceFrom(referenceMinutes))
+  const fifteenMinuteTimes = allAvailableTimes
+    .filter((time) => !comfortableTimes.includes(time))
+    .sort(byDistanceFrom(referenceMinutes))
+
+  const selected: Array<{ time: string; gap: 30 | 15 }> = []
+  const sides: Array<(time: string) => boolean> = [
+    (time) => timeToMinutes(time) < referenceMinutes,
+    (time) => timeToMinutes(time) > referenceMinutes,
+  ]
+
+  // Before and after the requested time, show at most one 30-minute option and
+  // one 15-minute option. The 15-minute option is useful only when it is closer
+  // than that side's 30-minute option (or when no 30-minute option exists).
+  for (const isOnSide of sides) {
+    const nearestThirty = comfortableTimes.find(isOnSide)
+    const nearestFifteen = fifteenMinuteTimes.find(isOnSide)
+
+    if (
+      nearestFifteen &&
+      (!nearestThirty ||
+        Math.abs(timeToMinutes(nearestFifteen) - referenceMinutes) <
+          Math.abs(timeToMinutes(nearestThirty) - referenceMinutes))
+    ) {
+      selected.push({ time: nearestFifteen, gap: 15 })
+    }
+    if (nearestThirty) {
+      selected.push({ time: nearestThirty, gap: 30 })
     }
   }
 
-  const comfortableTimes = availableNearbyTimes.filter((time) =>
-    hasComfortableBoatGap(
-      input.selectedBoatId,
-      time,
-      input.durationMin,
-      context.boatBookings,
-      input.excludeBookingId,
-    ),
+  const nearbyTimes = selected.sort((left, right) =>
+    byDistanceFrom(referenceMinutes)(left.time, right.time),
   )
-  const nearbyTimeGap: 30 | 15 | null =
-    comfortableTimes.length > 0 ? 30 : availableNearbyTimes.length > 0 ? 15 : null
-  const nearbyTimes = (comfortableTimes.length > 0 ? comfortableTimes : availableNearbyTimes)
-    .sort(byDistanceFrom(referenceMinutes))
-    .slice(0, ALTERNATIVE_LIMIT)
 
   const otherBoats = supportedBoats.filter(
     (boat) =>
@@ -395,5 +434,5 @@ export function findBookingAlternatives(
       isCandidateAvailable(input, context, boat.id, input.startTime),
   )
 
-  return { nearbyTimes, nearbyTimeGap, otherBoats }
+  return { nearbyTimes, otherBoats }
 }

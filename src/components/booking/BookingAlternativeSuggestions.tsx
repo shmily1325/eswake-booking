@@ -13,7 +13,6 @@ interface BookingAlternativeSuggestionsProps extends BookingAlternatives {
 export function BookingAlternativeSuggestions({
   status,
   nearbyTimes,
-  nearbyTimeGap,
   otherBoats,
   originalTime,
   hasSelectedCoach,
@@ -79,10 +78,7 @@ export function BookingAlternativeSuggestions({
                   fontSize: getFontSize('bodySmall', isMobile),
                 }}
               >
-                同船靠近時段
-                {nearbyTimeGap === 30
-                  ? ' · 前後保留 30 分鐘'
-                  : ' · 附近無 30 分鐘間隔，顯示可安排時段'}
+                同船可選時段
               </div>
               <div
                 style={{
@@ -91,17 +87,40 @@ export function BookingAlternativeSuggestions({
                   gap: designSystem.spacing.sm,
                 }}
               >
-                {nearbyTimes.map((time) => (
+                {nearbyTimes.map(({ time, gap }) => (
                   <button
                     key={time}
                     type="button"
                     aria-label={`改為 ${time}`}
                     onClick={() => onSelectTime(time)}
-                    style={buttonStyle}
+                    style={{
+                      ...buttonStyle,
+                      background:
+                        gap === 30
+                          ? designSystem.colors.info[50]
+                          : designSystem.colors.background.card,
+                      borderColor:
+                        gap === 30
+                          ? designSystem.colors.info[500]
+                          : designSystem.colors.border.main,
+                      color:
+                        gap === 30
+                          ? designSystem.colors.info[700]
+                          : designSystem.colors.text.secondary,
+                    }}
                   >
                     {time}
                   </button>
                 ))}
+              </div>
+              <div
+                style={{
+                  marginTop: designSystem.spacing.sm,
+                  color: designSystem.colors.text.secondary,
+                  fontSize: getFontSize('caption', isMobile),
+                }}
+              >
+                藍灰＝前後間隔 30 分鐘 · 淺色＝間隔 15 分鐘
               </div>
             </div>
           )}
@@ -148,8 +167,8 @@ export function BookingAlternativeSuggestions({
               }}
             >
               {hasSelectedCoach
-                ? '附近暫無船與教練皆可的時段'
-                : '附近暫無可用船隻或時段'}
+                ? '暫無船與教練皆可的時段'
+                : '暫無可用船隻或時段'}
             </div>
           )}
         </>
