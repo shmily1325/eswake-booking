@@ -16,8 +16,10 @@ import { TimeSelector } from './booking/TimeSelector'
 import { MemberSelector } from './booking/MemberSelector'
 import { CoachSelector } from './booking/CoachSelector'
 import { BookingDetails } from './booking/BookingDetails'
+import { BookingAlternativeSuggestions } from './booking/BookingAlternativeSuggestions'
 import { scheduleCoachTimeOffReminderToast } from '../utils/coachTimeOffWarning'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
+import { useBookingAlternatives } from '../hooks/useBookingAlternatives'
 
 interface EditBookingDialogProps {
   isOpen: boolean
@@ -119,6 +121,16 @@ export function EditBookingDialog({
   // 即時衝突檢查狀態
   const [conflictStatus, setConflictStatus] = useState<'checking' | 'available' | 'conflict' | null>(null)
   const [conflictMessage, setConflictMessage] = useState('')
+  const alternatives = useBookingAlternatives({
+    enabled: isOpen && conflictStatus === 'conflict',
+    date: startDate,
+    startTime,
+    durationMin,
+    selectedBoatId,
+    boats,
+    coachIds: selectedCoaches,
+    excludeBookingId: booking?.id,
+  })
 
   // 只在對話框開啟時抓一次資料；用 ref 取得最新的 fetchAllData，
   // 避免 fetchAllData 隨 startTime/durationMin 變動而換 identity 造成重覆抓取
@@ -176,6 +188,16 @@ export function EditBookingDialog({
   // 如果 booking 或 booking.id 不存在，不渲染內容
   if (!booking || !booking.id) {
     return null
+  }
+
+  const handleSelectAlternativeTime = (time: string) => {
+    setConflictStatus('checking')
+    setStartTime(time)
+  }
+
+  const handleSelectAlternativeBoat = (boatId: number) => {
+    setConflictStatus('checking')
+    setSelectedBoatId(boatId)
   }
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -994,6 +1016,20 @@ export function EditBookingDialog({
             }}>
               {conflictStatus === 'checking' ? '檢查中...' : conflictMessage}
             </div>
+          )}
+
+          {conflictStatus === 'conflict' && (
+            <BookingAlternativeSuggestions
+              status={alternatives.status}
+              nearbyTimes={alternatives.nearbyTimes}
+              nearbyTimeGap={alternatives.nearbyTimeGap}
+              otherBoats={alternatives.otherBoats}
+              originalTime={startTime}
+              hasSelectedCoach={selectedCoaches.length > 0}
+              isMobile={isMobile}
+              onSelectTime={handleSelectAlternativeTime}
+              onSelectBoat={(boat) => handleSelectAlternativeBoat(boat.id)}
+            />
           )}
 
           </form>
