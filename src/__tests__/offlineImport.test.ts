@@ -290,6 +290,12 @@ describe('offline SQL import', () => {
     expect(window.document.body.textContent).toContain('保養')
     expect(window.document.body.textContent).toContain('啟用')
 
+    await (window as any).showCoachDailyView('2026-07-20')
+    expect(window.document.body.textContent).toContain('船隻停用')
+    expect(window.document.body.textContent).toContain('預約限制')
+    expect(window.document.body.textContent).toContain('保養')
+    expect(window.document.querySelector('.offline-unavailable-slot')).not.toBeNull()
+
     await (window as any).showOfflineAnnouncements('2026-07')
     expect(window.document.body.textContent).toContain('測試公告')
     expect(window.document.body.textContent).toContain('預約限制')
@@ -335,6 +341,8 @@ describe('offline SQL import', () => {
     await (window as any).showProductInventory('商品查詢')
     expect(window.document.body.textContent).toContain('商品查詢')
     expect(window.document.body.textContent).toContain('全部')
+    expect(window.document.body.textContent).toContain('庫存 SKU')
+    expect(window.document.body.textContent).toContain('商品')
     window.close()
   })
 })

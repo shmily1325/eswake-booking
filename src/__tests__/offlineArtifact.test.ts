@@ -147,6 +147,15 @@ describe('offline disaster-recovery artifact', () => {
     expect(html).toContain('商品與庫存')
     expect(html).toContain('銷售排行')
     expect(html).toContain('offline-product-mobile-list')
+    expect(html).toContain('data-product-layout="table"')
+    expect(html).toContain('data-product-layout="gallery"')
+    expect(html).toContain('@media (max-width: 767px)')
+    expect(html).toContain('getOfflineBookingConflictReasons(')
+    expect(html).toContain('尚有 \' + Number(unassignedCount) + \' 筆未排班')
+    expect(html).toContain('offline-unavailable-slot')
+    expect(html).toContain("google_drive_storage: 'Google Drive 商品圖片'")
+    expect(html).toContain("full_database: '手動下載'")
+    expect(html).toContain('renderOfflineDaySummary(')
     expect(html).toContain('最近 30 天')
     expect(html).toContain('預約規則')
   })
@@ -219,8 +228,8 @@ describe('offline disaster-recovery artifact', () => {
       ),
     ).toBe('2026-07-23 → 2026-07-24 · 全天')
     expect(html).toContain("safeGetAllFromStore('daily_announcements')")
-    expect(html).toContain('announcementMap.get(String(globalRestriction.announcement_id))')
-    expect(html).toContain("?.content || '預約限制生效中'")
+    expect(html).toContain('announcementMap.get(String(restrictionHit.announcement_id))')
+    expect(html).toContain("announcement?.content || '受理受限'")
   })
 
   it('normalizes PostgreSQL array values for offline import and display', () => {

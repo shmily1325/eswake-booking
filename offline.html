@@ -191,7 +191,7 @@
         }
         
         .btn-primary:hover {
-            background: #5568d3;
+            background: #111113;
         }
         
         .btn-secondary {
@@ -962,6 +962,12 @@
             color: var(--es-warning);
         }
 
+        .es-badge.danger {
+            border-color: #efb5b5;
+            background: #fff0f0;
+            color: #b42318;
+        }
+
         .offline-sticky-controls {
             position: sticky;
             top: 0;
@@ -1016,12 +1022,38 @@
 
         .offline-product-mobile-list {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 14px;
         }
 
         .offline-product-table {
             display: none;
+        }
+
+        .offline-product-sku-mobile-list {
+            display: none;
+        }
+
+        .offline-product-mobile-list.is-hidden {
+            display: none;
+        }
+
+        .offline-product-table.is-visible {
+            display: block;
+        }
+
+        .day-booking-card.has-conflict {
+            border-color: var(--es-danger);
+            background: #fff5f5;
+            box-shadow: inset 4px 0 0 var(--es-danger);
+        }
+
+        .offline-unavailable-slot {
+            background: repeating-linear-gradient(-45deg, #f1ede7, #f1ede7 5px, #e4ddd4 5px, #e4ddd4 10px) !important;
+            color: var(--es-muted);
+            font-size: 10px;
+            font-weight: 600;
+            text-align: center;
         }
 
         .coach-mobile-list {
@@ -1397,7 +1429,7 @@
             color: var(--es-ink);
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 767px) {
             .es-brand-bar-inner,
             .es-shell,
             .es-shell.es-shell-wide,
@@ -1599,9 +1631,19 @@
                 display: none;
             }
 
-            .offline-product-mobile-list {
+            .offline-product-table.is-visible {
+                display: none;
+            }
+
+            .offline-product-sku-mobile-list:not(.is-hidden) {
                 display: grid;
                 grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .offline-product-mobile-list {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             .coach-mobile-list {
@@ -3090,7 +3132,7 @@
                             <button class="bao-backup-status${backupHealth.state === 'success' ? '' : ' warning'}"
                                 onclick="showOfflineBackupStatus()">
                                 <span class="bao-backup-dot" aria-hidden="true"></span>
-                                ${escapeHtml(backupHealth.label)}
+                                ${escapeHtml(backupHealth.label)}${backupHealth.state === 'success' ? '' : ' · 請載入最新備份'}
                                 <span aria-hidden="true">›</span>
                             </button>
                         </div>
@@ -3463,6 +3505,11 @@
         function offlineBackupDestinationLabel(value) {
             const labels = {
                 google_drive: 'Google Drive',
+                google_drive_storage: 'Google Drive 商品圖片',
+                wd_local: '桌機備份',
+                wd_local_storage: '桌機商品圖片',
+                manual_download: '手動下載',
+                full_database: '手動下載',
                 desktop: '桌機備份',
                 cloud_drive: 'Google Drive',
                 local: '桌機備份'
@@ -3806,6 +3853,130 @@
                 : timeRange;
         }
 
+        function offlineMinutesFromTime(value, fallback) {
+            const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+            return match ? Number(match[1]) * 60 + Number(match[2]) : fallback;
+        }
+
+        function offlineRangeForDate(row, date) {
+            if (!dateFallsInRange(date, row)) return null;
+            const startDate = String(row.start_date || row.date || row.restriction_date || '').slice(0, 10);
+            const endDate = String(row.end_date || row.date || row.restriction_date || startDate).slice(0, 10);
+            return {
+                start: date === startDate ? offlineMinutesFromTime(row.start_time, 0) : 0,
+                end: date === endDate ? offlineMinutesFromTime(row.end_time, 24 * 60) : 24 * 60
+            };
+        }
+
+        function getOfflineBookingConflictReasons(bookings, date, unavailableRows, restrictionRows, announcementMap) {
+            const reasons = new Map();
+            const personSpans = new Map();
+            const personNames = new Map();
+            const addReason = (bookingId, reason) => {
+                if (!reasons.has(String(bookingId))) reasons.set(String(bookingId), reason);
+            };
+
+            bookings.forEach(booking => {
+                const start = offlineMinutesFromTime(String(booking.start_at || '').slice(11, 16), 0);
+                const end = start + Number(booking.duration_min || 0);
+                [...(booking.coaches || []), ...(booking.drivers || [])].forEach(person => {
+                    if (!person?.id) return;
+                    const key = String(person.id);
+                    if (!personSpans.has(key)) personSpans.set(key, []);
+                    personSpans.get(key).push({
+                        bookingId: booking.id,
+                        boatId: booking.boat_id,
+                        start,
+                        end
+                    });
+                    if (person.name) personNames.set(key, person.name);
+                });
+
+                const unavailableHit = unavailableRows.find(row => {
+                    if (String(row.boat_id) !== String(booking.boat_id)) return false;
+                    const range = offlineRangeForDate(row, date);
+                    return range && end > range.start && start < range.end;
+                });
+                if (unavailableHit) addReason(booking.id, `維修：${unavailableHit.reason || '船隻停用中'}`);
+
+                const restrictionHit = restrictionRows.find(row => {
+                    const range = offlineRangeForDate(row, date);
+                    return range && end > range.start && start < range.end;
+                });
+                if (restrictionHit) {
+                    addReason(
+                        booking.id,
+                        announcementMap.get(String(restrictionHit.announcement_id))?.content || '受公告限制'
+                    );
+                }
+            });
+
+            personSpans.forEach((spans, personId) => {
+                spans.sort((a, b) => a.start - b.start);
+                for (let i = 0; i < spans.length; i += 1) {
+                    for (let j = i + 1; j < spans.length; j += 1) {
+                        const first = spans[i];
+                        const second = spans[j];
+                        if (second.start >= first.end) break;
+                        if (String(first.boatId) === String(second.boatId)) continue;
+                        const overlapStart = Math.max(first.start, second.start);
+                        const overlapEnd = Math.min(first.end, second.end);
+                        const toTime = minutes => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+                        const reason = `${personNames.get(personId) || '人員'} 時間重疊 ${toTime(overlapStart)}-${toTime(overlapEnd)}`;
+                        addReason(first.bookingId, reason);
+                        addReason(second.bookingId, reason);
+                    }
+                }
+            });
+
+            return reasons;
+        }
+
+        function formatOfflineDayRange(row, date) {
+            const range = offlineRangeForDate(row, date);
+            if (!range || (range.start <= 0 && range.end >= 24 * 60)) return '全天';
+            const toTime = minutes => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+            return `${toTime(range.start)}–${toTime(range.end)}`;
+        }
+
+        function renderOfflineDaySummary(date, boats, unavailableRows, restrictionRows, announcements, allActiveRestrictions = restrictionRows) {
+            const restrictedIds = new Set(allActiveRestrictions
+                .filter(row => row.is_active !== false)
+                .map(row => String(row.announcement_id)));
+            const assignmentRows = announcements.filter(row => {
+                if (restrictedIds.has(String(row.id))) return false;
+                const displayDate = String(row.display_date || '').slice(0, 10);
+                const eventEnd = String(row.end_date || displayDate).slice(0, 10);
+                const inferredEarly = row.show_one_day_early == null
+                    && displayDate
+                    && addDaysToDateStr(displayDate, 1) === eventEnd;
+                const eventStart = row.show_one_day_early === true || inferredEarly
+                    ? addDaysToDateStr(displayDate, 1)
+                    : displayDate;
+                return eventStart && eventStart <= date && eventEnd >= date;
+            }).sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+            if (!unavailableRows.length && !restrictionRows.length && !assignmentRows.length) return '';
+            const section = (title, rows) => rows.length ? `
+                <div style="font-weight:700;color:#b42318;margin:${title === '交辦事項' ? '0 0 8px' : '14px 0 8px'};">${title}</div>
+                <div style="display:grid;gap:4px;font-size:13px;line-height:1.65;">${rows.join('')}</div>` : '';
+            const assignmentLines = assignmentRows.map(row =>
+                `<div style="display:flex;gap:6px;"><span>－</span><span>${escapeHtml(row.content || '')}</span></div>`
+            );
+            const unavailableLines = unavailableRows.map(row => {
+                const boat = boats.find(item => String(item.id) === String(row.boat_id));
+                return `<div><span style="color:var(--es-danger);">●</span> <strong>${escapeHtml(boat?.name || '船隻')}</strong>：${escapeHtml(formatOfflineDayRange(row, date))}${row.reason ? `（${escapeHtml(row.reason)}）` : ''}</div>`;
+            });
+            const restrictionLines = restrictionRows.map(row => {
+                const announcement = announcements.find(item => String(item.id) === String(row.announcement_id));
+                return `<div><span style="color:var(--es-danger);">●</span> ${escapeHtml(formatOfflineDayRange(row, date))}：${escapeHtml(announcement?.content || '受理受限')}</div>`;
+            });
+            return `<div style="margin-bottom:16px;padding:14px 18px;border-radius:12px;background:#fff5f5;border:1px solid #dc354533;border-left:4px solid var(--es-danger);box-shadow:var(--es-shadow);">
+                ${section('交辦事項', assignmentLines)}
+                ${section('船隻停用', unavailableLines)}
+                ${section('預約限制', restrictionLines)}
+            </div>`;
+        }
+
         async function showRecoveryDayView(dateParam) {
             const selectedDate = dateParam || getVenueDateString();
             if (!db) await initDatabase();
@@ -3829,32 +4000,54 @@
             const visibleBoats = boats
                 .filter(boat => boat.is_active !== false || enriched.some(booking => String(booking.boat_id) === String(boat.id)))
                 .sort((a, b) => Number(a.display_order || 999) - Number(b.display_order || 999) || Number(a.id || 0) - Number(b.id || 0));
-            const activeCoaches = coaches.filter(coach => coach.status === 'active');
+            const activeCoaches = coaches.filter(coach => !coach.status || coach.status === 'active');
+            const unassignedCount = enriched.filter(booking => {
+                const hasCoach = (booking.coaches || []).length > 0;
+                const hasDriver = (booking.drivers || []).length > 0;
+                return (booking.requires_driver === true && !hasDriver) || (!hasCoach && !hasDriver);
+            }).length;
             const staffStripHtml = renderDailyStaffStripHtml(
                 buildDailyStaffForDate(activeCoaches, selectedDate, timeOffRows),
-                selectedDate
+                selectedDate,
+                unassignedCount
             );
             const usedBoatCount = new Set(enriched.map(booking => String(booking.boat_id))).size;
             const totalMinutes = enriched.reduce((sum, booking) => sum + Number(booking.duration_min || 0), 0);
             const dateDisplay = formatDisplayDate(selectedDate);
-            const dayAlertLines = [
-                ...dayUnavailable.map(row => `${visibleBoats.find(boat => String(boat.id) === String(row.boat_id))?.name || '船隻'}：${row.reason || '停用'}`),
-                ...dayRestrictions.map(row => announcementMap.get(String(row.announcement_id))?.content || '預約限制生效中')
-            ];
+            const daySummaryHtml = renderOfflineDaySummary(
+                selectedDate,
+                visibleBoats,
+                dayUnavailable,
+                dayRestrictions,
+                announcements,
+                restrictions
+            );
+            const conflictReasons = getOfflineBookingConflictReasons(
+                enriched,
+                selectedDate,
+                dayUnavailable,
+                dayRestrictions,
+                announcementMap
+            );
             const boatRowsHtml = visibleBoats.map(boat => {
                 const boatBookings = enriched
                     .filter(booking => String(booking.boat_id) === String(boat.id))
                     .sort((a, b) => String(a.start_at || '').localeCompare(String(b.start_at || '')));
-                const unavailableRow = dayUnavailable.find(row => String(row.boat_id) === String(boat.id));
-                const globalRestriction = dayRestrictions[0];
-                const alertLabel = unavailableRow
-                    ? (unavailableRow.reason || '停用')
-                    : (globalRestriction ? '限制' : '');
-                const alertTitle = unavailableRow
-                    ? [unavailableRow.reason, unavailableRow.notes].filter(Boolean).join(' · ')
-                    : (globalRestriction
-                        ? (announcementMap.get(String(globalRestriction.announcement_id))?.content || '預約限制生效中')
-                        : '');
+                const boatUnavailableRows = dayUnavailable
+                    .filter(row => String(row.boat_id) === String(boat.id))
+                    .sort((a, b) => offlineRangeForDate(a, selectedDate).start - offlineRangeForDate(b, selectedDate).start);
+                const fullDayUnavailable = boatUnavailableRows.some(row => {
+                    const range = offlineRangeForDate(row, selectedDate);
+                    return range.start <= 0 && range.end >= 24 * 60;
+                });
+                const alertLabel = boatUnavailableRows.length
+                    ? (fullDayUnavailable
+                        ? '全日停用'
+                        : `維修 ${boatUnavailableRows.map(row => formatOfflineDayRange(row, selectedDate)).join('、')}`)
+                    : '';
+                const alertTitle = boatUnavailableRows
+                    .map(row => `維修 ${formatOfflineDayRange(row, selectedDate)}${row.reason ? ` · ${row.reason}` : ''}`)
+                    .join('；');
                 return `
                     <div class="day-boat-row">
                         <aside class="day-boat-sidebar"${alertTitle ? ` title="${escapeHtml(alertTitle)}"` : ''}>
@@ -3870,12 +4063,13 @@
                                 const coachNames = (booking.coaches || []).filter(item => item?.name).map(item => item.name).join('/');
                                 const driverNames = (booking.drivers || []).filter(item => item?.name).map(item => item.name).join('/');
                                 const activities = normalizePostgresArrayValue(booking.activity_types);
+                                const conflictReason = conflictReasons.get(String(booking.id));
                                 const meta = [
                                     coachNames ? `🎓 ${coachNames}` : '',
                                     driverNames ? `🚤 ${driverNames}` : '',
                                 ].filter(Boolean);
                                 return `
-                                    <article class="day-booking-card" style="--boat-color:${safeCssColor(boat.color)};cursor:pointer;" onclick="openOfflineBookingDetail('${escapeHtml(String(booking.id))}')">
+                                    <article class="day-booking-card${conflictReason ? ' has-conflict' : ''}" style="--boat-color:${safeCssColor(boat.color)};cursor:pointer;"${conflictReason ? ` title="${escapeHtml(conflictReason)}"` : ''} onclick="openOfflineBookingDetail('${escapeHtml(String(booking.id))}')">
                                         <div class="day-booking-time">
                                             <div>${escapeHtml(startTime)}</div>
                                             <div style="font-size:10px;opacity:.7;margin:2px 0;">↓</div>
@@ -3883,6 +4077,7 @@
                                             <div class="day-booking-duration">${Number(booking.duration_min || 0)}分</div>
                                         </div>
                                         <div class="day-booking-content">
+                                            ${conflictReason ? `<div class="es-badge danger" style="margin-bottom:6px;">⚠️ ${escapeHtml(conflictReason)}</div>` : ''}
                                             ${booking.is_coach_practice ? '<div class="es-badge warning" style="margin-bottom:6px;">教練練習</div>' : ''}
                                             <div class="day-booking-name">${escapeHtml(getDisplayContactName(booking) || '未命名')}</div>
                                             <div class="day-booking-meta">
@@ -3928,7 +4123,7 @@
                             </div>
                         ` : ''}
                         ${staffStripHtml}
-                        ${dayAlertLines.length ? `<div class="es-status warning" style="margin-bottom:16px;"><strong>營運提醒</strong><br>${dayAlertLines.map(escapeHtml).join('<br>')}</div>` : ''}
+                        ${daySummaryHtml}
                         <div style="display:flex;gap:10px;margin-bottom:16px;">
                             <button class="es-button primary" disabled title="離線模式不提供新增">新增預約</button>
                             <button class="es-button" disabled title="離線模式不提供新增">重複預約</button>
@@ -4022,7 +4217,7 @@
                 const bookingMembers = await getBookingMembers(bookingIds);
                 
                 // 組合資料
-                let bookingsWithDetails = dateBookings.map(booking => {
+                const allBookingsWithDetails = dateBookings.map(booking => {
                     const boat = boats.find(b => b.id === booking.boat_id);
                     const coaches = bookingCoaches.filter(bc => bc.booking_id === booking.id)
                         .map(bc => activeCoaches.find(c => c.id === bc.coach_id))
@@ -4045,6 +4240,7 @@
                         booking_members: members
                     };
                 });
+                let bookingsWithDetails = allBookingsWithDetails;
                 // 篩選教練
                 if (selectedCoachId) {
                     bookingsWithDetails = bookingsWithDetails.filter(booking => {
@@ -4075,15 +4271,17 @@
                     safeGetAllFromStore('daily_announcements')
                 ]);
                 const staffData = buildDailyStaffForDate(activeCoaches, selectedDate, timeOffRows);
-                const announcementMap = new Map(announcementRows.map(row => [String(row.id), row]));
-                const alerts = [
-                    ...unavailableRows
-                        .filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row))
-                        .map(row => `${boats.find(boat => String(boat.id) === String(row.boat_id))?.name || '船隻'}：${row.reason || '停用'}`),
-                    ...restrictionRows
-                        .filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row))
-                        .map(row => announcementMap.get(String(row.announcement_id))?.content || '預約限制生效中')
-                ];
+                const dayUnavailableRows = unavailableRows
+                    .filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row));
+                const dayRestrictionRows = restrictionRows
+                    .filter(row => row.is_active !== false && dateFallsInRange(selectedDate, row));
+                const conflictReasons = getOfflineBookingConflictReasons(
+                    allBookingsWithDetails,
+                    selectedDate,
+                    dayUnavailableRows,
+                    dayRestrictionRows,
+                    new Map(announcementRows.map(row => [String(row.id), row]))
+                );
                 
                 // 渲染頁面
                 renderCoachDailyView({
@@ -4093,7 +4291,11 @@
                     timeSlots: filteredTimeSlots,
                     date: selectedDate,
                     staffData: staffData,
-                    alerts: alerts,
+                    unavailableRows: dayUnavailableRows,
+                    restrictionRows: dayRestrictionRows,
+                    allRestrictionRows: restrictionRows,
+                    announcementRows: announcementRows,
+                    conflictReasons: conflictReasons,
                 });
                 
             } catch (error) {
@@ -4295,7 +4497,7 @@
             return { workingStaff: workingStaff, timeOffStaff: timeOffStaff };
         }
 
-        function renderDailyStaffStripHtml(staffData, dateStr) {
+        function renderDailyStaffStripHtml(staffData, dateStr, unassignedCount = 0) {
             if (!staffData) return '';
             var workingBadges = staffData.workingStaff.map(function(s) {
                 return '<span style="display: inline-block; padding: 3px 10px; background: #e8f5e9; color: #2e7d32; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid #c8e6c9;">'
@@ -4307,6 +4509,10 @@
                     + escapeHtml(label) + '</span>';
             }).join('');
             var html = '<div style="background: white; border: 1px solid #e0e0e0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">';
+            if (unassignedCount > 0) {
+                html += '<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;margin-bottom:8px;background:#fff5f5;border:1px solid #dc354555;border-left:3px solid var(--es-danger);border-radius:8px;color:#b42318;font-size:14px;font-weight:600;">'
+                    + '<span aria-hidden="true">⚠️</span><span>尚有 ' + Number(unassignedCount) + ' 筆未排班</span></div>';
+            }
             html += '<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: '
                 + (timeOffBadges ? '8px' : '0') + ';">';
             html += '<span style="font-size: 14px; font-weight: 600; color: #333; white-space: nowrap;">👥 可上班</span>';
@@ -4782,11 +4988,27 @@
         }
         
         // 渲染今日預約頁面（時間軸表格視圖，與線上版電腦版一致）
-        function renderCoachDailyView({ boats, coaches, bookings, timeSlots, date, staffData, alerts = [] }) {
+        function renderCoachDailyView({ boats, coaches, bookings, timeSlots, date, staffData, unavailableRows = [], restrictionRows = [], allRestrictionRows = restrictionRows, announcementRows = [], conflictReasons = new Map() }) {
             const content = document.getElementById('coach-daily-content');
             const today = getVenueDateString();
             const dateDisplay = formatDisplayDate(date);
             const staffStripHtml = renderDailyStaffStripHtml(staffData, date);
+            const getUnavailableForSlot = (boatId, timeSlot) => {
+                const slotMinutes = offlineMinutesFromTime(timeSlot, 0);
+                return unavailableRows.find(row => {
+                    if (String(row.boat_id) !== String(boatId)) return false;
+                    const range = offlineRangeForDate(row, date);
+                    return range && slotMinutes >= range.start && slotMinutes < range.end;
+                }) || null;
+            };
+            const unavailableSummaryHtml = renderOfflineDaySummary(
+                date,
+                boats,
+                unavailableRows,
+                restrictionRows,
+                announcementRows,
+                allRestrictionRows
+            );
             const mobileCoachListHtml = selectedCoachId ? bookings
                 .slice()
                 .sort((a, b) => String(a.start_at || '').localeCompare(String(b.start_at || '')))
@@ -4795,8 +5017,10 @@
                     const end = addMinutesToTimeStr(start, booking.duration_min);
                     const selectedCoach = coaches.find(coach => coach.id === selectedCoachId);
                     const isDriver = booking.drivers?.some(driver => driver.id === selectedCoachId);
-                    return `<article class="es-record" style="border-left:4px solid ${safeCssColor(booking.boats?.color, '#1d1d1f')};">
+                    const conflictReason = conflictReasons.get(String(booking.id));
+                    return `<article class="es-record${conflictReason ? ' has-conflict' : ''}"${conflictReason ? ` title="${escapeHtml(conflictReason)}"` : ''} style="border-left:4px solid ${conflictReason ? 'var(--es-danger)' : safeCssColor(booking.boats?.color, '#1d1d1f')};${conflictReason ? 'background:#fff5f5;' : ''}">
                         <div style="display:flex;justify-content:space-between;gap:12px;"><strong>${escapeHtml(getDisplayContactName(booking))}</strong><span>${start}–${end}</span></div>
+                        ${conflictReason ? `<div class="es-badge danger" style="margin-top:6px;">⚠️ ${escapeHtml(conflictReason)}</div>` : ''}
                         <div class="es-record-meta" style="margin-top:6px;">${escapeHtml(booking.boats?.name || '')} · ${isDriver ? '🚤 駕駛' : '🎓 教練'} ${escapeHtml(selectedCoach?.name || '')}</div>
                         ${(booking.notes || booking.schedule_notes) ? `<div style="margin-top:9px;font-size:13px;">${escapeHtml([booking.notes, booking.schedule_notes].filter(Boolean).join(' · '))}</div>` : ''}
                     </article>`;
@@ -4835,6 +5059,7 @@
                     const booking = getBookingForCell(boat.id, timeSlot);
                     const isStart = booking !== null && !renderedBookings.has(booking.id);
                     const isInRange = isInBookingRange(boat.id, timeSlot);
+                    const unavailableBlock = getUnavailableForSlot(boat.id, timeSlot);
                     
                     if (isStart) {
                         renderedBookings.add(booking.id);
@@ -4860,12 +5085,13 @@
                         }
                         
                         const boatColor = safeCssColor(booking.boats?.color, '#1976d2');
+                        const conflictReason = conflictReasons.get(String(booking.id));
                         
                         // 獲取顯示名稱（與網頁版一致）
                         const displayContactName = escapeHtml(getDisplayContactName(booking));
                         
                         // 構建卡片 HTML（與網頁版樣式一致）
-                        const cardStyle = 'padding: 14px 12px; background: ' + boatColor + '0d; border: 2px solid ' + boatColor + '; vertical-align: top; position: relative; border-radius: 10px; box-shadow: 0 1px 2px rgba(31,27,23,0.03);';
+                        const cardStyle = 'padding: 14px 12px; background: ' + (conflictReason ? '#fff5f5' : boatColor + '0d') + '; border: 2px solid ' + (conflictReason ? 'var(--es-danger)' : boatColor) + '; vertical-align: top; position: relative; border-radius: 10px; box-shadow: 0 1px 2px rgba(31,27,23,0.03);';
                         
                         // 教練練習標籤（如果有）
                         const coachPracticeHtml = booking.is_coach_practice ? '<div style="display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; background: #fff3e0; color: #e65100; border-radius: 4px; margin-bottom: 6px; border: 1px solid #ff9800;">🏄 教練練習</div>' : '';
@@ -4877,16 +5103,20 @@
                         // 教練和駕駛 HTML（確保有資料時才顯示）
                         const coachHtml = coachNames ? '<div style="font-size: 12px; color: ' + boatColor + '; font-weight: 600; text-align: center; margin-top: 2px;">🎓 ' + escapeHtml(coachNames) + '</div>' : '';
                         const driverHtml = driverNames ? '<div style="font-size: 12px; color: ' + boatColor + '; font-weight: 600; text-align: center; margin-top: 2px;">🚤 ' + escapeHtml(driverNames) + '</div>' : '';
+                        const conflictHtml = conflictReason ? '<div class="es-badge danger" style="margin-bottom:6px;">⚠️ ' + escapeHtml(conflictReason) + '</div>' : '';
                         
                         cells.push({
-                            html: '<td rowspan="' + slots + '" style="' + cardStyle + '">' + coachPracticeHtml + timeRangeHtml + contactNameHtml + notesHtml + scheduleNotesHtml + coachHtml + driverHtml + '</td>',
+                            html: '<td rowspan="' + slots + '"' + (conflictReason ? ' title="' + escapeHtml(conflictReason) + '"' : '') + ' style="' + cardStyle + '">' + conflictHtml + coachPracticeHtml + timeRangeHtml + contactNameHtml + notesHtml + scheduleNotesHtml + coachHtml + driverHtml + '</td>',
                             skip: false
                         });
                     } else if (isInRange) {
                         cells.push({ html: '', skip: true });
                     } else {
+                        const unavailableTitle = unavailableBlock
+                            ? [unavailableBlock.reason || '維修／停用', unavailableBlock.notes].filter(Boolean).join(' · ')
+                            : '';
                         cells.push({
-                            html: '<td style="padding: 10px 8px; border-bottom: 1px solid #e9ecef; border-right: 1px solid #e9ecef; background: white;"></td>',
+                            html: '<td' + (unavailableTitle ? ' class="offline-unavailable-slot" title="' + escapeHtml(unavailableTitle) + '"' : '') + ' style="padding: 10px 8px; border-bottom: 1px solid #e9ecef; border-right: 1px solid #e9ecef; background: white;">' + (unavailableBlock ? '維修' : '') + '</td>',
                             skip: false
                         });
                     }
@@ -4934,7 +5164,7 @@
                     </div>
                 </div>
                 ${staffStripHtml}
-                ${alerts.length ? `<div class="es-status warning" style="margin-bottom:16px;"><strong>營運提醒</strong><br>${alerts.map(escapeHtml).join('<br>')}</div>` : ''}
+                ${unavailableSummaryHtml}
                 
                 <!-- 時間軸表格 -->
                 ${selectedCoachId ? `<div class="coach-mobile-list">${mobileCoachListHtml || '<div class="es-card es-empty">這位教練當日沒有預約</div>'}</div>` : ''}
@@ -6012,7 +6242,7 @@
                     ${renderBrandHeader('會員', `
                         <button class="es-button on-dark" onclick="showMemberTransaction()">儲值</button>
                         <button class="es-button on-dark" onclick="showBoardManagement()">🏄 置板</button>
-                        <button class="es-button on-dark" onclick="showBaoHub()">BAO</button>
+                        <button class="es-button on-dark" onclick="showBaoHub()">← BAO</button>
                         ${renderHomeButton()}
                     `, 'content')}
                     <div id="member-management-content" class="es-shell es-shell-content">
@@ -6034,7 +6264,7 @@
                 <div class="es-page">
                     ${renderBrandHeader('儲值', `
                         <button class="es-button on-dark" onclick="showMemberManagement()">會員</button>
-                        <button class="es-button on-dark" onclick="showBaoHub()">BAO</button>
+                        <button class="es-button on-dark" onclick="showBaoHub()">← BAO</button>
                         ${renderHomeButton()}
                     `, 'content')}
                     <div id="member-transaction-content" class="es-shell es-shell-content">
@@ -6056,7 +6286,7 @@
                 <div class="es-page">
                     ${renderBrandHeader('置板', `
                         <button class="es-button on-dark" onclick="showMemberManagement()">會員</button>
-                        <button class="es-button on-dark" onclick="showBaoHub()">BAO</button>
+                        <button class="es-button on-dark" onclick="showBaoHub()">← BAO</button>
                         ${renderHomeButton()}
                     `, 'content')}
                     <div id="board-management-content" class="es-shell es-shell-content">
@@ -6852,6 +7082,7 @@
 
         let offlineProductRows = [];
         let offlineProductReadOnly = false;
+        let offlineProductLayout = 'gallery';
         let offlineOrderRows = [];
         let offlineOrderSettlements = [];
 
@@ -6901,6 +7132,10 @@
                     </select>
                     <div id="offline-product-category-tabs" class="offline-filter-row" style="justify-content:flex-start;margin:0;">
                         <button type="button" class="offline-filter-chip active" data-product-category="" onclick="setOfflineProductCategory('',this)">全部</button>
+                    </div>
+                    <div class="offline-filter-row" style="justify-content:flex-end;margin:0;">
+                        <button type="button" class="offline-filter-chip${offlineProductLayout === 'table' ? ' active' : ''}" data-product-layout="table" onclick="setOfflineProductLayout('table')">庫存 SKU</button>
+                        <button type="button" class="offline-filter-chip${offlineProductLayout === 'gallery' ? ' active' : ''}" data-product-layout="gallery" onclick="setOfflineProductLayout('gallery')">商品</button>
                     </div>
                 </div>`,
                 'offline-product-content'
@@ -6964,6 +7199,12 @@
             const totalStock = rows.reduce((sum, row) => sum + (Number(row.stock) || 0), 0);
             const totalReserved = rows.reduce((sum, row) => sum + (Number(row.reserved_qty) || 0), 0);
             const lowStock = rows.filter(row => variantSellableStock(row) <= 2).length;
+            const productGroups = [...rows.reduce((groups, variant) => {
+                const key = String(variant.product?.id || variant.product_id || variant.id);
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(variant);
+                return groups;
+            }, new Map()).values()];
 
             if (offlineProductRows.length === 0) {
                 container.innerHTML = `<div style="padding:36px; text-align:center; background:white; border-radius:12px; color:#777;">備份中沒有商品資料，請重新下載最新備份。</div>`;
@@ -6979,7 +7220,7 @@
                         ['低庫存', lowStock]
                     ].map(item => `<div style="background:white; border:1px solid #e0e0e0; border-radius:10px; padding:14px;"><div style="font-size:12px; color:#777;">${item[0]}</div><div style="font-size:24px; font-weight:700; margin-top:4px;">${item[1]}</div></div>`).join('')}
                 </div>`}
-                <div class="offline-product-table" style="overflow-x:auto; background:white; border:1px solid #e0e0e0; border-radius:12px;">
+                <div class="offline-product-table${offlineProductLayout === 'table' ? ' is-visible' : ''}" style="overflow-x:auto; background:white; border:1px solid #e0e0e0; border-radius:12px;">
                     <table style="width:100%; border-collapse:collapse; min-width:900px;">
                         <thead><tr style="background:#f6f6f6; text-align:left;">
                             ${['分類', '商品', '規格', '貨號／標籤', '庫存', '保留', '可售', '供貨狀態', '公開狀態', '商城可售', '售價'].map(label => `<th style="padding:12px; border-bottom:1px solid #ddd;">${label}</th>`).join('')}
@@ -7008,17 +7249,43 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="offline-product-mobile-list">
+                <div class="offline-product-sku-mobile-list${offlineProductLayout === 'table' ? '' : ' is-hidden'}">
                     ${rows.map(variant => {
                         const product = variant.product || {};
-                        const isPublic = product.is_public === true;
                         return `<article class="es-card">
                             <div style="display:flex;justify-content:space-between;gap:12px;">
                                 <div><div style="font-size:12px;color:var(--es-muted);">${escapeHtml(PRODUCT_CATEGORY_LABELS[product.category] || product.category || '—')}</div><strong>${escapeHtml(product.brand || '—')} ${escapeHtml(product.model || '')}</strong><div style="font-size:13px;color:var(--es-muted);margin-top:4px;">${escapeHtml(formatProductAttributes(variant.attributes))}</div></div>
                                 <strong>${variant.price == null ? '缺價' : `$${Number(variant.price).toLocaleString()}`}</strong>
                             </div>
                             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;text-align:center;font-size:12px;"><div>庫存<br><strong>${Number(variant.stock) || 0}</strong></div><div>保留<br><strong>${Number(variant.reserved_qty) || 0}</strong></div><div>可售<br><strong>${variantSellableStock(variant)}</strong></div></div>
-                            <div style="margin-top:10px;"><span class="es-badge ${isPublic && isVariantPurchasable(variant) ? 'success' : 'neutral'}">${variantAvailabilityLabel(variant, isPublic)}</span></div>
+                        </article>`;
+                    }).join('') || '<div class="es-empty">沒有符合條件的商品</div>'}
+                </div>
+                <div class="offline-product-mobile-list${offlineProductLayout === 'gallery' ? '' : ' is-hidden'}">
+                    ${productGroups.map(group => {
+                        const first = group[0];
+                        const product = first.product || {};
+                        const prices = group
+                            .filter(item => item.price != null)
+                            .map(item => Number(item.price))
+                            .filter(Number.isFinite)
+                            .sort((a, b) => a - b);
+                        const priceLabel = !prices.length
+                            ? '缺價'
+                            : prices[0] === prices[prices.length - 1]
+                                ? `$${prices[0].toLocaleString()}`
+                                : `$${prices[0].toLocaleString()}–${prices[prices.length - 1].toLocaleString()}`;
+                        const totalSellable = group.reduce((sum, item) => sum + variantSellableStock(item), 0);
+                        return `<article class="es-card">
+                            <div style="display:flex;justify-content:space-between;gap:12px;">
+                                <div><div style="font-size:12px;color:var(--es-muted);">${escapeHtml(PRODUCT_CATEGORY_LABELS[product.category] || product.category || '—')}</div><strong>${escapeHtml(product.brand || '—')} ${escapeHtml(product.model || '')}</strong></div>
+                                <strong style="white-space:nowrap;">${priceLabel}</strong>
+                            </div>
+                            <div style="margin-top:12px;border-top:1px solid var(--es-border-light);">
+                                ${group.slice(0, 3).map(item => `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--es-border-light);font-size:12px;"><span>${escapeHtml(formatProductAttributes(item.attributes) || item.vendor_code || '標準規格')}</span><strong>可售 ${variantSellableStock(item)}</strong></div>`).join('')}
+                                ${group.length > 3 ? `<div style="padding-top:8px;color:var(--es-muted);font-size:12px;">另有 ${group.length - 3} 個 SKU</div>` : ''}
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;"><span class="es-badge neutral">${group.length} SKU</span><strong>共 ${totalSellable} 件</strong></div>
                         </article>`;
                     }).join('') || '<div class="es-empty">沒有符合條件的商品</div>'}
                 </div>
@@ -7030,6 +7297,14 @@
             if (select) select.value = category;
             document.querySelectorAll('[data-product-category]').forEach(item => item.classList.remove('active'));
             button?.classList.add('active');
+            renderOfflineProducts();
+        }
+
+        function setOfflineProductLayout(layout) {
+            offlineProductLayout = layout === 'table' ? 'table' : 'gallery';
+            document.querySelectorAll('[data-product-layout]').forEach(item => {
+                item.classList.toggle('active', item.dataset.productLayout === offlineProductLayout);
+            });
             renderOfflineProducts();
         }
 
