@@ -24,7 +24,7 @@ import {
   fetchShopOrders,
   shopOrdersListCreatedAfterIso,
 } from './api'
-import { formatDate, formatDateTime, formatTime } from '../../../utils/formatters'
+import { formatCurrency, formatDate, formatDateTime, formatTime } from '../../../utils/formatters'
 import {
   cancelShopOrderBilling,
   countOrderTransactions,
@@ -670,6 +670,11 @@ function OrderCard({
   const status = orderStatusMeta(statusKey)
   const showSubmit = orderCanSubmitBilling(order)
   const showCancelBill = !cancelled && orderHasPendingBill(order)
+  const catalogPriceTotal = order.items.reduce(
+    (total, item) => total + (item.variant.price == null ? 0 : item.variant.price * item.qty),
+    0,
+  )
+  const unpricedItemCount = order.items.filter((item) => item.variant.price == null).length
   return (
     <div
       style={{
@@ -761,6 +766,35 @@ function OrderCard({
             onOpenImagePreview={onOpenImagePreview}
           />
         ))}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'baseline',
+            flexWrap: 'wrap',
+            gap: '4px 8px',
+            padding: isMobile ? '10px 0 12px' : '11px 0 13px',
+            borderTop: `1px solid ${colors.border.light}`,
+            color: colors.text.secondary,
+            fontSize: getFontSize('bodySmall', isMobile),
+          }}
+        >
+          <span>商品定價合計</span>
+          <strong
+            style={{
+              color: colors.text.primary,
+              fontSize: getFontSize('body', isMobile),
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            NT${formatCurrency(catalogPriceTotal, false)}
+          </strong>
+          {unpricedItemCount > 0 && (
+            <span style={{ color: colors.warning[700] }}>
+              （不含 {unpricedItemCount} 項未定價商品）
+            </span>
+          )}
+        </div>
       </div>
 
       {canEdit && (
@@ -899,6 +933,8 @@ function OrderItemRow({
   const { title, subtitle } = formatOrderItemParts(item)
   const chips = itemQtyChipsForCard(item, order)
   const thumbSize = isMobile ? 44 : 48
+  const catalogPrice =
+    item.variant.price == null ? '未定價' : `NT$${formatCurrency(item.variant.price, false)}`
   return (
     <div
       style={{
@@ -907,10 +943,10 @@ function OrderItemRow({
           chips.length > 0
             ? isMobile
               ? `${thumbSize}px minmax(0, 1fr) auto`
-              : `${thumbSize}px minmax(0, 1fr) 48px minmax(100px, auto)`
+              : `${thumbSize}px minmax(0, 1fr) minmax(116px, auto) minmax(100px, auto)`
             : isMobile
               ? `${thumbSize}px minmax(0, 1fr) auto`
-              : `${thumbSize}px minmax(0, 1fr) 48px`,
+              : `${thumbSize}px minmax(0, 1fr) minmax(116px, auto)`,
         gap: isMobile ? 10 : '4px 12px',
         alignItems: 'center',
         padding: isMobile ? '10px 0' : '12px 0',
@@ -951,12 +987,13 @@ function OrderItemRow({
         style={{
           fontSize: getFontSize('bodySmall', isMobile),
           fontWeight: 700,
-          color: colors.text.primary,
+          color: item.variant.price == null ? colors.warning[700] : colors.text.primary,
           textAlign: 'right',
           fontVariantNumeric: 'tabular-nums',
+          whiteSpace: 'nowrap',
         }}
       >
-        ×{item.qty}
+        {catalogPrice} ×{item.qty}
       </div>
       {chips.length > 0 && (
         <div
