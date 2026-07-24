@@ -52,6 +52,7 @@ import {
   orderIsFullySettled,
   orderPrimaryStatus,
   orderStatusMeta,
+  settlementAmountTotal,
   validateCancelBillingDraft,
   validateSubmitBillingDraft,
 } from './orderUtils'
@@ -675,6 +676,7 @@ function OrderCard({
     0,
   )
   const unpricedItemCount = order.items.filter((item) => item.variant.price == null).length
+  const settledTotal = statusKey === 'settled' ? settlementAmountTotal(order.settlements) : null
   return (
     <div
       style={{
@@ -793,6 +795,21 @@ function OrderCard({
             <span style={{ color: colors.warning[700] }}>
               （不含 {unpricedItemCount} 項未定價商品）
             </span>
+          )}
+          {settledTotal !== null && (
+            <>
+              <span style={{ color: colors.border.main }}>·</span>
+              <span>結帳金額</span>
+              <strong
+                style={{
+                  color: colors.success[700],
+                  fontSize: getFontSize('body', isMobile),
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                NT${formatCurrency(settledTotal, false)}
+              </strong>
+            </>
           )}
         </div>
       </div>

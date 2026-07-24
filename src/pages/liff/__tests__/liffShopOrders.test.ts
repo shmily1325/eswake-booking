@@ -130,4 +130,12 @@ describe('liffOrderSettledTotal', () => {
   it('returns null when the old order has no settlement record', () => {
     expect(liffOrderSettledTotal(mockOrder([]))).toBeNull()
   })
+
+  it('ignores malformed settlement amounts instead of breaking the order list', () => {
+    const order = {
+      ...mockOrder([mockItem({ id: 'a', qty: 1, qty_paid: 1 })]),
+      settlements: [{ amount_total: 1200 }, { amount_total: Number.NaN }],
+    }
+    expect(liffOrderSettledTotal(order)).toBe(1200)
+  })
 })

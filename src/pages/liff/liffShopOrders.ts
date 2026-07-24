@@ -5,6 +5,7 @@ import {
   orderHasWaitingStock,
   orderIsFullySettled,
   qtyOpen,
+  settlementAmountTotal,
 } from '../admin/orders/orderUtils'
 import type { ShopOrderWithItems } from '../admin/orders/types'
 import { callLiffMemberApi } from './liffMemberShared'
@@ -92,11 +93,7 @@ export function liffOrderStatus(order: LiffShopOrder): LiffOrderStatusKey {
 
 /** 已完成訂單的實際結帳總額；沒有結帳紀錄時不顯示金額。 */
 export function liffOrderSettledTotal(order: LiffShopOrder): number | null {
-  if (!order.settlements?.length) return null
-  return order.settlements.reduce((sum, settlement) => {
-    const amount = Number(settlement.amount_total)
-    return sum + (Number.isFinite(amount) ? amount : 0)
-  }, 0)
+  return settlementAmountTotal(order.settlements)
 }
 
 export function liffDeliveryLabel(method: string): string {

@@ -6,6 +6,10 @@ const source = readFileSync(
   resolve(process.cwd(), 'src/pages/admin/orders/OrderManagement.tsx'),
   'utf8',
 )
+const apiSource = readFileSync(
+  resolve(process.cwd(), 'src/pages/admin/orders/api.ts'),
+  'utf8',
+)
 
 describe('order management context details', () => {
   it('shows shipping information and both order notes on cards', () => {
@@ -17,5 +21,15 @@ describe('order management context details', () => {
     expect(source).toContain('<strong>寄送資訊：</strong>')
     expect(source).toContain('<strong>客戶備註：</strong>')
     expect(source).toContain('<strong>內部備註：</strong>')
+  })
+
+  it('shows actual settlement totals on fully settled order cards', () => {
+    expect(apiSource).toContain(
+      'settlements:shop_order_settlements(id, amount_total, settled_at)',
+    )
+    expect(source).toContain(
+      "statusKey === 'settled' ? settlementAmountTotal(order.settlements) : null",
+    )
+    expect(source).toContain('<span>結帳金額</span>')
   })
 })

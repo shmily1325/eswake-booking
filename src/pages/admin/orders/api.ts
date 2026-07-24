@@ -25,6 +25,7 @@ import type {
 
 const ORDER_SELECT = `
   *,
+  settlements:shop_order_settlements(id, amount_total, settled_at),
   items:shop_order_items(
     *,
     variant:product_variants(

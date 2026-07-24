@@ -46,6 +46,7 @@ export interface ShopOrderItemWithVariant extends ShopOrderItemRow {
 
 export interface ShopOrderWithItems extends ShopOrderRow {
   items: ShopOrderItemWithVariant[]
+  settlements?: Array<{ amount_total: number }>
 }
 
 export interface ShopOrderSettlementRow {

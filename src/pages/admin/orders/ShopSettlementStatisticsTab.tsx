@@ -14,7 +14,13 @@ import { supabase } from '../../../lib/supabase'
 import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
 import { getCategory, getCategoryShopName } from '../products/schema'
 import { fetchSettlementsInRange } from './api'
-import { formatSettlementLineDisplay, type SettlementLineDisplay } from './settleUtils'
+import {
+  filterSettlementsBySearch,
+  formatSettlementLineDisplay,
+  settlementBatchMeta,
+  settlementListTotal,
+  type SettlementLineDisplay,
+} from './settleUtils'
 import type { OrderPaymentMethod, ShopOrderSettlementWithDetails } from './types'
 import { PAYMENT_METHOD_LABELS } from './types'
 
@@ -67,6 +73,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
   const [salesGroupBy, setSalesGroupBy] = useState<SalesGroupBy>('brand')
   const [loading, setLoading] = useState(false)
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
+  const [detailSearch, setDetailSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedSalesGroupIds, setExpandedSalesGroupIds] = useState<Set<string>>(
     () => new Set(),
@@ -254,6 +261,11 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
 
   const allSalesGroupsExpanded =
     salesGroups.length > 0 && salesGroups.every((group) => expandedSalesGroupIds.has(group.id))
+  const detailSettlements = useMemo(
+    () => filterSettlementsBySearch(settlements, detailSearch),
+    [detailSearch, settlements],
+  )
+  const batchMeta = useMemo(() => settlementBatchMeta(settlements), [settlements])
 
   return (
     <div
@@ -741,22 +753,82 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
 
           {!rankingOnly && (
             <>
-              <h2
+              <div
                 style={{
-                  margin: '0 0 16px',
-                  fontSize: getFontSize('h3', isMobile),
-                  fontWeight: 700,
-                  lineHeight: 1.35,
-                  color: colors.text.primary,
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  alignItems: isMobile ? 'stretch' : 'center',
+                  justifyContent: 'space-between',
+                  gap: spacing.md,
+                  marginBottom: 16,
                 }}
               >
-                結帳細帳
-              </h2>
+                <div>
+                  <h2
+                    style={{
+                      margin: 0,
+                      fontSize: getFontSize('h3', isMobile),
+                      fontWeight: 700,
+                      lineHeight: 1.35,
+                      color: colors.text.primary,
+                    }}
+                  >
+                    結帳細帳
+                  </h2>
+                  {detailSearch.trim() && (
+                    <div
+                      style={{
+                        marginTop: 4,
+                        color: colors.text.secondary,
+                        fontSize: getFontSize('caption', isMobile),
+                      }}
+                    >
+                      找到 {detailSettlements.length} 筆
+                    </div>
+                  )}
+                </div>
+                <input
+                  type="search"
+                  value={detailSearch}
+                  onChange={(event) => setDetailSearch(event.target.value)}
+                  placeholder="搜尋訂單號或訂購人"
+                  aria-label="搜尋結帳細帳"
+                  data-track="product_order_settle_stat_search"
+                  style={{
+                    width: isMobile ? '100%' : 280,
+                    boxSizing: 'border-box',
+                    minHeight: 40,
+                    padding: '9px 12px',
+                    border: `1px solid ${colors.border.main}`,
+                    borderRadius: borderRadius.md,
+                    background: colors.background.card,
+                    color: colors.text.primary,
+                    fontSize: getFontSize('bodySmall', isMobile),
+                    outline: 'none',
+                  }}
+                />
+              </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {settlements.map((row, idx) => {
+              {detailSettlements.length === 0 ? (
+                <div
+                  style={{
+                    padding: 32,
+                    textAlign: 'center',
+                    color: colors.text.disabled,
+                    background: colors.background.card,
+                    border: `1px solid ${colors.border.light}`,
+                    borderRadius: borderRadius.lg,
+                  }}
+                >
+                  找不到符合的結帳紀錄
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {detailSettlements.map((row, idx) => {
               const expanded = expandedId === row.id
-              const isLast = idx === settlements.length - 1
+              const isLast = idx === detailSettlements.length - 1
+              const listTotal = settlementListTotal(row.items_snapshot)
+              const batch = batchMeta[row.id]
               return (
                 <div
                   key={row.id}
@@ -823,6 +895,20 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                         >
                           {PAYMENT_METHOD_LABELS[row.payment_method]}
                         </span>
+                        {batch?.total > 1 && (
+                          <span
+                            style={{
+                              fontSize: getFontSize('caption', isMobile),
+                              padding: '2px 8px',
+                              borderRadius: borderRadius.sm,
+                              background: colors.info[50],
+                              color: colors.info[700],
+                              fontWeight: 500,
+                            }}
+                          >
+                            同單第 {batch.index}/{batch.total} 批
+                          </span>
+                        )}
                       </div>
                       <div
                         style={{
@@ -973,10 +1059,29 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                               fontSize: getFontSize('body', true),
                             }}
                           >
-                            <span style={{ color: colors.text.secondary }}>合計</span>
+                            <span style={{ color: colors.text.secondary }}>結帳前小計</span>
                             <strong
                               style={{
                                 color: colors.text.primary,
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              {formatCurrency(listTotal, false)}
+                            </strong>
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'baseline',
+                              paddingTop: 8,
+                              fontSize: getFontSize('body', true),
+                            }}
+                          >
+                            <span style={{ color: colors.text.secondary }}>結帳金額</span>
+                            <strong
+                              style={{
+                                color: colors.success[700],
                                 fontVariantNumeric: 'tabular-nums',
                               }}
                             >
@@ -1046,13 +1151,27 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                         <tfoot>
                           <tr>
                             <td colSpan={3} style={{ ...tdStyle('right'), fontWeight: 600 }}>
-                              合計
+                              結帳前小計
+                            </td>
+                            <td
+                              style={{
+                                ...tdStyle('right'),
+                                fontWeight: 600,
+                                color: colors.text.primary,
+                              }}
+                            >
+                              {formatCurrency(listTotal, false)}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colSpan={3} style={{ ...tdStyle('right'), fontWeight: 600 }}>
+                              結帳金額
                             </td>
                             <td
                               style={{
                                 ...tdStyle('right'),
                                 fontWeight: 700,
-                                color: colors.text.primary,
+                                color: colors.success[700],
                               }}
                             >
                               {formatCurrency(row.amount_total, false)}
@@ -1087,6 +1206,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
               )
             })}
               </div>
+              )}
             </>
           )}
         </>

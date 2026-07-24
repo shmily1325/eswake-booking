@@ -11,6 +11,17 @@ import { designSystem } from '../../../styles/designSystem'
 
 const c = designSystem.colors
 
+/** 結帳紀錄實收加總；舊資料沒有紀錄時回傳 null，異常金額不讓畫面崩潰。 */
+export function settlementAmountTotal(
+  settlements?: ReadonlyArray<{ amount_total: number | string | null }>,
+): number | null {
+  if (!settlements?.length) return null
+  return settlements.reduce((sum, settlement) => {
+    const amount = Number(settlement.amount_total)
+    return sum + (Number.isFinite(amount) ? amount : 0)
+  }, 0)
+}
+
 /** 尚未送結帳的訂購量 */
 export function qtyOpen(item: ShopOrderItemWithVariant): number {
   return Math.max(0, item.qty - item.qty_pending_bill - item.qty_paid)
