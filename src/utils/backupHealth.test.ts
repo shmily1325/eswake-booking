@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  getDailyBackupState,
   getBackupHealth,
   summarizeBackupHealth,
   type BackupHealth,
@@ -70,5 +71,47 @@ describe('summarizeBackupHealth', () => {
       [health('ok'), health('ok')],
       [health('ok'), health('ok')],
     ).message).toBe('4/4 備份正常')
+  })
+})
+
+describe('getDailyBackupState', () => {
+  it('uses the venue timezone to identify a successful run today', () => {
+    const state = getDailyBackupState(
+      log({ created_at: '2026-07-23T23:50:00.000Z' }),
+      health('ok'),
+      false,
+      new Date('2026-07-24T00:30:00.000Z'),
+    )
+    expect(state.message).toBe('今日成功')
+  })
+
+  it('does not show success when integrity verification failed', () => {
+    const state = getDailyBackupState(
+      log({ created_at: '2026-07-23T23:50:00.000Z' }),
+      health('error'),
+      false,
+      new Date('2026-07-24T00:30:00.000Z'),
+    )
+    expect(state.message).toBe('今日失敗')
+  })
+
+  it('marks a stale running record as failed', () => {
+    const state = getDailyBackupState(
+      log({ status: 'running', created_at: '2026-07-24T00:00:00.000Z' }),
+      health('warning'),
+      false,
+      new Date('2026-07-24T03:00:01.000Z'),
+    )
+    expect(state.message).toBe('今日失敗')
+  })
+
+  it('shows when no backup has run today', () => {
+    const state = getDailyBackupState(
+      log({ created_at: '2026-07-22T18:00:00.000Z' }),
+      health('ok'),
+      false,
+      new Date('2026-07-24T00:30:00.000Z'),
+    )
+    expect(state.message).toBe('今日尚未執行')
   })
 })

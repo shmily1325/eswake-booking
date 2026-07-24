@@ -22,6 +22,25 @@ export interface BackupManifest {
 const PAGE_SIZE = 1000
 const TABLE_FETCH_CONCURRENCY = 4
 const TABLE_PAGE_TIMEOUT_MS = 30_000
+const TABLE_PAGE_MAX_ATTEMPTS = 3
+const TABLE_PAGE_RETRY_BASE_MS = 750
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+function backupErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String((error as { message?: unknown }).message || error)
+  }
+  return String(error)
+}
+
+function isRetryableBackupError(message: string): boolean {
+  return /timeout|timed out|aborted|failed to fetch|fetch failed|network|connection|econn|project config|temporar|upstream|gateway|502|503|504/i
+    .test(message)
+}
 
 async function mapWithConcurrency<T, R>(
   items: readonly T[],
@@ -57,21 +76,48 @@ async function fetchTableRows(
   let offset = 0
 
   while (true) {
-    const remainingMs = deadline - Date.now()
-    if (remainingMs <= 0) throw new Error('資料庫備份超過安全時間預算')
     const orderColumn = TABLE_ORDER_COLUMN[tableName] || 'id'
-    const result = await supabase
-      .from(tableName)
-      .select('*')
-      .order(orderColumn, { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1)
-      .abortSignal(AbortSignal.timeout(Math.min(TABLE_PAGE_TIMEOUT_MS, remainingMs)))
+    let page: Record<string, unknown>[] | null = null
+    let lastMessage = '未知錯誤'
 
-    if (result.error) {
-      throw new Error(`表 ${tableName} 備份失敗：${result.error.message}`)
+    for (let attempt = 1; attempt <= TABLE_PAGE_MAX_ATTEMPTS; attempt += 1) {
+      const remainingMs = deadline - Date.now()
+      if (remainingMs <= 0) throw new Error('資料庫備份超過安全時間預算')
+      let retryable = false
+
+      try {
+        const result = await supabase
+          .from(tableName)
+          .select('*')
+          .order(orderColumn, { ascending: true })
+          .range(offset, offset + PAGE_SIZE - 1)
+          .abortSignal(AbortSignal.timeout(Math.min(TABLE_PAGE_TIMEOUT_MS, remainingMs)))
+
+        if (!result.error) {
+          page = (result.data || []) as Record<string, unknown>[]
+          break
+        }
+        lastMessage = result.error.message
+        retryable = isRetryableBackupError(lastMessage)
+      } catch (error) {
+        lastMessage = backupErrorMessage(error)
+        retryable = isRetryableBackupError(lastMessage)
+      }
+
+      if (!retryable) {
+        throw new Error(`表 ${tableName} 備份失敗：${lastMessage}`)
+      }
+
+      if (attempt < TABLE_PAGE_MAX_ATTEMPTS) {
+        const retryDelay = TABLE_PAGE_RETRY_BASE_MS * 2 ** (attempt - 1)
+        if (deadline - Date.now() <= retryDelay) {
+          throw new Error('資料庫備份超過安全時間預算')
+        }
+        await wait(retryDelay)
+      }
     }
 
-    const page = (result.data || []) as Record<string, unknown>[]
+    if (!page) throw new Error(`表 ${tableName} 備份失敗（已重試 3 次）：${lastMessage}`)
     rows.push(...page)
     if (page.length < PAGE_SIZE) break
     offset += PAGE_SIZE

@@ -7,11 +7,12 @@ import { Footer } from '../../components/Footer'
 import { useToast, ToastContainer } from '../../components/ui'
 import { useResponsive } from '../../hooks/useResponsive'
 import { isAdmin } from '../../utils/auth'
-import { getBackupHealth } from '../../utils/backupHealth'
+import { getBackupHealth, getDailyBackupState } from '../../utils/backupHealth'
 import {
   designSystem,
   getButtonStyle,
   getCardStyle,
+  getFontSize,
   getPageContentShellStyle,
   PAGE_MAX_WIDTHS,
 } from '../../styles/designSystem'
@@ -226,6 +227,17 @@ export function BackupPage() {
       }
     }),
   }))
+  const backupHealthRows = backupDestinations.flatMap((destination) =>
+    destination.items.map((item) => {
+      const latestAttempt = item.logs[0]
+      return {
+        destination: destination.label,
+        ...item,
+        latestAttempt,
+        dailyHealth: getDailyBackupState(latestAttempt, item.health, item.unconfigured),
+      }
+    }),
+  )
 
   const backupFullDatabase = async () => {
     setFullBackupLoading(true)
@@ -467,140 +479,77 @@ export function BackupPage() {
             style={{
               display: 'grid',
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-              gap: 12,
+              gap: 10,
             }}
           >
-            {backupDestinations.map(({ label, items, schedule }) => (
+            {backupHealthRows.map(
+              ({ destination, label, dailyHealth, latestAttempt, unconfigured }) => (
               <div
-                key={label}
+                key={`${destination}-${label}`}
                 style={{
-                  padding: isMobile ? 16 : 18,
+                  padding: isMobile ? 14 : 16,
                   border: `1px solid ${designSystem.colors.border.light}`,
                   borderRadius: 12,
                   background: designSystem.colors.background.card,
                 }}
               >
-                <h2
+                <div
                   style={{
-                    margin: '0 0 4px 0',
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: designSystem.colors.text.primary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
                   }}
                 >
-                  {label}
-                </h2>
-                {items.map(({ label: itemLabel, health, lastSuccess, unconfigured }) => (
                   <div
-                    key={itemLabel}
                     style={{
-                      marginTop: 12,
-                      paddingTop: 12,
-                      borderTop: `1px solid ${designSystem.colors.border.light}`,
+                      fontSize: getFontSize('body', isMobile),
+                      fontWeight: 600,
+                      color: designSystem.colors.text.primary,
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 12,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 9,
-                        }}
-                      >
-                        <span
-                          aria-hidden
-                          title={
-                            health.status === 'ok'
-                              ? '綠燈'
-                              : health.status === 'warning'
-                                ? '黃燈'
-                                : health.status === 'error'
-                                  ? '紅燈'
-                                  : '無資料'
-                          }
-                          style={{
-                            width: 9,
-                            height: 9,
-                            borderRadius: '50%',
-                            background: health.light,
-                            flexShrink: 0,
-                            boxShadow:
-                              health.status === 'unknown' ? 'none' : `0 0 0 3px ${health.light}33`,
-                          }}
-                        />
-                        <span
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: designSystem.colors.text.primary,
-                          }}
-                        >
-                          {itemLabel}
-                        </span>
-                      </div>
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: health.color,
-                          textAlign: 'right',
-                        }}
-                      >
-                        {health.message}
-                      </span>
-                    </div>
-                    <p
-                      style={{
-                        margin: '7px 0 0 18px',
-                        fontSize: 13,
-                        color: designSystem.colors.text.secondary,
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      {lastSuccess?.created_at
-                        ? `最近成功 ${new Date(lastSuccess.created_at).toLocaleString('zh-TW')}${
-                            lastSuccess.records_count != null
-                              ? ` · ${lastSuccess.records_count.toLocaleString()} 筆`
-                              : ''
-                          }`
-                        : unconfigured
-                          ? '桌機安裝完成後才會開始記錄'
-                          : '尚無成功記錄'}
-                    </p>
-                    {(health.status === 'error' || health.status === 'warning') && (
-                      <p
-                        style={{
-                          margin: '5px 0 0 18px',
-                          fontSize: 13,
-                          fontWeight: 500,
-                          color: health.color,
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        {health.status === 'error' ? '請通知工程師' : '請檢查該備份項目'}
-                      </p>
-                    )}
+                    {destination} · {label}
                   </div>
-                ))}
-                <p
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 9,
+                        height: 9,
+                        borderRadius: '50%',
+                        background: dailyHealth.light,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <strong
+                      style={{ fontSize: getFontSize('bodySmall', isMobile), color: dailyHealth.color }}
+                    >
+                      {dailyHealth.message}
+                    </strong>
+                  </div>
+                </div>
+                <div
                   style={{
-                    margin: '14px 0 0 0',
-                    fontSize: 13,
+                    marginTop: 7,
+                    fontSize: getFontSize('caption', isMobile),
                     color: designSystem.colors.text.secondary,
-                    lineHeight: 1.5,
                   }}
                 >
-                  {schedule}
-                </p>
+                  {latestAttempt?.created_at
+                    ? `最近一次：${formatLogTime(latestAttempt.created_at)} · ${
+                        latestAttempt.status === 'success'
+                          ? '成功'
+                          : latestAttempt.status === 'running'
+                            ? '同步中'
+                            : '失敗'
+                      }`
+                    : unconfigured
+                      ? '尚未設定'
+                      : '尚無備份記錄'}
+                </div>
               </div>
-            ))}
+              ),
+            )}
           </div>
         </section>
 
@@ -650,6 +599,16 @@ export function BackupPage() {
               {backupLogs.slice(0, 7).map((log, index, list) => {
                 const ok = log.status === 'success'
                 const running = log.status === 'running'
+                const logTime = new Date(log.created_at || 0).getTime()
+                const recovered =
+                  !ok
+                  && !running
+                  && backupLogs.some(
+                    (candidate) =>
+                      getLogDestination(candidate) === getLogDestination(log)
+                      && candidate.status === 'success'
+                      && new Date(candidate.created_at || 0).getTime() > logTime,
+                  )
                 return (
                   <li
                     key={log.id}
@@ -682,10 +641,13 @@ export function BackupPage() {
                           style={{
                             marginTop: 4,
                             fontSize: 12,
-                            color: designSystem.colors.danger[700],
+                            color: recovered
+                              ? designSystem.colors.text.secondary
+                              : designSystem.colors.danger[700],
                             lineHeight: 1.4,
                           }}
                         >
+                          {recovered ? '曾失敗，後續備份已成功 · ' : ''}
                           {log.error_message?.substring(0, 80) || '未知錯誤'}
                         </div>
                       )}
@@ -697,7 +659,7 @@ export function BackupPage() {
                         gap: 8,
                         fontSize: 13,
                         fontWeight: 500,
-                        color: ok
+                        color: ok || recovered
                           ? designSystem.colors.text.secondary
                           : running
                             ? designSystem.colors.warning[700]
@@ -711,7 +673,7 @@ export function BackupPage() {
                           width: 8,
                           height: 8,
                           borderRadius: '50%',
-                          background: ok
+                          background: ok || recovered
                             ? designSystem.colors.success[500]
                             : running
                               ? designSystem.colors.warning[500]
@@ -731,7 +693,9 @@ export function BackupPage() {
                             .join(' · ')
                         : running
                           ? '同步中'
-                          : '失敗'}
+                          : recovered
+                            ? '已恢復'
+                            : '失敗'}
                     </div>
                   </li>
                 )

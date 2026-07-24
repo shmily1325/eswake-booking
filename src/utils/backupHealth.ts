@@ -1,4 +1,5 @@
 import { designSystem } from '../styles/designSystem'
+import { getVenueDateString } from './date'
 
 export type BackupHealthStatus = 'ok' | 'warning' | 'error' | 'unknown'
 
@@ -20,6 +21,62 @@ export interface BackupHealth {
 export interface BackupHealthSummary {
   status: BackupHealthStatus
   message: string
+}
+
+export interface DailyBackupState {
+  message: string
+  color: string
+  light: string
+}
+
+export function getDailyBackupState(
+  log: BackupHealthLog | undefined,
+  health: BackupHealth,
+  unconfigured: boolean,
+  now: Date = new Date(),
+): DailyBackupState {
+  if (unconfigured) {
+    return {
+      message: '未設定',
+      color: designSystem.colors.text.secondary,
+      light: designSystem.colors.border.main,
+    }
+  }
+
+  const createdAt = log?.created_at ? new Date(log.created_at) : null
+  const ranToday = createdAt && getVenueDateString(createdAt) === getVenueDateString(now)
+  if (!log || !ranToday) {
+    return {
+      message: '今日尚未執行',
+      color: designSystem.colors.text.secondary,
+      light: designSystem.colors.border.main,
+    }
+  }
+
+  if (log.status === 'success' && health.status !== 'error') {
+    return {
+      message: '今日成功',
+      color: designSystem.colors.success[700],
+      light: designSystem.colors.success[500],
+    }
+  }
+
+  if (log.status === 'running') {
+    const runningHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
+    if (runningHours <= 2) {
+      return {
+        message: '執行中',
+        color: designSystem.colors.warning[700],
+        light: designSystem.colors.warning[500],
+      }
+    }
+  }
+
+  return {
+    message: '今日失敗',
+    color: designSystem.colors.danger[700],
+    light: designSystem.colors.danger[500],
+  }
 }
 
 export function getBackupHealth(logs: BackupHealthLog[]): BackupHealth {

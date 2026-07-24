@@ -159,6 +159,79 @@ describe('fetchBackupData', () => {
     expect(maxActive).toBeLessThanOrEqual(4)
   })
 
+  it('retries transient table failures before failing the backup', async () => {
+    let editorAttempts = 0
+    const supabase = {
+      from(table: string) {
+        return {
+          select() {
+            return {
+              order() {
+                return {
+                  range() {
+                    return {
+                      abortSignal() {
+                        if (table === 'editor_users') {
+                          editorAttempts += 1
+                          if (editorAttempts < 3) {
+                            return Promise.resolve({
+                              data: null,
+                              error: { message: 'Failed to get project config' },
+                            })
+                          }
+                        }
+                        return Promise.resolve({ data: [], error: null })
+                      },
+                    }
+                  },
+                }
+              },
+            }
+          },
+        }
+      },
+    }
+
+    await expect(fetchBackupData(supabase as unknown as SupabaseClient)).resolves.toBeDefined()
+    expect(editorAttempts).toBe(3)
+  })
+
+  it('does not retry permanent table errors', async () => {
+    let memberAttempts = 0
+    const supabase = {
+      from(table: string) {
+        return {
+          select() {
+            return {
+              order() {
+                return {
+                  range() {
+                    return {
+                      abortSignal() {
+                        if (table !== 'members') {
+                          return Promise.resolve({ data: [], error: null })
+                        }
+                        memberAttempts += 1
+                        return Promise.resolve({
+                          data: null,
+                          error: { message: 'permission denied for table members' },
+                        })
+                      },
+                    }
+                  },
+                }
+              },
+            }
+          },
+        }
+      },
+    }
+
+    await expect(fetchBackupData(supabase as unknown as SupabaseClient))
+      .rejects.toThrow('permission denied')
+    expect(memberAttempts).toBe(1)
+  })
+
   it('stops before the caller safety deadline', async () => {
     await expect(fetchBackupData({} as SupabaseClient, Date.now() - 1))
       .rejects.toThrow('資料庫備份超過安全時間預算')
