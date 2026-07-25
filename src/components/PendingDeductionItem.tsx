@@ -7,6 +7,7 @@ import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../sty
 import { normalizeDate } from '../utils/date'
 import { useMemberSearch } from '../hooks/useMemberSearch'
 import { isFacility } from '../utils/facility'
+import { MemberStatusBadges } from './MemberStatusBadges'
 
 // 扣款類別
 type DeductionCategory = 
@@ -49,6 +50,14 @@ interface Props {
       boats: { id: number; name: string; color: string } | null
     }
     coaches: { id: string; name: string } | null
+    members: {
+      id: string
+      name: string
+      nickname: string | null
+      membership_type: string | null
+      membership_end_date: string | null
+      board_expiry_dates?: string[]
+    } | null
   }
   onComplete: () => void
   // 提交者資訊（由父組件傳入，已轉換成名字）
@@ -860,8 +869,27 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: getFontSize('h3', isMobile), fontWeight: '600', marginBottom: '5px', color: designSystem.colors.text.primary }}>
-            {isExpanded ? '▼' : '▶'} {report.participant_name}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            flexWrap: 'wrap',
+            marginBottom: '5px'
+          }}>
+            <span style={{
+              fontSize: getFontSize('h3', isMobile),
+              fontWeight: '600',
+              color: designSystem.colors.text.primary
+            }}>
+              {isExpanded ? '▼' : '▶'} {report.participant_name}
+            </span>
+            {report.members && (
+              <MemberStatusBadges
+                membershipType={report.members.membership_type}
+                membershipEndDate={report.members.membership_end_date}
+                boardExpiryDates={report.members.board_expiry_dates}
+              />
+            )}
           </div>
           <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px', lineHeight: 1.5 }}>
             {(() => {

@@ -47,6 +47,14 @@ interface PendingReport {
     boats: { id: number; name: string; color: string } | null
   }
   coaches: { id: string; name: string } | null
+  members: {
+    id: string
+    name: string
+    nickname: string | null
+    membership_type: string | null
+    membership_end_date: string | null
+    board_expiry_dates?: string[]
+  } | null
   old_participant?: any
 }
 
@@ -273,7 +281,9 @@ export function CoachAdmin() {
             boats(id, name, color)
           ),
           coaches:coach_id(id, name),
-          members:member_id(id, name, nickname),
+          members:member_id(
+            id, name, nickname, membership_type, membership_end_date
+          ),
           old_participant:replaces_id(*)
         `)
           .eq('status', 'pending')
@@ -290,7 +300,42 @@ export function CoachAdmin() {
         return query.order('bookings(start_at)').range(from, to)
       })
 
-      setPendingReports(data)
+      const memberIds = [...new Set(
+        data.map((report: PendingReport) => report.member_id).filter((id): id is string => Boolean(id))
+      )]
+      let activeBoardRows: { member_id: string; expires_at: string | null }[] = []
+
+      try {
+        activeBoardRows = await fetchAllInBatches<{ member_id: string; expires_at: string | null }, string>(
+          'board_storage',
+          'member_id, expires_at',
+          'member_id',
+          memberIds,
+          'expires_at',
+          undefined,
+          query => query.eq('status', 'active'),
+          '待處理扣款置板到期資訊'
+        )
+      } catch (error) {
+        // 到期提示是輔助資訊；查詢失敗時仍保留主要扣款清單。
+        console.error('載入待處理扣款置板到期資訊失敗:', error)
+      }
+
+      const boardExpiryDatesByMember = activeBoardRows.reduce<Record<string, string[]>>((acc, row) => {
+        if (!row.expires_at) return acc
+        ;(acc[row.member_id] ||= []).push(row.expires_at)
+        return acc
+      }, {})
+
+      setPendingReports(data.map((report: PendingReport) => ({
+        ...report,
+        members: report.members
+          ? {
+              ...report.members,
+              board_expiry_dates: boardExpiryDatesByMember[report.members.id] ?? []
+            }
+          : null
+      })))
     } catch (error) {
       console.error('載入待處理記錄失敗:', error)
     } finally {

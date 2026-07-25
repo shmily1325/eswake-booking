@@ -10,6 +10,7 @@ import type { Member } from '../../types/booking'
 import { useToast } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
 import { formatDbTimestampDisplay, getVenueDateString } from '../../utils/date'
+import { MemberStatusBadges } from '../../components/MemberStatusBadges'
 import {
   designSystem,
   getBadgeStyle,
@@ -33,6 +34,7 @@ interface MemberWithLastTransaction extends Member {
   line_binding_user_id?: string | null
   last_liff_login_at?: string | null
   is_line_bound?: boolean
+  board_expiry_dates?: string[]
 }
 
 export function MemberTransaction() {
@@ -72,11 +74,11 @@ export function MemberTransaction() {
     }
   }
 
-  // 載入會員列表（含最後交易日期與 LINE 綁定）
+  // 載入會員列表（含最後交易日期、LINE 綁定與置板到期）
   const loadMembers = async () => {
     setLoading(true)
     try {
-      const [membersResult, transactionsResult, lineBindingsResult] = await Promise.all([
+      const [membersResult, transactionsResult, lineBindingsResult, boardResult] = await Promise.all([
         supabase
           .from('members')
           .select('*')
@@ -89,12 +91,19 @@ export function MemberTransaction() {
         supabase
           .from('line_bindings')
           .select('member_id, line_user_id, last_liff_login_at')
+          .eq('status', 'active'),
+        supabase
+          .from('board_storage')
+          .select('member_id, expires_at')
           .eq('status', 'active')
       ])
 
       if (membersResult.error) throw membersResult.error
       if (lineBindingsResult.error) {
         console.error('載入 LINE 綁定失敗:', lineBindingsResult.error)
+      }
+      if (boardResult.error) {
+        console.error('載入置板到期資訊失敗:', boardResult.error)
       }
 
       // 整理每個會員的最後交易日期和 created_at
@@ -121,6 +130,12 @@ export function MemberTransaction() {
         }
       })
 
+      const boardExpiryDatesByMember: Record<string, string[]> = {}
+      ;(boardResult.data || []).forEach((row) => {
+        if (!row.member_id || !row.expires_at) return
+        ;(boardExpiryDatesByMember[row.member_id] ||= []).push(row.expires_at)
+      })
+
       // 合併資料
       const membersWithLastTransaction = (membersResult.data || []).map(m => ({
         ...m,
@@ -128,7 +143,8 @@ export function MemberTransaction() {
         lastTransactionCreatedAt: lastTransactionMap[m.id]?.createdAt || null,
         line_binding_user_id: memberIdToLineBinding[m.id]?.lineUserId || null,
         last_liff_login_at: memberIdToLineBinding[m.id]?.lastLiffLoginAt || null,
-        is_line_bound: Boolean(memberIdToLineBinding[m.id])
+        is_line_bound: Boolean(memberIdToLineBinding[m.id]),
+        board_expiry_dates: boardExpiryDatesByMember[m.id] || []
       }))
 
       setMembers(membersWithLastTransaction)
@@ -581,22 +597,11 @@ export function MemberTransaction() {
                         ({member.name})
                       </span>
                     )}
-                    {/* 會員類型標籤 */}
-                    {member.membership_type !== 'es' && (
-                      <span style={getBadgeStyle(member.membership_type === 'guest' ? 'warning' : 'info', 'small')}>
-                        {member.membership_type === 'guest' ? '非會員' : '會員'}
-                      </span>
-                    )}
-                    {member.membership_type === 'dual' && (
-                      <span style={getBadgeStyle('info', 'small')}>
-                        雙人會籍
-                      </span>
-                    )}
-                    {member.membership_type === 'es' && (
-                      <span style={getBadgeStyle('default', 'small')}>
-                        ES
-                      </span>
-                    )}
+                    <MemberStatusBadges
+                      membershipType={member.membership_type}
+                      membershipEndDate={member.membership_end_date}
+                      boardExpiryDates={member.board_expiry_dates}
+                    />
                     {/* 本月壽星標記 */}
                     {member.birthday && (() => {
                       const currentMonth = Number(getVenueDateString().slice(5, 7))

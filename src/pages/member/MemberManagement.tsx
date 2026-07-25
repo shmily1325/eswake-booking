@@ -19,7 +19,8 @@ import {
 import { isAdmin } from '../../utils/auth'
 import { chunkArray, fetchAllPaginated, IN_FILTER_BATCH_SIZE } from '../../utils/supabasePaginate'
 import { setMemberActiveStatus } from '../../services/memberLifecycle'
-import { getMembershipTypeLabel, membershipCountsAsActive } from '../../utils/membership'
+import { membershipCountsAsActive } from '../../utils/membership'
+import { MemberStatusBadges } from '../../components/MemberStatusBadges'
 import {
   designSystem,
   getBadgeStyle,
@@ -35,19 +36,6 @@ const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
 const cardShadow = designSystem.shadows.elevation[1]
 const cardShadowHover = designSystem.shadows.elevation[2]
-
-function membershipTypeBadge(type: string): { label: string; variant: 'info' | 'warning' | 'default' } {
-  switch (type) {
-    case 'guest':
-      return { label: getMembershipTypeLabel(type), variant: 'warning' }
-    case 'dual':
-      return { label: getMembershipTypeLabel(type), variant: 'info' }
-    case 'es':
-      return { label: getMembershipTypeLabel(type), variant: 'default' }
-    default:
-      return { label: getMembershipTypeLabel(type), variant: 'info' }
-  }
-}
 
 /** 備忘錄事件色（僅顯示；value 與 DB event_type 對齊） */
 const NOTE_EVENT_COLORS: Record<string, string> = {
@@ -884,7 +872,6 @@ export function MemberManagement() {
           </div>
         ) : (
           filteredMembers.map(member => {
-            const typeBadge = membershipTypeBadge(member.membership_type)
             const cardBg = member.status === 'inactive'
               ? designSystem.colors.background.main
               : designSystem.colors.background.card
@@ -935,9 +922,11 @@ export function MemberManagement() {
                         ({member.name})
                       </span>
                     )}
-                    <span style={getBadgeStyle(typeBadge.variant, 'small')}>
-                      {typeBadge.label}
-                    </span>
+                    <MemberStatusBadges
+                      membershipType={member.membership_type}
+                      membershipEndDate={member.membership_end_date}
+                      boardExpiryDates={(member.board_slots ?? []).map(slot => slot.expires_at)}
+                    />
                     {member.status === 'inactive' && (
                       <span style={getBadgeStyle('default', 'small')}>已隱藏</span>
                     )}
