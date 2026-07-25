@@ -18,6 +18,7 @@ import { Footer } from '../components/Footer'
 import { ExternalNavLink } from '../components/ExternalNavLink'
 import { PageShell } from '../components/PageShell'
 import { designSystem, getFontSize } from '../styles/designSystem'
+import { BOAT_OPERATIONS_ALLOWED_EMAILS } from '../utils/boatOperationsAccess'
 import { useState, useEffect, type CSSProperties } from 'react'
 
 /** 首頁導航 track id（去掉 query，避免 nav_coach-time-off?month=… 每次月份不同） */
@@ -125,6 +126,7 @@ export function HomePage() {
 
   type HomeMenuItem = {
     title: string
+    mobileTitle?: string
     icon: string
     link: string
     subtitle?: string
@@ -237,18 +239,20 @@ export function HomePage() {
     }
   ]
 
-  /** 小胖橫線下方：區間時數合計 */
+  /** 小胖橫線下方：船艇營運工具 */
   const menuItemsBelowDivider: HomeMenuItem[] = [
     {
       title: '區間時數合計',
       icon: '⏱️',
       link: '/boat-usage-hours',
-      visibleForEmails: [
-        'hsulittlepang2015@gmail.com',
-        'minlin1325@gmail.com',
-        'callumbao1122@gmail.com',
-        'pjpan0511@gmail.com',
-      ]
+      visibleForEmails: BOAT_OPERATIONS_ALLOWED_EMAILS,
+    },
+    {
+      title: '船艇零件庫存',
+      mobileTitle: '零件庫存',
+      icon: '🔩',
+      link: '/boat-parts',
+      visibleForEmails: BOAT_OPERATIONS_ALLOWED_EMAILS,
     }
   ]
 
@@ -380,7 +384,7 @@ export function HomePage() {
             letterSpacing: '0.5px',
           }}
         >
-          {item.title}
+          {isMobile && item.mobileTitle ? item.mobileTitle : item.title}
         </h2>
         {item.subtitle && (
           <p

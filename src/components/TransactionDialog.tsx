@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
-import { getLocalDateString, getLocalTimestamp, normalizeDate } from '../utils/date'
+import { formatDbTimestampDisplay, getLocalDateString, getLocalTimestamp, normalizeDate } from '../utils/date'
 import type { Member } from '../types/booking'
 import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { useToast } from './ui'
@@ -1131,13 +1131,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                         <div onClick={(e) => e.stopPropagation()}>
                           <div style={{ marginBottom: '12px' }}>
                             <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled, marginBottom: '12px' }}>
-                              記帳時間：{tx.created_at ? new Date(tx.created_at).toLocaleString('zh-TW', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              }) : '-'}
+                              記帳時間：{tx.created_at ? formatDbTimestampDisplay(tx.created_at) : '-'}
                             </div>
                             
                             {/* 項目 */}

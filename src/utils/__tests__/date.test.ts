@@ -5,6 +5,7 @@ import {
   getLocalTimestamp,
   getVenueDateString,
   getVenueTimestamp,
+  formatVenueDateTime,
   formatDbTimestampDisplay,
   parseDbTimestamp,
   compareDateTimeStr,
@@ -96,6 +97,12 @@ describe('date.ts - 日期時間工具函數', () => {
     it('getVenueTimestamp 應為台灣時間', () => {
       vi.setSystemTime(new Date('2026-02-05T02:30:45Z'))
       expect(getVenueTimestamp()).toBe('2026-02-05T10:30:45')
+    })
+
+    it('formatVenueDateTime 固定顯示 Asia/Taipei', () => {
+      expect(formatVenueDateTime('2026-06-08T12:00:00+08:00')).toBe('2026-06-08 12:00')
+      expect(formatVenueDateTime('2026-06-08T04:00:00.000Z')).toBe('2026-06-08 12:00')
+      expect(formatVenueDateTime('2026-06-15T18:00:00Z')).toBe('2026-06-16 02:00')
     })
   })
 

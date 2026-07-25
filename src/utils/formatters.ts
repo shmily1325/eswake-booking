@@ -4,86 +4,97 @@
  * 提供統一的日期、時間、金額等格式化功能
  */
 
+import {
+  formatVenueDateTime,
+  getLocalDateString as getVenueLocalDateString,
+  getLocalTimestamp as getVenueLocalTimestamp,
+  getVenueDateString,
+  getVenueTimeParts,
+} from './date'
+
+/** 無時區標記的場地 TEXT 時間（例如 bookings.start_at） */
+const VENUE_WALL_CLOCK_RE =
+  /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?$/
+
+/** 含 Z 或 ±HH:MM 的 timestamptz / ISO */
+const HAS_TIMEZONE_RE = /(?:[zZ]|[+-]\d{2}:?\d{2})$/
+
+function isVenueWallClockString(value: string): boolean {
+  return VENUE_WALL_CLOCK_RE.test(value.trim()) && !HAS_TIMEZONE_RE.test(value.trim())
+}
+
+function toDate(value: Date | string, invalidMessage = '無效的日期格式'): Date {
+  const date = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(date.getTime())) {
+    throw new TypeError(invalidMessage)
+  }
+  return date
+}
+
 /**
  * 格式化日期為 YYYY-MM-DD 格式
- * 
- * @param date - Date 物件、時間戳字串或日期字串
- * @returns 格式化後的日期字串 (YYYY-MM-DD)
- * 
- * @throws {TypeError} 如果參數無法轉換為有效日期
- * 
- * @example
- * ```typescript
- * formatDate(new Date())                    // '2025-11-19'
- * formatDate('2025-11-19T10:30:00')        // '2025-11-19'
- * formatDate('2025-11-19')                 // '2025-11-19'
- * ```
+ *
+ * - 場地 TEXT（無時區）：直接取字串前 10 碼，不做轉換
+ * - Date / timestamptz ISO：固定以 Asia/Taipei 顯示
  */
 export function formatDate(date: Date | string): string {
   if (!date) {
     throw new TypeError('date 不能為空')
   }
 
-  const d = typeof date === 'string' ? new Date(date) : date
-  
-  if (isNaN(d.getTime())) {
-    throw new TypeError('無效的日期格式')
+  if (typeof date === 'string') {
+    const trimmed = date.trim()
+    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed) && isVenueWallClockString(trimmed)) {
+      return trimmed.substring(0, 10)
+    }
   }
 
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
+  return getVenueDateString(toDate(date))
 }
 
 /**
  * 格式化時間為 HH:mm 格式
- * 
- * @param dateTime - Date 物件或時間戳字串
- * @returns 格式化後的時間字串 (HH:mm)
- * 
- * @throws {TypeError} 如果參數無法轉換為有效日期
- * 
- * @example
- * ```typescript
- * formatTime(new Date())                   // '14:30'
- * formatTime('2025-11-19T14:30:00')       // '14:30'
- * ```
+ *
+ * - 場地 TEXT（無時區）：直接取時分
+ * - Date / timestamptz ISO：固定以 Asia/Taipei 顯示
  */
 export function formatTime(dateTime: Date | string): string {
   if (!dateTime) {
     throw new TypeError('dateTime 不能為空')
   }
 
-  const d = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
-  
-  if (isNaN(d.getTime())) {
-    throw new TypeError('無效的時間格式')
+  if (typeof dateTime === 'string') {
+    const trimmed = dateTime.trim()
+    if (isVenueWallClockString(trimmed) && /[T ]\d{2}:\d{2}/.test(trimmed)) {
+      const parts = trimmed.split(/[T ]/)
+      if (parts.length < 2) throw new TypeError('無效的時間格式')
+      return parts[1].substring(0, 5)
+    }
   }
 
-  const hours = String(d.getHours()).padStart(2, '0')
-  const minutes = String(d.getMinutes()).padStart(2, '0')
-
-  return `${hours}:${minutes}`
+  const { hours, minutes } = getVenueTimeParts(toDate(dateTime, '無效的時間格式'))
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
 
 /**
  * 格式化日期時間為 YYYY-MM-DD HH:mm 格式
- * 
- * @param dateTime - Date 物件或時間戳字串
- * @returns 格式化後的日期時間字串 (YYYY-MM-DD HH:mm)
- * 
- * @throws {TypeError} 如果參數無法轉換為有效日期
- * 
- * @example
- * ```typescript
- * formatDateTime(new Date())               // '2025-11-19 14:30'
- * formatDateTime('2025-11-19T14:30:00')   // '2025-11-19 14:30'
- * ```
+ *
+ * - 場地 TEXT（無時區）：直接顯示字面時間
+ * - Date / timestamptz ISO：固定以 Asia/Taipei 顯示
  */
 export function formatDateTime(dateTime: Date | string): string {
-  return `${formatDate(dateTime)} ${formatTime(dateTime)}`
+  if (!dateTime) {
+    throw new TypeError('dateTime 不能為空')
+  }
+
+  if (typeof dateTime === 'string') {
+    const trimmed = dateTime.trim()
+    if (isVenueWallClockString(trimmed) && /[T ]\d{2}:\d{2}/.test(trimmed)) {
+      return `${trimmed.substring(0, 10)} ${trimmed.split(/[T ]/)[1].substring(0, 5)}`
+    }
+  }
+
+  return formatVenueDateTime(dateTime)
 }
 
 /**
@@ -304,53 +315,29 @@ export function getMonthRange(yearMonth: string): { startDate: string; endDate: 
   }
 
   const [year, month] = yearMonth.split('-').map(Number)
-  const startDate = new Date(year, month - 1, 1)
-  const endDate = new Date(year, month, 0) // 0 表示上個月的最後一天
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate()
 
   return {
-    startDate: formatDate(startDate),
-    endDate: formatDate(endDate)
+    startDate: `${year}-${String(month).padStart(2, '0')}-01`,
+    endDate: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
   }
 }
 
 /**
- * 取得本地時間戳（避免時區轉換）
- * 
- * @returns 本地時間戳字串 (YYYY-MM-DDTHH:mm:ss)
- * 
- * @example
- * ```typescript
- * getLocalTimestamp()  // '2025-11-19T14:30:00'
- * ```
+ * 取得場地時間戳（Asia/Taipei，避免瀏覽器時區偏移）
+ *
+ * @returns 場地時間戳字串 (YYYY-MM-DDTHH:mm:ss)
  */
 export function getLocalTimestamp(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  const hours = String(now.getHours()).padStart(2, '0')
-  const minutes = String(now.getMinutes()).padStart(2, '0')
-  const seconds = String(now.getSeconds()).padStart(2, '0')
-
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+  return getVenueLocalTimestamp()
 }
 
 /**
- * 取得本地日期字串（避免時區轉換）
- * 
- * @returns 本地日期字串 (YYYY-MM-DD)
- * 
- * @example
- * ```typescript
- * getLocalDateString()  // '2025-11-19'
- * ```
+ * 取得場地日期字串（Asia/Taipei）
+ *
+ * @returns 場地日期字串 (YYYY-MM-DD)
  */
 export function getLocalDateString(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
+  return getVenueLocalDateString()
 }
 

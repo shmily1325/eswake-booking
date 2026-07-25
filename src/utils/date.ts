@@ -263,6 +263,20 @@ export function formatDbTimestampDisplay(dbTimestamp: string): string {
 }
 
 /**
+ * 將 timestamptz / ISO 時間顯示為場地時間 YYYY-MM-DD HH:mm（固定 Asia/Taipei）。
+ * 與瀏覽器所在地無關；適用於商城／零件庫存等 timestamptz 欄位。
+ */
+export function formatVenueDateTime(dateTime: Date | string): string {
+  const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
+  if (Number.isNaN(date.getTime())) {
+    throw new TypeError('無效的時間格式')
+  }
+  const ymd = getVenueDateString(date)
+  const { hours, minutes } = getVenueTimeParts(date)
+  return `${ymd} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+/**
  * 比較兩個 datetime 字串
  * @returns 負數表示 dt1 < dt2，0 表示相等，正數表示 dt1 > dt2
  */

@@ -7,6 +7,7 @@ import { Footer } from '../../components/Footer'
 import { useToast, ToastContainer } from '../../components/ui'
 import { useResponsive } from '../../hooks/useResponsive'
 import { isAdmin } from '../../utils/auth'
+import { formatVenueDateTime } from '../../utils/date'
 import { getBackupHealth, getDailyBackupState } from '../../utils/backupHealth'
 import {
   designSystem,
@@ -79,12 +80,12 @@ function destinationLabel(log: BackupLog): string {
 
 function formatLogTime(iso: string | null): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('zh-TW', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  try {
+    const formatted = formatVenueDateTime(iso)
+    return formatted.slice(5) // MM-DD HH:mm
+  } catch {
+    return '—'
+  }
 }
 
 async function sha256Hex(blob: Blob): Promise<string> {

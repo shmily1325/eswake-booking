@@ -16,18 +16,16 @@ import {
 
 describe('formatters.ts - 格式化工具函數', () => {
   describe('formatDate', () => {
-    it('應該格式化 Date 物件為 YYYY-MM-DD', () => {
-      const date = new Date(2025, 10, 24) // 2025-11-24
-      expect(formatDate(date)).toBe('2025-11-24')
+    it('應該格式化 timestamptz 為 Asia/Taipei 日期', () => {
+      expect(formatDate('2025-11-24T06:30:00.000Z')).toBe('2025-11-24')
     })
 
-    it('應該格式化時間戳字串為 YYYY-MM-DD', () => {
+    it('應該格式化場地 TEXT 時間戳為 YYYY-MM-DD（不轉換）', () => {
       expect(formatDate('2025-11-24T14:30:00')).toBe('2025-11-24')
     })
 
     it('應該正確補零月份和日期', () => {
-      const date = new Date(2025, 0, 5) // 2025-01-05
-      expect(formatDate(date)).toBe('2025-01-05')
+      expect(formatDate('2025-01-05T01:00:00+08:00')).toBe('2025-01-05')
     })
 
     it('空值應該拋出 TypeError', () => {
@@ -42,18 +40,16 @@ describe('formatters.ts - 格式化工具函數', () => {
   })
 
   describe('formatTime', () => {
-    it('應該格式化 Date 物件為 HH:mm', () => {
-      const date = new Date(2025, 10, 24, 14, 30)
-      expect(formatTime(date)).toBe('14:30')
+    it('應該格式化 timestamptz 為 Asia/Taipei 時分', () => {
+      expect(formatTime('2025-11-24T06:30:00.000Z')).toBe('14:30')
     })
 
-    it('應該格式化時間戳字串為 HH:mm', () => {
+    it('應該格式化場地 TEXT 時間戳為 HH:mm（不轉換）', () => {
       expect(formatTime('2025-11-24T14:30:00')).toBe('14:30')
     })
 
     it('應該正確補零小時和分鐘', () => {
-      const date = new Date(2025, 0, 1, 9, 5)
-      expect(formatTime(date)).toBe('09:05')
+      expect(formatTime('2025-01-01T01:05:00.000Z')).toBe('09:05')
     })
 
     it('空值應該拋出 TypeError', () => {
@@ -68,12 +64,12 @@ describe('formatters.ts - 格式化工具函數', () => {
   })
 
   describe('formatDateTime', () => {
-    it('應該格式化為 YYYY-MM-DD HH:mm', () => {
-      const date = new Date(2025, 10, 24, 14, 30)
-      expect(formatDateTime(date)).toBe('2025-11-24 14:30')
+    it('應該把 timestamptz 顯示成台北時間', () => {
+      expect(formatDateTime('2025-11-24T06:30:00.000Z')).toBe('2025-11-24 14:30')
+      expect(formatDateTime('2025-11-24T14:30:00+08:00')).toBe('2025-11-24 14:30')
     })
 
-    it('應該格式化時間戳字串', () => {
+    it('應該保留場地 TEXT 時間戳字面值', () => {
       expect(formatDateTime('2025-11-24T14:30:00')).toBe('2025-11-24 14:30')
     })
   })

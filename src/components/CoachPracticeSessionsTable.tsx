@@ -1,6 +1,7 @@
 import type { CoachPracticeSessionRow } from '../utils/boatUsageRangeStats'
 import { formatDuration } from '../pages/admin/Statistics/utils'
 import { designSystem, getEmptyStateStyle } from '../styles/designSystem'
+import { formatDbTimestampDisplay, getWeekdayText, parseDbTimestamp } from '../utils/date'
 
 function formatHoursOneDecimal(minutes: number): string {
   return String(Math.round((minutes / 60) * 10) / 10)
@@ -8,17 +9,12 @@ function formatHoursOneDecimal(minutes: number): string {
 
 function formatPracticeStartAt(iso: string): string {
   if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  })
+  try {
+    const { date } = parseDbTimestamp(iso)
+    return `${formatDbTimestampDisplay(iso)}（${getWeekdayText(date)}）`
+  } catch {
+    return iso
+  }
 }
 
 export type CoachPracticeSessionsTableProps = {
