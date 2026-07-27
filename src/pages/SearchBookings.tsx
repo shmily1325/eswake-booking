@@ -891,7 +891,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 onBlur={(e) => {
                   e.target.style.borderColor = designSystem.colors.border.main
                 }}
-                placeholder="例如 Zoe 或 Dexter Zoe"
                 style={{
                   ...getInputStyle(isMobile),
                   paddingRight: notesKeyword ? '44px' : '16px',

@@ -60,7 +60,7 @@ describe('SearchBookings', () => {
     render(<SearchBookings isEmbedded />)
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/搜尋會員/)).toBeInTheDocument()
-      expect(screen.getByPlaceholderText(/例如 Zoe/)).toBeInTheDocument()
+      expect(screen.getByText(/註解含/)).toBeInTheDocument()
     })
   })
 })
