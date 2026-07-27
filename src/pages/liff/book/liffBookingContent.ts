@@ -47,7 +47,7 @@ export const STEP2_FOLLOW_BOAT_NOTE =
   '親友不滑可跟船：第 1 位免費，第 2 位起每位 $300（請在備註告知人數）'
 
 /** Step 3 時段說明 */
-export const STEP3_SCHEDULE_NOTE = '時段為偏好，小編回覆後才確認'
+export const STEP3_SCHEDULE_NOTE = '先選偏好時段，確切時間待小編回覆確認'
 
 /** Step 4 確認頁固定說明（一行） */
 export const STEP4_CONFIRM_NOTE =

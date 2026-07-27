@@ -237,5 +237,7 @@ export function renderBookingSubmitMessage(
     lines.push(`${m.labelNotes}${form.notes.trim()}`)
   }
 
+  lines.push('', m.submitClosing)
+
   return lines.join('\n')
 }

@@ -378,6 +378,20 @@ export const footerSoftHint: CSSProperties = {
   padding: '6px 8px',
 }
 
+/** Step 4 送出前的重要預約狀態；清楚但不使用警告色 */
+export const bookingPendingHint: CSSProperties = {
+  width: '100%',
+  fontSize: ty.body,
+  fontWeight: 600,
+  color: T.inkSoft,
+  textAlign: 'center',
+  lineHeight: 1.45,
+  marginBottom: 10,
+  padding: '9px 12px',
+  borderRadius: T.smallRadius,
+  background: T.surfaceMuted,
+}
+
 /** Step 4 區塊標題 */
 export const confirmSectionTitle: CSSProperties = {
   fontSize: ty.title,

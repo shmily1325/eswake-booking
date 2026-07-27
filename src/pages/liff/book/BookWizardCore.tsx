@@ -56,8 +56,10 @@ import {
   chipBtn,
   fieldLabel,
   stepFieldPrompt,
+  bookingPendingHint,
   footerBlockHint,
   footerSoftHint,
+  stepInlineHint,
   primaryBtn,
   secondaryBtn,
   stickyFooter,
@@ -386,7 +388,7 @@ export function BookWizardCore({
     ? null
     : getStepBlockReason(step, form, pickDate, s.validation, lineUserId, { requireLine })
   const showFooterHint = blockReason != null && step !== 1
-  const showSubmitHint = step === 4 && blockReason == null
+  const showSubmitHint = step === 4
   const step1InlineHint = step === 1 && !stepReady ? blockReason : null
 
   return (
@@ -500,6 +502,7 @@ export function BookWizardCore({
                 </button>
               ))}
             </div>
+            <div style={stepInlineHint}>{s.step3.scheduleNote}</div>
 
             {!showAlternateDates ? (
               <button
@@ -707,7 +710,7 @@ export function BookWizardCore({
 
       <footer style={{ ...stickyFooter, flexDirection: 'column', alignItems: 'stretch' }}>
         {showSubmitHint ? (
-          <div style={footerSoftHint}>{s.step4.submitHint}</div>
+          <div style={bookingPendingHint}>{s.step4.submitHint}</div>
         ) : null}
         {showFooterHint ? (
           <div

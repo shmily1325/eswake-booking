@@ -228,6 +228,7 @@ export interface BookI18nStrings {
   }
   lineMessage: {
     submitTitle: string
+    submitClosing: string
     labelHeadcount: string
     labelActivity: string
     labelDates: string
@@ -426,7 +427,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       timeSlot: '時段',
       morning: '上午',
       afternoon: '下午',
-      scheduleNote: '偏好時段，小編 LINE 回覆後才確認',
+      scheduleNote: '先選偏好時段，確切時間待小編回覆確認',
       addCoach: '＋ 指定教練（選填 · 8 點前需指定）',
       addCoachShort: '指定教練（選填）',
       addCoachMorningShort: '指定教練（8 點前需指定）',
@@ -460,7 +461,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       labelBoat: '船型',
       labelDates: '日期',
       labelCoach: '教練',
-      submitHint: '小編回信後才確認時段與價格',
+      submitHint: '請待小編回覆確認時間後，預約才算成立',
       messageTooLong: '訊息過長，請精簡備註後再試',
       contact: '姓名與電話',
       namePh: '姓名',
@@ -549,6 +550,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     lineMessage: {
       submitTitle: '【預約】',
+      submitClosing: '※ 小編回覆確認後，預約才成立',
       labelHeadcount: '預約人數：',
       labelActivity: '預約項目：',
       labelDates: '希望預約的日期及時間：',
@@ -790,7 +792,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       timeSlot: 'Time preference',
       morning: 'Morning',
       afternoon: 'Afternoon',
-      scheduleNote: 'Preference only — staff confirms on LINE',
+      scheduleNote: 'Pick a preferred slot first — exact time confirmed after we reply',
       addCoach: '+ Request a coach (optional · required before 8 AM)',
       addCoachShort: 'Request a coach (optional)',
       addCoachMorningShort: 'Request a coach (required before 8 AM)',
@@ -824,7 +826,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       labelBoat: 'Boat',
       labelDates: 'Dates',
       labelCoach: 'Coach',
-      submitHint: 'Date and price confirmed after we reply',
+      submitHint: 'Your booking is confirmed only after we reply with the time',
       messageTooLong: 'Message too long — shorten notes and try again.',
       contact: 'Name & phone',
       namePh: 'Name',
@@ -913,6 +915,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     lineMessage: {
       submitTitle: '[Booking]',
+      submitClosing: '* Booking confirmed only after we reply',
       labelHeadcount: 'Riders: ',
       labelActivity: 'Activity: ',
       labelDates: 'Preferred date & time: ',

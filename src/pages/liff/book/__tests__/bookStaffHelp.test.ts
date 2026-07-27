@@ -60,6 +60,8 @@ describe('booking LINE messages share compact format', () => {
         '',
         '聯絡人：王小明 · 0912345678',
         '參考價：約 $5,100（參考）',
+        '',
+        '※ 小編回覆確認後，預約才成立',
       ].join('\n'),
     )
   })
