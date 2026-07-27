@@ -388,7 +388,6 @@ export function BookWizardCore({
     ? null
     : getStepBlockReason(step, form, pickDate, s.validation, lineUserId, { requireLine })
   const showFooterHint = blockReason != null && step !== 1
-  const showSubmitHint = step === 4
   const step1InlineHint = step === 1 && !stepReady ? blockReason : null
 
   return (
@@ -652,6 +651,8 @@ export function BookWizardCore({
                 formatDate={pd => formatPreferredDateLabel(pd, locale, s.step3.morning, s.step3.afternoon)}
               />
 
+              <div style={bookingPendingHint}>{s.step4.submitHint}</div>
+
               {estimate ? (
                 <BookEstimateCard key="est-4" estimate={estimate} confirm />
               ) : null}
@@ -709,9 +710,6 @@ export function BookWizardCore({
       </main>
 
       <footer style={{ ...stickyFooter, flexDirection: 'column', alignItems: 'stretch' }}>
-        {showSubmitHint ? (
-          <div style={bookingPendingHint}>{s.step4.submitHint}</div>
-        ) : null}
         {showFooterHint ? (
           <div
             style={step === 4 ? footerBlockHint : footerSoftHint}

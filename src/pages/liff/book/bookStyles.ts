@@ -386,7 +386,7 @@ export const bookingPendingHint: CSSProperties = {
   color: T.inkSoft,
   textAlign: 'center',
   lineHeight: 1.45,
-  marginBottom: 10,
+  margin: '14px 0 10px',
   padding: '9px 12px',
   borderRadius: T.smallRadius,
   background: T.surfaceMuted,
