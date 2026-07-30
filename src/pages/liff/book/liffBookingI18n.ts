@@ -89,6 +89,12 @@ export interface BookI18nStrings {
     nFirstTime: (n: number) => string
     experienceSummary: (headcount: number, beginnerCount: number | null) => string
     summaryPeople: (n: number) => string
+    /** 人數＋經驗（括號內），避免 · 分隔看起來像另一組人數 */
+    peopleLine: (
+      headcount: number,
+      beginnerCount: number | null,
+      options?: { ridingPrefix?: boolean },
+    ) => string
     summaryEstimate: (total: string) => string
     followBoat: {
       toggle: string
@@ -237,6 +243,8 @@ export interface BookI18nStrings {
     labelContact: string
     labelEstimate: string
     labelNotes: string
+    /** 滑水與跟船人數；有跟船時分項顯示，避免誤以為包含在滑水人數內 */
+    headcountValue: (riders: number, follow: number) => string
     experienceLine: (headcount: number, beginnerCount: number | null) => string
     coachLine: (name: string) => string
     coachNone: string
@@ -402,22 +410,29 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       estimateExperiencedDetail: (count, guest) =>
         `${count} 已滑過 × $${guest.toLocaleString()}`,
       partialDetail: (beginners, headcount) =>
-        `${beginners} 位體驗 · ${headcount - beginners} 位已滑過`,
-      nFirstTime: n => `${n} 位第一次`,
+        `體驗 ${beginners}、已滑過 ${headcount - beginners}`,
+      nFirstTime: n => `第一次 ${n} 人`,
       experienceSummary: (headcount, beginnerCount) => {
         if (beginnerCount == null) return '—'
         if (beginnerCount === headcount) return '全部體驗'
         if (beginnerCount === 0) return '皆已滑過'
-        return `${beginnerCount} 位體驗`
+        return `體驗 ${beginnerCount} 人`
       },
       summaryPeople: n => `${n} 人`,
+      peopleLine: (headcount, beginnerCount, options) => {
+        const base = options?.ridingPrefix ? `滑水 ${headcount} 人` : `${headcount} 人`
+        if (beginnerCount == null) return base
+        if (beginnerCount >= headcount) return `${base}（全部體驗）`
+        if (beginnerCount === 0) return `${base}（皆已滑過）`
+        return `${base}（體驗 ${beginnerCount}、已滑過 ${headcount - beginnerCount}）`
+      },
       summaryEstimate: total => `約 ${total}`,
       followBoat: {
         toggle: '有人不玩、想跟船？',
         countLabel: '幾位跟船',
         none: '不需要',
-        nFollowers: n => `${n} 位`,
-        selected: n => `跟船 ${n} 位`,
+        nFollowers: n => `${n} 人`,
+        selected: n => `跟船 ${n} 人`,
         aboardLine: (riders, follow, fee) =>
           fee ? `船上 ${riders + follow} 人 · ${fee}` : `船上 ${riders + follow} 人 · 跟船免費`,
       },
@@ -478,9 +493,10 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       coachDesignated: '指定',
       people: '人',
       followBoat: '跟船',
-      followBoatSummary: n => `跟船 ${n} 位`,
+      followBoatSummary: n => `跟船 ${n} 人`,
       onBoatTotal: '船上共',
-      onBoatTotalSummary: (riders, follow) => `${riders + follow} 人（${riders} 滑 + ${follow} 跟）`,
+      onBoatTotalSummary: (riders, follow) =>
+        `${riders + follow} 人（滑水 ${riders} 人、跟船 ${follow} 人）`,
       memberPrefill: '已帶入會員資料，可修改',
     },
     binding: {
@@ -555,19 +571,23 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       labelActivity: '預約項目：',
       labelDates: '希望預約的日期及時間：',
       labelCoach: '是否指定教練：',
-      labelExperience: '是否是第一次滑：',
+      labelExperience: '滑水經驗：',
       labelContact: '聯絡人：',
       labelEstimate: '參考價：',
       labelNotes: '備註：',
+      headcountValue: (riders, follow) =>
+        follow > 0
+          ? `滑水 ${riders} 人＋跟船 ${follow} 人`
+          : `${riders} 人`,
       experienceLine: (headcount, beginnerCount) => {
         if (beginnerCount == null) return '—'
         if (beginnerCount >= headcount) {
-          return headcount === 1 ? '是' : '是（全部）'
+          return headcount === 1 ? '第一次' : '全部第一次'
         }
         if (beginnerCount === 0) {
-          return headcount === 1 ? '否（已滑過）' : '否（全部已滑過）'
+          return headcount === 1 ? '已滑過' : '全部已滑過'
         }
-        return `${beginnerCount} 位第一次、${headcount - beginnerCount} 位已滑過`
+        return `第一次 ${beginnerCount} 人、已滑過 ${headcount - beginnerCount} 人`
       },
       coachLine: name => `教練 ${name}`,
       coachNone: '不指定',
@@ -767,7 +787,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       estimateExperiencedDetail: (count, guest) =>
         `${count} returning × $${guest.toLocaleString()}`,
       partialDetail: (beginners, headcount) =>
-        `${beginners} first-timer${beginners > 1 ? 's' : ''} · ${headcount - beginners} experienced`,
+        `${beginners} first-timer${beginners > 1 ? 's' : ''}, ${headcount - beginners} experienced`,
       nFirstTime: n => `${n} first-timer${n > 1 ? 's' : ''}`,
       experienceSummary: (headcount, beginnerCount) => {
         if (beginnerCount == null) return '—'
@@ -776,6 +796,15 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         return `${beginnerCount} first-timer${beginnerCount > 1 ? 's' : ''}`
       },
       summaryPeople: n => `${n} rider${n > 1 ? 's' : ''}`,
+      peopleLine: (headcount, beginnerCount) => {
+        const base = `${headcount} rider${headcount > 1 ? 's' : ''}`
+        if (beginnerCount == null) return base
+        if (beginnerCount >= headcount) return `${base} (all first-timers)`
+        if (beginnerCount === 0) return `${base} (all experienced)`
+        const first = `${beginnerCount} first-timer${beginnerCount > 1 ? 's' : ''}`
+        const exp = headcount - beginnerCount
+        return `${base} (${first}, ${exp} experienced)`
+      },
       summaryEstimate: total => `~${total}`,
       followBoat: {
         toggle: 'Someone not riding but coming along?',
@@ -843,7 +872,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       coachDesignated: 'Requested',
       people: 'riders',
       followBoat: 'Non-riders',
-      followBoatSummary: n => `${n} non-rider${n > 1 ? 's' : ''}`,
+      followBoatSummary: n => `+ ${n} non-rider${n > 1 ? 's' : ''}`,
       onBoatTotal: 'On board',
       onBoatTotalSummary: (riders, follow) => `${riders + follow} (${riders} riding + ${follow} non-riding)`,
       memberPrefill: 'Member info pre-filled — you can edit',
@@ -924,6 +953,11 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       labelContact: 'Contact: ',
       labelEstimate: 'Estimate: ',
       labelNotes: 'Notes: ',
+      headcountValue: (riders, follow) => {
+        const riderWord = `${riders} rider${riders > 1 ? 's' : ''}`
+        if (follow <= 0) return riderWord
+        return `${riderWord} + ${follow} non-rider${follow > 1 ? 's' : ''}`
+      },
       experienceLine: (headcount, beginnerCount) => {
         if (beginnerCount == null) return '—'
         if (beginnerCount >= headcount) {

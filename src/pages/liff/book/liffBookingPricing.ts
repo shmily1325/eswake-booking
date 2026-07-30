@@ -70,7 +70,7 @@ export function computeDuration(
 
   const expPart = experienced > 0
 
-    ? locale === 'zh' ? `、${experienced} 位已滑過` : `, ${experienced} experienced`
+    ? locale === 'zh' ? `、已滑過 ${experienced} 人` : `, ${experienced} experienced`
 
     : ''
 

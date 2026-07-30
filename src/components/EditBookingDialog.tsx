@@ -7,7 +7,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import { normalizeFilledByForSave } from '../utils/filledByHelper'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
-import { isFacility } from '../utils/facility'
+import { isFacility, isOverlapAllowed } from '../utils/facility'
 import type { Booking } from '../types/booking'
 import { useToast } from './ui'
 
@@ -122,13 +122,13 @@ export function EditBookingDialog({
   const [conflictStatus, setConflictStatus] = useState<'checking' | 'available' | 'conflict' | null>(null)
   const [conflictMessage, setConflictMessage] = useState('')
   const alternatives = useBookingAlternatives({
-    enabled: isOpen && conflictStatus === 'conflict',
+    enabled: isOpen && !!selectedBoatId && selectedCoaches.length > 0,
     date: startDate,
-    startTime,
     durationMin,
     selectedBoatId,
-    boats,
     coachIds: selectedCoaches,
+    isFacility: isSelectedBoatFacility,
+    allowOverlap: isOverlapAllowed(boats?.find(b => b.id === selectedBoatId)?.name),
     excludeBookingId: booking?.id,
   })
 
@@ -193,11 +193,6 @@ export function EditBookingDialog({
   const handleSelectAlternativeTime = (time: string) => {
     setConflictStatus('checking')
     setStartTime(time)
-  }
-
-  const handleSelectAlternativeBoat = (boatId: number) => {
-    setConflictStatus('checking')
-    setSelectedBoatId(boatId)
   }
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -978,7 +973,7 @@ export function EditBookingDialog({
             isSelectedBoatFacility={isSelectedBoatFacility}
           />
 
-          {/* 4. 時間選擇（開始日期+開始時間+時長） */}
+          {/* 4. 時間選擇（開始日期 + 時長 + 可預約時段 + 開始時間） */}
           <TimeSelector
             startDate={startDate}
             setStartDate={setStartDate}
@@ -986,6 +981,16 @@ export function EditBookingDialog({
             setStartTime={setStartTime}
             durationMin={durationMin}
             setDurationMin={setDurationMin}
+            afterDate={
+              <BookingAlternativeSuggestions
+                status={alternatives.status}
+                allDayTimes={alternatives.allDayTimes}
+                selectedTime={startTime}
+                isMobile={isMobile}
+                onSelectTime={handleSelectAlternativeTime}
+                onRetry={alternatives.retry}
+              />
+            }
           />
 
           <BookingDetails
@@ -1016,19 +1021,6 @@ export function EditBookingDialog({
             }}>
               {conflictStatus === 'checking' ? '檢查中...' : conflictMessage}
             </div>
-          )}
-
-          {conflictStatus === 'conflict' && (
-            <BookingAlternativeSuggestions
-              status={alternatives.status}
-              nearbyTimes={alternatives.nearbyTimes}
-              otherBoats={alternatives.otherBoats}
-              originalTime={startTime}
-              hasSelectedCoach={selectedCoaches.length > 0}
-              isMobile={isMobile}
-              onSelectTime={handleSelectAlternativeTime}
-              onSelectBoat={(boat) => handleSelectAlternativeBoat(boat.id)}
-            />
           )}
 
           </form>

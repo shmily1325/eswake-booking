@@ -131,6 +131,7 @@ vi.mock('../../hooks/useBookingForm', () => ({
 
 vi.mock('../../utils/facility', () => ({
   isFacility: (name: string) => name.includes('設施'),
+  isOverlapAllowed: () => false,
 }))
 
 describe('EditBookingDialog - integration cleanup when requires_driver=false', () => {

@@ -60,6 +60,22 @@ export async function loadBoatPartMovements(
   return (data ?? []) as BoatPartMovement[]
 }
 
+export async function loadBoatPartMovementLedger(
+  limit = 500,
+): Promise<BoatPartMovement[]> {
+  const { data, error } = await supabase
+    .from('boat_part_movements')
+    .select(
+      'id, part_id, movement_type, quantity, boat_code, note, moved_at, created_by_email, affects_inventory',
+    )
+    .in('movement_type', ['inbound', 'outbound'])
+    .order('moved_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return (data ?? []) as BoatPartMovement[]
+}
+
 export async function applyBoatPartMovement(
   input: ApplyBoatPartMovementInput,
 ): Promise<MovementResult> {

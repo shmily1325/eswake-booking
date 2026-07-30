@@ -33,8 +33,9 @@ export function BookConfirmSummary({
 
   const activityLabel = form.activity ? activityDisplayName(form.activity) : '—'
   const peopleParts = [
-    `${form.headcount} ${s.step4.people}`,
-    s.step2.experienceSummary(form.headcount, form.beginnerCount),
+    s.step2.peopleLine(form.headcount, form.beginnerCount, {
+      ridingPrefix: locale === 'zh' && form.followBoatCount > 0,
+    }),
   ]
   if (form.followBoatCount > 0) {
     peopleParts.push(s.step4.followBoatSummary(form.followBoatCount))

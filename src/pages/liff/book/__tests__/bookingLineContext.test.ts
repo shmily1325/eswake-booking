@@ -23,7 +23,7 @@ describe('bookingLineContext', () => {
 
   it('builds party line with boat layout and follow boat', () => {
     expect(buildBookingPartyLine(form, 'zh')).toBe(
-      '寬板滑水 · 3 人 · 2 位體驗 · 1 位已滑過 · 小船 · 跟船 1 位',
+      '寬板滑水 · 滑水 3 人（體驗 2、已滑過 1） · 小船 · 跟船 1 人',
     )
   })
 })

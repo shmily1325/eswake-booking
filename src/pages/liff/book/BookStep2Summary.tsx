@@ -6,7 +6,7 @@ import type { LiffBookingFormState } from './types'
 
 type Step2SummaryForm = Pick<
   LiffBookingFormState,
-  'activity' | 'headcount' | 'beginnerCount' | 'boatPreference'
+  'activity' | 'headcount' | 'beginnerCount' | 'boatPreference' | 'followBoatCount'
 >
 
 export function buildStep2SummaryLine(
@@ -17,12 +17,14 @@ export function buildStep2SummaryLine(
   if (form.beginnerCount == null) return null
   if (form.activity === 'WB' && !form.boatPreference) return null
 
-  const parts: string[] = [s.step2.summaryPeople(form.headcount)]
+  const parts: string[] = [
+    s.step2.peopleLine(form.headcount, form.beginnerCount, {
+      ridingPrefix: form.followBoatCount > 0,
+    }),
+  ]
 
-  if (form.beginnerCount > 0 && form.beginnerCount < form.headcount) {
-    parts.push(s.step2.partialDetail(form.beginnerCount, form.headcount))
-  } else {
-    parts.push(s.step2.experienceSummary(form.headcount, form.beginnerCount))
+  if (form.followBoatCount > 0) {
+    parts.push(s.step4.followBoatSummary(form.followBoatCount))
   }
 
   if (form.activity === 'WB' && form.boatPreference) {

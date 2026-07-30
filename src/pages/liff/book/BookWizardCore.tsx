@@ -434,6 +434,13 @@ export function BookWizardCore({
               <BookPricingLegend activity={form.activity} />
             ) : null}
 
+            <BookFollowBoatPanel
+              flat
+              riders={form.headcount}
+              value={form.followBoatCount}
+              onChange={count => setForm(prev => ({ ...prev, followBoatCount: count }))}
+            />
+
             {form.activity === 'WB' ? (
               <>
                 <hr style={bookSectionDivider} aria-hidden />
@@ -444,13 +451,6 @@ export function BookWizardCore({
                 />
               </>
             ) : null}
-
-            <BookFollowBoatPanel
-              flat
-              riders={form.headcount}
-              value={form.followBoatCount}
-              onChange={count => setForm(prev => ({ ...prev, followBoatCount: count }))}
-            />
 
             <BookContextTips step={2} form={form} pickTimePref={pickTimePref} />
 

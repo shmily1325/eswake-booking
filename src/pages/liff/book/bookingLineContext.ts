@@ -32,15 +32,11 @@ export function buildBookingPartyParts(
 
   if (options.includeParty === false) return parts
 
-  parts.push(s.step2.summaryPeople(form.headcount))
-
-  if (form.beginnerCount != null) {
-    if (form.beginnerCount > 0 && form.beginnerCount < form.headcount) {
-      parts.push(s.step2.partialDetail(form.beginnerCount, form.headcount))
-    } else {
-      parts.push(s.step2.experienceSummary(form.headcount, form.beginnerCount))
-    }
-  }
+  parts.push(
+    s.step2.peopleLine(form.headcount, form.beginnerCount, {
+      ridingPrefix: locale === 'zh' && form.followBoatCount > 0,
+    }),
+  )
 
   if (form.activity && (form.activity !== 'WB' || form.boatPreference)) {
     parts.push(
@@ -55,7 +51,7 @@ export function buildBookingPartyParts(
   }
 
   if (form.followBoatCount > 0) {
-    parts.push(s.step2.followBoat.selected(form.followBoatCount))
+    parts.push(s.step4.followBoatSummary(form.followBoatCount))
   }
 
   return parts
@@ -121,16 +117,8 @@ function buildBookingCoachValue(
 }
 
 function buildBookingHeadcountValue(form: LiffBookingFormState, locale: BookLocale): string {
-  const s = BOOK_I18N[locale]
-  let line = locale === 'en'
-    ? `${form.headcount} rider${form.headcount > 1 ? 's' : ''}`
-    : `${form.headcount} 人`
-  if (form.followBoatCount > 0) {
-    line += locale === 'en'
-      ? ` (${form.followBoatCount} non-rider${form.followBoatCount > 1 ? 's' : ''})`
-      : `（${s.step2.followBoat.selected(form.followBoatCount)}）`
-  }
-  return line
+  const m = BOOK_I18N[locale].lineMessage
+  return m.headcountValue(form.headcount, form.followBoatCount)
 }
 
 function buildBookingActivityValue(form: LiffBookingFormState, locale: BookLocale): string {

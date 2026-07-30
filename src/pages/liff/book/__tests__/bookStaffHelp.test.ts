@@ -34,7 +34,7 @@ describe('booking LINE messages share compact format', () => {
   it('staff help uses short opener and dot-separated party line', () => {
     const msg = buildStaffHelpMessage(2, baseForm, [], 'zh')
     expect(msg).toBe(
-      '嗨，預約想請教～\n寬板滑水 · 3 人 · 2 位體驗 · 1 位已滑過 · 小船\n\n想請教：',
+      '嗨，預約想請教～\n寬板滑水 · 3 人（體驗 2、已滑過 1） · 小船\n\n想請教：',
     )
   })
 
@@ -56,7 +56,7 @@ describe('booking LINE messages share compact format', () => {
         '預約項目：寬板滑水（小船）',
         '希望預約的日期及時間：6/15（一） 上午',
         '是否指定教練：不指定',
-        '是否是第一次滑：2 位第一次、1 位已滑過',
+        '滑水經驗：第一次 2 人、已滑過 1 人',
         '',
         '聯絡人：王小明 · 0912345678',
         '參考價：約 $5,100（參考）',
@@ -74,6 +74,16 @@ describe('booking LINE messages share compact format', () => {
       estimate,
     )
     expect(msg).toContain('備註：希望指定 ED')
+  })
+
+  it('submit message clarifies follow-boat is extra', () => {
+    const msg = renderBookingSubmitMessage(
+      { ...baseForm, headcount: 4, beginnerCount: 4, followBoatCount: 1 },
+      [],
+      'zh',
+      estimate,
+    )
+    expect(msg).toContain('預約人數：滑水 4 人＋跟船 1 人')
   })
 
   it('prefills split-activity question on step 1', () => {

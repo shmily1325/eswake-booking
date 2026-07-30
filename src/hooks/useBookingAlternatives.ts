@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ALTERNATIVE_BOAT_NAMES,
-  type AlternativeBoat,
+  type AvailableSlotsStatus,
   type BookingAlternatives,
   fetchBookingAlternativeContext,
   findBookingAlternatives,
@@ -10,123 +9,116 @@ import {
 interface UseBookingAlternativesInput {
   enabled: boolean
   date: string
-  startTime: string
   durationMin: number
   selectedBoatId: number
-  boats: AlternativeBoat[]
   coachIds: string[]
+  isFacility?: boolean
+  allowOverlap?: boolean
   excludeBookingId?: number
 }
 
 interface BookingAlternativeState extends BookingAlternatives {
-  status: 'idle' | 'loading' | 'ready' | 'error'
+  status: AvailableSlotsStatus
+  retry: () => void
 }
 
-const EMPTY_STATE: BookingAlternativeState = {
-  status: 'idle',
-  nearbyTimes: [],
-  otherBoats: [],
-}
+const RETRY_DELAY_MS = 600
 
 export function useBookingAlternatives({
   enabled,
   date,
-  startTime,
   durationMin,
   selectedBoatId,
-  boats,
   coachIds,
+  isFacility,
+  allowOverlap,
   excludeBookingId,
 }: UseBookingAlternativesInput): BookingAlternativeState {
   const requestIdRef = useRef(0)
-  const [state, setState] = useState<BookingAlternativeState>(EMPTY_STATE)
+  const [status, setStatus] = useState<AvailableSlotsStatus>('idle')
+  const [allDayTimes, setAllDayTimes] = useState<string[]>([])
+  const [reloadKey, setReloadKey] = useState(0)
+  const coachIdsKey = coachIds.join(',')
 
-  const supportedBoats = useMemo(
-    () =>
-      boats.filter((boat) =>
-        ALTERNATIVE_BOAT_NAMES.includes(
-          boat.name as (typeof ALTERNATIVE_BOAT_NAMES)[number],
-        ),
-      ),
-    [boats],
-  )
-  const supportedBoatIds = useMemo(
-    () => supportedBoats.map((boat) => boat.id),
-    [supportedBoats],
-  )
-  const selectedBoatIsSupported = supportedBoatIds.includes(selectedBoatId)
+  const retry = useCallback(() => setReloadKey((key) => key + 1), [])
 
   useEffect(() => {
     const requestId = ++requestIdRef.current
+    const resolvedCoachIds = coachIdsKey ? coachIdsKey.split(',') : []
+    const canQuery = enabled && !!date && !!selectedBoatId && resolvedCoachIds.length > 0
 
-    if (
-      !enabled ||
-      !date ||
-      !startTime ||
-      durationMin <= 0 ||
-      !selectedBoatIsSupported ||
-      supportedBoatIds.length === 0
-    ) {
-      setState(EMPTY_STATE)
+    if (!canQuery) {
+      setStatus('idle')
+      setAllDayTimes([])
       return
     }
 
-    setState({
-      status: 'loading',
-      nearbyTimes: [],
-      otherBoats: [],
-    })
+    if (durationMin <= 0) {
+      setStatus('awaiting-duration')
+      setAllDayTimes([])
+      return
+    }
 
-    const load = async () => {
+    setStatus('loading')
+    setAllDayTimes([])
+
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+
+    // Transient network hiccups are common on mobile; retry once before surfacing an error.
+    const load = async (attempt: number): Promise<void> => {
       try {
         const context = await fetchBookingAlternativeContext({
           date,
-          boatIds: supportedBoatIds,
-          coachIds,
+          boatIds: [selectedBoatId],
+          coachIds: resolvedCoachIds,
         })
         if (requestId !== requestIdRef.current) return
 
         const alternatives = findBookingAlternatives(
           {
             date,
-            startTime,
             durationMin,
             selectedBoatId,
-            boats: supportedBoats,
-            coachIds,
+            coachIds: resolvedCoachIds,
+            isFacility,
+            allowOverlap,
             excludeBookingId,
           },
           context,
         )
-        setState({ status: 'ready', ...alternatives })
+        setStatus('ready')
+        setAllDayTimes(alternatives.allDayTimes)
       } catch (error) {
         if (requestId !== requestIdRef.current) return
-        console.error('載入預約替代方案失敗:', error)
-        setState({
-          status: 'error',
-          nearbyTimes: [],
-          otherBoats: [],
-        })
+        if (attempt === 0) {
+          retryTimer = setTimeout(() => {
+            if (requestId === requestIdRef.current) void load(1)
+          }, RETRY_DELAY_MS)
+          return
+        }
+        console.error('載入可預約時段失敗:', error)
+        setStatus('error')
+        setAllDayTimes([])
       }
     }
 
-    void load()
+    void load(0)
 
     return () => {
+      if (retryTimer) clearTimeout(retryTimer)
       if (requestId === requestIdRef.current) requestIdRef.current += 1
     }
   }, [
     enabled,
     date,
-    startTime,
     durationMin,
     selectedBoatId,
-    selectedBoatIsSupported,
-    supportedBoatIds,
-    supportedBoats,
-    coachIds,
+    coachIdsKey,
+    isFacility,
+    allowOverlap,
     excludeBookingId,
+    reloadKey,
   ])
 
-  return state
+  return { status, allDayTimes, retry }
 }

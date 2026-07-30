@@ -6,7 +6,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import { normalizeFilledByForSave } from '../utils/filledByHelper'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
-import { isFacility } from '../utils/facility'
+import { isFacility, isOverlapAllowed } from '../utils/facility'
 import { BoatSelector } from './booking/BoatSelector'
 import { TimeSelector } from './booking/TimeSelector'
 import { MemberSelector } from './booking/MemberSelector'
@@ -117,13 +117,13 @@ export function NewBookingDialog({
   const [conflictStatus, setConflictStatus] = useState<'checking' | 'available' | 'conflict' | null>(null)
   const [conflictMessage, setConflictMessage] = useState('')
   const alternatives = useBookingAlternatives({
-    enabled: isOpen && conflictStatus === 'conflict',
+    enabled: isOpen && !!selectedBoatId && selectedCoaches.length > 0,
     date: startDate,
-    startTime,
     durationMin,
     selectedBoatId,
-    boats,
     coachIds: selectedCoaches,
+    isFacility: isSelectedBoatFacility,
+    allowOverlap: isOverlapAllowed(boats?.find(b => b.id === selectedBoatId)?.name),
   })
 
   // 只在對話框開啟時抓一次資料；用 ref 取得最新的 fetchAllData，
@@ -358,11 +358,6 @@ export function NewBookingDialog({
     setStartTime(time)
   }
 
-  const handleSelectAlternativeBoat = (boatId: number) => {
-    setConflictStatus('checking')
-    setSelectedBoatId(boatId)
-  }
-
   return (
     <div
       style={{
@@ -480,7 +475,7 @@ export function NewBookingDialog({
             isSelectedBoatFacility={isSelectedBoatFacility}
           />
 
-          {/* 4. 時間選擇（開始日期+開始時間+時長） */}
+          {/* 4. 時間選擇（開始日期 + 時長 + 可預約時段 + 開始時間） */}
           <TimeSelector
             startDate={startDate}
             setStartDate={setStartDate}
@@ -488,6 +483,16 @@ export function NewBookingDialog({
             setStartTime={setStartTime}
             durationMin={durationMin}
             setDurationMin={setDurationMin}
+            afterDate={
+              <BookingAlternativeSuggestions
+                status={alternatives.status}
+                allDayTimes={alternatives.allDayTimes}
+                selectedTime={startTime}
+                isMobile={isMobile}
+                onSelectTime={handleSelectAlternativeTime}
+                onRetry={alternatives.retry}
+              />
+            }
           />
 
           {/* 即時衝突回饋 */}
@@ -507,19 +512,6 @@ export function NewBookingDialog({
             }}>
               {conflictStatus === 'checking' ? '檢查中...' : conflictMessage}
                 </div>
-          )}
-
-          {conflictStatus === 'conflict' && (
-            <BookingAlternativeSuggestions
-              status={alternatives.status}
-              nearbyTimes={alternatives.nearbyTimes}
-              otherBoats={alternatives.otherBoats}
-              originalTime={startTime}
-              hasSelectedCoach={selectedCoaches.length > 0}
-              isMobile={isMobile}
-              onSelectTime={handleSelectAlternativeTime}
-              onSelectBoat={(boat) => handleSelectAlternativeBoat(boat.id)}
-            />
           )}
 
           {/* 5. 活動類型與註解 */}

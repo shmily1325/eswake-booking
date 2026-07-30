@@ -665,7 +665,7 @@ export function RepeatBookingDialog({
             isSelectedBoatFacility={isSelectedBoatFacility}
           />
 
-          {/* 自選日期與時間（與新增預約邏輯對齊：先日期後時間） */}
+          {/* 自選日期與時間（與新增預約對齊：日期 → 時長 → 開始時間） */}
           <>
             {/* 自選日期（取代開始日期概念） */}
             <div style={{ marginBottom: designSystem.spacing.lg }}>
@@ -683,6 +683,7 @@ export function RepeatBookingDialog({
 
             <TimeSelector
               showDate={false}
+              durationBeforeTime
               startTime={startTime}
               setStartTime={setStartTime}
               durationMin={durationMin}

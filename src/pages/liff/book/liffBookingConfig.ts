@@ -70,7 +70,7 @@ export function beginnerCountOptions(headcount: number): number[] {
 }
 
 export function formatBeginnerCount(n: number): string {
-  return `${n} 位體驗`
+  return `體驗 ${n} 人`
 }
 
 /** Step 2／確認頁：體驗人數摘要 */
