@@ -571,7 +571,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       labelActivity: '預約項目：',
       labelDates: '希望預約的日期及時間：',
       labelCoach: '是否指定教練：',
-      labelExperience: '滑水經驗：',
+      labelExperience: '是否是第一次滑：',
       labelContact: '聯絡人：',
       labelEstimate: '參考價：',
       labelNotes: '備註：',
@@ -582,12 +582,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       experienceLine: (headcount, beginnerCount) => {
         if (beginnerCount == null) return '—'
         if (beginnerCount >= headcount) {
-          return headcount === 1 ? '第一次' : '全部第一次'
+          return headcount === 1 ? '是' : '是（全部）'
         }
         if (beginnerCount === 0) {
-          return headcount === 1 ? '已滑過' : '全部已滑過'
+          return headcount === 1 ? '否（已滑過）' : '否（全部已滑過）'
         }
-        return `第一次 ${beginnerCount} 人、已滑過 ${headcount - beginnerCount} 人`
+        return `${beginnerCount} 人第一次、${headcount - beginnerCount} 人已滑過`
       },
       coachLine: name => `教練 ${name}`,
       coachNone: '不指定',

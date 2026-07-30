@@ -82,7 +82,7 @@ export function BookingAlternativeSuggestions({
           minHeight: touchMinHeight,
           padding: designSystem.spacing.md,
           border: 'none',
-          background: 'transparent',
+          background: designSystem.colors.info[50],
           color: expandable
             ? designSystem.colors.text.primary
             : designSystem.colors.text.secondary,
@@ -95,7 +95,7 @@ export function BookingAlternativeSuggestions({
         }}
       >
         <span>{title}</span>
-        <span aria-hidden="true" style={{ color: designSystem.colors.text.secondary }}>
+        <span aria-hidden="true" style={{ color: designSystem.colors.info[500] }}>
           {status === 'error' ? '↻' : expandable ? (open ? '▲' : '▼') : ''}
         </span>
       </button>
