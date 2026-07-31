@@ -10,7 +10,6 @@ import {
 export const ABUNDANT_AVAILABLE_SLOT_THRESHOLD = 20
 
 const SLOT_STEP_MINUTES = 15
-const QUARTER_MINUTES = [0, 15, 30, 45] as const
 const MINUTES_PER_DAY = 24 * 60
 const EARLIEST_ALTERNATIVE_START_MINUTES = 5 * 60
 const LATEST_ALTERNATIVE_END_MINUTES = 19 * 60
@@ -284,41 +283,6 @@ function isCandidateAvailable(
       input.excludeBookingId,
     )
   )
-}
-
-export interface AvailableHourSlot {
-  time: string
-  available: boolean
-}
-
-export interface AvailableHourRow {
-  hourLabel: string
-  slots: AvailableHourSlot[]
-}
-
-/** 每列一個整點，固定四欄 :00 / :15 / :30 / :45；整點全空則隱藏。 */
-export function buildAvailableHourRows(allDayTimes: string[]): AvailableHourRow[] {
-  if (allDayTimes.length === 0) return []
-
-  const available = new Set(allDayTimes)
-  const hours = new Set(
-    allDayTimes.map((time) => Math.floor(timeToMinutes(time) / 60)),
-  )
-  const sortedHours = [...hours].sort((left, right) => left - right)
-
-  return sortedHours.map((hour) => {
-    const hourLabel = String(hour).padStart(2, '0')
-    return {
-      hourLabel,
-      slots: QUARTER_MINUTES.map((minute) => {
-        const time = `${hourLabel}:${String(minute).padStart(2, '0')}`
-        return {
-          time,
-          available: available.has(time),
-        }
-      }),
-    }
-  })
 }
 
 export type AvailableSlotsStatus =

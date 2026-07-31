@@ -4,32 +4,91 @@ import { describe, expect, it, vi } from 'vitest'
 import { BookingAlternativeSuggestions } from '../BookingAlternativeSuggestions'
 
 describe('BookingAlternativeSuggestions', () => {
-  it('shows one hour per row and keeps unavailable quarters as quiet placeholders', () => {
+  it('packs available times continuously and separates afternoon slots', () => {
     const onSelectTime = vi.fn()
     render(
       <BookingAlternativeSuggestions
         status="ready"
-        allDayTimes={['09:00', '09:30']}
-        selectedTime="09:00"
+        allDayTimes={['05:00', '06:15', '11:30', '17:15']}
+        selectedTime="05:00"
         isMobile
         onSelectTime={onSelectTime}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '可預約時段（2 個）' }))
+    fireEvent.click(screen.getByRole('button', { name: '可預約時段（4 個）' }))
 
-    expect(screen.getByRole('button', { name: '目前 09:00' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: '改為 09:30' })).toBeEnabled()
-    expect(screen.queryByRole('button', { name: '09:15 不可預約' })).not.toBeInTheDocument()
-    expect(screen.queryByText('—')).not.toBeInTheDocument()
+    const selected = screen.getByRole('button', { name: '目前 05:00' })
+    expect(selected).toBeEnabled()
+    expect(selected).toHaveAttribute('data-track', 'booking_slots_select:05:00')
+    expect(selected).toHaveStyle({ background: '#5f8791', color: '#ffffff' })
+    expect(screen.getByRole('button', { name: '改為 06:15' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '改為 11:30' })).toBeEnabled()
+    expect(screen.getByRole('separator', { name: '下午時段' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '改為 17:15' })).toHaveAttribute(
+      'data-track',
+      'booking_slots_select:17:15',
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: '改為 09:30' }))
-    expect(onSelectTime).toHaveBeenCalledWith('09:30')
-    expect(screen.queryByRole('button', { name: '改為 09:30' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '可預約時段（2 個）' })).toHaveAttribute(
+    fireEvent.click(screen.getByRole('button', { name: '改為 17:15' }))
+    expect(onSelectTime).toHaveBeenCalledWith('17:15')
+    expect(screen.queryByRole('button', { name: '改為 17:15' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '可預約時段（4 個）' })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
+    expect(screen.getByRole('button', { name: '可預約時段（4 個）' })).toHaveAttribute(
+      'data-track',
+      'booking_slots_open',
+    )
+  })
+
+  it('tracks open/close and retry actions on the header', () => {
+    const onRetry = vi.fn()
+    const { rerender } = render(
+      <BookingAlternativeSuggestions
+        status="ready"
+        allDayTimes={['09:00']}
+        selectedTime="09:00"
+        isMobile
+        onSelectTime={vi.fn()}
+      />,
+    )
+
+    const header = screen.getByRole('button', { name: '可預約時段（1 個）' })
+    expect(header).toHaveAttribute('data-track', 'booking_slots_open')
+    fireEvent.click(header)
+    expect(header).toHaveAttribute('data-track', 'booking_slots_close')
+
+    rerender(
+      <BookingAlternativeSuggestions
+        status="error"
+        allDayTimes={[]}
+        selectedTime="09:00"
+        isMobile
+        onSelectTime={vi.fn()}
+        onRetry={onRetry}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /可預約時段（重新載入）/ })).toHaveAttribute(
+      'data-track',
+      'booking_slots_retry',
+    )
+  })
+
+  it('does not show a period divider when only morning slots are available', () => {
+    render(
+      <BookingAlternativeSuggestions
+        status="ready"
+        allDayTimes={['09:00', '11:45']}
+        selectedTime="09:00"
+        isMobile
+        onSelectTime={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '可預約時段（2 個）' }))
+    expect(screen.queryByRole('separator', { name: '下午時段' })).not.toBeInTheDocument()
   })
 
   it('labels more than 20 available slots as abundant', () => {

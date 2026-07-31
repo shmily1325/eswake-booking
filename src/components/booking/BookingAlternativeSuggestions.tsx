@@ -6,7 +6,6 @@ import {
 } from '../../styles/designSystem'
 import {
   type AvailableSlotsStatus,
-  buildAvailableHourRows,
   getAvailableSlotsTitle,
 } from '../../utils/bookingAlternatives'
 
@@ -31,7 +30,9 @@ export function BookingAlternativeSuggestions({
 
   if (status === 'idle') return null
 
-  const hourRows = buildAvailableHourRows(allDayTimes)
+  const morningTimes = allDayTimes.filter((time) => time < '12:00')
+  const afternoonTimes = allDayTimes.filter((time) => time >= '12:00')
+  const showPeriodDivider = morningTimes.length > 0 && afternoonTimes.length > 0
   const title = getAvailableSlotsTitle(allDayTimes.length, status)
   const touchMinHeight = isMobile ? '48px' : '44px'
   const expandable = status === 'loading' || status === 'ready'
@@ -41,16 +42,55 @@ export function BookingAlternativeSuggestions({
     minHeight: touchMinHeight,
     padding: `${designSystem.spacing.sm} ${designSystem.spacing.xs}`,
     border: selected
-      ? `1.5px solid ${designSystem.colors.info[500]}`
+      ? `2px solid ${designSystem.colors.info[700]}`
       : `1px solid ${designSystem.colors.info[500]}`,
-    background: designSystem.colors.info[50],
-    color: designSystem.colors.info[700],
+    background: selected
+      ? designSystem.colors.info[500]
+      : designSystem.colors.info[50],
+    color: selected ? '#ffffff' : designSystem.colors.info[700],
     fontSize: getFontSize('button', isMobile),
     fontWeight: selected ? '700' : '600',
     cursor: 'pointer',
     touchAction: 'manipulation',
     WebkitTapHighlightColor: 'transparent',
   })
+
+  const headerTrack =
+    status === 'error'
+      ? 'booking_slots_retry'
+      : open
+        ? 'booking_slots_close'
+        : 'booking_slots_open'
+
+  const renderTimeGrid = (times: string[]) => (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: designSystem.spacing.sm,
+      }}
+    >
+      {times.map((time) => {
+        const selected = time === selectedTime
+        return (
+          <button
+            key={time}
+            type="button"
+            data-track={`booking_slots_select:${time}`}
+            aria-label={selected ? `目前 ${time}` : `改為 ${time}`}
+            aria-pressed={selected}
+            onClick={() => {
+              onSelectTime(time)
+              setOpen(false)
+            }}
+            style={availableButtonStyle(selected)}
+          >
+            {time}
+          </button>
+        )
+      })}
+    </div>
+  )
 
   return (
     <div
@@ -64,6 +104,7 @@ export function BookingAlternativeSuggestions({
     >
       <button
         type="button"
+        data-track={status === 'awaiting-duration' ? undefined : headerTrack}
         aria-expanded={expandable ? open : undefined}
         disabled={status === 'awaiting-duration'}
         onClick={() => {
@@ -135,50 +176,28 @@ export function BookingAlternativeSuggestions({
                 maxHeight: isMobile ? '240px' : '280px',
                 overflowY: 'auto',
                 paddingRight: designSystem.spacing.xs,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: designSystem.spacing.sm,
               }}
             >
-              {hourRows.map((row) => (
+              {renderTimeGrid(morningTimes)}
+              {showPeriodDivider && (
                 <div
-                  key={row.hourLabel}
+                  role="separator"
+                  aria-label="下午時段"
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: designSystem.spacing.sm,
+                    margin: `${designSystem.spacing.md} 0`,
+                    color: designSystem.colors.text.secondary,
+                    fontSize: getFontSize('caption', isMobile),
                   }}
                 >
-                  {row.slots.map((slot) => {
-                    if (!slot.available) {
-                      return (
-                        <div
-                          key={slot.time}
-                          aria-hidden="true"
-                          style={{ minHeight: touchMinHeight }}
-                        />
-                      )
-                    }
-
-                    const selected = slot.time === selectedTime
-                    return (
-                      <button
-                        key={slot.time}
-                        type="button"
-                        aria-label={selected ? `目前 ${slot.time}` : `改為 ${slot.time}`}
-                        aria-pressed={selected}
-                        onClick={() => {
-                          onSelectTime(slot.time)
-                          setOpen(false)
-                        }}
-                        style={availableButtonStyle(selected)}
-                      >
-                        {slot.time}
-                      </button>
-                    )
-                  })}
+                  <span style={{ height: '1px', flex: 1, background: designSystem.colors.border.light }} />
+                  <span>下午</span>
+                  <span style={{ height: '1px', flex: 1, background: designSystem.colors.border.light }} />
                 </div>
-              ))}
+              )}
+              {renderTimeGrid(afternoonTimes)}
             </div>
           )}
         </div>

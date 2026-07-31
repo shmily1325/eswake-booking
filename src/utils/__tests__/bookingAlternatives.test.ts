@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   ABUNDANT_AVAILABLE_SLOT_THRESHOLD,
   type BookingAlternativeContext,
-  buildAvailableHourRows,
   findBookingAlternatives,
   getAvailableSlotsTitle,
 } from '../bookingAlternatives'
@@ -163,30 +162,6 @@ describe('findBookingAlternatives', () => {
         return hour * 60 + minute + 60 <= 19 * 60
       }),
     ).toBe(true)
-  })
-})
-
-describe('buildAvailableHourRows', () => {
-  it('每列固定四個刻度，整點全空則隱藏', () => {
-    const rows = buildAvailableHourRows(['09:00', '09:30', '11:15'])
-
-    expect(rows).toHaveLength(2)
-    expect(rows[0]).toEqual({
-      hourLabel: '09',
-      slots: [
-        { time: '09:00', available: true },
-        { time: '09:15', available: false },
-        { time: '09:30', available: true },
-        { time: '09:45', available: false },
-      ],
-    })
-    expect(rows[1].hourLabel).toBe('11')
-    expect(rows[1].slots.map((slot) => slot.available)).toEqual([
-      false,
-      true,
-      false,
-      false,
-    ])
   })
 })
 
