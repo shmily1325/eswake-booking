@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useLatestRequest } from './useLatestRequest'
 import {
   type CoachTimeOffRow,
   isCoachFullyOffOnDate,
@@ -36,11 +37,16 @@ export function useDailyStaff(date: string): UseDailyStaffResult {
   const [allStaff, setAllStaff] = useState<StaffMember[]>([])
   const [loadedDate, setLoadedDate] = useState<string | null>(null)
   const [isReloading, setIsReloading] = useState(false)
+  const beginLoad = useLatestRequest(date)
   const loading = loadedDate !== date || isReloading
 
   const loadStaffData = async () => {
-    setIsReloading(true)
     const requestedDate = date
+    // 過期的請求若寫回 loadedDate，loading 會永遠是 true 且不會再有新的載入
+    const isCurrent = beginLoad(requestedDate)
+    if (!isCurrent()) return
+
+    setIsReloading(true)
     try {
       const [coachesResult, timeOffResult] = await Promise.all([
         supabase
@@ -54,6 +60,8 @@ export function useDailyStaff(date: string): UseDailyStaffResult {
           .lte('start_date', requestedDate)
           .gte('end_date', requestedDate),
       ])
+
+      if (!isCurrent()) return
 
       if (coachesResult.error) {
         console.error('載入教練失敗:', coachesResult.error)
@@ -77,10 +85,13 @@ export function useDailyStaff(date: string): UseDailyStaffResult {
       setLoadedDate(requestedDate)
     } catch (error) {
       console.error('載入人員資料失敗:', error)
+      if (!isCurrent()) return
       setAllStaff([])
       setLoadedDate(requestedDate)
     } finally {
-      setIsReloading(false)
+      if (isCurrent()) {
+        setIsReloading(false)
+      }
     }
   }
 

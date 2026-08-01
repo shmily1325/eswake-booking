@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useDailyStaff } from '../hooks/useDailyStaff'
+import { useDailyStaff, type StaffMember } from '../hooks/useDailyStaff'
 import { formatStaffTimeOffBadgeLabel } from '../utils/coachTimeOff'
 import { filterTimeOffStaffDisplay, filterWorkingStaffDisplay } from '../utils/dailyStaffDisplay'
 import { designSystem, styles, getResponsiveStyles } from '../styles/designSystem'
@@ -15,7 +15,35 @@ interface DailyStaffDisplayProps {
  * 使用共用的 useDailyStaff hook
  */
 export function DailyStaffDisplay({ date, isMobile, unassignedCount }: DailyStaffDisplayProps) {
-  const { workingStaff, allStaff, loading } = useDailyStaff(date)
+  const { allStaff, loading } = useDailyStaff(date)
+  return (
+    <DailyStaffDisplayContent
+      date={date}
+      isMobile={isMobile}
+      unassignedCount={unassignedCount}
+      allStaff={allStaff}
+      loading={loading}
+    />
+  )
+}
+
+interface DailyStaffDisplayContentProps extends DailyStaffDisplayProps {
+  allStaff: StaffMember[]
+  loading: boolean
+}
+
+/** 純顯示版本，供已載入 useDailyStaff 的頁面重用，避免相同日期重複查詢。 */
+export function DailyStaffDisplayContent({
+  date,
+  isMobile,
+  unassignedCount,
+  allStaff,
+  loading,
+}: DailyStaffDisplayContentProps) {
+  const workingStaff = useMemo(
+    () => allStaff.filter(staff => !staff.isOnTimeOff),
+    [allStaff]
+  )
   const rs = getResponsiveStyles(isMobile)
 
   const visibleWorkingStaff = useMemo(

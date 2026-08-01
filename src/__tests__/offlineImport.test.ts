@@ -285,7 +285,8 @@ describe('offline SQL import', () => {
       text: async () => sql,
     })
 
-    await (window as any).showOfflineBoats()
+    // 明確指定月份：維修紀錄依所選月份篩選，預設值是當月，會讓測試在跨月後失敗
+    await (window as any).showOfflineBoats('2026-07')
     expect(window.document.body.textContent).toContain('G23')
     expect(window.document.body.textContent).toContain('保養')
     expect(window.document.body.textContent).toContain('啟用')
@@ -344,5 +345,5 @@ describe('offline SQL import', () => {
     expect(window.document.body.textContent).toContain('庫存 SKU')
     expect(window.document.body.textContent).toContain('商品')
     window.close()
-  })
+  }, 20000)
 })

@@ -10,6 +10,8 @@ export interface BookingDateNavProps {
   onNextDate: () => void
   onGoToToday: () => void
   isMobile?: boolean
+  /** 日期資料載入期間停用日期切換，避免重疊請求。 */
+  disabled?: boolean
   todayDisabled?: boolean
   showScheduleLink?: boolean
   scheduleLinkTo?: string
@@ -23,7 +25,7 @@ export interface BookingDateNavProps {
   marginBottom?: string
 }
 
-const navArrowStyle = (isMobile: boolean): CSSProperties => ({
+const navArrowStyle = (isMobile: boolean, disabled: boolean): CSSProperties => ({
   background: 'transparent',
   border: `1px solid ${designSystem.colors.border.main}`,
   borderRadius: designSystem.borderRadius.lg,
@@ -36,11 +38,12 @@ const navArrowStyle = (isMobile: boolean): CSSProperties => ({
   justifyContent: 'center',
   fontSize: '18px',
   color: designSystem.colors.text.primary,
-  cursor: 'pointer',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.55 : 1,
   flexShrink: 0,
 })
 
-const dateInputStyle = (isMobile: boolean): CSSProperties => ({
+const dateInputStyle = (isMobile: boolean, disabled: boolean): CSSProperties => ({
   width: isMobile ? '100%' : undefined,
   height: isMobile ? '44px' : undefined,
   padding: isMobile ? '0 12px' : '8px 14px',
@@ -53,6 +56,8 @@ const dateInputStyle = (isMobile: boolean): CSSProperties => ({
   outline: 'none',
   boxSizing: 'border-box',
   boxShadow: designSystem.shadows.xs,
+  cursor: disabled ? 'not-allowed' : undefined,
+  opacity: disabled ? 0.55 : 1,
 })
 
 export function BookingDateNav({
@@ -62,6 +67,7 @@ export function BookingDateNav({
   onNextDate,
   onGoToToday,
   isMobile = false,
+  disabled = false,
   todayDisabled = false,
   showScheduleLink = false,
   scheduleLinkTo,
@@ -115,8 +121,9 @@ export function BookingDateNav({
       <button
         type="button"
         data-track={prevTrackId}
-        onClick={onPrevDate}
-        style={navArrowStyle(isMobile)}
+        onClick={disabled ? undefined : onPrevDate}
+        disabled={disabled}
+        style={navArrowStyle(isMobile, disabled)}
         aria-label="前一天"
       >
         ←
@@ -125,10 +132,12 @@ export function BookingDateNav({
       <div style={{ flex: isMobile ? 1 : undefined, position: 'relative', minWidth: isMobile ? 0 : undefined }}>
         <input
           type="date"
+          aria-label="日期"
           data-track={dateTrackId}
           value={date}
-          onChange={onDateChange}
-          style={dateInputStyle(isMobile)}
+          onChange={disabled ? undefined : onDateChange}
+          disabled={disabled}
+          style={dateInputStyle(isMobile, disabled)}
         />
         {isMobile && weekdayBadge}
       </div>
@@ -138,8 +147,9 @@ export function BookingDateNav({
       <button
         type="button"
         data-track={nextTrackId}
-        onClick={onNextDate}
-        style={navArrowStyle(isMobile)}
+        onClick={disabled ? undefined : onNextDate}
+        disabled={disabled}
+        style={navArrowStyle(isMobile, disabled)}
         aria-label="後一天"
       >
         →
@@ -148,8 +158,8 @@ export function BookingDateNav({
       <button
         type="button"
         data-track={todayTrackId}
-        onClick={onGoToToday}
-        disabled={todayDisabled}
+        onClick={todayDisabled || disabled ? undefined : onGoToToday}
+        disabled={todayDisabled || disabled}
         style={{
           ...(isMobile
             ? {
@@ -162,10 +172,10 @@ export function BookingDateNav({
                 fontWeight: 500,
                 color: designSystem.colors.text.secondary,
                 whiteSpace: 'nowrap',
-                cursor: todayDisabled ? 'default' : 'pointer',
-                opacity: todayDisabled ? 0.55 : 1,
+                cursor: todayDisabled || disabled ? 'not-allowed' : 'pointer',
+                opacity: todayDisabled || disabled ? 0.55 : 1,
               }
-            : getButtonStyle('secondary', 'medium', todayDisabled)),
+            : getButtonStyle('secondary', 'medium', todayDisabled || disabled)),
           flexShrink: 0,
           minWidth: isMobile ? undefined : '100px',
         }}

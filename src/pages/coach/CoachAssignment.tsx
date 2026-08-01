@@ -11,13 +11,14 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
-import { DailyStaffDisplay } from '../../components/DailyStaffDisplay'
+import { DailyStaffDisplayContent } from '../../components/DailyStaffDisplay'
 import { Footer } from '../../components/Footer'
 import { BookingDateNav } from '../../components/BookingDateNav'
 import { TodayOverview } from '../../components/TodayOverview'
 import { PageShell } from '../../components/PageShell'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useDailyStaff } from '../../hooks/useDailyStaff'
+import { useLatestRequest } from '../../hooks/useLatestRequest'
 import { designSystem, getButtonStyle, getFontSize } from '../../styles/designSystem'
 import { isAdmin, hasEditorFeatureAsync } from '../../utils/auth'
 import { logCoachAssignment } from '../../utils/auditLog'
@@ -318,9 +319,10 @@ export function CoachAssignment() {
   const [selectedDate, setSelectedDate] = useState<string>(validatedDate)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
+  const beginLoadBookings = useLatestRequest(selectedDate)
   
   // 使用共用 hook 取得當天上班人員
-  const { allStaff: coaches } = useDailyStaff(selectedDate)
+  const { allStaff: coaches, loading: staffLoading } = useDailyStaff(selectedDate)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
@@ -472,12 +474,16 @@ export function CoachAssignment() {
   }
 
   const loadBookings = async () => {
+    const requestedDate = selectedDate
+    const isCurrent = beginLoadBookings(requestedDate)
+    if (!isCurrent()) return
+
     setLoading(true)
     setSuccess('')
     setError('')
     try {
-      const startOfDay = `${selectedDate}T00:00:00`
-      const endOfDay = `${selectedDate}T23:59:59`
+      const startOfDay = `${requestedDate}T00:00:00`
+      const endOfDay = `${requestedDate}T23:59:59`
 
       // 優化：只查詢需要的字段，減少數據傳輸
       const { data: bookingsData, error: bookingsError } = await supabase
@@ -490,11 +496,11 @@ export function CoachAssignment() {
         .limit(200) // 限制最多 200 筆，避免單日預約過多
 
       if (bookingsError) throw bookingsError
+      if (!isCurrent()) return
 
       if (!bookingsData || bookingsData.length === 0) {
         setBookings([])
         setAssignments({})
-        setLoading(false)
         return
       }
 
@@ -511,6 +517,8 @@ export function CoachAssignment() {
           .select('booking_id, driver_id')
           .in('booking_id', bookingIds)
       ])
+
+      if (!isCurrent()) return
 
       // 使用 Map 加速查找（O(n) 而不是 O(n²)）
       const coachesMap = new Map<number, string[]>()
@@ -556,9 +564,12 @@ export function CoachAssignment() {
 
     } catch (err: any) {
       console.error('載入預約失敗:', err)
+      if (!isCurrent()) return
       setError('載入排班失敗，請重新整理頁面。')
     } finally {
-      setLoading(false)
+      if (isCurrent()) {
+        setLoading(false)
+      }
     }
   }
 
@@ -1549,6 +1560,7 @@ export function CoachAssignment() {
           onNextDate={() => setSelectedDate(addDaysToDate(selectedDate, 1))}
           onGoToToday={() => setSelectedDate(getVenueDateString())}
           isMobile={isMobile}
+          disabled={loading}
           prevTrackId="coach_assignment_prev"
           nextTrackId="coach_assignment_next"
           todayTrackId="coach_assignment_today"
@@ -1661,7 +1673,12 @@ export function CoachAssignment() {
 
         {/* 當天可上班人員 - 在今日總覽下方 */}
         {!loading && (
-          <DailyStaffDisplay date={selectedDate} isMobile={isMobile} />
+          <DailyStaffDisplayContent
+            date={selectedDate}
+            isMobile={isMobile}
+            allStaff={coaches}
+            loading={staffLoading}
+          />
         )}
 
         {/* 載入中 */}

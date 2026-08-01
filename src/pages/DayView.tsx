@@ -8,6 +8,7 @@ import { EditBookingDialog } from '../components/EditBookingDialog'
 import { PageHeader } from '../components/PageHeader'
 import { PageShell } from '../components/PageShell'
 import { useResponsive } from '../hooks/useResponsive'
+import { useLatestRequest } from '../hooks/useLatestRequest'
 import { addDaysToDate, getVenueDateString } from '../utils/date'
 import { Footer } from '../components/Footer'
 import { getButtonStyle, designSystem, PAGE_MAX_WIDTHS } from '../styles/designSystem'
@@ -107,6 +108,8 @@ export function DayView() {
   const [canUseSchedule, setCanUseSchedule] = useState(false)
   const [canUseRepeatBooking, setCanUseRepeatBooking] = useState(false)
 
+  const beginFetch = useLatestRequest(dateParam)
+
   useEffect(() => {
     const checkEditorFeature = async () => {
       if (!user) return
@@ -139,6 +142,10 @@ export function DayView() {
   }
 
   const fetchData = async () => {
+    const isCurrent = beginFetch(dateParam)
+    // 可能由舊 closure（例如先前的儲存回呼）觸發；過期請求不得改變任何 UI 狀態。
+    if (!isCurrent()) return
+
     const isInitialLoad = boats.length === 0
     if (isInitialLoad) {
       setLoading(true)
@@ -166,12 +173,13 @@ export function DayView() {
           .order('start_at')
       ])
 
+      if (!isCurrent()) return
+
       const { data: boatsData, error: boatsError } = boatsResult
       const { data: bookingsData, error: bookingsError } = bookingsResult
 
       if (boatsError) {
         console.error('Error fetching boats:', boatsError)
-        setLoading(false)
         return
       }
 
@@ -182,7 +190,6 @@ export function DayView() {
 
       if (bookingsError) {
         console.error('Error fetching bookings:', bookingsError)
-        setLoading(false)
         return
       }
 
@@ -197,20 +204,24 @@ export function DayView() {
         })
       }
 
-      await fetchBookingsWithCoaches(bookingsData || [])
+      await fetchBookingsWithCoaches(bookingsData || [], isCurrent)
     } catch (error) {
       console.error('Error in fetchData:', error)
+      if (!isCurrent()) return
       toast.error('載入資料時發生錯誤：' + (error as Error).message)
     } finally {
-      setLoading(false)
-      setDateChanging(false)
+      // 過期的請求不收尾，否則會提早關掉換日期的載入遮罩
+      if (isCurrent()) {
+        setLoading(false)
+        setDateChanging(false)
+      }
     }
   }
 
-  const fetchBookingsWithCoaches = async (bookingsData: any[]) => {
+  const fetchBookingsWithCoaches = async (bookingsData: any[], isCurrent: () => boolean) => {
     if (bookingsData.length === 0) {
       setBookings([])
-      computeConflicts([]).catch(err => console.error('computeConflicts error:', err))
+      computeConflicts([], isCurrent).catch(err => console.error('computeConflicts error:', err))
       return
     }
 
@@ -241,6 +252,8 @@ export function DayView() {
         .select('booking_id, driver_id, coaches:driver_id(id, name)')
         .in('booking_id', bookingIds)
     ])
+
+    if (!isCurrent()) return
 
     if (coachesResult.error) {
       console.error('Error fetching booking coaches:', coachesResult.error)
@@ -321,7 +334,7 @@ export function DayView() {
     setBookings(bookingsWithCoaches)
 
     // 異步計算衝突（教練/駕駛衝突 + 全域限制）
-    computeConflicts(bookingsWithCoaches).catch(err => console.error('computeConflicts error:', err))
+    computeConflicts(bookingsWithCoaches, isCurrent).catch(err => console.error('computeConflicts error:', err))
   }
 
   // 當組件掛載或日期參數改變時，載入資料
@@ -332,7 +345,7 @@ export function DayView() {
   // 計算當日衝突：
   // 1) 教練/駕駛跨船重疊時段
   // 2) 與全域限制（公告）重疊
-  const computeConflicts = async (dayBookings: Booking[]) => {
+  const computeConflicts = async (dayBookings: Booking[], isCurrent: () => boolean) => {
     try {
       const conflictSet = new Set<number>()
 			const reasons = new Map<number, string>()
@@ -402,6 +415,8 @@ export function DayView() {
           .select('announcement_id')
           .eq('is_active', true),
       ])
+
+      if (!isCurrent()) return
 
       const { data: restrictionData, error: restrictionError } = restrictionResult
       const { data: boatUnavailableData, error: boatUnavailableError } = boatUnavailableResult
@@ -481,6 +496,7 @@ export function DayView() {
 			setConflictReasons(reasons)
     } catch (e) {
       console.error('Failed to compute conflicts:', e)
+      if (!isCurrent()) return
       setConflictedIds(new Set())
 			setConflictReasons(new Map())
       setBoatUnavailableBlocks([])
@@ -587,6 +603,7 @@ export function DayView() {
             onNextDate={() => changeDate(1)}
             onGoToToday={goToToday}
             showCoachAssignment={canUseSchedule}
+            disabled={dateChanging}
           />
         ) : (
           <BookingDateNav
@@ -597,6 +614,7 @@ export function DayView() {
             onGoToToday={goToToday}
             showScheduleLink={canUseSchedule}
             scheduleLinkTo={`/coach-assignment?date=${dateParam}`}
+            disabled={dateChanging}
           />
         )}
 

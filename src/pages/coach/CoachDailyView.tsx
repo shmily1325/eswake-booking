@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { PageShell } from '../../components/PageShell'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
+import { useLatestRequest } from '../../hooks/useLatestRequest'
 import {
   addDaysToDate,
   addMinutesToTime,
@@ -121,6 +122,7 @@ export function CoachDailyView() {
   const [restrictionDayBlocks, setRestrictionDayBlocks] = useState<RestrictionDayBlock[]>([])
   const [assignmentAnnouncements, setAssignmentAnnouncements] = useState<DayViewAssignmentAnnouncement[]>([])
   const hasAppliedDefaultCoachFilter = useRef(false)
+  const beginLoadBookings = useLatestRequest(dateParam)
 
   const currentUserCoach = useMemo(() => {
     const userEmail = user?.email?.trim().toLowerCase()
@@ -196,9 +198,9 @@ export function CoachDailyView() {
       loadBookings()
     ])
 
-    // 設置即時訂閱
+    // 設置即時訂閱：頻道名稱帶上日期，避免舊頻道還在非同步退出時與新頻道撞名
     const channel = supabase
-      .channel('bookings-realtime')
+      .channel(`bookings-realtime-${dateParam}`)
       .on('postgres_changes', 
         { 
           event: '*', 
@@ -249,6 +251,10 @@ export function CoachDailyView() {
 
   const loadBookings = async () => {
     const requestedDate = dateParam
+    const isCurrent = beginLoadBookings(requestedDate)
+    // 已切換日期的 realtime/舊 closure 不得重新打開載入狀態。
+    if (!isCurrent()) return
+
     const isInitialLoad = boats.length === 0
     if (isInitialLoad) {
       setLoading(true)
@@ -278,6 +284,7 @@ export function CoachDailyView() {
         .order('start_at')
 
       if (error) throw error
+      if (!isCurrent()) return
 
       const bookingIds = (data || []).map(b => b.id)
 
@@ -287,6 +294,8 @@ export function CoachDailyView() {
         supabase.from('booking_drivers').select('booking_id, driver_id, coaches:driver_id(id, name)').in('booking_id', bookingIds),
         supabase.from('booking_members').select('booking_id, member_id, members:member_id(id, name, nickname)').in('booking_id', bookingIds),
       ])
+
+      if (!isCurrent()) return
 
       const boatsData = boatsResult.data
       const coachesData = coachesResult.data
@@ -328,16 +337,19 @@ export function CoachDailyView() {
       setLastUpdate(new Date())
 
       // 計算當日衝突（教練/駕駛跨船重疊 + 全域限制）
-      computeConflicts(formattedData).catch(err => console.error('CoachDailyView computeConflicts error:', err))
+      computeConflicts(formattedData, isCurrent).catch(err => console.error('CoachDailyView computeConflicts error:', err))
     } catch (error) {
       console.error('載入預約失敗:', error)
     } finally {
-      setLoading(false)
-      setDateChanging(false)
+      // 過期的請求不收尾，否則會提早關掉換日期的載入遮罩
+      if (isCurrent()) {
+        setLoading(false)
+        setDateChanging(false)
+      }
     }
   }
 
-  const computeConflicts = async (dayBookings: Booking[]) => {
+  const computeConflicts = async (dayBookings: Booking[], isCurrent: () => boolean) => {
     try {
       const conflictSet = new Set<number>()
 		const reasons = new Map<number, string>()
@@ -404,6 +416,8 @@ export function CoachDailyView() {
 				.select('announcement_id')
 				.eq('is_active', true)
 		])
+
+		if (!isCurrent()) return
 
 		const { data: restrictionData, error: restrictionError } = restrictionResult
 		const { data: boatUnavailableData, error: boatUnavailableError } = boatUnavailableResult
@@ -480,6 +494,7 @@ export function CoachDailyView() {
 		setConflictReasons(reasons)
     } catch (e) {
       console.error('Failed to compute conflicts:', e)
+      if (!isCurrent()) return
       setConflictedIds(new Set())
 		setConflictReasons(new Map())
       setBoatUnavailableBlocks([])
@@ -939,6 +954,7 @@ export function CoachDailyView() {
           onGoToToday={goToToday}
           isMobile={isMobile}
           todayDisabled={dateParam === getVenueDateString()}
+          disabled={loadedBookingsDate !== dateParam}
           prevTrackId="coach_daily_prev"
           nextTrackId="coach_daily_next"
           todayTrackId="coach_daily_today"

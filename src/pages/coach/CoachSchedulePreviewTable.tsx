@@ -42,6 +42,38 @@ function formatShortDate(dateYmd: string): string {
   return `${month}/${day}`
 }
 
+/** 顯示用堂數：20 分鐘 = 1 堂 */
+function formatLessonCount(minutes: number): string {
+  const lessons = minutes / 20
+  return Number.isInteger(lessons) ? String(lessons) : lessons.toFixed(1)
+}
+
+function formatScheduleClock(startAt: string, durationMin: number): string {
+  const [hour, minute] = extractTime(startAt).split(':').map(Number)
+  const startMinutes = hour * 60 + minute
+  const endMinutes = startMinutes + durationMin
+  const fmt = (minutes: number) =>
+    `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+  return `${fmt(startMinutes)}–${fmt(endMinutes)}`
+}
+
+interface MemberBookingDetail {
+  bookingId: number
+  startAt: string
+  minutes: number
+  boatName: string
+  sessionTotalMinutes: number
+  coachCount: number
+}
+
+interface MemberDistributionItem {
+  rank: number
+  name: string
+  minutes: number
+  count: number
+  bookings: MemberBookingDetail[]
+}
+
 /** 依 booking_coaches 人數等分該堂總分鐘（與管理端統計同一算法） */
 function coachShareMinutesForBooking(booking: ScheduleBooking, coachId: string): number {
   const list = booking.booking_coaches || []
@@ -156,6 +188,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
   const [bookings, setBookings] = useState<ScheduleBooking[]>([])
   const [statsOpen, setStatsOpen] = useState(false)
   const [statsMonth, setStatsMonth] = useState<'all' | string>('all')
+  const [expandedMembers, setExpandedMembers] = useState<Set<string>>(() => new Set())
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateString())
 
   const today = getLocalDateString()
@@ -178,6 +211,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
       setBookings([])
       setLoadError(false)
       setLoading(true)
+      setExpandedMembers(new Set())
       try {
         const window = getFutureThreeMonthWindow()
 
@@ -242,11 +276,17 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     )
   }, [statsBookings, coachId])
 
-  const memberDistribution = useMemo(() => {
-    const map = new Map<string, { name: string; minutes: number; count: number }>()
+  const memberDistribution = useMemo((): MemberDistributionItem[] => {
+    const map = new Map<string, {
+      name: string
+      minutes: number
+      count: number
+      bookings: MemberBookingDetail[]
+    }>()
 
     statsBookings.forEach(booking => {
       const shareMin = coachShareMinutesForBooking(booking, coachId)
+      const coachCount = (booking.booking_coaches || []).length
       const bookingMembers = booking.booking_members || []
       const memberNamesFromBookingMembers = bookingMembers
         .map(bm => bm.members?.nickname || bm.members?.name || '未知會員')
@@ -272,26 +312,56 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
 
       const names = allNames.length > 0 ? allNames : ['未知']
       const perMemberSplits = splitMinutesEqually(shareMin, names.length)
+      const detailBase = {
+        bookingId: booking.id,
+        startAt: booking.start_at,
+        boatName: booking.boats?.name || '未指定船隻',
+        sessionTotalMinutes: booking.duration_min || 0,
+        coachCount
+      }
 
       names.forEach((name, idx) => {
         const perMemberMinutes = perMemberSplits[idx] ?? 0
+        const detail: MemberBookingDetail = {
+          ...detailBase,
+          minutes: perMemberMinutes
+        }
         const prev = map.get(name)
         if (prev) {
           prev.minutes += perMemberMinutes
           prev.count += 1
+          prev.bookings.push(detail)
         } else {
-          map.set(name, { name, minutes: perMemberMinutes, count: 1 })
+          map.set(name, {
+            name,
+            minutes: perMemberMinutes,
+            count: 1,
+            bookings: [detail]
+          })
         }
       })
     })
 
     return Array.from(map.values())
+      .map(item => ({
+        ...item,
+        bookings: [...item.bookings].sort((a, b) => a.startAt.localeCompare(b.startAt))
+      }))
       .sort((a, b) => b.minutes - a.minutes)
       .map((item, idx) => ({
         rank: idx + 1,
         ...item
       }))
   }, [statsBookings, coachId])
+
+  const toggleMemberExpanded = (name: string) => {
+    setExpandedMembers(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
 
   const sectionTitleStyle = {
     margin: '0 0 10px 0',
@@ -465,7 +535,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           未來三個月統計（{formatShortDate(today)}～{formatShortDate(scheduleEndDate)}）
           {!loading && (
             <span style={{ fontWeight: 500, color: designSystem.colors.text.disabled }}>
-              （{stats.totalSessions} 堂 · {stats.totalMinutes} 分）
+              （{stats.totalSessions}筆 · {formatLessonCount(stats.totalMinutes)}堂 · {stats.totalMinutes}分）
             </span>
           )}
         </button>
@@ -521,46 +591,147 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                   fontWeight: 600,
                   fontSize: getFontSize('body', isMobile)
                 }}>
-                  <span>總堂數：{stats.totalSessions}</span>
+                  <span>總筆數：{stats.totalSessions}</span>
+                  <span>總堂數：{formatLessonCount(stats.totalMinutes)}</span>
                   <span>總分鐘：{stats.totalMinutes}</span>
                 </div>
                 <div style={{
                   margin: '0 0 10px 0',
-                  fontSize: getFontSize('bodySmall', isMobile),
-                  fontWeight: 600,
-                  color: designSystem.colors.text.secondary
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  flexWrap: 'wrap',
+                  gap: '6px'
                 }}>
-                  會員時數分布
+                  <span style={{
+                    fontSize: getFontSize('bodySmall', isMobile),
+                    fontWeight: 600,
+                    color: designSystem.colors.text.secondary
+                  }}>
+                    會員時數分布
+                  </span>
+                  <span style={{
+                    fontSize: getFontSize('caption', isMobile),
+                    fontWeight: 400,
+                    color: designSystem.colors.text.disabled
+                  }}>
+                    20 分鐘一堂
+                  </span>
                 </div>
                 {memberDistribution.length === 0 ? (
                   <div style={{ color: designSystem.colors.text.disabled, padding: '8px 0' }}>目前沒有資料</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {memberDistribution.map(item => (
-                      <div
-                        key={`${item.rank}-${item.name}`}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '9px 4px',
-                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
-                          fontSize: getFontSize('bodySmall', isMobile)
-                        }}
-                      >
-                        <span style={{ color: designSystem.colors.text.primary }}>
-                          {item.rank}. {item.name}{' '}
-                          <span style={{ color: designSystem.colors.text.disabled }}>({item.count}筆)</span>
-                        </span>
-                        <span style={{
-                          color: designSystem.colors.info[700],
-                          fontWeight: 500,
-                          fontSize: getFontSize('bodySmall', isMobile)
-                        }}>
-                          {item.minutes} 分
-                        </span>
-                      </div>
-                    ))}
+                    {memberDistribution.map(item => {
+                      const isExpanded = expandedMembers.has(item.name)
+                      return (
+                        <div
+                          key={`${item.rank}-${item.name}`}
+                          style={{
+                            borderBottom: `1px solid ${designSystem.colors.border.light}`
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleMemberExpanded(item.name)}
+                            aria-expanded={isExpanded}
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '9px 4px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              font: 'inherit',
+                              fontSize: getFontSize('bodySmall', isMobile)
+                            }}
+                          >
+                            <span style={{
+                              color: designSystem.colors.text.primary,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              minWidth: 0
+                            }}>
+                              <span
+                                aria-hidden="true"
+                                style={{
+                                  display: 'inline-block',
+                                  transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                  transition: 'transform 0.15s ease',
+                                  fontSize: getFontSize('caption', isMobile),
+                                  color: designSystem.colors.text.disabled,
+                                  flexShrink: 0
+                                }}
+                              >
+                                ▶
+                              </span>
+                              <span>
+                                {item.rank}. {item.name}{' '}
+                                <span style={{ color: designSystem.colors.text.disabled }}>
+                                  ({item.count}筆 · {formatLessonCount(item.minutes)}堂)
+                                </span>
+                              </span>
+                            </span>
+                            <span style={{
+                              color: designSystem.colors.info[700],
+                              fontWeight: 500,
+                              fontSize: getFontSize('bodySmall', isMobile),
+                              flexShrink: 0
+                            }}>
+                              {item.minutes} 分
+                            </span>
+                          </button>
+                          {isExpanded && (
+                            <div style={{
+                              padding: '0 4px 10px 22px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '10px'
+                            }}>
+                              {item.bookings.map(detail => {
+                                const dateYmd = detail.startAt.substring(0, 10)
+                                return (
+                                  <div key={`${detail.bookingId}-${item.name}`}>
+                                    <div style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'baseline',
+                                      gap: '10px',
+                                      fontSize: getFontSize('bodySmall', isMobile),
+                                      color: designSystem.colors.text.primary
+                                    }}>
+                                      <span>
+                                        {formatShortDate(dateYmd)}（{getWeekdayText(dateYmd)}）{' '}
+                                        {formatScheduleClock(detail.startAt, detail.sessionTotalMinutes)}
+                                      </span>
+                                      <span style={{
+                                        color: designSystem.colors.info[700],
+                                        fontWeight: 500,
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {detail.minutes} 分 · {formatLessonCount(detail.minutes)}堂
+                                      </span>
+                                    </div>
+                                    <div style={{
+                                      marginTop: '2px',
+                                      fontSize: getFontSize('caption', isMobile),
+                                      color: designSystem.colors.text.secondary
+                                    }}>
+                                      {detail.boatName}
+                                      {detail.coachCount > 1 && ` · 本堂共 ${detail.sessionTotalMinutes} 分`}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </>

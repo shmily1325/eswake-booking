@@ -8,6 +8,7 @@ interface DayViewMobileHeaderProps {
   onGoToToday: () => void
   /** 小編才可排班；非小編不顯示第二列（列表／排班） */
   showCoachAssignment: boolean
+  disabled?: boolean
 }
 
 /** DayView 手機版日期導覽（共用 BookingDateNav） */
@@ -18,6 +19,7 @@ export function DayViewMobileHeader({
   onNextDate,
   onGoToToday,
   showCoachAssignment,
+  disabled = false,
 }: DayViewMobileHeaderProps) {
   return (
     <BookingDateNav
@@ -27,6 +29,7 @@ export function DayViewMobileHeader({
       onNextDate={onNextDate}
       onGoToToday={onGoToToday}
       isMobile
+      disabled={disabled}
       showMobileScheduleTabs={showCoachAssignment}
       scheduleLinkTo={`/coach-assignment?date=${date}`}
     />
