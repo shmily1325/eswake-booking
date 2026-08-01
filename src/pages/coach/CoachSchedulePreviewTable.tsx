@@ -694,36 +694,39 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                             }}>
                               {item.bookings.map(detail => {
                                 const dateYmd = detail.startAt.substring(0, 10)
+                                const boatMeta = detail.coachCount > 1
+                                  ? `${detail.boatName} · 本堂共 ${detail.sessionTotalMinutes} 分`
+                                  : detail.boatName
                                 return (
-                                  <div key={`${detail.bookingId}-${item.name}`}>
-                                    <div style={{
+                                  <div
+                                    key={`${detail.bookingId}-${item.name}`}
+                                    style={{
                                       display: 'flex',
                                       justifyContent: 'space-between',
                                       alignItems: 'baseline',
                                       gap: '10px',
                                       fontSize: getFontSize('bodySmall', isMobile),
                                       color: designSystem.colors.text.primary
-                                    }}>
-                                      <span>
-                                        {formatShortDate(dateYmd)}（{getWeekdayText(dateYmd)}）{' '}
-                                        {formatScheduleClock(detail.startAt, detail.sessionTotalMinutes)}
-                                      </span>
+                                    }}
+                                  >
+                                    <span style={{ minWidth: 0 }}>
+                                      {formatShortDate(dateYmd)}（{getWeekdayText(dateYmd)}）{' '}
+                                      {formatScheduleClock(detail.startAt, detail.sessionTotalMinutes)}
                                       <span style={{
-                                        color: designSystem.colors.info[700],
-                                        fontWeight: 500,
-                                        whiteSpace: 'nowrap'
+                                        color: designSystem.colors.text.secondary,
+                                        fontSize: getFontSize('caption', isMobile)
                                       }}>
-                                        {detail.minutes} 分 · {formatLessonCount(detail.minutes)}堂
+                                        {' · '}{boatMeta}
                                       </span>
-                                    </div>
-                                    <div style={{
-                                      marginTop: '2px',
-                                      fontSize: getFontSize('caption', isMobile),
-                                      color: designSystem.colors.text.secondary
+                                    </span>
+                                    <span style={{
+                                      color: designSystem.colors.info[700],
+                                      fontWeight: 500,
+                                      whiteSpace: 'nowrap',
+                                      flexShrink: 0
                                     }}>
-                                      {detail.boatName}
-                                      {detail.coachCount > 1 && ` · 本堂共 ${detail.sessionTotalMinutes} 分`}
-                                    </div>
+                                      {detail.minutes} 分 · {formatLessonCount(detail.minutes)}堂
+                                    </span>
                                   </div>
                                 )
                               })}
