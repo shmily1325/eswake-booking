@@ -56,11 +56,11 @@ describe('SearchBookings', () => {
     })
   })
 
-  it('預設顯示預約人與註解搜尋表單', async () => {
+  it('預設顯示預約人搜尋表單', async () => {
     render(<SearchBookings isEmbedded />)
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/搜尋會員/)).toBeInTheDocument()
-      expect(screen.getByText(/註解含/)).toBeInTheDocument()
+      expect(screen.queryByText(/註解含/)).not.toBeInTheDocument()
     })
   })
 })

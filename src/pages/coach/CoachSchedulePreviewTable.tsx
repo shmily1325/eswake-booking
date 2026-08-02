@@ -15,6 +15,8 @@ interface ScheduleBooking {
   start_at: string
   duration_min: number | null
   contact_name: string | null
+  notes?: string | null
+  schedule_notes?: string | null
   boats?: { name: string | null; color?: string | null } | null
   booking_members?: Array<{ members?: { name?: string | null; nickname?: string | null } | null }>
   booking_coaches?: Array<{ coach_id: string }>
@@ -64,6 +66,48 @@ interface MemberBookingDetail {
   boatName: string
   sessionTotalMinutes: number
   coachCount: number
+  companions: string[]
+  notes: string | null
+  scheduleNotes: string | null
+}
+
+/** 同堂所有顯示名稱（會員暱稱優先，再補 contact_name 中非會員） */
+function getBookingParticipantNames(booking: ScheduleBooking): string[] {
+  const bookingMembers = booking.booking_members || []
+  const memberNamesFromBookingMembers = bookingMembers
+    .map(bm => bm.members?.nickname || bm.members?.name || '未知會員')
+    .filter(Boolean) as string[]
+
+  const contactNames = (booking.contact_name || '')
+    .split(/[,，]/)
+    .map(name => name.trim())
+    .filter(Boolean)
+
+  const nonMemberNames = contactNames.filter(name =>
+    !memberNamesFromBookingMembers.some(memberName =>
+      memberName === name || name.includes(memberName) || memberName.includes(name)
+    )
+  )
+
+  const allNames = memberNamesFromBookingMembers.length > 0 || nonMemberNames.length > 0
+    ? [...memberNamesFromBookingMembers, ...nonMemberNames]
+    : (booking.contact_name || '未知')
+        .split(/[,，]/)
+        .map(n => n.trim())
+        .filter(Boolean)
+
+  return allNames.length > 0 ? allNames : ['未知']
+}
+
+function isSameParticipantName(a: string, b: string): boolean {
+  return a === b || a.includes(b) || b.includes(a)
+}
+
+/** 同行顯示：不含自己；超過 2 人壓縮為「前兩名 ＋N」 */
+function formatCompanionsLabel(companions: string[]): string | null {
+  if (companions.length === 0) return null
+  if (companions.length <= 2) return `w/ ${companions.join('、')}`
+  return `w/ ${companions.slice(0, 2).join('、')} ＋${companions.length - 2}`
 }
 
 interface MemberDistributionItem {
@@ -220,6 +264,7 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
           .from('bookings')
           .select(`
             id, start_at, duration_min, contact_name, status, is_coach_practice,
+            notes, schedule_notes,
             boats(name, color),
             booking_coaches(coach_id),
             booking_members(member_id, members(id, name, nickname))
@@ -287,44 +332,26 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
     statsBookings.forEach(booking => {
       const shareMin = coachShareMinutesForBooking(booking, coachId)
       const coachCount = (booking.booking_coaches || []).length
-      const bookingMembers = booking.booking_members || []
-      const memberNamesFromBookingMembers = bookingMembers
-        .map(bm => bm.members?.nickname || bm.members?.name || '未知會員')
-        .filter(Boolean) as string[]
-
-      const contactNames = (booking.contact_name || '')
-        .split(/[,，]/)
-        .map(name => name.trim())
-        .filter(Boolean)
-
-      const nonMemberNames = contactNames.filter(name =>
-        !memberNamesFromBookingMembers.some(memberName =>
-          memberName === name || name.includes(memberName) || memberName.includes(name)
-        )
-      )
-
-      const allNames = memberNamesFromBookingMembers.length > 0 || nonMemberNames.length > 0
-        ? [...memberNamesFromBookingMembers, ...nonMemberNames]
-        : (booking.contact_name || '未知')
-            .split(/[,，]/)
-            .map(n => n.trim())
-            .filter(Boolean)
-
-      const names = allNames.length > 0 ? allNames : ['未知']
+      const names = getBookingParticipantNames(booking)
       const perMemberSplits = splitMinutesEqually(shareMin, names.length)
+      const notes = booking.notes?.trim() || null
+      const scheduleNotes = booking.schedule_notes?.trim() || null
       const detailBase = {
         bookingId: booking.id,
         startAt: booking.start_at,
         boatName: booking.boats?.name || '未指定船隻',
         sessionTotalMinutes: booking.duration_min || 0,
-        coachCount
+        coachCount,
+        notes,
+        scheduleNotes
       }
 
       names.forEach((name, idx) => {
         const perMemberMinutes = perMemberSplits[idx] ?? 0
         const detail: MemberBookingDetail = {
           ...detailBase,
-          minutes: perMemberMinutes
+          minutes: perMemberMinutes,
+          companions: names.filter(other => !isSameParticipantName(other, name))
         }
         const prev = map.get(name)
         if (prev) {
@@ -697,36 +724,80 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
                                 const boatMeta = detail.coachCount > 1
                                   ? `${detail.boatName} · 本堂共 ${detail.sessionTotalMinutes} 分`
                                   : detail.boatName
+                                const companionsLabel = formatCompanionsLabel(detail.companions)
                                 return (
                                   <div
                                     key={`${detail.bookingId}-${item.name}`}
                                     style={{
                                       display: 'flex',
-                                      justifyContent: 'space-between',
-                                      alignItems: 'baseline',
-                                      gap: '10px',
-                                      fontSize: getFontSize('bodySmall', isMobile),
-                                      color: designSystem.colors.text.primary
+                                      flexDirection: 'column',
+                                      gap: '2px'
                                     }}
                                   >
-                                    <span style={{ minWidth: 0 }}>
-                                      {formatShortDate(dateYmd)}（{getWeekdayText(dateYmd)}）{' '}
-                                      {formatScheduleClock(detail.startAt, detail.sessionTotalMinutes)}
-                                      <span style={{
-                                        color: designSystem.colors.text.secondary,
-                                        fontSize: getFontSize('caption', isMobile)
-                                      }}>
-                                        {' · '}{boatMeta}
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'baseline',
+                                        gap: '10px',
+                                        fontSize: getFontSize('bodySmall', isMobile),
+                                        color: designSystem.colors.text.primary
+                                      }}
+                                    >
+                                      <span style={{ minWidth: 0 }}>
+                                        {formatShortDate(dateYmd)}（{getWeekdayText(dateYmd)}）{' '}
+                                        {formatScheduleClock(detail.startAt, detail.sessionTotalMinutes)}
+                                        <span style={{
+                                          color: designSystem.colors.text.secondary,
+                                          fontSize: getFontSize('caption', isMobile)
+                                        }}>
+                                          {' · '}{boatMeta}
+                                        </span>
                                       </span>
-                                    </span>
-                                    <span style={{
-                                      color: designSystem.colors.info[700],
-                                      fontWeight: 500,
-                                      whiteSpace: 'nowrap',
-                                      flexShrink: 0
-                                    }}>
-                                      {detail.minutes} 分 · {formatLessonCount(detail.minutes)}堂
-                                    </span>
+                                      <span style={{
+                                        color: designSystem.colors.info[700],
+                                        fontWeight: 500,
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0
+                                      }}>
+                                        {detail.minutes} 分 · {formatLessonCount(detail.minutes)}堂
+                                      </span>
+                                    </div>
+                                    {companionsLabel && (
+                                      <div style={{
+                                        fontSize: getFontSize('caption', isMobile),
+                                        color: designSystem.colors.text.secondary,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {companionsLabel}
+                                      </div>
+                                    )}
+                                    {detail.notes && (
+                                      <div style={{
+                                        fontSize: getFontSize('caption', isMobile),
+                                        color: designSystem.colors.text.secondary,
+                                        fontStyle: 'italic',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {detail.notes}
+                                      </div>
+                                    )}
+                                    {detail.scheduleNotes && (
+                                      <div style={{
+                                        fontSize: getFontSize('caption', isMobile),
+                                        color: designSystem.colors.warning[700],
+                                        fontWeight: 500,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {detail.scheduleNotes}
+                                      </div>
+                                    )}
                                   </div>
                                 )
                               })}

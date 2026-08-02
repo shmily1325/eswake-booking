@@ -25,9 +25,7 @@ import type { Booking as FullBooking } from '../types/booking'
 import {
   memberIdsMatchingKeyword,
   formatSelectedMemberHint,
-  parseNotesSearchKeywords,
   escapeIlikePattern,
-  splitTextByKeywords,
 } from '../utils/searchBookingMemberQuery'
 
 interface Booking {
@@ -297,8 +295,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const toast = useToast()
   // 會員搜尋相關狀態
   const [searchName, setSearchName] = useState('')
-  const [notesKeyword, setNotesKeyword] = useState('')
-  const [appliedNotesKeywords, setAppliedNotesKeywords] = useState<string[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
@@ -393,8 +389,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       const now = new Date()
       const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
       const searchTerm = searchName.trim()
-      const notesKeywords = parseNotesSearchKeywords(notesKeyword)
-      setAppliedNotesKeywords(notesKeywords)
 
       // 最大返回數量限制，避免返回過多資料造成卡頓
       const MAX_RESULTS = 100
@@ -437,7 +431,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
         return
       }
 
-      // 步驟 2: 建構詳細查詢（帶日期／註解篩選）
+      // 步驟 2: 建構詳細查詢（帶日期篩選）
       let detailQuery = supabase
         .from('bookings')
         .select('id, start_at, duration_min, contact_name, notes, activity_types, status, boats:boat_id(name, color)')
@@ -452,11 +446,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
       if (endDate) {
         detailQuery = detailQuery.lte('start_at', `${endDate}T23:59:59`)
-      }
-
-      // 註解關鍵字：空白分隔＝全部都要出現（不分大小寫）
-      for (const keyword of notesKeywords) {
-        detailQuery = detailQuery.ilike('notes', `%${escapeIlikePattern(keyword)}%`)
       }
 
       // 步驟 3: 並行執行三個查詢（預約詳情 + 教練 + 會員）
@@ -562,32 +551,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   // 清除搜尋
   const handleClearSearch = () => {
     setSearchName('')
-    setNotesKeyword('')
-    setAppliedNotesKeywords([])
     setSelectedMemberId(null)
     setBookings([])
     setHasSearched(false)
-  }
-
-  const renderHighlightedNotes = (notes: string) => {
-    if (appliedNotesKeywords.length === 0) return notes
-    return splitTextByKeywords(notes, appliedNotesKeywords).map((part, index) =>
-      part.match ? (
-        <mark
-          key={`${part.text}-${index}`}
-          style={{
-            background: designSystem.colors.secondary[100],
-            color: 'inherit',
-            padding: '0 2px',
-            borderRadius: designSystem.borderRadius.sm,
-          }}
-        >
-          {part.text}
-        </mark>
-      ) : (
-        <span key={`${part.text}-${index}`}>{part.text}</span>
-      ),
-    )
   }
 
   const handleCopyToClipboard = async () => {
@@ -865,68 +831,6 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* 註解關鍵字（選填）：在預約人結果中再篩註解 */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
-              註解含
-              <span style={{
-                color: designSystem.colors.text.disabled,
-                fontWeight: 'normal',
-                marginLeft: '6px',
-                fontSize: getFontSize('bodySmall', isMobile),
-              }}>
-                （選填，空白分隔＝需同時出現）
-              </span>
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={notesKeyword}
-                onChange={(e) => setNotesKeyword(e.target.value)}
-                onFocus={(e) => {
-                  e.target.style.borderColor = designSystem.colors.primary[500]
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = designSystem.colors.border.main
-                }}
-                style={{
-                  ...getInputStyle(isMobile),
-                  paddingRight: notesKeyword ? '44px' : '16px',
-                  boxSizing: 'border-box',
-                }}
-              />
-              {notesKeyword && (
-                <button
-                  type="button"
-                  onClick={() => setNotesKeyword('')}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '24px',
-                    height: '24px',
-                    padding: 0,
-                    border: 'none',
-                    background: designSystem.colors.background.hover,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: getFontSize('body', isMobile),
-                    color: designSystem.colors.text.secondary,
-                    transition: 'background 0.2s',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = designSystem.colors.secondary[200]}
-                  onMouseLeave={(e) => e.currentTarget.style.background = designSystem.colors.background.hover}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
           </div>
 
           {/* 日期區間篩選 */}
@@ -1473,7 +1377,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                         fontSize: getFontSize('bodySmall', isMobile),
                         color: designSystem.colors.text.secondary,
                       }}>
-                        {renderHighlightedNotes(booking.notes)}
+                        {booking.notes}
                       </div>
                     )}
                   </div>

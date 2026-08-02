@@ -7,6 +7,7 @@ import { useToast } from '../../components/ui'
 import { CoachReport } from './CoachReport'
 import { StatisticsTab } from '../../components/StatisticsTab'
 import { CoachSchedulePreviewTable } from './CoachSchedulePreviewTable'
+import { CoachRecords } from './CoachRecords'
 import { AdminPillRow, AdminPillButton } from '../../components/AdminPageLayout'
 import { designSystem, getFontSize } from '../../styles/designSystem'
 import { PageShell } from '../../components/PageShell'
@@ -16,7 +17,7 @@ export function MyReport() {
   const { isMobile } = useResponsive()
   const toast = useToast()
   
-  const [activeTab, setActiveTab] = useState<'report' | 'history' | 'schedule'>('report')
+  const [activeTab, setActiveTab] = useState<'report' | 'history' | 'schedule' | 'records'>('report')
   const [coachId, setCoachId] = useState<string | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
 
@@ -102,6 +103,13 @@ export function MyReport() {
           >
             排程
           </AdminPillButton>
+          <AdminPillButton
+            data-track="my_report_tab_records"
+            active={activeTab === 'records'}
+            onClick={() => setActiveTab('records')}
+          >
+            紀錄
+          </AdminPillButton>
         </AdminPillRow>
 
         {/* Tab 內容區 */}
@@ -124,6 +132,11 @@ export function MyReport() {
           {/* 排程預覽 Tab */}
           {activeTab === 'schedule' && coachId && (
             <CoachSchedulePreviewTable coachId={coachId} isMobile={isMobile} />
+          )}
+
+          {/* 紀錄 Tab：dashboard 教練統計個人版 */}
+          {activeTab === 'records' && coachId && (
+            <CoachRecords coachId={coachId} isMobile={isMobile} />
           )}
         </div>
     </PageShell>
