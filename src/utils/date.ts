@@ -264,7 +264,7 @@ export function formatDbTimestampDisplay(dbTimestamp: string): string {
 
 /**
  * 將 timestamptz / ISO 時間顯示為場地時間 YYYY-MM-DD HH:mm（固定 Asia/Taipei）。
- * 與瀏覽器所在地無關；適用於商城／零件庫存等 timestamptz 欄位。
+ * 與瀏覽器所在地無關；適用於商城等 timestamptz 欄位。
  */
 export function formatVenueDateTime(dateTime: Date | string): string {
   const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime

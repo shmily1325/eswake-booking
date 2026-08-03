@@ -247,13 +247,6 @@ export function HomePage() {
       link: '/boat-usage-hours',
       visibleForEmails: BOAT_OPERATIONS_ALLOWED_EMAILS,
     },
-    {
-      title: '船艇零件庫存',
-      mobileTitle: '零件庫存',
-      icon: '🔩',
-      link: '/boat-parts',
-      visibleForEmails: BOAT_OPERATIONS_ALLOWED_EMAILS,
-    }
   ]
 
   const filterVisibleMenuItems = (items: HomeMenuItem[]) =>

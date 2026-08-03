@@ -32,7 +32,6 @@ const AnnouncementManagement = lazy(() => import('./pages/admin/AnnouncementMana
 const BackupPage = lazy(() => import('./pages/admin/BackupPage').then(module => ({ default: module.BackupPage })))
 const Statistics = lazy(() => import('./pages/admin/Statistics').then(module => ({ default: module.Statistics })))
 const BoatUsageHoursPage = lazy(() => import('./pages/admin/BoatUsageHoursPage').then(module => ({ default: module.BoatUsageHoursPage })))
-const BoatPartsInventoryPage = lazy(() => import('./pages/admin/BoatPartsInventoryPage').then(module => ({ default: module.BoatPartsInventoryPage })))
 const CoachDailyView = lazy(() => import('./pages/coach/CoachDailyView').then(module => ({ default: module.CoachDailyView })))
 const CoachTimeOffPage = lazy(() => import('./pages/CoachTimeOffPage').then(module => ({ default: module.CoachTimeOffPage })))
 const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage').then(module => ({ default: module.UnauthorizedPage })))
@@ -153,10 +152,6 @@ function AdminAppContent() {
             <Route
               path="/boat-usage-hours"
               element={canAccessBoatOperations(user) ? <BoatUsageHoursPage /> : <Navigate to="/unauthorized" replace />}
-            />
-            <Route
-              path="/boat-parts"
-              element={canAccessBoatOperations(user) ? <BoatPartsInventoryPage /> : <Navigate to="/unauthorized" replace />}
             />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
           </Routes>

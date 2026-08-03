@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 
-/** 區間時數與船艇零件庫存共用的 hard-code 白名單。 */
+/** 區間時數合計的 hard-code 白名單。 */
 export const BOAT_OPERATIONS_ALLOWED_EMAILS = [
   'minlin1325@gmail.com',
   'pjpan0511@gmail.com',
