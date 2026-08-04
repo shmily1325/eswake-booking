@@ -59,6 +59,7 @@ export function MemberTransaction() {
   const [sortBy, setSortBy] = useState<'updatedAt' | 'lastLiffLogin'>('updatedAt')
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
+  const [yearPanelRefreshKey, setYearPanelRefreshKey] = useState(0)
 
   const view: StorageView = searchParams.get('view') === 'year' ? 'year' : 'ledger'
 
@@ -271,6 +272,7 @@ export function MemberTransaction() {
 
   const handleTransactionSuccess = () => {
     loadMembers()
+    setYearPanelRefreshKey((k) => k + 1)
   }
 
   if (!userIsAdmin) {
@@ -513,7 +515,10 @@ export function MemberTransaction() {
 
       {view === 'year' ? (
         <div style={{ marginTop: designSystem.spacing.md }}>
-          <VoucherYearBalancePanel onOpenMember={openMemberFromYearBalance} />
+          <VoucherYearBalancePanel
+            onOpenMember={openMemberFromYearBalance}
+            refreshKey={yearPanelRefreshKey}
+          />
         </div>
       ) : (
         <>

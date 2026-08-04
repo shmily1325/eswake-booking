@@ -1303,6 +1303,7 @@ export type Database = {
           transaction_type: string
           vip_voucher_amount_after: number | null
           voucher_year: number | null
+          lot_allocations: Json | null
         }
         Insert: {
           adjust_type?: string | null
@@ -1328,6 +1329,7 @@ export type Database = {
           transaction_type: string
           vip_voucher_amount_after?: number | null
           voucher_year?: number | null
+          lot_allocations?: Json | null
         }
         Update: {
           adjust_type?: string | null
@@ -1353,6 +1355,7 @@ export type Database = {
           transaction_type?: string
           vip_voucher_amount_after?: number | null
           voucher_year?: number | null
+          lot_allocations?: Json | null
         }
         Relationships: [
           {
@@ -1677,6 +1680,100 @@ export type Database = {
           p_participant_id: number
         }
         Returns: Json
+      }
+      credit_lot_member_total: {
+        Args: {
+          p_member_id: string
+          p_category: string
+        }
+        Returns: number
+      }
+      credit_lots_are_consistent: {
+        Args: {
+          p_member_id: string
+          p_category: string
+        }
+        Returns: boolean
+      }
+      consume_credit_lots_fifo: {
+        Args: {
+          p_member_id: string
+          p_category: string
+          p_qty: number
+          p_expected_total_after?: number | null
+        }
+        Returns: Json
+      }
+      try_consume_credit_lots_fifo: {
+        Args: {
+          p_member_id: string
+          p_category: string
+          p_qty: number
+          p_expected_total_after?: number | null
+        }
+        Returns: Json
+      }
+      restore_credit_lots_from_allocations: {
+        Args: {
+          p_member_id: string
+          p_category: string
+          p_allocations: Json
+          p_fallback_qty?: number | null
+        }
+        Returns: boolean
+      }
+      process_manual_member_adjust: {
+        Args: {
+          p_member_id: string
+          p_category: string
+          p_adjust_type: string
+          p_qty: number
+          p_description: string
+          p_notes?: string | null
+          p_transaction_date?: string | null
+          p_voucher_year?: number | null
+          p_operator_id?: string | null
+        }
+        Returns: Json
+      }
+      process_manual_member_adjust_delete: {
+        Args: {
+          p_transaction_id: number
+          p_member_id: string
+        }
+        Returns: Json
+      }
+      process_manual_member_adjust_edit: {
+        Args: {
+          p_transaction_id: number
+          p_member_id: string
+          p_category: string
+          p_adjust_type: string
+          p_qty: number
+          p_description: string
+          p_notes?: string | null
+          p_transaction_date?: string | null
+          p_voucher_year?: number | null
+        }
+        Returns: Json
+      }
+      add_credit_lots: {
+        Args: {
+          p_member_id: string
+          p_category: string
+          p_voucher_year: number
+          p_qty: number
+        }
+        Returns: boolean
+      }
+      adjust_credit_lot_remaining: {
+        Args: {
+          p_member_id: string
+          p_category: string
+          p_voucher_year: number
+          p_delta: number
+        }
+        Returns: boolean
       }
       renew_member_membership: {
         Args: {

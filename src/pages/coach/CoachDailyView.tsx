@@ -333,7 +333,6 @@ export function CoachDailyView() {
       }))
 
       setBookings(formattedData)
-      setLoadedBookingsDate(requestedDate)
       setLastUpdate(new Date())
 
       // 計算當日衝突（教練/駕駛跨船重疊 + 全域限制）
@@ -345,6 +344,8 @@ export function CoachDailyView() {
       if (isCurrent()) {
         setLoading(false)
         setDateChanging(false)
+        // 成功或失敗都標記此日期已載入完畢，避免 loadedBookingsDate 卡在 null 而永久停用日期導覽
+        setLoadedBookingsDate(requestedDate)
       }
     }
   }

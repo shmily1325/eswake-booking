@@ -7,7 +7,7 @@ const shopMigration = readFileSync(
   'utf8',
 )
 const deductionMigration = readFileSync(
-  resolve(process.cwd(), 'migrations/151_prevent_duplicate_report_deduction.sql'),
+  resolve(process.cwd(), 'migrations/165_deduction_fifo_never_blocks.sql'),
   'utf8',
 )
 
@@ -64,32 +64,32 @@ describe('financial atomicity migrations', () => {
   })
 
   it('locks a report and requires pending before deduction writes', () => {
-    const participantLock = deductionMigration.indexOf(
-      'FROM booking_participants',
-    )
-    const memberLock = deductionMigration.indexOf('FROM members')
-    const firstTransaction = deductionMigration.indexOf(
-      'INSERT INTO transactions',
-    )
-
-    expect(deductionMigration).toContain(
+    const fnStart = deductionMigration.indexOf(
       'CREATE OR REPLACE FUNCTION public.process_deduction_transaction(',
     )
+    const fnBody = deductionMigration.slice(fnStart)
+    const participantLock = fnBody.indexOf('FROM booking_participants')
+    const memberLock = fnBody.indexOf('FROM members')
+    const firstTransaction = fnBody.indexOf('INSERT INTO transactions')
+
+    expect(fnStart).toBeGreaterThanOrEqual(0)
     expect(participantLock).toBeGreaterThanOrEqual(0)
     expect(participantLock).toBeLessThan(memberLock)
     expect(memberLock).toBeLessThan(firstTransaction)
-    expect(deductionMigration).toContain(
+    expect(fnBody).toContain(
       "IF v_participant.status IS DISTINCT FROM 'pending'",
     )
-    expect(deductionMigration).toContain(
+    expect(fnBody).toContain(
       'OR COALESCE(v_participant.is_deleted, false)',
     )
-    expect(deductionMigration).toContain('-- Validate every deduction before inserting')
-    expect(deductionMigration).toContain(
+    expect(fnBody).toContain('jsonb_array_elements(p_deductions)')
+    expect(fnBody).toContain(
       "WHERE id = p_participant_id\n    AND status = 'pending'",
     )
-    expect(deductionMigration).toContain(
+    expect(fnBody).toContain(
       "RAISE EXCEPTION '回報狀態已變更，扣款已取消';",
     )
+    expect(fnBody).toContain('try_consume_credit_lots_fifo')
+    expect(fnBody).toContain('lot_allocations')
   })
 })

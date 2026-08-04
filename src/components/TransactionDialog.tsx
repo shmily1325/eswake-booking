@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import {
+  fetchCurrentVoucherYear,
+  isYearTrackedCategory,
+  processManualMemberAdjust,
+  processManualMemberAdjustDelete,
+  processManualMemberAdjustEdit,
+  voucherYearOptions,
+} from '../lib/creditLots'
 import { useResponsive } from '../hooks/useResponsive'
-import { formatDbTimestampDisplay, getLocalDateString, getLocalTimestamp, normalizeDate } from '../utils/date'
+import { formatDbTimestampDisplay, getLocalDateString, normalizeDate } from '../utils/date'
 import type { Member } from '../types/booking'
 import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { useToast } from './ui'
@@ -25,6 +33,7 @@ interface Transaction {
   minutes: number | null
   description: string
   notes: string | null
+  voucher_year: number | null
   balance_after: number | null
   vip_voucher_amount_after: number | null
   designated_lesson_minutes_after: number | null
@@ -56,6 +65,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
   const [transactionDate, setTransactionDate] = useState(() => getLocalDateString())
+  const [currentVoucherYear, setCurrentVoucherYear] = useState(2026)
+  const [voucherYear, setVoucherYear] = useState(2026)
   
   // 交易記錄相關
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -73,8 +84,13 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   const [editDescription, setEditDescription] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editTransactionDate, setEditTransactionDate] = useState('')
+  const [editVoucherYear, setEditVoucherYear] = useState(2026)
 
   const inputStyle = getInputStyle(isMobile)
+  const showVoucherYearField =
+    adjustType === 'increase' && isYearTrackedCategory(category)
+  const showEditVoucherYearField =
+    editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
 
   const resetForm = () => {
     setCategory('balance')
@@ -83,9 +99,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     setDescription('')
     setNotes('')
     setTransactionDate(getLocalDateString())
+    setVoucherYear(currentVoucherYear)
   }
 
-  // 當對話框開啟時，自動填入預約資訊
+  // 當對話框開啟時，自動填入預約資訊，並讀取目前販售年
   useEffect(() => {
     if (open) {
       // 明確設置，即使是空字串也要清空
@@ -93,6 +110,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       if (defaultTransactionDate) {
         setTransactionDate(defaultTransactionDate)
       }
+      void fetchCurrentVoucherYear().then((year) => {
+        setCurrentVoucherYear(year)
+        setVoucherYear(year)
+      })
     }
   }, [open, defaultDescription, defaultTransactionDate])
 
@@ -102,7 +123,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     try {
       let query = supabase
         .from('transactions')
-        .select('id, created_at, transaction_date, category, adjust_type, amount, minutes, description, notes, balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after')
+        .select('id, created_at, transaction_date, category, adjust_type, amount, minutes, description, notes, voucher_year, balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after')
         .eq('member_id', member.id)
         .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
@@ -145,6 +166,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     setEditDescription(tx.description)
     setEditNotes(tx.notes || '')
     setEditTransactionDate(tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : ''))
+    setEditVoucherYear(tx.voucher_year ?? currentVoucherYear)
   }
 
   const handleSaveEdit = async () => {
@@ -167,117 +189,21 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     }
 
     try {
-      const categoryConfig = CATEGORIES.find(c => c.value === editCategory)
-      const delta = editAdjustType === 'increase' ? numValue : -numValue
-      
-      // 計算新的餘額/時數（根據新的值重新計算）
-      let updates: any = {}
-      let afterValues: any = {
-        balance_after: member.balance,
-        vip_voucher_amount_after: member.vip_voucher_amount,
-        designated_lesson_minutes_after: member.designated_lesson_minutes,
-        boat_voucher_g23_minutes_after: member.boat_voucher_g23_minutes,
-        boat_voucher_g21_panther_minutes_after: member.boat_voucher_g21_panther_minutes,
-        gift_boat_hours_after: member.gift_boat_hours,
-      }
+      await processManualMemberAdjustEdit({
+        transactionId: editingTransaction.id,
+        memberId: member.id,
+        category: editCategory,
+        adjustType: editAdjustType,
+        qty: numValue,
+        description: editDescription.trim(),
+        notes: editNotes.trim() || null,
+        transactionDate: normalizeDate(editTransactionDate) || editTransactionDate,
+        voucherYear:
+          editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
+            ? editVoucherYear
+            : null,
+      })
 
-      // 先計算出原交易對會員資料的影響並還原
-      // 使用 Math.abs 確保數值為正數，避免資料庫中有負數 amount 時計算錯誤
-      const oldAbsValue = Math.abs(editingTransaction.amount || editingTransaction.minutes || 0)
-      const oldDelta = editingTransaction.adjust_type === 'increase' 
-        ? oldAbsValue   // 增加的交易，原本加了這麼多
-        : -oldAbsValue  // 減少的交易，原本減了這麼多
-      
-      // 根據舊的category還原
-      switch (editingTransaction.category) {
-        case 'balance':
-          updates.balance = (member.balance ?? 0) - oldDelta + delta
-          afterValues.balance_after = updates.balance
-          break
-        case 'vip_voucher':
-          updates.vip_voucher_amount = (member.vip_voucher_amount ?? 0) - oldDelta + delta
-          afterValues.vip_voucher_amount_after = updates.vip_voucher_amount
-          break
-        case 'designated_lesson':
-          updates.designated_lesson_minutes = (member.designated_lesson_minutes ?? 0) - oldDelta + delta
-          afterValues.designated_lesson_minutes_after = updates.designated_lesson_minutes
-          break
-        case 'boat_voucher_g23':
-          updates.boat_voucher_g23_minutes = (member.boat_voucher_g23_minutes ?? 0) - oldDelta + delta
-          afterValues.boat_voucher_g23_minutes_after = updates.boat_voucher_g23_minutes
-          break
-        case 'boat_voucher_g21_panther':
-          updates.boat_voucher_g21_panther_minutes = (member.boat_voucher_g21_panther_minutes ?? 0) - oldDelta + delta
-          afterValues.boat_voucher_g21_panther_minutes_after = updates.boat_voucher_g21_panther_minutes
-          break
-        case 'gift_boat_hours':
-          updates.gift_boat_hours = (member.gift_boat_hours ?? 0) - oldDelta + delta
-          afterValues.gift_boat_hours_after = updates.gift_boat_hours
-          break
-      }
-
-      // 如果類別改變了，需要處理新類別
-      if (editCategory !== editingTransaction.category) {
-        switch (editCategory) {
-          case 'balance':
-            updates.balance = (member.balance ?? 0) - oldDelta
-            afterValues.balance_after = updates.balance + delta
-            updates.balance = afterValues.balance_after
-            break
-          case 'vip_voucher':
-            updates.vip_voucher_amount = (member.vip_voucher_amount ?? 0) - oldDelta
-            afterValues.vip_voucher_amount_after = updates.vip_voucher_amount + delta
-            updates.vip_voucher_amount = afterValues.vip_voucher_amount_after
-            break
-          case 'designated_lesson':
-            updates.designated_lesson_minutes = (member.designated_lesson_minutes ?? 0) - oldDelta
-            afterValues.designated_lesson_minutes_after = updates.designated_lesson_minutes + delta
-            updates.designated_lesson_minutes = afterValues.designated_lesson_minutes_after
-            break
-          case 'boat_voucher_g23':
-            updates.boat_voucher_g23_minutes = (member.boat_voucher_g23_minutes ?? 0) - oldDelta
-            afterValues.boat_voucher_g23_minutes_after = updates.boat_voucher_g23_minutes + delta
-            updates.boat_voucher_g23_minutes = afterValues.boat_voucher_g23_minutes_after
-            break
-          case 'boat_voucher_g21_panther':
-            updates.boat_voucher_g21_panther_minutes = (member.boat_voucher_g21_panther_minutes ?? 0) - oldDelta
-            afterValues.boat_voucher_g21_panther_minutes_after = updates.boat_voucher_g21_panther_minutes + delta
-            updates.boat_voucher_g21_panther_minutes = afterValues.boat_voucher_g21_panther_minutes_after
-            break
-          case 'gift_boat_hours':
-            updates.gift_boat_hours = (member.gift_boat_hours ?? 0) - oldDelta
-            afterValues.gift_boat_hours_after = updates.gift_boat_hours + delta
-            updates.gift_boat_hours = afterValues.gift_boat_hours_after
-            break
-        }
-      }
-
-      // 更新會員資料
-      const { error: updateError } = await supabase
-        .from('members')
-        .update(updates)
-        .eq('id', member.id)
-
-      if (updateError) throw updateError
-
-      // 更新交易記錄（繼續寫入 *_after 欄位，但不再讀取使用）
-      const { error } = await supabase
-        .from('transactions')
-        .update({
-          category: editCategory,
-          adjust_type: editAdjustType,
-          amount: categoryConfig?.type === 'amount' ? numValue : null,
-          minutes: categoryConfig?.type === 'minutes' ? numValue : null,
-          description: editDescription.trim(),
-          notes: editNotes.trim() || null,
-          transaction_date: normalizeDate(editTransactionDate) || editTransactionDate,
-          ...afterValues
-        })
-        .eq('id', editingTransaction.id)
-
-      if (error) throw error
-
-      // 重新載入
       await loadTransactions()
       onSuccess()
       setEditingTransaction(null)
@@ -286,6 +212,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       setEditValue('')
       setEditDescription('')
       setEditNotes('')
+      setEditVoucherYear(currentVoucherYear)
     } catch (error: any) {
       console.error('更新失敗:', error)
       toast.error(`更新失敗：${error.message}`)
@@ -298,53 +225,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     }
 
     try {
-      // 計算需要還原的值
-      // 使用 Math.abs 確保數值為正數，避免資料庫中有負數 amount 時計算錯誤
-      const absValue = Math.abs(tx.amount || tx.minutes || 0)
-      const delta = tx.adjust_type === 'increase' 
-        ? -absValue  // 增加 → 刪除時要減回來
-        : absValue   // 減少 → 刪除時要加回來
-      
-      let updates: any = {}
-      
-      switch (tx.category) {
-        case 'balance':
-          updates.balance = (member.balance ?? 0) + delta
-          break
-        case 'vip_voucher':
-          updates.vip_voucher_amount = (member.vip_voucher_amount ?? 0) + delta
-          break
-        case 'designated_lesson':
-          updates.designated_lesson_minutes = (member.designated_lesson_minutes ?? 0) + delta
-          break
-        case 'boat_voucher_g23':
-          updates.boat_voucher_g23_minutes = (member.boat_voucher_g23_minutes ?? 0) + delta
-          break
-        case 'boat_voucher_g21_panther':
-          updates.boat_voucher_g21_panther_minutes = (member.boat_voucher_g21_panther_minutes ?? 0) + delta
-          break
-        case 'gift_boat_hours':
-          updates.gift_boat_hours = (member.gift_boat_hours ?? 0) + delta
-          break
-      }
+      await processManualMemberAdjustDelete({
+        transactionId: tx.id,
+        memberId: member.id,
+      })
 
-      // 更新會員資料
-      const { error: updateError } = await supabase
-        .from('members')
-        .update(updates)
-        .eq('id', member.id)
-
-      if (updateError) throw updateError
-
-      // 刪除交易記錄
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', tx.id)
-
-      if (error) throw error
-
-      // 重新載入
       await loadTransactions()
       onSuccess()
     } catch (error: any) {
@@ -360,6 +245,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     setEditValue('')
     setEditDescription('')
     setEditNotes('')
+    setEditVoucherYear(currentVoucherYear)
   }
 
 
@@ -399,93 +285,30 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
 
     setLoading(true)
     try {
-      // 計算新值
-      const delta = adjustType === 'increase' ? numValue : -numValue
-      let updates: any = {}
-      let afterValues: any = {
-        balance_after: member.balance ?? 0,
-        vip_voucher_amount_after: member.vip_voucher_amount ?? 0,
-        designated_lesson_minutes_after: member.designated_lesson_minutes ?? 0,
-        boat_voucher_g23_minutes_after: member.boat_voucher_g23_minutes ?? 0,
-        boat_voucher_g21_panther_minutes_after: member.boat_voucher_g21_panther_minutes ?? 0,
-        gift_boat_hours_after: member.gift_boat_hours ?? 0,
-      }
-
-      switch (category) {
-        case 'balance':
-          updates.balance = (member.balance ?? 0) + delta
-          afterValues.balance_after = updates.balance
-          break
-        case 'vip_voucher':
-          updates.vip_voucher_amount = (member.vip_voucher_amount ?? 0) + delta
-          afterValues.vip_voucher_amount_after = updates.vip_voucher_amount
-          break
-        case 'designated_lesson':
-          updates.designated_lesson_minutes = (member.designated_lesson_minutes ?? 0) + delta
-          afterValues.designated_lesson_minutes_after = updates.designated_lesson_minutes
-          break
-        case 'boat_voucher_g23':
-          updates.boat_voucher_g23_minutes = (member.boat_voucher_g23_minutes ?? 0) + delta
-          afterValues.boat_voucher_g23_minutes_after = updates.boat_voucher_g23_minutes
-          break
-        case 'boat_voucher_g21_panther':
-          updates.boat_voucher_g21_panther_minutes = (member.boat_voucher_g21_panther_minutes ?? 0) + delta
-          afterValues.boat_voucher_g21_panther_minutes_after = updates.boat_voucher_g21_panther_minutes
-          break
-        case 'gift_boat_hours':
-          updates.gift_boat_hours = (member.gift_boat_hours ?? 0) + delta
-          afterValues.gift_boat_hours_after = updates.gift_boat_hours
-          break
-      }
-
-      // 更新會員資料（允許負數）
-      const { error: updateError } = await supabase
-        .from('members')
-        .update(updates)
-        .eq('id', member.id)
-
-      if (updateError) throw updateError
-
-      // 記錄交易（繼續寫入 *_after 欄位，但不再讀取使用）
-      const categoryConfig = CATEGORIES.find(c => c.value === category)
-      
-      const transactionData: any = {
-        member_id: member.id,
-        transaction_type: 'adjust',
-        category: category,
-        adjust_type: adjustType,
-        amount: categoryConfig?.type === 'amount' ? numValue : null,
-        minutes: categoryConfig?.type === 'minutes' ? numValue : null,
+      const result = await processManualMemberAdjust({
+        memberId: member.id,
+        category,
+        adjustType,
+        qty: numValue,
         description: description.trim(),
         notes: notes.trim() || null,
-        transaction_date: normalizeDate(transactionDate) || transactionDate,
-        created_at: getLocalTimestamp(),
-        ...afterValues
-      }
+        transactionDate: normalizeDate(transactionDate) || transactionDate,
+        voucherYear:
+          adjustType === 'increase' && isYearTrackedCategory(category)
+            ? voucherYear
+            : null,
+      })
 
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert([transactionData])
-
-      if (transactionError) throw transactionError
-
-      // 顯示詳細的成功訊息
       const catConfig = CATEGORIES.find(c => c.value === category)
       const isAmount = catConfig?.type === 'amount'
       const unit = isAmount ? '$' : '分'
-      const changeText = adjustType === 'increase' ? `+${unit}${numValue.toLocaleString()}` : `-${unit}${numValue.toLocaleString()}`
-      const newBalance = (() => {
-        switch (category) {
-          case 'balance': return afterValues.balance_after
-          case 'vip_voucher': return afterValues.vip_voucher_amount_after
-          case 'designated_lesson': return afterValues.designated_lesson_minutes_after
-          case 'boat_voucher_g23': return afterValues.boat_voucher_g23_minutes_after
-          case 'boat_voucher_g21_panther': return afterValues.boat_voucher_g21_panther_minutes_after
-          case 'gift_boat_hours': return afterValues.gift_boat_hours_after
-          default: return 0
-        }
-      })()
-      const balanceText = isAmount ? `$${newBalance.toLocaleString()}` : `${newBalance.toLocaleString()}分`
+      const changeText = adjustType === 'increase'
+        ? `+${unit}${numValue.toLocaleString()}`
+        : `-${unit}${numValue.toLocaleString()}`
+      const newBalance = result.balance_after ?? 0
+      const balanceText = isAmount
+        ? `$${Number(newBalance).toLocaleString()}`
+        : `${Number(newBalance).toLocaleString()}分`
       toast.success(`${catConfig?.label} ${changeText}，餘額 ${balanceText}`)
 
       resetForm()
@@ -725,6 +548,33 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                   required
                 />
               </div>
+
+              {/* 入帳年：僅 VIP／G23／G21 增加時；次要欄位，用一般 select */}
+              {showVoucherYearField && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
+                    入帳年
+                  </label>
+                  <select
+                    value={voucherYear}
+                    onChange={(e) => setVoucherYear(Number(e.target.value))}
+                    style={inputStyle}
+                  >
+                    {voucherYearOptions(currentVoucherYear).map((y) => (
+                      <option key={y} value={y}>
+                        {y}{y === currentVoucherYear ? '（目前販售）' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{
+                    marginTop: '6px',
+                    fontSize: getFontSize('bodySmall', isMobile),
+                    color: designSystem.colors.text.disabled,
+                  }}>
+                    預設目前販售年，必要時可改
+                  </div>
+                </div>
+              )}
 
               {/* 交易日期 */}
               <div style={{ marginBottom: '16px' }}>
@@ -1087,7 +937,8 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 const lowerSearch = searchTerm.toLowerCase()
                 filteredTransactions = filteredTransactions.filter(tx => 
                   tx.description?.toLowerCase().includes(lowerSearch) ||
-                  tx.notes?.toLowerCase().includes(lowerSearch)
+                  tx.notes?.toLowerCase().includes(lowerSearch) ||
+                  (tx.voucher_year != null && String(tx.voucher_year).includes(lowerSearch))
                 )
               }
               
@@ -1206,6 +1057,25 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                               />
                             </div>
 
+                            {showEditVoucherYearField && (
+                              <div style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
+                                  入帳年
+                                </label>
+                                <select
+                                  value={editVoucherYear}
+                                  onChange={(e) => setEditVoucherYear(Number(e.target.value))}
+                                  style={inputStyle}
+                                >
+                                  {voucherYearOptions(currentVoucherYear, editingTransaction.voucher_year).map((y) => (
+                                    <option key={y} value={y}>
+                                      {y}{y === currentVoucherYear ? '（目前販售）' : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+
                             {/* 交易日期 */}
                             <div style={{ marginBottom: '12px' }}>
                               <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
@@ -1293,6 +1163,15 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                             <div style={{ flex: 1 }}>
                               <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', marginBottom: '4px', color: designSystem.colors.text.primary }}>
                                 {categoryConfig?.label}
+                                {tx.voucher_year != null && (
+                                  <span style={{
+                                    fontWeight: 400,
+                                    color: designSystem.colors.text.disabled,
+                                    marginLeft: '8px',
+                                  }}>
+                                    {tx.voucher_year}
+                                  </span>
+                                )}
                               </div>
                               <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
                                 {tx.description}

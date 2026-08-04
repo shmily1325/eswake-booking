@@ -2,9 +2,10 @@
  * 儲值 · 年度餘額
  *
  * Design thinking (docs/design.md):
- * - Dashboard smells to avoid: spreadsheet chrome, stat cards, emoji decoration
- * - Hierarchy: year first → who has remaining → amounts; click opens 細帳
- * - Primary task: scan voucher year remainders like Excel year tabs
+ * - Excel habit: one year tab → scan by voucher type groups (not a wide member×category matrix)
+ * - Hierarchy: year → category section → nickname + remaining
+ * - Primary task: who still has what in this year; click opens 細帳
+ * - Avoid dashboard stat cards / dense spreadsheet chrome
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -40,19 +41,24 @@ export interface YearBalanceMemberRef {
   name: string | null
 }
 
-interface MemberYearBalance {
+interface PersonRemaining {
   memberId: string
   nickname: string
   name: string
-  g21: number | null
-  g23: number | null
-  vip: number | null
-  years: number[]
+  remaining: number
 }
 
 interface VoucherYearBalancePanelProps {
   onOpenMember: (member: YearBalanceMemberRef) => void
+  /** 變更時重新載入 lots（例如細帳成功後） */
+  refreshKey?: number
 }
+
+const CATEGORY_ORDER: LotCategory[] = [
+  'boat_voucher_g21_panther',
+  'boat_voucher_g23',
+  'vip_voucher',
+]
 
 const CATEGORY_LABEL: Record<LotCategory, string> = {
   boat_voucher_g21_panther: 'G21／黑豹',
@@ -67,45 +73,13 @@ function formatAmount(category: LotCategory, value: number): string {
   return `${value.toLocaleString()}分`
 }
 
-function AmountCell({
-  category,
-  value,
-  isMobile,
-}: {
-  category: LotCategory
-  value: number | null
-  isMobile: boolean
-}) {
-  if (value === null) {
-    return (
-      <span style={{ color: designSystem.colors.text.secondary }}>
-        —
-      </span>
-    )
-  }
-  const depleted = value === 0
-  return (
-    <span
-      style={{
-        fontSize: getFontSize('bodyLarge', isMobile),
-        fontWeight: 600,
-        fontVariantNumeric: 'tabular-nums',
-        color: depleted
-          ? designSystem.colors.text.secondary
-          : designSystem.colors.text.primary,
-      }}
-    >
-      {depleted ? '用完' : formatAmount(category, value)}
-    </span>
-  )
-}
-
-export function VoucherYearBalancePanel({ onOpenMember }: VoucherYearBalancePanelProps) {
+export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: VoucherYearBalancePanelProps) {
   const { isMobile } = useResponsive()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lots, setLots] = useState<LotRow[]>([])
-  const [yearFilter, setYearFilter] = useState<number | 'all'>('all')
+  const [yearFilter, setYearFilter] = useState<number | null>(null)
+  const [hideZero, setHideZero] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
 
   const loadLots = useCallback(async () => {
@@ -138,80 +112,62 @@ export function VoucherYearBalancePanel({ onOpenMember }: VoucherYearBalancePane
 
   useEffect(() => {
     void loadLots()
-  }, [loadLots])
+  }, [loadLots, refreshKey])
 
   const availableYears = useMemo(() => {
-    const years = [...new Set(lots.map((l) => l.voucher_year))].sort((a, b) => a - b)
-    return years
+    return [...new Set(lots.map((l) => l.voucher_year))].sort((a, b) => a - b)
   }, [lots])
 
-  const rows = useMemo(() => {
-    const filteredLots =
-      yearFilter === 'all'
-        ? lots
-        : lots.filter((l) => l.voucher_year === yearFilter)
+  // Default to latest year (usually 2026), like opening the current Excel tab
+  useEffect(() => {
+    if (availableYears.length === 0) return
+    if (yearFilter !== null && availableYears.includes(yearFilter)) return
+    setYearFilter(availableYears[availableYears.length - 1])
+  }, [availableYears, yearFilter])
 
-    const byMember = new Map<string, MemberYearBalance>()
+  const sections = useMemo(() => {
+    if (yearFilter === null) return []
 
-    for (const lot of filteredLots) {
-      const member = lot.members
-      if (!member) continue
-      const existing = byMember.get(lot.member_id) || {
-        memberId: lot.member_id,
-        nickname: member.nickname || member.name || '—',
-        name: member.name || '',
-        g21: null,
-        g23: null,
-        vip: null,
-        years: [],
-      }
-
-      const rem = Number(lot.remaining)
-      if (lot.category === 'boat_voucher_g21_panther') existing.g21 = rem
-      if (lot.category === 'boat_voucher_g23') existing.g23 = rem
-      if (lot.category === 'vip_voucher') existing.vip = rem
-      if (!existing.years.includes(lot.voucher_year)) {
-        existing.years.push(lot.voucher_year)
-      }
-      byMember.set(lot.member_id, existing)
-    }
-
-    let list = [...byMember.values()]
     const q = searchTerm.trim().toLowerCase()
-    if (q) {
-      list = list.filter(
-        (r) =>
-          r.nickname.toLowerCase().includes(q) ||
-          r.name.toLowerCase().includes(q)
+    const yearLots = lots.filter((l) => l.voucher_year === yearFilter)
+
+    return CATEGORY_ORDER.map((category) => {
+      const peopleMap = new Map<string, PersonRemaining>()
+
+      for (const lot of yearLots) {
+        if (lot.category !== category) continue
+        const member = lot.members
+        if (!member) continue
+        const nickname = member.nickname || member.name || '—'
+        const name = member.name || ''
+        if (q) {
+          const hay = `${nickname} ${name}`.toLowerCase()
+          if (!hay.includes(q)) continue
+        }
+        const remaining = Number(lot.remaining)
+        if (hideZero && remaining === 0) continue
+
+        peopleMap.set(lot.member_id, {
+          memberId: lot.member_id,
+          nickname,
+          name,
+          remaining,
+        })
+      }
+
+      const people = [...peopleMap.values()].sort((a, b) =>
+        a.nickname.localeCompare(b.nickname, 'zh-Hant')
       )
-    }
 
-    list.sort((a, b) => a.nickname.localeCompare(b.nickname, 'zh-Hant'))
-    return list
-  }, [lots, yearFilter, searchTerm])
+      return { category, label: CATEGORY_LABEL[category], people }
+    }).filter((section) => section.people.length > 0)
+  }, [lots, yearFilter, searchTerm, hideZero])
 
-  const yearChip = (year: number | 'all', label: string) => {
-    const selected = yearFilter === year
-    return (
-      <button
-        key={String(year)}
-        type="button"
-        data-track={`voucher_year_filter_${year}`}
-        aria-pressed={selected}
-        onClick={() => setYearFilter(year)}
-        style={{
-          ...getBookingChoiceStyle(selected),
-          padding: isMobile ? '10px 14px' : '10px 16px',
-          fontSize: getFontSize('button', isMobile),
-          fontWeight: 600,
-          cursor: 'pointer',
-          minHeight: 44,
-        }}
-      >
-        {label}
-      </button>
-    )
-  }
+  const totalPeople = useMemo(() => {
+    const ids = new Set<string>()
+    for (const s of sections) for (const p of s.people) ids.add(p.memberId)
+    return ids.size
+  }, [sections])
 
   return (
     <div>
@@ -236,7 +192,7 @@ export function VoucherYearBalancePanel({ onOpenMember }: VoucherYearBalancePane
             maxWidth: 520,
           }}
         >
-          已與 Excel／流水對齊的 G21、G23、VIP 分年剩餘。點會員可看細帳。
+          先選年份，再依票種往下看（接近 Excel 分頁）。點會員可看細帳。
         </p>
       </div>
 
@@ -246,13 +202,52 @@ export function VoucherYearBalancePanel({ onOpenMember }: VoucherYearBalancePane
           flexWrap: 'wrap',
           gap: designSystem.spacing.sm,
           marginBottom: designSystem.spacing.md,
+          alignItems: 'center',
         }}
       >
-        {yearChip('all', '全部')}
-        {availableYears.map((y) => yearChip(y, String(y)))}
+        {availableYears.map((y) => {
+          const selected = yearFilter === y
+          return (
+            <button
+              key={y}
+              type="button"
+              data-track={`voucher_year_filter_${y}`}
+              aria-pressed={selected}
+              onClick={() => setYearFilter(y)}
+              style={{
+                ...getBookingChoiceStyle(selected),
+                padding: isMobile ? '10px 14px' : '10px 16px',
+                fontSize: getFontSize('button', isMobile),
+                fontWeight: 600,
+                cursor: 'pointer',
+                minHeight: 44,
+              }}
+            >
+              {y}
+            </button>
+          )
+        })}
+
+        <button
+          type="button"
+          data-track="voucher_year_hide_zero"
+          aria-pressed={hideZero}
+          onClick={() => setHideZero((v) => !v)}
+          style={{
+            ...getBookingChoiceStyle(hideZero),
+            marginLeft: isMobile ? 0 : 'auto',
+            padding: isMobile ? '10px 14px' : '10px 16px',
+            fontSize: getFontSize('button', isMobile),
+            fontWeight: 600,
+            cursor: 'pointer',
+            minHeight: 44,
+          }}
+        >
+          只看有剩餘
+        </button>
       </div>
 
-      <div style={{ position: 'relative', marginBottom: designSystem.spacing.md }}>
+      <div style={{ position: 'relative', marginBottom: designSystem.spacing.lg }}>
         <input
           type="text"
           placeholder="搜尋會員"
@@ -290,214 +285,190 @@ export function VoucherYearBalancePanel({ onOpenMember }: VoucherYearBalancePane
         ) : null}
       </div>
 
-      <div
-        style={{
-          background: designSystem.colors.background.card,
-          borderRadius: designSystem.borderRadius.xl,
-          boxShadow: designSystem.shadows.sm,
-          overflow: 'hidden',
-        }}
-      >
-        {!isMobile && !loading && rows.length > 0 ? (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(140px, 1.4fr) repeat(3, minmax(100px, 1fr))',
-              gap: designSystem.spacing.md,
-              padding: '14px 20px',
-              borderBottom: `1px solid ${designSystem.colors.border.light}`,
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.text.secondary,
-              fontWeight: 600,
-              letterSpacing: '0.02em',
-            }}
-          >
-            <div>會員</div>
-            <div style={{ textAlign: 'right' }}>{CATEGORY_LABEL.boat_voucher_g21_panther}</div>
-            <div style={{ textAlign: 'right' }}>{CATEGORY_LABEL.boat_voucher_g23}</div>
-            <div style={{ textAlign: 'right' }}>{CATEGORY_LABEL.vip_voucher}</div>
-          </div>
-        ) : null}
+      {loading ? (
+        <div
+          style={{
+            ...getEmptyStateStyle(isMobile),
+            background: designSystem.colors.background.card,
+            borderRadius: designSystem.borderRadius.xl,
+            boxShadow: designSystem.shadows.sm,
+            padding: 48,
+          }}
+        >
+          載入中…
+        </div>
+      ) : error ? (
+        <div
+          style={{
+            ...getEmptyStateStyle(isMobile),
+            background: designSystem.colors.background.card,
+            borderRadius: designSystem.borderRadius.xl,
+            boxShadow: designSystem.shadows.sm,
+            padding: 48,
+            color: designSystem.colors.danger[700],
+          }}
+        >
+          {error}
+        </div>
+      ) : sections.length === 0 ? (
+        <div
+          style={{
+            ...getEmptyStateStyle(isMobile),
+            background: designSystem.colors.background.card,
+            borderRadius: designSystem.borderRadius.xl,
+            boxShadow: designSystem.shadows.sm,
+            padding: 48,
+          }}
+        >
+          {lots.length === 0
+            ? '尚無已對齊的年度餘額'
+            : hideZero
+              ? '此年沒有非零剩餘（可關閉「只看有剩餘」）'
+              : '沒有符合的資料'}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.xl }}>
+          {sections.map((section) => (
+            <section key={section.category}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  gap: designSystem.spacing.md,
+                  marginBottom: designSystem.spacing.sm,
+                  padding: isMobile ? '0 2px' : '0 4px',
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: getFontSize('h3', isMobile),
+                    fontWeight: 650,
+                    color: designSystem.colors.text.primary,
+                    letterSpacing: '-0.01em',
+                  }}
+                >
+                  {section.label}
+                </h3>
+                <span
+                  style={{
+                    fontSize: getFontSize('caption', isMobile),
+                    color: designSystem.colors.text.secondary,
+                  }}
+                >
+                  {section.people.length} 人
+                </span>
+              </div>
 
-        {loading ? (
-          <div style={{ ...getEmptyStateStyle(isMobile), padding: 48 }}>載入中…</div>
-        ) : error ? (
-          <div style={{ ...getEmptyStateStyle(isMobile), padding: 48, color: designSystem.colors.danger[700] }}>
-            {error}
-          </div>
-        ) : rows.length === 0 ? (
-          <div style={{ ...getEmptyStateStyle(isMobile), padding: 48 }}>
-            {lots.length === 0
-              ? '尚無已對齊的年度餘額'
-              : '沒有符合的會員'}
-          </div>
-        ) : (
-          rows.map((row, index) => (
-            <button
-              key={row.memberId}
-              type="button"
-              data-track="voucher_year_open_member"
-              onClick={() =>
-                onOpenMember({
-                  id: row.memberId,
-                  nickname: row.nickname,
-                  name: row.name,
-                })
-              }
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                padding: isMobile ? '16px 16px' : '16px 20px',
-                borderTop:
-                  index === 0
-                    ? undefined
-                    : `1px solid ${designSystem.colors.border.light}`,
-                boxSizing: 'border-box',
-              }}
-            >
-              {isMobile ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: getFontSize('bodyLarge', isMobile),
-                        fontWeight: 650,
-                        color: designSystem.colors.text.primary,
-                      }}
-                    >
-                      {row.nickname}
-                    </div>
-                    {row.name && row.name !== row.nickname ? (
-                      <div
-                        style={{
-                          fontSize: getFontSize('bodySmall', isMobile),
-                          color: designSystem.colors.text.secondary,
-                          marginTop: 2,
-                        }}
-                      >
-                        {row.name}
-                      </div>
-                    ) : null}
-                    {yearFilter === 'all' && row.years.length > 0 ? (
-                      <div
-                        style={{
-                          fontSize: getFontSize('caption', isMobile),
-                          color: designSystem.colors.text.secondary,
-                          marginTop: 4,
-                        }}
-                      >
-                        {row.years.join(' · ')}
-                      </div>
-                    ) : null}
-                  </div>
+              <div
+                style={{
+                  background: designSystem.colors.background.card,
+                  borderRadius: designSystem.borderRadius.xl,
+                  boxShadow: designSystem.shadows.sm,
+                  overflow: 'hidden',
+                }}
+              >
+                {!isMobile ? (
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr 1fr 1fr',
-                      gap: 8,
+                      gridTemplateColumns: '1fr auto',
+                      gap: designSystem.spacing.md,
+                      padding: '12px 20px',
+                      borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                      fontSize: getFontSize('caption', isMobile),
+                      color: designSystem.colors.text.secondary,
+                      fontWeight: 600,
+                      letterSpacing: '0.02em',
                     }}
                   >
-                    {(
-                      [
-                        ['g21', 'boat_voucher_g21_panther', row.g21],
-                        ['g23', 'boat_voucher_g23', row.g23],
-                        ['vip', 'vip_voucher', row.vip],
-                      ] as const
-                    ).map(([key, cat, val]) => (
-                      <div key={key}>
+                    <div>會員</div>
+                    <div style={{ textAlign: 'right', minWidth: 96 }}>剩餘</div>
+                  </div>
+                ) : null}
+
+                {section.people.map((person, index) => (
+                  <button
+                    key={`${section.category}-${person.memberId}`}
+                    type="button"
+                    data-track="voucher_year_open_member"
+                    onClick={() =>
+                      onOpenMember({
+                        id: person.memberId,
+                        nickname: person.nickname,
+                        name: person.name,
+                      })
+                    }
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto',
+                      gap: designSystem.spacing.md,
+                      alignItems: 'center',
+                      width: '100%',
+                      textAlign: 'left',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      padding: isMobile ? '14px 16px' : '14px 20px',
+                      borderTop:
+                        index === 0
+                          ? undefined
+                          : `1px solid ${designSystem.colors.border.light}`,
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: getFontSize('bodyLarge', isMobile),
+                          fontWeight: 650,
+                          color: designSystem.colors.text.primary,
+                        }}
+                      >
+                        {person.nickname}
+                      </div>
+                      {person.name && person.name !== person.nickname ? (
                         <div
                           style={{
-                            fontSize: getFontSize('caption', isMobile),
+                            fontSize: getFontSize('bodySmall', isMobile),
                             color: designSystem.colors.text.secondary,
-                            marginBottom: 2,
+                            marginTop: 2,
                           }}
                         >
-                          {CATEGORY_LABEL[cat]}
+                          {person.name}
                         </div>
-                        <AmountCell category={cat} value={val} isMobile={isMobile} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(140px, 1.4fr) repeat(3, minmax(100px, 1fr))',
-                    gap: designSystem.spacing.md,
-                    alignItems: 'center',
-                  }}
-                >
-                  <div>
+                      ) : null}
+                    </div>
                     <div
                       style={{
                         fontSize: getFontSize('bodyLarge', isMobile),
-                        fontWeight: 650,
+                        fontWeight: 600,
+                        fontVariantNumeric: 'tabular-nums',
                         color: designSystem.colors.text.primary,
+                        textAlign: 'right',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      {row.nickname}
+                      {formatAmount(section.category, person.remaining)}
                     </div>
-                    {row.name && row.name !== row.nickname ? (
-                      <div
-                        style={{
-                          fontSize: getFontSize('bodySmall', isMobile),
-                          color: designSystem.colors.text.secondary,
-                          marginTop: 2,
-                        }}
-                      >
-                        {row.name}
-                      </div>
-                    ) : null}
-                    {yearFilter === 'all' && row.years.length > 0 ? (
-                      <div
-                        style={{
-                          fontSize: getFontSize('caption', isMobile),
-                          color: designSystem.colors.text.secondary,
-                          marginTop: 4,
-                        }}
-                      >
-                        {row.years.join(' · ')}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <AmountCell
-                      category="boat_voucher_g21_panther"
-                      value={row.g21}
-                      isMobile={isMobile}
-                    />
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <AmountCell
-                      category="boat_voucher_g23"
-                      value={row.g23}
-                      isMobile={isMobile}
-                    />
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <AmountCell category="vip_voucher" value={row.vip} isMobile={isMobile} />
-                  </div>
-                </div>
-              )}
-            </button>
-          ))
-        )}
-      </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
 
-      {!loading && lots.length > 0 ? (
+      {!loading && yearFilter !== null && sections.length > 0 ? (
         <p
           style={{
-            margin: `${designSystem.spacing.md} 0 0`,
+            margin: `${designSystem.spacing.lg} 0 0`,
             fontSize: getFontSize('caption', isMobile),
             color: designSystem.colors.text.secondary,
           }}
         >
-          共 {rows.length} 位｜僅列已建 lot 者；未對齊者不顯示
+          {yearFilter} 年｜{totalPeople} 位會員｜僅已建 lot
         </p>
       ) : null}
     </div>

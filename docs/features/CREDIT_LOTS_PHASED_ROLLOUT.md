@@ -17,11 +17,11 @@
 | 階段 | 內容 | 狀態 |
 |------|------|------|
 | **A** | 只加結構：`voucher_year`、`credit_lots`、設定、稽核 view。不寫歷史、不改扣款。 | ✅ migration `162_credit_lots_phase_a.sql` |
-| **B** | 乾跑 SQL／腳本產出 CSV：建議標年、各年剩餘；`Σ = members` | 未做 |
-| **C** | 人工抽樣核對（建議 10～20 人 + 全部 2025 少數名單） | 未做 |
-| **D** | 正式寫入 `voucher_year` + `credit_lots`（可回滾、先備份） | 未做 |
-| **E** | 新入帳可選／預設販售年；扣款 FIFO **僅套用已有 lot 者** | 未做 |
-| **F** | 全開 FIFO + 畫面展開各年 | 未做 |
+| **B** | 乾跑 SQL／腳本產出 CSV：建議標年、各年剩餘；`Σ = members` | ✅（`tmp/*` 乾跑／對帳腳本；未進 repo 正式腳本也可） |
+| **C** | 人工抽樣核對（建議 10～20 人 + 全部 2025 少數名單） | ✅ 已對 Excel；Julie 跳過；Mandy/Candy 部分延後 |
+| **D** | 正式寫入 `voucher_year` + `credit_lots`（可回滾、先備份） | ✅ 已用 `tmp/insert_credit_lots_aligned.sql` 等寫入；audit delta≈0 |
+| **E** | 新入帳可選／預設販售年；扣款 FIFO **僅套用已有 lot 者**；細帳可看／改入帳年 | ⏳ `163`+`164` 已上線；建議再套 `165`（FIFO 失敗不擋日常扣款） |
+| **F** | 全開 FIFO + 畫面展開各年 | 未做（年度餘額已可看各年剩餘） |
 
 ## 階段 A 已新增
 
