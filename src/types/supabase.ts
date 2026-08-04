@@ -1237,6 +1237,47 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_lots: {
+        Row: {
+          id: string
+          member_id: string
+          category: string
+          voucher_year: number
+          remaining: number
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          member_id: string
+          category: string
+          voucher_year: number
+          remaining: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          member_id?: string
+          category?: string
+          voucher_year?: number
+          remaining?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_lots_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           adjust_type: string | null
@@ -1261,6 +1302,7 @@ export type Database = {
           transaction_date: string
           transaction_type: string
           vip_voucher_amount_after: number | null
+          voucher_year: number | null
         }
         Insert: {
           adjust_type?: string | null
@@ -1285,6 +1327,7 @@ export type Database = {
           transaction_date: string
           transaction_type: string
           vip_voucher_amount_after?: number | null
+          voucher_year?: number | null
         }
         Update: {
           adjust_type?: string | null
@@ -1309,6 +1352,7 @@ export type Database = {
           transaction_date?: string
           transaction_type?: string
           vip_voucher_amount_after?: number | null
+          voucher_year?: number | null
         }
         Relationships: [
           {

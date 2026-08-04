@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
@@ -12,6 +12,10 @@ import { isAdmin } from '../../utils/auth'
 import { formatDbTimestampDisplay, getVenueDateString } from '../../utils/date'
 import { MemberStatusBadges } from '../../components/MemberStatusBadges'
 import {
+  VoucherYearBalancePanel,
+  type YearBalanceMemberRef,
+} from './VoucherYearBalancePanel'
+import {
   designSystem,
   getBadgeStyle,
   getButtonStyle,
@@ -21,6 +25,8 @@ import {
   getInputStyle,
   getPageContentShellStyle,
 } from '../../styles/designSystem'
+
+type StorageView = 'ledger' | 'year'
 
 const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
@@ -40,6 +46,7 @@ interface MemberWithLastTransaction extends Member {
 export function MemberTransaction() {
   const user = useAuthUser()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const userIsAdmin = isAdmin(user)
   const { isMobile } = useResponsive()
   const toast = useToast()
@@ -52,6 +59,34 @@ export function MemberTransaction() {
   const [sortBy, setSortBy] = useState<'updatedAt' | 'lastLiffLogin'>('updatedAt')
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
+
+  const view: StorageView = searchParams.get('view') === 'year' ? 'year' : 'ledger'
+
+  const openMemberFromYearBalance = async (ref: YearBalanceMemberRef) => {
+    const cached = members.find((m) => m.id === ref.id)
+    if (cached) {
+      setSelectedMember(cached)
+      setShowTransactionDialog(true)
+      return
+    }
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .eq('id', ref.id)
+        .maybeSingle()
+      if (error) throw error
+      if (!data) {
+        toast.error('找不到會員')
+        return
+      }
+      setSelectedMember(data as Member)
+      setShowTransactionDialog(true)
+    } catch (err) {
+      console.error('載入會員失敗:', err)
+      toast.error('載入會員失敗')
+    }
+  }
 
   const handleUnbindLine = async (memberId: string, memberDisplayName: string) => {
     try {
@@ -275,10 +310,18 @@ export function MemberTransaction() {
           showBaoLink={isAdmin(user)}
           extraLinks={
             isAdmin(user)
-              ? [{ label: '會員', link: '/members' }]
+              ? [
+                  { label: '會員', link: '/members' },
+                  view === 'ledger'
+                    ? { label: '年度餘額', link: '/member-transaction?view=year' }
+                    : { label: '記帳', link: '/member-transaction' },
+                ]
               : undefined
           }
         />
+
+        {view === 'year' ? null : (
+          <>
         {/* 搜尋欄（手機：sticky 固定在頂部；桌面：隨 header 一起 sticky） */}
         <div style={{
           display: 'flex',
@@ -464,8 +507,16 @@ export function MemberTransaction() {
             </div>
           </div>
         )}
+          </>
+        )}
       </div>
 
+      {view === 'year' ? (
+        <div style={{ marginTop: designSystem.spacing.md }}>
+          <VoucherYearBalancePanel onOpenMember={openMemberFromYearBalance} />
+        </div>
+      ) : (
+        <>
       {/* 桌面結果筆數（與手機同句式，較安靜） */}
       {!isMobile && (searchTerm || membershipTypeFilter !== 'all' || lineBindingFilter !== 'all') && (
         <div style={{
@@ -736,6 +787,8 @@ export function MemberTransaction() {
             ))
         )}
       </div>
+          </>
+        )}
 
       <Footer />
       </div>
