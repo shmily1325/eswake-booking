@@ -115,19 +115,64 @@ export function TransactionDialog({
   const showEditVoucherYearField =
     editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
 
-  const formatLotYears = (category: string, isAmount: boolean) => {
-    const rows = creditLots
-      .filter((l) => l.category === category)
+  /** 有剩餘的分年；剩 0 不顯示。單年 → 括號；多年 → 分行細帳 */
+  const activeLotsFor = (category: string) =>
+    creditLots
+      .filter((l) => l.category === category && Number(l.remaining) !== 0)
       .sort((a, b) => a.voucher_year - b.voucher_year)
-    if (rows.length === 0) return null
-    return rows
-      .map((l) => {
-        const amt = isAmount
-          ? `$${Number(l.remaining).toLocaleString()}`
-          : `${Number(l.remaining).toLocaleString()}分`
-        return `${l.voucher_year} ${amt}`
-      })
-      .join(' · ')
+
+  const formatLotAmount = (n: number, isAmount: boolean) =>
+    isAmount ? `$${n.toLocaleString()}` : `${n.toLocaleString()}分`
+
+  const renderBalanceWithYears = (
+    category: string,
+    total: number,
+    isAmount: boolean,
+  ) => {
+    const rows = activeLotsFor(category)
+    const totalStr = formatLotAmount(total, isAmount)
+
+    if (rows.length === 1) {
+      return (
+        <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>
+          {totalStr}
+          <span
+            style={{
+              fontWeight: 400,
+              color: designSystem.colors.text.disabled,
+              marginLeft: 6,
+            }}
+          >
+            ({rows[0].voucher_year})
+          </span>
+        </div>
+      )
+    }
+
+    return (
+      <>
+        <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>
+          {totalStr}
+        </div>
+        {rows.length > 1 ? (
+          <div
+            style={{
+              marginTop: '4px',
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.text.disabled,
+              fontWeight: 400,
+              lineHeight: 1.4,
+            }}
+          >
+            {rows.map((l) => (
+              <div key={l.voucher_year}>
+                {l.voucher_year} {formatLotAmount(Number(l.remaining), isAmount)}
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </>
+    )
   }
 
   const loadCreditLots = async () => {
@@ -516,18 +561,7 @@ export function TransactionDialog({
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>VIP票券</div>
-                  <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>${(member.vip_voucher_amount ?? 0).toLocaleString()}</div>
-                  {formatLotYears('vip_voucher', true) && (
-                    <div style={{
-                      marginTop: '4px',
-                      fontSize: getFontSize('caption', isMobile),
-                      color: designSystem.colors.text.disabled,
-                      fontWeight: 400,
-                      lineHeight: 1.35,
-                    }}>
-                      {formatLotYears('vip_voucher', true)}
-                    </div>
-                  )}
+                  {renderBalanceWithYears('vip_voucher', member.vip_voucher_amount ?? 0, true)}
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>指定課</div>
@@ -535,32 +569,14 @@ export function TransactionDialog({
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G23船券</div>
-                  <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.boat_voucher_g23_minutes ?? 0).toLocaleString()}分</div>
-                  {formatLotYears('boat_voucher_g23', false) && (
-                    <div style={{
-                      marginTop: '4px',
-                      fontSize: getFontSize('caption', isMobile),
-                      color: designSystem.colors.text.disabled,
-                      fontWeight: 400,
-                      lineHeight: 1.35,
-                    }}>
-                      {formatLotYears('boat_voucher_g23', false)}
-                    </div>
-                  )}
+                  {renderBalanceWithYears('boat_voucher_g23', member.boat_voucher_g23_minutes ?? 0, false)}
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G21/黑豹船券</div>
-                  <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.boat_voucher_g21_panther_minutes ?? 0).toLocaleString()}分</div>
-                  {formatLotYears('boat_voucher_g21_panther', false) && (
-                    <div style={{
-                      marginTop: '4px',
-                      fontSize: getFontSize('caption', isMobile),
-                      color: designSystem.colors.text.disabled,
-                      fontWeight: 400,
-                      lineHeight: 1.35,
-                    }}>
-                      {formatLotYears('boat_voucher_g21_panther', false)}
-                    </div>
+                  {renderBalanceWithYears(
+                    'boat_voucher_g21_panther',
+                    member.boat_voucher_g21_panther_minutes ?? 0,
+                    false,
                   )}
                 </div>
                 <div>
