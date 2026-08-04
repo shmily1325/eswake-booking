@@ -54,6 +54,9 @@ export function MemberTransaction() {
   const [loading, setLoading] = useState(true)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [showTransactionDialog, setShowTransactionDialog] = useState(false)
+  const [dialogInitialTab, setDialogInitialTab] = useState<'transaction' | 'history'>('transaction')
+  const [dialogInitialCategory, setDialogInitialCategory] = useState<string | undefined>()
+  const [dialogInitialVoucherYear, setDialogInitialVoucherYear] = useState<number | null | undefined>()
   const [searchTerm, setSearchTerm] = useState('')
 
   const [sortBy, setSortBy] = useState<'updatedAt' | 'lastLiffLogin'>('updatedAt')
@@ -64,6 +67,10 @@ export function MemberTransaction() {
   const view: StorageView = searchParams.get('view') === 'year' ? 'year' : 'ledger'
 
   const openMemberFromYearBalance = async (ref: YearBalanceMemberRef) => {
+    setDialogInitialTab('history')
+    setDialogInitialCategory(ref.category)
+    setDialogInitialVoucherYear(undefined)
+
     const cached = members.find((m) => m.id === ref.id)
     if (cached) {
       setSelectedMember(cached)
@@ -87,6 +94,14 @@ export function MemberTransaction() {
       console.error('載入會員失敗:', err)
       toast.error('載入會員失敗')
     }
+  }
+
+  const handleMemberClick = (member: Member) => {
+    setDialogInitialTab('transaction')
+    setDialogInitialCategory(undefined)
+    setDialogInitialVoucherYear(undefined)
+    setSelectedMember(member)
+    setShowTransactionDialog(true)
   }
 
   const handleUnbindLine = async (memberId: string, memberDisplayName: string) => {
@@ -265,11 +280,6 @@ export function MemberTransaction() {
     return result
   }, [members, searchTerm, sortBy, membershipTypeFilter, lineBindingFilter, isMobile])
 
-  const handleMemberClick = (member: Member) => {
-    setSelectedMember(member)
-    setShowTransactionDialog(true)
-  }
-
   const handleTransactionSuccess = () => {
     loadMembers()
     setYearPanelRefreshKey((k) => k + 1)
@@ -315,7 +325,7 @@ export function MemberTransaction() {
               ? [
                   { label: '會員', link: '/members' },
                   view === 'ledger'
-                    ? { label: '年度餘額', link: '/member-transaction?view=year' }
+                    ? { label: '年度細帳', link: '/member-transaction?view=year' }
                     : { label: '記帳', link: '/member-transaction' },
                 ]
               : undefined
@@ -803,9 +813,15 @@ export function MemberTransaction() {
         <TransactionDialog
           open={showTransactionDialog}
           member={selectedMember}
+          initialTab={dialogInitialTab}
+          initialCategoryFilter={dialogInitialCategory}
+          initialVoucherYearFilter={dialogInitialVoucherYear}
           onClose={() => {
             setShowTransactionDialog(false)
             setSelectedMember(null)
+            setDialogInitialTab('transaction')
+            setDialogInitialCategory(undefined)
+            setDialogInitialVoucherYear(undefined)
           }}
           onSuccess={handleTransactionSuccess}
         />

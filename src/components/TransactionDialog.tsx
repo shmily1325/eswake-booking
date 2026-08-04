@@ -6,6 +6,7 @@ import {
   processManualMemberAdjust,
   processManualMemberAdjustDelete,
   processManualMemberAdjustEdit,
+  YEAR_TRACKED_CATEGORIES,
   voucherYearOptions,
 } from '../lib/creditLots'
 import { useResponsive } from '../hooks/useResponsive'
@@ -21,6 +22,11 @@ interface TransactionDialogProps {
   onSuccess: () => void
   defaultDescription?: string  // 自動填入的說明
   defaultTransactionDate?: string  // 自動填入的交易日期
+  /** 從年度細帳點入時預設開歷史 */
+  initialTab?: 'transaction' | 'history'
+  initialCategoryFilter?: string
+  /** 只顯示該入帳年的流水（扣款／未標年不會出現） */
+  initialVoucherYearFilter?: number | null
 }
 
 interface Transaction {
@@ -52,10 +58,20 @@ const CATEGORIES = [
   { value: 'gift_boat_hours', label: '贈送大船', unit: '分', type: 'minutes' },
 ]
 
-export function TransactionDialog({ open, member, onClose, onSuccess, defaultDescription, defaultTransactionDate }: TransactionDialogProps) {
+export function TransactionDialog({
+  open,
+  member,
+  onClose,
+  onSuccess,
+  defaultDescription,
+  defaultTransactionDate,
+  initialTab = 'transaction',
+  initialCategoryFilter,
+  initialVoucherYearFilter,
+}: TransactionDialogProps) {
   const { isMobile } = useResponsive()
   const toast = useToast()
-  const [activeTab, setActiveTab] = useState<'transaction' | 'history'>('transaction')
+  const [activeTab, setActiveTab] = useState<'transaction' | 'history'>(initialTab)
   const [loading, setLoading] = useState(false)
   
   // 表單狀態
@@ -66,7 +82,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   const [notes, setNotes] = useState('')
   const [transactionDate, setTransactionDate] = useState(() => getLocalDateString())
   const [currentVoucherYear, setCurrentVoucherYear] = useState(2026)
-  const [voucherYear, setVoucherYear] = useState(2026)
+  /** null = 入帳年「無」 */
+  const [voucherYear, setVoucherYear] = useState<number | null>(2026)
+  const [creditLots, setCreditLots] = useState<
+    Array<{ category: string; voucher_year: number; remaining: number }>
+  >([])
   
   // 交易記錄相關
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -74,7 +94,10 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     const today = getLocalDateString() // YYYY-MM-DD
     return today.substring(0, 7) // YYYY-MM
   }) // 空字串 '' 代表「全部」
-  const [categoryFilter, setCategoryFilter] = useState<string>('all') // 類別篩選
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter || 'all')
+  const [voucherYearFilter, setVoucherYearFilter] = useState<number | null>(
+    initialVoucherYearFilter ?? null,
+  )
   const [searchTerm, setSearchTerm] = useState('') // 搜尋關鍵字
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
@@ -84,13 +107,44 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
   const [editDescription, setEditDescription] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editTransactionDate, setEditTransactionDate] = useState('')
-  const [editVoucherYear, setEditVoucherYear] = useState(2026)
+  const [editVoucherYear, setEditVoucherYear] = useState<number | null>(2026)
 
   const inputStyle = getInputStyle(isMobile)
   const showVoucherYearField =
     adjustType === 'increase' && isYearTrackedCategory(category)
   const showEditVoucherYearField =
     editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
+
+  const formatLotYears = (category: string, isAmount: boolean) => {
+    const rows = creditLots
+      .filter((l) => l.category === category)
+      .sort((a, b) => a.voucher_year - b.voucher_year)
+    if (rows.length === 0) return null
+    return rows
+      .map((l) => {
+        const amt = isAmount
+          ? `$${Number(l.remaining).toLocaleString()}`
+          : `${Number(l.remaining).toLocaleString()}分`
+        return `${l.voucher_year} ${amt}`
+      })
+      .join(' · ')
+  }
+
+  const loadCreditLots = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('credit_lots')
+        .select('category, voucher_year, remaining')
+        .eq('member_id', member.id)
+        .in('category', [...YEAR_TRACKED_CATEGORIES])
+        .order('voucher_year', { ascending: true })
+      if (error) throw error
+      setCreditLots(data || [])
+    } catch (err) {
+      console.warn('載入分年剩餘失敗', err)
+      setCreditLots([])
+    }
+  }
 
   const resetForm = () => {
     setCategory('balance')
@@ -102,7 +156,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     setVoucherYear(currentVoucherYear)
   }
 
-  // 當對話框開啟時，自動填入預約資訊，並讀取目前販售年
+  // 當對話框開啟時，自動填入預約資訊，並讀取目前販售年／分年剩餘
   useEffect(() => {
     if (open) {
       // 明確設置，即使是空字串也要清空
@@ -110,12 +164,20 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       if (defaultTransactionDate) {
         setTransactionDate(defaultTransactionDate)
       }
+      setActiveTab(initialTab)
+      setCategoryFilter(initialCategoryFilter || 'all')
+      setVoucherYearFilter(initialVoucherYearFilter ?? null)
+      // 從年度細帳帶年篩選時看全部月份，才找得到已標年入帳
+      if (initialTab === 'history' && initialVoucherYearFilter != null) {
+        setSelectedMonth('')
+      }
       void fetchCurrentVoucherYear().then((year) => {
         setCurrentVoucherYear(year)
         setVoucherYear(year)
       })
+      void loadCreditLots()
     }
-  }, [open, defaultDescription, defaultTransactionDate])
+  }, [open, defaultDescription, defaultTransactionDate, member.id, initialTab, initialCategoryFilter, initialVoucherYearFilter])
 
   // 加載交易記錄
   const loadTransactions = async () => {
@@ -166,7 +228,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
     setEditDescription(tx.description)
     setEditNotes(tx.notes || '')
     setEditTransactionDate(tx.transaction_date || (tx.created_at ? tx.created_at.substring(0, 10) : ''))
-    setEditVoucherYear(tx.voucher_year ?? currentVoucherYear)
+    setEditVoucherYear(tx.voucher_year) // null = 無
   }
 
   const handleSaveEdit = async () => {
@@ -205,6 +267,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       })
 
       await loadTransactions()
+      await loadCreditLots()
       onSuccess()
       setEditingTransaction(null)
       setEditCategory('')
@@ -231,6 +294,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
       })
 
       await loadTransactions()
+      await loadCreditLots()
       onSuccess()
     } catch (error: any) {
       console.error('刪除失敗:', error)
@@ -453,6 +517,17 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>VIP票券</div>
                   <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>${(member.vip_voucher_amount ?? 0).toLocaleString()}</div>
+                  {formatLotYears('vip_voucher', true) && (
+                    <div style={{
+                      marginTop: '4px',
+                      fontSize: getFontSize('caption', isMobile),
+                      color: designSystem.colors.text.disabled,
+                      fontWeight: 400,
+                      lineHeight: 1.35,
+                    }}>
+                      {formatLotYears('vip_voucher', true)}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>指定課</div>
@@ -461,10 +536,32 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G23船券</div>
                   <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.boat_voucher_g23_minutes ?? 0).toLocaleString()}分</div>
+                  {formatLotYears('boat_voucher_g23', false) && (
+                    <div style={{
+                      marginTop: '4px',
+                      fontSize: getFontSize('caption', isMobile),
+                      color: designSystem.colors.text.disabled,
+                      fontWeight: 400,
+                      lineHeight: 1.35,
+                    }}>
+                      {formatLotYears('boat_voucher_g23', false)}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G21/黑豹船券</div>
                   <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>{(member.boat_voucher_g21_panther_minutes ?? 0).toLocaleString()}分</div>
+                  {formatLotYears('boat_voucher_g21_panther', false) && (
+                    <div style={{
+                      marginTop: '4px',
+                      fontSize: getFontSize('caption', isMobile),
+                      color: designSystem.colors.text.disabled,
+                      fontWeight: 400,
+                      lineHeight: 1.35,
+                    }}>
+                      {formatLotYears('boat_voucher_g21_panther', false)}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>贈送大船</div>
@@ -556,10 +653,14 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                     入帳年
                   </label>
                   <select
-                    value={voucherYear}
-                    onChange={(e) => setVoucherYear(Number(e.target.value))}
+                    value={voucherYear == null ? '' : String(voucherYear)}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setVoucherYear(v === '' ? null : Number(v))
+                    }}
                     style={inputStyle}
                   >
+                    <option value="">無（不標年）</option>
                     {voucherYearOptions(currentVoucherYear).map((y) => (
                       <option key={y} value={y}>
                         {y}{y === currentVoucherYear ? '（目前販售）' : ''}
@@ -571,7 +672,7 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                     fontSize: getFontSize('bodySmall', isMobile),
                     color: designSystem.colors.text.disabled,
                   }}>
-                    預設目前販售年，必要時可改
+                    預設目前販售年
                   </div>
                 </div>
               )}
@@ -822,6 +923,27 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               </div>
             </div>
 
+            {voucherYearFilter != null && (
+              <div style={{
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexWrap: 'wrap',
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setVoucherYearFilter(null)}
+                  style={{
+                    ...getButtonStyle('outline', 'small', isMobile),
+                    ...getFilterChipStyle(true, 'info'),
+                  }}
+                >
+                  {voucherYearFilter} ✕
+                </button>
+              </div>
+            )}
+
             {/* 搜尋框 */}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ position: 'relative' }}>
@@ -931,6 +1053,12 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               let filteredTransactions = categoryFilter === 'all' 
                 ? transactions 
                 : transactions.filter(tx => tx.category === categoryFilter)
+
+              if (voucherYearFilter != null) {
+                filteredTransactions = filteredTransactions.filter(
+                  (tx) => tx.voucher_year === voucherYearFilter,
+                )
+              }
               
               // 搜尋篩選
               if (searchTerm.trim()) {
@@ -945,7 +1073,11 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
               if (filteredTransactions.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.disabled }}>
-                    {searchTerm ? '找不到符合的交易記錄' : '此類別無交易記錄'}
+                    {voucherYearFilter != null
+                      ? '沒有資料'
+                      : searchTerm
+                        ? '找不到符合的交易記錄'
+                        : '此類別無交易記錄'}
                   </div>
                 )
               }
@@ -1063,10 +1195,14 @@ export function TransactionDialog({ open, member, onClose, onSuccess, defaultDes
                                   入帳年
                                 </label>
                                 <select
-                                  value={editVoucherYear}
-                                  onChange={(e) => setEditVoucherYear(Number(e.target.value))}
+                                  value={editVoucherYear == null ? '' : String(editVoucherYear)}
+                                  onChange={(e) => {
+                                    const v = e.target.value
+                                    setEditVoucherYear(v === '' ? null : Number(v))
+                                  }}
                                   style={inputStyle}
                                 >
+                                  <option value="">無（不標年）</option>
                                   {voucherYearOptions(currentVoucherYear, editingTransaction.voucher_year).map((y) => (
                                     <option key={y} value={y}>
                                       {y}{y === currentVoucherYear ? '（目前販售）' : ''}

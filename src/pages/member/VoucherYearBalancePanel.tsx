@@ -1,11 +1,10 @@
 /**
- * 儲值 · 年度餘額
+ * 儲值 · 年度細帳
  *
  * Design thinking (docs/design.md):
- * - Excel habit: one year tab → scan by voucher type groups (not a wide member×category matrix)
- * - Hierarchy: year → category section → nickname + remaining
- * - Primary task: who still has what in this year; click opens 細帳
- * - Avoid dashboard stat cards / dense spreadsheet chrome
+ * - Primary task: who still has remaining in a given year × voucher type
+ * - Click opens member 歷史 with category + year filter (tagged credits only)
+ * - Quiet chrome; no instructional copy under the title
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -39,6 +38,8 @@ export interface YearBalanceMemberRef {
   id: string
   nickname: string | null
   name: string | null
+  /** 點清冊列時帶入，開啟細帳歷史用 */
+  category?: LotCategory
 }
 
 interface PersonRemaining {
@@ -102,8 +103,8 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
       if (qError) throw qError
       setLots((data || []) as unknown as LotRow[])
     } catch (err) {
-      console.error('載入年度餘額失敗:', err)
-      setError('載入年度餘額失敗')
+      console.error('載入年度細帳失敗:', err)
+      setError('載入年度細帳失敗')
       setLots([])
     } finally {
       setLoading(false)
@@ -174,26 +175,15 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
       <div style={{ marginBottom: designSystem.spacing.lg }}>
         <h2
           style={{
-            margin: `0 0 ${designSystem.spacing.xs}`,
+            margin: 0,
             fontSize: getFontSize('h2', isMobile),
             fontWeight: 650,
             letterSpacing: '-0.02em',
             color: designSystem.colors.text.primary,
           }}
         >
-          年度餘額
+          年度細帳
         </h2>
-        <p
-          style={{
-            margin: 0,
-            fontSize: getFontSize('body', isMobile),
-            color: designSystem.colors.text.secondary,
-            lineHeight: 1.5,
-            maxWidth: 520,
-          }}
-        >
-          先選年份，再依票種往下看（接近 Excel 分頁）。點會員可看細帳。
-        </p>
       </div>
 
       <div
@@ -321,9 +311,9 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
           }}
         >
           {lots.length === 0
-            ? '尚無已對齊的年度餘額'
+            ? '尚無資料'
             : hideZero
-              ? '此年沒有非零剩餘（可關閉「只看有剩餘」）'
+              ? '此年沒有剩餘'
               : '沒有符合的資料'}
         </div>
       ) : (
@@ -398,6 +388,7 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                         id: person.memberId,
                         nickname: person.nickname,
                         name: person.name,
+                        category: section.category,
                       })
                     }
                     style={{
@@ -468,7 +459,7 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
             color: designSystem.colors.text.secondary,
           }}
         >
-          {yearFilter} 年｜{totalPeople} 位會員｜僅已建 lot
+          {yearFilter} 年｜{totalPeople} 位會員
         </p>
       ) : null}
     </div>
