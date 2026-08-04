@@ -6,6 +6,10 @@ const rpcMigration = readFileSync(
   resolve(process.cwd(), 'migrations/148_add_membership_lifecycle_rpcs.sql'),
   'utf8',
 )
+const noteWordingMigration = readFileSync(
+  resolve(process.cwd(), 'migrations/167_clarify_membership_note_wording.sql'),
+  'utf8',
+)
 const invariantMigration = readFileSync(
   resolve(process.cwd(), 'migrations/149_enforce_membership_invariants.sql'),
   'utf8',
@@ -100,5 +104,17 @@ describe('membership lifecycle migrations', () => {
     expect(executableSql).not.toMatch(
       /\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|TRUNCATE|GRANT|REVOKE)\b/i,
     )
+  })
+
+  it('writes clear dual pairing notes on both sides and skips no-op type codes', () => {
+    expect(noteWordingMigration).toContain('membership_type_label')
+    expect(noteWordingMigration).toContain('member_display_name')
+    expect(noteWordingMigration).toContain('與 %s 建立雙人會籍，至 %s')
+    expect(noteWordingMigration).toContain('會籍類型變更：%s → %s')
+    expect(noteWordingMigration).toContain('%s效期調整為 %s ～ %s')
+    expect(noteWordingMigration).toContain('雙人會籍效期同步調整為 %s ～ %s')
+    expect(noteWordingMigration).not.toContain('會籍資料更新：%s → %s')
+    // Create path: new dual member also names the partner (not bare "加入雙人會籍")
+    expect(noteWordingMigration).not.toContain("format('加入雙人會籍，至 %s'")
   })
 })
