@@ -1,6 +1,7 @@
 -- =============================================================================
--- 168: 編輯改入帳年時，用 adjust_credit_lot_remaining 寫回新年
--- （add_credit_lots 遇 Σ≠members 會靜默跳過，改年看起來像沒存到 lot）
+-- 169: 修正編輯交易 COALESCE(date, text) 型別錯誤
+-- transactions.transaction_date 為 text；p_transaction_date 為 date
+-- 錯誤：COALESCE types date and text cannot be matched
 -- =============================================================================
 
 BEGIN;
@@ -203,6 +204,6 @@ $$;
 COMMENT ON FUNCTION public.process_manual_member_adjust_edit(
   bigint, uuid, text, text, numeric, text, text, date, integer
 ) IS
-  '手動記帳編輯（原子）。改入帳年用 adjust_credit_lot_remaining；入帳年可為 NULL。';
+  '手動記帳編輯（原子）。transaction_date 以 text 寫入；改入帳年用 adjust_credit_lot_remaining。';
 
 COMMIT;
