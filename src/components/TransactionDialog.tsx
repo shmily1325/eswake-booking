@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type MouseEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   fetchCurrentVoucherYear,
@@ -13,7 +13,7 @@ import { useResponsive } from '../hooks/useResponsive'
 import { formatDbTimestampDisplay, getLocalDateString, normalizeDate } from '../utils/date'
 import type { Member } from '../types/booking'
 import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
-import { useToast } from './ui'
+import { ToastContainer, useToast } from './ui'
 
 interface TransactionDialogProps {
   open: boolean
@@ -108,6 +108,7 @@ export function TransactionDialog({
   const [editNotes, setEditNotes] = useState('')
   const [editTransactionDate, setEditTransactionDate] = useState('')
   const [editVoucherYear, setEditVoucherYear] = useState<number | null>(2026)
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const inputStyle = getInputStyle(isMobile)
   const showVoucherYearField =
@@ -276,9 +277,11 @@ export function TransactionDialog({
     setEditVoucherYear(tx.voucher_year) // null = 無
   }
 
-  const handleSaveEdit = async () => {
-    if (!editingTransaction) return
-    
+  const handleSaveEdit = async (e?: MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    if (!editingTransaction || savingEdit) return
+
     const numValue = parseFloat(editValue)
     if (isNaN(numValue) || numValue < 0) {
       toast.warning('請輸入有效的數值')
@@ -295,6 +298,12 @@ export function TransactionDialog({
       return
     }
 
+    const nextVoucherYear =
+      editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
+        ? editVoucherYear
+        : null
+
+    setSavingEdit(true)
     try {
       await processManualMemberAdjustEdit({
         transactionId: editingTransaction.id,
@@ -305,11 +314,16 @@ export function TransactionDialog({
         description: editDescription.trim(),
         notes: editNotes.trim() || null,
         transactionDate: normalizeDate(editTransactionDate) || editTransactionDate,
-        voucherYear:
-          editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
-            ? editVoucherYear
-            : null,
+        voucherYear: nextVoucherYear,
       })
+
+      // 改年後若還開著年篩選，可能把自己濾掉，看起來像沒存到
+      if (
+        voucherYearFilter != null &&
+        nextVoucherYear !== voucherYearFilter
+      ) {
+        setVoucherYearFilter(null)
+      }
 
       await loadTransactions()
       await loadCreditLots()
@@ -321,9 +335,15 @@ export function TransactionDialog({
       setEditDescription('')
       setEditNotes('')
       setEditVoucherYear(currentVoucherYear)
+      toast.success('已更新')
     } catch (error: any) {
       console.error('更新失敗:', error)
-      toast.error(`更新失敗：${error.message}`)
+      const msg = `更新失敗：${error?.message || error || '未知錯誤'}`
+      toast.error(msg)
+      // 先前 toast 沒掛畫面，錯誤會像「沒反應」；alert 確保看得到
+      window.alert(msg)
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -1281,22 +1301,29 @@ export function TransactionDialog({
                           {/* 按鈕 */}
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
+                              type="button"
                               onClick={handleSaveEdit}
+                              disabled={savingEdit}
                               style={{
                                 ...getButtonStyle('primary', 'small', isMobile),
                                 flex: 1,
+                                opacity: savingEdit ? 0.7 : 1,
                               }}
                             >
-                              儲存
+                              {savingEdit ? '儲存中…' : '儲存'}
                             </button>
                             <button
+                              type="button"
                               onClick={() => handleDeleteTransaction(tx)}
+                              disabled={savingEdit}
                               style={getButtonStyle('danger', 'small', isMobile)}
                             >
                               刪除
                             </button>
                             <button
+                              type="button"
                               onClick={handleCancelEdit}
+                              disabled={savingEdit}
                               style={getButtonStyle('outline', 'small', isMobile)}
                             >
                               取消
@@ -1365,6 +1392,7 @@ export function TransactionDialog({
           </div>
         )}
       </div>
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )
 }

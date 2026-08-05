@@ -74,7 +74,7 @@ export async function processManualMemberAdjust(params: {
     p_voucher_year: params.voucherYear ?? null,
     p_operator_id: params.operatorId ?? null,
   })
-  if (error) throw error
+  if (error) throw new Error(error.message || 'RPC 呼叫失敗')
   assertRpcOk(data, '記帳失敗')
   return data
 }
@@ -102,7 +102,7 @@ export async function processManualMemberAdjustEdit(params: {
     p_transaction_date: params.transactionDate,
     p_voucher_year: params.voucherYear ?? null,
   })
-  if (error) throw error
+  if (error) throw new Error(error.message || 'RPC 呼叫失敗')
   assertRpcOk(data, '更新失敗')
   return data
 }
@@ -116,7 +116,7 @@ export async function processManualMemberAdjustDelete(params: {
     p_transaction_id: params.transactionId,
     p_member_id: params.memberId,
   })
-  if (error) throw error
+  if (error) throw new Error(error.message || 'RPC 呼叫失敗')
   assertRpcOk(data, '刪除失敗')
   return data
 }
