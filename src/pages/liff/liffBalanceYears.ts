@@ -8,7 +8,7 @@ export type LiffCreditLot = {
 
 export type BalanceYearPart = {
   year: number
-  /** null = 不顯示金額（只有一年、或當年／未來年） */
+  /** null = 只顯示年分（該類只有一年，不重複大數字） */
   amount: number | null
   overdue: boolean
 }
@@ -26,8 +26,8 @@ export function isYearTrackedBalanceCategory(category: string): boolean {
 /**
  * 組出卡面年份列。
  * - 無 lot → 不顯示
- * - 只有一年 → 只標年分；跨年則「已逾期」；金額不重複
- * - 多年 → 舊年顯示剩餘＋已逾期；當年／未來只標年
+ * - 只有一年 → 只標年分（金額已在大數字）
+ * - 多年 → 每年一行「年 · 剩餘」；過期年用字色區分
  */
 export function buildBalanceYearParts(
   lots: LiffCreditLot[] | null | undefined,
@@ -58,14 +58,11 @@ export function buildBalanceYearParts(
     ]
   }
 
-  return forCat.map((lot) => {
-    const overdue = lot.year < calendarYear
-    return {
-      year: lot.year,
-      amount: overdue ? lot.remaining : null,
-      overdue,
-    }
-  })
+  return forCat.map((lot) => ({
+    year: lot.year,
+    amount: lot.remaining,
+    overdue: lot.year < calendarYear,
+  }))
 }
 
 export function formatBalanceYearAmount(amount: number): string {
@@ -73,4 +70,10 @@ export function formatBalanceYearAmount(amount: number): string {
     maximumFractionDigits: 2,
     minimumFractionDigits: 0,
   })
+}
+
+/** 多年列：依項目加 $／分，例如 `$1,200`、`1,200分` */
+export function formatBalanceYearQty(amount: number, unit: '元' | '分'): string {
+  const n = formatBalanceYearAmount(amount)
+  return unit === '元' ? `$${n}` : `${n}分`
 }

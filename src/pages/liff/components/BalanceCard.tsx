@@ -3,13 +3,13 @@
  * Design (docs/design.md):
  * - Primary: total balance
  * - Disclosure › 置右、對齊整卡（iOS 列風格），比右上角淡 › 好發現
- * - 說明文案在 BalanceView；跨年剩餘時整卡一次「請注意使用期限」
+ * - 年份純文字換行；過期年用 danger 字色；「請注意使用期限」紅色 pill
  */
 
 import { getFontSizePx } from '../../../styles/designSystem'
-import { LIFF_THEME, liffMetricUnit } from '../liffUiStyles'
+import { LIFF_THEME, liffAlertTone, liffMetricUnit } from '../liffUiStyles'
 import type { BalanceYearPart } from '../liffBalanceYears'
-import { formatBalanceYearAmount } from '../liffBalanceYears'
+import { formatBalanceYearQty } from '../liffBalanceYears'
 
 export type BalanceTone = {
   color: string
@@ -38,6 +38,7 @@ export function BalanceCard({
 }: BalanceCardProps) {
   const displayValue = value || 0
   const showUsageHint = yearParts.some((part) => part.overdue)
+  const usageTone = liffAlertTone('danger')
 
   return (
     <button
@@ -126,50 +127,45 @@ export function BalanceCard({
             <div
               style={{
                 display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: 6,
+                flexDirection: 'column',
+                gap: 2,
+                fontSize: getFontSizePx('caption', true),
+                fontWeight: 500,
+                fontVariantNumeric: 'tabular-nums',
+                lineHeight: 1.4,
               }}
             >
               {yearParts.map((part) => (
-                <span
+                <div
                   key={part.year}
                   style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '2px 8px',
-                    borderRadius: '999px',
-                    border: `1px solid ${LIFF_THEME.borderSubtle}`,
-                    background: 'rgba(255,255,255,0.72)',
-                    fontSize: getFontSizePx('caption', true),
-                    color: LIFF_THEME.muted,
-                    fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
-                    lineHeight: 1.35,
+                    color: part.overdue ? LIFF_THEME.dangerText : LIFF_THEME.muted,
+                    fontWeight: part.overdue ? 600 : 500,
                   }}
                 >
-                  {part.year}
-                  {part.amount != null ? (
-                    <span style={{ fontWeight: 500, color: LIFF_THEME.inkSoft }}>
-                      {formatBalanceYearAmount(part.amount)}
-                    </span>
-                  ) : null}
-                </span>
+                  {part.amount != null
+                    ? `${part.year} · ${formatBalanceYearQty(part.amount, unit)}`
+                    : String(part.year)}
+                </div>
               ))}
             </div>
             {showUsageHint ? (
-              <div
+              <span
                 style={{
+                  display: 'inline-block',
                   marginTop: 6,
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  border: `1px solid ${usageTone.border}`,
+                  background: usageTone.bg,
                   fontSize: getFontSizePx('caption', true),
-                  color: LIFF_THEME.muted,
-                  fontWeight: 500,
+                  color: usageTone.color,
+                  fontWeight: 700,
                   lineHeight: 1.35,
                 }}
               >
                 請注意使用期限
-              </div>
+              </span>
             ) : null}
           </div>
         ) : null}

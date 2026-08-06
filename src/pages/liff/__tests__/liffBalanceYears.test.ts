@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildBalanceYearParts, formatBalanceYearAmount } from '../liffBalanceYears'
+import {
+  buildBalanceYearParts,
+  formatBalanceYearAmount,
+  formatBalanceYearQty,
+} from '../liffBalanceYears'
 
 describe('buildBalanceYearParts', () => {
   it('returns empty for non year-tracked categories', () => {
@@ -22,7 +26,7 @@ describe('buildBalanceYearParts', () => {
     ).toEqual([])
   })
 
-  it('single current year: year label only, not overdue', () => {
+  it('single current year: year only', () => {
     expect(
       buildBalanceYearParts(
         [{ category: 'vip_voucher', voucher_year: 2026, remaining: 3000 }],
@@ -32,7 +36,7 @@ describe('buildBalanceYearParts', () => {
     ).toEqual([{ year: 2026, amount: null, overdue: false }])
   })
 
-  it('single prior year: year + overdue, no amount', () => {
+  it('single prior year: year only + overdue', () => {
     expect(
       buildBalanceYearParts(
         [{ category: 'vip_voucher', voucher_year: 2025, remaining: 1200 }],
@@ -42,7 +46,7 @@ describe('buildBalanceYearParts', () => {
     ).toEqual([{ year: 2025, amount: null, overdue: true }])
   })
 
-  it('multi year: prior shows amount + overdue; current year label only', () => {
+  it('multi year: every year shows amount with overdue on prior', () => {
     expect(
       buildBalanceYearParts(
         [
@@ -54,7 +58,7 @@ describe('buildBalanceYearParts', () => {
       ),
     ).toEqual([
       { year: 2025, amount: 1200, overdue: true },
-      { year: 2026, amount: null, overdue: false },
+      { year: 2026, amount: 1800, overdue: false },
     ])
   })
 
@@ -69,6 +73,16 @@ describe('buildBalanceYearParts', () => {
         2026,
       ),
     ).toEqual([{ year: 2026, amount: null, overdue: false }])
+  })
+})
+
+describe('formatBalanceYearQty', () => {
+  it('formats money with dollar sign', () => {
+    expect(formatBalanceYearQty(1200, '元')).toBe('$1,200')
+  })
+
+  it('formats minutes with 分', () => {
+    expect(formatBalanceYearQty(60, '分')).toBe('60分')
   })
 })
 
