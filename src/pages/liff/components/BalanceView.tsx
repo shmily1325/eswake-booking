@@ -1,9 +1,9 @@
 // 儲值餘額視圖：2×3 六色低彩卡；點擊開明細
 /**
  * Design (docs/design.md):
- * - Primary task: 看餘額；次要：知可否點開明細、有無跨年票券
- * - Hint 放網格上方（quiet caption）；卡內「明細 ›」當 affordance
- * - 年份不搶大數字；有跨年剩餘時整卡一次「請注意使用期限」
+ * - Primary task: 看餘額
+ * - 說明文案固定在網格上方（給不熟的人看）；卡上只留 ›，不重複「明細」
+ * - 年份 pill 次要；跨年剩餘時整卡一次「請注意使用期限」
  */
 
 import { designSystem, getFontSizePx } from '../../../styles/designSystem'
@@ -79,11 +79,10 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
           margin: '0 0 14px',
           fontSize: getFontSizePx('bodySmall', true),
           color: LIFF_THEME.muted,
-          textAlign: 'left',
           lineHeight: 1.45,
         }}
       >
-        點卡片可看扣款明細
+        點選項目可查看扣款明細
       </p>
       <div
         style={{
