@@ -10,10 +10,11 @@ import {
   voucherYearOptions,
 } from '../lib/creditLots'
 import { useResponsive } from '../hooks/useResponsive'
-import { formatDbTimestampDisplay, getLocalDateString, normalizeDate } from '../utils/date'
+import { formatDbTimestampDisplay, getLocalDateString, getVenueDateString, normalizeDate } from '../utils/date'
 import type { Member } from '../types/booking'
 import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { ToastContainer, useToast } from './ui'
+import { CreditLotBalanceDisplay } from './CreditLotBalanceDisplay'
 
 interface TransactionDialogProps {
   open: boolean
@@ -117,65 +118,7 @@ export function TransactionDialog({
   const showEditVoucherYearField =
     editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
 
-  /** 有剩餘的分年；剩 0 不顯示。單年 → 括號；多年 → 分行細帳 */
-  const activeLotsFor = (category: string) =>
-    creditLots
-      .filter((l) => l.category === category && Number(l.remaining) !== 0)
-      .sort((a, b) => a.voucher_year - b.voucher_year)
-
-  const formatLotAmount = (n: number, isAmount: boolean) =>
-    isAmount ? `$${n.toLocaleString()}` : `${n.toLocaleString()}分`
-
-  const renderBalanceWithYears = (
-    category: string,
-    total: number,
-    isAmount: boolean,
-  ) => {
-    const rows = activeLotsFor(category)
-    const totalStr = formatLotAmount(total, isAmount)
-
-    if (rows.length === 1) {
-      return (
-        <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>
-          {totalStr}
-          <span
-            style={{
-              fontWeight: 400,
-              color: designSystem.colors.text.disabled,
-              marginLeft: 6,
-            }}
-          >
-            ({rows[0].voucher_year})
-          </span>
-        </div>
-      )
-    }
-
-    return (
-      <>
-        <div style={{ fontWeight: 'bold', color: designSystem.colors.text.primary }}>
-          {totalStr}
-        </div>
-        {rows.length > 1 ? (
-          <div
-            style={{
-              marginTop: '4px',
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.text.disabled,
-              fontWeight: 400,
-              lineHeight: 1.4,
-            }}
-          >
-            {rows.map((l) => (
-              <div key={l.voucher_year}>
-                {l.voucher_year} {formatLotAmount(Number(l.remaining), isAmount)}
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </>
-    )
-  }
+  const calendarYear = Number(getVenueDateString().slice(0, 4))
 
   const loadCreditLots = async () => {
     try {
@@ -597,7 +540,15 @@ export function TransactionDialog({
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>VIP票券</div>
-                  {renderBalanceWithYears('vip_voucher', member.vip_voucher_amount ?? 0, true)}
+                  <CreditLotBalanceDisplay
+                    lots={creditLots}
+                    category="vip_voucher"
+                    total={member.vip_voucher_amount ?? 0}
+                    unit="元"
+                    calendarYear={calendarYear}
+                    isMobile={isMobile}
+                    totalFontSize={getFontSize('bodySmall', isMobile)}
+                  />
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>指定課</div>
@@ -605,15 +556,27 @@ export function TransactionDialog({
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G23船券</div>
-                  {renderBalanceWithYears('boat_voucher_g23', member.boat_voucher_g23_minutes ?? 0, false)}
+                  <CreditLotBalanceDisplay
+                    lots={creditLots}
+                    category="boat_voucher_g23"
+                    total={member.boat_voucher_g23_minutes ?? 0}
+                    unit="分"
+                    calendarYear={calendarYear}
+                    isMobile={isMobile}
+                    totalFontSize={getFontSize('bodySmall', isMobile)}
+                  />
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G21/黑豹船券</div>
-                  {renderBalanceWithYears(
-                    'boat_voucher_g21_panther',
-                    member.boat_voucher_g21_panther_minutes ?? 0,
-                    false,
-                  )}
+                  <CreditLotBalanceDisplay
+                    lots={creditLots}
+                    category="boat_voucher_g21_panther"
+                    total={member.boat_voucher_g21_panther_minutes ?? 0}
+                    unit="分"
+                    calendarYear={calendarYear}
+                    isMobile={isMobile}
+                    totalFontSize={getFontSize('bodySmall', isMobile)}
+                  />
                 </div>
                 <div>
                   <div style={{ color: designSystem.colors.text.secondary, marginBottom: '4px' }}>贈送大船</div>

@@ -25,6 +25,11 @@ import {
   getInputStyle,
   getPageContentShellStyle,
 } from '../../styles/designSystem'
+import { YEAR_TRACKED_CATEGORIES } from '../../lib/creditLots'
+import {
+  CreditLotBalanceDisplay,
+  type CreditLotRow,
+} from '../../components/CreditLotBalanceDisplay'
 
 type StorageView = 'ledger' | 'year'
 
@@ -41,6 +46,7 @@ interface MemberWithLastTransaction extends Member {
   last_liff_login_at?: string | null
   is_line_bound?: boolean
   board_expiry_dates?: string[]
+  credit_lots?: CreditLotRow[]
 }
 
 export function MemberTransaction() {
@@ -65,6 +71,7 @@ export function MemberTransaction() {
   const [yearPanelRefreshKey, setYearPanelRefreshKey] = useState(0)
 
   const view: StorageView = searchParams.get('view') === 'year' ? 'year' : 'ledger'
+  const calendarYear = Number(getVenueDateString().slice(0, 4))
 
   const openMemberFromYearBalance = async (ref: YearBalanceMemberRef) => {
     setDialogInitialTab('history')
@@ -129,25 +136,31 @@ export function MemberTransaction() {
   const loadMembers = async () => {
     setLoading(true)
     try {
-      const [membersResult, transactionsResult, lineBindingsResult, boardResult] = await Promise.all([
-        supabase
-          .from('members')
-          .select('*')
-          .eq('status', 'active')
-          .order('name'),
-        supabase
-          .from('transactions')
-          .select('member_id, transaction_date, created_at')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('line_bindings')
-          .select('member_id, line_user_id, last_liff_login_at')
-          .eq('status', 'active'),
-        supabase
-          .from('board_storage')
-          .select('member_id, expires_at')
-          .eq('status', 'active')
-      ])
+      const [membersResult, transactionsResult, lineBindingsResult, boardResult, lotsResult] =
+        await Promise.all([
+          supabase
+            .from('members')
+            .select('*')
+            .eq('status', 'active')
+            .order('name'),
+          supabase
+            .from('transactions')
+            .select('member_id, transaction_date, created_at')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('line_bindings')
+            .select('member_id, line_user_id, last_liff_login_at')
+            .eq('status', 'active'),
+          supabase
+            .from('board_storage')
+            .select('member_id, expires_at')
+            .eq('status', 'active'),
+          supabase
+            .from('credit_lots')
+            .select('member_id, category, voucher_year, remaining')
+            .in('category', [...YEAR_TRACKED_CATEGORIES])
+            .neq('remaining', 0),
+        ])
 
       if (membersResult.error) throw membersResult.error
       if (lineBindingsResult.error) {
@@ -155,6 +168,9 @@ export function MemberTransaction() {
       }
       if (boardResult.error) {
         console.error('載入置板到期資訊失敗:', boardResult.error)
+      }
+      if (lotsResult.error) {
+        console.error('載入分年剩餘失敗:', lotsResult.error)
       }
 
       // 整理每個會員的最後交易日期和 created_at
@@ -187,6 +203,16 @@ export function MemberTransaction() {
         ;(boardExpiryDatesByMember[row.member_id] ||= []).push(row.expires_at)
       })
 
+      const lotsByMember: Record<string, CreditLotRow[]> = {}
+      ;(lotsResult.data || []).forEach((row) => {
+        if (!row.member_id) return
+        ;(lotsByMember[row.member_id] ||= []).push({
+          category: row.category,
+          voucher_year: Number(row.voucher_year),
+          remaining: Number(row.remaining),
+        })
+      })
+
       // 合併資料
       const membersWithLastTransaction = (membersResult.data || []).map(m => ({
         ...m,
@@ -195,7 +221,8 @@ export function MemberTransaction() {
         line_binding_user_id: memberIdToLineBinding[m.id]?.lineUserId || null,
         last_liff_login_at: memberIdToLineBinding[m.id]?.lastLiffLoginAt || null,
         is_line_bound: Boolean(memberIdToLineBinding[m.id]),
-        board_expiry_dates: boardExpiryDatesByMember[m.id] || []
+        board_expiry_dates: boardExpiryDatesByMember[m.id] || [],
+        credit_lots: lotsByMember[m.id] || [],
       }))
 
       setMembers(membersWithLastTransaction)
@@ -764,9 +791,14 @@ export function MemberTransaction() {
 
                     <div>
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>VIP票券</div>
-                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
-                        ${(member.vip_voucher_amount || 0).toLocaleString()}
-                      </div>
+                      <CreditLotBalanceDisplay
+                        lots={member.credit_lots}
+                        category="vip_voucher"
+                        total={member.vip_voucher_amount || 0}
+                        unit="元"
+                        calendarYear={calendarYear}
+                        isMobile={isMobile}
+                      />
                     </div>
 
                     <div>
@@ -778,16 +810,26 @@ export function MemberTransaction() {
 
                     <div>
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>G23船券</div>
-                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
-                        {(member.boat_voucher_g23_minutes || 0).toLocaleString()}分
-                      </div>
+                      <CreditLotBalanceDisplay
+                        lots={member.credit_lots}
+                        category="boat_voucher_g23"
+                        total={member.boat_voucher_g23_minutes || 0}
+                        unit="分"
+                        calendarYear={calendarYear}
+                        isMobile={isMobile}
+                      />
                     </div>
 
                     <div>
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>黑豹/G21</div>
-                      <div style={{ fontSize: getFontSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
-                        {(member.boat_voucher_g21_panther_minutes || 0).toLocaleString()}分
-                      </div>
+                      <CreditLotBalanceDisplay
+                        lots={member.credit_lots}
+                        category="boat_voucher_g21_panther"
+                        total={member.boat_voucher_g21_panther_minutes || 0}
+                        unit="分"
+                        calendarYear={calendarYear}
+                        isMobile={isMobile}
+                      />
                     </div>
 
                     <div>
