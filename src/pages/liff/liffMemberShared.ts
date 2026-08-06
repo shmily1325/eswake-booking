@@ -103,11 +103,33 @@ type LiffMemberRow = {
   boat_voucher_g23_minutes?: number | null
   boat_voucher_g21_panther_minutes?: number | null
   gift_boat_hours?: number | null
+  credit_lots?: Member['credit_lots']
+}
+
+function normalizeCreditLots(raw: unknown): Member['credit_lots'] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
+    .map((row) => ({
+      category: String(row.category ?? ''),
+      voucher_year: Number(row.voucher_year),
+      remaining: Number(row.remaining),
+    }))
+    .filter(
+      (row) =>
+        row.category &&
+        Number.isFinite(row.voucher_year) &&
+        Number.isFinite(row.remaining),
+    )
 }
 
 function buildMember(
   r: LiffMemberRow,
-  extras: { board_slots: Member['board_slots']; partner: Member['partner'] },
+  extras: {
+    board_slots: Member['board_slots']
+    partner: Member['partner']
+    credit_lots: Member['credit_lots']
+  },
 ): Member {
   return {
     id: r.id,
@@ -122,6 +144,7 @@ function buildMember(
     board_expiry_date: r.board_expiry_date ?? null,
     board_slots: extras.board_slots,
     partner: extras.partner,
+    credit_lots: extras.credit_lots,
     balance: r.balance ?? undefined,
     vip_voucher_amount: r.vip_voucher_amount ?? undefined,
     designated_lesson_minutes: r.designated_lesson_minutes ?? undefined,
@@ -133,7 +156,11 @@ function buildMember(
 
 /** 預約頁用：略過置板／雙人會籍查詢，只帶姓名電話與會籍欄位 */
 export function liteMemberFromRow(raw: Record<string, unknown>): Member {
-  return buildMember(raw as LiffMemberRow, { board_slots: [], partner: null })
+  return buildMember(raw as LiffMemberRow, {
+    board_slots: [],
+    partner: null,
+    credit_lots: [],
+  })
 }
 
 function memberFromRpcPayload(raw: Record<string, unknown>): Member {
@@ -144,7 +171,11 @@ function memberFromRpcPayload(raw: Record<string, unknown>): Member {
   const partner = raw.partner && typeof raw.partner === 'object'
     ? raw.partner as NonNullable<Member['partner']>
     : null
-  return buildMember(r, { board_slots, partner })
+  return buildMember(r, {
+    board_slots,
+    partner,
+    credit_lots: normalizeCreditLots(raw.credit_lots),
+  })
 }
 
 type MemberProfileRpcResult = {

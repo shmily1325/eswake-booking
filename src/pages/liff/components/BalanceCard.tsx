@@ -1,7 +1,15 @@
 // 儲值餘額卡（低彩度色階；點擊開明細；六卡等重）
+/**
+ * Design (docs/design.md):
+ * - Primary: total balance
+ * - Secondary quiet: year meta +「明細 ›」affordance
+ * - 跨年剩餘時整卡只出現一次「請注意使用期限」（不逐年掛 badge）
+ */
 
 import { getFontSizePx } from '../../../styles/designSystem'
 import { LIFF_THEME, liffMetricUnit } from '../liffUiStyles'
+import type { BalanceYearPart } from '../liffBalanceYears'
+import { formatBalanceYearAmount } from '../liffBalanceYears'
 
 export type BalanceTone = {
   color: string
@@ -15,6 +23,7 @@ interface BalanceCardProps {
   unit: '元' | '分'
   tone: BalanceTone
   category: string
+  yearParts?: BalanceYearPart[]
   onClick: (category: string) => void
 }
 
@@ -24,9 +33,11 @@ export function BalanceCard({
   unit,
   tone,
   category,
+  yearParts = [],
   onClick,
 }: BalanceCardProps) {
   const displayValue = value || 0
+  const showUsageHint = yearParts.some((part) => part.overdue)
 
   return (
     <button
@@ -59,13 +70,35 @@ export function BalanceCard({
     >
       <div
         style={{
-          fontSize: getFontSizePx('button', true),
-          color: LIFF_THEME.muted,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
           marginBottom: 8,
-          fontWeight: 500,
         }}
       >
-        {label}
+        <div
+          style={{
+            fontSize: getFontSizePx('button', true),
+            color: LIFF_THEME.muted,
+            fontWeight: 500,
+            minWidth: 0,
+          }}
+        >
+          {label}
+        </div>
+        <span
+          aria-hidden
+          style={{
+            flexShrink: 0,
+            fontSize: getFontSizePx('caption', true),
+            color: LIFF_THEME.mutedLight,
+            fontWeight: 500,
+            letterSpacing: '0.01em',
+          }}
+        >
+          明細 ›
+        </span>
       </div>
       <div
         style={{
@@ -107,6 +140,39 @@ export function BalanceCard({
           </>
         )}
       </div>
+      {yearParts.length > 0 ? (
+        <div style={{ marginTop: 10 }}>
+          <div
+            style={{
+              fontSize: getFontSizePx('caption', true),
+              color: LIFF_THEME.muted,
+              fontWeight: 500,
+              fontVariantNumeric: 'tabular-nums',
+              lineHeight: 1.35,
+            }}
+          >
+            {yearParts
+              .map(
+                (part) =>
+                  `${part.year}${part.amount != null ? ` ${formatBalanceYearAmount(part.amount)}` : ''}`,
+              )
+              .join(' · ')}
+          </div>
+          {showUsageHint ? (
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: getFontSizePx('caption', true),
+                color: LIFF_THEME.muted,
+                fontWeight: 500,
+                lineHeight: 1.35,
+              }}
+            >
+              請注意使用期限
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </button>
   )
 }

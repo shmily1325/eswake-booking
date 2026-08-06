@@ -101,10 +101,10 @@ export function BookingDetails({
                 </label>
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: designSystem.spacing.sm,
                 }}>
-                    {(['WB', 'WS'] as const).map((type) => {
+                    {(['WB', 'WS', 'Skim'] as const).map((type) => {
                         const selected = activityTypesSet.has(type)
                         return (
                             <button

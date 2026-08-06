@@ -37,6 +37,12 @@ export interface Member {
   boat_voucher_g23_minutes?: number
   boat_voucher_g21_panther_minutes?: number
   gift_boat_hours?: number
+  /** VIP／G23／G21 分年剩餘（來自 credit_lots；無則不顯示年份） */
+  credit_lots?: Array<{
+    category: string
+    voucher_year: number
+    remaining: number
+  }>
 }
 
 export interface Transaction {
@@ -75,7 +81,7 @@ export function getCategoryLabel(category: string): string {
     'vip_voucher': '💎 VIP票券',
     'designated_lesson': '📚 指定課',
     'boat_voucher_g23': '🚤 G23船券',
-    'boat_voucher_g21_panther': '⛵ G21/黑豹',
+    'boat_voucher_g21_panther': '⛵ G21/黑豹船券',
     'gift_boat': '🎁 贈送大船'
   }
   return labels[category] || category

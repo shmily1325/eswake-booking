@@ -1,6 +1,14 @@
 // 儲值餘額視圖：2×3 六色低彩卡；點擊開明細
+/**
+ * Design (docs/design.md):
+ * - Primary task: 看餘額；次要：知可否點開明細、有無跨年票券
+ * - Hint 放網格上方（quiet caption）；卡內「明細 ›」當 affordance
+ * - 年份不搶大數字；有跨年剩餘時整卡一次「請注意使用期限」
+ */
 
 import { designSystem, getFontSizePx } from '../../../styles/designSystem'
+import { getVenueDateString } from '../../../utils/date'
+import { buildBalanceYearParts } from '../liffBalanceYears'
 import { liffContentPanel, LIFF_THEME } from '../liffUiStyles'
 import type { Member } from '../types'
 import { BalanceCard, type BalanceTone } from './BalanceCard'
@@ -32,13 +40,6 @@ const CARDS: {
   { label: '儲值餘額', unit: '元', category: 'balance', tone: TONES.balance, value: (m) => m.balance },
   { label: 'VIP票券', unit: '元', category: 'vip_voucher', tone: TONES.vip, value: (m) => m.vip_voucher_amount },
   {
-    label: '指定課',
-    unit: '分',
-    category: 'designated_lesson',
-    tone: TONES.lesson,
-    value: (m) => m.designated_lesson_minutes,
-  },
-  {
     label: 'G23船券',
     unit: '分',
     category: 'boat_voucher_g23',
@@ -46,11 +47,18 @@ const CARDS: {
     value: (m) => m.boat_voucher_g23_minutes,
   },
   {
-    label: 'G21/黑豹',
+    label: 'G21/黑豹船券',
     unit: '分',
     category: 'boat_voucher_g21_panther',
     tone: TONES.g21,
     value: (m) => m.boat_voucher_g21_panther_minutes,
+  },
+  {
+    label: '指定課',
+    unit: '分',
+    category: 'designated_lesson',
+    tone: TONES.lesson,
+    value: (m) => m.designated_lesson_minutes,
   },
   {
     label: '贈送大船',
@@ -62,8 +70,21 @@ const CARDS: {
 ]
 
 export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
+  const calendarYear = Number(getVenueDateString().slice(0, 4))
+
   return (
     <div style={liffContentPanel}>
+      <p
+        style={{
+          margin: '0 0 14px',
+          fontSize: getFontSizePx('bodySmall', true),
+          color: LIFF_THEME.muted,
+          textAlign: 'left',
+          lineHeight: 1.45,
+        }}
+      >
+        點卡片可看扣款明細
+      </p>
       <div
         style={{
           display: 'grid',
@@ -79,21 +100,15 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
             unit={card.unit}
             tone={card.tone}
             category={card.category}
+            yearParts={buildBalanceYearParts(
+              member.credit_lots,
+              card.category,
+              calendarYear,
+            )}
             onClick={onCategoryClick}
           />
         ))}
       </div>
-      <p
-        style={{
-          margin: '14px 0 0',
-          fontSize: getFontSizePx('bodySmall', true),
-          color: LIFF_THEME.mutedLight,
-          textAlign: 'center',
-          lineHeight: 1.45,
-        }}
-      >
-        點選項目可查看扣款明細
-      </p>
     </div>
   )
 }
