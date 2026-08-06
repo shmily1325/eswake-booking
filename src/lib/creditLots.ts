@@ -42,7 +42,13 @@ export function voucherYearOptions(currentYear: number, existingYear?: number | 
   return [...years].sort((a, b) => a - b)
 }
 
-type RpcResult = { success?: boolean; error?: string; balance_after?: number }
+type RpcResult = {
+  success?: boolean
+  error?: string
+  balance_after?: number
+  /** 標年入帳／扣款是否有寫入 credit_lots；null = 不適用 */
+  lots_updated?: boolean | null
+}
 
 function assertRpcOk(data: unknown, fallback: string): asserts data is RpcResult {
   const result = data as RpcResult | null

@@ -33,6 +33,7 @@ interface Transaction {
   id: number
   created_at: string | null
   transaction_date: string
+  transaction_type?: string | null
   category: string
   adjust_type: string | null
   amount: number | null
@@ -231,7 +232,7 @@ export function TransactionDialog({
     try {
       let query = supabase
         .from('transactions')
-        .select('id, created_at, transaction_date, category, adjust_type, amount, minutes, description, notes, voucher_year, balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after')
+        .select('id, created_at, transaction_date, transaction_type, category, adjust_type, amount, minutes, description, notes, voucher_year, balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after')
         .eq('member_id', member.id)
         .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
@@ -257,8 +258,12 @@ export function TransactionDialog({
     }
   }
 
-  // 編輯交易記錄
+  // 編輯交易記錄（僅手動記帳）
   const handleEditTransaction = (tx: Transaction) => {
+    if (tx.transaction_type != null && tx.transaction_type !== 'adjust') {
+      toast.warning('扣款／商店交易不可在此編輯')
+      return
+    }
     setEditingTransaction(tx)
     setEditCategory(tx.category)
     
@@ -348,6 +353,10 @@ export function TransactionDialog({
   }
 
   const handleDeleteTransaction = async (tx: Transaction) => {
+    if (tx.transaction_type != null && tx.transaction_type !== 'adjust') {
+      toast.warning('扣款／商店交易不可在此刪除')
+      return
+    }
     if (!confirm('確定要刪除這筆交易記錄嗎？\n\n注意：這將會還原此交易對會員餘額/時數的影響。')) {
       return
     }
@@ -439,6 +448,13 @@ export function TransactionDialog({
         ? `$${Number(newBalance).toLocaleString()}`
         : `${Number(newBalance).toLocaleString()}分`
       toast.success(`${catConfig?.label} ${changeText}，餘額 ${balanceText}`)
+      if (
+        adjustType === 'decrease' &&
+        isYearTrackedCategory(category) &&
+        result.lots_updated === false
+      ) {
+        toast.warning('餘額已更新，但年帳未同步扣減（可能未開年帳）。總額正確；若有年度細帳請之後對齊。')
+      }
 
       resetForm()
       onSuccess()
@@ -1124,6 +1140,7 @@ export function TransactionDialog({
                   const categoryConfig = CATEGORIES.find(c => c.value === tx.category)
                   const isIncrease = tx.adjust_type === 'increase'
                   const isEditing = editingTransaction?.id === tx.id
+                  const isManualAdjust = tx.transaction_type == null || tx.transaction_type === 'adjust'
                   
                   return (
                     <div
@@ -1134,12 +1151,12 @@ export function TransactionDialog({
                         borderRadius: designSystem.borderRadius.lg,
                         border: `1px solid ${designSystem.colors.border.light}`,
                         borderLeft: `3px solid ${isIncrease ? designSystem.colors.success[500] : designSystem.colors.danger[500]}`,
-                        cursor: isEditing ? 'default' : 'pointer',
+                        cursor: isEditing || !isManualAdjust ? 'default' : 'pointer',
                         transition: designSystem.transitions.normal,
                       }}
-                      onClick={() => !isEditing && handleEditTransaction(tx)}
+                      onClick={() => !isEditing && isManualAdjust && handleEditTransaction(tx)}
                       onMouseEnter={(e) => {
-                        if (!isEditing) e.currentTarget.style.background = designSystem.colors.background.hover
+                        if (!isEditing && isManualAdjust) e.currentTarget.style.background = designSystem.colors.background.hover
                       }}
                       onMouseLeave={(e) => {
                         if (!isEditing) e.currentTarget.style.background = designSystem.colors.background.card
