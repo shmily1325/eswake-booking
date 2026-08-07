@@ -84,15 +84,30 @@ const compactThumb: CSSProperties = {
   boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
 }
 
+/** 置中小圓 play：不洗灰整張封面（白底 icon／YouTube 縮圖皆適用） */
 const playBadge: CSSProperties = {
   position: 'absolute',
   inset: 0,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'rgba(0, 0, 0, 0.28)',
+  background: 'transparent',
+  pointerEvents: 'none',
+}
+
+const playDisc: CSSProperties = {
+  width: 44,
+  height: 44,
+  borderRadius: 999,
+  background: 'rgba(29, 29, 31, 0.72)',
   color: 'white',
-  fontSize: ty.icon,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: ty.body,
+  lineHeight: 1,
+  paddingLeft: 2,
+  boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
 }
 
 interface BookVideoPlayerProps {
@@ -149,7 +164,9 @@ export function BookVideoPlayer({
             loading="lazy"
             style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }}
           />
-          <span style={playBadge} aria-hidden>▶</span>
+          <span style={playBadge} aria-hidden>
+            <span style={playDisc}>▶</span>
+          </span>
         </button>
       ) : (
         <button
