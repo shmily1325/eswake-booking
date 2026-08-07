@@ -3,7 +3,9 @@ import { supabase } from '../lib/supabase'
 import { useResponsive } from '../hooks/useResponsive'
 import { EditMemberDialog } from './EditMemberDialog'
 import { TransactionDialog } from './TransactionDialog'
+import { CreditLotBalanceDisplay, type CreditLotRow } from './CreditLotBalanceDisplay'
 import { useToast } from './ui'
+import { YEAR_TRACKED_CATEGORIES } from '../lib/creditLots'
 import { addYearsToDate, getVenueDateString, isDateExpired, normalizeDate } from '../utils/date'
 import { MemoRecordCheckbox } from './MemoRecordCheckbox'
 import {
@@ -237,6 +239,8 @@ export function MemberDetailDialog({
   const { isMobile } = useResponsive()
   const toast = useToast()
   const [member, setMember] = useState<Member | null>(null)
+  const [creditLots, setCreditLots] = useState<CreditLotRow[]>([])
+  const calendarYear = Number(getVenueDateString().slice(0, 4))
   const [boardStorage, setBoardStorage] = useState<BoardStorage[]>([])
   const [memberNotes, setMemberNotes] = useState<MemberNote[]>([])
   const [loading, setLoading] = useState(false)
@@ -303,6 +307,7 @@ export function MemberDetailDialog({
       setQuickEditPhone('')
       setBoardEditDialogOpen(false)
       setEditingBoard(null)
+      setCreditLots([])
     }
   }, [open])
 
@@ -319,7 +324,7 @@ export function MemberDetailDialog({
     try {
       // 載入會員、置板、LINE 綁定、備忘錄
       // 四個查詢都只依賴 memberId，並行送出可節省一輪 RTT（備忘錄不再延後到 partner 之後）
-      const [memberResult, boardResult, lineBindingResult, notesResult] = await Promise.all([
+      const [memberResult, boardResult, lineBindingResult, notesResult, lotsResult] = await Promise.all([
         supabase
           .from('members')
           .select('*')
@@ -342,7 +347,13 @@ export function MemberDetailDialog({
           .select('*')
           .eq('member_id', memberId)
           .order('event_date', { ascending: true, nullsFirst: true })
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('credit_lots')
+          .select('category, voucher_year, remaining')
+          .eq('member_id', memberId)
+          .in('category', [...YEAR_TRACKED_CATEGORIES])
+          .neq('remaining', 0),
       ])
 
       if (memberResult.error) throw memberResult.error
@@ -374,6 +385,19 @@ export function MemberDetailDialog({
 
       if (boardResult.error) throw boardResult.error
       setBoardStorage(boardResult.data || [])
+
+      if (lotsResult.error) {
+        console.error('載入分年剩餘失敗:', lotsResult.error)
+        setCreditLots([])
+      } else {
+        setCreditLots(
+          (lotsResult.data || []).map((row) => ({
+            category: row.category,
+            voucher_year: Number(row.voucher_year),
+            remaining: Number(row.remaining),
+          })),
+        )
+      }
 
       // 處理備忘錄結果（已於上方 Promise.all 並行查詢）
       if (notesResult.error) {
@@ -1323,23 +1347,69 @@ export function MemberDetailDialog({
                           fontSize: typeSize('bodySmall', isMobile),
                           textAlign: 'center',
                         }}>
-                          {[
-                            { label: '儲值', value: `$${(member.balance ?? 0).toLocaleString()}` },
-                            { label: 'VIP票券', value: `$${(member.vip_voucher_amount ?? 0).toLocaleString()}` },
-                            { label: '指定課', value: `${member.designated_lesson_minutes ?? 0}分` },
-                            { label: 'G23船券', value: `${member.boat_voucher_g23_minutes ?? 0}分` },
-                            { label: '黑豹/G21', value: `${member.boat_voucher_g21_panther_minutes ?? 0}分` },
-                            { label: '贈送大船', value: `${member.gift_boat_hours ?? 0}分` },
-                          ].map((item) => (
-                            <div key={item.label}>
-                              <div style={{ fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
-                                {item.label}
-                              </div>
-                              <div style={{ fontSize: typeSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
-                                {item.value}
-                              </div>
+                          <div>
+                            <div style={{ fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
+                              儲值
                             </div>
-                          ))}
+                            <div style={{ fontSize: typeSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
+                              ${(member.balance ?? 0).toLocaleString()}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
+                              VIP票券
+                            </div>
+                            <CreditLotBalanceDisplay
+                              lots={creditLots}
+                              category="vip_voucher"
+                              total={member.vip_voucher_amount ?? 0}
+                              unit="元"
+                              calendarYear={calendarYear}
+                              isMobile={isMobile}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
+                              指定課
+                            </div>
+                            <div style={{ fontSize: typeSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
+                              {(member.designated_lesson_minutes ?? 0).toLocaleString()}分
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
+                              G23船券
+                            </div>
+                            <CreditLotBalanceDisplay
+                              lots={creditLots}
+                              category="boat_voucher_g23"
+                              total={member.boat_voucher_g23_minutes ?? 0}
+                              unit="分"
+                              calendarYear={calendarYear}
+                              isMobile={isMobile}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
+                              黑豹/G21
+                            </div>
+                            <CreditLotBalanceDisplay
+                              lots={creditLots}
+                              category="boat_voucher_g21_panther"
+                              total={member.boat_voucher_g21_panther_minutes ?? 0}
+                              unit="分"
+                              calendarYear={calendarYear}
+                              isMobile={isMobile}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: typeSize('caption', isMobile), color: designSystem.colors.text.secondary, marginBottom: '4px' }}>
+                              贈送大船
+                            </div>
+                            <div style={{ fontSize: typeSize('bodyLarge', isMobile), fontWeight: 700, color: designSystem.colors.text.primary }}>
+                              {(member.gift_boat_hours ?? 0).toLocaleString()}分
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
