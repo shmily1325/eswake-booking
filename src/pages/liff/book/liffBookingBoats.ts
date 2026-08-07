@@ -14,9 +14,20 @@ export const BOAT_BIG_DUAL_MIN = BOAT_BIG_MAX + 1
 /** 表單人數上限（2 艘小船） */
 export const BOOKING_HEADCOUNT_MAX = BOAT_SMALL_MAX * 2
 
+/** 兩艘小船座位上限（滑水 + 跟船） */
+export const BOAT_SMALL_FLEET_MAX = BOOKING_HEADCOUNT_MAX
+
+/** 兩艘大船座位上限 */
+export const BOAT_BIG_FLEET_MAX = BOAT_BIG_MAX * 2
+
 /** 船上總人數（滑水 + 跟船，跟船占座位） */
 export function onBoatTotal(riders: number, followBoat = 0): number {
   return riders + followBoat
+}
+
+/** 船上總人數是否還能選小船（兩艘最多 12） */
+export function canUseSmallBoat(aboard: number): boolean {
+  return aboard <= BOAT_SMALL_FLEET_MAX
 }
 
 /** Step 2 寬板選船（偏好／價位，不依人數配船） */

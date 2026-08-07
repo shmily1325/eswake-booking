@@ -448,7 +448,9 @@ export function BookWizardCore({
                 <BookBoatPicker
                   value={form.boatPreference}
                   aboard={onBoatTotal(form.headcount, form.followBoatCount)}
-                  onChange={pref => setForm(prev => ({ ...prev, boatPreference: pref }))}
+                  onChange={pref => setForm(prev => (
+                    prev.boatPreference === pref ? prev : { ...prev, boatPreference: pref }
+                  ))}
                 />
               </>
             ) : null}

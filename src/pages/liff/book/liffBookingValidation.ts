@@ -1,4 +1,5 @@
 import type { BookI18nStrings } from './liffBookingI18n'
+import { canUseSmallBoat, onBoatTotal } from './liffBookingBoats'
 import type { LiffBookingFormState } from './types'
 
 export function getStepBlockReason(
@@ -16,6 +17,13 @@ export function getStepBlockReason(
     case 2:
       if (form.beginnerCount == null) return v.pickExperience
       if (form.activity === 'WB' && !form.boatPreference) return v.pickBoat
+      if (
+        form.activity === 'WB'
+        && form.boatPreference === 'small'
+        && !canUseSmallBoat(onBoatTotal(form.headcount, form.followBoatCount))
+      ) {
+        return v.smallBoatFull
+      }
       return null
     case 3:
       if (!pickDate && form.preferredDates.length === 0) return v.pickDate

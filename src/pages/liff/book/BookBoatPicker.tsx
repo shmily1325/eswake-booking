@@ -1,4 +1,5 @@
-import { BOAT_BIG_DUAL_MIN, BOAT_SMALL_DUAL_MIN } from './liffBookingBoats'
+import { useEffect } from 'react'
+import { BOAT_BIG_DUAL_MIN, BOAT_SMALL_DUAL_MIN, canUseSmallBoat } from './liffBookingBoats'
 import { BookSegmentCheck } from './BookSegmentCheck'
 import { useBookLocale } from './BookLocaleContext'
 import { BOAT_INTRO_VIDEO_ID } from './liffBookingReminders'
@@ -13,6 +14,7 @@ import {
   segmentPriceReturningLine,
   segmentRow,
   segmentZh,
+  stepInlineHint,
 } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 import type { BoatPreference } from './types'
@@ -34,12 +36,14 @@ function BoatSegmentButton({
   title,
   seating,
   pricing,
+  disabled = false,
   onSelect,
 }: {
   selected: boolean
   title: string
   seating: string
   pricing: BoatSegmentPricing
+  disabled?: boolean
   onSelect: () => void
 }) {
   const { s } = useBookLocale()
@@ -49,11 +53,20 @@ function BoatSegmentButton({
     <button
       type="button"
       className="book-segment-btn"
-      style={segmentBtn(selected)}
-      onClick={onSelect}
-      aria-pressed={selected}
+      style={{
+        ...segmentBtn(selected && !disabled),
+        opacity: disabled ? 0.45 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+      }}
+      onClick={() => {
+        if (disabled) return
+        onSelect()
+      }}
+      disabled={disabled}
+      aria-pressed={selected && !disabled}
+      aria-disabled={disabled}
     >
-      {selected ? <BookSegmentCheck /> : null}
+      {selected && !disabled ? <BookSegmentCheck /> : null}
       <div style={segmentZh}>{title}</div>
       <div style={segmentMeta}>{seating}</div>
       <div style={segmentPriceBlock}>
@@ -74,8 +87,17 @@ export function BookBoatPicker({ value, onChange, aboard = 0 }: BookBoatPickerPr
   const boat = s.boat
   const smallPricing = boatTierDisplayPricing('small')
   const bigPricing = boatTierDisplayPricing('big')
-  const smallSeating = aboard >= BOAT_SMALL_DUAL_MIN ? boat.smallSeatingDual : boat.smallSeatingSingle
+  const smallOk = canUseSmallBoat(aboard)
+  const smallSeating = !smallOk
+    ? boat.smallSeatingFull
+    : aboard >= BOAT_SMALL_DUAL_MIN
+      ? boat.smallSeatingDual
+      : boat.smallSeatingSingle
   const bigSeating = aboard >= BOAT_BIG_DUAL_MIN ? boat.bigSeatingDual : boat.bigSeatingSingle
+
+  useEffect(() => {
+    if (!smallOk && value === 'small') onChange('big')
+  }, [smallOk, value]) // onChange 由父層保證穩定行為；避免 inline 重建造成重複觸發
 
   return (
     <div>
@@ -109,6 +131,7 @@ export function BookBoatPicker({ value, onChange, aboard = 0 }: BookBoatPickerPr
           title={boat.small}
           seating={smallSeating}
           pricing={smallPricing}
+          disabled={!smallOk}
           onSelect={() => onChange('small')}
         />
         <BoatSegmentButton
@@ -119,6 +142,11 @@ export function BookBoatPicker({ value, onChange, aboard = 0 }: BookBoatPickerPr
           onSelect={() => onChange('big')}
         />
       </div>
+      {!smallOk ? (
+        <div style={stepInlineHint} role="status">
+          {boat.smallSwitchedToBig(aboard)}
+        </div>
+      ) : null}
     </div>
   )
 }

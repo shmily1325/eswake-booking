@@ -198,6 +198,7 @@ export interface BookI18nStrings {
     pickActivity: string
     pickExperience: string
     pickBoat: string
+    smallBoatFull: string
     pickDate: string
     pickCoach: string
     fillName: string
@@ -262,6 +263,10 @@ export interface BookI18nStrings {
     big: string
     smallSeatingSingle: string
     smallSeatingDual: string
+    /** 船上總人數超過兩艘小船上限 */
+    smallSeatingFull: string
+    /** 自動改為大船時的安靜提示 */
+    smallSwitchedToBig: (aboard: number) => string
     bigSeatingSingle: string
     bigSeatingDual: string
     segmentFirstTimePrice: (firstTime: number) => string
@@ -531,6 +536,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       pickActivity: '請先選擇項目',
       pickExperience: '請選擇體驗人數',
       pickBoat: '請先選擇船型',
+      smallBoatFull: '船上人數超過小船座位，請改選大船',
       pickDate: '請選擇至少一個偏好日期',
       pickCoach: '請選擇教練，或改為不指定',
       fillName: '請填寫姓名',
@@ -611,6 +617,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       big: '大船',
       smallSeatingSingle: '6 人/艘',
       smallSeatingDual: '需 2 艘 · 6 人/艘',
+      smallSeatingFull: '座位不足（兩艘最多 12 人）',
+      smallSwitchedToBig: aboard => `船上 ${aboard} 人已超過小船座位，已改為大船。`,
       bigSeatingSingle: '10 人/艘',
       bigSeatingDual: '需 2 艘 · 10 人/艘',
       segmentFirstTimePrice: firstTime => `體驗 $${firstTime.toLocaleString()}`,
@@ -911,6 +919,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       pickActivity: 'Choose an activity first',
       pickExperience: 'Select how many are first-timers',
       pickBoat: 'Choose a boat preference',
+      smallBoatFull: 'On-board total exceeds small-boat seats — choose big boat',
       pickDate: 'Add at least one preferred date',
       pickCoach: 'Pick a coach or choose no preference',
       fillName: 'Enter your name',
@@ -992,6 +1001,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
       big: 'Big boat',
       smallSeatingSingle: '6 per boat',
       smallSeatingDual: '2 boats · 6 each',
+      smallSeatingFull: 'Not enough seats (max 12 on 2 small boats)',
+      smallSwitchedToBig: aboard => `${aboard} on board exceeds small-boat seats — switched to big boat.`,
       bigSeatingSingle: '10 per boat',
       bigSeatingDual: '2 boats · 10 each',
       segmentFirstTimePrice: firstTime => `First-timer $${firstTime.toLocaleString()}`,
