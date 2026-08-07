@@ -132,10 +132,11 @@ export function BookEssentialsPanel({
       >
         {bothSelected ? <BookSegmentCheck /> : null}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 6 }}>
-          <BookActivityIcon code="WS" size={22} />
-          <BookActivityIcon code="WB" size={22} />
+          <BookActivityIcon code="WS" size={26} />
+          <BookActivityIcon code="WB" size={26} />
         </div>
         <div style={segmentZh}>{s.step1.bothCardTitle}</div>
+        <div style={{ ...segmentEn, visibility: 'hidden' }} aria-hidden>.</div>
         <div style={segmentMeta}>{s.step1.bothSub}</div>
         <div style={segmentPrice}>{s.step1.cardPriceBoth(priceBoth)}</div>
       </button>

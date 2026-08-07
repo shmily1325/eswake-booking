@@ -6,7 +6,7 @@ import { useBookLocale } from './BookLocaleContext'
 
 import type { PriceEstimate } from './liffBookingPricing'
 
-import { estimateBox, estimateDetailPanel, estimateTierPill, bookStep2Estimate, includesTrustLine, step2EstimateSummary } from './bookStyles'
+import { estimateBox, estimateDetailPanel, estimateTierPill, bookStep2Estimate, bookLinkSecondary, includesTrustLine, step2EstimateSummary } from './bookStyles'
 
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
@@ -62,21 +62,7 @@ const detailRow = (isLast: boolean): CSSProperties => ({
 
 const expandBtn: CSSProperties = {
 
-  padding: 0,
-
-  border: 'none',
-
-  background: 'none',
-
-  color: T.estimateAccent,
-
-  fontSize: ty.caption,
-
-  fontWeight: 500,
-
-  cursor: 'pointer',
-
-  textDecoration: 'underline',
+  ...bookLinkSecondary,
 
   flexShrink: 0,
 

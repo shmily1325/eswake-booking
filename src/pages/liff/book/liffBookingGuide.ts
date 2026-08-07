@@ -13,6 +13,9 @@ export function resolveVisitGuideUrl(): string {
 export const DIRECTIONS_VIDEO_ID = 'n-tpn2uI_44'
 export const BUS_DIRECTIONS_VIDEO_ID = 'fwbeCE554Mw'
 
+/** 地址與交通：抵達路線圖（關渡橋 → 鐵門 → 廠房） */
+export const DIRECTIONS_GUIDE_IMAGE = '/liff/book/directions-guide.webp'
+
 export const VISIT_ADDRESS_ZH = '新北市八里區龍米路一段170號之1'
 
 export function visitMapUrl(query: string): string {

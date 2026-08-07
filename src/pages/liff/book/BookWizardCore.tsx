@@ -48,6 +48,7 @@ import {
   bookSectionDivider,
   bookInput,
   bookNotesInput,
+  bookLinkSecondary,
   confirmContactTitle,
   flatListRow,
   optionalSectionFlat,
@@ -60,7 +61,7 @@ import {
   footerBlockHint,
   footerSoftHint,
   stepInlineHint,
-  primaryBtn,
+  primaryBtnState,
   secondaryBtn,
   stickyFooter,
   submitConfirmBtn,
@@ -508,14 +509,8 @@ export function BookWizardCore({
                 type="button"
                 onClick={() => { triggerHaptic('light'); setShowAlternateDates(true) }}
                 style={{
+                  ...bookLinkSecondary,
                   marginTop: 12,
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  color: T.muted,
-                  fontSize: ty.caption,
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
                   display: 'block',
                   width: '100%',
                   textAlign: 'center',
@@ -542,14 +537,8 @@ export function BookWizardCore({
                             type="button"
                             onClick={() => removePreferredDate(pd.date)}
                             style={{
-                              margin: 0,
+                              ...bookLinkSecondary,
                               padding: '4px 8px',
-                              border: 'none',
-                              background: 'none',
-                              color: T.muted,
-                              fontSize: ty.caption,
-                              cursor: 'pointer',
-                              textDecoration: 'underline',
                               flexShrink: 0,
                             }}
                           >
@@ -565,14 +554,8 @@ export function BookWizardCore({
                     type="button"
                     onClick={addAlternateDate}
                     style={{
+                      ...bookLinkSecondary,
                       marginTop: 4,
-                      padding: 0,
-                      border: 'none',
-                      background: 'none',
-                      color: T.muted,
-                      fontSize: ty.caption,
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
                       display: 'block',
                       width: '100%',
                       textAlign: 'center',
@@ -590,14 +573,10 @@ export function BookWizardCore({
                   type="button"
                   onClick={() => { triggerHaptic('light'); setShowCoachSection(true) }}
                   style={{
+                    ...bookLinkSecondary,
                     padding: '12px 0 4px',
-                    border: 'none',
-                    background: 'none',
-                    color: T.muted,
                     fontSize: ty.body,
                     fontWeight: 600,
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
                     width: '100%',
                     textAlign: 'left',
                   }}
@@ -668,14 +647,14 @@ export function BookWizardCore({
                   value={form.contactName}
                   onChange={e => setForm(prev => ({ ...prev, contactName: e.target.value }))}
                   placeholder={s.step4.namePh}
-                  style={{ ...bookInput, marginBottom: 10, background: T.cardBg }}
+                  style={{ ...bookInput, marginBottom: 10 }}
                 />
                 <input
                   type="tel"
                   value={form.contactPhone}
                   onChange={e => setForm(prev => ({ ...prev, contactPhone: e.target.value }))}
                   placeholder={s.step4.phonePh}
-                  style={{ ...bookInput, marginBottom: 10, background: T.cardBg }}
+                  style={{ ...bookInput, marginBottom: 10 }}
                 />
                 <textarea
                   value={form.notes}
@@ -694,7 +673,7 @@ export function BookWizardCore({
                   href={resolveVisitGuideUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: T.muted }}
+                  style={bookLinkSecondary}
                 >
                   {s.step4.attireLink}
                 </a>
@@ -726,7 +705,7 @@ export function BookWizardCore({
             <button
               type="button"
               className="book-primary-btn"
-              style={{ ...primaryBtn, opacity: stepReady ? 1 : 0.4 }}
+              style={primaryBtnState(stepReady)}
               disabled={!stepReady}
               onClick={goNext}
             >
@@ -736,7 +715,7 @@ export function BookWizardCore({
             <button
               type="button"
               className="book-primary-btn"
-              style={{ ...submitConfirmBtn(stepReady), opacity: stepReady ? 1 : 0.4 }}
+              style={submitConfirmBtn(stepReady)}
               disabled={!stepReady}
               onClick={handleSubmit}
             >

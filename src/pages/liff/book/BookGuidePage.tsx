@@ -8,11 +8,16 @@ import {
   bookPage,
   bookSectionSub,
   guideBulletList,
+  guideCopyBtn,
   guideGroupHeading,
+  guideGroupHeadingSpaced,
+  guideMetaText,
   guideNoteBox,
+  guideQuietNote,
 } from './bookStyles'
 import {
   BUS_DIRECTIONS_VIDEO_ID,
+  DIRECTIONS_GUIDE_IMAGE,
   DIRECTIONS_VIDEO_ID,
   visitMapUrl,
 } from './liffBookingGuide'
@@ -61,16 +66,7 @@ function GuideAddressRow({ address, mapQuery, copyLabel, copiedLabel }: {
       <button
         type="button"
         onClick={() => void copyAddress()}
-        style={{
-          border: `1px solid ${T.borderSubtle}`,
-          borderRadius: 999,
-          background: 'white',
-          color: copied ? T.estimateAccent : T.muted,
-          fontSize: ty.caption,
-          fontWeight: 500,
-          padding: '4px 10px',
-          cursor: 'pointer',
-        }}
+        style={guideCopyBtn(copied)}
       >
         {copied ? copiedLabel : copyLabel}
       </button>
@@ -100,12 +96,12 @@ export function BookGuidePage() {
         <>
           <div style={guideGroupHeading}>{g.whatToBring.clothing.heading}</div>
           <GuideBullets items={g.whatToBring.clothing.items} />
-          <div style={{ ...guideNoteBox, marginTop: 10 }}>{g.whatToBring.clothing.avoid}</div>
-          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.wetsuit.heading}</div>
+          <div style={{ ...guideQuietNote, marginTop: 10 }}>{g.whatToBring.clothing.avoid}</div>
+          <div style={guideGroupHeadingSpaced}>{g.whatToBring.wetsuit.heading}</div>
           <p style={{ margin: 0 }}>{g.whatToBring.wetsuit.text}</p>
-          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.personal.heading}</div>
+          <div style={guideGroupHeadingSpaced}>{g.whatToBring.personal.heading}</div>
           <GuideBullets items={g.whatToBring.personal.items} />
-          <div style={{ ...guideGroupHeading, marginTop: 14 }}>{g.whatToBring.facilities.heading}</div>
+          <div style={guideGroupHeadingSpaced}>{g.whatToBring.facilities.heading}</div>
           <GuideBullets items={g.whatToBring.facilities.items} />
         </>
       ),
@@ -115,7 +111,7 @@ export function BookGuidePage() {
       title: g.directions.title,
       content: (
         <>
-          <div style={{ fontWeight: 600, color: T.ink, marginBottom: 6 }}>{g.directions.addressLabel}</div>
+          <div style={guideGroupHeading}>{g.directions.addressLabel}</div>
           <GuideAddressRow
             address={g.directions.address}
             mapQuery={g.directions.mapQuery}
@@ -123,11 +119,40 @@ export function BookGuidePage() {
             copiedLabel={g.copyAddressDone}
           />
           <div style={{ ...guideNoteBox, marginTop: 12 }}>{g.directions.gateNote}</div>
-          <p style={{ margin: '10px 0 0', color: T.muted, fontSize: ty.caption, lineHeight: 1.55 }}>
+          <p style={guideMetaText}>
             {g.directions.landmark}
           </p>
-          <div style={{ ...guideGroupHeading, marginTop: 16 }}>{g.directions.driving.heading}</div>
-          <p style={{ margin: '0 0 10px', color: T.muted, fontSize: ty.caption, lineHeight: 1.55 }}>
+          <a
+            href={DIRECTIONS_GUIDE_IMAGE}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'block', marginTop: 14, textDecoration: 'none' }}
+          >
+            <img
+              src={DIRECTIONS_GUIDE_IMAGE}
+              alt={g.directions.arrivalMapAlt}
+              loading="lazy"
+              style={{
+                display: 'block',
+                width: '100%',
+                height: 'auto',
+                borderRadius: T.controlRadius,
+                border: `1px solid ${T.borderSubtle}`,
+                background: T.surfaceMuted,
+              }}
+            />
+            <div style={{
+              marginTop: 8,
+              fontSize: ty.caption,
+              color: T.muted,
+              textAlign: 'center',
+              lineHeight: 1.45,
+            }}>
+              {g.directions.arrivalMapCaption}
+            </div>
+          </a>
+          <div style={guideGroupHeadingSpaced}>{g.directions.driving.heading}</div>
+          <p style={{ ...guideMetaText, margin: '0 0 10px' }}>
             {g.directions.driving.note}
           </p>
           <BookVideoPlayer
@@ -136,9 +161,9 @@ export function BookGuidePage() {
             title={g.directions.driving.videoLabel}
             label={g.directions.driving.videoLabel}
           />
-          <div style={{ ...guideGroupHeading, marginTop: 16 }}>{g.directions.parking.heading}</div>
+          <div style={guideGroupHeadingSpaced}>{g.directions.parking.heading}</div>
           <GuideBullets items={[g.directions.parking.car, g.directions.parking.scooter]} />
-          <div style={{ ...guideGroupHeading, marginTop: 16 }}>{g.directions.transit.heading}</div>
+          <div style={guideGroupHeadingSpaced}>{g.directions.transit.heading}</div>
           <GuideBullets items={g.directions.transit.lines} />
           <div style={{ marginTop: 10 }}>
             <BookVideoPlayer

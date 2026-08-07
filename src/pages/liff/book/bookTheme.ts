@@ -41,6 +41,7 @@ export const BOOK_THEME = {
   accent: c.secondary[700],
   accentSoft: 'rgba(65,68,75,0.08)',
   ctaBg: LIFF_THEME.ctaBg,
+  ctaDisabled: LIFF_THEME.ctaDisabled,
   borderSubtle: LIFF_THEME.borderSubtle,
   /** 估價卡：info 色階，與表單灰白區隔 */
   estimateBg: c.info[50],

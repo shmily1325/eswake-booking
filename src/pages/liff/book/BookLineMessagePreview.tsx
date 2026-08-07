@@ -2,22 +2,17 @@ import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
+import { bookLinkSecondary } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 const toggleBtn: CSSProperties = {
+  ...bookLinkSecondary,
   display: 'block',
   width: '100%',
   marginTop: 16,
   padding: '12px 0 0',
-  border: 'none',
   borderTop: `1px solid ${T.borderSubtle}`,
-  background: 'none',
-  color: T.estimateAccent,
-  fontSize: ty.caption,
   fontWeight: 600,
-  cursor: 'pointer',
-  textDecoration: 'underline',
-  textUnderlineOffset: 2,
   textAlign: 'center',
 }
 

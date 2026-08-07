@@ -4,6 +4,7 @@ import { liffTrack } from '../track'
 import { useBookLocale } from './BookLocaleContext'
 import type { CoachOption, LiffBookingFormState, TimePreference } from './types'
 import { buildStaffHelpMessage, openStaffHelp } from './bookStaffHelp'
+import { bookLinkAction } from './bookStyles'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 const wrap: CSSProperties = {
@@ -15,17 +16,9 @@ const wrap: CSSProperties = {
 }
 
 const textLinkBtn: CSSProperties = {
+  ...bookLinkAction,
   display: 'inline',
-  padding: 0,
-  margin: 0,
-  border: 'none',
-  background: 'none',
-  color: T.lineGreen,
   fontSize: 'inherit',
-  fontWeight: 600,
-  cursor: 'pointer',
-  textDecoration: 'underline',
-  textUnderlineOffset: 2,
 }
 
 interface BookStaffHintProps {

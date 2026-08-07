@@ -3,7 +3,7 @@ import { OFFICIAL_PRICE_FOOTNOTES, OFFICIAL_PRICE_INCLUDES, OFFICIAL_PRICE_SECTI
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 
 const sectionTitle: CSSProperties = {
-  fontSize: ty.title - 1,
+  fontSize: ty.title,
   fontWeight: 700,
   color: T.ink,
   margin: '0 0 6px',

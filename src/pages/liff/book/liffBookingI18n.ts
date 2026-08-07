@@ -313,6 +313,8 @@ export interface BookI18nStrings {
       mapQuery: string
       gateNote: string
       landmark: string
+      arrivalMapAlt: string
+      arrivalMapCaption: string
       driving: {
         heading: string
         note: string
@@ -684,6 +686,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         mapQuery: '新北市八里區龍米路一段170號之1',
         gateNote: '請注意！出入口為停車場鐵門，抵達後請透過官方 LINE 通知，將為你開啟鐵門。',
         landmark: '出入口位於大橋遊艇公司右側，7-11 神州門市正對面。',
+        arrivalMapAlt: '抵達 ES Wake 路線圖：關渡橋右轉、入口鐵門、停車場與步行至廠房',
+        arrivalMapCaption: '抵達路線圖（點圖可放大）',
         driving: {
           heading: '開車或騎車',
           note: '同一支影片：大度路 0:00–1:25 · 成泰路 1:26–',
@@ -1063,6 +1067,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         mapQuery: '新北市八里區龍米路一段170號之1',
         gateNote: 'Entrance is a parking-lot gate. Message us on LINE when you arrive and we will open it.',
         landmark: 'Entrance is to the right of Daqiao Yacht, across from 7-Eleven Shenzhou.',
+        arrivalMapAlt: 'Arrival guide to ES Wake: turn after Guandu Bridge, gate entrance, parking, and walk to the facility',
+        arrivalMapCaption: 'Arrival guide (tap to enlarge)',
         driving: {
           heading: 'By car or scooter',
           note: 'One video: Dadu Rd 0:00–1:25 · Chengtai Rd 1:26–',

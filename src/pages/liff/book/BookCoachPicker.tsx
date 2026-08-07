@@ -50,7 +50,6 @@ export function BookCoachPicker({
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '12px 14px',
-              borderRadius: T.controlRadius,
               textAlign: 'left',
             }}
             onClick={() => {

@@ -44,7 +44,7 @@ export function BookGuideAccordion({ sections, defaultOpenId }: BookGuideAccordi
               <span
                 style={{
                   flexShrink: 0,
-                  color: open ? T.estimateAccent : T.muted,
+                  color: open ? T.inkSoft : T.muted,
                   fontSize: ty.icon,
                   lineHeight: 1,
                   fontWeight: 400,

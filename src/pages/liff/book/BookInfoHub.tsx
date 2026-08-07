@@ -14,7 +14,7 @@ import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 import { liffAlertTone } from '../liffUiStyles'
 
 const sectionHead: CSSProperties = {
-  fontSize: ty.title - 1,
+  fontSize: ty.title,
   fontWeight: 700,
   color: T.ink,
   margin: '0 0 10px',
@@ -31,7 +31,7 @@ const ruleRow: CSSProperties = {
 
 const boatCard: CSSProperties = {
   border: `1px solid ${T.borderSubtle}`,
-  borderRadius: 12,
+  borderRadius: T.controlRadius,
   padding: 14,
   marginBottom: 10,
   background: T.surfaceMuted,
@@ -59,13 +59,13 @@ export function BookInfoHub() {
         <h3 style={sectionHead}>② 船型怎麼選</h3>
         {BOAT_RULES.map(b => (
           <div key={b.tier} style={boatCard}>
-            <div style={{ fontWeight: 700, fontSize: ty.title - 1, marginBottom: 4, color: T.inkSoft }}>
+            <div style={{ fontWeight: 700, fontSize: ty.title, marginBottom: 4, color: T.inkSoft }}>
               {b.label} · 最多 {b.maxPeople} 人
             </div>
-            <div style={{ fontSize: ty.caption + 1, color: T.muted }}>{b.activities}</div>
+            <div style={{ fontSize: ty.body, color: T.muted }}>{b.activities}</div>
           </div>
         ))}
-        <p style={{ fontSize: ty.caption + 1, color: T.mutedLight, lineHeight: 1.55, margin: '8px 0' }}>
+        <p style={{ fontSize: ty.caption, color: T.mutedLight, lineHeight: 1.55, margin: '8px 0' }}>
           {BOAT_COMFORT_NOTE}<br />{BOAT_BOTH_ACTIVITIES_NOTE}
         </p>
         <BookVideoPlayer videoId={BOAT_INTRO_VIDEO_ID} title="船型介紹" label="船型介紹影片" />
@@ -85,7 +85,7 @@ export function BookInfoHub() {
               ...ruleRow,
               background: reminderTone.bg,
               border: `1px solid ${reminderTone.border}`,
-              borderRadius: 10,
+              borderRadius: T.smallRadius,
               padding: '10px 12px',
               marginBottom: 8,
               color: reminderTone.color,

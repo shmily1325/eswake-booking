@@ -68,26 +68,27 @@ export const choiceBtn = (selected: boolean): CSSProperties => ({
   transition: 'border-color 0.15s, box-shadow 0.15s',
 })
 
+/** 次級選項：soft fill + 強邊框（對齊 Step 1 segment 語言） */
 export const chipBtn = (selected: boolean): CSSProperties => ({
   padding: '10px 16px',
   border: selected ? `2px solid ${T.accent}` : `1px solid ${T.borderSubtle}`,
-  borderRadius: '999px',
-  background: selected ? T.accent : T.cardBg,
-  color: selected ? 'white' : T.inkSoft,
+  borderRadius: T.controlRadius,
+  background: selected ? T.accentSoft : T.cardBg,
+  color: selected ? T.ink : T.inkSoft,
   fontSize: ty.body,
   fontWeight: selected ? 600 : 400,
   cursor: 'pointer',
 })
 
-/** Step 2 體驗／已滑過（方角、可放兩行說明） */
+/** Step 2 體驗／已滑過（可放兩行說明） */
 export const experienceChipBtn = (selected: boolean): CSSProperties => ({
   flex: 1,
   minWidth: 0,
   padding: '12px 8px',
   border: selected ? `2px solid ${T.accent}` : `1px solid ${T.borderSubtle}`,
-  borderRadius: T.cardRadius,
-  background: selected ? T.accent : T.cardBg,
-  color: selected ? 'white' : T.inkSoft,
+  borderRadius: T.controlRadius,
+  background: selected ? T.accentSoft : T.cardBg,
+  color: selected ? T.ink : T.inkSoft,
   textAlign: 'center',
   cursor: 'pointer',
   lineHeight: 1.35,
@@ -103,8 +104,29 @@ export const experienceChipNote = (selected: boolean): CSSProperties => ({
   fontWeight: 400,
   marginTop: 6,
   lineHeight: 1.5,
-  color: selected ? 'rgba(255,255,255,0.9)' : T.muted,
+  color: selected ? T.inkSoft : T.muted,
 })
+
+/** 次要文字連結（加日期、展開明細、服裝指南等） */
+export const bookLinkSecondary: CSSProperties = {
+  padding: 0,
+  margin: 0,
+  border: 'none',
+  background: 'none',
+  color: T.muted,
+  fontSize: ty.caption,
+  fontWeight: 500,
+  cursor: 'pointer',
+  textDecoration: 'underline',
+  textUnderlineOffset: 2,
+}
+
+/** 平台／強調文字動作（問客服 → LINE） */
+export const bookLinkAction: CSSProperties = {
+  ...bookLinkSecondary,
+  color: T.lineGreen,
+  fontWeight: 600,
+}
 
 /** 一般提示區塊（中性灰） */
 export const infoBox: CSSProperties = {
@@ -178,7 +200,7 @@ export const estimateInsetHighlight: CSSProperties = {
   padding: '10px 12px',
   background: T.estimateBg,
   border: `1px solid ${T.estimateBorder}`,
-  borderRadius: 8,
+  borderRadius: T.smallRadius,
   lineHeight: 1.5,
 }
 
@@ -222,6 +244,12 @@ export const primaryBtn: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
 }
+
+export const primaryBtnState = (ready: boolean): CSSProperties => ({
+  ...primaryBtn,
+  background: ready ? T.ctaBg : T.ctaDisabled,
+  cursor: ready ? 'pointer' : 'not-allowed',
+})
 
 export const linePrimaryBtn: CSSProperties = {
   ...primaryBtn,
@@ -431,8 +459,10 @@ export const submitConfirmBtn = (ready: boolean): CSSProperties => ({
   fontSize: ty.title,
   fontWeight: 700,
   letterSpacing: '0.02em',
+  background: ready ? T.lineGreen : T.ctaDisabled,
+  cursor: ready ? 'pointer' : 'not-allowed',
   boxShadow: ready ? '0 4px 16px rgba(0,185,0,0.32)' : 'none',
-  transition: 'box-shadow 0.2s ease, opacity 0.2s ease',
+  transition: 'box-shadow 0.2s ease, background 0.2s ease',
 })
 
 export const fieldHint: CSSProperties = {
@@ -468,12 +498,12 @@ export const dateChip = (selected: boolean, disabled: boolean): CSSProperties =>
   padding: '10px 6px',
   border: selected ? `2px solid ${T.accent}` : `1px solid ${T.borderSubtle}`,
   borderRadius: T.controlRadius,
-  background: selected ? T.accent : T.cardBg,
-  color: selected ? 'white' : disabled ? T.mutedLight : T.inkSoft,
+  background: selected ? T.accentSoft : T.cardBg,
+  color: selected ? T.ink : disabled ? T.mutedLight : T.inkSoft,
   cursor: disabled ? 'not-allowed' : 'pointer',
   textAlign: 'center' as const,
   opacity: disabled ? 0.5 : 1,
-  boxShadow: selected ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+  boxShadow: selected ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
 })
 
 /** Step 1 價格區塊 banner */
@@ -507,7 +537,7 @@ export const segmentBtn = (selected: boolean): CSSProperties => ({
   cursor: 'pointer',
   textAlign: 'center',
   lineHeight: 1.35,
-  boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.1)' : '0 1px 3px rgba(0,0,0,0.03)',
+  boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.08)' : 'none',
 })
 
 export const segmentCheck: CSSProperties = {
@@ -732,7 +762,7 @@ export const bothSegmentBtn = (selected: boolean): CSSProperties => ({
   cursor: 'pointer',
   textAlign: 'center',
   lineHeight: 1.35,
-  boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.1)' : '0 1px 3px rgba(0,0,0,0.03)',
+  boxShadow: selected ? '0 3px 12px rgba(0,0,0,0.08)' : 'none',
 })
 
 export const selectedDatePill: CSSProperties = {
@@ -811,6 +841,12 @@ export const guideGroupHeading: CSSProperties = {
   marginBottom: 6,
 }
 
+/** Guide 內第二段起的小標（固定節奏） */
+export const guideGroupHeadingSpaced: CSSProperties = {
+  ...guideGroupHeading,
+  marginTop: 16,
+}
+
 export const guideFooterBtn: CSSProperties = {
   display: 'inline-block',
   padding: '12px 20px',
@@ -831,6 +867,7 @@ export const guideFooterLink: CSSProperties = {
   background: T.estimateBg,
 }
 
+/** 重要提醒（鐵門等） */
 export const guideNoteBox: CSSProperties = {
   background: T.estimateBg,
   border: `1px solid ${T.estimateBorder}`,
@@ -838,6 +875,35 @@ export const guideNoteBox: CSSProperties = {
   padding: '10px 12px',
   fontSize: ty.caption,
   color: T.estimateDetailInk,
+  lineHeight: 1.55,
+}
+
+/** 次要提示（避免事項等，較安靜） */
+export const guideQuietNote: CSSProperties = {
+  background: T.surfaceMuted,
+  border: `1px solid ${T.borderSubtle}`,
+  borderRadius: T.smallRadius,
+  padding: '10px 12px',
+  fontSize: ty.caption,
+  color: T.inkSoft,
+  lineHeight: 1.55,
+}
+
+export const guideCopyBtn = (copied: boolean): CSSProperties => ({
+  border: `1px solid ${T.borderSubtle}`,
+  borderRadius: T.controlRadius,
+  background: copied ? T.accentSoft : T.cardBg,
+  color: copied ? T.inkSoft : T.muted,
+  fontSize: ty.caption,
+  fontWeight: 500,
+  padding: '6px 12px',
+  cursor: 'pointer',
+})
+
+export const guideMetaText: CSSProperties = {
+  margin: '10px 0 0',
+  color: T.muted,
+  fontSize: ty.caption,
   lineHeight: 1.55,
 }
 
