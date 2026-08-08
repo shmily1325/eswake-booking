@@ -48,6 +48,8 @@ type RpcResult = {
   balance_after?: number
   /** 標年入帳／扣款是否有寫入 credit_lots；null = 不適用 */
   lots_updated?: boolean | null
+  /** 無標年差額自動套到的年份；null = 未自動調年帳 */
+  lots_auto_year?: number | null
 }
 
 function assertRpcOk(data: unknown, fallback: string): asserts data is RpcResult {

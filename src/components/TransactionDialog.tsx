@@ -60,6 +60,10 @@ const CATEGORIES = [
   { value: 'gift_boat_hours', label: '贈送大船', unit: '分', type: 'minutes' },
 ]
 
+/** 可改金額／類別的記帳項目；方案（plan）等僅能刪除 */
+const isEditableCategory = (category: string) =>
+  CATEGORIES.some((c) => c.value === category)
+
 export function TransactionDialog({
   open,
   member,
@@ -201,12 +205,9 @@ export function TransactionDialog({
     }
   }
 
-  // 編輯交易記錄（僅手動記帳）
+  // 編輯／刪除交易（金流獨立；不連動預約／訂單）
+  // 方案（plan）可開可刪，但不可改金額／類別（避免誤存成儲值）
   const handleEditTransaction = (tx: Transaction) => {
-    if (tx.transaction_type != null && tx.transaction_type !== 'adjust') {
-      toast.warning('扣款／商店交易不可在此編輯')
-      return
-    }
     setEditingTransaction(tx)
     setEditCategory(tx.category)
     
@@ -229,6 +230,11 @@ export function TransactionDialog({
     e?.preventDefault()
     e?.stopPropagation()
     if (!editingTransaction || savingEdit) return
+
+    if (!isEditableCategory(editingTransaction.category)) {
+      toast.warning('方案記錄不可修改金額，只能刪除')
+      return
+    }
 
     const numValue = parseFloat(editValue)
     if (isNaN(numValue) || numValue < 0) {
@@ -253,7 +259,7 @@ export function TransactionDialog({
 
     setSavingEdit(true)
     try {
-      await processManualMemberAdjustEdit({
+      const result = await processManualMemberAdjustEdit({
         transactionId: editingTransaction.id,
         memberId: member.id,
         category: editCategory,
@@ -284,6 +290,12 @@ export function TransactionDialog({
       setEditNotes('')
       setEditVoucherYear(currentVoucherYear)
       toast.success('已更新')
+      if (result.lots_auto_year != null) {
+        toast.warning(
+          `此筆未標年，已自動調整 ${result.lots_auto_year} 年明細以維持加總一致`,
+          8000,
+        )
+      }
     } catch (error: any) {
       console.error('更新失敗:', error)
       const msg = `更新失敗：${error?.message || error || '未知錯誤'}`
@@ -296,16 +308,12 @@ export function TransactionDialog({
   }
 
   const handleDeleteTransaction = async (tx: Transaction) => {
-    if (tx.transaction_type != null && tx.transaction_type !== 'adjust') {
-      toast.warning('扣款／商店交易不可在此刪除')
-      return
-    }
     if (!confirm('確定要刪除這筆交易記錄嗎？\n\n注意：這將會還原此交易對會員餘額/時數的影響。')) {
       return
     }
 
     try {
-      await processManualMemberAdjustDelete({
+      const result = await processManualMemberAdjustDelete({
         transactionId: tx.id,
         memberId: member.id,
       })
@@ -313,6 +321,13 @@ export function TransactionDialog({
       await loadTransactions()
       await loadCreditLots()
       onSuccess()
+      toast.success('已刪除')
+      if (result.lots_auto_year != null) {
+        toast.warning(
+          `此筆未標年，已自動調整 ${result.lots_auto_year} 年明細以維持加總一致`,
+          8000,
+        )
+      }
     } catch (error: any) {
       console.error('刪除失敗:', error)
       toast.error(`刪除失敗：${error.message}`)
@@ -391,6 +406,12 @@ export function TransactionDialog({
         ? `$${Number(newBalance).toLocaleString()}`
         : `${Number(newBalance).toLocaleString()}分`
       toast.success(`${catConfig?.label} ${changeText}，餘額 ${balanceText}`)
+      if (result.lots_auto_year != null) {
+        toast.warning(
+          `此筆未標年，已自動調整 ${result.lots_auto_year} 年明細以維持加總一致`,
+          8000,
+        )
+      }
       if (
         adjustType === 'decrease' &&
         isYearTrackedCategory(category) &&
@@ -1103,7 +1124,7 @@ export function TransactionDialog({
                   const categoryConfig = CATEGORIES.find(c => c.value === tx.category)
                   const isIncrease = tx.adjust_type === 'increase'
                   const isEditing = editingTransaction?.id === tx.id
-                  const isManualAdjust = tx.transaction_type == null || tx.transaction_type === 'adjust'
+                  const canEditFields = isEditableCategory(tx.category)
                   
                   return (
                     <div
@@ -1114,12 +1135,12 @@ export function TransactionDialog({
                         borderRadius: designSystem.borderRadius.lg,
                         border: `1px solid ${designSystem.colors.border.light}`,
                         borderLeft: `3px solid ${isIncrease ? designSystem.colors.success[500] : designSystem.colors.danger[500]}`,
-                        cursor: isEditing || !isManualAdjust ? 'default' : 'pointer',
+                        cursor: isEditing ? 'default' : 'pointer',
                         transition: designSystem.transitions.normal,
                       }}
-                      onClick={() => !isEditing && isManualAdjust && handleEditTransaction(tx)}
+                      onClick={() => !isEditing && handleEditTransaction(tx)}
                       onMouseEnter={(e) => {
-                        if (!isEditing && isManualAdjust) e.currentTarget.style.background = designSystem.colors.background.hover
+                        if (!isEditing) e.currentTarget.style.background = designSystem.colors.background.hover
                       }}
                       onMouseLeave={(e) => {
                         if (!isEditing) e.currentTarget.style.background = designSystem.colors.background.card
@@ -1132,7 +1153,34 @@ export function TransactionDialog({
                             <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled, marginBottom: '12px' }}>
                               記帳時間：{tx.created_at ? formatDbTimestampDisplay(tx.created_at) : '-'}
                             </div>
-                            
+
+                            {!canEditFields ? (
+                              <>
+                                <div style={{
+                                  marginBottom: '12px',
+                                  fontSize: getFontSize('body', isMobile),
+                                  fontWeight: 600,
+                                  color: designSystem.colors.text.primary,
+                                }}>
+                                  方案記錄（無金額）
+                                </div>
+                                <div style={{
+                                  marginBottom: '12px',
+                                  fontSize: getFontSize('bodySmall', isMobile),
+                                  color: designSystem.colors.text.secondary,
+                                }}>
+                                  {tx.description || '—'}
+                                </div>
+                                <div style={{
+                                  marginBottom: '12px',
+                                  fontSize: getFontSize('caption', isMobile),
+                                  color: designSystem.colors.text.disabled,
+                                }}>
+                                  此筆只能刪除，不可改金額或類別。
+                                </div>
+                              </>
+                            ) : (
+                              <>
                             {/* 項目 */}
                             <div style={{ marginBottom: '12px' }}>
                               <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
@@ -1276,27 +1324,34 @@ export function TransactionDialog({
                                 }}
                               />
                             </div>
+                              </>
+                            )}
                           </div>
                           
                           {/* 按鈕 */}
                           <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              type="button"
-                              onClick={handleSaveEdit}
-                              disabled={savingEdit}
-                              style={{
-                                ...getButtonStyle('primary', 'small', isMobile),
-                                flex: 1,
-                                opacity: savingEdit ? 0.7 : 1,
-                              }}
-                            >
-                              {savingEdit ? '儲存中…' : '儲存'}
-                            </button>
+                            {canEditFields ? (
+                              <button
+                                type="button"
+                                onClick={handleSaveEdit}
+                                disabled={savingEdit}
+                                style={{
+                                  ...getButtonStyle('primary', 'small', isMobile),
+                                  flex: 1,
+                                  opacity: savingEdit ? 0.7 : 1,
+                                }}
+                              >
+                                {savingEdit ? '儲存中…' : '儲存'}
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => handleDeleteTransaction(tx)}
                               disabled={savingEdit}
-                              style={getButtonStyle('danger', 'small', isMobile)}
+                              style={{
+                                ...getButtonStyle('danger', 'small', isMobile),
+                                flex: canEditFields ? undefined : 1,
+                              }}
                             >
                               刪除
                             </button>
@@ -1321,7 +1376,7 @@ export function TransactionDialog({
                           }}>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', marginBottom: '4px', color: designSystem.colors.text.primary }}>
-                                {categoryConfig?.label}
+                                {categoryConfig?.label ?? (tx.category === 'plan' ? '方案' : tx.category)}
                                 {tx.voucher_year != null && (
                                   <span style={{
                                     fontWeight: 400,

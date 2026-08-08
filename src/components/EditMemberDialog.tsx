@@ -53,7 +53,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
   const [loading, setLoading] = useState(false)
   const submitLockRef = useRef(false)
   const [boardSlots, setBoardSlots] = useState<Array<{id?: number, slot_number: string, start_date: string, expires_at: string}>>([])
-  const [deletedBoardIds, setDeletedBoardIds] = useState<number[]>([])
   const [addToMemo, setAddToMemo] = useState(true)  // 是否記錄到備忘錄
   const [memoText, setMemoText] = useState('')  // 自訂備忘錄內容
 
@@ -134,7 +133,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     if (!open) {
       // 对话框关闭时重置状态
       setBoardSlots([])
-      setDeletedBoardIds([])
       setPartnerSearch('')
       setPartnerSearchResults([])
       setSelectedPartner(null)
@@ -142,7 +140,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     }
 
     loadBoardSlots()
-    setDeletedBoardIds([])
 
     setFormData({
       name: member.name,
@@ -174,27 +171,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
     setPartnerSearch('')
     setPartnerSearchResults([])
   }, [member, open])
-
-  // 添加新置板格位
-  const handleAddBoardSlot = () => {
-    setBoardSlots([...boardSlots, { slot_number: '', start_date: '', expires_at: '' }])
-  }
-
-  // 刪除置板格位
-  const handleRemoveBoardSlot = (index: number) => {
-    const slot = boardSlots[index]
-    if (slot.id) {
-      setDeletedBoardIds((prev) => [...prev, slot.id!])
-    }
-    setBoardSlots(boardSlots.filter((_, i) => i !== index))
-  }
-
-  // 更新置板格位
-  const handleUpdateBoardSlot = (index: number, field: 'slot_number' | 'start_date' | 'expires_at', value: string) => {
-    const newSlots = [...boardSlots]
-    newSlots[index][field] = value
-    setBoardSlots(newSlots)
-  }
 
   const requiresGuestNormalization =
     formData.membership_type === 'guest' &&
@@ -283,17 +259,7 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
         }
       }
 
-      for (const slot of boardSlots) {
-        if (!slot.slot_number.trim()) continue
-        const slotNumber = Number(slot.slot_number)
-        if (!Number.isInteger(slotNumber) || slotNumber < 1 || slotNumber > 145) {
-          toast.warning(`格位編號 ${slot.slot_number} 必須是 1-145 之間的數字`)
-          setLoading(false)
-          return
-        }
-      }
-
-      // 會員、會籍、配對與置板在同一筆資料庫交易完成
+      // 此表單只處理會員基本資料與會籍；置板由會員詳情的專區管理。
       await updateMemberMembership({
         memberId: member.id,
         membershipType: formData.membership_type,
@@ -314,16 +280,6 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
           birthday: formData.birthday || null,
           phone: formData.phone || null,
         },
-        boards: boardSlots
-          .filter((slot) => slot.slot_number.trim())
-          .map((slot) => ({
-            id: slot.id,
-            slot_number: Number(slot.slot_number),
-            start_date: slot.start_date || null,
-            expires_at: slot.expires_at || null,
-            notes: null,
-          })),
-        deletedBoardIds,
       })
 
       onSuccess()
@@ -692,18 +648,16 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
             )}
 
             <div style={{
-              background: designSystem.colors.background.main,
-              padding: '16px',
-              borderRadius: designSystem.borderRadius.lg,
-              border: `1px solid ${designSystem.colors.border.light}`,
-              marginBottom: '8px',
+              paddingTop: designSystem.spacing.lg,
+              borderTop: `1px solid ${designSystem.colors.border.light}`,
+              marginBottom: designSystem.spacing.sm,
             }}>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '12px',
-                gap: '12px',
+                marginBottom: designSystem.spacing.sm,
+                gap: designSystem.spacing.md,
               }}>
                 <h3 style={{
                   margin: 0,
@@ -712,93 +666,44 @@ export function EditMemberDialog({ open, member, onClose, onSuccess }: EditMembe
                 }}>
                   置板資訊
                 </h3>
-                <button
-                  type="button"
-                  onClick={handleAddBoardSlot}
-                  style={getButtonStyle('secondary', 'small', isMobile)}
-                >
-                  + 新增格位
-                </button>
+              </div>
+
+              <div style={{
+                color: designSystem.colors.text.secondary,
+                fontSize: typeSize('bodySmall'),
+                marginBottom: designSystem.spacing.md,
+              }}>
+                置板新增、續約、移動與移除請回到會員詳情的「置板」區操作。
               </div>
 
               {boardSlots.length === 0 ? (
                 <div style={{
-                  textAlign: 'center',
                   color: designSystem.colors.text.secondary,
                   fontSize: typeSize('bodySmall'),
-                  padding: '20px 12px',
+                  padding: `${designSystem.spacing.sm} 0`,
                 }}>
-                  尚無置板格位，點擊「新增格位」添加
+                  尚無置板
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {boardSlots.map((slot, index) => (
-                    <div key={index} style={{
-                      background: designSystem.colors.background.card,
-                      padding: '12px',
-                      borderRadius: designSystem.borderRadius.lg,
-                      border: `1px solid ${designSystem.colors.border.light}`,
-                    }}>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-                        gap: '12px',
-                        marginBottom: '8px',
-                      }}>
-                        <div>
-                          <label style={{ ...getLabelStyle(isMobile), marginBottom: '4px' }}>
-                            格位編號 (1-145)
-                          </label>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={slot.slot_number}
-                            onChange={(e) => {
-                              const numValue = e.target.value.replace(/\D/g, '')
-                              const num = Number(numValue)
-                              if ((num >= 1 && num <= 145) || numValue === '') {
-                                handleUpdateBoardSlot(index, 'slot_number', numValue)
-                              }
-                            }}
-                            placeholder="例如：1"
-                            style={inputStyle}
-                          />
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <label style={{ ...getLabelStyle(isMobile), marginBottom: '4px' }}>
-                            開始日期
-                          </label>
-                          <input
-                            type="date"
-                            value={slot.start_date}
-                            onChange={(e) => handleUpdateBoardSlot(index, 'start_date', e.target.value)}
-                            style={inputStyle}
-                          />
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <label style={{ ...getLabelStyle(isMobile), marginBottom: '4px' }}>
-                            到期日期
-                          </label>
-                          <input
-                            type="date"
-                            value={slot.expires_at}
-                            onChange={(e) => handleUpdateBoardSlot(index, 'expires_at', e.target.value)}
-                            style={inputStyle}
-                          />
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveBoardSlot(index)}
-                        style={{
-                          ...getButtonStyle('outline', 'small', isMobile),
-                          color: designSystem.colors.danger[700],
-                          borderColor: `${designSystem.colors.danger[500]}66`,
-                          background: designSystem.colors.danger[50],
-                        }}
-                      >
-                        刪除
-                      </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.sm }}>
+                  {boardSlots.map((slot) => (
+                    <div
+                      key={slot.id ?? slot.slot_number}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: designSystem.spacing.md,
+                        padding: `${designSystem.spacing.sm} 0`,
+                        color: designSystem.colors.text.secondary,
+                        fontSize: typeSize('bodySmall'),
+                      }}
+                    >
+                      <span style={{ color: designSystem.colors.text.primary, fontWeight: 600 }}>
+                        #{slot.slot_number}
+                      </span>
+                      <span>
+                        {slot.start_date || '未設定'} → {slot.expires_at || '未設定'}
+                      </span>
                     </div>
                   ))}
                 </div>

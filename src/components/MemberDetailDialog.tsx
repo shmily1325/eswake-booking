@@ -6,12 +6,14 @@ import { TransactionDialog } from './TransactionDialog'
 import { CreditLotBalanceDisplay, type CreditLotRow } from './CreditLotBalanceDisplay'
 import { useToast } from './ui'
 import { YEAR_TRACKED_CATEGORIES } from '../lib/creditLots'
+import { buildBoardDateEditDescription } from '../lib/boardOperations'
 import { addYearsToDate, getVenueDateString, isDateExpired, normalizeDate } from '../utils/date'
 import { MemoRecordCheckbox } from './MemoRecordCheckbox'
 import {
   renewMemberMembership,
   updateMemberMembership,
 } from '../services/memberLifecycle'
+import { moveBoardStorage } from '../services/boardStorage'
 import {
   getMembershipTypeLabel,
   MEMBERSHIP_GIFT_CREDIT_HINT,
@@ -128,6 +130,7 @@ const dialogBodyStyle: CSSProperties = {
 
 const dialogFooterStyle: CSSProperties = {
   padding: '16px 20px',
+  paddingBottom: 'max(40px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
   borderTop: `1px solid ${designSystem.colors.border.light}`,
   display: 'flex',
   gap: '12px',
@@ -209,7 +212,8 @@ interface MemberNote {
 
 // 事件類型選項（value 不變；色階僅供顯示）
 const EVENT_TYPES = [
-  { value: '續約', label: '續約', color: designSystem.colors.success[500] },
+  { value: '續約', label: '續約（會籍）', color: designSystem.colors.success[500] },
+  { value: '續約置板', label: '續約置板', color: designSystem.colors.success[700] },
   { value: '購買', label: '購買', color: designSystem.colors.info[500] },
   { value: '贈送', label: '贈送', color: '#7a6b8a' },
   { value: '使用', label: '使用', color: designSystem.colors.warning[500] },
@@ -284,6 +288,9 @@ export function MemberDetailDialog({
     addToMemo: false,  // 預設不記錄，置板編輯通常是修正錯誤
     memoText: ''       // 記錄原因
   })
+  const [movingBoard, setMovingBoard] = useState<BoardStorage | null>(null)
+  const [boardMoveTarget, setBoardMoveTarget] = useState('')
+  const [boardMoveSaving, setBoardMoveSaving] = useState(false)
 
   // 快速編輯電話相關狀態
   const [quickEditPhoneOpen, setQuickEditPhoneOpen] = useState(false)
@@ -307,6 +314,9 @@ export function MemberDetailDialog({
       setQuickEditPhone('')
       setBoardEditDialogOpen(false)
       setEditingBoard(null)
+      setMovingBoard(null)
+      setBoardMoveTarget('')
+      setBoardMoveSaving(false)
       setCreditLots([])
     }
   }, [open])
@@ -341,7 +351,6 @@ export function MemberDetailDialog({
           .select('line_user_id')
           .eq('member_id', memberId)
           .eq('status', 'active'),
-        // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
         supabase
           .from('member_notes')
           .select('*')
@@ -418,7 +427,6 @@ export function MemberDetailDialog({
     if (!memberId) return
 
     try {
-      // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
       const { data, error } = await supabase
         .from('member_notes')
         .select('*')
@@ -474,7 +482,6 @@ export function MemberDetailDialog({
     try {
       if (editingNote) {
         // 編輯
-        // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
         const { error } = await supabase
           .from('member_notes')
           .update({
@@ -488,7 +495,6 @@ export function MemberDetailDialog({
         toast.success('備忘錄已更新')
       } else {
         // 新增
-        // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
         const { error } = await supabase
           .from('member_notes')
           .insert([{
@@ -517,7 +523,6 @@ export function MemberDetailDialog({
     if (!confirm('確定要刪除這則備忘錄嗎？')) return
 
     try {
-      // @ts-ignore - member_notes 表需要執行資料庫遷移後才會有類型
       const { error } = await supabase
         .from('member_notes')
         .delete()
@@ -673,7 +678,6 @@ export function MemberDetailDialog({
       // 新增備忘錄
       const today = getVenueDateString()
       const expiryInfo = boardFormData.expires_at ? `，至 ${boardFormData.expires_at}` : ''
-      // @ts-ignore
       await supabase.from('member_notes').insert([{
         member_id: memberId,
         event_date: boardFormData.start_date || today,
@@ -694,6 +698,7 @@ export function MemberDetailDialog({
   }
 
   const handleDeleteBoard = async (boardId: number, slotNumber: number) => {
+    if (!memberId) return
     if (!confirm(`確定要刪除格位 #${slotNumber} 嗎？`)) {
       return
     }
@@ -709,7 +714,6 @@ export function MemberDetailDialog({
 
       // 新增備忘錄
       const today = getVenueDateString()
-      // @ts-ignore
       await supabase.from('member_notes').insert([{
         member_id: memberId,
         event_date: today,
@@ -736,7 +740,7 @@ export function MemberDetailDialog({
 
   // 執行置板續約
   const handleBoardRenew = async () => {
-    if (!renewingBoard || !boardRenewEndDate) {
+    if (!memberId || !renewingBoard || !boardRenewEndDate) {
       toast.warning('請選擇新的到期日')
       return
     }
@@ -751,13 +755,13 @@ export function MemberDetailDialog({
 
       // 新增備忘錄
       const today = getVenueDateString()
-      // @ts-ignore
-      await supabase.from('member_notes').insert([{
+      const { error: noteError } = await supabase.from('member_notes').insert([{
         member_id: memberId,
         event_date: today,
         event_type: '續約置板',
         description: `置板續約 #${renewingBoard.slot_number}，至 ${boardRenewEndDate}`
       }])
+      if (noteError) throw noteError
 
       toast.success(`格位 #${renewingBoard.slot_number} 已延長至 ${boardRenewEndDate}`)
       setBoardRenewDialogOpen(false)
@@ -785,9 +789,55 @@ export function MemberDetailDialog({
     setBoardEditDialogOpen(true)
   }
 
-  // 執行置板編輯
+  const openBoardMoveDialog = (board: BoardStorage) => {
+    setMovingBoard(board)
+    setBoardMoveTarget('')
+  }
+
+  const closeBoardMoveDialog = () => {
+    if (boardMoveSaving) return
+    setMovingBoard(null)
+    setBoardMoveTarget('')
+  }
+
+  const handleBoardMove = async () => {
+    if (!movingBoard) return
+
+    const targetSlot = Number(boardMoveTarget)
+    if (!Number.isInteger(targetSlot) || targetSlot < 1 || targetSlot > 145) {
+      toast.warning('格位編號必須是 1-145 之間的數字')
+      return
+    }
+    if (targetSlot === movingBoard.slot_number) {
+      toast.warning('請選擇不同的格位')
+      return
+    }
+
+    setBoardMoveSaving(true)
+    try {
+      await moveBoardStorage(movingBoard.id, targetSlot)
+      toast.success(`置板已從 #${movingBoard.slot_number} 移到 #${targetSlot}`)
+      setMovingBoard(null)
+      setBoardMoveTarget('')
+      setEditingBoard((current) => current ? { ...current, slot_number: targetSlot } : current)
+      loadMemberData()
+      loadMemberNotes()
+      onUpdate()
+    } catch (error) {
+      console.error('移動置板失敗:', error)
+      if (error instanceof Error && error.name === '23505') {
+        toast.warning(`格位 #${targetSlot} 已被使用，請選擇其他空位`)
+      } else {
+        toast.error(error instanceof Error ? `移動置板失敗：${error.message}` : '移動置板失敗')
+      }
+    } finally {
+      setBoardMoveSaving(false)
+    }
+  }
+
+  // 執行置板資料編輯；換格使用獨立的原子操作。
   const handleBoardEdit = async () => {
-    if (!editingBoard) return
+    if (!editingBoard || !memberId) return
 
     try {
       const oldStartDate = editingBoard.start_date
@@ -806,45 +856,32 @@ export function MemberDetailDialog({
 
       if (error) throw error
 
-      // 如果勾選「記錄到備忘錄」且日期有變更或有自訂文字
-      if (boardEditForm.addToMemo) {
-        const changes: string[] = []
-        if (oldStartDate !== newStartDate) {
-          changes.push(`開始日 ${oldStartDate || '無'} → ${newStartDate || '無'}`)
-        }
-        if (oldExpiresAt !== newExpiresAt) {
-          changes.push(`到期日 ${oldExpiresAt || '無'} → ${newExpiresAt || '無'}`)
-        }
-
-        // 有日期變更或有自訂文字時，新增備忘錄
-        if (changes.length > 0 || boardEditForm.memoText.trim()) {
-          const today = getVenueDateString()
-          let description = ''
-
-          if (changes.length > 0) {
-            description = `置板 #${editingBoard.slot_number} 修改：${changes.join('、')}`
-          }
-          if (boardEditForm.memoText.trim()) {
-            description = description
-              ? `${description}（${boardEditForm.memoText.trim()}）`
-              : `置板 #${editingBoard.slot_number}：${boardEditForm.memoText.trim()}`
-          }
-
-          // @ts-ignore
-          await supabase.from('member_notes').insert([{
-            member_id: memberId,
-            event_date: today,
-            event_type: '備註',
-            description
-          }])
-        }
+      const description = boardEditForm.addToMemo
+        ? buildBoardDateEditDescription({
+            slotNumber: editingBoard.slot_number,
+            oldStartDate,
+            newStartDate,
+            oldExpiresAt,
+            newExpiresAt,
+            memoText: boardEditForm.memoText,
+          })
+        : null
+      if (description) {
+        const today = getVenueDateString()
+        const { error: noteError } = await supabase.from('member_notes').insert([{
+          member_id: memberId,
+          event_date: today,
+          event_type: '備註',
+          description
+        }])
+        if (noteError) throw noteError
       }
 
       toast.success(`置板 #${editingBoard.slot_number} 已更新`)
       setBoardEditDialogOpen(false)
       setEditingBoard(null)
       loadMemberData()
-      if (boardEditForm.addToMemo) {
+      if (description) {
         loadMemberNotes()
       }
       onUpdate()
@@ -1171,7 +1208,6 @@ export function MemberDetailDialog({
                           {boardStorage.map((board) => (
                             <div
                               key={board.id}
-                              onClick={() => openBoardEditDialog(board)}
                               style={{
                                 ...sectionPanelStyle,
                                 display: 'flex',
@@ -1179,14 +1215,7 @@ export function MemberDetailDialog({
                                 alignItems: 'center',
                                 gap: '12px',
                                 fontSize: typeSize('bodySmall', isMobile),
-                                cursor: 'pointer',
-                                transition: designSystem.transitions.normal,
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = designSystem.colors.text.secondary
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = designSystem.colors.border.light
+                                flexWrap: isMobile ? 'wrap' : 'nowrap',
                               }}
                             >
                               <div style={{ minWidth: 0 }}>
@@ -1203,15 +1232,26 @@ export function MemberDetailDialog({
                                   </span>
                                 )}
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()  // 防止觸發卡片的點擊
-                                  openBoardRenewDialog(board.id, board.slot_number, board.expires_at)
-                                }}
-                                style={getButtonStyle('outline', 'small', isMobile)}
-                              >
-                                +1年
-                              </button>
+                              <div style={{ display: 'flex', gap: designSystem.spacing.sm, flexShrink: 0 }}>
+                                <button
+                                  onClick={() => openBoardRenewDialog(board.id, board.slot_number, board.expires_at)}
+                                  style={{
+                                    ...getButtonStyle('outline', 'small', isMobile),
+                                    minHeight: isMobile ? '48px' : undefined,
+                                  }}
+                                >
+                                  續約
+                                </button>
+                                <button
+                                  onClick={() => openBoardEditDialog(board)}
+                                  style={{
+                                    ...getButtonStyle('secondary', 'small', isMobile),
+                                    minHeight: isMobile ? '48px' : undefined,
+                                  }}
+                                >
+                                  編輯
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1245,7 +1285,9 @@ export function MemberDetailDialog({
                           overflowY: 'auto'
                         }}>
                           {memberNotes.map((note) => {
-                            const eventType = EVENT_TYPES.find(t => t.value === note.event_type) || EVENT_TYPES[5]
+                            const eventType = EVENT_TYPES.find(t => t.value === note.event_type)
+                              || EVENT_TYPES.find(t => t.value === '備註')
+                              || EVENT_TYPES[EVENT_TYPES.length - 1]
                             return (
                               <div
                                 key={note.id}
@@ -1529,13 +1571,19 @@ export function MemberDetailDialog({
                   setAddBoardDialogOpen(false)
                   setBoardFormData({ slot_number: '', start_date: '', expires_at: '', notes: '' })
                 }}
-                style={getButtonStyle('outline', 'medium', isMobile)}
+                style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
+                  minHeight: isMobile ? '48px' : undefined,
+                }}
               >
                 取消
               </button>
               <button
                 onClick={handleAddBoard}
-                style={getButtonStyle('primary', 'medium', isMobile)}
+                style={{
+                  ...getButtonStyle('primary', 'medium', isMobile),
+                  minHeight: isMobile ? '48px' : undefined,
+                }}
               >
                 確認新增
               </button>
@@ -1747,7 +1795,7 @@ export function MemberDetailDialog({
                     </span>
                   </label>
                   <div style={{ ...getFieldHintStyle(isMobile), marginLeft: '28px' }}>
-                    配對會員目前到期：{(member.partner as any).membership_end_date ? formatDate((member.partner as any).membership_end_date) : '未設定'}
+                    配對會員目前到期：{member.partner.membership_end_date ? formatDate(member.partner.membership_end_date) : '未設定'}
                   </div>
                   {!renewBothPartners && (
                     <div style={{
@@ -1826,13 +1874,19 @@ export function MemberDetailDialog({
                   setBoardRenewEndDate('')
                   setRenewingBoard(null)
                 }}
-                style={getButtonStyle('outline', 'medium', isMobile)}
+                style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
+                  minHeight: isMobile ? '48px' : undefined,
+                }}
               >
                 取消
               </button>
               <button
                 onClick={handleBoardRenew}
-                style={getButtonStyle('primary', 'medium', isMobile)}
+                style={{
+                  ...getButtonStyle('primary', 'medium', isMobile),
+                  minHeight: isMobile ? '48px' : undefined,
+                }}
               >
                 確認續約
               </button>
@@ -1862,6 +1916,31 @@ export function MemberDetailDialog({
             </div>
 
             <div style={dialogBodyStyle}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: designSystem.spacing.md,
+                marginBottom: designSystem.spacing.lg,
+              }}>
+                <div>
+                  <div style={getQuietHintStyle(isMobile)}>目前格位</div>
+                  <div style={{ ...getTextStyle('bodyLarge', isMobile), fontWeight: 600 }}>
+                    #{editingBoard.slot_number}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openBoardMoveDialog(editingBoard)}
+                  style={{
+                    ...getButtonStyle('outline', 'small', isMobile),
+                    minHeight: isMobile ? '48px' : undefined,
+                  }}
+                >
+                  移動格位
+                </button>
+              </div>
+
               <div style={{ marginBottom: '16px' }}>
                 <label style={getLabelStyle(isMobile)}>開始日期</label>
                 <input
@@ -1944,6 +2023,83 @@ export function MemberDetailDialog({
                   儲存
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 移動置板：格位更新與備忘由資料庫在同一交易完成 */}
+      {movingBoard && (
+        <div style={dialogOverlayStyle(1200)}>
+          <div style={{ ...dialogPanelStyle('400px'), width: '90%' }}>
+            <div style={dialogHeaderBarStyle}>
+              <h2 style={getDialogTitleStyle(isMobile)}>移動置板 #{movingBoard.slot_number}</h2>
+              <button
+                onClick={closeBoardMoveDialog}
+                disabled={boardMoveSaving}
+                style={dialogCloseButtonStyle}
+                aria-label="關閉"
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={dialogBodyStyle}>
+              <div style={{ marginBottom: designSystem.spacing.lg }}>
+                <label style={getLabelStyle(isMobile)}>移到格位 (1-145)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={boardMoveTarget}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '')
+                    if (value === '' || Number(value) <= 145) setBoardMoveTarget(value)
+                  }}
+                  placeholder="輸入空格位編號"
+                  disabled={boardMoveSaving}
+                  style={getInputStyle(isMobile)}
+                  autoFocus
+                />
+                <div style={getFieldHintStyle(isMobile)}>
+                  原日期、到期日與備註會保留，並自動新增一筆換格備忘。
+                </div>
+              </div>
+
+              {boardMoveTarget && Number(boardMoveTarget) !== movingBoard.slot_number && (
+                <div style={{
+                  padding: designSystem.spacing.md,
+                  borderRadius: designSystem.borderRadius.lg,
+                  background: designSystem.colors.background.main,
+                  color: designSystem.colors.text.secondary,
+                  fontSize: typeSize('bodySmall', isMobile),
+                }}>
+                  確認將置板從 #{movingBoard.slot_number} 移到 #{Number(boardMoveTarget)}
+                </div>
+              )}
+            </div>
+
+            <div style={dialogFooterStyle}>
+              <button
+                onClick={closeBoardMoveDialog}
+                disabled={boardMoveSaving}
+                style={{
+                  ...getButtonStyle('outline', 'medium', isMobile),
+                  minHeight: isMobile ? '48px' : undefined,
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleBoardMove}
+                disabled={boardMoveSaving}
+                style={{
+                  ...getButtonStyle('primary', 'medium', isMobile),
+                  opacity: boardMoveSaving ? 0.6 : 1,
+                  minHeight: isMobile ? '48px' : undefined,
+                }}
+              >
+                {boardMoveSaving ? '移動中...' : '確認移動'}
+              </button>
             </div>
           </div>
         </div>

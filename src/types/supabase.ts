@@ -1783,6 +1783,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      move_board_storage: {
+        Args: {
+          p_board_id: number
+          p_target_slot_number: number
+        }
+        Returns: undefined
+      }
       set_member_active_status: {
         Args: {
           p_active: boolean
