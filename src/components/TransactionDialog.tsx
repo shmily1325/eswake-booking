@@ -1135,25 +1135,62 @@ export function TransactionDialog({
                         borderRadius: designSystem.borderRadius.lg,
                         border: `1px solid ${designSystem.colors.border.light}`,
                         borderLeft: `3px solid ${isIncrease ? designSystem.colors.success[500] : designSystem.colors.danger[500]}`,
-                        cursor: isEditing ? 'default' : 'pointer',
+                        cursor: 'pointer',
                         transition: designSystem.transitions.normal,
                       }}
-                      onClick={() => !isEditing && handleEditTransaction(tx)}
+                      onClick={() => {
+                        if (isEditing) handleCancelEdit()
+                        else handleEditTransaction(tx)
+                      }}
                       onMouseEnter={(e) => {
-                        if (!isEditing) e.currentTarget.style.background = designSystem.colors.background.hover
+                        e.currentTarget.style.background = designSystem.colors.background.hover
                       }}
                       onMouseLeave={(e) => {
-                        if (!isEditing) e.currentTarget.style.background = designSystem.colors.background.card
+                        e.currentTarget.style.background = designSystem.colors.background.card
                       }}
                     >
                       {isEditing ? (
-                        // 編輯模式
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <div style={{ marginBottom: '12px' }}>
-                            <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled, marginBottom: '12px' }}>
-                              記帳時間：{tx.created_at ? formatDbTimestampDisplay(tx.created_at) : '-'}
+                        // 編輯模式：點標題列收合；表單區 stopPropagation 避免誤收
+                        <div>
+                          <div
+                            style={{
+                              marginBottom: '12px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start',
+                              gap: '12px',
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: getFontSize('body', isMobile),
+                                fontWeight: 600,
+                                color: designSystem.colors.text.primary,
+                                marginBottom: '4px',
+                              }}>
+                                {categoryConfig?.label ?? (tx.category === 'plan' ? '方案' : tx.category)}
+                                {tx.voucher_year != null && (
+                                  <span style={{
+                                    fontWeight: 400,
+                                    color: designSystem.colors.text.disabled,
+                                    marginLeft: '8px',
+                                  }}>
+                                    {tx.voucher_year}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{
+                                fontSize: getFontSize('bodySmall', isMobile),
+                                color: designSystem.colors.text.disabled,
+                              }}>
+                                記帳時間：{tx.created_at ? formatDbTimestampDisplay(tx.created_at) : '-'}
+                                <span style={{ marginLeft: '8px' }}>· 再點一下收合</span>
+                              </div>
                             </div>
+                          </div>
 
+                          <div onClick={(e) => e.stopPropagation()}>
+                          <div style={{ marginBottom: '12px' }}>
                             {!canEditFields ? (
                               <>
                                 <div style={{
@@ -1363,6 +1400,7 @@ export function TransactionDialog({
                             >
                               取消
                             </button>
+                          </div>
                           </div>
                         </div>
                       ) : (
