@@ -298,26 +298,33 @@ export interface BookI18nStrings {
   }
   guide: {
     headerTitle: string
-    intro: string
     copyAddress: string
     copyAddressDone: string
     lineContact: string
     afterBooking: { title: string; items: readonly string[] }
-    cancelPolicy: { title: string; items: readonly string[] }
+    cancelPolicy: {
+      title: string
+      steps: readonly { when: string; action: string; tone: 'ok' | 'warn' | 'no' }[]
+      weatherNote: string
+    }
     whatToBring: {
       title: string
-      clothing: { heading: string; items: readonly string[]; avoid: string }
-      wetsuit: { heading: string; text: string }
-      personal: { heading: string; items: readonly string[] }
-      facilities: { heading: string; items: readonly string[] }
+      bringHeading: string
+      bring: readonly string[]
+      avoidHeading: string
+      avoid: readonly string[]
+      notes: readonly string[]
     }
     directions: {
       title: string
       addressLabel: string
       address: string
       mapQuery: string
-      gateNote: string
       landmark: string
+      arrivalSteps: {
+        heading: string
+        steps: readonly { label: string; detail?: string }[]
+      }
       arrivalMapAlt: string
       arrivalMapCaption: string
       driving: {
@@ -325,7 +332,6 @@ export interface BookI18nStrings {
         note: string
         videoLabel: string
       }
-      parking: { heading: string; car: string; scooter: string }
       transit: { heading: string; lines: readonly string[]; videoLabel: string }
     }
   }
@@ -650,61 +656,57 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     guide: {
       headerTitle: ES_BRAND.guideAreaLabel,
-      intro: '出發前請先看這裡：預約提醒、改期規則、穿著準備與交通方式。',
       copyAddress: '複製地址',
       copyAddressDone: '已複製',
       lineContact: '有疑問？官方 LINE 詢問',
       afterBooking: {
         title: '預約完成注意事項',
         items: [
-          '請記得預約的日期和時間。',
-          '請準時抵達，以免影響活動時間及下組客人。預約日前一天，官方會再發送提醒通知。',
-          '現場販售水上相關用品（衝浪褲、防曬帽、防曬乳、拖鞋等）與啤酒，若有需要請直接告知客服小幫手。',
+          '請記得預約的日期與時間，並準時抵達。',
+          '預約日前一天會再發送提醒通知。',
+          '現場販售衝浪褲、防曬用品與啤酒，需要請告知客服小幫手。',
         ],
       },
       cancelPolicy: {
         title: '取消與更改預約',
-        items: [
-          '出發日 4～6 天前（不含出發日）可改期一次；改期後恕不接受取消。',
-          '出發日 3 天內（含當日）不接受改期。',
-          '遇天候不佳請先來訊確認。八里臨海，天氣常與市區不同，市區下雨但八里可能是晴天。',
+        steps: [
+          { when: '出發日 4～6 天前（不含出發日）', action: '可改期一次', tone: 'ok' },
+          { when: '改期後', action: '恕不接受取消', tone: 'warn' },
+          { when: '出發日 3 天內（含當日）', action: '不接受改期', tone: 'no' },
         ],
+        weatherNote: '天候不佳請先來訊確認：八里臨海，市區下雨這裡可能是晴天。',
       },
       whatToBring: {
         title: '服裝與隨身物品建議',
-        clothing: {
-          heading: '衣物',
-          items: ['背心、短袖上衣、泳裝、衝浪褲、短褲（不吸水材質皆可）'],
-          avoid: '✖ 不建議攜帶下水：泳鏡、眼鏡、飾品',
-        },
-        wetsuit: { heading: '冬季', text: '現場提供防寒衣。' },
-        personal: {
-          heading: '個人用品',
-          items: ['防曬乳、浴（毛）巾、換洗衣物（請自行攜帶）'],
-        },
-        facilities: {
-          heading: '設施提供',
-          items: ['廠房內有沐浴乳、洗髮精、吹風機、脫水機'],
-        },
+        bringHeading: '建議穿／帶',
+        bring: ['背心／短袖上衣', '泳裝／衝浪褲／短褲', '防曬乳', '浴（毛）巾／換洗衣物'],
+        avoidHeading: '不建議下水',
+        avoid: ['泳鏡', '眼鏡', '飾品'],
+        notes: [
+          '衣物不吸水材質皆可，防曬乳、毛巾、換洗衣物請自備。',
+          '冬季提供防寒衣，廠房有沐浴乳、洗髮精、吹風機、脫水機。',
+        ],
       },
       directions: {
         title: '地址與交通資訊',
         addressLabel: '地址',
         address: '新北市八里區龍米路一段170號之1',
         mapQuery: '新北市八里區龍米路一段170號之1',
-        gateNote: '請注意！出入口為停車場鐵門，抵達後請透過官方 LINE 通知，將為你開啟鐵門。',
         landmark: '出入口位於大橋遊艇公司右側，7-11 神州門市正對面。',
+        arrivalSteps: {
+          heading: '抵達三步驟',
+          steps: [
+            { label: '抵達停車場鐵門' },
+            { label: '官方 LINE 通知開門' },
+            { label: '開門後停車', detail: `汽車停 ${ES_BRAND.name} 1～15 · 機車進廠房` },
+          ],
+        },
         arrivalMapAlt: '抵達 ES Wake 路線圖：關渡橋右轉、入口鐵門、停車場與步行至廠房',
         arrivalMapCaption: '抵達路線圖（點圖可放大）',
         driving: {
           heading: '開車或騎車',
           note: '同一支影片：大度路 0:00–1:25 · 成泰路 1:26–',
           videoLabel: '路線影片',
-        },
-        parking: {
-          heading: '停車',
-          car: `汽車：請停畫有 ${ES_BRAND.name} 1～15 的車格`,
-          scooter: '機車：請直接騎至廠房內停車',
         },
         transit: {
           heading: '公車',
@@ -1034,61 +1036,57 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     guide: {
       headerTitle: 'Visit guide',
-      intro: 'Before you go: booking reminders, changes/cancel, what to wear, and directions.',
       copyAddress: 'Copy address',
       copyAddressDone: 'Copied',
       lineContact: 'Questions? Message us on LINE',
       afterBooking: {
         title: 'After you book',
         items: [
-          'Remember your confirmed date and time.',
-          'Please arrive on time so we can run on schedule for you and the next group. We send a reminder the day before.',
-          'We sell watersports gear (board shorts, hats, sunscreen, flip-flops) and beer on site — ask staff if you need anything.',
+          'Remember your confirmed date and time, and arrive on time.',
+          'We send a reminder the day before.',
+          'Board shorts, sun protection and beer are sold on site — just ask our staff.',
         ],
       },
       cancelPolicy: {
         title: 'Changes & cancellation',
-        items: [
-          '4–6 days before (not counting session day): one date change; no cancellation after a change.',
-          '3 days before through session day: no date changes.',
-          'If weather looks uncertain, message us first. Bali’s coast often differs from Taipei — sunny here while it rains in the city.',
+        steps: [
+          { when: '4–6 days before (not counting session day)', action: 'One date change', tone: 'ok' },
+          { when: 'After a date change', action: 'No cancellation', tone: 'warn' },
+          { when: 'Within 3 days (incl. session day)', action: 'No date changes', tone: 'no' },
         ],
+        weatherNote: 'Uncertain weather? Message us first — it can be sunny here while it rains in Taipei.',
       },
       whatToBring: {
         title: 'What to wear & bring',
-        clothing: {
-          heading: 'Clothing',
-          items: ['Tank top, tee, swimsuit, board shorts, quick-dry shorts — non-absorbent fabrics'],
-          avoid: '✖ Do not bring in the water: goggles, glasses, jewelry',
-        },
-        wetsuit: { heading: 'Winter', text: 'Wetsuits available on site.' },
-        personal: {
-          heading: 'Personal items',
-          items: ['Sunscreen, towel, change of clothes (bring your own)'],
-        },
-        facilities: {
-          heading: 'On site',
-          items: ['Body wash, shampoo, hair dryers, spin dryer in the facility'],
-        },
+        bringHeading: 'Wear / bring',
+        bring: ['Tank / tee', 'Swimsuit / board shorts', 'Sunscreen', 'Towel / change of clothes'],
+        avoidHeading: 'Not in the water',
+        avoid: ['Goggles', 'Glasses', 'Jewelry'],
+        notes: [
+          'Non-absorbent fabrics are fine; bring your own sunscreen, towel and change of clothes.',
+          'Wetsuits in winter · Body wash, shampoo, hair dryer and spin dryer on site.',
+        ],
       },
       directions: {
         title: 'Address & directions',
         addressLabel: 'Address',
         address: 'No. 170-1, Sec. 1, Longmi Rd., Bali Dist., New Taipei City',
         mapQuery: '新北市八里區龍米路一段170號之1',
-        gateNote: 'Entrance is a parking-lot gate. Message us on LINE when you arrive and we will open it.',
         landmark: 'Entrance is to the right of Daqiao Yacht, across from 7-Eleven Shenzhou.',
+        arrivalSteps: {
+          heading: 'Arrival in 3 steps',
+          steps: [
+            { label: 'Arrive at the parking gate' },
+            { label: 'Message us on LINE to open' },
+            { label: 'Park after the gate opens', detail: `Cars: ${ES_BRAND.name} 1–15 · Scooters: into the facility` },
+          ],
+        },
         arrivalMapAlt: 'Arrival guide to ES Wake: turn after Guandu Bridge, gate entrance, parking, and walk to the facility',
         arrivalMapCaption: 'Arrival guide (tap to enlarge)',
         driving: {
           heading: 'By car or scooter',
           note: 'One video: Dadu Rd 0:00–1:25 · Chengtai Rd 1:26–',
           videoLabel: 'Driving directions',
-        },
-        parking: {
-          heading: 'Parking',
-          car: `Cars: spaces marked ${ES_BRAND.name} 1–15`,
-          scooter: 'Scooters: ride into the facility to park',
         },
         transit: {
           heading: 'Bus',

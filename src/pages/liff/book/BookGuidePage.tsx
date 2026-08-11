@@ -3,17 +3,15 @@ import { useState } from 'react'
 import { buildOaHomeUrl } from '../../shop/lib/lineDeepLink'
 import { useBookLocale } from './BookLocaleContext'
 import { BookGuideAccordion } from './BookGuideAccordion'
+import { GuideArrivalSteps, GuideCancelTimeline, GuideGearGrid } from './BookGuideVisuals'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import {
   bookPage,
-  bookSectionSub,
   guideBulletList,
   guideCopyBtn,
   guideGroupHeading,
   guideGroupHeadingSpaced,
   guideMetaText,
-  guideNoteBox,
-  guideQuietNote,
 } from './bookStyles'
 import {
   BUS_DIRECTIONS_VIDEO_ID,
@@ -87,23 +85,24 @@ export function BookGuidePage() {
     {
       id: 'cancel-policy',
       title: g.cancelPolicy.title,
-      content: <GuideBullets items={g.cancelPolicy.items} />,
+      content: (
+        <GuideCancelTimeline
+          steps={g.cancelPolicy.steps}
+          weatherNote={g.cancelPolicy.weatherNote}
+        />
+      ),
     },
     {
       id: 'what-to-bring',
       title: g.whatToBring.title,
       content: (
-        <>
-          <div style={guideGroupHeading}>{g.whatToBring.clothing.heading}</div>
-          <GuideBullets items={g.whatToBring.clothing.items} />
-          <div style={{ ...guideQuietNote, marginTop: 10 }}>{g.whatToBring.clothing.avoid}</div>
-          <div style={guideGroupHeadingSpaced}>{g.whatToBring.wetsuit.heading}</div>
-          <p style={{ margin: 0 }}>{g.whatToBring.wetsuit.text}</p>
-          <div style={guideGroupHeadingSpaced}>{g.whatToBring.personal.heading}</div>
-          <GuideBullets items={g.whatToBring.personal.items} />
-          <div style={guideGroupHeadingSpaced}>{g.whatToBring.facilities.heading}</div>
-          <GuideBullets items={g.whatToBring.facilities.items} />
-        </>
+        <GuideGearGrid
+          bringHeading={g.whatToBring.bringHeading}
+          bring={g.whatToBring.bring}
+          avoidHeading={g.whatToBring.avoidHeading}
+          avoid={g.whatToBring.avoid}
+          notes={g.whatToBring.notes}
+        />
       ),
     },
     {
@@ -111,6 +110,11 @@ export function BookGuidePage() {
       title: g.directions.title,
       content: (
         <>
+          <GuideArrivalSteps
+            heading={g.directions.arrivalSteps.heading}
+            steps={g.directions.arrivalSteps.steps}
+            landmark={g.directions.landmark}
+          />
           <div style={guideGroupHeading}>{g.directions.addressLabel}</div>
           <GuideAddressRow
             address={g.directions.address}
@@ -118,10 +122,6 @@ export function BookGuidePage() {
             copyLabel={g.copyAddress}
             copiedLabel={g.copyAddressDone}
           />
-          <div style={{ ...guideNoteBox, marginTop: 12 }}>{g.directions.gateNote}</div>
-          <p style={guideMetaText}>
-            {g.directions.landmark}
-          </p>
           <a
             href={DIRECTIONS_GUIDE_IMAGE}
             target="_blank"
@@ -161,8 +161,6 @@ export function BookGuidePage() {
             title={g.directions.driving.videoLabel}
             label={g.directions.driving.videoLabel}
           />
-          <div style={guideGroupHeadingSpaced}>{g.directions.parking.heading}</div>
-          <GuideBullets items={[g.directions.parking.car, g.directions.parking.scooter]} />
           <div style={guideGroupHeadingSpaced}>{g.directions.transit.heading}</div>
           <GuideBullets items={g.directions.transit.lines} />
           <div style={{ marginTop: 10 }}>
@@ -180,8 +178,6 @@ export function BookGuidePage() {
 
   return (
     <main style={{ ...bookPage, padding: '16px 16px 24px' }}>
-      <p style={{ ...bookSectionSub, marginTop: 0, marginBottom: 16 }}>{g.intro}</p>
-
       <BookGuideAccordion sections={sections} />
 
       <BookCopyrightFooter
