@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactElement } from 'react'
 
 import { designSystem } from '../../../styles/designSystem'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
@@ -51,7 +51,7 @@ const rowLabel: CSSProperties = {
 
 /** Accordion 標題用的線條圖示（固定 20px、繼承文字色） */
 export function GuideSectionIcon({ name }: { name: 'checklist' | 'calendar' | 'shirt' | 'pin' }) {
-  const paths: Record<typeof name, JSX.Element> = {
+  const paths: Record<typeof name, ReactElement> = {
     checklist: (
       <>
         <rect x="4" y="3.5" width="16" height="17" rx="2.5" />
