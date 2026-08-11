@@ -691,7 +691,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         addressLabel: '地址',
         address: '新北市八里區龍米路一段170號之1',
         mapQuery: '新北市八里區龍米路一段170號之1',
-        landmark: '出入口位於大橋遊艇公司右側，7-11 神州門市正對面。',
+        landmark: '大橋遊艇公司右側 ｜ 7-11 神州門市正對面',
         arrivalSteps: {
           heading: '抵達三步驟',
           steps: [
@@ -1069,7 +1069,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         addressLabel: 'Address',
         address: 'No. 170-1, Sec. 1, Longmi Rd., Bali Dist., New Taipei City',
         mapQuery: '新北市八里區龍米路一段170號之1',
-        landmark: 'Entrance is to the right of Daqiao Yacht, across from 7-Eleven Shenzhou.',
+        landmark: 'Right of Daqiao Yacht ｜ Across from 7-Eleven Shenzhou',
         arrivalSteps: {
           heading: 'Arrival in 3 steps',
           steps: [

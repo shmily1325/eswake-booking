@@ -273,7 +273,7 @@ export function GuideGearGrid({
             fontSize: ty.caption,
             color: T.inkSoft,
             lineHeight: 1.5,
-            marginBottom: 12,
+            marginBottom: 10,
             textAlign: 'center',
           }}
         >
@@ -291,10 +291,8 @@ export function GuideGearGrid({
               key={label}
               style={{
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: 6,
-                textAlign: 'center',
+                justifyContent: 'center',
                 minWidth: 0,
                 padding: '0 4px',
                 borderLeft: i === 0 ? 'none' : `1px solid ${T.borderSubtle}`,
@@ -303,13 +301,11 @@ export function GuideGearGrid({
               {facilityIcons[i] ? (
                 <img
                   src={facilityIcons[i]}
-                  alt=""
-                  aria-hidden
+                  alt={label}
                   loading="lazy"
-                  style={{ width: 36, height: 36, objectFit: 'contain' }}
+                  style={{ width: 40, height: 40, objectFit: 'contain' }}
                 />
               ) : null}
-              <span style={{ fontSize: ty.micro, fontWeight: 600, color: T.inkSoft, lineHeight: 1.3 }}>{label}</span>
             </div>
           ))}
         </div>
@@ -366,24 +362,50 @@ export function GuideArrivalSteps({
                 fontWeight: 700,
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: 8,
                 lineHeight: 1,
+                flexShrink: 0,
               }}
             >
               {i + 1}
             </span>
-            <div style={{ fontSize: ty.caption, fontWeight: 700, color: T.ink, lineHeight: 1.4 }}>{step.label}</div>
-            {stepIcons[i] ? (
-              <img
-                src={stepIcons[i]}
-                alt=""
-                aria-hidden
-                loading="lazy"
-                style={{ width: '100%', maxWidth: 84, height: 66, objectFit: 'contain', marginTop: 8 }}
-              />
-            ) : null}
+            {/* 固定高度讓三欄的標題與圖示橫向對齊，不受換行影響 */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '2.8em',
+                marginTop: 8,
+                fontSize: ty.caption,
+                fontWeight: 700,
+                color: T.ink,
+                lineHeight: 1.4,
+              }}
+            >
+              {step.label}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: 66,
+                width: '100%',
+                marginTop: 4,
+              }}
+            >
+              {stepIcons[i] ? (
+                <img
+                  src={stepIcons[i]}
+                  alt=""
+                  aria-hidden
+                  loading="lazy"
+                  style={{ maxWidth: 84, maxHeight: 66, objectFit: 'contain' }}
+                />
+              ) : null}
+            </div>
             {step.details?.length ? (
-              <div style={{ marginTop: 6, display: 'grid', gap: 2 }}>
+              <div style={{ marginTop: 8, display: 'grid', gap: 3 }}>
                 {step.details.map(line => (
                   <div key={line} style={{ fontSize: ty.micro, color: T.muted, lineHeight: 1.4 }}>{line}</div>
                 ))}
@@ -392,7 +414,7 @@ export function GuideArrivalSteps({
           </li>
         ))}
       </ol>
-      <div style={{ ...footnote, marginTop: 12 }}>{landmark}</div>
+      <div style={{ ...footnote, marginTop: 14, textAlign: 'center' }}>{landmark}</div>
     </div>
   )
 }
