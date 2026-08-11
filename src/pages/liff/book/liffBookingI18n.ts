@@ -313,7 +313,7 @@ export interface BookI18nStrings {
       bring: readonly string[]
       avoidHeading: string
       avoid: readonly string[]
-      tip: string
+      facilitiesNote: string
       facilities: readonly string[]
     }
     directions: {
@@ -324,7 +324,7 @@ export interface BookI18nStrings {
       landmark: string
       arrivalSteps: {
         heading: string
-        steps: readonly { label: string; detail?: string }[]
+        steps: readonly { label: string; details?: readonly string[] }[]
       }
       arrivalMapAlt: string
       arrivalMapCaption: string
@@ -672,7 +672,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         title: '取消與更改預約',
         steps: [
           { when: '出發日 4～6 天前（不含出發日）', action: '可改期一次', tone: 'ok' },
-          { when: '改期後', action: '恕不接受取消', tone: 'warn' },
+          { when: '完成改期之後', action: '恕不接受取消', tone: 'warn' },
           { when: '出發日 3 天內（含當日）', action: '不接受改期', tone: 'no' },
         ],
         weatherNote: '天候不佳請先來訊確認：八里臨海，市區下雨這裡可能是晴天。',
@@ -683,8 +683,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         bring: ['背心／短袖上衣', '泳裝／衝浪褲／短褲', '防曬乳', '浴（毛）巾／換洗衣物'],
         avoidHeading: '不建議下水',
         avoid: ['泳鏡', '眼鏡', '飾品'],
-        tip: '衣物不吸水材質皆可，防曬乳、毛巾、換洗衣物請自備。',
-        facilities: ['防寒衣（冬季）', '沐浴乳', '洗髮精', '吹風機', '脫水機'],
+        facilitiesNote: '冬季現場提供防寒衣｜廠房有沐浴乳、洗髮精、吹風機、脫水機',
+        facilities: ['防寒衣', '沐浴乳', '洗髮精', '吹風機', '脫水機'],
       },
       directions: {
         title: '地址與交通資訊',
@@ -697,7 +697,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           steps: [
             { label: '抵達停車場鐵門' },
             { label: '官方 LINE 通知開門' },
-            { label: '開門後停車', detail: `汽車停 ${ES_BRAND.name} 1～15 · 機車進廠房` },
+            { label: '開門後停車', details: [`汽車停 ${ES_BRAND.name} 1～15`, '機車進廠房'] },
           ],
         },
         arrivalMapAlt: '抵達 ES Wake 路線圖：關渡橋右轉、入口鐵門、停車場與步行至廠房',
@@ -1050,7 +1050,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         title: 'Changes & cancellation',
         steps: [
           { when: '4–6 days before (not counting session day)', action: 'One date change', tone: 'ok' },
-          { when: 'After a date change', action: 'No cancellation', tone: 'warn' },
+          { when: 'Once you have changed the date', action: 'No cancellation', tone: 'warn' },
           { when: 'Within 3 days (incl. session day)', action: 'No date changes', tone: 'no' },
         ],
         weatherNote: 'Uncertain weather? Message us first — it can be sunny here while it rains in Taipei.',
@@ -1061,8 +1061,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         bring: ['Tank / tee', 'Swimsuit / board shorts', 'Sunscreen', 'Towel / change of clothes'],
         avoidHeading: 'Not in the water',
         avoid: ['Goggles', 'Glasses', 'Jewelry'],
-        tip: 'Non-absorbent fabrics are fine; bring your own sunscreen, towel and change of clothes.',
-        facilities: ['Wetsuit (winter)', 'Body wash', 'Shampoo', 'Hair dryer', 'Spin dryer'],
+        facilitiesNote: 'Wetsuits on site in winter · Body wash, shampoo, hair dryer and spin dryer in the facility',
+        facilities: ['Wetsuit', 'Body wash', 'Shampoo', 'Hair dryer', 'Spin dryer'],
       },
       directions: {
         title: 'Address & directions',
@@ -1075,7 +1075,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           steps: [
             { label: 'Arrive at the parking gate' },
             { label: 'Message us on LINE to open' },
-            { label: 'Park after the gate opens', detail: `Cars: ${ES_BRAND.name} 1–15 · Scooters: into the facility` },
+            { label: 'Park after the gate opens', details: [`Cars: ${ES_BRAND.name} 1–15`, 'Scooters: into the facility'] },
           ],
         },
         arrivalMapAlt: 'Arrival guide to ES Wake: turn after Guandu Bridge, gate entrance, parking, and walk to the facility',

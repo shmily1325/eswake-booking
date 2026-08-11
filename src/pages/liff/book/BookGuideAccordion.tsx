@@ -8,6 +8,7 @@ import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 export interface GuideAccordionSection {
   id: string
   title: string
+  icon?: ReactNode
   content: ReactNode
 }
 
@@ -40,6 +41,18 @@ export function BookGuideAccordion({ sections, defaultOpenId }: BookGuideAccordi
               aria-expanded={open}
               style={guideAccordionHeader(open)}
             >
+              {section.icon ? (
+                <span
+                  aria-hidden
+                  style={{
+                    display: 'inline-flex',
+                    flexShrink: 0,
+                    color: open ? T.ink : T.inkSoft,
+                  }}
+                >
+                  {section.icon}
+                </span>
+              ) : null}
               <span style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>{section.title}</span>
               <span
                 style={{

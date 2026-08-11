@@ -3,7 +3,12 @@ import { useState } from 'react'
 import { buildOaHomeUrl } from '../../shop/lib/lineDeepLink'
 import { useBookLocale } from './BookLocaleContext'
 import { BookGuideAccordion } from './BookGuideAccordion'
-import { GuideArrivalSteps, GuideCancelTimeline, GuideGearGrid } from './BookGuideVisuals'
+import {
+  GuideArrivalSteps,
+  GuideCancelTimeline,
+  GuideGearGrid,
+  GuideSectionIcon,
+} from './BookGuideVisuals'
 import { BookVideoPlayer } from './BookVideoPlayer'
 import {
   bookPage,
@@ -87,11 +92,13 @@ export function BookGuidePage() {
     {
       id: 'after-booking',
       title: g.afterBooking.title,
+      icon: <GuideSectionIcon name="checklist" />,
       content: <GuideBullets items={g.afterBooking.items} />,
     },
     {
       id: 'cancel-policy',
       title: g.cancelPolicy.title,
+      icon: <GuideSectionIcon name="calendar" />,
       content: (
         <GuideCancelTimeline
           steps={g.cancelPolicy.steps}
@@ -102,6 +109,7 @@ export function BookGuidePage() {
     {
       id: 'what-to-bring',
       title: g.whatToBring.title,
+      icon: <GuideSectionIcon name="shirt" />,
       content: (
         <GuideGearGrid
           bringHeading={g.whatToBring.bringHeading}
@@ -110,7 +118,7 @@ export function BookGuidePage() {
           avoidHeading={g.whatToBring.avoidHeading}
           avoid={g.whatToBring.avoid}
           avoidIcons={GEAR_AVOID_ICONS}
-          tip={g.whatToBring.tip}
+          facilitiesNote={g.whatToBring.facilitiesNote}
           facilities={g.whatToBring.facilities}
           facilityIcons={FACILITY_ICONS}
         />
@@ -119,6 +127,7 @@ export function BookGuidePage() {
     {
       id: 'directions',
       title: g.directions.title,
+      icon: <GuideSectionIcon name="pin" />,
       content: (
         <>
           <GuideArrivalSteps
