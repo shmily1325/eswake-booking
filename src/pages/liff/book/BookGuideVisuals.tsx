@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties } from 'react'
 
 import { designSystem } from '../../../styles/designSystem'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
@@ -49,53 +49,17 @@ const rowLabel: CSSProperties = {
   lineHeight: 1.45,
 }
 
-function MonoIcon({ children }: { children: ReactNode }) {
+function GearIcon({ src }: { src: string }) {
   return (
-    <span
+    <img
+      src={src}
+      alt=""
       aria-hidden
-      style={{
-        display: 'inline-flex',
-        width: 22,
-        height: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        color: T.inkSoft,
-      }}
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        {children}
-      </svg>
-    </span>
+      loading="lazy"
+      style={{ width: 30, height: 30, flexShrink: 0, objectFit: 'contain' }}
+    />
   )
 }
-
-const BRING_ICONS: ReactNode[] = [
-  <path key="shirt" d="M4 7l4-3h8l4 3v3l-3-1v11H7V9L4 10V7z" />,
-  <path key="shorts" d="M6 6h12v4l-2 8H8L6 10V6zM12 6v14" />,
-  <g key="bottle">
-    <circle cx="12" cy="8" r="3" />
-    <path d="M12 11v9M9 20h6" />
-  </g>,
-  <path key="towel" d="M5 7h14v12H5zM5 11h14" />,
-]
-
-const AVOID_ICONS: ReactNode[] = [
-  <g key="goggles">
-    <circle cx="9" cy="12" r="3" />
-    <circle cx="15" cy="12" r="3" />
-    <path d="M12 12h0" />
-  </g>,
-  <g key="glasses">
-    <circle cx="9" cy="12" r="3.5" />
-    <circle cx="15" cy="12" r="3.5" />
-    <path d="M12.5 12h-1" />
-  </g>,
-  <g key="jewelry">
-    <circle cx="9" cy="14" r="3" />
-    <path d="M15 8l3 3-5 5" />
-  </g>,
-]
 
 export function GuideCancelTimeline({
   steps,
@@ -170,15 +134,23 @@ export function GuideCancelTimeline({
 export function GuideGearGrid({
   bringHeading,
   bring,
+  bringIcons,
   avoidHeading,
   avoid,
-  notes,
+  avoidIcons,
+  tip,
+  facilities,
+  facilityIcons,
 }: {
   bringHeading: string
   bring: readonly string[]
+  bringIcons: readonly string[]
   avoidHeading: string
   avoid: readonly string[]
-  notes: readonly string[]
+  avoidIcons: readonly string[]
+  tip: string
+  facilities: readonly string[]
+  facilityIcons: readonly string[]
 }) {
   const colHead = (ok: boolean): CSSProperties => ({
     fontSize: ty.caption,
@@ -191,13 +163,21 @@ export function GuideGearGrid({
   const itemRow: CSSProperties = {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
+    gap: 6,
+    marginBottom: 8,
     fontSize: ty.body,
     fontWeight: 500,
     color: T.inkSoft,
     lineHeight: 1.4,
   }
+
+  const mark = (ok: boolean): CSSProperties => ({
+    color: ok ? c.success[500] : c.danger[500],
+    fontWeight: 700,
+    width: 12,
+    flexShrink: 0,
+    textAlign: 'center',
+  })
 
   return (
     <div>
@@ -205,16 +185,16 @@ export function GuideGearGrid({
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: 14,
+          gap: 12,
         }}
       >
         <div>
           <div style={colHead(true)}>{bringHeading}</div>
           {bring.map((label, i) => (
             <div key={label} style={itemRow}>
-              <span style={{ color: c.success[500], fontWeight: 700, width: 14, flexShrink: 0 }} aria-hidden>✓</span>
-              <MonoIcon>{BRING_ICONS[i] ?? BRING_ICONS[0]}</MonoIcon>
-              <span>{label}</span>
+              <span style={mark(true)} aria-hidden>✓</span>
+              {bringIcons[i] ? <GearIcon src={bringIcons[i]} /> : null}
+              <span style={{ minWidth: 0 }}>{label}</span>
             </div>
           ))}
         </div>
@@ -222,17 +202,48 @@ export function GuideGearGrid({
           <div style={colHead(false)}>{avoidHeading}</div>
           {avoid.map((label, i) => (
             <div key={label} style={itemRow}>
-              <span style={{ color: c.danger[500], fontWeight: 700, width: 14, flexShrink: 0 }} aria-hidden>✕</span>
-              <MonoIcon>{AVOID_ICONS[i] ?? AVOID_ICONS[0]}</MonoIcon>
-              <span>{label}</span>
+              <span style={mark(false)} aria-hidden>✕</span>
+              {avoidIcons[i] ? <GearIcon src={avoidIcons[i]} /> : null}
+              <span style={{ minWidth: 0 }}>{label}</span>
             </div>
           ))}
         </div>
       </div>
       <div style={footnote}>
-        {notes.map((line, i) => (
-          <div key={line} style={{ marginTop: i === 0 ? 0 : 6 }}>{line}</div>
-        ))}
+        <div>{tip}</div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+            gap: 6,
+            marginTop: 12,
+          }}
+        >
+          {facilities.map((label, i) => (
+            <div
+              key={label}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+                textAlign: 'center',
+                minWidth: 0,
+              }}
+            >
+              {facilityIcons[i] ? (
+                <img
+                  src={facilityIcons[i]}
+                  alt=""
+                  aria-hidden
+                  loading="lazy"
+                  style={{ width: 36, height: 36, objectFit: 'contain' }}
+                />
+              ) : null}
+              <span style={{ fontSize: ty.micro, color: T.muted, lineHeight: 1.3 }}>{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -241,10 +252,12 @@ export function GuideGearGrid({
 export function GuideArrivalSteps({
   heading,
   steps,
+  stepIcons,
   landmark,
 }: {
   heading: string
   steps: BookI18nStrings['guide']['directions']['arrivalSteps']['steps']
+  stepIcons: readonly string[]
   landmark: string
 }) {
   return (
@@ -270,6 +283,9 @@ export function GuideArrivalSteps({
               padding: '12px 8px',
               textAlign: 'center',
               minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
             }}
           >
             <span
@@ -289,6 +305,15 @@ export function GuideArrivalSteps({
             >
               {i + 1}
             </span>
+            {stepIcons[i] ? (
+              <img
+                src={stepIcons[i]}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                style={{ width: '100%', maxWidth: 76, height: 60, objectFit: 'contain', marginBottom: 8 }}
+              />
+            ) : null}
             <div style={{ fontSize: ty.caption, fontWeight: 600, color: T.ink, lineHeight: 1.4 }}>{step.label}</div>
             {step.detail ? (
               <div style={{ marginTop: 6, fontSize: ty.micro, color: T.muted, lineHeight: 1.4 }}>{step.detail}</div>

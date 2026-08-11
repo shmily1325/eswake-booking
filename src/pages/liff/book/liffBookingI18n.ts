@@ -313,7 +313,8 @@ export interface BookI18nStrings {
       bring: readonly string[]
       avoidHeading: string
       avoid: readonly string[]
-      notes: readonly string[]
+      tip: string
+      facilities: readonly string[]
     }
     directions: {
       title: string
@@ -682,10 +683,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         bring: ['背心／短袖上衣', '泳裝／衝浪褲／短褲', '防曬乳', '浴（毛）巾／換洗衣物'],
         avoidHeading: '不建議下水',
         avoid: ['泳鏡', '眼鏡', '飾品'],
-        notes: [
-          '衣物不吸水材質皆可，防曬乳、毛巾、換洗衣物請自備。',
-          '冬季提供防寒衣，廠房有沐浴乳、洗髮精、吹風機、脫水機。',
-        ],
+        tip: '衣物不吸水材質皆可，防曬乳、毛巾、換洗衣物請自備。',
+        facilities: ['防寒衣（冬季）', '沐浴乳', '洗髮精', '吹風機', '脫水機'],
       },
       directions: {
         title: '地址與交通資訊',
@@ -1062,10 +1061,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         bring: ['Tank / tee', 'Swimsuit / board shorts', 'Sunscreen', 'Towel / change of clothes'],
         avoidHeading: 'Not in the water',
         avoid: ['Goggles', 'Glasses', 'Jewelry'],
-        notes: [
-          'Non-absorbent fabrics are fine; bring your own sunscreen, towel and change of clothes.',
-          'Wetsuits in winter · Body wash, shampoo, hair dryer and spin dryer on site.',
-        ],
+        tip: 'Non-absorbent fabrics are fine; bring your own sunscreen, towel and change of clothes.',
+        facilities: ['Wetsuit (winter)', 'Body wash', 'Shampoo', 'Hair dryer', 'Spin dryer'],
       },
       directions: {
         title: 'Address & directions',

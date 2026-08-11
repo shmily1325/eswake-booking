@@ -15,6 +15,47 @@ interface State {
   errorInfo: ErrorInfo | null
 }
 
+/**
+ * 判斷是否為「動態載入 chunk 失敗」的錯誤。
+ * 常見於部署新版後，舊分頁去抓已不存在的舊檔名 chunk。
+ */
+function isChunkLoadError(error: Error | null | undefined): boolean {
+  if (!error) return false
+  const signature = `${error.name ?? ''} ${error.message ?? ''}`
+  return /ChunkLoadError|Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed|Loading chunk .* failed/i.test(
+    signature,
+  )
+}
+
+/** 同一分頁最短自動重整間隔，避免（真的壞掉時）無限重整迴圈 */
+const CHUNK_RELOAD_MIN_INTERVAL_MS = 10 * 1000
+const CHUNK_RELOAD_TS_KEY = 'app_chunk_reload_at'
+
+/**
+ * chunk 載入失敗時嘗試自動重整一次。
+ * 回傳 true 表示已觸發重整（呼叫端可直接 return，不用再 setState）。
+ */
+function tryAutoReloadForChunkError(error: Error | null): boolean {
+  if (typeof window === 'undefined') return false
+  if (!isChunkLoadError(error)) return false
+
+  try {
+    const now = Date.now()
+    const last = Number(window.sessionStorage.getItem(CHUNK_RELOAD_TS_KEY) || '0')
+    if (Number.isFinite(last) && now - last < CHUNK_RELOAD_MIN_INTERVAL_MS) {
+      // 剛剛才重整過還是同樣錯誤 → 不再重整，改顯示錯誤畫面讓使用者手動處理
+      return false
+    }
+    window.sessionStorage.setItem(CHUNK_RELOAD_TS_KEY, String(now))
+  } catch {
+    // sessionStorage 不可用（如隱私模式）→ 保守起見不自動重整，走一般錯誤畫面
+    return false
+  }
+
+  window.location.reload()
+  return true
+}
+
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
@@ -32,6 +73,11 @@ export class ErrorBoundary extends Component<Props, State> {
       stack: error.stack,
       componentStack: errorInfo.componentStack
     })
+
+    // 部署新版造成的舊 chunk 抓不到 → 自動重整一次即可恢復，使用者無感。
+    if (tryAutoReloadForChunkError(error)) {
+      return
+    }
 
     this.setState({
       error,

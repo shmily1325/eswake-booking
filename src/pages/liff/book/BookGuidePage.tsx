@@ -14,14 +14,21 @@ import {
   guideMetaText,
 } from './bookStyles'
 import {
+  ARRIVAL_ICONS,
   BUS_DIRECTIONS_VIDEO_ID,
   DIRECTIONS_GUIDE_IMAGE,
   DIRECTIONS_VIDEO_ID,
+  FACILITY_ICONS,
+  GEAR_ICONS,
   visitMapUrl,
 } from './liffBookingGuide'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { BookCopyrightFooter } from './BookCopyrightFooter'
+
+const GEAR_BRING_ICONS = [GEAR_ICONS.tank, GEAR_ICONS.shorts, GEAR_ICONS.sunscreen, GEAR_ICONS.towel]
+const GEAR_AVOID_ICONS = [GEAR_ICONS.goggles, GEAR_ICONS.glasses, GEAR_ICONS.jewelry]
+const ARRIVAL_STEP_ICONS = [ARRIVAL_ICONS.gate, ARRIVAL_ICONS.line, ARRIVAL_ICONS.park]
 
 function GuideBullets({ items }: { items: readonly string[] }) {
   return (
@@ -99,9 +106,13 @@ export function BookGuidePage() {
         <GuideGearGrid
           bringHeading={g.whatToBring.bringHeading}
           bring={g.whatToBring.bring}
+          bringIcons={GEAR_BRING_ICONS}
           avoidHeading={g.whatToBring.avoidHeading}
           avoid={g.whatToBring.avoid}
-          notes={g.whatToBring.notes}
+          avoidIcons={GEAR_AVOID_ICONS}
+          tip={g.whatToBring.tip}
+          facilities={g.whatToBring.facilities}
+          facilityIcons={FACILITY_ICONS}
         />
       ),
     },
@@ -113,6 +124,7 @@ export function BookGuidePage() {
           <GuideArrivalSteps
             heading={g.directions.arrivalSteps.heading}
             steps={g.directions.arrivalSteps.steps}
+            stepIcons={ARRIVAL_STEP_ICONS}
             landmark={g.directions.landmark}
           />
           <div style={guideGroupHeading}>{g.directions.addressLabel}</div>

@@ -16,6 +16,37 @@ export const BUS_DIRECTIONS_VIDEO_ID = 'fwbeCE554Mw'
 /** 地址與交通：抵達路線圖（關渡橋 → 鐵門 → 廠房） */
 export const DIRECTIONS_GUIDE_IMAGE = '/liff/book/directions-guide.webp'
 
+/** 服裝／隨身：建議與避免項目的小圖 */
+export const GEAR_ICONS = {
+  tank: '/liff/book/icons/gear-tank.webp',
+  shorts: '/liff/book/icons/gear-shorts.webp',
+  sunscreen: '/liff/book/icons/gear-sunscreen.webp',
+  towel: '/liff/book/icons/gear-towel.webp',
+  goggles: '/liff/book/icons/gear-goggles.webp',
+  glasses: '/liff/book/icons/gear-glasses.webp',
+  jewelry: '/liff/book/icons/gear-jewelry.webp',
+  wetsuit: '/liff/book/icons/facility-wetsuit.webp',
+  bodywash: '/liff/book/icons/facility-bodywash.webp',
+  shampoo: '/liff/book/icons/facility-shampoo.webp',
+  dryer: '/liff/book/icons/facility-dryer.webp',
+  spindryer: '/liff/book/icons/facility-spindryer.webp',
+} as const
+
+export const FACILITY_ICONS = [
+  GEAR_ICONS.wetsuit,
+  GEAR_ICONS.bodywash,
+  GEAR_ICONS.shampoo,
+  GEAR_ICONS.dryer,
+  GEAR_ICONS.spindryer,
+] as const
+
+/** 抵達三步驟小圖 */
+export const ARRIVAL_ICONS = {
+  gate: '/liff/book/icons/arrive-gate.webp',
+  line: '/liff/book/icons/arrive-line.webp',
+  park: '/liff/book/icons/arrive-park.webp',
+} as const
+
 export const VISIT_ADDRESS_ZH = '新北市八里區龍米路一段170號之1'
 
 export function visitMapUrl(query: string): string {
