@@ -57,3 +57,48 @@ export const VISIT_ADDRESS_ZH = '24946 新北市八里區龍米路一段170號�
 export function visitMapUrl(query: string): string {
   return `https://maps.google.com/?q=${encodeURIComponent(query)}`
 }
+
+/**
+ * Guide 內所有 <img> 用到的圖。段落預設收合、圖又是 lazy，
+ * 展開時才開始下載會慢半拍；頁面載入後趁閒置先把這些抓進快取，
+ * 使用者點開時就能立即顯示。
+ */
+export const GUIDE_PRELOAD_IMAGES: readonly string[] = [
+  ONSITE_SHOP_IMAGE,
+  DIRECTIONS_GUIDE_IMAGE,
+  ...Object.values(GEAR_ICONS),
+  ...Object.values(ARRIVAL_ICONS),
+]
+
+/** 趁瀏覽器閒置預抓 guide 圖片，回傳取消函式。SSR/無 window 時為 no-op。 */
+export function preloadGuideImages(urls: readonly string[] = GUIDE_PRELOAD_IMAGES): () => void {
+  if (typeof window === 'undefined') return () => {}
+
+  const images: HTMLImageElement[] = []
+  const run = () => {
+    for (const url of urls) {
+      const img = new Image()
+      img.decoding = 'async'
+      img.src = url
+      images.push(img)
+    }
+  }
+
+  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
+    .requestIdleCallback
+  const cic = (window as unknown as { cancelIdleCallback?: (id: number) => void })
+    .cancelIdleCallback
+  let idleId: number | undefined
+  let timerId: number | undefined
+  if (typeof ric === 'function') {
+    idleId = ric(run)
+  } else {
+    timerId = window.setTimeout(run, 300)
+  }
+
+  return () => {
+    if (idleId !== undefined && typeof cic === 'function') cic(idleId)
+    if (timerId !== undefined) window.clearTimeout(timerId)
+    for (const img of images) img.src = ''
+  }
+}

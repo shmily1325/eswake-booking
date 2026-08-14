@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { buildOaHomeUrl } from '../../shop/lib/lineDeepLink'
 import { useBookLocale } from './BookLocaleContext'
@@ -27,6 +27,7 @@ import {
   FACILITY_ICONS,
   GEAR_ICONS,
   ONSITE_SHOP_IMAGE,
+  preloadGuideImages,
   visitMapUrl,
 } from './liffBookingGuide'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
@@ -100,6 +101,8 @@ function GuideAddressRow({ address, mapQuery, copyLabel, copiedLabel }: {
 export function BookGuidePage() {
   const { s } = useBookLocale()
   const g = s.guide
+
+  useEffect(() => preloadGuideImages(), [])
 
   const sections = [
     {
@@ -176,6 +179,7 @@ export function BookGuidePage() {
               src={DIRECTIONS_GUIDE_IMAGE}
               alt={g.directions.arrivalMapAlt}
               loading="lazy"
+              decoding="async"
               style={{
                 display: 'block',
                 width: '100%',

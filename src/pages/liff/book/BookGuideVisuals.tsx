@@ -97,6 +97,9 @@ function GearIcon({ src }: { src: string }) {
       alt=""
       aria-hidden
       loading="lazy"
+      decoding="async"
+      width={30}
+      height={30}
       style={{ width: 30, height: 30, flexShrink: 0, objectFit: 'contain' }}
     />
   )
@@ -118,6 +121,7 @@ export function GuideOnsiteShop({
         src={image}
         alt={alt}
         loading="lazy"
+        decoding="async"
         style={{
           display: 'block',
           width: '100%',
@@ -164,7 +168,7 @@ export function GuideCancelTimeline({
                     borderRadius: '50%',
                     background: T.ink,
                     color: '#fff',
-                    fontSize: 11,
+                    fontSize: ty.micro,
                     fontWeight: 700,
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -247,7 +251,7 @@ export function GuideGearGrid({
     borderRadius: '50%',
     background: ok ? c.success[500] : c.danger[500],
     color: '#fff',
-    fontSize: 11,
+    fontSize: ty.micro,
     fontWeight: 700,
     display: 'inline-flex',
     alignItems: 'center',
@@ -256,6 +260,7 @@ export function GuideGearGrid({
     lineHeight: 1,
   })
 
+  /** 半欄很窄：用 caption，避免 body 字級把列撐高、硬折行 */
   const itemRow = (last: boolean): CSSProperties => ({
     display: 'grid',
     gridTemplateColumns: '32px minmax(0, 1fr)',
@@ -264,7 +269,7 @@ export function GuideGearGrid({
     minHeight: 46,
     padding: '8px 0',
     borderBottom: last ? 'none' : `1px solid ${T.borderSubtle}`,
-    fontSize: ty.body,
+    fontSize: ty.caption,
     fontWeight: 600,
     color: T.ink,
     lineHeight: 1.4,
@@ -331,15 +336,7 @@ export function GuideGearGrid({
         </div>
       </div>
       <div style={{ ...footnote, marginTop: 16, padding: '12px 10px' }}>
-        <div
-          style={{
-            fontSize: ty.caption,
-            color: T.inkSoft,
-            lineHeight: 1.5,
-            marginBottom: 10,
-            textAlign: 'center',
-          }}
-        >
+        <div style={{ color: T.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
           <div>{facilitiesNote.winter}</div>
           <div style={{ marginTop: 2 }}>{facilitiesNote.facility}</div>
         </div>
@@ -367,6 +364,9 @@ export function GuideGearGrid({
                   src={facilityIcons[i]}
                   alt={label}
                   loading="lazy"
+                  decoding="async"
+                  width={40}
+                  height={40}
                   style={{ width: 40, height: 40, objectFit: 'contain' }}
                 />
               ) : null}
@@ -424,7 +424,7 @@ export function GuideArrivalSteps({
                 borderRadius: '50%',
                 background: c.info[500],
                 color: '#fff',
-                fontSize: 12,
+                fontSize: ty.caption,
                 fontWeight: 700,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -466,6 +466,7 @@ export function GuideArrivalSteps({
                   alt=""
                   aria-hidden
                   loading="lazy"
+                  decoding="async"
                   style={{ maxWidth: 84, maxHeight: 66, objectFit: 'contain' }}
                 />
               ) : null}

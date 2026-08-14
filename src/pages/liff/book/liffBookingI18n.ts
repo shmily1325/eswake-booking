@@ -674,8 +674,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           '預約日前一天會再發送提醒通知。',
         ],
         onsiteShop: {
-          notes: ['衝浪褲、防曬用品與啤酒現場販售', '需要請告知現場工作人員'],
-          alt: 'ES Wake 現場小舖插圖：衝浪板、寬板、背心、衝浪褲、防曬用品、帽子與冰櫃啤酒',
+          notes: ['衝浪衣褲、防曬用品、啤酒、飲料與結冰水現場販售', '需要請告知現場工作人員'],
+          alt: 'ES Wake 現場小舖插圖：衝浪板、寬板、背心、衝浪褲、防曬用品、帽子、冰櫃與結冰水',
         },
       },
       cancelPolicy: {
@@ -1068,8 +1068,8 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           'We send a reminder the day before.',
         ],
         onsiteShop: {
-          notes: ['Board shorts, sun protection and beer are sold on site', 'Just ask the staff'],
-          alt: 'Illustration of the ES Wake on-site shop: boards, tank tops, board shorts, sunscreen, hats and a beer fridge',
+          notes: ['Board shorts, sun protection, beer, drinks and iced water are sold on site', 'Just ask the staff'],
+          alt: 'Illustration of the ES Wake on-site shop: boards, tank tops, board shorts, sunscreen, hats, a beer fridge and iced water',
         },
       },
       cancelPolicy: {
