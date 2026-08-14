@@ -304,7 +304,7 @@ export interface BookI18nStrings {
     afterBooking: {
       title: string
       items: readonly string[]
-      onsiteShop: { note: string; alt: string }
+      onsiteShop: { notes: readonly string[]; alt: string }
     }
     cancelPolicy: {
       title: string
@@ -314,11 +314,10 @@ export interface BookI18nStrings {
     whatToBring: {
       title: string
       bringHeading: string
-      /** `part` 為上身／下身等分組小標，未填則整列單行顯示 */
-      bring: readonly { part?: string; label: string }[]
+      /** 每列一個字串陣列：半欄很窄，斷行位置由文案自己決定，不交給瀏覽器 */
+      bring: readonly (readonly string[])[]
       avoidHeading: string
-      avoid: readonly string[]
-      materialNote: string
+      avoid: readonly (readonly string[])[]
       facilitiesNote: { winter: string; facility: string }
       facilities: readonly string[]
     }
@@ -331,6 +330,8 @@ export interface BookI18nStrings {
       arrivalSteps: {
         heading: string
         steps: readonly { label: string; details?: readonly string[] }[]
+        /** 車位說明放三步驟下方的灰框，塞在單欄裡會折行把整排撐高 */
+        parkingNote: string
       }
       arrivalMapAlt: string
       arrivalMapCaption: string
@@ -673,7 +674,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           '預約日前一天會再發送提醒通知。',
         ],
         onsiteShop: {
-          note: '衝浪褲、防曬用品與啤酒現場販售，需要請告知現場工作人員。',
+          notes: ['衝浪褲、防曬用品與啤酒現場販售', '需要請告知現場工作人員'],
           alt: 'ES Wake 現場小舖插圖：衝浪板、寬板、背心、衝浪褲、防曬用品、帽子與冰櫃啤酒',
         },
       },
@@ -693,15 +694,14 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         title: '服裝與隨身物品建議',
         bringHeading: '建議穿／帶',
         bring: [
-          { part: '上身', label: '背心、短袖、水母衣' },
-          { part: '泳裝', label: '泳裝、比基尼' },
-          { part: '下身', label: '衝浪褲、防曬長褲' },
-          { label: '防曬乳' },
-          { label: '浴（毛）巾／換洗衣物' },
+          ['背心短袖、水母衣'],
+          ['泳裝、比基尼'],
+          ['衝浪褲、防曬長褲'],
+          ['防曬乳'],
+          ['浴巾、毛巾', '換洗衣物'],
         ],
         avoidHeading: '不建議下水',
-        avoid: ['泳鏡', '眼鏡', '飾品'],
-        materialNote: '棉質、牛仔等吸水衣物濕了會變重，建議挑快乾材質。',
+        avoid: [['泳鏡'], ['眼鏡'], ['飾品'], ['棉質、牛仔等', '吸水衣物']],
         facilitiesNote: {
           winter: '冬季現場提供防寒衣',
           facility: '廠房有沐浴乳、洗髮精、吹風機、脫水機',
@@ -719,8 +719,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           steps: [
             { label: '抵達停車場鐵門' },
             { label: '官方 LINE 通知開門' },
-            { label: '開門後停車', details: [`汽車停 ${ES_BRAND.name} 1～15`] },
+            { label: '開門後停車' },
           ],
+          parkingNote: `汽車請停 ${ES_BRAND.name} 1～15 車位`,
         },
         arrivalMapAlt: '抵達 ES Wake 路線圖：關渡橋右轉、入口鐵門、停車場與步行至廠房',
         arrivalMapCaption: '抵達路線圖（點圖可放大）',
@@ -1067,7 +1068,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           'We send a reminder the day before.',
         ],
         onsiteShop: {
-          note: 'Board shorts, sun protection and beer are sold on site — just ask the staff.',
+          notes: ['Board shorts, sun protection and beer are sold on site', 'Just ask the staff'],
           alt: 'Illustration of the ES Wake on-site shop: boards, tank tops, board shorts, sunscreen, hats and a beer fridge',
         },
       },
@@ -1087,15 +1088,14 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         title: 'What to wear & bring',
         bringHeading: 'Wear / bring',
         bring: [
-          { part: 'Top', label: 'Tank, tee, rash guard' },
-          { part: 'Swimwear', label: 'Swimsuit, bikini' },
-          { part: 'Bottom', label: 'Board shorts, UV pants' },
-          { label: 'Sunscreen' },
-          { label: 'Towel / change of clothes' },
+          ['Tank, tee,', 'rash guard'],
+          ['Swimsuit, bikini'],
+          ['Board shorts,', 'UV pants'],
+          ['Sunscreen'],
+          ['Towel,', 'change of clothes'],
         ],
         avoidHeading: 'Not in the water',
-        avoid: ['Goggles', 'Glasses', 'Jewelry'],
-        materialNote: 'Cotton and denim get heavy once wet — pick quick-dry fabrics.',
+        avoid: [['Goggles'], ['Glasses'], ['Jewelry'], ['Cotton, denim &', 'absorbent fabrics']],
         facilitiesNote: {
           winter: 'Wetsuits on site in winter',
           facility: 'Body wash, shampoo, hair dryer and spin dryer in the facility',
@@ -1113,8 +1113,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           steps: [
             { label: 'Arrive at the parking gate' },
             { label: 'Message us on LINE to open' },
-            { label: 'Park after the gate opens', details: [`Cars: ${ES_BRAND.name} 1–15`] },
+            { label: 'Park after the gate opens' },
           ],
+          parkingNote: `Please park in ${ES_BRAND.name} spots 1–15`,
         },
         arrivalMapAlt: 'Arrival guide to ES Wake: turn after Guandu Bridge, gate entrance, parking, and walk to the facility',
         arrivalMapCaption: 'Arrival guide (tap to enlarge)',

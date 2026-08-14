@@ -40,7 +40,12 @@ const GEAR_BRING_ICONS = [
   GEAR_ICONS.sunscreen,
   GEAR_ICONS.towel,
 ]
-const GEAR_AVOID_ICONS = [GEAR_ICONS.goggles, GEAR_ICONS.glasses, GEAR_ICONS.jewelry]
+const GEAR_AVOID_ICONS = [
+  GEAR_ICONS.goggles,
+  GEAR_ICONS.glasses,
+  GEAR_ICONS.jewelry,
+  GEAR_ICONS.cotton,
+]
 const ARRIVAL_STEP_ICONS = [ARRIVAL_ICONS.gate, ARRIVAL_ICONS.line, ARRIVAL_ICONS.park]
 
 function GuideBullets({ items }: { items: readonly string[] }) {
@@ -107,7 +112,7 @@ export function BookGuidePage() {
           <GuideOnsiteShop
             image={ONSITE_SHOP_IMAGE}
             alt={g.afterBooking.onsiteShop.alt}
-            note={g.afterBooking.onsiteShop.note}
+            notes={g.afterBooking.onsiteShop.notes}
           />
         </>
       ),
@@ -135,7 +140,6 @@ export function BookGuidePage() {
           avoidHeading={g.whatToBring.avoidHeading}
           avoid={g.whatToBring.avoid}
           avoidIcons={GEAR_AVOID_ICONS}
-          materialNote={g.whatToBring.materialNote}
           facilitiesNote={g.whatToBring.facilitiesNote}
           facilities={g.whatToBring.facilities}
           facilityIcons={FACILITY_ICONS}
@@ -152,6 +156,7 @@ export function BookGuidePage() {
             heading={g.directions.arrivalSteps.heading}
             steps={g.directions.arrivalSteps.steps}
             stepIcons={ARRIVAL_STEP_ICONS}
+            parkingNote={g.directions.arrivalSteps.parkingNote}
             landmark={g.directions.landmark}
           />
           <div style={guideGroupHeading}>{g.directions.addressLabel}</div>

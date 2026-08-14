@@ -29,6 +29,7 @@ export const GEAR_ICONS = {
   goggles: '/liff/book/icons/gear-goggles.webp',
   glasses: '/liff/book/icons/gear-glasses.webp',
   jewelry: '/liff/book/icons/gear-jewelry.webp',
+  cotton: '/liff/book/icons/gear-cotton.webp',
   wetsuit: '/liff/book/icons/facility-wetsuit.webp',
   bodywash: '/liff/book/icons/facility-bodywash.webp',
   shampoo: '/liff/book/icons/facility-shampoo.webp',

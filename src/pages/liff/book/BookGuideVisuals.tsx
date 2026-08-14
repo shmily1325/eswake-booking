@@ -23,6 +23,7 @@ const footnote: CSSProperties = {
   fontSize: ty.caption,
   color: T.muted,
   lineHeight: 1.55,
+  textAlign: 'center',
 }
 
 const pill = (tone: Tone): CSSProperties => ({
@@ -105,14 +106,14 @@ function GearIcon({ src }: { src: string }) {
 export function GuideOnsiteShop({
   image,
   alt,
-  note,
+  notes,
 }: {
   image: string
   alt: string
-  note: string
+  notes: readonly string[]
 }) {
   return (
-    <div style={{ marginTop: 14 }}>
+    <div style={{ marginTop: 16 }}>
       <img
         src={image}
         alt={alt}
@@ -125,8 +126,10 @@ export function GuideOnsiteShop({
           margin: '0 auto',
         }}
       />
-      <div style={{ ...footnote, marginTop: 12, padding: '10px 12px', textAlign: 'center' }}>
-        {note}
+      <div style={{ ...footnote, marginTop: 20, padding: '10px 12px' }}>
+        {notes.map(line => (
+          <div key={line}>{line}</div>
+        ))}
       </div>
     </div>
   )
@@ -199,7 +202,7 @@ export function GuideCancelTimeline({
       </ol>
       <div style={footnote}>
         <div>{weatherNote.lead}</div>
-        <div style={{ fontWeight: 700, color: T.ink, marginTop: 4 }}>{weatherNote.highlight}</div>
+        <div style={{ marginTop: 4 }}>{weatherNote.highlight}</div>
       </div>
     </div>
   )
@@ -212,7 +215,6 @@ export function GuideGearGrid({
   avoidHeading,
   avoid,
   avoidIcons,
-  materialNote,
   facilitiesNote,
   facilities,
   facilityIcons,
@@ -221,17 +223,17 @@ export function GuideGearGrid({
   bring: BookI18nStrings['guide']['whatToBring']['bring']
   bringIcons: readonly string[]
   avoidHeading: string
-  avoid: readonly string[]
+  avoid: BookI18nStrings['guide']['whatToBring']['avoid']
   avoidIcons: readonly string[]
-  materialNote?: string
   facilitiesNote: BookI18nStrings['guide']['whatToBring']['facilitiesNote']
   facilities: readonly string[]
   facilityIcons: readonly string[]
 }) {
   const colHead = (ok: boolean): CSSProperties => ({
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: '32px minmax(0, 1fr)',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     fontSize: ty.caption,
     fontWeight: 700,
     color: ok ? c.success[700] : c.danger[700],
@@ -274,6 +276,11 @@ export function GuideGearGrid({
     justifyContent: 'center',
   }
 
+  const textCell: CSSProperties = {
+    minWidth: 0,
+    textAlign: 'center',
+  }
+
   return (
     <div>
       <div
@@ -285,61 +292,44 @@ export function GuideGearGrid({
       >
         <div>
           <div style={colHead(true)}>
-            <span style={headMark(true)} aria-hidden>✓</span>
-            {bringHeading}
+            <span style={iconCell}>
+              <span style={headMark(true)} aria-hidden>✓</span>
+            </span>
+            <span style={textCell}>{bringHeading}</span>
           </div>
-          {bring.map((item, i) => (
-            <div key={item.label} style={itemRow(i === bring.length - 1)}>
+          {bring.map((lines, i) => (
+            <div key={lines.join('')} style={itemRow(i === bring.length - 1)}>
               <span style={iconCell}>{bringIcons[i] ? <GearIcon src={bringIcons[i]} /> : null}</span>
-              <span style={{ minWidth: 0 }}>
-                {item.part ? (
-                  <span
-                    style={{
-                      display: 'block',
-                      fontSize: ty.micro,
-                      fontWeight: 700,
-                      color: T.muted,
-                      letterSpacing: '0.02em',
-                      marginBottom: 2,
-                    }}
-                  >
-                    {item.part}
-                  </span>
-                ) : null}
-                {item.label}
+              <span style={textCell}>
+                {lines.map(line => (
+                  <span key={line} style={{ display: 'block' }}>{line}</span>
+                ))}
               </span>
             </div>
           ))}
         </div>
         <div style={{ borderLeft: `1px dashed ${T.borderSubtle}`, paddingLeft: 14 }}>
           <div style={colHead(false)}>
-            <span style={headMark(false)} aria-hidden>✕</span>
-            {avoidHeading}
+            <span style={iconCell}>
+              <span style={headMark(false)} aria-hidden>✕</span>
+            </span>
+            <span style={textCell}>{avoidHeading}</span>
           </div>
-          {avoid.map((label, i) => (
-            <div key={label} style={itemRow(i === avoid.length - 1)}>
+          {avoid.map((lines, i) => (
+            <div key={lines.join('')} style={itemRow(i === avoid.length - 1)}>
               <span style={iconCell}>{avoidIcons[i] ? <GearIcon src={avoidIcons[i]} /> : null}</span>
-              <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ ...textCell, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <span style={{ color: c.danger[500], fontWeight: 700, flexShrink: 0 }} aria-hidden>×</span>
-                <span style={{ minWidth: 0 }}>{label}</span>
+                <span style={{ minWidth: 0 }}>
+                  {lines.map(line => (
+                    <span key={line} style={{ display: 'block' }}>{line}</span>
+                  ))}
+                </span>
               </span>
             </div>
           ))}
         </div>
       </div>
-      {materialNote ? (
-        <div
-          style={{
-            marginTop: 12,
-            fontSize: ty.caption,
-            color: T.muted,
-            lineHeight: 1.55,
-            textAlign: 'center',
-          }}
-        >
-          {materialNote}
-        </div>
-      ) : null}
       <div style={{ ...footnote, marginTop: 16, padding: '12px 10px' }}>
         <div
           style={{
@@ -392,11 +382,13 @@ export function GuideArrivalSteps({
   heading,
   steps,
   stepIcons,
+  parkingNote,
   landmark,
 }: {
   heading: string
   steps: BookI18nStrings['guide']['directions']['arrivalSteps']['steps']
   stepIcons: readonly string[]
+  parkingNote: string
   landmark: BookI18nStrings['guide']['directions']['landmark']
 }) {
   return (
@@ -488,10 +480,9 @@ export function GuideArrivalSteps({
           </li>
         ))}
       </ol>
-      <div style={{ ...footnote, marginTop: 14, textAlign: 'center' }}>
-        {landmark.map(line => (
-          <div key={line}>{line}</div>
-        ))}
+      <div style={{ ...footnote, marginTop: 14 }}>
+        <div>{landmark.join('｜')}</div>
+        <div>{parkingNote}</div>
       </div>
     </div>
   )
