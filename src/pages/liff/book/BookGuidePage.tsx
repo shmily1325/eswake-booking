@@ -107,7 +107,6 @@ export function BookGuidePage() {
           <GuideOnsiteShop
             image={ONSITE_SHOP_IMAGE}
             alt={g.afterBooking.onsiteShop.alt}
-            heading={g.afterBooking.onsiteShop.heading}
             note={g.afterBooking.onsiteShop.note}
           />
         </>

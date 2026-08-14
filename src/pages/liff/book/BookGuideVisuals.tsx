@@ -101,20 +101,18 @@ function GearIcon({ src }: { src: string }) {
   )
 }
 
-/** 現場小舖：插圖 + 一句說明（線稿為透明底，直接疊在 muted 面板上） */
+/** 現場小舖：插圖直接放在卡片白底上，販售說明另置於 muted 面板 */
 export function GuideOnsiteShop({
   image,
   alt,
-  heading,
   note,
 }: {
   image: string
   alt: string
-  heading: string
   note: string
 }) {
   return (
-    <div style={{ ...footnote, padding: '12px 12px 14px' }}>
+    <div style={{ marginTop: 14 }}>
       <img
         src={image}
         alt={alt}
@@ -124,21 +122,10 @@ export function GuideOnsiteShop({
           width: '100%',
           maxWidth: 300,
           height: 'auto',
-          margin: '0 auto 10px',
+          margin: '0 auto',
         }}
       />
-      <div
-        style={{
-          fontSize: ty.caption,
-          fontWeight: 700,
-          color: T.ink,
-          textAlign: 'center',
-          marginBottom: 4,
-        }}
-      >
-        {heading}
-      </div>
-      <div style={{ fontSize: ty.caption, color: T.muted, textAlign: 'center', lineHeight: 1.55 }}>
+      <div style={{ ...footnote, marginTop: 12, padding: '10px 12px', textAlign: 'center' }}>
         {note}
       </div>
     </div>

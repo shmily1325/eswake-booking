@@ -304,7 +304,7 @@ export interface BookI18nStrings {
     afterBooking: {
       title: string
       items: readonly string[]
-      onsiteShop: { heading: string; note: string; alt: string }
+      onsiteShop: { note: string; alt: string }
     }
     cancelPolicy: {
       title: string
@@ -673,7 +673,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           '預約日前一天會再發送提醒通知。',
         ],
         onsiteShop: {
-          heading: '現場小舖',
           note: '衝浪褲、防曬用品與啤酒現場販售，需要請告知現場工作人員。',
           alt: 'ES Wake 現場小舖插圖：衝浪板、寬板、背心、衝浪褲、防曬用品、帽子與冰櫃啤酒',
         },
@@ -1068,7 +1067,6 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           'We send a reminder the day before.',
         ],
         onsiteShop: {
-          heading: 'On-site shop',
           note: 'Board shorts, sun protection and beer are sold on site — just ask the staff.',
           alt: 'Illustration of the ES Wake on-site shop: boards, tank tops, board shorts, sunscreen, hats and a beer fridge',
         },
