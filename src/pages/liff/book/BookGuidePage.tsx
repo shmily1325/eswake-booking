@@ -7,6 +7,7 @@ import {
   GuideArrivalSteps,
   GuideCancelTimeline,
   GuideGearGrid,
+  GuideOnsiteShop,
   GuideSectionIcon,
 } from './BookGuideVisuals'
 import { BookVideoPlayer } from './BookVideoPlayer'
@@ -25,13 +26,20 @@ import {
   DIRECTIONS_VIDEO_ID,
   FACILITY_ICONS,
   GEAR_ICONS,
+  ONSITE_SHOP_IMAGE,
   visitMapUrl,
 } from './liffBookingGuide'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
 import { BookCopyrightFooter } from './BookCopyrightFooter'
 
-const GEAR_BRING_ICONS = [GEAR_ICONS.tank, GEAR_ICONS.shorts, GEAR_ICONS.sunscreen, GEAR_ICONS.towel]
+const GEAR_BRING_ICONS = [
+  GEAR_ICONS.tank,
+  GEAR_ICONS.bikini,
+  GEAR_ICONS.shorts,
+  GEAR_ICONS.sunscreen,
+  GEAR_ICONS.towel,
+]
 const GEAR_AVOID_ICONS = [GEAR_ICONS.goggles, GEAR_ICONS.glasses, GEAR_ICONS.jewelry]
 const ARRIVAL_STEP_ICONS = [ARRIVAL_ICONS.gate, ARRIVAL_ICONS.line, ARRIVAL_ICONS.park]
 
@@ -93,7 +101,17 @@ export function BookGuidePage() {
       id: 'after-booking',
       title: g.afterBooking.title,
       icon: <GuideSectionIcon name="checklist" />,
-      content: <GuideBullets items={g.afterBooking.items} />,
+      content: (
+        <>
+          <GuideBullets items={g.afterBooking.items} />
+          <GuideOnsiteShop
+            image={ONSITE_SHOP_IMAGE}
+            alt={g.afterBooking.onsiteShop.alt}
+            heading={g.afterBooking.onsiteShop.heading}
+            note={g.afterBooking.onsiteShop.note}
+          />
+        </>
+      ),
     },
     {
       id: 'cancel-policy',
@@ -118,6 +136,7 @@ export function BookGuidePage() {
           avoidHeading={g.whatToBring.avoidHeading}
           avoid={g.whatToBring.avoid}
           avoidIcons={GEAR_AVOID_ICONS}
+          materialNote={g.whatToBring.materialNote}
           facilitiesNote={g.whatToBring.facilitiesNote}
           facilities={g.whatToBring.facilities}
           facilityIcons={FACILITY_ICONS}

@@ -67,7 +67,7 @@ export const OFFICIAL_INFO_URL = 'https://guide.eswakeschool.com'
 /** 交通資訊（sites.google.com/.../交通方式） */
 export const TRANSPORT_INFO = {
   title: '交通方式',
-  address: '249 新北市八里區龍米路一段 170 號',
+  address: '24946 新北市八里區龍米路一段170號（關渡大橋）',
   entranceNote: '出入口位於大橋遊艇公司右側，7-11 神州門市正對面',
   sections: [
     {
@@ -81,7 +81,6 @@ export const TRANSPORT_INFO = {
       heading: '停車',
       lines: [
         `汽車：停畫有 ${ES_BRAND.name} 1～15 的車格`,
-        '機車：可直接騎至廠房內停車',
       ],
     },
     {
@@ -134,7 +133,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: 'clothing',
     question: '服裝穿著要注意什麼？',
     answer:
-      '建議：背心、短袖、泳裝、衝浪褲、防曬衣等。不建議 T 恤、牛仔褲等吸水材質下水。\n\n' +
+      '上身：背心、短袖、水母衣；泳裝／比基尼；下身：衝浪褲、防曬長褲。棉質、牛仔等吸水衣物濕了會變重，不建議下水。\n\n' +
       '請自備：防曬乳、毛巾、換洗衣物。\n\n' +
       '現場提供：NAMUA 沐浴露、Panasonic 吹風機、脫水機；冬季防寒衣可租借（單次／免費）。\n\n' +
       '✖ 不可帶下水：泳鏡、眼鏡、飾品',

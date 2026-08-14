@@ -101,12 +101,56 @@ function GearIcon({ src }: { src: string }) {
   )
 }
 
+/** 現場小舖：插圖 + 一句說明（線稿為透明底，直接疊在 muted 面板上） */
+export function GuideOnsiteShop({
+  image,
+  alt,
+  heading,
+  note,
+}: {
+  image: string
+  alt: string
+  heading: string
+  note: string
+}) {
+  return (
+    <div style={{ ...footnote, padding: '12px 12px 14px' }}>
+      <img
+        src={image}
+        alt={alt}
+        loading="lazy"
+        style={{
+          display: 'block',
+          width: '100%',
+          maxWidth: 300,
+          height: 'auto',
+          margin: '0 auto 10px',
+        }}
+      />
+      <div
+        style={{
+          fontSize: ty.caption,
+          fontWeight: 700,
+          color: T.ink,
+          textAlign: 'center',
+          marginBottom: 4,
+        }}
+      >
+        {heading}
+      </div>
+      <div style={{ fontSize: ty.caption, color: T.muted, textAlign: 'center', lineHeight: 1.55 }}>
+        {note}
+      </div>
+    </div>
+  )
+}
+
 export function GuideCancelTimeline({
   steps,
   weatherNote,
 }: {
   steps: BookI18nStrings['guide']['cancelPolicy']['steps']
-  weatherNote: string
+  weatherNote: BookI18nStrings['guide']['cancelPolicy']['weatherNote']
 }) {
   return (
     <div>
@@ -166,7 +210,10 @@ export function GuideCancelTimeline({
           )
         })}
       </ol>
-      <div style={footnote}>{weatherNote}</div>
+      <div style={footnote}>
+        <div>{weatherNote.lead}</div>
+        <div style={{ fontWeight: 700, color: T.ink, marginTop: 4 }}>{weatherNote.highlight}</div>
+      </div>
     </div>
   )
 }
@@ -178,17 +225,19 @@ export function GuideGearGrid({
   avoidHeading,
   avoid,
   avoidIcons,
+  materialNote,
   facilitiesNote,
   facilities,
   facilityIcons,
 }: {
   bringHeading: string
-  bring: readonly string[]
+  bring: BookI18nStrings['guide']['whatToBring']['bring']
   bringIcons: readonly string[]
   avoidHeading: string
   avoid: readonly string[]
   avoidIcons: readonly string[]
-  facilitiesNote: string
+  materialNote?: string
+  facilitiesNote: BookI18nStrings['guide']['whatToBring']['facilitiesNote']
   facilities: readonly string[]
   facilityIcons: readonly string[]
 }) {
@@ -219,9 +268,9 @@ export function GuideGearGrid({
   })
 
   const itemRow = (last: boolean): CSSProperties => ({
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: '32px minmax(0, 1fr)',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
     minHeight: 46,
     padding: '8px 0',
@@ -231,6 +280,12 @@ export function GuideGearGrid({
     color: T.ink,
     lineHeight: 1.4,
   })
+
+  const iconCell: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
 
   return (
     <div>
@@ -246,10 +301,26 @@ export function GuideGearGrid({
             <span style={headMark(true)} aria-hidden>✓</span>
             {bringHeading}
           </div>
-          {bring.map((label, i) => (
-            <div key={label} style={itemRow(i === bring.length - 1)}>
-              {bringIcons[i] ? <GearIcon src={bringIcons[i]} /> : null}
-              <span style={{ minWidth: 0 }}>{label}</span>
+          {bring.map((item, i) => (
+            <div key={item.label} style={itemRow(i === bring.length - 1)}>
+              <span style={iconCell}>{bringIcons[i] ? <GearIcon src={bringIcons[i]} /> : null}</span>
+              <span style={{ minWidth: 0 }}>
+                {item.part ? (
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: ty.micro,
+                      fontWeight: 700,
+                      color: T.muted,
+                      letterSpacing: '0.02em',
+                      marginBottom: 2,
+                    }}
+                  >
+                    {item.part}
+                  </span>
+                ) : null}
+                {item.label}
+              </span>
             </div>
           ))}
         </div>
@@ -260,13 +331,28 @@ export function GuideGearGrid({
           </div>
           {avoid.map((label, i) => (
             <div key={label} style={itemRow(i === avoid.length - 1)}>
-              {avoidIcons[i] ? <GearIcon src={avoidIcons[i]} /> : null}
-              <span style={{ color: c.danger[500], fontWeight: 700, flexShrink: 0 }} aria-hidden>×</span>
-              <span style={{ minWidth: 0 }}>{label}</span>
+              <span style={iconCell}>{avoidIcons[i] ? <GearIcon src={avoidIcons[i]} /> : null}</span>
+              <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: c.danger[500], fontWeight: 700, flexShrink: 0 }} aria-hidden>×</span>
+                <span style={{ minWidth: 0 }}>{label}</span>
+              </span>
             </div>
           ))}
         </div>
       </div>
+      {materialNote ? (
+        <div
+          style={{
+            marginTop: 12,
+            fontSize: ty.caption,
+            color: T.muted,
+            lineHeight: 1.55,
+            textAlign: 'center',
+          }}
+        >
+          {materialNote}
+        </div>
+      ) : null}
       <div style={{ ...footnote, marginTop: 16, padding: '12px 10px' }}>
         <div
           style={{
@@ -277,7 +363,8 @@ export function GuideGearGrid({
             textAlign: 'center',
           }}
         >
-          {facilitiesNote}
+          <div>{facilitiesNote.winter}</div>
+          <div style={{ marginTop: 2 }}>{facilitiesNote.facility}</div>
         </div>
         <div
           style={{
@@ -323,7 +410,7 @@ export function GuideArrivalSteps({
   heading: string
   steps: BookI18nStrings['guide']['directions']['arrivalSteps']['steps']
   stepIcons: readonly string[]
-  landmark: string
+  landmark: BookI18nStrings['guide']['directions']['landmark']
 }) {
   return (
     <div style={{ marginBottom: 16 }}>
@@ -414,7 +501,11 @@ export function GuideArrivalSteps({
           </li>
         ))}
       </ol>
-      <div style={{ ...footnote, marginTop: 14, textAlign: 'center' }}>{landmark}</div>
+      <div style={{ ...footnote, marginTop: 14, textAlign: 'center' }}>
+        {landmark.map(line => (
+          <div key={line}>{line}</div>
+        ))}
+      </div>
     </div>
   )
 }

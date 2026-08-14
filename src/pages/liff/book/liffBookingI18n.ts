@@ -301,19 +301,25 @@ export interface BookI18nStrings {
     copyAddress: string
     copyAddressDone: string
     lineContact: string
-    afterBooking: { title: string; items: readonly string[] }
+    afterBooking: {
+      title: string
+      items: readonly string[]
+      onsiteShop: { heading: string; note: string; alt: string }
+    }
     cancelPolicy: {
       title: string
       steps: readonly { when: string; action: string; tone: 'ok' | 'warn' | 'no' }[]
-      weatherNote: string
+      weatherNote: { lead: string; highlight: string }
     }
     whatToBring: {
       title: string
       bringHeading: string
-      bring: readonly string[]
+      /** `part` 為上身／下身等分組小標，未填則整列單行顯示 */
+      bring: readonly { part?: string; label: string }[]
       avoidHeading: string
       avoid: readonly string[]
-      facilitiesNote: string
+      materialNote: string
+      facilitiesNote: { winter: string; facility: string }
       facilities: readonly string[]
     }
     directions: {
@@ -321,7 +327,7 @@ export interface BookI18nStrings {
       addressLabel: string
       address: string
       mapQuery: string
-      landmark: string
+      landmark: readonly string[]
       arrivalSteps: {
         heading: string
         steps: readonly { label: string; details?: readonly string[] }[]
@@ -665,8 +671,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         items: [
           '請記得預約的日期與時間，並準時抵達。',
           '預約日前一天會再發送提醒通知。',
-          '現場販售衝浪褲、防曬用品與啤酒，需要請告知客服小幫手。',
         ],
+        onsiteShop: {
+          heading: '現場小舖',
+          note: '衝浪褲、防曬用品與啤酒現場販售，需要請告知現場工作人員。',
+          alt: 'ES Wake 現場小舖插圖：衝浪板、寬板、背心、衝浪褲、防曬用品、帽子與冰櫃啤酒',
+        },
       },
       cancelPolicy: {
         title: '取消與更改預約',
@@ -675,29 +685,42 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           { when: '完成改期之後', action: '恕不接受取消', tone: 'warn' },
           { when: '出發日 3 天內（含當日）', action: '不接受改期', tone: 'no' },
         ],
-        weatherNote: '天候不佳請先來訊確認：八里臨海，市區下雨這裡可能是晴天。',
+        weatherNote: {
+          lead: '天候不佳請先來訊確認：',
+          highlight: '八里臨海，市區下雨這裡可能是晴天。',
+        },
       },
       whatToBring: {
         title: '服裝與隨身物品建議',
         bringHeading: '建議穿／帶',
-        bring: ['背心／短袖上衣', '泳裝／衝浪褲／短褲', '防曬乳', '浴（毛）巾／換洗衣物'],
+        bring: [
+          { part: '上身', label: '背心、短袖、水母衣' },
+          { part: '泳裝', label: '泳裝、比基尼' },
+          { part: '下身', label: '衝浪褲、防曬長褲' },
+          { label: '防曬乳' },
+          { label: '浴（毛）巾／換洗衣物' },
+        ],
         avoidHeading: '不建議下水',
         avoid: ['泳鏡', '眼鏡', '飾品'],
-        facilitiesNote: '冬季現場提供防寒衣｜廠房有沐浴乳、洗髮精、吹風機、脫水機',
+        materialNote: '棉質、牛仔等吸水衣物濕了會變重，建議挑快乾材質。',
+        facilitiesNote: {
+          winter: '冬季現場提供防寒衣',
+          facility: '廠房有沐浴乳、洗髮精、吹風機、脫水機',
+        },
         facilities: ['防寒衣', '沐浴乳', '洗髮精', '吹風機', '脫水機'],
       },
       directions: {
         title: '地址與交通資訊',
         addressLabel: '地址',
-        address: '新北市八里區龍米路一段170號之1',
-        mapQuery: '新北市八里區龍米路一段170號之1',
-        landmark: '大橋遊艇公司右側 ｜ 7-11 神州門市正對面',
+        address: '24946 新北市八里區龍米路一段170號（關渡大橋）',
+        mapQuery: '新北市八里區龍米路一段170號 關渡大橋',
+        landmark: ['大橋遊艇公司右側', '7-11 神州門市正對面'],
         arrivalSteps: {
           heading: '抵達三步驟',
           steps: [
             { label: '抵達停車場鐵門' },
             { label: '官方 LINE 通知開門' },
-            { label: '開門後停車', details: [`汽車停 ${ES_BRAND.name} 1～15`, '機車進廠房'] },
+            { label: '開門後停車', details: [`汽車停 ${ES_BRAND.name} 1～15`] },
           ],
         },
         arrivalMapAlt: '抵達 ES Wake 路線圖：關渡橋右轉、入口鐵門、停車場與步行至廠房',
@@ -1043,8 +1066,12 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
         items: [
           'Remember your confirmed date and time, and arrive on time.',
           'We send a reminder the day before.',
-          'Board shorts, sun protection and beer are sold on site — just ask our staff.',
         ],
+        onsiteShop: {
+          heading: 'On-site shop',
+          note: 'Board shorts, sun protection and beer are sold on site — just ask the staff.',
+          alt: 'Illustration of the ES Wake on-site shop: boards, tank tops, board shorts, sunscreen, hats and a beer fridge',
+        },
       },
       cancelPolicy: {
         title: 'Changes & cancellation',
@@ -1053,29 +1080,42 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
           { when: 'Once you have changed the date', action: 'No cancellation', tone: 'warn' },
           { when: 'Within 3 days (incl. session day)', action: 'No date changes', tone: 'no' },
         ],
-        weatherNote: 'Uncertain weather? Message us first — it can be sunny here while it rains in Taipei.',
+        weatherNote: {
+          lead: 'Uncertain weather? Message us first:',
+          highlight: 'It can be sunny here while it rains in Taipei.',
+        },
       },
       whatToBring: {
         title: 'What to wear & bring',
         bringHeading: 'Wear / bring',
-        bring: ['Tank / tee', 'Swimsuit / board shorts', 'Sunscreen', 'Towel / change of clothes'],
+        bring: [
+          { part: 'Top', label: 'Tank, tee, rash guard' },
+          { part: 'Swimwear', label: 'Swimsuit, bikini' },
+          { part: 'Bottom', label: 'Board shorts, UV pants' },
+          { label: 'Sunscreen' },
+          { label: 'Towel / change of clothes' },
+        ],
         avoidHeading: 'Not in the water',
         avoid: ['Goggles', 'Glasses', 'Jewelry'],
-        facilitiesNote: 'Wetsuits on site in winter · Body wash, shampoo, hair dryer and spin dryer in the facility',
+        materialNote: 'Cotton and denim get heavy once wet — pick quick-dry fabrics.',
+        facilitiesNote: {
+          winter: 'Wetsuits on site in winter',
+          facility: 'Body wash, shampoo, hair dryer and spin dryer in the facility',
+        },
         facilities: ['Wetsuit', 'Body wash', 'Shampoo', 'Hair dryer', 'Spin dryer'],
       },
       directions: {
         title: 'Address & directions',
         addressLabel: 'Address',
-        address: 'No. 170-1, Sec. 1, Longmi Rd., Bali Dist., New Taipei City',
-        mapQuery: '新北市八里區龍米路一段170號之1',
-        landmark: 'Right of Daqiao Yacht ｜ Across from 7-Eleven Shenzhou',
+        address: 'No. 170, Sec. 1, Longmi Rd., Bali Dist., New Taipei City 24946 (Guandu Bridge)',
+        mapQuery: '新北市八里區龍米路一段170號 關渡大橋',
+        landmark: ['Right of Daqiao Yacht', 'Across from 7-Eleven Shenzhou'],
         arrivalSteps: {
           heading: 'Arrival in 3 steps',
           steps: [
             { label: 'Arrive at the parking gate' },
             { label: 'Message us on LINE to open' },
-            { label: 'Park after the gate opens', details: [`Cars: ${ES_BRAND.name} 1–15`, 'Scooters: into the facility'] },
+            { label: 'Park after the gate opens', details: [`Cars: ${ES_BRAND.name} 1–15`] },
           ],
         },
         arrivalMapAlt: 'Arrival guide to ES Wake: turn after Guandu Bridge, gate entrance, parking, and walk to the facility',

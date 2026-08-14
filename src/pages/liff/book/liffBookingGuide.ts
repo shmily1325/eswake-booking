@@ -16,9 +16,13 @@ export const BUS_DIRECTIONS_VIDEO_ID = 'fwbeCE554Mw'
 /** 地址與交通：抵達路線圖（關渡橋 → 鐵門 → 廠房） */
 export const DIRECTIONS_GUIDE_IMAGE = '/liff/book/directions-guide.webp'
 
+/** 預約完成注意事項：現場小舖插圖（透明底線稿） */
+export const ONSITE_SHOP_IMAGE = '/liff/book/onsite-shop.webp'
+
 /** 服裝／隨身：建議與避免項目的小圖 */
 export const GEAR_ICONS = {
   tank: '/liff/book/icons/gear-tank.webp',
+  bikini: '/liff/book/icons/gear-bikini.webp',
   shorts: '/liff/book/icons/gear-shorts.webp',
   sunscreen: '/liff/book/icons/gear-sunscreen.webp',
   towel: '/liff/book/icons/gear-towel.webp',
@@ -47,7 +51,7 @@ export const ARRIVAL_ICONS = {
   park: '/liff/book/icons/arrive-park.webp',
 } as const
 
-export const VISIT_ADDRESS_ZH = '新北市八里區龍米路一段170號之1'
+export const VISIT_ADDRESS_ZH = '24946 新北市八里區龍米路一段170號（關渡大橋）'
 
 export function visitMapUrl(query: string): string {
   return `https://maps.google.com/?q=${encodeURIComponent(query)}`
