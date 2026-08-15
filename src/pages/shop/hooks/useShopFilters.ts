@@ -45,7 +45,28 @@ export function useShopFilters(products: ProductWithVariants[]) {
     const brandCounts = computeBrandCounts(
       filterProductsForBrandFacets(baseProducts, filters),
     )
-    return { ...navFacets, brandCounts, preOrderCount: catalogFacets.preOrderCount }
+    const preOrderNavProducts = filterProductsForBrandFacets(baseProducts, {
+      ...filters,
+      topLevel: ALL_GROUPS,
+      subCat: ALL_SUBCATS,
+      brands: [],
+      preOrderOnly: true,
+    })
+    const preOrderBrandCounts = computeBrandCounts(preOrderNavProducts)
+    const selectedBrandProducts =
+      filters.brands.length === 0
+        ? []
+        : preOrderNavProducts.filter((p) =>
+            filters.brands.includes((p.brand ?? '').trim()),
+          )
+    const preOrderCategoryCounts = computeFacets(selectedBrandProducts).categoryCounts
+    return {
+      ...navFacets,
+      brandCounts,
+      preOrderBrandCounts,
+      preOrderCategoryCounts,
+      preOrderCount: catalogFacets.preOrderCount,
+    }
   }, [baseProducts, filters, catalogFacets.preOrderCount])
 
   const filteredProducts = useMemo(
@@ -89,19 +110,50 @@ export function useShopFilters(products: ProductWithVariants[]) {
     writeFilters({
       topLevel: ALL_GROUPS,
       subCat: ALL_SUBCATS,
+      brands: [],
+      preOrderOnly: false,
     })
   }, [writeFilters])
 
   const setPreOrderOnly = useCallback(
     (preOrderOnly: boolean) => {
-      writeFilters({ preOrderOnly })
+      writeFilters({
+        preOrderOnly,
+        topLevel: ALL_GROUPS,
+        subCat: ALL_SUBCATS,
+        brands: [],
+      })
     },
     [writeFilters],
   )
 
   const selectCategory = useCallback(
     (topLevel: TopLevel, subCat: string = ALL_SUBCATS) => {
-      writeFilters({ topLevel, subCat })
+      writeFilters({ topLevel, subCat, preOrderOnly: false, brands: [] })
+    },
+    [writeFilters],
+  )
+
+  const selectPreOrderBrand = useCallback(
+    (brand: string) => {
+      writeFilters((prev) => ({
+        ...prev,
+        preOrderOnly: true,
+        topLevel: ALL_GROUPS,
+        subCat: ALL_SUBCATS,
+        brands: prev.brands[0] === brand ? [] : [brand],
+      }))
+    },
+    [writeFilters],
+  )
+
+  const selectPreOrderCategory = useCallback(
+    (subCat: string) => {
+      writeFilters({
+        preOrderOnly: true,
+        topLevel: ALL_GROUPS,
+        subCat,
+      })
     },
     [writeFilters],
   )
@@ -160,14 +212,12 @@ export function useShopFilters(products: ProductWithVariants[]) {
   }, [writeFilters])
 
   const clearRefinement = useCallback(() => {
-    writeFilters({ brands: [], sortBy: 'newest', preOrderOnly: false })
+    writeFilters({ sortBy: 'newest' })
   }, [writeFilters])
 
   /** 清除 pills 顯示的 refine（不動分類 chips） */
   const clearPillFilters = useCallback(() => {
     writeFilters({
-      preOrderOnly: false,
-      brands: [],
       search: '',
       sortBy: 'newest',
     })
@@ -208,6 +258,8 @@ export function useShopFilters(products: ProductWithVariants[]) {
     selectAll,
     setPreOrderOnly,
     selectCategory,
+    selectPreOrderBrand,
+    selectPreOrderCategory,
     setTopLevel,
     setSubCat,
     toggleBrand,

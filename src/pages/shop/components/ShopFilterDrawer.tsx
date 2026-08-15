@@ -1,7 +1,4 @@
 import { useEffect } from 'react'
-import type { ShopGroup } from '../../admin/products/schema'
-import { ShopBrandFilter } from './ShopBrandFilter'
-import { ShopFilterPanel } from './ShopFilterPanel'
 import type { ShopFilterState, SortBy } from '../lib/shopFilters'
 import { SHOP_COPY, SHOP_LABEL } from '../lib/shopCopy'
 
@@ -9,13 +6,7 @@ interface ShopFilterDrawerProps {
   open: boolean
   resultCount: number
   filters: ShopFilterState
-  preOrderCount: number
-  groupCounts: Map<ShopGroup, number>
-  categoryCounts: Map<string, number>
-  brandCounts: Map<string, number>
   onClose: () => void
-  onPreOrderOnlyChange: (v: boolean) => void
-  onToggleBrand: (brand: string) => void
   onSortChange: (v: SortBy) => void
   onClearAll: () => void
 }
@@ -27,13 +18,7 @@ export function ShopFilterDrawer({
   open,
   resultCount,
   filters,
-  preOrderCount,
-  groupCounts,
-  categoryCounts,
-  brandCounts,
   onClose,
-  onPreOrderOnlyChange,
-  onToggleBrand,
   onSortChange,
   onClearAll,
 }: ShopFilterDrawerProps) {
@@ -49,8 +34,6 @@ export function ShopFilterDrawer({
   if (!open) return null
 
   const hasRefinement =
-    filters.preOrderOnly ||
-    filters.brands.length > 0 ||
     filters.sortBy !== 'newest'
 
   return (
@@ -87,27 +70,6 @@ export function ShopFilterDrawer({
 
         <div className="flex-1 overflow-y-auto px-4 py-4 overscroll-contain">
           <div className="space-y-6">
-            <ShopBrandFilter
-              filters={filters}
-              brandCounts={brandCounts}
-              onToggleBrand={onToggleBrand}
-              layout="list"
-            />
-
-            <ShopFilterPanel
-              filters={filters}
-              preOrderCount={preOrderCount}
-              groupCounts={groupCounts}
-              categoryCounts={categoryCounts}
-              brandCounts={brandCounts}
-              onSelectAll={() => {}}
-              onSelectCategory={() => {}}
-              onPreOrderOnlyChange={onPreOrderOnlyChange}
-              onToggleBrand={onToggleBrand}
-              hideCategory
-              hideBrand
-            />
-
             <div>
               <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400 mb-2">
                 {SHOP_LABEL.sort}
@@ -119,7 +81,7 @@ export function ShopFilterDrawer({
                     type="button"
                     onClick={() => onSortChange(value)}
                     className={
-                      'w-full min-h-[44px] px-3 rounded-lg text-sm text-left border transition-colors ' +
+                      'w-full min-h-11 px-3 rounded-lg text-sm text-left border transition-colors ' +
                       (filters.sortBy === value
                         ? 'border-zinc-900 bg-zinc-900 text-white font-semibold'
                         : 'border-gray-200 text-gray-700 hover:bg-gray-50')

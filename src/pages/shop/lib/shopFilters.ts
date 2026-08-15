@@ -75,6 +75,10 @@ export function normalizeFilterState(state: ShopFilterState): ShopFilterState {
   if (!catDef?.shopGroup) {
     return { ...state, subCat: ALL_SUBCATS }
   }
+  // 預購是獨立導覽模式：品牌 → 小類，不套用一般商城的運動大類。
+  if (state.preOrderOnly) {
+    return { ...state, topLevel: ALL_GROUPS }
+  }
   if (topLevel === ALL_GROUPS) {
     topLevel = catDef.shopGroup
   } else if (catDef.shopGroup !== topLevel) {

@@ -1,4 +1,5 @@
 import {
+  getAllCategories,
   getCategoryShopName,
   SHOP_GROUPS,
   type ShopGroup,
@@ -17,8 +18,14 @@ interface ShopCategoryBarProps {
   filters: ShopFilterState
   groupCounts: Map<ShopGroup, number>
   categoryCounts: Map<string, number>
+  preOrderCount: number
+  preOrderBrandCounts: Map<string, number>
+  preOrderCategoryCounts: Map<string, number>
   onSelectAll: () => void
   onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
+  onSelectPreOrder: () => void
+  onSelectPreOrderBrand: (brand: string) => void
+  onSelectPreOrderCategory: (subCat: string) => void
   /** dark = 貼在黑色 hero 底下；light = 灰底列表頁（legacy） */
   variant?: 'dark' | 'light'
   /** 與 hero 底部漸層重疊，無硬邊界 */
@@ -30,8 +37,14 @@ export function ShopCategoryBar({
   filters,
   groupCounts,
   categoryCounts,
+  preOrderCount,
+  preOrderBrandCounts,
+  preOrderCategoryCounts,
   onSelectAll,
   onSelectCategory,
+  onSelectPreOrder,
+  onSelectPreOrderBrand,
+  onSelectPreOrderCategory,
   variant = 'dark',
   fadeFromHero = false,
 }: ShopCategoryBarProps) {
@@ -49,6 +62,18 @@ export function ShopCategoryBar({
       : []
 
   const showSubRow = activeGroup != null && subs.length > 0
+  const preOrderBrands = [...preOrderBrandCounts.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )
+  const preOrderCategories = getAllCategories()
+    .filter((cat) => (preOrderCategoryCounts.get(cat.id) ?? 0) > 0)
+    .map((cat) => ({
+      ...cat,
+      count: preOrderCategoryCounts.get(cat.id) ?? 0,
+    }))
+  const showPreOrderNav = filters.preOrderOnly && preOrderBrands.length > 0
+  const showPreOrderCategoryRow =
+    showPreOrderNav && filters.brands.length === 1 && preOrderCategories.length > 0
 
   return (
     <div
@@ -65,7 +90,7 @@ export function ShopCategoryBar({
       <div
         className={
           'relative z-21 max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 py-1.5 sm:py-2.5 max-lg:py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
-          (showSubRow ? 'pb-1.5 sm:pb-2 lg:pb-3' : 'pb-2 sm:pb-3')
+          (showSubRow || showPreOrderNav ? 'pb-1.5 sm:pb-2 lg:pb-3' : 'pb-2 sm:pb-3')
         }
         role="tablist"
         aria-label="Categories"
@@ -99,8 +124,19 @@ export function ShopCategoryBar({
           )
         })}
 
+        {preOrderCount > 0 && (
+          <CategoryChip
+            active={filters.preOrderOnly}
+            onClick={onSelectPreOrder}
+            onDark={onDark}
+            count={preOrderCount}
+          >
+            {SHOP_LABEL.preOrder}
+          </CategoryChip>
+        )}
+
         {/* 桌機：子分類接在同一列 */}
-        {showSubRow && (
+        {!filters.preOrderOnly && showSubRow && (
           <div className="hidden lg:contents">
             <span
               className={
@@ -129,8 +165,66 @@ export function ShopCategoryBar({
       </div>
       </div>
 
+      {/* 預購第二層：品牌 */}
+      {showPreOrderNav && (
+        <div className="relative">
+          <div
+            className={
+              'relative z-21 max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
+              (showPreOrderCategoryRow ? 'pb-1.5' : 'pb-2.5')
+            }
+            role="tablist"
+            aria-label="Pre-order brands"
+          >
+            {preOrderBrands.map(([brand, count]) => (
+              <CategoryChip
+                key={brand}
+                active={filters.brands.includes(brand)}
+                onClick={() => onSelectPreOrderBrand(brand)}
+                onDark={onDark}
+                count={count}
+              >
+                {brand}
+              </CategoryChip>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 預購第三層：該品牌的小類 */}
+      {showPreOrderCategoryRow && (
+        <div className="relative">
+          <div
+            className="relative z-21 max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="tablist"
+            aria-label={`${filters.brands[0]} pre-order categories`}
+          >
+            <CategoryChip
+              active={filters.subCat === ALL_SUBCATS}
+              onClick={() => onSelectPreOrderCategory(ALL_SUBCATS)}
+              subdued
+              onDark={onDark}
+            >
+              {SHOP_LABEL.all}
+            </CategoryChip>
+            {preOrderCategories.map((cat) => (
+              <CategoryChip
+                key={cat.id}
+                active={filters.subCat === cat.id}
+                onClick={() => onSelectPreOrderCategory(cat.id)}
+                subdued
+                onDark={onDark}
+                count={cat.count}
+              >
+                {getCategoryShopName(cat)}
+              </CategoryChip>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 手機：子分類（回到大類全選 → 再點上方 Wakeboarding） */}
-      {showSubRow && activeGroup && (
+      {!filters.preOrderOnly && showSubRow && activeGroup && (
         <div className="relative lg:hidden">
           <div
             className="relative z-21 max-w-7xl mx-auto flex gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

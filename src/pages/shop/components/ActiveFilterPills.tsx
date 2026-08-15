@@ -17,19 +17,12 @@ export function ActiveFilterPills({
   onClearAll,
 }: ActiveFilterPillsProps) {
   const pills: {
-    key: 'preorder' | 'brand' | 'search' | 'sort'
+    key: 'search' | 'sort'
     label: string
-    brand?: string
   }[] = []
 
   if (filters.sortBy !== 'newest') {
     pills.push({ key: 'sort', label: sortLabel(filters.sortBy) })
-  }
-  if (filters.preOrderOnly) {
-    pills.push({ key: 'preorder', label: SHOP_LABEL.preOrder })
-  }
-  for (const brand of filters.brands) {
-    pills.push({ key: 'brand', label: brand, brand })
   }
   if (filters.search.trim()) {
     pills.push({ key: 'search', label: `"${filters.search.trim()}"` })
@@ -43,7 +36,7 @@ export function ActiveFilterPills({
         <button
           key={`${pill.key}-${pill.label}`}
           type="button"
-          onClick={() => onClear(pill.key, pill.brand)}
+          onClick={() => onClear(pill.key)}
           className="inline-flex items-center gap-1 h-8 px-2.5 text-xs font-medium rounded-full bg-zinc-900 text-white"
         >
           <span>{pill.label}</span>

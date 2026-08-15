@@ -6,7 +6,6 @@ import { ShopHeader } from './components/ShopHeader'
 import { ProductCard } from './components/ProductCard'
 import { ActiveFilterPills } from './components/ActiveFilterPills'
 import { ShopFilterDrawer } from './components/ShopFilterDrawer'
-import { ShopFilterSidebar } from './components/ShopFilterSidebar'
 import { ShopCategoryBar } from './components/ShopMobileCategoryBar'
 import { ShopMobileListToolbar } from './components/ShopMobileListToolbar'
 import { ShopListHero } from './components/ShopListHero'
@@ -41,7 +40,8 @@ export function ShopList() {
     selectAll,
     setPreOrderOnly,
     selectCategory,
-    toggleBrand,
+    selectPreOrderBrand,
+    selectPreOrderCategory,
     setSortBy,
     clearRefinement,
     clearPillFilters,
@@ -78,12 +78,7 @@ export function ShopList() {
   const heroConfig = getShopHeroForFilters(filters, showFullHero)
   useShopHeroPreload(heroConfig)
   const collectionParent = getCollectionParentGroup(filters)
-  const showRefinePanel =
-    facets.preOrderCount > 0 || facets.brandCounts.size > 0
-  const mobileRefineCount =
-    filters.brands.length +
-    (filters.sortBy !== 'newest' ? 1 : 0) +
-    (filters.preOrderOnly ? 1 : 0)
+  const mobileRefineCount = filters.sortBy !== 'newest' ? 1 : 0
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -101,8 +96,14 @@ export function ShopList() {
             filters={filters}
             groupCounts={facets.groupCounts}
             categoryCounts={facets.categoryCounts}
+            preOrderCount={facets.preOrderCount}
+            preOrderBrandCounts={facets.preOrderBrandCounts}
+            preOrderCategoryCounts={facets.preOrderCategoryCounts}
             onSelectAll={selectAll}
             onSelectCategory={selectCategory}
+            onSelectPreOrder={() => setPreOrderOnly(true)}
+            onSelectPreOrderBrand={selectPreOrderBrand}
+            onSelectPreOrderCategory={selectPreOrderCategory}
             variant="dark"
             fadeFromHero
           />
@@ -111,24 +112,10 @@ export function ShopList() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="flex gap-8 items-start">
-          {showRefinePanel && (
-            <ShopFilterSidebar
-              filters={filters}
-              preOrderCount={facets.preOrderCount}
-              groupCounts={facets.groupCounts}
-              categoryCounts={facets.categoryCounts}
-              brandCounts={facets.brandCounts}
-              onSelectAll={selectAll}
-              onPreOrderOnlyChange={setPreOrderOnly}
-              onSelectCategory={selectCategory}
-              onToggleBrand={toggleBrand}
-            />
-          )}
-
           <div className="flex-1 min-w-0">
             <ShopMobileListToolbar
               refineCount={mobileRefineCount}
-              showRefine={showRefinePanel}
+              showRefine
               onOpenFilters={() => setDrawerOpen(true)}
             />
 
@@ -182,13 +169,7 @@ export function ShopList() {
         open={drawerOpen}
         resultCount={filteredProducts.length}
         filters={filters}
-        preOrderCount={facets.preOrderCount}
-        groupCounts={facets.groupCounts}
-        categoryCounts={facets.categoryCounts}
-        brandCounts={facets.brandCounts}
         onClose={() => setDrawerOpen(false)}
-        onPreOrderOnlyChange={setPreOrderOnly}
-        onToggleBrand={toggleBrand}
         onSortChange={setSortBy}
         onClearAll={clearRefinement}
       />

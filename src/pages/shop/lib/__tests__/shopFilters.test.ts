@@ -62,6 +62,19 @@ describe('normalizeFilterState', () => {
     expect(next.topLevel).toBe('Wakeboarding')
     expect(next.subCat).toBe(ALL_SUBCATS)
   })
+
+  it('keeps pre-order categories independent from catalog groups', () => {
+    const next = normalizeFilterState({
+      ...defaultFilterState(),
+      preOrderOnly: true,
+      topLevel: 'Wakeboarding',
+      subCat: 'lifejacket',
+      brands: ['Follow'],
+    })
+    expect(next.topLevel).toBe(ALL_GROUPS)
+    expect(next.subCat).toBe('lifejacket')
+    expect(next.brands).toEqual(['Follow'])
+  })
 })
 
 describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
