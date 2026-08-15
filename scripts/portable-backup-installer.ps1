@@ -80,10 +80,15 @@ if ($siteUrl -notmatch '^https://') {
 }
 
 $secret = Read-Host '貼上 Vercel CRON_SECRET（畫面不會顯示）' -AsSecureString
-$plainSecret = ConvertTo-PlainText -SecureValue $secret
+$plainSecret = (ConvertTo-PlainText -SecureValue $secret).Trim()
 if ([string]::IsNullOrWhiteSpace($plainSecret)) {
     throw '密鑰不能為空。'
 }
+if ($plainSecret -match '[\x00-\x1F\x7F]') {
+    throw '密鑰含有無效字元（常見是複製時多了換行）。請只貼單行密鑰後重試。'
+}
+# Rebuild SecureString from the trimmed value so DPAPI storage matches what the API expects.
+$secret = ConvertTo-SecureString -String $plainSecret -AsPlainText -Force
 $plainSecret = $null
 
 $keepDaysText = Read-Value -Prompt '備份保留天數' -Default '90'
@@ -101,7 +106,8 @@ New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
 
 # ConvertFrom-SecureString uses Windows DPAPI, so only this Windows user can decrypt it.
-$secret | ConvertFrom-SecureString | Set-Content -LiteralPath $secretPath -Encoding ASCII
+# Write without trailing newline: Set-Content adds CRLF and breaks ConvertTo-SecureString.
+[IO.File]::WriteAllText($secretPath, ($secret | ConvertFrom-SecureString))
 
 $config = [ordered]@{
     ApiUrl             = "$siteUrl/api/backup-full-database"
@@ -404,20 +410,25 @@ try {
     }
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 
-    $encryptedSecret = Get-Content -LiteralPath $script:Config.SecretPath -Raw -Encoding ASCII
+    $encryptedSecret = (Get-Content -LiteralPath $script:Config.SecretPath -Raw -Encoding ASCII).Trim()
     $secureSecret = $encryptedSecret | ConvertTo-SecureString
-    $plainSecret = ConvertTo-PlainText -SecureValue $secureSecret
+    $plainSecret = (ConvertTo-PlainText -SecureValue $secureSecret).Trim()
+    if ($plainSecret -match '[\x00-\x1F\x7F]') {
+        throw '密鑰含有無效字元。請重新執行安裝程式並只貼單行 CRON_SECRET。'
+    }
     $script:Headers = @{
         Authorization = "Bearer $plainSecret"
         'User-Agent'  = 'ESWake-Portable-Backup/1.0'
     }
 
     Write-BackupLog '開始下載完整資料庫備份。'
+    # -PassThru is required on Windows PowerShell 5.1: -OutFile alone returns $null.
     $response = Invoke-WebRequest `
         -Uri $script:Config.ApiUrl `
         -Method Get `
         -Headers $script:Headers `
         -OutFile $tempPath `
+        -PassThru `
         -TimeoutSec 330 `
         -UseBasicParsing
 
@@ -427,7 +438,14 @@ try {
     }
 
     $checksum = (Get-FileHash -LiteralPath $tempPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    $expectedChecksum = ([string]$response.Headers['X-Backup-SHA256']).Trim().ToLowerInvariant()
+    $shaHeader = $null
+    if ($null -ne $response -and $null -ne $response.Headers) {
+        $shaHeader = $response.Headers['X-Backup-SHA256']
+        if ($null -eq $shaHeader) {
+            $shaHeader = $response.Headers['x-backup-sha256']
+        }
+    }
+    $expectedChecksum = ([string]$shaHeader).Trim().ToLowerInvariant()
     if ($expectedChecksum -notmatch '^[a-f0-9]{64}$') {
         throw '伺服器未提供有效的 SHA-256 校驗碼。'
     }
