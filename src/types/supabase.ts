@@ -1148,6 +1148,7 @@ export type Database = {
           last_stock_in_at: string | null
           cover_image_url: string | null
           cover_image_path: string | null
+          cover_images: Json
           image_url: string | null
           image_path: string | null
           is_active: boolean
@@ -1171,6 +1172,7 @@ export type Database = {
           last_stock_in_at?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null
+          cover_images?: Json
           image_url?: string | null
           image_path?: string | null
           is_active?: boolean
@@ -1194,6 +1196,7 @@ export type Database = {
           last_stock_in_at?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null
+          cover_images?: Json
           image_url?: string | null
           image_path?: string | null
           is_active?: boolean

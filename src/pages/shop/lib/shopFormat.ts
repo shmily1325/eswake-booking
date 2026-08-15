@@ -13,6 +13,7 @@ import {
   getCategory,
   getCategoryShopName as getCategoryShopNameFromSchema,
 } from '../../admin/products/schema'
+import { normalizeVariantCoverImages } from '../../admin/products/coverImages'
 import { getVariantSellableStock } from './productAvailability'
 
 /** 把整數金額格式化成「NT$ 18,000」 */
@@ -73,11 +74,12 @@ export function isProductOutOfStock(variants: ProductVariantRow[]): boolean {
   return variants.every((v) => getVariantSellableStock(v) <= 0)
 }
 
-/** SKU 商城主圖：封面優先，沒有封面才用實品照 */
+/** SKU 商城主圖：封面 gallery 第 1 張優先，沒有封面才用實品照 */
 export function getVariantShopImageUrl(
-  v: Pick<ProductVariantRow, 'cover_image_url' | 'image_url'>,
+  v: Pick<ProductVariantRow, 'cover_image_url' | 'cover_image_path' | 'cover_images' | 'image_url'>,
 ): string | null {
-  return v.cover_image_url ?? v.image_url ?? null
+  const covers = normalizeVariantCoverImages(v.cover_images, v.cover_image_url, v.cover_image_path)
+  return covers[0]?.url ?? v.cover_image_url ?? v.image_url ?? null
 }
 
 /**

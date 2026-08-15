@@ -86,7 +86,7 @@ async function loadReferencedPaths() {
     fetchAllRows('products', 'cover_image_path,cover_image_url'),
     fetchAllRows(
       'product_variants',
-      'image_path,image_url,cover_image_path,cover_image_url',
+      'image_path,image_url,cover_image_path,cover_image_url,cover_images',
     ),
   ])
   const references = new Set()
@@ -100,6 +100,13 @@ async function loadReferencedPaths() {
     addPath(references, variant.cover_image_path)
     addPublicUrlPath(references, variant.image_url)
     addPublicUrlPath(references, variant.cover_image_url)
+    if (Array.isArray(variant.cover_images)) {
+      for (const img of variant.cover_images) {
+        if (!img || typeof img !== 'object') continue
+        addPath(references, img.path)
+        addPublicUrlPath(references, img.url)
+      }
+    }
   }
   return references
 }

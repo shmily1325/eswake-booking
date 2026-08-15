@@ -13,6 +13,7 @@ import {
   getCategoryShopName,
   getProductDetailHeroImageUrl,
 } from './lib/shopFormat'
+import { normalizeVariantCoverImages } from '../admin/products/coverImages'
 import {
   getVariantAvailability,
   isProductVisibleInShop,
@@ -263,7 +264,7 @@ function ProductDetailBody({
   const priceText = hasPrice ? formatPrice(selectedVariant!.price!) : '價格洽詢'
 
   /**
-   * 縮圖列：目前 SKU 的封面 + 實品照（若不同）。
+   * 縮圖列：目前 SKU 的封面 gallery + 實品照（若不同）。
    */
   const imageOptions = useMemo(() => {
     if (!selectedVariant) return []
@@ -274,7 +275,14 @@ function ProductDetailBody({
       seen.add(url)
       options.push({ url, label })
     }
-    add(selectedVariant.cover_image_url, SHOP_DETAIL.imageCover)
+    const covers = normalizeVariantCoverImages(
+      selectedVariant.cover_images,
+      selectedVariant.cover_image_url,
+      selectedVariant.cover_image_path,
+    )
+    covers.forEach((img, i) => {
+      add(img.url, i === 0 ? SHOP_DETAIL.imageCover : `${SHOP_DETAIL.imageCover} ${i + 1}`)
+    })
     add(selectedVariant.image_url, SHOP_DETAIL.imagePhoto)
     return options
   }, [selectedVariant])

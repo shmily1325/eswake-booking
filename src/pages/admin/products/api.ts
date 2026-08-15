@@ -247,6 +247,8 @@ export interface CreateVariantInput {
   pre_order_note?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
+  /** 封面 gallery；[0] 應與 cover_image_url/path 一致 */
+  cover_images?: Array<{ url: string; path: string }>
   image_url?: string | null
   image_path?: string | null
 }
@@ -323,6 +325,7 @@ export async function createVariant(input: CreateVariantInput): Promise<ProductV
     pre_order_note: availFields.pre_order_note,
     cover_image_url: input.cover_image_url ?? null,
     cover_image_path: input.cover_image_path ?? null,
+    cover_images: input.cover_images ?? [],
     image_url: input.image_url ?? null,
     image_path: input.image_path ?? null,
   }
@@ -345,6 +348,7 @@ export interface UpdateVariantInput {
   pre_order_note?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
+  cover_images?: Array<{ url: string; path: string }>
   image_url?: string | null
   image_path?: string | null
 }
@@ -359,6 +363,7 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
   if (input.stock !== undefined) patch.stock = Math.max(0, Math.round(input.stock))
   if (input.cover_image_url !== undefined) patch.cover_image_url = input.cover_image_url
   if (input.cover_image_path !== undefined) patch.cover_image_path = input.cover_image_path
+  if (input.cover_images !== undefined) patch.cover_images = input.cover_images
   if (input.image_url !== undefined) patch.image_url = input.image_url
   if (input.image_path !== undefined) patch.image_path = input.image_path
 

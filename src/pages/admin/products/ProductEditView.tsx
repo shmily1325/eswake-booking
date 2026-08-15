@@ -59,6 +59,13 @@ import {
   findSameModelCandidates,
   type ProductIdentityCandidate,
 } from './productIdentity'
+import {
+  coverImagesForDb,
+  createCoverImageClientKey,
+  draftCoverImagesFromVariant,
+  primaryCoverFromGallery,
+  type DraftCoverImage,
+} from './coverImages'
 
 interface ProductEditViewProps {
   /** 編輯模式：傳入 productId；新增模式：傳 null */
@@ -95,9 +102,10 @@ interface DraftVariant {
   /** 無庫存時是否開放預購（有庫存時忽略，自動為現貨） */
   acceptPreOrder: boolean
   last_stock_in_at: string | null
-  cover_image_url: string | null
-  cover_image_path: string | null
-  originalCoverImagePath: string | null
+  /** 封面 gallery；[0] 為主圖 */
+  cover_images: DraftCoverImage[]
+  /** 編輯前 DB 的全部封面 path（換圖後清 orphan） */
+  originalCoverImagePaths: string[]
   image_url: string | null
   image_path: string | null
   /**
@@ -129,6 +137,12 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
       attrs[k] = val == null ? '' : String(val)
     }
   }
+  const cover_images = draftCoverImagesFromVariant(
+    v.cover_images,
+    v.cover_image_url,
+    v.cover_image_path,
+    `variant-${v.id}`,
+  )
   return {
     clientKey: `variant-${v.id}`,
     id: v.id,
@@ -142,9 +156,8 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     reserved_qty: v.reserved_qty ?? 0,
     acceptPreOrder: acceptPreOrderFromVariant(v),
     last_stock_in_at: v.last_stock_in_at ?? null,
-    cover_image_url: v.cover_image_url ?? null,
-    cover_image_path: v.cover_image_path ?? null,
-    originalCoverImagePath: v.cover_image_path ?? null,
+    cover_images,
+    originalCoverImagePaths: cover_images.map((img) => img.path).filter(Boolean),
     image_url: v.image_url,
     image_path: v.image_path,
     originalImagePath: v.image_path,
@@ -164,9 +177,8 @@ function emptyDraft(): DraftVariant {
     reserved_qty: 0,
     acceptPreOrder: false,
     last_stock_in_at: null,
-    cover_image_url: null,
-    cover_image_path: null,
-    originalCoverImagePath: null,
+    cover_images: [],
+    originalCoverImagePaths: [],
     image_url: null,
     image_path: null,
     originalImagePath: null,
@@ -191,6 +203,8 @@ export function ProductEditView({
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  /** 正在把某筆 SKU 的封面／實品照套用到其他尺寸時，記住來源 index */
+  const [applyingImagesIdx, setApplyingImagesIdx] = useState<number | null>(null)
   const [labelCodeSavingId, setLabelCodeSavingId] = useState<string | null>(null)
   const [labelCodeGeneratingIdx, setLabelCodeGeneratingIdx] = useState<number | null>(null)
   const [original, setOriginal] = useState<ProductWithVariants | null>(null)
@@ -342,6 +356,21 @@ export function ProductEditView({
    * 複製最後一筆有效（非 pendingDelete）SKU 當新規格的範本。
    * 封面與實品照會複製成 Storage 新檔，避免多個 variant 共用同一 path。
    */
+  const copyDraftImage = async (
+    sourcePath: string | null,
+    storageFolder: 'variants' | 'covers',
+  ): Promise<{ url: string; path: string } | null> => {
+    if (!sourcePath) return null
+    try {
+      const copied = await copyProductImage(sourcePath, { storageFolder })
+      trackUpload(copied.path)
+      return { url: copied.publicUrl, path: copied.path }
+    } catch (e) {
+      console.error('[ProductEditView] image copy failed', sourcePath, e)
+      return null
+    }
+  }
+
   const handleDuplicateLast = async () => {
     const lastActive = [...drafts].reverse().find((d) => !d.pendingDelete)
     if (!lastActive) {
@@ -349,32 +378,29 @@ export function ProductEditView({
       return
     }
 
-    const copyOne = async (
-      sourcePath: string | null,
-      storageFolder: 'variants' | 'covers',
-    ): Promise<{ url: string; path: string } | null> => {
-      if (!sourcePath) return null
-      try {
-        const copied = await copyProductImage(sourcePath, { storageFolder })
-        trackUpload(copied.path)
-        return { url: copied.publicUrl, path: copied.path }
-      } catch (e) {
-        console.error('[ProductEditView] duplicate image copy failed', sourcePath, e)
-        return null
-      }
-    }
-
     setDuplicating(true)
     try {
-      const [cover, photo] = await Promise.all([
-        copyOne(lastActive.cover_image_path, 'covers'),
-        copyOne(lastActive.image_path, 'variants'),
-      ])
+      const coverCopies = await Promise.all(
+        lastActive.cover_images.map((img) => copyDraftImage(img.path || null, 'covers')),
+      )
+      const photo = await copyDraftImage(lastActive.image_path, 'variants')
 
-      if (
-        (lastActive.cover_image_path && !cover) ||
-        (lastActive.image_path && !photo)
-      ) {
+      const cover_images: DraftCoverImage[] = []
+      let coverFail = false
+      for (let i = 0; i < lastActive.cover_images.length; i++) {
+        const copied = coverCopies[i]
+        if (copied) {
+          cover_images.push({
+            clientKey: createCoverImageClientKey(),
+            url: copied.url,
+            path: copied.path,
+          })
+        } else if (lastActive.cover_images[i]?.path) {
+          coverFail = true
+        }
+      }
+
+      if (coverFail || (lastActive.image_path && !photo)) {
         toast.error('部分圖片複製失敗，其餘欄位已帶入')
       }
 
@@ -392,9 +418,8 @@ export function ProductEditView({
           reserved_qty: 0,
           acceptPreOrder: lastActive.acceptPreOrder,
           last_stock_in_at: null,
-          cover_image_url: cover?.url ?? null,
-          cover_image_path: cover?.path ?? null,
-          originalCoverImagePath: null,
+          cover_images,
+          originalCoverImagePaths: [],
           image_url: photo?.url ?? null,
           image_path: photo?.path ?? null,
           originalImagePath: null,
@@ -403,6 +428,93 @@ export function ProductEditView({
       setActiveSkuIndex(drafts.length)
     } finally {
       setDuplicating(false)
+    }
+  }
+
+  /**
+   * 將指定 SKU 的封面／實品照複製到本商品其他規格（同色不同尺寸共用圖）。
+   * 每個目標各存一份 Storage 檔，避免共用 path。
+   */
+  const handleApplyImagesToAllSizes = async (sourceIdx: number) => {
+    const source = drafts[sourceIdx]
+    if (!source || source.pendingDelete) return
+    if (source.cover_images.length === 0 && !source.image_path) {
+      toast.error('此規格還沒有封面或實品照')
+      return
+    }
+
+    const targetIndexes = drafts
+      .map((d, i) => ({ d, i }))
+      .filter(({ d, i }) => i !== sourceIdx && !d.pendingDelete)
+      .map(({ i }) => i)
+
+    if (targetIndexes.length === 0) {
+      toast.error('沒有其他尺寸可套用')
+      return
+    }
+
+    setApplyingImagesIdx(sourceIdx)
+    trackClick('product_sku_apply_images_all_sizes')
+    let failCount = 0
+    try {
+      const updates = new Map<number, Partial<DraftVariant>>()
+
+      for (const targetIdx of targetIndexes) {
+        const coverCopies = await Promise.all(
+          source.cover_images.map((img) => copyDraftImage(img.path || null, 'covers')),
+        )
+        const photo = await copyDraftImage(source.image_path, 'variants')
+
+        let coverFail = false
+        const cover_images: DraftCoverImage[] = []
+        for (let i = 0; i < source.cover_images.length; i++) {
+          const copied = coverCopies[i]
+          if (copied) {
+            cover_images.push({
+              clientKey: createCoverImageClientKey(),
+              url: copied.url,
+              path: copied.path,
+            })
+          } else if (source.cover_images[i]?.path || source.cover_images[i]?.url) {
+            // path 缺失（僅有 URL）或複製失敗
+            coverFail = true
+          }
+        }
+
+        const photoFail = Boolean(source.image_path && !photo)
+        const patch: Partial<DraftVariant> = {}
+        // 只有成功複製到至少一張封面時才覆寫，避免複製全失敗把目標清空
+        if (cover_images.length > 0) {
+          patch.cover_images = cover_images
+        }
+        if (source.image_path && photo) {
+          patch.image_url = photo.url
+          patch.image_path = photo.path
+        }
+        if (coverFail || photoFail || (source.cover_images.length > 0 && cover_images.length === 0)) {
+          failCount += 1
+        }
+        if (Object.keys(patch).length > 0) {
+          updates.set(targetIdx, patch)
+        }
+      }
+
+      if (updates.size > 0) {
+        setDrafts((prev) =>
+          prev.map((d, i) => {
+            const patch = updates.get(i)
+            return patch ? { ...d, ...patch } : d
+          }),
+        )
+      }
+
+      if (failCount > 0) {
+        toast.error(`已套用 ${updates.size} 筆，其中 ${failCount} 筆部分圖片複製失敗`)
+      } else {
+        toast.success(`已套用圖片到其他 ${updates.size} 個尺寸（記得按儲存）`)
+      }
+    } finally {
+      setApplyingImagesIdx(null)
     }
   }
 
@@ -671,6 +783,8 @@ export function ProductEditView({
         }
         const stockNum = Number(d.stock)
         const availability = deriveVariantAvailability(stockNum, d.acceptPreOrder)
+        const cover_images = coverImagesForDb(d.cover_images)
+        const primary = primaryCoverFromGallery(cover_images)
         const payload = {
           label_code: normalizeLabelCode(d.label_code),
           vendor_code: d.vendor_code,
@@ -679,8 +793,9 @@ export function ProductEditView({
           stock: stockNum,
           availability,
           pre_order_eta: null,
-          cover_image_url: d.cover_image_url,
-          cover_image_path: d.cover_image_path,
+          cover_image_url: primary.url,
+          cover_image_path: primary.path,
+          cover_images,
           image_url: d.image_url,
           image_path: d.image_path,
         }
@@ -693,7 +808,7 @@ export function ProductEditView({
                 ...row,
                 id: createdVariant.id,
                 savedLabelCode: createdVariant.label_code ?? '',
-                originalCoverImagePath: createdVariant.cover_image_path,
+                originalCoverImagePaths: cover_images.map((img) => img.path).filter(Boolean),
                 originalImagePath: createdVariant.image_path,
               }
             : row))
@@ -706,10 +821,12 @@ export function ProductEditView({
       for (const d of drafts) {
         if (d.pendingDelete) {
           // 軟刪不清圖：原始 path 保留，以防誤刪復原
-          if (d.originalCoverImagePath) finalPaths.add(d.originalCoverImagePath)
+          for (const p of d.originalCoverImagePaths) finalPaths.add(p)
           if (d.originalImagePath) finalPaths.add(d.originalImagePath)
         } else {
-          if (d.cover_image_path) finalPaths.add(d.cover_image_path)
+          for (const img of d.cover_images) {
+            if (img.path) finalPaths.add(img.path)
+          }
           if (d.image_path) finalPaths.add(d.image_path)
         }
       }
@@ -719,8 +836,8 @@ export function ProductEditView({
       const toRemove = new Set<string>()
       for (const d of drafts) {
         if (d.pendingDelete) continue
-        if (d.originalCoverImagePath && d.originalCoverImagePath !== d.cover_image_path) {
-          if (!finalPaths.has(d.originalCoverImagePath)) toRemove.add(d.originalCoverImagePath)
+        for (const originalPath of d.originalCoverImagePaths) {
+          if (!finalPaths.has(originalPath)) toRemove.add(originalPath)
         }
         if (d.originalImagePath && d.originalImagePath !== d.image_path) {
           if (!finalPaths.has(d.originalImagePath)) toRemove.add(d.originalImagePath)
@@ -798,7 +915,7 @@ export function ProductEditView({
       d.vendor_code.trim() !== '' ||
       d.label_code.trim() !== '' ||
       Object.values(d.attributes).some(value => value.trim() !== '') ||
-      Boolean(d.image_path || d.cover_image_path),
+      Boolean(d.image_path || d.cover_images.length > 0),
     )
     if (hasDraftWork && !window.confirm('前往既有商品後，目前尚未儲存的 SKU 草稿不會自動合併。確定繼續？')) {
       return
@@ -1266,6 +1383,10 @@ export function ProductEditView({
             onRemove={() => handleRemoveVariant(idx)}
             onRestore={() => handleRestoreVariant(idx)}
             onImageUpload={trackUpload}
+            otherSkuCount={drafts.filter((x, i) => i !== idx && !x.pendingDelete).length}
+            applyingImages={applyingImagesIdx === idx}
+            imagesBusy={applyingImagesIdx != null || duplicating}
+            onApplyImagesToAllSizes={() => void handleApplyImagesToAllSizes(idx)}
             labelCodeSaving={d.id != null && labelCodeSavingId === d.id}
             onSaveLabelCode={() => void handleSaveLabelCode(idx)}
             labelCodeGenerating={labelCodeGeneratingIdx === idx}
@@ -1294,7 +1415,7 @@ export function ProductEditView({
                   size="small"
                   data-track="product_sku_duplicate"
                   onClick={() => void handleDuplicateLast()}
-                  disabled={saving || duplicating}
+                  disabled={saving || duplicating || applyingImagesIdx != null}
                 >
                   {duplicating ? '複製中…' : '⎘ 複製上一筆'}
                 </Button>
@@ -1501,6 +1622,12 @@ interface VariantBlockProps {
   onRemove: () => void
   onRestore: () => void
   onImageUpload: (path: string) => void
+  /** 本商品其他可套用的規格數（不含自己、不含待刪） */
+  otherSkuCount?: number
+  applyingImages?: boolean
+  /** 任一 SKU 正在套用／複製圖片時，鎖住按鈕 */
+  imagesBusy?: boolean
+  onApplyImagesToAllSizes?: () => void
   labelCodeSaving?: boolean
   onSaveLabelCode?: () => void
   labelCodeGenerating?: boolean
@@ -1543,6 +1670,10 @@ function VariantBlock({
   onRemove,
   onRestore,
   onImageUpload,
+  otherSkuCount = 0,
+  applyingImages = false,
+  imagesBusy = false,
+  onApplyImagesToAllSizes,
   labelCodeSaving = false,
   onSaveLabelCode,
   labelCodeGenerating = false,
@@ -1806,6 +1937,45 @@ function VariantBlock({
     </div>
   )
 
+  const hasAnyImage = Boolean(draft.cover_images.length > 0 || draft.image_path)
+  const applyImagesSection =
+    !readOnly && onApplyImagesToAllSizes ? (
+      <div style={{ marginTop: 10 }}>
+        <Button
+          variant="outline"
+          size="small"
+          data-track="product_sku_apply_images_all_sizes"
+          disabled={disabled || draft.pendingDelete || imagesBusy || !hasAnyImage || otherSkuCount === 0}
+          onClick={onApplyImagesToAllSizes}
+          title={
+            !hasAnyImage
+              ? '請先上傳此規格的封面或實品照'
+              : otherSkuCount === 0
+                ? '沒有其他尺寸可套用'
+                : '將此規格的封面與實品照複製到本商品其他尺寸'
+          }
+        >
+          {applyingImages
+            ? '套用中…'
+            : otherSkuCount > 0
+              ? `套用圖片到其他 ${otherSkuCount} 個尺寸`
+              : '套用圖片到其他尺寸'}
+        </Button>
+        {hasAnyImage && otherSkuCount > 0 && (
+          <p
+            style={{
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.text.secondary,
+              margin: '6px 0 0',
+              lineHeight: 1.4,
+            }}
+          >
+            同色不同尺寸可共用圖；會各存一份，套用後記得按儲存。
+          </p>
+        )}
+      </div>
+    ) : null
+
   // 標籤上的尺寸（含 schema 設定的單位後綴，如 cm/mm）
   const labelSizeField = schemaFields.find((f) => f.key === 'size')
   const labelSizeRaw = (draft.attributes.size ?? '').trim()
@@ -1968,18 +2138,19 @@ function VariantBlock({
     </div>
   )
 
+  const primaryCoverUrl = draft.cover_images[0]?.url ?? null
+
   const coverEditor = (
     <CoverImageEditor
       compact
-      value={draft.cover_image_url}
-      path={draft.cover_image_path}
+      images={draft.cover_images}
       entityId={draft.id}
       storageFolder="covers"
       brand={brand}
       model={model}
       vendorCode={draft.vendor_code}
       disabled={disabled || draft.pendingDelete}
-      onChange={(next) => onChange({ cover_image_url: next.url, cover_image_path: next.path })}
+      onChange={(cover_images) => onChange({ cover_images })}
       onUpload={onImageUpload}
     />
   )
@@ -2038,9 +2209,9 @@ function VariantBlock({
           color: designSystem.colors.text.disabled,
         }}
       >
-        {draft.cover_image_url ? (
+        {primaryCoverUrl ? (
           <img
-            src={draft.cover_image_url}
+            src={primaryCoverUrl}
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
@@ -2056,7 +2227,11 @@ function VariantBlock({
             color: designSystem.colors.text.primary,
           }}
         >
-          {draft.cover_image_url ? '封面 ✓' : '封面 未設'}
+          {primaryCoverUrl
+            ? draft.cover_images.length > 1
+              ? `封面 ✓（${draft.cover_images.length} 張）`
+              : '封面 ✓'
+            : '封面 未設'}
         </div>
         {!isMobile && (
           <div
@@ -2185,6 +2360,7 @@ function VariantBlock({
               {productPhotoSection}
               {labelCodeSection}
               {collapsibleCoverSection}
+              {applyImagesSection}
             </>
           )}
         </>

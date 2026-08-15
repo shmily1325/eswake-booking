@@ -43,6 +43,7 @@ function mockItem(
       last_stock_in_at: null,
       cover_image_url: null,
       cover_image_path: null,
+      cover_images: [],
       image_url: null,
       image_path: null,
       is_active: true,
