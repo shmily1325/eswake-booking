@@ -9,6 +9,7 @@ export const SHOP_LABEL = {
   brand: 'Brand',
   availability: 'Availability',
   category: 'Category',
+  type: 'Type',
   preOrder: 'Pre-Order',
   preOrderOnly: 'Pre-Order only',
   clear: 'Clear',

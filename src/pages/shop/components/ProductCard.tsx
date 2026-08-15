@@ -22,6 +22,8 @@ import {
 interface ProductCardProps {
   product: ProductRow
   variants: ProductVariantRow[]
+  /** 已在預購頁時省略 Pre-Order 字樣，只保留到貨時間 */
+  inPreOrderView?: boolean
 }
 
 function cardNavigationState(
@@ -35,7 +37,11 @@ function cardNavigationState(
   }
 }
 
-export function ProductCard({ product, variants }: ProductCardProps) {
+export function ProductCard({
+  product,
+  variants,
+  inPreOrderView = false,
+}: ProductCardProps) {
   const location = useLocation()
   const returnTo = shopListPathFromLocation(
     location.pathname,
@@ -64,12 +70,18 @@ export function ProductCard({ product, variants }: ProductCardProps) {
           fallback={<NoImagePlaceholder />}
         />
 
-        {summary.hasPreOrder && (
+        {summary.hasPreOrder && !inPreOrderView && (
           <div className="absolute top-2 left-2 max-w-[85%] bg-amber-600 text-white text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded shadow-sm leading-tight">
             {SHOP_LABEL.preOrder}
             {summary.preOrderEta ? (
               <span className="font-normal opacity-90"> · {summary.preOrderEta}</span>
             ) : null}
+          </div>
+        )}
+
+        {summary.hasPreOrder && inPreOrderView && summary.preOrderEta && (
+          <div className="absolute top-2 left-2 max-w-[85%] rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-white backdrop-blur-sm">
+            {summary.preOrderEta}
           </div>
         )}
       </div>

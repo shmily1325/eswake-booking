@@ -53,13 +53,14 @@ export function useShopFilters(products: ProductWithVariants[]) {
       preOrderOnly: true,
     })
     const preOrderBrandCounts = computeBrandCounts(preOrderNavProducts)
-    const selectedBrandProducts =
+    // 類型列常駐：未選品牌時列出全部預購商品的類型
+    const preOrderCategoryPool =
       filters.brands.length === 0
-        ? []
+        ? preOrderNavProducts
         : preOrderNavProducts.filter((p) =>
             filters.brands.includes((p.brand ?? '').trim()),
           )
-    const preOrderCategoryCounts = computeFacets(selectedBrandProducts).categoryCounts
+    const preOrderCategoryCounts = computeFacets(preOrderCategoryPool).categoryCounts
     return {
       ...navFacets,
       brandCounts,
@@ -135,13 +136,14 @@ export function useShopFilters(products: ProductWithVariants[]) {
   )
 
   const selectPreOrderBrand = useCallback(
-    (brand: string) => {
+    (brand: string | null) => {
       writeFilters((prev) => ({
         ...prev,
         preOrderOnly: true,
         topLevel: ALL_GROUPS,
+        // 換品牌時類型回到全部，避免停在新品牌沒有的類型上
         subCat: ALL_SUBCATS,
-        brands: prev.brands[0] === brand ? [] : [brand],
+        brands: brand == null || prev.brands[0] === brand ? [] : [brand],
       }))
     },
     [writeFilters],

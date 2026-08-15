@@ -7,6 +7,7 @@ import { ProductCard } from './components/ProductCard'
 import { ActiveFilterPills } from './components/ActiveFilterPills'
 import { ShopFilterDrawer } from './components/ShopFilterDrawer'
 import { ShopCategoryBar } from './components/ShopMobileCategoryBar'
+import { ShopPreOrderRefineBar } from './components/ShopPreOrderRefineBar'
 import { ShopMobileListToolbar } from './components/ShopMobileListToolbar'
 import { ShopListHero } from './components/ShopListHero'
 import { useShopFilters } from './hooks/useShopFilters'
@@ -97,13 +98,9 @@ export function ShopList() {
             groupCounts={facets.groupCounts}
             categoryCounts={facets.categoryCounts}
             preOrderCount={facets.preOrderCount}
-            preOrderBrandCounts={facets.preOrderBrandCounts}
-            preOrderCategoryCounts={facets.preOrderCategoryCounts}
             onSelectAll={selectAll}
             onSelectCategory={selectCategory}
             onSelectPreOrder={() => setPreOrderOnly(true)}
-            onSelectPreOrderBrand={selectPreOrderBrand}
-            onSelectPreOrderCategory={selectPreOrderCategory}
             variant="dark"
             fadeFromHero
           />
@@ -125,6 +122,16 @@ export function ShopList() {
                 onSortChange={setSortBy}
               />
             </div>
+
+            {filters.preOrderOnly && (
+              <ShopPreOrderRefineBar
+                filters={filters}
+                brandCounts={facets.preOrderBrandCounts}
+                categoryCounts={facets.preOrderCategoryCounts}
+                onSelectBrand={selectPreOrderBrand}
+                onSelectCategory={selectPreOrderCategory}
+              />
+            )}
 
             <ActiveFilterPills
               filters={filters}
@@ -157,7 +164,12 @@ export function ShopList() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                 {filteredProducts.map((p) => (
-                  <ProductCard key={p.id} product={p} variants={p.variants} />
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    variants={p.variants}
+                    inPreOrderView={filters.preOrderOnly}
+                  />
                 ))}
               </div>
             )}
