@@ -454,7 +454,6 @@ export function ProductEditView({
     }
 
     setApplyingImagesIdx(sourceIdx)
-    trackClick('product_sku_apply_images_all_sizes')
     let failCount = 0
     try {
       const updates = new Map<number, Partial<DraftVariant>>()
@@ -1941,12 +1940,7 @@ function VariantBlock({
   const applyImagesSection =
     !readOnly && onApplyImagesToAllSizes ? (
       <div style={{ marginTop: 10 }}>
-        <Button
-          variant="outline"
-          size="small"
-          data-track="product_sku_apply_images_all_sizes"
-          disabled={disabled || draft.pendingDelete || imagesBusy || !hasAnyImage || otherSkuCount === 0}
-          onClick={onApplyImagesToAllSizes}
+        <span
           title={
             !hasAnyImage
               ? '請先上傳此規格的封面或實品照'
@@ -1955,12 +1949,20 @@ function VariantBlock({
                 : '將此規格的封面與實品照複製到本商品其他尺寸'
           }
         >
-          {applyingImages
-            ? '套用中…'
-            : otherSkuCount > 0
-              ? `套用圖片到其他 ${otherSkuCount} 個尺寸`
-              : '套用圖片到其他尺寸'}
-        </Button>
+          <Button
+            variant="outline"
+            size="small"
+            data-track="product_sku_apply_images_all_sizes"
+            disabled={disabled || draft.pendingDelete || imagesBusy || !hasAnyImage || otherSkuCount === 0}
+            onClick={onApplyImagesToAllSizes}
+          >
+            {applyingImages
+              ? '套用中…'
+              : otherSkuCount > 0
+                ? `套用圖片到其他 ${otherSkuCount} 個尺寸`
+                : '套用圖片到其他尺寸'}
+          </Button>
+        </span>
         {hasAnyImage && otherSkuCount > 0 && (
           <p
             style={{
