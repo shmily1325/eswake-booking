@@ -5,7 +5,7 @@
  * Primary task: scan order/item state without rainbow chrome competing with actions.
  */
 import type { ShopOrderItemWithVariant, ShopOrderWithItems } from './types'
-import { formatAttributes } from '../products/schema'
+import { formatAttributes, formatProductTitle } from '../products/schema'
 import { getLocalDateString } from '../../../utils/date'
 import { designSystem } from '../../../styles/designSystem'
 
@@ -185,7 +185,7 @@ export function deliveryMethodLabel(method: string): string {
 export function formatOrderItemLabel(item: ShopOrderItemWithVariant): string {
   const p = item.variant?.product
   if (!p || !item.variant) return '商品'
-  const title = `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''}`
+  const title = formatProductTitle(p)
   return `${title} · ${formatAttributes(p.category, item.variant.attributes)}`
 }
 
@@ -196,7 +196,7 @@ export function formatOrderItemParts(item: ShopOrderItemWithVariant): {
   const p = item.variant?.product
   if (!p || !item.variant) return { title: '商品', subtitle: '' }
   return {
-    title: `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''}`,
+    title: formatProductTitle(p),
     subtitle: formatAttributes(p.category, item.variant.attributes),
   }
 }

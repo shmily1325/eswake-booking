@@ -4,6 +4,8 @@ export interface ProductIdentityCandidate {
   brand: string
   model: string
   modelYear?: number | null
+  /** 商品卡顏色；null/空 = 無顏色品項 */
+  color?: string | null
   coverImageUrl?: string | null
   variantCount?: number
 }
@@ -16,17 +18,25 @@ export function normalizeProductIdentityPart(value: string): string {
     .toLocaleLowerCase('en-US')
 }
 
+function normalizeProductColorPart(color: string | null | undefined): string {
+  const trimmed = color?.trim() ?? ''
+  if (!trimmed) return 'no-color'
+  return normalizeProductIdentityPart(trimmed)
+}
+
 export function getProductIdentityKey(
   category: string,
   brand: string,
   model: string,
   modelYear: number | null = null,
+  color: string | null = null,
 ): string {
   return [
     normalizeProductIdentityPart(category),
     normalizeProductIdentityPart(brand),
     normalizeProductIdentityPart(model),
     modelYear == null ? 'unknown-year' : String(modelYear),
+    normalizeProductColorPart(color),
   ].join('\u0000')
 }
 
@@ -36,20 +46,22 @@ export function findExactProductIdentityMatch(
   brand: string,
   model: string,
   modelYear: number | null = null,
+  color: string | null = null,
 ): ProductIdentityCandidate | null {
   if (!category.trim() || !brand.trim() || !model.trim()) return null
-  const key = getProductIdentityKey(category, brand, model, modelYear)
+  const key = getProductIdentityKey(category, brand, model, modelYear, color)
   return products.find(
     product => getProductIdentityKey(
       product.category,
       product.brand,
       product.model,
       product.modelYear ?? null,
+      product.color ?? null,
     ) === key,
   ) ?? null
 }
 
-/** 同分類、品牌、型號的商品；年份可不同，用於建立前的人工作業提醒。 */
+/** 同分類、品牌、型號的商品；年份／顏色可不同，用於建立前的人工作業提醒。 */
 export function findSameModelCandidates(
   products: readonly ProductIdentityCandidate[],
   category: string,

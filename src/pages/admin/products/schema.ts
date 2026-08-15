@@ -113,14 +113,53 @@ export function genderSearchTokens(raw: unknown): string[] {
   return []
 }
 
-/** 儲存前正規化 attributes（目前僅 gender） */
+/** 儲存前正規化 attributes（gender；顏色已升商品層故從 SKU 移除） */
 export function normalizeVariantAttributes(
   attributes: Record<string, string>,
 ): Record<string, string> {
   const out = { ...attributes }
   const g = normalizeGenderValue(out.gender)
   if (g) out.gender = g
+  else if ('gender' in out && (out.gender == null || String(out.gender).trim() === '')) {
+    delete out.gender
+  }
+  delete out.color
   return out
+}
+
+/**
+ * 商品卡標題列（不含品牌）：型號 · 顏色 · 年份
+ * 例：Affiliate · 綠 · 2027
+ */
+export function formatProductModelLine(
+  product: {
+    model?: string | null
+    color?: string | null
+    model_year?: number | null
+  },
+  unnamed = '(Unnamed product)',
+): string {
+  const parts: string[] = []
+  const model = product.model?.trim()
+  parts.push(model || unnamed)
+  const color = product.color?.trim()
+  if (color) parts.push(color)
+  if (product.model_year != null) parts.push(String(product.model_year))
+  return parts.join(' · ')
+}
+
+/** 品牌 + 型號列（訂單／alt 用） */
+export function formatProductTitle(
+  product: {
+    brand?: string | null
+    model?: string | null
+    color?: string | null
+    model_year?: number | null
+  },
+): string {
+  const brand = product.brand?.trim() ?? ''
+  const line = formatProductModelLine(product, '')
+  return [brand, line].filter(Boolean).join(' ').trim()
 }
 
 export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
@@ -149,7 +188,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
       // C/W 用 text 是為了支援童裝的區間值，例如 "71-81"
       { key: 'chest', label: 'C', type: 'text', required: false },
       { key: 'waist', label: 'W', type: 'text', required: false },
-      { key: 'color', label: '顏色', type: 'text', required: false },
+      // 顏色已提升到 products.color（商品卡層）
     ],
   },
   wetsuit: {
@@ -180,7 +219,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
       },
       // 尺碼系統混雜（XS/S/M/L/LG/數字…），用 text 自由填
       { key: 'size', label: '尺寸', type: 'text', required: false },
-      { key: 'color', label: '顏色', type: 'text', required: false },
+      // 顏色已提升到 products.color（商品卡層）
     ],
   },
   // ===== 服飾類（一般行）=====
@@ -287,7 +326,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopGroup: 'Wakeboarding',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
-      { key: 'color', label: '顏色', type: 'text', required: false },
+      // 顏色已提升到 products.color（商品卡層）
     ],
   },
 
@@ -368,7 +407,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
     shopGroup: 'Wakesurfing',
     fields: [
       { key: 'size', label: '尺寸', type: 'text', required: false },
-      { key: 'color', label: '顏色', type: 'text', required: false },
+      // 顏色已提升到 products.color（商品卡層）
     ],
   },
 }

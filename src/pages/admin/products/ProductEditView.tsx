@@ -15,6 +15,7 @@ import { ImageUploader } from './ImageUploader'
 import {
   CATEGORY_SCHEMAS,
   formatAttributes,
+  formatProductModelLine,
   getSkuFields,
   normalizeGenderValue,
   normalizeVariantAttributes,
@@ -213,6 +214,7 @@ export function ProductEditView({
   const [brand, setBrand] = useState('')
   const [model, setModel] = useState('')
   const [modelYear, setModelYear] = useState('')
+  const [color, setColor] = useState('')
   const [description, setDescription] = useState('')
   /**
    * 是否上架到商城（/shop 對外可見）。
@@ -274,6 +276,7 @@ export function ProductEditView({
     const value = Number(modelYear)
     return Number.isInteger(value) ? value : null
   }, [modelYear])
+  const normalizedProductColor = useMemo(() => color.trim() || null, [color])
   const sameModelCandidates = useMemo(
     () => findSameModelCandidates(existingProducts, category, brand, model),
     [existingProducts, category, brand, model],
@@ -285,16 +288,18 @@ export function ProductEditView({
       brand,
       model,
       parsedModelYear,
+      normalizedProductColor,
     ),
-    [existingProducts, category, brand, model, parsedModelYear],
+    [existingProducts, category, brand, model, parsedModelYear, normalizedProductColor],
   )
   const identityMatch = localIdentityMatch ?? serverIdentityMatch
   const identityNeedsDecision = isNew
     && !confirmedSeparateProduct
     && Boolean(identityMatch || (parsedModelYear == null && sameModelCandidates.length > 0))
 
-  /** 同一卡有 2+ 種 color → 維持 SKU 封面；否則用商品卡封面 */
+  /** 顏色已在商品層；若 SKU 仍殘留 2+ color 才當多色舊卡 */
   const isMultiColorProduct = useMemo(() => {
+    if (normalizedProductColor) return false
     const colors = new Set<string>()
     for (const d of drafts) {
       if (d.pendingDelete) continue
@@ -302,14 +307,14 @@ export function ProductEditView({
       if (c) colors.add(c)
     }
     return colors.size >= 2
-  }, [drafts])
+  }, [drafts, normalizedProductColor])
   const useProductLevelCovers = !isMultiColorProduct
   const productEntityId = productId ?? createdProductId
 
   useEffect(() => {
     setServerIdentityMatch(null)
     setConfirmedSeparateProduct(false)
-  }, [category, brand, model, modelYear])
+  }, [category, brand, model, modelYear, color])
 
   useEffect(() => {
     if (isNew) return
@@ -328,6 +333,7 @@ export function ProductEditView({
         setBrand(p.brand)
         setModel(p.model)
         setModelYear(p.model_year?.toString() ?? '')
+        setColor(p.color ?? '')
         setDescription(p.description ?? '')
         setIsPublic(p.is_public)
         const loadedProductCovers = draftCoverImagesFromVariant(
@@ -741,10 +747,11 @@ export function ProductEditView({
               brand,
               model,
               parsedModelYear,
+              normalizedProductColor,
             )
             if (duplicate) {
               setServerIdentityMatch(duplicate)
-              throw new Error('找到相同型號與年份的商品，請先確認要加入既有商品或另建商品')
+              throw new Error('找到相同型號、年份與顏色的商品，請先確認要加入既有商品或另建商品')
             }
           }
           const productCovers = coverImagesForDb(productCoverImages)
@@ -754,6 +761,7 @@ export function ProductEditView({
             brand,
             model,
             model_year: parsedModelYear,
+            color: normalizedProductColor,
             description: description.trim() || null,
             cover_images: productCovers,
             cover_image_url: productPrimary.url,
@@ -772,6 +780,7 @@ export function ProductEditView({
             brand,
             model,
             model_year: parsedModelYear,
+            color: normalizedProductColor,
             description: description.trim() || null,
             cover_images: productCovers,
             cover_image_url: productPrimary.url,
@@ -789,6 +798,7 @@ export function ProductEditView({
           brand,
           model,
           model_year: parsedModelYear,
+          color: normalizedProductColor,
           description: description.trim() || null,
           cover_images: productCovers,
           cover_image_url: productPrimary.url,
@@ -1274,7 +1284,7 @@ export function ProductEditView({
                 <div style={{ fontSize: getFontSize('bodySmall', isMobile), lineHeight: 1.5 }}>
                   <strong>找到同型號商品，請先確認要放在哪一張商品卡。</strong>
                   <div style={{ marginTop: 4 }}>
-                    尺寸等規格請加入既有商品；不同年份或外觀才建立新商品。年份無法確認可以留空。
+                    尺寸等規格請加入既有商品；不同年份、顏色或外觀才建立新商品。年份無法確認可以留空。
                   </div>
                 </div>
                 <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
@@ -1292,9 +1302,11 @@ export function ProductEditView({
                       }}
                     >
                       <span style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
-                        {candidate.brand} {candidate.model}
-                        {' · '}
-                        {candidate.modelYear != null ? `${candidate.modelYear} 年` : '年份不詳'}
+                        {candidate.brand} {formatProductModelLine({
+                          model: candidate.model,
+                          color: candidate.color,
+                          model_year: candidate.modelYear,
+                        })}
                         {candidate.variantCount != null ? ` · ${candidate.variantCount} 個 SKU` : ''}
                       </span>
                       {onOpenExistingProduct && (
@@ -1360,6 +1372,20 @@ export function ProductEditView({
                 ))}
               </div>
             )}
+          </div>
+          <div>
+            <label style={labelStyle}>顏色（選填）</label>
+            <input
+              style={inputStyle}
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              placeholder="例如：黑；板／鞋等可留空"
+              disabled={saving || readOnly}
+              autoComplete="off"
+            />
+            <div style={{ marginTop: 4, fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
+              一色一卡：顏色掛在商品卡，SKU 只保留尺寸等規格。
+            </div>
           </div>
           <div>
             <label style={labelStyle}>年份（選填）</label>

@@ -5,6 +5,7 @@ import type { VariantListItem } from './types'
 export function buildVariantSearchHaystack(item: VariantListItem): string {
   const { product, variant } = item
   const parts: string[] = [product.brand, product.model]
+  if (product.color?.trim()) parts.push(product.color.trim())
   if (product.model_year != null) parts.push(String(product.model_year))
 
   const code = variant.vendor_code?.trim()

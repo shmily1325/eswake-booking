@@ -12,7 +12,7 @@ import { DecimalTextInput, MoneyInput } from '../../../components/ui/numericInpu
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { designSystem, getButtonStyle, getBookingChoiceStyle, getFontSize } from '../../../styles/designSystem'
-import { formatAttributes } from '../products/schema'
+import { formatAttributes, formatProductTitle } from '../products/schema'
 import { settleShopOrder, shopOrderErrorMessage } from './api'
 import {
   applyDiscountToSubtotal,
@@ -54,7 +54,7 @@ function buildLineStates(order: ShopOrderWithItems): SettleLineState[] {
     .map((it): SettleLineState => {
       const p = it.variant?.product
       const label = p
-        ? `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''} · ${formatAttributes(p.category, it.variant!.attributes)}`
+        ? `${formatProductTitle(p)} · ${formatAttributes(p.category, it.variant!.attributes)}`
         : '商品'
       const qty = it.qty_pending_bill
       const unit_price = it.unit_price

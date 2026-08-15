@@ -19,6 +19,8 @@ import {
   CATEGORY_SCHEMAS,
   SHOP_GROUPS,
   formatAttributes,
+  formatProductModelLine,
+  formatProductTitle,
   getAllCategories,
   getCategory,
   getCategoryShopName,
@@ -430,6 +432,7 @@ export function ProductManagement({
               brand: p.brand,
               model: p.model,
               modelYear: p.model_year,
+              color: p.color,
               coverImageUrl: p.cover_image_url,
               variantCount: p.variants.length,
             }))}
@@ -832,7 +835,7 @@ function StockCheckResult({
               color: colors.text.primary,
             }}
           >
-            {product.brand} {product.model}
+            {formatProductTitle(product)}
           </div>
           <div
             style={{
@@ -1729,11 +1732,11 @@ function GalleryCard({
       <div
         role={imageUrl && onImagePreview ? 'button' : undefined}
         tabIndex={imageUrl && onImagePreview ? 0 : undefined}
-        aria-label={imageUrl && onImagePreview ? `放大查看 ${product.brand} ${product.model}` : undefined}
+        aria-label={imageUrl && onImagePreview ? `放大查看 ${formatProductTitle(product)}` : undefined}
         onClick={imageUrl && onImagePreview
           ? (event) => {
               event.stopPropagation()
-              onImagePreview(imageUrl, `${product.brand} ${product.model}`)
+              onImagePreview(imageUrl, formatProductTitle(product))
             }
           : undefined}
         onKeyDown={imageUrl && onImagePreview
@@ -1741,7 +1744,7 @@ function GalleryCard({
               if (event.key !== 'Enter' && event.key !== ' ') return
               event.preventDefault()
               event.stopPropagation()
-              onImagePreview(imageUrl, `${product.brand} ${product.model}`)
+              onImagePreview(imageUrl, formatProductTitle(product))
             }
           : undefined}
         style={{
@@ -1810,7 +1813,7 @@ function GalleryCard({
           {product.brand}
         </div>
         <div
-          title={product.model}
+          title={formatProductModelLine(product)}
           style={{
             fontSize: getFontSize('bodySmall', false),
             fontWeight: 700,
@@ -1821,8 +1824,7 @@ function GalleryCard({
             lineHeight: 1.3,
           }}
         >
-          {product.model}
-          {product.model_year != null ? ` · ${product.model_year}` : ''}
+          {formatProductModelLine(product)}
         </div>
         <div style={{ marginTop: 4, display: 'grid', gap: 3 }}>
           {visibleItems.map((current) => {
@@ -2113,11 +2115,11 @@ function MobileListRow({
         <div
           role={imageUrl ? 'button' : undefined}
           tabIndex={imageUrl ? 0 : undefined}
-          aria-label={imageUrl ? `放大查看 ${product.brand} ${product.model}` : undefined}
+          aria-label={imageUrl ? `放大查看 ${formatProductTitle(product)}` : undefined}
           onClick={imageUrl
             ? (event) => {
                 event.stopPropagation()
-                onImagePreview(imageUrl, `${product.brand} ${product.model}`)
+                onImagePreview(imageUrl, formatProductTitle(product))
               }
             : undefined}
           onKeyDown={imageUrl
@@ -2125,7 +2127,7 @@ function MobileListRow({
                 if (event.key !== 'Enter' && event.key !== ' ') return
                 event.preventDefault()
                 event.stopPropagation()
-                onImagePreview(imageUrl, `${product.brand} ${product.model}`)
+                onImagePreview(imageUrl, formatProductTitle(product))
               }
             : undefined}
           style={{
@@ -2181,10 +2183,9 @@ function MobileListRow({
                   textOverflow: 'ellipsis',
                   lineHeight: 1.3,
                 }}
-                title={product.model}
+                title={formatProductModelLine(product)}
               >
-                {product.model}
-                {product.model_year != null ? ` · ${product.model_year}` : ''}
+                {formatProductModelLine(product)}
               </div>
             </div>
             {canEdit && (
@@ -2401,11 +2402,11 @@ function DesktopTable({
                     <div
                       role={imageUrl ? 'button' : undefined}
                       tabIndex={imageUrl ? 0 : undefined}
-                      aria-label={imageUrl ? `放大查看 ${it.product.brand} ${it.product.model}` : undefined}
+                      aria-label={imageUrl ? `放大查看 ${formatProductTitle(it.product)}` : undefined}
                       onClick={imageUrl
                         ? (event) => {
                             event.stopPropagation()
-                            onImagePreview(imageUrl, `${it.product.brand} ${it.product.model}`)
+                            onImagePreview(imageUrl, formatProductTitle(it.product))
                           }
                         : undefined}
                       onKeyDown={imageUrl
@@ -2413,7 +2414,7 @@ function DesktopTable({
                             if (event.key !== 'Enter' && event.key !== ' ') return
                             event.preventDefault()
                             event.stopPropagation()
-                            onImagePreview(imageUrl, `${it.product.brand} ${it.product.model}`)
+                            onImagePreview(imageUrl, formatProductTitle(it.product))
                           }
                         : undefined}
                       style={{
@@ -2441,8 +2442,7 @@ function DesktopTable({
                   </td>
                   <td style={tdStyle()}>
                     <div style={{ fontWeight: 700 }}>
-                      {it.product.brand} {it.product.model}
-                      {it.product.model_year != null ? ` · ${it.product.model_year}` : ''}
+                      {formatProductTitle(it.product)}
                     </div>
                     <div style={{ marginTop: 3, fontSize: getFontSize('bodySmall', false), color: colors.text.secondary }}>
                       {showCategoryColumn && (

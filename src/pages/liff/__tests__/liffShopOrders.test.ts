@@ -49,7 +49,7 @@ function mockItem(
       is_active: true,
       created_at: null,
       updated_at: null,
-      product: { id: 'p1', brand: 'B', model: 'M', model_year: null, category: 'wakeboard' },
+      product: { id: 'p1', brand: 'B', model: 'M', model_year: null, color: null, category: 'wakeboard' },
     },
     ...rest,
   }

@@ -78,6 +78,36 @@ describe('product identity matching', () => {
       .toEqual(['ronix-rxt-2022', 'ronix-rxt-2025'])
   })
 
+  it('treats different product colors as different identities', () => {
+    const withColors: ProductIdentityCandidate[] = [
+      {
+        id: 'affix-silver',
+        category: 'lifejacket',
+        brand: 'Follow',
+        model: 'AFFIX',
+        modelYear: 2027,
+        color: 'SILVER',
+      },
+      {
+        id: 'affix-rust',
+        category: 'lifejacket',
+        brand: 'Follow',
+        model: 'AFFIX',
+        modelYear: 2027,
+        color: 'RUST',
+      },
+    ]
+    expect(
+      findExactProductIdentityMatch(withColors, 'lifejacket', 'Follow', 'AFFIX', 2027, 'SILVER')?.id,
+    ).toBe('affix-silver')
+    expect(
+      findExactProductIdentityMatch(withColors, 'lifejacket', 'Follow', 'AFFIX', 2027, 'RUST')?.id,
+    ).toBe('affix-rust')
+    expect(
+      findExactProductIdentityMatch(withColors, 'lifejacket', 'Follow', 'AFFIX', 2027, 'BLACK'),
+    ).toBeNull()
+  })
+
   it('lists models under the same category and brand', () => {
     expect(findProductIdentityCandidates(products, 'lifejacket', 'FOLLOW').map(p => p.id)).toEqual([
       'follow-signal',

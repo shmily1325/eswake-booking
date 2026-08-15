@@ -1086,6 +1086,7 @@ export type Database = {
           brand: string
           model: string
           model_year: number | null
+          color: string | null
           description: string | null
           cover_image_url: string | null
           cover_image_path: string | null
@@ -1103,6 +1104,7 @@ export type Database = {
           brand: string
           model: string
           model_year?: number | null
+          color?: string | null
           description?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null
@@ -1120,6 +1122,7 @@ export type Database = {
           brand?: string
           model?: string
           model_year?: number | null
+          color?: string | null
           description?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null

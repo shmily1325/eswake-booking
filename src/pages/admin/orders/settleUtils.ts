@@ -1,4 +1,4 @@
-import { formatAttributes } from '../products/schema'
+import { formatAttributes, formatProductTitle } from '../products/schema'
 import type { SettlementSnapshotLine, ShopOrderSettlementWithDetails } from './types'
 import { parseDiscountFactor } from './orderUtils'
 
@@ -10,7 +10,13 @@ export function formatSettlementLineDisplay(
   variant?: {
     vendor_code: string | null
     attributes: Record<string, unknown> | null
-    product: { brand: string; model: string; model_year?: number | null; category: string } | null
+    product: {
+      brand: string
+      model: string
+      model_year?: number | null
+      color?: string | null
+      category: string
+    } | null
   } | null,
 ): SettlementLineDisplay {
   if (variant?.product) {
@@ -19,7 +25,7 @@ export function formatSettlementLineDisplay(
     const code = variant.vendor_code?.trim()
     const subtitle = [spec, code ? `#${code.replace(/^#/, '')}` : null].filter(Boolean).join(' · ')
     return {
-      title: `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''}`,
+      title: formatProductTitle(p),
       subtitle,
     }
   }

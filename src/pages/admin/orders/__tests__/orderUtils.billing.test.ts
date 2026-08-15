@@ -64,7 +64,7 @@ function mockItem(
       is_active: true,
       created_at: null,
       updated_at: null,
-      product: { id: 'prod-1', brand: 'Brand', model: 'Model', model_year: null, category: 'wakeboard' },
+      product: { id: 'prod-1', brand: 'Brand', model: 'Model', model_year: null, color: null, category: 'wakeboard' },
     },
     ...rest,
   }

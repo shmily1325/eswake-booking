@@ -4,6 +4,7 @@ import {
   formatProductPriceRange,
   getProductImageUrl,
 } from '../lib/shopFormat'
+import { formatProductModelLine, formatProductTitle } from '../../admin/products/schema'
 import {
   getShopVisibleVariants,
   summarizeProductAvailability,
@@ -58,7 +59,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
       <div className="relative aspect-4/5 bg-gray-100 overflow-hidden">
         <ImageOrFallback
           src={imageUrl}
-          alt={`${product.brand} ${product.model}`}
+          alt={formatProductTitle(product)}
           imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           fallback={<NoImagePlaceholder />}
         />
@@ -78,8 +79,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
           {product.brand || '\u00A0'}
         </div>
         <div className="mt-0.5 text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem] leading-snug">
-          {product.model || '(Unnamed product)'}
-          {product.model_year != null ? ` · ${product.model_year}` : ''}
+          {formatProductModelLine(product)}
         </div>
         <div className="mt-2 min-h-7 flex items-end">
           {isInquiryOnly ? (

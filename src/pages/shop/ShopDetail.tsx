@@ -14,6 +14,7 @@ import {
   getProductCoverImages,
   getProductDetailHeroImageUrl,
 } from './lib/shopFormat'
+import { formatProductModelLine, formatProductTitle } from '../admin/products/schema'
 import { normalizeVariantCoverImages } from '../admin/products/coverImages'
 import {
   getVariantAvailability,
@@ -79,11 +80,7 @@ export function ShopDetail() {
       document.title = ES_BRAND.shopTitle
       return
     }
-    const name = [
-      product.brand,
-      product.model,
-      product.model_year != null ? String(product.model_year) : null,
-    ].filter(Boolean).join(' ').trim()
+    const name = formatProductTitle(product)
     document.title = name ? `${name} | ${ES_BRAND.shopTitle}` : ES_BRAND.shopTitle
   }, [product])
 
@@ -149,16 +146,12 @@ export function ShopDetail() {
 
   const handleAddToCart = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
-    const productName = [
-      product.brand,
-      product.model,
-      product.model_year != null ? String(product.model_year) : null,
-    ].filter(Boolean).join(' ').trim()
+    const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
-      productName: productName || '(Unnamed product)',
+      productName,
       categoryId: product.category ?? '',
       attributes: selectedVariant.attributes,
       imageUrl: selectedVariant.cover_image_url ?? selectedVariant.image_url ?? imageUrl ?? null,
@@ -172,11 +165,7 @@ export function ShopDetail() {
 
   const handleDirectInquiry = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
-    const productName = [
-      product.brand,
-      product.model,
-      product.model_year != null ? String(product.model_year) : null,
-    ].filter(Boolean).join(' ').trim()
+    const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
     const payload = buildSingleInquiry({
       productId: product.id,
@@ -311,7 +300,7 @@ function ProductDetailBody({
       <div>
         <ShopDetailGallery
           images={imageOptions}
-          alt={`${product.brand} ${product.model}`.trim()}
+          alt={formatProductTitle(product)}
           resetKey={`${product.id}:${selectedVariantId ?? ''}`}
         />
       </div>
@@ -341,8 +330,7 @@ function ProductDetailBody({
           </div>
         )}
         <h1 className="mt-1 text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 tracking-tight leading-tight">
-          {product.model || '(Unnamed product)'}
-          {product.model_year != null ? ` · ${product.model_year}` : ''}
+          {formatProductModelLine(product)}
         </h1>
 
         <div className="mt-3 sm:mt-4 flex items-baseline gap-3 flex-wrap">

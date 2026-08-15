@@ -135,6 +135,7 @@ export interface CreateProductInput {
   brand: string
   model: string
   model_year?: number | null
+  color?: string | null
   description?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
@@ -149,10 +150,11 @@ export async function findExistingProductIdentity(
   brand: string,
   model: string,
   modelYear: number | null,
+  color: string | null = null,
 ): Promise<ProductIdentityCandidate | null> {
   const { data, error } = await supabase
     .from('products')
-    .select('id, category, brand, model, model_year, cover_image_url')
+    .select('id, category, brand, model, model_year, color, cover_image_url')
     .eq('is_active', true)
     .eq('category', category)
   if (error) throw error
@@ -163,6 +165,7 @@ export async function findExistingProductIdentity(
     brand: product.brand,
     model: product.model,
     modelYear: product.model_year,
+    color: product.color,
     coverImageUrl: product.cover_image_url,
   }))
   return findExactProductIdentityMatch(
@@ -171,6 +174,7 @@ export async function findExistingProductIdentity(
     brand,
     model,
     modelYear,
+    color,
   )
 }
 
@@ -182,6 +186,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductR
       brand: input.brand.trim(),
       model: input.model.trim(),
       model_year: input.model_year ?? null,
+      color: input.color?.trim() || null,
       description: input.description?.trim() || null,
       cover_image_url: input.cover_image_url ?? null,
       cover_image_path: input.cover_image_path ?? null,
@@ -200,6 +205,7 @@ export interface UpdateProductInput {
   brand?: string
   model?: string
   model_year?: number | null
+  color?: string | null
   description?: string | null
   category?: string
   cover_image_url?: string | null
@@ -214,6 +220,7 @@ export async function updateProduct(productId: string, input: UpdateProductInput
   if (input.brand !== undefined) patch.brand = input.brand.trim()
   if (input.model !== undefined) patch.model = input.model.trim()
   if (input.model_year !== undefined) patch.model_year = input.model_year
+  if (input.color !== undefined) patch.color = input.color?.trim() || null
   if (input.description !== undefined) patch.description = input.description?.trim() || null
   if (input.category !== undefined) patch.category = input.category
   if (input.cover_image_url !== undefined) patch.cover_image_url = input.cover_image_url
