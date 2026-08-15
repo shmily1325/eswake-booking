@@ -1089,6 +1089,7 @@ export type Database = {
           description: string | null
           cover_image_url: string | null
           cover_image_path: string | null
+          cover_images: Json
           is_active: boolean
           is_public: boolean
           created_at: string | null
@@ -1105,6 +1106,7 @@ export type Database = {
           description?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null
+          cover_images?: Json
           is_active?: boolean
           is_public?: boolean
           created_at?: string | null
@@ -1121,6 +1123,7 @@ export type Database = {
           description?: string | null
           cover_image_url?: string | null
           cover_image_path?: string | null
+          cover_images?: Json
           is_active?: boolean
           is_public?: boolean
           created_at?: string | null

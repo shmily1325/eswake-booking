@@ -1,7 +1,8 @@
 /**
- * SKU 封面 gallery 共用 helper。
- * DB：product_variants.cover_images = [{ url, path }, ...]
- * [0] 與 cover_image_url / cover_image_path 同步。
+ * 封面 gallery 共用 helper。
+ * - 商品卡：products.cover_images（一色一卡共用）
+ * - SKU：product_variants.cover_images（多色舊卡 fallback）
+ * [0] 與同層 cover_image_url / cover_image_path 同步。
  */
 
 export const MAX_VARIANT_COVER_IMAGES = 8

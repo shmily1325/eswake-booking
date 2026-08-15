@@ -220,6 +220,9 @@ export function ProductEditView({
    * - 既有商品由 DB 載入
    */
   const [isPublic, setIsPublic] = useState<boolean>(isNew)
+  /** 商品卡層封面（一色一卡共用）；多色舊卡可留空改用 SKU 封面 */
+  const [productCoverImages, setProductCoverImages] = useState<DraftCoverImage[]>([])
+  const [originalProductCoverPaths, setOriginalProductCoverPaths] = useState<string[]>([])
   const [drafts, setDrafts] = useState<DraftVariant[]>(() => (isNew ? [emptyDraft()] : []))
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmZeroStock, setConfirmZeroStock] = useState(false)
@@ -290,6 +293,19 @@ export function ProductEditView({
     && !confirmedSeparateProduct
     && Boolean(identityMatch || (parsedModelYear == null && sameModelCandidates.length > 0))
 
+  /** 同一卡有 2+ 種 color → 維持 SKU 封面；否則用商品卡封面 */
+  const isMultiColorProduct = useMemo(() => {
+    const colors = new Set<string>()
+    for (const d of drafts) {
+      if (d.pendingDelete) continue
+      const c = (d.attributes.color ?? '').trim()
+      if (c) colors.add(c)
+    }
+    return colors.size >= 2
+  }, [drafts])
+  const useProductLevelCovers = !isMultiColorProduct
+  const productEntityId = productId ?? createdProductId
+
   useEffect(() => {
     setServerIdentityMatch(null)
     setConfirmedSeparateProduct(false)
@@ -314,6 +330,16 @@ export function ProductEditView({
         setModelYear(p.model_year?.toString() ?? '')
         setDescription(p.description ?? '')
         setIsPublic(p.is_public)
+        const loadedProductCovers = draftCoverImagesFromVariant(
+          p.cover_images,
+          p.cover_image_url,
+          p.cover_image_path,
+          `product-${p.id}`,
+        )
+        setProductCoverImages(loadedProductCovers)
+        setOriginalProductCoverPaths(
+          loadedProductCovers.map((img) => img.path).filter(Boolean),
+        )
         const loadedDrafts = p.variants.map(variantRowToDraft)
         const nextDrafts = addNewVariantOnLoad
           ? [...loadedDrafts, emptyDraft()]
@@ -721,38 +747,56 @@ export function ProductEditView({
               throw new Error('找到相同型號與年份的商品，請先確認要加入既有商品或另建商品')
             }
           }
+          const productCovers = coverImagesForDb(productCoverImages)
+          const productPrimary = primaryCoverFromGallery(productCovers)
           const created = await createProduct({
             category,
             brand,
             model,
             model_year: parsedModelYear,
             description: description.trim() || null,
+            cover_images: productCovers,
+            cover_image_url: productPrimary.url,
+            cover_image_path: productPrimary.path,
             is_public: isPublic,
             created_by: currentUserEmail ?? null,
           })
           pid = created.id
           setCreatedProductId(created.id)
+          setOriginalProductCoverPaths(productCovers.map((img) => img.path).filter(Boolean))
         } else {
+          const productCovers = coverImagesForDb(productCoverImages)
+          const productPrimary = primaryCoverFromGallery(productCovers)
           await updateProduct(pid, {
             category,
             brand,
             model,
             model_year: parsedModelYear,
             description: description.trim() || null,
+            cover_images: productCovers,
+            cover_image_url: productPrimary.url,
+            cover_image_path: productPrimary.path,
             is_public: isPublic,
             updated_by: currentUserEmail ?? null,
           })
+          setOriginalProductCoverPaths(productCovers.map((img) => img.path).filter(Boolean))
         }
       } else {
+        const productCovers = coverImagesForDb(productCoverImages)
+        const productPrimary = primaryCoverFromGallery(productCovers)
         await updateProduct(productId!, {
           category,
           brand,
           model,
           model_year: parsedModelYear,
           description: description.trim() || null,
+          cover_images: productCovers,
+          cover_image_url: productPrimary.url,
+          cover_image_path: productPrimary.path,
           is_public: isPublic,
           updated_by: currentUserEmail ?? null,
         })
+        setOriginalProductCoverPaths(productCovers.map((img) => img.path).filter(Boolean))
       }
 
       // 標籤代碼：跨商品唯一（DB index + 存檔前查詢）
@@ -817,6 +861,9 @@ export function ProductEditView({
       // ===== Storage 清理：刪掉這個 session 內不再被引用的舊圖 =====
       // 1) 收集所有「最終會被 DB 引用」的 path
       const finalPaths = new Set<string>()
+      for (const img of productCoverImages) {
+        if (img.path) finalPaths.add(img.path)
+      }
       for (const d of drafts) {
         if (d.pendingDelete) {
           // 軟刪不清圖：原始 path 保留，以防誤刪復原
@@ -833,6 +880,9 @@ export function ProductEditView({
       //    - 每個 variant 的 originalImagePath（若跟新 image_path 不同且不再被引用）
       //    - 這個 session 上傳但最終沒被任何 variant 採用的（中途又換掉的中間檔）
       const toRemove = new Set<string>()
+      for (const originalPath of originalProductCoverPaths) {
+        if (!finalPaths.has(originalPath)) toRemove.add(originalPath)
+      }
       for (const d of drafts) {
         if (d.pendingDelete) continue
         for (const originalPath of d.originalCoverImagePaths) {
@@ -915,7 +965,7 @@ export function ProductEditView({
       d.label_code.trim() !== '' ||
       Object.values(d.attributes).some(value => value.trim() !== '') ||
       Boolean(d.image_path || d.cover_images.length > 0),
-    )
+    ) || productCoverImages.length > 0
     if (hasDraftWork && !window.confirm('前往既有商品後，目前尚未儲存的 SKU 草稿不會自動合併。確定繼續？')) {
       return
     }
@@ -1364,6 +1414,64 @@ export function ProductEditView({
           </div>
         )}
 
+        {(!mobileCreateWizard || createStep === 3) && useProductLevelCovers && (
+          <div
+            style={{
+              marginBottom: designSystem.spacing.lg,
+              paddingBottom: designSystem.spacing.lg,
+              borderBottom: `1px solid ${designSystem.colors.border.light}`,
+            }}
+          >
+            <h3
+              style={{
+                margin: `0 0 ${designSystem.spacing.sm} 0`,
+                fontSize: getFontSize('h3', isMobile),
+                fontWeight: 700,
+                color: designSystem.colors.text.primary,
+              }}
+            >
+              商品封面
+            </h3>
+            <p
+              style={{
+                margin: `0 0 ${designSystem.spacing.md} 0`,
+                fontSize: getFontSize('caption', isMobile),
+                color: designSystem.colors.text.secondary,
+                lineHeight: 1.4,
+              }}
+            >
+              一色一卡共用這組封面；底下各尺寸不用再各存一份。
+            </p>
+            <CoverImageEditor
+              images={productCoverImages}
+              entityId={productEntityId}
+              storageFolder="covers"
+              brand={brand}
+              model={model}
+              disabled={saving || readOnly}
+              onChange={setProductCoverImages}
+              onUpload={trackUpload}
+            />
+          </div>
+        )}
+
+        {(!mobileCreateWizard || createStep === 3) && isMultiColorProduct && (
+          <p
+            style={{
+              margin: `0 0 ${designSystem.spacing.md} 0`,
+              padding: '10px 12px',
+              borderRadius: designSystem.borderRadius.sm,
+              background: designSystem.colors.warning[50],
+              border: `1px solid ${designSystem.colors.warning[500]}`,
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.text.primary,
+              lineHeight: 1.4,
+            }}
+          >
+            此商品卡有多種顏色，封面仍放在各規格（避免不同色共用錯圖）。建議之後拆成一色一卡。
+          </p>
+        )}
+
         {visibleDrafts.map((d, idx) => (
           <VariantBlock
             key={d.clientKey}
@@ -1382,10 +1490,13 @@ export function ProductEditView({
             onRemove={() => handleRemoveVariant(idx)}
             onRestore={() => handleRestoreVariant(idx)}
             onImageUpload={trackUpload}
+            showSkuCovers={isMultiColorProduct}
             otherSkuCount={drafts.filter((x, i) => i !== idx && !x.pendingDelete).length}
             applyingImages={applyingImagesIdx === idx}
             imagesBusy={applyingImagesIdx != null || duplicating}
-            onApplyImagesToAllSizes={() => void handleApplyImagesToAllSizes(idx)}
+            onApplyImagesToAllSizes={
+              isMultiColorProduct ? () => void handleApplyImagesToAllSizes(idx) : undefined
+            }
             labelCodeSaving={d.id != null && labelCodeSavingId === d.id}
             onSaveLabelCode={() => void handleSaveLabelCode(idx)}
             labelCodeGenerating={labelCodeGeneratingIdx === idx}
@@ -1621,6 +1732,8 @@ interface VariantBlockProps {
   onRemove: () => void
   onRestore: () => void
   onImageUpload: (path: string) => void
+  /** false = 封面改在商品卡；SKU 只留實品照 */
+  showSkuCovers?: boolean
   /** 本商品其他可套用的規格數（不含自己、不含待刪） */
   otherSkuCount?: number
   applyingImages?: boolean
@@ -1669,6 +1782,7 @@ function VariantBlock({
   onRemove,
   onRestore,
   onImageUpload,
+  showSkuCovers = true,
   otherSkuCount = 0,
   applyingImages = false,
   imagesBusy = false,
@@ -2361,8 +2475,8 @@ function VariantBlock({
               <SectionLabel isMobile={isMobile}>圖片與標籤</SectionLabel>
               {productPhotoSection}
               {labelCodeSection}
-              {collapsibleCoverSection}
-              {applyImagesSection}
+              {showSkuCovers && collapsibleCoverSection}
+              {showSkuCovers && applyImagesSection}
             </>
           )}
         </>

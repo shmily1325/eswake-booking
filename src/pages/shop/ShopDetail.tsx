@@ -11,6 +11,7 @@ import { useShopCart } from './hooks/useShopCart'
 import {
   formatPrice,
   getCategoryShopName,
+  getProductCoverImages,
   getProductDetailHeroImageUrl,
 } from './lib/shopFormat'
 import { normalizeVariantCoverImages } from '../admin/products/coverImages'
@@ -20,10 +21,10 @@ import {
   isVariantPurchasable,
 } from './lib/productAvailability'
 import { SHOP_DETAIL } from './lib/shopCopy'
-import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
-import { ImageOrFallback } from './components/ImageOrFallback'
+import { ShopDetailGallery } from './components/ShopDetailGallery'
+import type { GalleryImage } from './components/ShopDetailGallery'
 import { getShopReturnTo } from './lib/shopReturnTo'
 import { shopListPath } from './lib/shopPaths'
 import { ES_BRAND } from '../../lib/esBrandTokens'
@@ -264,35 +265,36 @@ function ProductDetailBody({
   const priceText = hasPrice ? formatPrice(selectedVariant!.price!) : '價格洽詢'
 
   /**
-   * 縮圖列：目前 SKU 的封面 gallery + 實品照（若不同）。
+   * gallery：商品卡封面（一色共用）優先；沒有才用 SKU 封面。
+   * 再加選中 SKU 實品照。完全沒圖時退回 imageUrl。
    */
   const imageOptions = useMemo(() => {
-    if (!selectedVariant) return []
     const seen = new Set<string>()
-    const options: { url: string; label: string }[] = []
+    const options: GalleryImage[] = []
     const add = (url: string | null | undefined, label: string) => {
       if (!url || seen.has(url)) return
       seen.add(url)
       options.push({ url, label })
     }
-    const covers = normalizeVariantCoverImages(
-      selectedVariant.cover_images,
-      selectedVariant.cover_image_url,
-      selectedVariant.cover_image_path,
-    )
-    covers.forEach((img, i) => {
-      add(img.url, i === 0 ? SHOP_DETAIL.imageCover : `${SHOP_DETAIL.imageCover} ${i + 1}`)
-    })
-    add(selectedVariant.image_url, SHOP_DETAIL.imagePhoto)
+    const productCovers = getProductCoverImages(product)
+    if (productCovers.length > 0) {
+      productCovers.forEach((img, i) => {
+        add(img.url, i === 0 ? SHOP_DETAIL.imageCover : `${SHOP_DETAIL.imageCover} ${i + 1}`)
+      })
+    } else if (selectedVariant) {
+      const covers = normalizeVariantCoverImages(
+        selectedVariant.cover_images,
+        selectedVariant.cover_image_url,
+        selectedVariant.cover_image_path,
+      )
+      covers.forEach((img, i) => {
+        add(img.url, i === 0 ? SHOP_DETAIL.imageCover : `${SHOP_DETAIL.imageCover} ${i + 1}`)
+      })
+    }
+    if (selectedVariant) add(selectedVariant.image_url, SHOP_DETAIL.imagePhoto)
+    if (options.length === 0) add(imageUrl, SHOP_DETAIL.imageCover)
     return options
-  }, [selectedVariant])
-
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
-  const heroImageUrl = previewImageUrl ?? imageUrl
-
-  useEffect(() => {
-    setPreviewImageUrl(null)
-  }, [product.id, selectedVariantId, imageUrl])
+  }, [product, selectedVariant, imageUrl])
 
   const priceBlock = hasPrice ? (
     <div className="text-2xl sm:text-3xl font-bold text-zinc-900">{priceText}</div>
@@ -305,62 +307,13 @@ function ProductDetailBody({
   return (
     <>
     <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
-      {/* 圖片 + 縮圖列 */}
+      {/* 圖片 gallery：手機滑主圖 + 圓點，桌機縮圖列 + 箭頭 */}
       <div>
-        {/*
-          全平台都用 4:5 比例（跟 list 卡片同調），不再 9:16 那種戲劇直立。
-          手機 / 桌機都限制 max-h 跟 max-w，
-          避免桌機左欄拉超長、右欄底下留白；手機則避免吃整個首屏。
-        */}
-        <div className="relative aspect-4/5 max-h-[60vh] md:max-h-[500px] max-w-[320px] sm:max-w-sm md:max-w-none mx-auto bg-gray-100 rounded-lg overflow-hidden">
-          <ImageOrFallback
-            src={heroImageUrl}
-            alt={`${product.brand} ${product.model}`}
-            imgClassName="w-full h-full object-cover"
-            loading="eager"
-            fallback={<NoImagePlaceholder />}
-          />
-        </div>
-
-        {imageOptions.length > 1 && (
-          <div
-            className="mt-3 flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden"
-            style={{ scrollbarWidth: 'none' }}
-            role="tablist"
-            aria-label="Product images"
-          >
-            {imageOptions.map((opt) => {
-              const active = heroImageUrl === opt.url
-              return (
-                <div key={opt.url} className="flex flex-col items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewImageUrl(opt.url)}
-                    role="tab"
-                    aria-selected={active}
-                    aria-label={opt.label}
-                    className={
-                      'w-14 h-18 sm:w-16 sm:h-20 rounded-md overflow-hidden border-2 transition-colors ' +
-                      (active
-                        ? 'border-black'
-                        : 'border-transparent hover:border-gray-300')
-                    }
-                  >
-                    <img
-                      src={opt.url}
-                      alt=""
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                    {opt.label}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <ShopDetailGallery
+          images={imageOptions}
+          alt={`${product.brand} ${product.model}`.trim()}
+          resetKey={`${product.id}:${selectedVariantId ?? ''}`}
+        />
       </div>
 
       {/* 資訊區 */}
@@ -463,7 +416,7 @@ function ProductDetailBody({
 function LoadingState() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 animate-pulse">
-      <div className="aspect-4/5 max-h-[500px] max-w-[320px] sm:max-w-sm md:max-w-none mx-auto w-full bg-gray-100 rounded-lg" />
+      <div className="aspect-4/5 max-h-[56vh] md:max-h-[500px] max-w-[340px] sm:max-w-sm md:max-w-none mx-auto w-full bg-gray-100 rounded-lg" />
       <div className="space-y-3">
         <div className="h-3 w-1/4 bg-gray-100 rounded" />
         <div className="h-7 w-2/3 bg-gray-100 rounded" />

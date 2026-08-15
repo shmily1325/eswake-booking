@@ -29,12 +29,13 @@ import {
   fetchVariantItemByLabelCode,
   flattenToVariantItems,
 } from './api'
-import type { ProductWithVariants, ProductVariantRow, VariantListItem } from './types'
+import type { ProductWithVariants, ProductVariantRow, ProductRow, VariantListItem } from './types'
 import { getVariantAvailability, getVariantSellableStock } from '../../shop/lib/productAvailability'
 import { ProductEditView } from './ProductEditView'
 import { LabelCodeCameraScanner } from './LabelCodeCameraScanner'
 import { variantMatchesSearchTokens } from './productSearchHaystack'
 import { isMissingLabelCode } from './labelCode'
+import { normalizeVariantCoverImages } from './coverImages'
 import { designSystem, getFontSize, getPageContentShellStyle, PAGE_MAX_WIDTHS } from '../../../styles/designSystem'
 
 const pageBg = designSystem.colors.background.main
@@ -288,7 +289,7 @@ export function ProductManagement({
       items = items.filter((it) => !it.variant.image_url)
     }
     if (onlyMissingCover) {
-      items = items.filter((it) => !it.variant.cover_image_url)
+      items = items.filter((it) => !getVariantListImageUrl(it.variant, 'cover', it.product))
     }
     if (onlyMissingLabel) {
       items = items.filter(isVariantMissingLabel)
@@ -979,7 +980,9 @@ function InventoryDashboard({
   const baseReservedTotal = base.reduce((s, it) => s + (it.variant.reserved_qty || 0), 0)
   const missingPriceCount = base.filter((it) => it.variant.price == null).length
   const missingImageCount = base.filter((it) => !it.variant.image_url).length
-  const missingCoverCount = base.filter((it) => !it.variant.cover_image_url).length
+  const missingCoverCount = base.filter(
+    (it) => !getVariantListImageUrl(it.variant, 'cover', it.product),
+  ).length
   const missingLabelCount = base.filter(isVariantMissingLabel).length
 
   // 摘要固定顯示目前搜尋／分類範圍的總數，不隨資料品質篩選切換
@@ -1414,11 +1417,25 @@ function PriceDisplay({ price, align = 'left' }: { price: number | null; align?:
 type ListImageMode = 'cover' | 'photo'
 
 function getVariantListImageUrl(
-  variant: Pick<ProductVariantRow, 'cover_image_url' | 'image_url'>,
+  variant: Pick<ProductVariantRow, 'cover_image_url' | 'cover_image_path' | 'cover_images' | 'image_url'>,
   mode: ListImageMode,
+  product?: Pick<ProductRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'> | null,
 ): string | null {
   if (mode === 'photo') return variant.image_url ?? variant.cover_image_url ?? null
-  return variant.cover_image_url ?? variant.image_url ?? null
+  if (product) {
+    const productCovers = normalizeVariantCoverImages(
+      product.cover_images,
+      product.cover_image_url,
+      product.cover_image_path,
+    )
+    if (productCovers[0]?.url) return productCovers[0].url
+  }
+  const covers = normalizeVariantCoverImages(
+    variant.cover_images,
+    variant.cover_image_url,
+    variant.cover_image_path,
+  )
+  return covers[0]?.url ?? variant.cover_image_url ?? variant.image_url ?? null
 }
 
 interface ImageModeToggleProps {
@@ -1602,7 +1619,7 @@ function GalleryCard({
   const [expanded, setExpanded] = useState(false)
   const item = items[0]
   const { variant, product } = item
-  const imageUrl = getVariantListImageUrl(variant, imageMode)
+  const imageUrl = getVariantListImageUrl(variant, imageMode, product)
   const totalStock = items.reduce(
     (sum, current) => sum + getVariantSellableStock(current.variant),
     0,
@@ -1998,7 +2015,7 @@ function MobileListRow({
   const { variant, product } = item
   const status = inventoryStatusBadge(variant, product.is_public)
   const attrText = formatAttributes(product.category, variant.attributes)
-  const imageUrl = getVariantListImageUrl(variant, imageMode)
+  const imageUrl = getVariantListImageUrl(variant, imageMode, product)
   const stock = variant.stock ?? 0
   const reserved = variant.reserved_qty ?? 0
   const sellable = getVariantSellableStock(variant)
@@ -2300,7 +2317,7 @@ function DesktopTable({
             {items.map((it) => {
               const cat = getCategory(it.product.category)
               const status = inventoryStatusBadge(it.variant, it.product.is_public)
-              const imageUrl = getVariantListImageUrl(it.variant, imageMode)
+              const imageUrl = getVariantListImageUrl(it.variant, imageMode, it.product)
               const stock = it.variant.stock ?? 0
               const reserved = it.variant.reserved_qty ?? 0
               const sellable = getVariantSellableStock(it.variant)

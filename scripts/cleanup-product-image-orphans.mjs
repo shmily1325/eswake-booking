@@ -83,7 +83,7 @@ async function fetchAllRows(table, columns) {
 
 async function loadReferencedPaths() {
   const [products, variants] = await Promise.all([
-    fetchAllRows('products', 'cover_image_path,cover_image_url'),
+    fetchAllRows('products', 'cover_image_path,cover_image_url,cover_images'),
     fetchAllRows(
       'product_variants',
       'image_path,image_url,cover_image_path,cover_image_url,cover_images',
@@ -94,6 +94,13 @@ async function loadReferencedPaths() {
   for (const product of products) {
     addPath(references, product.cover_image_path)
     addPublicUrlPath(references, product.cover_image_url)
+    if (Array.isArray(product.cover_images)) {
+      for (const img of product.cover_images) {
+        if (!img || typeof img !== 'object') continue
+        addPath(references, img.path)
+        addPublicUrlPath(references, img.url)
+      }
+    }
   }
   for (const variant of variants) {
     addPath(references, variant.image_path)

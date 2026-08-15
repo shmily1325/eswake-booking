@@ -82,14 +82,27 @@ export function getVariantShopImageUrl(
   return covers[0]?.url ?? v.cover_image_url ?? v.image_url ?? null
 }
 
+/** 商品卡封面 gallery（一色一卡共用） */
+export function getProductCoverImages(
+  product: Pick<ProductRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'>,
+) {
+  return normalizeVariantCoverImages(
+    product.cover_images,
+    product.cover_image_url,
+    product.cover_image_path,
+  )
+}
+
 /**
  * 取一張商品代表圖（商城列表 / 卡片用）。
- * - 第一個有封面或實品照的 SKU
+ * 優先商品卡封面，再退回 SKU 封面／實品照。
  */
 export function getProductImageUrl(
-  _product: Pick<ProductRow, 'cover_image_url'>,
+  product: Pick<ProductRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'>,
   variants: ProductVariantRow[],
 ): string | null {
+  const productCovers = getProductCoverImages(product)
+  if (productCovers[0]?.url) return productCovers[0].url
   for (const v of variants) {
     const url = getVariantShopImageUrl(v)
     if (url) return url
@@ -97,12 +110,14 @@ export function getProductImageUrl(
   return null
 }
 
-/** 詳情主圖：選中 SKU 的封面，沒有則用實品照 */
+/** 詳情主圖：商品卡封面優先；沒有則用選中 SKU 封面／實品照 */
 export function getProductDetailHeroImageUrl(
-  _product: Pick<ProductRow, 'cover_image_url'>,
+  product: Pick<ProductRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'>,
   selectedVariant: ProductVariantRow | null,
   variants: ProductVariantRow[],
 ): string | null {
+  const productCovers = getProductCoverImages(product)
+  if (productCovers[0]?.url) return productCovers[0].url
   if (selectedVariant) return getVariantShopImageUrl(selectedVariant)
   for (const v of variants) {
     const url = getVariantShopImageUrl(v)

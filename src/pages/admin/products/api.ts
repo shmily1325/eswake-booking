@@ -138,6 +138,7 @@ export interface CreateProductInput {
   description?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
+  cover_images?: Array<{ url: string; path: string }>
   /** 是否對外公開（商城可見），預設 true（上架到商城） */
   is_public?: boolean
   created_by?: string | null
@@ -184,6 +185,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductR
       description: input.description?.trim() || null,
       cover_image_url: input.cover_image_url ?? null,
       cover_image_path: input.cover_image_path ?? null,
+      cover_images: input.cover_images ?? [],
       is_public: input.is_public ?? true,
       created_by: input.created_by ?? null,
       updated_by: input.created_by ?? null,
@@ -202,6 +204,7 @@ export interface UpdateProductInput {
   category?: string
   cover_image_url?: string | null
   cover_image_path?: string | null
+  cover_images?: Array<{ url: string; path: string }>
   is_public?: boolean
   updated_by?: string | null
 }
@@ -215,6 +218,7 @@ export async function updateProduct(productId: string, input: UpdateProductInput
   if (input.category !== undefined) patch.category = input.category
   if (input.cover_image_url !== undefined) patch.cover_image_url = input.cover_image_url
   if (input.cover_image_path !== undefined) patch.cover_image_path = input.cover_image_path
+  if (input.cover_images !== undefined) patch.cover_images = input.cover_images
   if (input.is_public !== undefined) patch.is_public = input.is_public
   if (input.updated_by !== undefined) patch.updated_by = input.updated_by
   if (Object.keys(patch).length === 0) return
