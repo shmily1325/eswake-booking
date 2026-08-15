@@ -260,7 +260,7 @@ export function GuideGearGrid({
     lineHeight: 1,
   })
 
-  /** 半欄很窄：用 caption，避免 body 字級把列撐高、硬折行 */
+  /** 衣物列用 body；欄標題維持 caption，半欄才有層次 */
   const itemRow = (last: boolean): CSSProperties => ({
     display: 'grid',
     gridTemplateColumns: '32px minmax(0, 1fr)',
@@ -269,7 +269,7 @@ export function GuideGearGrid({
     minHeight: 46,
     padding: '8px 0',
     borderBottom: last ? 'none' : `1px solid ${T.borderSubtle}`,
-    fontSize: ty.caption,
+    fontSize: ty.body,
     fontWeight: 600,
     color: T.ink,
     lineHeight: 1.4,
@@ -442,7 +442,7 @@ export function GuideArrivalSteps({
                 justifyContent: 'center',
                 minHeight: '2.8em',
                 marginTop: 8,
-                fontSize: ty.caption,
+                fontSize: ty.body,
                 fontWeight: 700,
                 color: T.ink,
                 lineHeight: 1.4,
