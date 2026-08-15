@@ -238,7 +238,7 @@ export function GuideGearGrid({
     gridTemplateColumns: '32px minmax(0, 1fr)',
     alignItems: 'center',
     gap: 8,
-    fontSize: ty.caption,
+    fontSize: ty.body,
     fontWeight: 700,
     color: ok ? c.success[700] : c.danger[700],
     marginBottom: 10,
