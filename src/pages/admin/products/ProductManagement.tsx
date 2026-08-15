@@ -84,11 +84,13 @@ export function ProductManagement({
   const [scannedItem, setScannedItem] = useState<VariantListItem | null>(null)
   const [imagePreview, setImagePreview] = useState<{ url: string; alt: string } | null>(null)
 
-  // 篩選狀態：缺價 / 沒實拍 / 沒封面 / 缺標籤（從頂部儀表板點擊切換）
+  // 篩選狀態：缺價 / 沒實拍 / 沒封面 / 缺標籤 / 預購（從頂部儀表板點擊切換）
   const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
   const [onlyMissingImage, setOnlyMissingImage] = useState(false)
   const [onlyMissingCover, setOnlyMissingCover] = useState(false)
   const [onlyMissingLabel, setOnlyMissingLabel] = useState(false)
+  /** 預購：只顯示有效供貨狀態為 pre_order 的 SKU（可跟待補資料疊加） */
+  const [onlyPreOrder, setOnlyPreOrder] = useState(false)
   /** 已售完 archive：active 時只顯示 sold_out；預設隱藏已售完（搜尋時仍會找到） */
   const [onlySoldOut, setOnlySoldOut] = useState(false)
 
@@ -97,6 +99,7 @@ export function ProductManagement({
     setOnlyMissingImage(false)
     setOnlyMissingCover(false)
     setOnlyMissingLabel(false)
+    setOnlyPreOrder(false)
     setOnlySoldOut(false)
     setSearch('')
   }
@@ -105,6 +108,7 @@ export function ProductManagement({
     onlyMissingImage ||
     onlyMissingCover ||
     onlyMissingLabel ||
+    onlyPreOrder ||
     onlySoldOut ||
     search.trim() !== ''
 
@@ -148,6 +152,16 @@ export function ProductManagement({
       return next
     })
   }
+  const togglePreOrder = () => {
+    setOnlyPreOrder((v) => {
+      const next = !v
+      if (next) {
+        setOnlySoldOut(false)
+        setLayout('table')
+      }
+      return next
+    })
+  }
   const toggleSoldOut = () => {
     setOnlySoldOut((v) => {
       const next = !v
@@ -156,6 +170,7 @@ export function ProductManagement({
         setOnlyMissingImage(false)
         setOnlyMissingCover(false)
         setOnlyMissingLabel(false)
+        setOnlyPreOrder(false)
         setLayout('table')
       }
       return next
@@ -294,6 +309,9 @@ export function ProductManagement({
     if (onlyMissingLabel) {
       items = items.filter(isVariantMissingLabel)
     }
+    if (onlyPreOrder) {
+      items = items.filter(isVariantPreOrder)
+    }
 
     // 搜尋：多關鍵字（空白分隔）AND
     if (hasSearch) {
@@ -309,6 +327,7 @@ export function ProductManagement({
     onlyMissingImage,
     onlyMissingCover,
     onlyMissingLabel,
+    onlyPreOrder,
     onlySoldOut,
   ])
 
@@ -540,16 +559,34 @@ export function ProductManagement({
             onlyMissingImage={onlyMissingImage}
             onlyMissingCover={onlyMissingCover}
             onlyMissingLabel={onlyMissingLabel}
+            onlyPreOrder={onlyPreOrder}
             onlySoldOut={onlySoldOut}
             soldOutCount={soldOutCount}
             onToggleMissingPrice={toggleMissingPrice}
             onToggleMissingImage={toggleMissingImage}
             onToggleMissingCover={toggleMissingCover}
             onToggleMissingLabel={toggleMissingLabel}
+            onTogglePreOrder={togglePreOrder}
             onToggleSoldOut={toggleSoldOut}
             onClearAll={clearAllFilters}
             isMobile={isMobile}
           />
+        )}
+
+        {canEdit && onlyPreOrder && (
+          <div
+            style={{
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.warning[700],
+              background: designSystem.colors.warning[50],
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.md,
+              padding: '8px 12px',
+              marginBottom: 10,
+            }}
+          >
+            正在查看預購規格 · 可再疊加缺價／沒封面等篩選 · 再按一次「預購」或清除篩選返回
+          </div>
         )}
 
         {canEdit && onlySoldOut && (
@@ -926,14 +963,18 @@ function sortItemsByUpdated(items: VariantListItem[]): VariantListItem[] {
 }
 
 // ============================================================
-//  庫存儀表板：種數／件數／缺價／沒實拍／沒封面／缺標籤／已售完
+//  庫存儀表板：種數／件數／缺價／沒實拍／沒封面／缺標籤／預購／已售完
 //  - 沒篩選：顯示 tab 可售 SKU 總數（不含已售完）
 //  - 有篩選：顯示「目前 X 種 / 全 Y 種」
-//  - 缺價／沒實拍／沒封面／缺標籤：皆算 SKU（種），不含已售完
+//  - 缺價／沒實拍／沒封面／缺標籤／預購：皆算 SKU（種），不含已售完
 //  - 已售完 chip：永遠顯示 hidden 數量；點擊進 archive 視圖
 // ============================================================
 function isVariantSoldOut(it: VariantListItem): boolean {
   return getVariantAvailability(it.variant) === 'sold_out'
+}
+
+function isVariantPreOrder(it: VariantListItem): boolean {
+  return getVariantAvailability(it.variant) === 'pre_order'
 }
 
 function isVariantMissingLabel(it: VariantListItem): boolean {
@@ -947,12 +988,14 @@ interface InventoryDashboardProps {
   onlyMissingImage: boolean
   onlyMissingCover: boolean
   onlyMissingLabel: boolean
+  onlyPreOrder: boolean
   onlySoldOut: boolean
   soldOutCount: number
   onToggleMissingPrice: () => void
   onToggleMissingImage: () => void
   onToggleMissingCover: () => void
   onToggleMissingLabel: () => void
+  onTogglePreOrder: () => void
   onToggleSoldOut: () => void
   onClearAll: () => void
   isMobile: boolean
@@ -964,12 +1007,14 @@ function InventoryDashboard({
   onlyMissingImage,
   onlyMissingCover,
   onlyMissingLabel,
+  onlyPreOrder,
   onlySoldOut,
   soldOutCount,
   onToggleMissingPrice,
   onToggleMissingImage,
   onToggleMissingCover,
   onToggleMissingLabel,
+  onTogglePreOrder,
   onToggleSoldOut,
   onClearAll,
   isMobile,
@@ -984,6 +1029,7 @@ function InventoryDashboard({
     (it) => !getVariantListImageUrl(it.variant, 'cover', it.product),
   ).length
   const missingLabelCount = base.filter(isVariantMissingLabel).length
+  const preOrderCount = base.filter(isVariantPreOrder).length
 
   // 摘要固定顯示目前搜尋／分類範圍的總數，不隨資料品質篩選切換
   const mainSku = baseSkuCount
@@ -994,6 +1040,7 @@ function InventoryDashboard({
     onlyMissingImage ||
     onlyMissingCover ||
     onlyMissingLabel ||
+    onlyPreOrder ||
     onlySoldOut
   const issueCount =
     missingPriceCount +
@@ -1099,6 +1146,14 @@ function InventoryDashboard({
               active={onlyMissingLabel}
               onClick={onToggleMissingLabel}
               trackId="product_filter_missing_label"
+              isMobile
+            />
+            <DashboardStatChip
+              label="預購"
+              count={preOrderCount}
+              active={onlyPreOrder}
+              onClick={onTogglePreOrder}
+              trackId="product_filter_pre_order"
               isMobile
             />
             <DashboardStatChip
@@ -1253,6 +1308,15 @@ function InventoryDashboard({
           flexShrink: 0,
           display: isMobile ? 'none' : 'block',
         }}
+      />
+
+      <DashboardStatChip
+        label="預購"
+        count={preOrderCount}
+        active={onlyPreOrder}
+        onClick={onTogglePreOrder}
+        trackId="product_filter_pre_order"
+        isMobile={isMobile}
       />
 
       <DashboardStatChip
