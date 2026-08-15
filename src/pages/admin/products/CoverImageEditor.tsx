@@ -48,6 +48,9 @@ export function CoverImageEditor({
   const [resolving, setResolving] = useState(false)
   const [importing, setImporting] = useState(false)
   const [candidates, setCandidates] = useState<ImageCandidate[]>([])
+  /** 被點選的封面（顯示單一操作列，避免每張圖都塞按鈕） */
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [dragFromKey, setDragFromKey] = useState<string | null>(null)
 
   useEffect(() => {
     imagesRef.current = images
@@ -227,10 +230,14 @@ export function CoverImageEditor({
     }
   }
 
-  const removeAt = (idx: number) => {
-    const next = imagesRef.current.filter((_, i) => i !== idx)
+  const commit = (next: DraftCoverImage[]) => {
     imagesRef.current = next
     onChange(next)
+  }
+
+  const removeAt = (idx: number) => {
+    commit(imagesRef.current.filter((_, i) => i !== idx))
+    setSelectedKey(null)
   }
 
   const moveToPrimary = (idx: number) => {
@@ -238,8 +245,7 @@ export function CoverImageEditor({
     const next = [...imagesRef.current]
     const [item] = next.splice(idx, 1)
     next.unshift(item)
-    imagesRef.current = next
-    onChange(next)
+    commit(next)
   }
 
   const move = (idx: number, dir: -1 | 1) => {
@@ -247,8 +253,16 @@ export function CoverImageEditor({
     if (j < 0 || j >= imagesRef.current.length) return
     const next = [...imagesRef.current]
     ;[next[idx], next[j]] = [next[j], next[idx]]
-    imagesRef.current = next
-    onChange(next)
+    commit(next)
+  }
+
+  /** 拖曳排序：把 from 插到 to 的位置（不是互換，比較符合直覺） */
+  const reorder = (from: number, to: number) => {
+    if (from === to) return
+    const next = [...imagesRef.current]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    commit(next)
   }
 
   const labelStyle: React.CSSProperties = {
@@ -300,41 +314,52 @@ export function CoverImageEditor({
       )}
 
       {images.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            flexWrap: 'wrap',
-            marginBottom: 10,
-          }}
-        >
-          {images.map((img, idx) => (
-            <div
-              key={img.clientKey}
-              style={{
-                width: thumbSize,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-              }}
-            >
-              <div
-                style={{
-                  width: thumbSize,
-                  height: Math.round((thumbSize * 5) / 4),
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                  border: idx === 0 ? '2px solid #111' : '1px solid #e5e7eb',
-                  position: 'relative',
-                  background: '#f3f4f6',
-                }}
-              >
-                <img
-                  src={img.url}
-                  alt={`封面 ${idx + 1}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                />
-                {idx === 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {images.map((img, idx) => {
+              const selected = img.clientKey === selectedKey
+              return (
+                <div
+                  key={img.clientKey}
+                  draggable={!disabled && images.length > 1}
+                  onDragStart={() => setDragFromKey(img.clientKey)}
+                  onDragEnd={() => setDragFromKey(null)}
+                  onDragOver={(e) => {
+                    if (dragFromKey && dragFromKey !== img.clientKey) e.preventDefault()
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (!dragFromKey) return
+                    const from = imagesRef.current.findIndex((x) => x.clientKey === dragFromKey)
+                    if (from >= 0) reorder(from, idx)
+                    setDragFromKey(null)
+                  }}
+                  onClick={() => setSelectedKey(selected ? null : img.clientKey)}
+                  role="button"
+                  aria-label={`封面 ${idx + 1}${idx === 0 ? '（主圖）' : ''}`}
+                  title={images.length > 1 ? '點選可調整；可直接拖曳排序' : undefined}
+                  style={{
+                    width: thumbSize,
+                    height: Math.round((thumbSize * 5) / 4),
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                    border: selected
+                      ? '2px solid #2563eb'
+                      : idx === 0
+                        ? '2px solid #111'
+                        : '1px solid #e5e7eb',
+                    position: 'relative',
+                    background: '#f3f4f6',
+                    cursor: disabled ? 'default' : 'pointer',
+                    opacity: dragFromKey === img.clientKey ? 0.4 : 1,
+                  }}
+                >
+                  <img
+                    src={img.url}
+                    alt={`封面 ${idx + 1}`}
+                    draggable={false}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
                   <span
                     style={{
                       position: 'absolute',
@@ -347,68 +372,79 @@ export function CoverImageEditor({
                       borderRadius: 4,
                     }}
                   >
-                    主圖
+                    {idx === 0 ? '主圖' : idx + 1}
                   </span>
-                )}
-                {!disabled && (
-                  <button
-                    type="button"
-                    onClick={() => removeAt(idx)}
-                    aria-label="移除此封面"
-                    title="移除"
-                    style={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      width: 22,
-                      height: 22,
-                      borderRadius: '50%',
-                      border: 'none',
-                      background: 'rgba(0,0,0,0.6)',
-                      color: '#fff',
-                      cursor: 'pointer',
-                      fontSize: 12,
-                      lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-              {!disabled && images.length > 1 && (
-                <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-                  <button
-                    type="button"
-                    onClick={() => move(idx, -1)}
-                    disabled={idx === 0}
-                    style={{ ...buttonStyle, padding: '2px 6px', fontSize: 11 }}
-                    title="左移"
-                  >
-                    ←
-                  </button>
-                  {idx > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => moveToPrimary(idx)}
-                      style={{ ...buttonStyle, padding: '2px 6px', fontSize: 11 }}
-                      title="設為主圖"
-                    >
-                      主
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => move(idx, 1)}
-                    disabled={idx === images.length - 1}
-                    style={{ ...buttonStyle, padding: '2px 6px', fontSize: 11 }}
-                    title="右移"
-                  >
-                    →
-                  </button>
                 </div>
-              )}
-            </div>
-          ))}
+              )
+            })}
+          </div>
+
+          {!disabled && selectedKey != null && (() => {
+            const idx = images.findIndex((x) => x.clientKey === selectedKey)
+            if (idx < 0) return null
+            return (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 6,
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  marginTop: 8,
+                  padding: '6px 8px',
+                  background: '#f9fafb',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                }}
+              >
+                <span style={{ fontSize: 12, color: '#374151' }}>
+                  第 {idx + 1} 張{idx === 0 ? '（主圖）' : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => move(idx, -1)}
+                  disabled={idx === 0}
+                  style={{ ...buttonStyle, padding: '4px 10px', fontSize: 12 }}
+                >
+                  ← 前移
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(idx, 1)}
+                  disabled={idx === images.length - 1}
+                  style={{ ...buttonStyle, padding: '4px 10px', fontSize: 12 }}
+                >
+                  後移 →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveToPrimary(idx)}
+                  disabled={idx === 0}
+                  style={{ ...buttonStyle, padding: '4px 10px', fontSize: 12 }}
+                >
+                  設為主圖
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeAt(idx)}
+                  style={{
+                    ...buttonStyle,
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    color: '#b91c1c',
+                    borderColor: '#fecaca',
+                  }}
+                >
+                  移除
+                </button>
+              </div>
+            )
+          })()}
+
+          {images.length > 1 && (
+            <p style={{ ...hintStyle, margin: '6px 0 0' }}>
+              點縮圖選取後可調整順序或移除；桌機也可直接拖曳排序。
+            </p>
+          )}
         </div>
       )}
 
