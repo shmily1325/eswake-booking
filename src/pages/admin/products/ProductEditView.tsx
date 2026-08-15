@@ -826,7 +826,10 @@ export function ProductEditView({
         }
         const stockNum = Number(d.stock)
         const availability = deriveVariantAvailability(stockNum, d.acceptPreOrder)
-        const cover_images = coverImagesForDb(d.cover_images)
+        // 一色一卡：封面只掛商品層，SKU 封面刻意清空，避免再複製出重複 storage 檔
+        const cover_images = useProductLevelCovers
+          ? []
+          : coverImagesForDb(d.cover_images)
         const primary = primaryCoverFromGallery(cover_images)
         const payload = {
           label_code: normalizeLabelCode(d.label_code),
@@ -870,8 +873,10 @@ export function ProductEditView({
           for (const p of d.originalCoverImagePaths) finalPaths.add(p)
           if (d.originalImagePath) finalPaths.add(d.originalImagePath)
         } else {
-          for (const img of d.cover_images) {
-            if (img.path) finalPaths.add(img.path)
+          if (!useProductLevelCovers) {
+            for (const img of d.cover_images) {
+              if (img.path) finalPaths.add(img.path)
+            }
           }
           if (d.image_path) finalPaths.add(d.image_path)
         }
