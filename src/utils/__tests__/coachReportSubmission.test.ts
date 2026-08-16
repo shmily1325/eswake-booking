@@ -10,14 +10,14 @@ const participant = {
 
 describe('validateCoachReportSubmission', () => {
   it('allows a coach to report no teaching participants', () => {
-    expect(validateCoachReportSubmission('coach', 0, [])).toEqual({
+    expect(validateCoachReportSubmission('coach', [])).toEqual({
       valid: true,
       emptyParticipantCount: 0,
     })
   })
 
   it('allows blank participant rows to be confirmed and skipped', () => {
-    expect(validateCoachReportSubmission('coach', 0, [{
+    expect(validateCoachReportSubmission('coach', [{
       ...participant,
       participant_name: ' ',
     }])).toEqual({
@@ -27,7 +27,7 @@ describe('validateCoachReportSubmission', () => {
   })
 
   it('rejects a reported participant with zero teaching minutes', () => {
-    expect(validateCoachReportSubmission('coach', 0, [{
+    expect(validateCoachReportSubmission('coach', [{
       ...participant,
       duration_min: 0,
     }])).toEqual({
@@ -37,7 +37,7 @@ describe('validateCoachReportSubmission', () => {
   })
 
   it('rejects a pending member participant without a selected member', () => {
-    expect(validateCoachReportSubmission('coach', 0, [{
+    expect(validateCoachReportSubmission('coach', [{
       ...participant,
       member_id: null,
     }])).toEqual({
@@ -47,17 +47,17 @@ describe('validateCoachReportSubmission', () => {
   })
 
   it.each(['driver', 'both'] as const)(
-    'requires positive driver minutes for %s reports',
+    'accepts %s reports without requiring positive driver minutes',
     (reportType) => {
-      expect(validateCoachReportSubmission(reportType, 0, [participant])).toEqual({
-        valid: false,
-        message: '駕駛時數必須大於 0',
+      expect(validateCoachReportSubmission(reportType, [participant])).toEqual({
+        valid: true,
+        emptyParticipantCount: 0,
       })
     },
   )
 
-  it('accepts a driver report with positive driver minutes', () => {
-    expect(validateCoachReportSubmission('driver', 20, [])).toEqual({
+  it('accepts a driver-only report with no participants', () => {
+    expect(validateCoachReportSubmission('driver', [])).toEqual({
       valid: true,
       emptyParticipantCount: 0,
     })

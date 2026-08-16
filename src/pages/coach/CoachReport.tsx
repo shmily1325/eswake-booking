@@ -505,7 +505,6 @@ export function CoachReport({
     // 所有驗證都必須在任何寫入之前完成，避免驗證中止後仍部分寫入或顯示假成功。
     const validation = validateCoachReportSubmission(
       reportType,
-      driverDuration,
       participants,
     )
     if (!validation.valid) {

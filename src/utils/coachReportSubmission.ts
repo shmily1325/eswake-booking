@@ -19,19 +19,8 @@ export type CoachReportSubmissionValidation =
 
 export function validateCoachReportSubmission(
   reportType: CoachReportSubmissionType,
-  driverDuration: number,
   participants: ReportParticipantInput[],
 ): CoachReportSubmissionValidation {
-  if (
-    (reportType === 'driver' || reportType === 'both') &&
-    (!Number.isFinite(driverDuration) || driverDuration <= 0)
-  ) {
-    return {
-      valid: false,
-      message: '駕駛時數必須大於 0',
-    }
-  }
-
   if (reportType === 'driver') {
     return {
       valid: true,
