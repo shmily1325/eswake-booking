@@ -339,17 +339,12 @@ export function ProductManagement({
     onlySoldOut,
   ])
 
-  /** tab + 搜尋，用來算儀表板數字與 chip 計數 */
+  /** tab + 搜尋，用來算儀表板數字與 chip 計數（含已售完） */
   const baseForCounts: VariantListItem[] = useMemo(() => {
     if (!hasSearch) return tabItems
     return tabItems.filter((it) => variantMatchesSearchTokens(it, searchQuery))
   }, [tabItems, searchQuery, hasSearch])
 
-  /** 主列表基準：不含已售完（種/件、待補 chip 計數） */
-  const activeBaseForCounts = useMemo(
-    () => baseForCounts.filter((it) => !isVariantSoldOut(it)),
-    [baseForCounts],
-  )
   const soldOutCount = useMemo(
     () => baseForCounts.filter(isVariantSoldOut).length,
     [baseForCounts],
@@ -562,7 +557,7 @@ export function ProductManagement({
         {/* 手機先呈現主要操作，再以精簡摘要補充庫存狀態。 */}
         {canEdit && (
           <InventoryDashboard
-            base={activeBaseForCounts}
+            base={baseForCounts}
             isFiltered={hasAnyFilter}
             onlyMissingPrice={onlyMissingPrice}
             onlyMissingImage={onlyMissingImage}
@@ -992,8 +987,8 @@ function sortItemsByUpdated(items: VariantListItem[]): VariantListItem[] {
 // ============================================================
 //  庫存儀表板：種數／件數 + 庫存狀態（現貨／預購／已售完）+ 資料待補
 //  - 庫存狀態互斥；待補可複選並與狀態疊加
-//  - 手機：狀態列永遠露出（清點一次可點）；待補收進展開
-//  - 桌面：狀態在前、待補在後
+//  - 待補數字跟目前庫存狀態連動（選現貨 → 只算現貨裡的缺價等）
+//  - 手機：狀態與待補都常開，不收合
 // ============================================================
 function isVariantSoldOut(it: VariantListItem): boolean {
   return getVariantAvailability(it.variant) === 'sold_out'
@@ -1025,7 +1020,8 @@ function activeStockStatusLabel(
 }
 
 interface InventoryDashboardProps {
-  base: VariantListItem[] // 套搜尋（不含進一步狀態篩選）的清單，用來算主數字/待補 chip
+  /** tab + 搜尋後的全部 SKU（含已售完），用來算庫存狀態與待補連動數字 */
+  base: VariantListItem[]
   isFiltered: boolean
   onlyMissingPrice: boolean
   onlyMissingImage: boolean
@@ -1066,18 +1062,27 @@ function InventoryDashboard({
   onClearAll,
   isMobile,
 }: InventoryDashboardProps) {
-  const [mobileExpanded, setMobileExpanded] = useState(false)
-  const baseSkuCount = base.length
-  const baseStockTotal = base.reduce((s, it) => s + getVariantSellableStock(it.variant), 0)
-  const baseReservedTotal = base.reduce((s, it) => s + (it.variant.reserved_qty || 0), 0)
-  const missingPriceCount = base.filter((it) => it.variant.price == null).length
-  const missingImageCount = base.filter((it) => !it.variant.image_url).length
-  const missingCoverCount = base.filter(
+  // 摘要／庫存 chip：不含已售完
+  const activeBase = useMemo(() => base.filter((it) => !isVariantSoldOut(it)), [base])
+  // 待補數字跟目前庫存狀態連動（選現貨就只算現貨裡缺什麼）
+  const qualityBase = useMemo(() => {
+    if (onlySoldOut) return base.filter(isVariantSoldOut)
+    if (onlyInStock) return base.filter(isVariantInStock)
+    if (onlyPreOrder) return base.filter(isVariantPreOrder)
+    return activeBase
+  }, [base, activeBase, onlyInStock, onlyPreOrder, onlySoldOut])
+
+  const baseSkuCount = activeBase.length
+  const baseStockTotal = activeBase.reduce((s, it) => s + getVariantSellableStock(it.variant), 0)
+  const baseReservedTotal = activeBase.reduce((s, it) => s + (it.variant.reserved_qty || 0), 0)
+  const missingPriceCount = qualityBase.filter((it) => it.variant.price == null).length
+  const missingImageCount = qualityBase.filter((it) => !it.variant.image_url).length
+  const missingCoverCount = qualityBase.filter(
     (it) => !getVariantListImageUrl(it.variant, 'cover', it.product),
   ).length
-  const missingLabelCount = base.filter(isVariantMissingLabel).length
-  const inStockCount = base.filter(isVariantInStock).length
-  const preOrderCount = base.filter(isVariantPreOrder).length
+  const missingLabelCount = qualityBase.filter(isVariantMissingLabel).length
+  const inStockCount = activeBase.filter(isVariantInStock).length
+  const preOrderCount = activeBase.filter(isVariantPreOrder).length
 
   const mainSku = baseSkuCount
   const mainStock = baseStockTotal
@@ -1086,8 +1091,6 @@ function InventoryDashboard({
     onlyMissingPrice || onlyMissingImage || onlyMissingCover || onlyMissingLabel
   const hasStockStatusFilter = onlyInStock || onlyPreOrder || onlySoldOut
   const hasAnyDashboardFilter = hasQualityFilter || hasStockStatusFilter
-  const issueCount =
-    missingPriceCount + missingImageCount + missingCoverCount + missingLabelCount
   const stockStatus = activeStockStatusLabel(onlyInStock, onlyPreOrder, onlySoldOut)
   const stockStatusHint =
     stockStatus === 'in_stock'
@@ -1097,10 +1100,6 @@ function InventoryDashboard({
         : stockStatus === 'sold_out'
           ? '已售完'
           : null
-
-  useEffect(() => {
-    if (hasQualityFilter) setMobileExpanded(true)
-  }, [hasQualityFilter])
 
   const stockStatusChips = (
     <>
@@ -1225,7 +1224,7 @@ function InventoryDashboard({
           )}
         </div>
 
-        {/* 庫存狀態：永遠露出，拇指可直接點 */}
+        {/* 庫存狀態 */}
         <div
           style={{
             padding: '0 12px 10px',
@@ -1237,58 +1236,19 @@ function InventoryDashboard({
           {stockStatusChips}
         </div>
 
-        {/* 待補：預設收合，需要補資料再展開 */}
-        <button
-          type="button"
-          onClick={() => setMobileExpanded((value) => !value)}
-          aria-expanded={mobileExpanded}
+        {/* 待補：常開，數字跟庫存狀態連動 */}
+        <div
           style={{
-            width: '100%',
-            minHeight: 44,
-            padding: '8px 12px',
-            border: 'none',
+            padding: '8px 12px 12px',
             borderTop: `1px solid ${colors.border.light}`,
-            background: 'transparent',
             display: 'flex',
+            gap: 8,
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            color: colors.text.primary,
-            cursor: 'pointer',
-            textAlign: 'left',
+            flexWrap: 'wrap',
           }}
         >
-          <span style={{ fontSize: getFontSize('caption', true), color: colors.text.secondary }}>
-            {hasQualityFilter
-              ? `待補已篩選${stockStatusHint ? ` · ${stockStatusHint}` : ''}`
-              : issueCount > 0
-                ? `待補資料 ${issueCount}`
-                : '待補資料'}
-          </span>
-          <span
-            style={{
-              flexShrink: 0,
-              fontSize: getFontSize('caption', true),
-              color: hasQualityFilter ? colors.warning[700] : colors.text.secondary,
-            }}
-          >
-            {mobileExpanded ? '收合 ▴' : '展開 ▾'}
-          </span>
-        </button>
-
-        {mobileExpanded && (
-          <div
-            style={{
-              padding: '0 12px 12px',
-              display: 'flex',
-              gap: 8,
-              alignItems: 'center',
-              flexWrap: 'wrap',
-            }}
-          >
-            {qualityChips}
-          </div>
-        )}
+          {qualityChips}
+        </div>
       </div>
     )
   }
