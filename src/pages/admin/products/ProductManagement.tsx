@@ -469,6 +469,10 @@ export function ProductManagement({
       ),
     [filteredItems, selectedIds],
   )
+  const selectedCanPreOrder = useMemo(
+    () => partitionPreOrderToggle(filteredItems, selectedIds).applyIds.length > 0,
+    [filteredItems, selectedIds],
+  )
 
   const runBatch = async (work: () => Promise<string | null>) => {
     if (batchBusy) return
@@ -923,6 +927,7 @@ export function ProductManagement({
             onSetPublic={(isPublic) => void handleBatchPublic(isPublic)}
             onSetPreOrder={(accept) => void handleBatchPreOrder(accept)}
             onSetUntil={(until) => void handleBatchUntil(until)}
+            preorderEnabled={selectedCanPreOrder}
             untilEnabled={selectedHasPreOrder}
           />
         )}

@@ -7,7 +7,7 @@
  * ── 簡單 Simple ──
  * - 一頁只做一件事：列表＝逛商品；篩選收在少數入口（分類 chips + Filter）。
  * - 手機不並排兩套同功能（品牌只在 Filter drawer）。搜尋：桌機 header 常駐；手機點放大鏡展開。
- * - 元件少層級：首頁 hero → 兩條 gallery；列表頁分類 → 商品網格。中間不插教學區塊。
+ * - 元件少層級：首頁 hero → 橫滑 gallery；列表頁分類 → 商品網格。中間不插教學區塊。
  *
  * ── 乾淨 Clean ──
  * - 白底商品區 + 黑底 hero，中間不要第三種底色。
@@ -62,11 +62,8 @@ export const SHOP_HERO_KICKER =
 /** 商品照（卡／gallery／購物車縮圖）：白底完整放入，不裁切 */
 export const SHOP_PRODUCT_IMG = 'w-full h-full object-contain'
 
-/** 首頁疊卡主圖寬：手機約半屏、桌機中等，右邊留給露出的卡片 */
-export const SHOP_HOME_FRONT_W =
-  'w-[min(52vw,200px)] md:w-60 lg:w-[min(32vw,380px)]'
-
-export const SHOP_HOME_FRONT_CARD = SHOP_HOME_FRONT_W + ' aspect-4/5'
+/** 首頁橫滑卡寬：手機露出下一張，桌機兩欄裡約兩張半 */
+export const SHOP_HOME_STRIP_CARD = 'w-[min(68vw,228px)] md:w-52'
 
 /** 單品主圖：手機不要吃半屏，桌機不要撐到 500px */
 export const SHOP_DETAIL_FRAME =

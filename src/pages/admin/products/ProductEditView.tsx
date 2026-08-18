@@ -1,8 +1,8 @@
 /**
  * Design thinking:
- * Current feel: product fields and SKU list stack with spacing, not framed cards.
- * Hierarchy: identity → SKU → Shop → delete; save stays the one primary action.
- * Primary task: edit product / SKU and save.
+ * Current feel: identity is folded on edit; SKU opens on stock, price, then spec.
+ * Hierarchy: this SKU first; product identity and extra cover sources stay secondary.
+ * Primary task: change stock / price / photo / label and save once.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Badge, useToast } from '../../../components/ui'
@@ -16,7 +16,9 @@ import {
   CATEGORY_SCHEMAS,
   formatAttributes,
   formatProductModelLine,
+  formatProductTitle,
   getSkuFields,
+  getCategory,
   normalizeGenderValue,
   normalizeVariantAttributes,
   validateAttributes,
@@ -39,13 +41,12 @@ import {
   acceptPreOrderFromVariant,
   deriveVariantAvailability,
 } from './availabilityHelpers'
-import { ShopStatusPill, ShopVisibilityPill } from './ShopStatusPill'
+import { ShopStatusPill } from './ShopStatusPill'
 import { collectZeroStockWarnings } from './productSaveWarnings'
 import { normalizePreOrderUntil } from './productBatch'
 import { ProductLabelPreview } from './ProductLabelPreview'
 import {
   findDuplicateLabelCodes,
-  isLabelCodeDirty,
   LABEL_CODE_MAX_LEN,
   normalizeLabelCode,
   sanitizeLabelCodeInput,
@@ -92,7 +93,7 @@ interface DraftVariant {
   /** 已存在於 DB 的 SKU id；新加的尚未儲存則為 null */
   id: string | null
   label_code: string
-  /** DB 已儲存的標籤代碼（「儲存標籤」dirty 判斷用） */
+  /** DB 已儲存的標籤代碼（儲存商品時對齊） */
   savedLabelCode: string
   vendor_code: string
   attributes: Record<string, string>
@@ -210,7 +211,6 @@ export function ProductEditView({
   const [duplicating, setDuplicating] = useState(false)
   /** 正在把某筆 SKU 的封面／實品照套用到其他尺寸時，記住來源 index */
   const [applyingImagesIdx, setApplyingImagesIdx] = useState<number | null>(null)
-  const [labelCodeSavingId, setLabelCodeSavingId] = useState<string | null>(null)
   const [labelCodeGeneratingIdx, setLabelCodeGeneratingIdx] = useState<number | null>(null)
   const [original, setOriginal] = useState<ProductWithVariants | null>(null)
 
@@ -237,6 +237,7 @@ export function ProductEditView({
   const [createdProductId, setCreatedProductId] = useState<string | null>(null)
   const [createStep, setCreateStep] = useState<CreateStep>(1)
   const [activeSkuIndex, setActiveSkuIndex] = useState<number | null>(0)
+  const [identityOpen, setIdentityOpen] = useState(isNew)
 
   /**
    * 這個編輯 session 內所有「上傳到 storage 的新檔路徑」。
@@ -675,68 +676,12 @@ export function ProductEditView({
         .map((row) => normalizeLabelCode(row.label_code))
       const code = await generateLabelCode(brand, category, extraCodes)
       updateDraft(idx, { label_code: code })
-      toast.success('已產生標籤代碼，可直接修改後再儲存')
+      toast.success('已產生標籤代碼')
     } catch (e) {
       console.error('[ProductEditView] generate label_code failed', e)
       toast.error(e instanceof Error ? e.message : '自動產生失敗')
     } finally {
       setLabelCodeGeneratingIdx(null)
-    }
-  }
-
-  const handleSaveLabelCode = async (idx: number) => {
-    const d = drafts[idx]
-    if (!d?.id) {
-      toast.error('請先儲存商品，再存標籤代碼')
-      return
-    }
-    const formatErr = validateLabelCodeFormat(d.label_code)
-    if (formatErr) {
-      toast.error(formatErr)
-      return
-    }
-    const normalized = normalizeLabelCode(d.label_code)
-    if (normalized) {
-      const clash = drafts.some(
-        (row, i) =>
-          i !== idx &&
-          !row.pendingDelete &&
-          normalizeLabelCode(row.label_code) === normalized,
-      )
-      if (clash) {
-        toast.error(`標籤代碼「${normalized}」在此商品內重複`)
-        return
-      }
-      const conflict = await findLabelCodeConflict(normalized, d.id)
-      if (conflict) {
-        const who = [conflict.brand, conflict.model].filter(Boolean).join(' ')
-        toast.error(
-          who
-            ? `標籤代碼「${normalized}」已被「${who}」使用`
-            : `標籤代碼「${normalized}」已被其他商品使用`,
-        )
-        return
-      }
-    }
-    setLabelCodeSavingId(d.id)
-    try {
-      await updateVariant(d.id, { label_code: normalized })
-      setDrafts((prev) =>
-        prev.map((row, i) =>
-          i === idx ? { ...row, savedLabelCode: normalized ?? '' } : row,
-        ),
-      )
-      toast.success('標籤代碼已儲存')
-    } catch (e: unknown) {
-      console.error('[ProductEditView] save label_code failed', e)
-      const code = (e as { code?: string })?.code
-      if (code === '23505') {
-        toast.error('此標籤代碼已被其他 SKU 使用')
-      } else {
-        toast.error('標籤代碼儲存失敗')
-      }
-    } finally {
-      setLabelCodeSavingId(null)
     }
   }
 
@@ -1205,18 +1150,75 @@ export function ProductEditView({
         </div>
       )}
 
-      {/* 商品基本資訊 */}
+      {/* 商品基本資訊：編輯時預設收合，新增維持全開 */}
       {showIdentitySection && <section style={sectionStyle}>
-        <h3
+        <div
+          role={!isNew ? 'button' : undefined}
+          tabIndex={!isNew ? 0 : undefined}
+          onClick={!isNew ? () => setIdentityOpen((open) => !open) : undefined}
+          onKeyDown={!isNew ? (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setIdentityOpen((open) => !open)
+            }
+          } : undefined}
           style={{
-            margin: '0 0 16px 0',
-            fontSize: getFontSize('h3', isMobile),
-            fontWeight: 700,
-            color: designSystem.colors.text.primary,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: isNew || identityOpen ? 16 : 0,
+            cursor: !isNew ? 'pointer' : 'default',
+            userSelect: 'none',
           }}
         >
-          商品資訊
-        </h3>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: getFontSize('h3', isMobile),
+              fontWeight: 700,
+              color: designSystem.colors.text.primary,
+              flexShrink: 0,
+            }}
+          >
+            商品資訊
+          </h3>
+          {!isNew && (
+            <>
+              {!identityOpen && (
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: getFontSize('bodySmall', isMobile),
+                    color: designSystem.colors.text.secondary,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {formatProductTitle({
+                    brand,
+                    model,
+                    color,
+                    model_year: modelYear ? Number(modelYear) : null,
+                  }) || getCategory(category)?.name || '（未命名）'}
+                </span>
+              )}
+              {identityOpen && <span style={{ flex: 1 }} />}
+              <span
+                aria-hidden
+                style={{
+                  fontSize: getFontSize('caption', isMobile),
+                  color: designSystem.colors.text.disabled,
+                  transform: identityOpen ? 'rotate(180deg)' : 'none',
+                }}
+              >
+                ▾
+              </span>
+            </>
+          )}
+        </div>
+        {(isNew || identityOpen) && (
         <div style={{ display: 'grid', gap: 14, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
           <div>
             <label style={labelStyle}>類別 *</label>
@@ -1399,6 +1401,7 @@ export function ProductEditView({
             />
           </div>}
         </div>
+        )}
       </section>}
 
       {/* SKU 列表 */}
@@ -1502,8 +1505,6 @@ export function ProductEditView({
             onApplyImagesToAllSizes={
               isMultiColorProduct ? () => void handleApplyImagesToAllSizes(idx) : undefined
             }
-            labelCodeSaving={d.id != null && labelCodeSavingId === d.id}
-            onSaveLabelCode={() => void handleSaveLabelCode(idx)}
             labelCodeGenerating={labelCodeGeneratingIdx === idx}
             onGenerateLabelCode={() => void handleGenerateLabelCode(idx)}
             sectionMode={mobileCreateWizard
@@ -1547,16 +1548,6 @@ export function ProductEditView({
             borderTop: `1px solid ${designSystem.colors.border.light}`,
           }}
         >
-        <h3
-          style={{
-            margin: `0 0 ${designSystem.spacing.md} 0`,
-            fontSize: getFontSize('h3', isMobile),
-            fontWeight: 700,
-            color: designSystem.colors.text.primary,
-          }}
-        >
-          Shop 上架
-        </h3>
         <label
           style={{
             display: 'flex',
@@ -1579,27 +1570,17 @@ export function ProductEditView({
               accentColor: designSystem.colors.primary[500],
             }}
           />
-          <div
+          <span
             style={{
-              flex: 1,
-              minWidth: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 8,
+              fontSize: getFontSize('body', isMobile),
+              fontWeight: 600,
+              color: isPublic
+                ? designSystem.colors.text.primary
+                : designSystem.colors.text.disabled,
             }}
           >
-            <span
-              style={{
-                fontSize: getFontSize('body', isMobile),
-                fontWeight: 600,
-                color: designSystem.colors.text.primary,
-              }}
-            >
-              上架 Shop
-            </span>
-            <ShopVisibilityPill isPublic={isPublic} isMobile={isMobile} />
-          </div>
+            {isPublic ? '上架' : '未上架'}
+          </span>
         </label>
         </div>}
       </section>}
@@ -1716,8 +1697,6 @@ interface VariantBlockProps {
   /** 任一 SKU 正在套用／複製圖片時，鎖住按鈕 */
   imagesBusy?: boolean
   onApplyImagesToAllSizes?: () => void
-  labelCodeSaving?: boolean
-  onSaveLabelCode?: () => void
   labelCodeGenerating?: boolean
   onGenerateLabelCode?: () => void
   sectionMode?: VariantSectionMode
@@ -1725,13 +1704,21 @@ interface VariantBlockProps {
   onToggleExpanded?: () => void
 }
 
-function SectionLabel({ children, isMobile }: { children: React.ReactNode; isMobile: boolean }) {
+function SectionLabel({
+  children,
+  isMobile,
+  flush,
+}: {
+  children: React.ReactNode
+  isMobile: boolean
+  flush?: boolean
+}) {
   return (
     <div
       style={{
-        margin: '14px 0 8px',
-        paddingTop: 12,
-        borderTop: `1px solid ${designSystem.colors.border.light}`,
+        margin: flush ? '0 0 8px' : '14px 0 8px',
+        paddingTop: flush ? 0 : 12,
+        borderTop: flush ? 'none' : `1px solid ${designSystem.colors.border.light}`,
         fontSize: getFontSize('bodySmall', isMobile),
         fontWeight: 700,
         color: designSystem.colors.text.secondary,
@@ -1763,8 +1750,6 @@ function VariantBlock({
   applyingImages = false,
   imagesBusy = false,
   onApplyImagesToAllSizes,
-  labelCodeSaving = false,
-  onSaveLabelCode,
   labelCodeGenerating = false,
   onGenerateLabelCode,
   sectionMode = 'all',
@@ -2188,36 +2173,6 @@ function VariantBlock({
           isMobile={isMobile}
         />
       </div>
-      {!readOnly && (
-        <div style={{ marginTop: 10 }}>
-          <Button
-            variant="primary"
-            size="small"
-            data-track="product_label_code_save"
-            disabled={
-              disabled ||
-              draft.pendingDelete ||
-              !draft.id ||
-              !isLabelCodeDirty(draft.label_code, draft.savedLabelCode) ||
-              labelCodeSaving
-            }
-            onClick={() => onSaveLabelCode?.()}
-          >
-            {labelCodeSaving ? '儲存中…' : '儲存標籤'}
-          </Button>
-          {draft.id && isLabelCodeDirty(draft.label_code, draft.savedLabelCode) && (
-            <p
-              style={{
-                fontSize: getFontSize('caption', isMobile),
-                color: designSystem.colors.info[700],
-                margin: '6px 0 0',
-              }}
-            >
-              尚未儲存
-            </p>
-          )}
-        </div>
-      )}
     </div>
   )
 
@@ -2431,15 +2386,19 @@ function VariantBlock({
         <>
           {(sectionMode === 'all' || sectionMode === 'core') && (
             <>
+              <SectionLabel isMobile={isMobile} flush>
+                庫存與售價
+              </SectionLabel>
+              {inventoryFieldsGrid}
               <SectionLabel isMobile={isMobile}>規格資料</SectionLabel>
               {specFieldsGrid}
-              <SectionLabel isMobile={isMobile}>庫存與售價</SectionLabel>
-              {inventoryFieldsGrid}
             </>
           )}
           {(sectionMode === 'all' || sectionMode === 'advanced') && (
             <>
-              <SectionLabel isMobile={isMobile}>圖片與標籤</SectionLabel>
+              <SectionLabel isMobile={isMobile} flush={sectionMode === 'advanced'}>
+                圖片與標籤
+              </SectionLabel>
               {productPhotoSection}
               {labelCodeSection}
               {showSkuCovers && collapsibleCoverSection}

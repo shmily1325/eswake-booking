@@ -2,7 +2,7 @@
  * Design thinking:
  * Current feel: Material greens/oranges read as admin status noise.
  * Hierarchy: label text first; soft tonal fill only for quick scan.
- * Primary task: recognize 現貨 / 預購 / 已售完 / Shop 顯示 without competing chrome.
+ * Primary task: recognize 現貨 / 預購 / 已售完 / 上架 without competing chrome.
  */
 import type { CSSProperties } from 'react'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
@@ -50,7 +50,7 @@ export function ShopVisibilityPill({ isPublic, isMobile }: { isPublic: boolean; 
         color: isPublic ? colors.text.primary : colors.text.disabled,
       }}
     >
-      {isPublic ? 'Shop 顯示' : 'Shop 隱藏'}
+      {isPublic ? '上架' : '未上架'}
     </span>
   )
 }

@@ -16,6 +16,8 @@ interface ProductBatchBarProps {
   onSetPublic: (isPublic: boolean) => void
   onSetPreOrder: (accept: boolean) => void
   onSetUntil: (until: string | null) => void
+  /** 無庫存 SKU 才能開放／關閉預購 */
+  preorderEnabled?: boolean
   /** 到期日只對已開放預購的 SKU 有意義 */
   untilEnabled?: boolean
 }
@@ -37,6 +39,7 @@ export function ProductBatchBar({
   onSetPublic,
   onSetPreOrder,
   onSetUntil,
+  preorderEnabled = true,
   untilEnabled = true,
 }: ProductBatchBarProps) {
   const [sheet, setSheet] = useState<BatchSheet>(null)
@@ -45,8 +48,9 @@ export function ProductBatchBar({
   const closeSheet = () => setSheet(null)
 
   useEffect(() => {
+    if (!preorderEnabled && sheet === 'preorder') setSheet(null)
     if (!untilEnabled && sheet === 'until') setSheet(null)
-  }, [untilEnabled, sheet])
+  }, [preorderEnabled, untilEnabled, sheet])
 
   return (
     <>
@@ -213,16 +217,21 @@ export function ProductBatchBar({
           >
             上架
           </Button>
-          <Button
-            fullWidth
-            size="large"
-            variant="secondary"
-            disabled={busy || selectedCount === 0}
-            style={actionBtnStyle}
-            onClick={() => setSheet('preorder')}
+          <span
+            title={selectedCount > 0 && !preorderEnabled ? '現貨無法改預購' : undefined}
+            style={{ minWidth: 0, display: 'block' }}
           >
-            預購
-          </Button>
+            <Button
+              fullWidth
+              size="large"
+              variant="secondary"
+              disabled={busy || selectedCount === 0 || !preorderEnabled}
+              style={actionBtnStyle}
+              onClick={() => setSheet('preorder')}
+            >
+              預購
+            </Button>
+          </span>
           <span
             title={selectedCount > 0 && !untilEnabled ? '僅預購可設定到期日' : undefined}
             style={{ minWidth: 0, display: 'block' }}

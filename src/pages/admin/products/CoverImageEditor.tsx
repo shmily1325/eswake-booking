@@ -52,10 +52,15 @@ export function CoverImageEditor({
   /** 被點選的封面（顯示單一操作列，避免每張圖都塞按鈕） */
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [dragFromKey, setDragFromKey] = useState<string | null>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
 
   useEffect(() => {
     imagesRef.current = images
   }, [images])
+
+  useEffect(() => {
+    if (candidates.length > 1) setMoreOpen(true)
+  }, [candidates.length])
 
   const searchLinks = useMemo(
     () => getProductImageSearchLinks(brand, model, vendorCode),
@@ -430,6 +435,7 @@ export function CoverImageEditor({
       )}
 
       <div
+        onPaste={handlePaste}
         style={{
           display: 'flex',
           gap: 12,
@@ -469,17 +475,35 @@ export function CoverImageEditor({
             gap: 8,
           }}
         >
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {!atLimit && (
+              <button
+                type="button"
+                onClick={() => uploaderRef.current?.openPicker()}
+                disabled={disabled || busy}
+                style={buttonStyle}
+              >
+                從相簿上傳
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => uploaderRef.current?.openPicker()}
-              disabled={disabled || busy || atLimit}
-              style={buttonStyle}
+              onClick={() => setMoreOpen((open) => !open)}
+              disabled={disabled}
+              style={{
+                ...buttonStyle,
+                border: 'none',
+                background: 'transparent',
+                color: colors.text.secondary,
+                padding: '8px 4px',
+              }}
             >
-              從相簿上傳
+              {moreOpen ? '收合其他' : '其他'}
             </button>
           </div>
 
+          {moreOpen && (
+            <>
           {searchLinks.map((link) => (
             <a
               key={link.url}
@@ -563,6 +587,8 @@ export function CoverImageEditor({
                 ))}
               </div>
             </div>
+          )}
+            </>
           )}
         </div>
       </div>

@@ -257,24 +257,22 @@ function ToolbarSort({ sortBy, onSortChange, className = '' }: ToolbarSortProps)
 
 function HomeGalleryLoading() {
   return (
-    <div className="max-w-7xl mx-auto pt-2 pb-8 space-y-8 px-4 sm:px-6">
-      {['pre', 'stock'].map((row) => (
-        <div key={row}>
-          <div className="h-6 w-28 bg-white/10 rounded mb-3" />
-          <div className="relative h-[calc(min(52vw,200px)*5/4)] md:h-[300px] lg:h-[min(40vw,475px)] max-w-full">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute top-0 left-0 w-[min(52vw,200px)] md:w-60 lg:w-[min(32vw,380px)] aspect-4/5 rounded-xl bg-zinc-800 animate-pulse origin-left"
-                style={{
-                  transform: `translateX(${i * 34}%) scale(${1 - i * 0.04})`,
-                  zIndex: 4 - i,
-                }}
-              />
-            ))}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
+      <div className="space-y-10 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-10">
+        {['pre', 'stock'].map((row) => (
+          <div key={row} className="min-w-0">
+            <div className="h-6 w-28 bg-white/10 rounded mb-3" />
+            <div className="flex gap-3 overflow-hidden">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="w-[min(68vw,228px)] md:w-52 shrink-0 rounded-xl bg-zinc-800 animate-pulse aspect-4/5"
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
