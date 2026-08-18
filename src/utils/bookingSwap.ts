@@ -51,6 +51,7 @@ interface DayBookingRow {
   coachIds: string[]
   driverIds: string[]
   coachNames: string[]
+  driverNames: string[]
 }
 
 interface UnavailableRecord {
@@ -102,12 +103,54 @@ function isCancelled(status: string | null | undefined): boolean {
 }
 
 function personIdsOf(booking: SwapBookingLike | DayBookingRow): string[] {
+  return peopleOf(booking).map(p => p.id)
+}
+
+function peopleOf(
+  booking: SwapBookingLike | DayBookingRow
+): { id: string; name: string; role: '教練' | '駕駛' }[] {
+  const out: { id: string; name: string; role: '教練' | '駕駛' }[] = []
+  const seen = new Set<string>()
+
   if ('coachIds' in booking) {
-    return Array.from(new Set([...(booking.coachIds || []), ...(booking.driverIds || [])]))
+    for (let i = 0; i < (booking.coachIds || []).length; i++) {
+      const id = booking.coachIds[i]
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      out.push({
+        id,
+        name: booking.coachNames?.[i] || '未知',
+        role: '教練',
+      })
+    }
+    for (let i = 0; i < (booking.driverIds || []).length; i++) {
+      const id = booking.driverIds[i]
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      out.push({
+        id,
+        name: booking.driverNames?.[i] || '未知',
+        role: '駕駛',
+      })
+    }
+    return out
   }
-  const coaches = booking.coaches?.map(c => c.id) || []
-  const drivers = booking.drivers?.map(d => d.id) || []
-  return Array.from(new Set([...coaches, ...drivers]))
+
+  for (const c of booking.coaches || []) {
+    if (!c?.id || seen.has(c.id)) continue
+    seen.add(c.id)
+    out.push({ id: c.id, name: c.name || '未知', role: '教練' })
+  }
+  for (const d of booking.drivers || []) {
+    if (!d?.id || seen.has(d.id)) continue
+    seen.add(d.id)
+    out.push({ id: d.id, name: d.name || '未知', role: '駕駛' })
+  }
+  return out
+}
+
+function formatPeopleLabel(people: { name: string; role: '教練' | '駕駛' }[]): string {
+  return people.map(p => `${p.role} ${p.name}`).join('、')
 }
 
 function boatNameOf(b: SwapBookingLike): string {
@@ -194,15 +237,18 @@ export function checkSwapPairMutualConflict(
     }
   }
 
-  const peopleA = personIdsOf(a)
-  const peopleB = personIdsOf(b)
-  const sharePerson = peopleA.some(id => peopleB.includes(id))
+  const peopleA = peopleOf(a)
+  const peopleB = peopleOf(b)
+  const shared = peopleA.filter(p => peopleB.some(o => o.id === p.id))
   // 同船豁免（與教練排班一致）
-  if (sharePerson && a.boat_id !== b.boat_id) {
+  if (shared.length > 0 && a.boat_id !== b.boat_id) {
     const slotA = calculateTimeSlot(timeOf(a.start_at), a.duration_min)
     const slotB = calculateTimeSlot(timeOf(b.start_at), b.duration_min)
     if (checkTimeSlotConflict(slotA, slotB)) {
-      return { ok: false, reason: '互換後兩筆教練／駕駛時段衝突' }
+      return {
+        ok: false,
+        reason: `互換後 ${formatPeopleLabel(shared)} 時段衝突`,
+      }
     }
   }
 
@@ -211,7 +257,7 @@ export function checkSwapPairMutualConflict(
 
 /** 教練／駕駛時段衝突（含預設 15 分緩衝）；同船豁免 */
 function checkPeopleConflictLocal(
-  personIds: string[],
+  people: { id: string; name: string; role: '教練' | '駕駛' }[],
   hypoBoatId: number,
   dateStr: string,
   startTime: string,
@@ -219,9 +265,9 @@ function checkPeopleConflictLocal(
   dayBookings: DayBookingRow[],
   excludeIds: Set<number>
 ): SwapValidationResult {
-  if (personIds.length === 0) return { ok: true }
+  if (people.length === 0) return { ok: true }
 
-  const personSet = new Set(personIds)
+  const personSet = new Set(people.map(p => p.id))
   const newSlot = calculateTimeSlot(startTime, durationMin) // 預設含 15 分緩衝
 
   for (const existing of dayBookings) {
@@ -231,8 +277,10 @@ function checkPeopleConflictLocal(
     // 同船豁免（與教練排班一致）
     if (existing.boat_id === hypoBoatId) continue
 
-    const existingPeople = personIdsOf(existing)
-    if (!existingPeople.some(id => personSet.has(id))) continue
+    const overlapping = people.filter(p =>
+      personIdsOf(existing).includes(p.id) && personSet.has(p.id)
+    )
+    if (overlapping.length === 0) continue
 
     const existingTime = timeOf(existing.start_at)
     const existingSlot = calculateTimeSlot(existingTime, existing.duration_min)
@@ -240,7 +288,7 @@ function checkPeopleConflictLocal(
     if (checkTimeSlotConflict(newSlot, existingSlot)) {
       return {
         ok: false,
-        reason: `與 ${existing.contact_name}（${existingTime}）人員時段衝突`,
+        reason: `${formatPeopleLabel(overlapping)} 與 ${existing.contact_name}（${existingTime}）時段衝突`,
       }
     }
   }
@@ -390,7 +438,7 @@ function validateOneSide(
 
   if (options.checkPeople) {
     const people = checkPeopleConflictLocal(
-      personIdsOf(hypo),
+      peopleOf(hypo),
       hypo.boat_id,
       dateStr,
       startTime,
@@ -464,6 +512,7 @@ export async function loadSwapDayBookings(dateStr: string): Promise<DayBookingRo
       coachIds: coaches.map(c => c.id),
       driverIds: drivers.map(d => d.id),
       coachNames: coaches.map(c => c.name),
+      driverNames: drivers.map(d => d.name),
     }
   })
 }

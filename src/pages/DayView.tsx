@@ -640,10 +640,38 @@ export function DayView() {
 
     const afterA = applySwapHypothetical(a, b)
     const afterB = applySwapHypothetical(b, a)
+
+    const formatSide = (
+      booking: Booking,
+      after: ReturnType<typeof applySwapHypothetical>
+    ) => {
+      const time = after.start_at.substring(11, 16)
+      const boat = after.boats?.name || '未知'
+      const coaches = (booking.coaches || []).map(c => c.name).filter(Boolean)
+      const drivers = (booking.drivers || []).map(d => d.name).filter(Boolean)
+      const lines = [
+        `${getDisplayContactName(booking)}`,
+        `  時間：${time}`,
+        `  船隻：${boat}`,
+        `  時長：${booking.duration_min} 分`,
+        `  教練：${coaches.length ? coaches.join('、') : '未排'}`,
+      ]
+      if (drivers.length) {
+        lines.push(`  駕駛：${drivers.join('、')}`)
+      } else if (booking.requires_driver) {
+        lines.push('  駕駛：需要（未排）')
+      }
+      if (booking.activity_types && booking.activity_types.length > 0) {
+        lines.push(`  活動：${booking.activity_types.join('、')}`)
+      }
+      return lines.join('\n')
+    }
+
     const confirmMsg =
-      `互換這兩筆位置？\n\n` +
-      `${getDisplayContactName(a)} → ${afterA.start_at.substring(11, 16)} ${afterA.boats?.name || ''}\n` +
-      `${getDisplayContactName(b)} → ${afterB.start_at.substring(11, 16)} ${afterB.boats?.name || ''}`
+      `互換後：\n\n` +
+      `${formatSide(a, afterA)}\n\n` +
+      `${formatSide(b, afterB)}\n\n` +
+      `確定互換？`
     if (!confirm(confirmMsg)) {
       trackClick('day_swap_confirm_cancel', user?.email)
       return
@@ -847,29 +875,31 @@ export function DayView() {
                     重複預約
                   </button>
                 )}
-                <button
-                  data-track={swapMode ? 'day_swap_exit' : 'day_swap_enter'}
-                  onClick={() => {
-                    if (swapMode) {
-                      exitSwapMode()
-                    } else {
-                      setSwapMode(true)
-                      setSwapSelectedIds([])
-                      setSwapModes([])
-                      setSwapBlockReason('')
-                      toast.info('互換模式：請點選兩筆預約')
-                    }
-                  }}
-                  style={{
-                    ...getButtonStyle(swapMode ? 'primary' : 'outline', 'medium', isMobile),
-                    flex: isMobile ? '1 1 100%' : '0 0 auto',
-                    minWidth: isMobile ? '100%' : '88px',
-                    minHeight: '44px',
-                    touchAction: 'manipulation',
-                  }}
-                >
-                  {swapMode ? '結束互換' : '互換'}
-                </button>
+                {canUseRepeatBooking && (
+                  <button
+                    data-track={swapMode ? 'day_swap_exit' : 'day_swap_enter'}
+                    onClick={() => {
+                      if (swapMode) {
+                        exitSwapMode()
+                      } else {
+                        setSwapMode(true)
+                        setSwapSelectedIds([])
+                        setSwapModes([])
+                        setSwapBlockReason('')
+                        toast.info('互換模式：請點選兩筆預約')
+                      }
+                    }}
+                    style={{
+                      ...getButtonStyle(swapMode ? 'primary' : 'outline', 'medium', isMobile),
+                      flex: isMobile ? '1 1 100%' : '0 0 auto',
+                      minWidth: isMobile ? '100%' : '88px',
+                      minHeight: '44px',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    {swapMode ? '結束互換' : '互換'}
+                  </button>
+                )}
               </div>
 
             {swapMode && (
