@@ -12,6 +12,8 @@ export const SHOP_LABEL = {
   type: 'Type',
   preOrder: 'Pre-Order',
   preOrderOnly: 'Pre-Order only',
+  inStock: 'In-Stock',
+  viewAll: 'View all',
   clear: 'Clear',
   clearAll: 'Clear all',
   all: 'All',
@@ -20,7 +22,7 @@ export const SHOP_LABEL = {
   newest: 'Newest',
   priceAsc: 'Price: Low → High',
   priceDesc: 'Price: High → Low',
-  sortBy: 'Sort by',
+  search: 'Search',
 } as const
 
 export const SHOP_COPY = {
@@ -31,6 +33,7 @@ export const SHOP_COPY = {
   emptySearch: (q: string) => `找不到符合「${q}」的商品`,
   emptyFilter: '沒有符合篩選條件的商品',
   emptyPreOrder: '目前沒有開放預購的商品',
+  emptyInStock: '目前沒有現貨商品',
   emptyCatalog: '目前還沒有上架商品',
   loadError: '暫時無法載入商品',
   reload: '重新載入',

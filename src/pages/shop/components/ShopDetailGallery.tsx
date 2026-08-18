@@ -25,23 +25,54 @@ const RAIL_VISIBLE = 5
 /**
  * 商品詳情主圖 gallery。
  *
- * 手機與桌機共用同一條 scroll-snap 軌道（不重複 render 一份 DOM，圖片只下載一次）：
+ * 主圖一次只下載眼前與相鄰張；其餘滑到再載，避免多圖商品開頁等很久。
  * - 手機：直接左右滑主圖，圖下方圓點／計數
  * - 桌機：大圖左側一排直立縮圖 + hover 才出現的左右箭頭，兩者都是捲同一條軌道
  * - 兩邊都可以點圖看全螢幕大圖
  *
  * 用 object-contain 而不是 cover：商品照多為白底直立，contain 不會裁掉浮力衣下襬 / 板頭。
  */
+function useDesktopRail() {
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const update = () => setShow(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  return show
+}
+
+function neighborsOf(index: number, count: number): number[] {
+  const out: number[] = []
+  for (const i of [index - 1, index, index + 1]) {
+    if (i >= 0 && i < count) out.push(i)
+  }
+  return out
+}
+
 export function ShopDetailGallery({ images, alt, resetKey }: ShopDetailGalleryProps) {
   const count = images.length
   const { trackRef, index, setIndex, handleScroll, goTo } = useSnapCarousel(count)
   const railRef = useRef<HTMLDivElement>(null)
   const [zoomOpen, setZoomOpen] = useState(false)
+  const showRail = useDesktopRail()
+  const [armed, setArmed] = useState(() => new Set(neighborsOf(0, count)))
 
   useEffect(() => {
     setIndex(0)
+    setArmed(new Set(neighborsOf(0, count)))
     trackRef.current?.scrollTo({ left: 0 })
-  }, [resetKey, setIndex, trackRef])
+  }, [resetKey, count, setIndex, trackRef])
+
+  useEffect(() => {
+    setArmed((prev) => {
+      const next = new Set(prev)
+      for (const i of neighborsOf(index, count)) next.add(i)
+      return next
+    })
+  }, [index, count])
 
   // 縮圖列比大圖矮，用箭頭 / 滑動換圖時要把選中的縮圖帶進視野。
   // 手動算 scrollTop 而不用 scrollIntoView：後者會連整頁一起捲。
@@ -69,8 +100,8 @@ export function ShopDetailGallery({ images, alt, resetKey }: ShopDetailGalleryPr
   return (
     <div className="w-full">
       <div className="md:flex md:items-start md:gap-4">
-        {count > 1 && (
-          <div className="hidden md:block relative shrink-0">
+        {showRail && count > 1 && (
+          <div className="relative shrink-0">
             <div
               ref={railRef}
               role="tablist"
@@ -94,12 +125,14 @@ export function ShopDetailGallery({ images, alt, resetKey }: ShopDetailGalleryPr
                         : 'border-gray-200 hover:border-gray-400 opacity-70 hover:opacity-100')
                     }
                   >
-                    <img
-                      src={img.url}
-                      alt=""
-                      loading="lazy"
-                      className="w-full h-full object-contain"
-                    />
+                    {armed.has(i) ? (
+                      <img
+                        src={img.url}
+                        alt=""
+                        decoding="async"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : null}
                   </button>
                 )
               })}
@@ -138,13 +171,17 @@ export function ShopDetailGallery({ images, alt, resetKey }: ShopDetailGalleryPr
                 tabIndex={-1}
                 className="w-full shrink-0 snap-center aspect-4/5 max-h-[56vh] md:max-h-[500px] cursor-zoom-in"
               >
-                <ImageOrFallback
-                  src={img.url}
-                  alt={i === 0 ? alt : ''}
-                  imgClassName="w-full h-full object-contain select-none"
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  fallback={<NoImagePlaceholder />}
-                />
+                {armed.has(i) ? (
+                  <ImageOrFallback
+                    src={img.url}
+                    alt={i === index ? alt : ''}
+                    imgClassName="w-full h-full object-contain select-none"
+                    loading={i === index ? 'eager' : 'lazy'}
+                    fallback={<NoImagePlaceholder />}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-white" aria-hidden />
+                )}
               </button>
             ))}
           </div>

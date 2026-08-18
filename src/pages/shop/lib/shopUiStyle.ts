@@ -6,8 +6,8 @@
  *
  * ── 簡單 Simple ──
  * - 一頁只做一件事：列表＝逛商品；篩選收在少數入口（分類 chips + Filter）。
- * - 手機不並排兩套同功能（搜尋僅桌機 header；品牌只在 Filter drawer）。
- * - 元件少層級：hero → 分類 → 列表，中間不插教學區塊。
+ * - 手機不並排兩套同功能（品牌只在 Filter drawer）。搜尋：桌機 header 常駐；手機點放大鏡展開。
+ * - 元件少層級：首頁 hero → 兩條 gallery；列表頁分類 → 商品網格。中間不插教學區塊。
  *
  * ── 乾淨 Clean ──
  * - 白底商品區 + 黑底 hero，中間不要第三種底色。
@@ -27,7 +27,7 @@
  * ── 有風格 Character ──
  * - 字：標題／logo 區 font-black italic uppercase；內文正常 sans。
  * - 色：黑 + 白 + zinc；預購 amber-600；避免再引入新主色。
- * - 圖：hero 全幅裁切一致；商品卡固定版型（品牌行 + 型號 + 價格高）。
+ * - 圖：hero 全幅裁切；商品照白底 object-contain，不裁板頭／衣襬。
  *
  * ── 文案 ──
  * - 按鈕、badge、分類 tab：英文、短。
@@ -39,10 +39,11 @@
  * ── 資訊架構（固定，勿再加第四條導覽）──
  * | 層級     | 手機              | 桌機        |
  * |----------|-------------------|-------------|
- * | 分類     | hero 下黑底 chips；子分類無 All（點大類回到全組） | 同左 + 側欄 |
+ * | 首頁     | hero + gallery + 三大類入口 | 同左 |
+ * | 分類     | 列表頁 hero 下黑底 chips；子分類無 All | 同左 + 側欄 |
  * | 件數     | 子 chip 數字；Filter drawer「Show N」       |              |
  * | 品牌等   | Filter drawer     | 側欄        |
- * | 搜尋     | —                 | header      |
+ * | 搜尋     | header 放大鏡展開 | header      |
  *
  * ── 新增功能前自問 ──
  * 1. 拿掉它，使用者還完成得了任務嗎？能 → 不加。
@@ -57,3 +58,6 @@ export const SHOP_SECTION_LABEL =
 /** Hero 父分類 kicker */
 export const SHOP_HERO_KICKER =
   'text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-white/75'
+
+/** 商品照（卡／gallery／購物車縮圖）：白底完整放入，不裁切 */
+export const SHOP_PRODUCT_IMG = 'w-full h-full object-contain'

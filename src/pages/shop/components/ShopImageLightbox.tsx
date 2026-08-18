@@ -102,13 +102,16 @@ export function ShopImageLightbox({
               key={img.url}
               className="w-full h-full shrink-0 snap-center flex items-center justify-center p-4"
             >
-              <img
-                src={img.url}
-                alt={i === index ? alt : ''}
-                loading={i === startIndex ? 'eager' : 'lazy'}
-                className="max-w-full max-h-full object-contain select-none"
-                draggable={false}
-              />
+              {Math.abs(i - index) <= 1 ? (
+                <img
+                  src={img.url}
+                  alt={i === index ? alt : ''}
+                  loading={i === index ? 'eager' : 'lazy'}
+                  decoding="async"
+                  className="max-w-full max-h-full object-contain select-none"
+                  draggable={false}
+                />
+              ) : null}
             </div>
           ))}
         </div>

@@ -51,6 +51,7 @@ export function useShopFilters(products: ProductWithVariants[]) {
       subCat: ALL_SUBCATS,
       brands: [],
       preOrderOnly: true,
+      inStockOnly: false,
     })
     const preOrderBrandCounts = computeBrandCounts(preOrderNavProducts)
     // 類型列常駐：未選品牌時列出全部預購商品的類型
@@ -108,18 +109,34 @@ export function useShopFilters(products: ProductWithVariants[]) {
   )
 
   const selectAll = useCallback(() => {
-    writeFilters({
+    writeFilters((prev) => ({
+      ...prev,
       topLevel: ALL_GROUPS,
       subCat: ALL_SUBCATS,
       brands: [],
       preOrderOnly: false,
-    })
+      inStockOnly: prev.inStockOnly,
+    }))
   }, [writeFilters])
 
   const setPreOrderOnly = useCallback(
     (preOrderOnly: boolean) => {
       writeFilters({
         preOrderOnly,
+        inStockOnly: false,
+        topLevel: ALL_GROUPS,
+        subCat: ALL_SUBCATS,
+        brands: [],
+      })
+    },
+    [writeFilters],
+  )
+
+  const setInStockOnly = useCallback(
+    (inStockOnly: boolean) => {
+      writeFilters({
+        inStockOnly,
+        preOrderOnly: false,
         topLevel: ALL_GROUPS,
         subCat: ALL_SUBCATS,
         brands: [],
@@ -130,7 +147,14 @@ export function useShopFilters(products: ProductWithVariants[]) {
 
   const selectCategory = useCallback(
     (topLevel: TopLevel, subCat: string = ALL_SUBCATS) => {
-      writeFilters({ topLevel, subCat, preOrderOnly: false, brands: [] })
+      writeFilters((prev) => ({
+        ...prev,
+        topLevel,
+        subCat,
+        preOrderOnly: false,
+        inStockOnly: prev.inStockOnly,
+        brands: [],
+      }))
     },
     [writeFilters],
   )
@@ -140,6 +164,7 @@ export function useShopFilters(products: ProductWithVariants[]) {
       writeFilters((prev) => ({
         ...prev,
         preOrderOnly: true,
+        inStockOnly: false,
         topLevel: ALL_GROUPS,
         // 換品牌時類型回到全部，避免停在新品牌沒有的類型上
         subCat: ALL_SUBCATS,
@@ -153,6 +178,7 @@ export function useShopFilters(products: ProductWithVariants[]) {
     (subCat: string) => {
       writeFilters({
         preOrderOnly: true,
+        inStockOnly: false,
         topLevel: ALL_GROUPS,
         subCat,
       })
@@ -231,7 +257,7 @@ export function useShopFilters(products: ProductWithVariants[]) {
       brand?: string,
     ) => {
       if (key === 'preorder') {
-        writeFilters({ preOrderOnly: false })
+        writeFilters({ preOrderOnly: false, inStockOnly: false })
       } else if (key === 'group') {
         writeFilters({ topLevel: ALL_GROUPS, subCat: ALL_SUBCATS })
       } else if (key === 'cat') {
@@ -259,6 +285,7 @@ export function useShopFilters(products: ProductWithVariants[]) {
     hasFilter,
     selectAll,
     setPreOrderOnly,
+    setInStockOnly,
     selectCategory,
     selectPreOrderBrand,
     selectPreOrderCategory,

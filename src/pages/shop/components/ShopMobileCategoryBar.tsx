@@ -42,7 +42,9 @@ export function ShopCategoryBar({
   const onDark = variant === 'dark'
 
   const allActive =
-    filters.topLevel === ALL_GROUPS && filters.subCat === ALL_SUBCATS
+    filters.topLevel === ALL_GROUPS &&
+    filters.subCat === ALL_SUBCATS &&
+    !filters.preOrderOnly
 
   const activeGroup =
     filters.topLevel !== ALL_GROUPS ? (filters.topLevel as ShopGroup) : null

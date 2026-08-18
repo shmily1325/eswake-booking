@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { formatProductPriceRange, normalizeShopPrice } from '../shopFormat'
-import type { ProductVariantRow } from '../../../admin/products/types'
+import { formatProductPriceRange, isProductListedInShop, normalizeShopPrice } from '../shopFormat'
+import type { ProductVariantRow, ProductWithVariants } from '../../../admin/products/types'
 
 function v(price: number | null | string): ProductVariantRow {
   return { price } as ProductVariantRow
@@ -31,5 +31,43 @@ describe('formatProductPriceRange', () => {
 
   it('ignores null and zero prices', () => {
     expect(formatProductPriceRange([v(5000), v(null), v(0)])).toBe('NT$ 5,000')
+  })
+})
+
+describe('isProductListedInShop', () => {
+  function product(
+    image: string | null,
+    availability: 'in_stock' | 'pre_order' = 'in_stock',
+    stock = 1,
+  ): ProductWithVariants {
+    return {
+      id: 'p1',
+      cover_image_url: image,
+      cover_images: image ? [{ url: image, path: '' }] : [],
+      variants: [
+        {
+          id: 'v1',
+          availability,
+          stock,
+          reserved_qty: 0,
+          price: null,
+          cover_image_url: null,
+          cover_images: [],
+          image_url: null,
+        },
+      ],
+    } as ProductWithVariants
+  }
+
+  it('lists in-stock products that have a cover, even without a price', () => {
+    expect(isProductListedInShop(product('https://img/a.jpg'))).toBe(true)
+  })
+
+  it('hides products with no image', () => {
+    expect(isProductListedInShop(product(null))).toBe(false)
+  })
+
+  it('hides sold-out products even if they have a cover', () => {
+    expect(isProductListedInShop(product('https://img/a.jpg', 'in_stock', 0))).toBe(false)
   })
 })

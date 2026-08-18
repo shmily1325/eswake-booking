@@ -11,6 +11,7 @@ import {
 } from '../lib/productAvailability'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
+import { SHOP_PRODUCT_IMG } from '../lib/shopUiStyle'
 import { SHOP_LABEL } from '../lib/shopCopy'
 import { shopProductPath } from '../lib/shopPaths'
 import {
@@ -62,11 +63,11 @@ export function ProductCard({
       state={cardNavigationState(returnTo, product, variants)}
       className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >
-      <div className="relative aspect-4/5 bg-gray-100 overflow-hidden">
+      <div className="relative aspect-4/5 bg-white overflow-hidden">
         <ImageOrFallback
           src={imageUrl}
           alt={formatProductTitle(product)}
-          imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          imgClassName={SHOP_PRODUCT_IMG}
           fallback={<NoImagePlaceholder />}
         />
 

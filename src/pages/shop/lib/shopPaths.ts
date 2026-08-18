@@ -40,6 +40,21 @@ export function shopPreOrderPath(): string {
   return prefix ? `${prefix}/pre-order` : '/pre-order'
 }
 
+/** 現貨列表（首頁 In-Stock View all） */
+export function shopInStockListPath(): string {
+  return shopListPath('stock=1')
+}
+
+/** 預購列表（首頁 Pre-Order View all） */
+export function shopPreOrderListPath(): string {
+  return shopListPath('preorder=1')
+}
+
+/** 運動大類列表（首頁分類入口） */
+export function shopGroupListPath(group: string): string {
+  return shopListPath(`group=${encodeURIComponent(group)}`)
+}
+
 /** 是否為列表頁 pathname（含 pre-order 舊路徑） */
 export function isShopListPathname(pathname: string): boolean {
   const normalized = pathname.replace(/\/$/, '') || '/'

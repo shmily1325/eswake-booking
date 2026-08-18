@@ -13,12 +13,12 @@ import {
   getCategoryShopName,
   getProductCoverImages,
   getProductDetailHeroImageUrl,
+  isProductListedInShop,
 } from './lib/shopFormat'
 import { formatProductModelLine, formatProductTitle } from '../admin/products/schema'
 import { normalizeVariantCoverImages } from '../admin/products/coverImages'
 import {
   getVariantAvailability,
-  isProductVisibleInShop,
   isVariantPurchasable,
 } from './lib/productAvailability'
 import { SHOP_DETAIL } from './lib/shopCopy'
@@ -99,7 +99,7 @@ export function ShopDetail() {
       try {
         const p = await fetchProductWithVariants(productId)
         if (cancelled) return
-        if (!p || !p.is_public || !isProductVisibleInShop(p.variants)) {
+        if (!p || !p.is_public || !isProductListedInShop(p)) {
           setProduct(null)
           setError(null)
           setSelectedVariantId(null)

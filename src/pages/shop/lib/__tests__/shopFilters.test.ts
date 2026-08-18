@@ -96,7 +96,26 @@ describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
       preOrderOnly: true,
     })
     expect(built.get('preorder')).toBe('1')
+    expect(built.get('stock')).toBeNull()
     expect(parseFiltersFromSearchParams(built).preOrderOnly).toBe(true)
+  })
+
+  it('round-trips in-stock filter', () => {
+    const built = buildShopSearchParams({
+      ...defaultFilterState(),
+      inStockOnly: true,
+    })
+    expect(built.get('stock')).toBe('1')
+    expect(built.get('preorder')).toBeNull()
+    expect(parseFiltersFromSearchParams(built).inStockOnly).toBe(true)
+  })
+
+  it('prefers pre-order when both flags appear in the URL', () => {
+    const parsed = parseFiltersFromSearchParams(
+      new URLSearchParams('preorder=1&stock=1'),
+    )
+    expect(parsed.preOrderOnly).toBe(true)
+    expect(parsed.inStockOnly).toBe(false)
   })
 })
 
@@ -111,6 +130,34 @@ describe('filterAndSortProducts', () => {
     const filtered = filterAndSortProducts(base, {
       ...defaultFilterState(),
       topLevel: 'Wakeboarding',
+    })
+    expect(filtered.map((p) => p.category)).toEqual(['wb_board'])
+  })
+
+  it('shows only in-stock products when inStockOnly', () => {
+    const mixed = [
+      product('wb_board'),
+      product('lifejacket', {
+        variants: [
+          {
+            id: 'v-pre',
+            product_id: 'p-pre',
+            stock: 0,
+            reserved_qty: 0,
+            availability: 'pre_order',
+            price: 100,
+            sku: 'sku',
+            color: null,
+            size: null,
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+      }),
+    ]
+    const filtered = filterAndSortProducts(mixed, {
+      ...defaultFilterState(),
+      inStockOnly: true,
     })
     expect(filtered.map((p) => p.category)).toEqual(['wb_board'])
   })
@@ -177,6 +224,9 @@ describe('isShopCatalogHome', () => {
     ).toBe(false)
     expect(
       isShopCatalogHome({ ...defaultFilterState(), preOrderOnly: true }),
+    ).toBe(false)
+    expect(
+      isShopCatalogHome({ ...defaultFilterState(), inStockOnly: true }),
     ).toBe(false)
     expect(
       isShopCatalogHome({ ...defaultFilterState(), search: 'ronix' }),

@@ -10,6 +10,7 @@ import { ShopCategoryBar } from './components/ShopMobileCategoryBar'
 import { ShopPreOrderRefineBar } from './components/ShopPreOrderRefineBar'
 import { ShopMobileListToolbar } from './components/ShopMobileListToolbar'
 import { ShopListHero } from './components/ShopListHero'
+import { ShopHomeGalleries } from './components/ShopHomeGalleries'
 import { useShopFilters } from './hooks/useShopFilters'
 import {
   getCollectionParentGroup,
@@ -25,7 +26,9 @@ import { ES_BRAND } from '../../lib/esBrandTokens'
 import { ShopFooter } from './components/ShopFooter'
 
 /**
- * 商城列表（單一 /shop 頁；預購用 ?preorder=1 篩選）。
+ * 商城列表。
+ * - `/shop` 無 query：首頁 gallery（Pre-Order / In-Stock）
+ * - `?preorder=1`：預購列表；`?stock=1`：現貨列表
  */
 export function ShopList() {
   const [products, setProducts] = useState<ProductWithVariants[]>([])
@@ -75,14 +78,15 @@ export function ShopList() {
   }, [])
 
   const heroTitle = getHeroTitle(filters)
-  const showFullHero = isShopCatalogHome(filters)
+  const isHome = isShopCatalogHome(filters)
+  const showFullHero = isHome
   const heroConfig = getShopHeroForFilters(filters, showFullHero)
   useShopHeroPreload(heroConfig)
   const collectionParent = getCollectionParentGroup(filters)
   const mobileRefineCount = filters.sortBy !== 'newest' ? 1 : 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={'min-h-screen ' + (isHome ? 'bg-black' : 'bg-gray-50')}>
       <ShopHeader blendBelow />
 
       <section className="relative bg-black text-white overflow-hidden">
@@ -92,21 +96,38 @@ export function ShopList() {
           heroConfig={heroConfig}
           parentGroup={collectionParent}
         />
-        <div className="sticky top-14 z-20 bg-black">
-          <ShopCategoryBar
-            filters={filters}
-            groupCounts={facets.groupCounts}
-            categoryCounts={facets.categoryCounts}
-            preOrderCount={facets.preOrderCount}
-            onSelectAll={selectAll}
-            onSelectCategory={selectCategory}
-            onSelectPreOrder={() => setPreOrderOnly(true)}
-            variant="dark"
-            fadeFromHero
-          />
-        </div>
+        {!isHome && (
+          <div className="sticky top-14 z-20 bg-black">
+            <ShopCategoryBar
+              filters={filters}
+              groupCounts={facets.groupCounts}
+              categoryCounts={facets.categoryCounts}
+              preOrderCount={facets.preOrderCount}
+              onSelectAll={selectAll}
+              onSelectCategory={selectCategory}
+              onSelectPreOrder={() => setPreOrderOnly(true)}
+              variant="dark"
+              fadeFromHero
+            />
+          </div>
+        )}
       </section>
 
+      {isHome ? (
+        <div className="bg-black text-white">
+          {loading ? (
+            <HomeGalleryLoading />
+          ) : error ? (
+            <div className="px-4 py-16 bg-gray-50">
+              <ErrorState message={error} />
+            </div>
+          ) : (
+            <ShopHomeGalleries products={products} />
+          )}
+          <ShopFooter />
+        </div>
+      ) : (
+        <>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="flex gap-8 items-start">
           <div className="flex-1 min-w-0">
@@ -152,12 +173,15 @@ export function ShopList() {
                       ? SHOP_COPY.emptyFilter
                       : filters.preOrderOnly
                         ? SHOP_COPY.emptyPreOrder
-                        : SHOP_COPY.emptyCatalog
+                        : filters.inStockOnly
+                          ? SHOP_COPY.emptyInStock
+                          : SHOP_COPY.emptyCatalog
                 }
                 showClear={
                   hasFilter ||
                   filters.search.trim().length > 0 ||
-                  filters.preOrderOnly
+                  filters.preOrderOnly ||
+                  filters.inStockOnly
                 }
                 onClear={clearListFilters}
               />
@@ -187,6 +211,8 @@ export function ShopList() {
       />
 
       <ShopFooter />
+        </>
+      )}
     </div>
   )
 }
@@ -221,6 +247,29 @@ function ToolbarSort({ sortBy, onSortChange, className = '' }: ToolbarSortProps)
       <option value="price-asc">{SHOP_LABEL.priceAsc}</option>
       <option value="price-desc">{SHOP_LABEL.priceDesc}</option>
     </select>
+  )
+}
+
+function HomeGalleryLoading() {
+  return (
+    <div className="max-w-7xl mx-auto pt-2 pb-8 space-y-8 px-4 sm:px-6">
+      {['pre', 'stock'].map((row) => (
+        <div key={row}>
+          <div className="h-6 w-28 bg-white/10 rounded mb-3" />
+          <div className="flex gap-3 overflow-hidden">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="shrink-0 w-[min(78vw,340px)] animate-pulse">
+                <div className="aspect-4/5 bg-zinc-800 rounded-xl" />
+                <div className="mt-2.5 space-y-2">
+                  <div className="h-3 w-16 bg-white/10 rounded" />
+                  <div className="h-4 w-32 bg-white/10 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }
 

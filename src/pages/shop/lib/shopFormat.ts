@@ -14,7 +14,10 @@ import {
   getCategoryShopName as getCategoryShopNameFromSchema,
 } from '../../admin/products/schema'
 import { normalizeVariantCoverImages } from '../../admin/products/coverImages'
-import { getVariantSellableStock } from './productAvailability'
+import {
+  getVariantSellableStock,
+  isProductVisibleInShop,
+} from './productAvailability'
 
 /** 把整數金額格式化成「NT$ 18,000」 */
 export function formatPrice(amount: number): string {
@@ -108,6 +111,19 @@ export function getProductImageUrl(
     if (url) return url
   }
   return null
+}
+
+/**
+ * 商城是否列出此商品：有可顯示的圖，且有可售現貨或仍有效預購。
+ * 價錢不擋（沒價仍可掛，顯示價格洽詢）。
+ */
+export function isProductListedInShop(
+  product: Pick<ProductRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'> & {
+    variants: ProductVariantRow[]
+  },
+): boolean {
+  if (!getProductImageUrl(product, product.variants)) return false
+  return isProductVisibleInShop(product.variants)
 }
 
 /** 詳情主圖：商品卡封面優先；沒有則用選中 SKU 封面／實品照 */

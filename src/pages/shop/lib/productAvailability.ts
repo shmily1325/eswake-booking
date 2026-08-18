@@ -28,10 +28,34 @@ export function getVariantSellableStock(v: ProductVariantRow): number {
   return Math.max(0, (v.stock ?? 0) - (v.reserved_qty ?? 0))
 }
 
+/** 今天的本地日期 YYYY-MM-DD（預購截止含當天） */
+export function shopLocalIsoDate(now = new Date()): string {
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/** 預購截止日已過（未填截止日 = 仍有效） */
+export function isPreOrderDeadlinePassed(
+  until: string | null | undefined,
+  today = shopLocalIsoDate(),
+): boolean {
+  const day = until?.trim().slice(0, 10)
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return false
+  return day < today
+}
+
+/** 此 SKU 是否為仍有效的預購（庫存 0 + 開預購 + 未過截止） */
+export function isPreOrderOpen(v: ProductVariantRow, today = shopLocalIsoDate()): boolean {
+  if (getVariantAvailability(v) !== 'pre_order') return false
+  return !isPreOrderDeadlinePassed(v.pre_order_until, today)
+}
+
 /** SKU 是否可加入購物車 / LINE 詢問 */
 export function isVariantPurchasable(v: ProductVariantRow): boolean {
   const avail = getVariantAvailability(v)
-  if (avail === 'pre_order') return true
+  if (avail === 'pre_order') return isPreOrderOpen(v)
   if (avail === 'in_stock') return getVariantSellableStock(v) > 0
   return false
 }
@@ -66,14 +90,17 @@ export function summarizeProductAvailability(
 
   for (const v of variants) {
     const avail = getVariantAvailability(v)
-    if (avail === 'in_stock' && getVariantSellableStock(v) > 0) hasInStock = true
-    if (avail === 'pre_order') {
+    if (avail === 'in_stock' && getVariantSellableStock(v) > 0) {
+      hasInStock = true
+      allSoldOut = false
+    }
+    if (isPreOrderOpen(v)) {
       hasPreOrder = true
+      allSoldOut = false
       if (!preOrderEta && v.pre_order_eta?.trim()) {
         preOrderEta = v.pre_order_eta.trim()
       }
     }
-    if (avail !== 'sold_out') allSoldOut = false
   }
 
   let primaryBadge: ProductAvailabilitySummary['primaryBadge'] = null
@@ -93,15 +120,20 @@ export function productMatchesAvailability(
   return variants.some((v) => selected.includes(getVariantAvailability(v)))
 }
 
-/** 商城是否顯示此商品（缺貨不售的 SKU 不算） */
+/** 商城是否顯示此商品（缺貨、過期預購不算；封面另檢） */
 export function isProductVisibleInShop(variants: ProductVariantRow[]): boolean {
   const { hasInStock, hasPreOrder } = summarizeProductAvailability(variants)
   return hasInStock || hasPreOrder
 }
 
-/** 預購專區：至少有一個 pre_order variant */
+/** 預購專區：至少有一個仍有效的 pre_order variant */
 export function isProductInPreOrderSection(variants: ProductVariantRow[]): boolean {
-  return variants.some((v) => getVariantAvailability(v) === 'pre_order')
+  return variants.some((v) => isPreOrderOpen(v))
+}
+
+/** 現貨專區：至少有一個可售現貨 variant */
+export function isProductInStockSection(variants: ProductVariantRow[]): boolean {
+  return summarizeProductAvailability(variants).hasInStock
 }
 
 /** 定價 / 圖片用：只取商城可見的 variant */
@@ -110,7 +142,7 @@ export function getShopVisibleVariants(
 ): ProductVariantRow[] {
   return variants.filter((v) => {
     const avail = getVariantAvailability(v)
-    if (avail === 'pre_order') return true
+    if (avail === 'pre_order') return isPreOrderOpen(v)
     if (avail === 'in_stock') return getVariantSellableStock(v) > 0
     return false
   })

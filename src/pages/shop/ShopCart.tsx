@@ -13,6 +13,7 @@ import {
 import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildCartInquiry, launchInquiry } from './lib/lineDeepLink'
 import { shopListPath, shopProductPath } from './lib/shopPaths'
+import { SHOP_PRODUCT_IMG } from './lib/shopUiStyle'
 import { ShopFooter } from './components/ShopFooter'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 
@@ -139,13 +140,13 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
       {/* 縮圖：優先用 snapshot 圖片，沒有就 ES Wake logo 水印佔位 */}
       <Link
         to={shopProductPath(item.productId)}
-        className="shrink-0 w-16 h-20 sm:w-20 sm:h-24 rounded-md overflow-hidden hover:opacity-90 transition-opacity"
+        className="shrink-0 w-16 h-20 sm:w-20 sm:h-24 rounded-md overflow-hidden bg-white hover:opacity-90 transition-opacity"
         aria-label="Back to product"
       >
         <ImageOrFallback
           src={item.imageUrl}
           alt={item.productName}
-          imgClassName="w-full h-full object-cover"
+          imgClassName={SHOP_PRODUCT_IMG}
           fallback={<NoImagePlaceholder />}
         />
       </Link>

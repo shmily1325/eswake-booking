@@ -4,6 +4,9 @@ import {
   getShopVisibleVariants,
   getVariantAvailability,
   getVariantSellableStock,
+  isPreOrderOpen,
+  isProductInPreOrderSection,
+  isProductInStockSection,
   isProductVisibleInShop,
   isVariantPurchasable,
 } from '../productAvailability'
@@ -75,5 +78,40 @@ describe('shop visibility', () => {
     expect(isVariantPurchasable(reserved)).toBe(false)
     expect(isProductVisibleInShop([reserved])).toBe(false)
     expect(getShopVisibleVariants([reserved])).toEqual([])
+    expect(isProductInStockSection([reserved])).toBe(false)
+  })
+
+  it('keeps open pre-order without a deadline', () => {
+    const open = v({ availability: 'pre_order', stock: 0, pre_order_until: null })
+    expect(isPreOrderOpen(open)).toBe(true)
+    expect(isProductInPreOrderSection([open])).toBe(true)
+    expect(isProductVisibleInShop([open])).toBe(true)
+  })
+
+  it('hides pre-order after the deadline', () => {
+    const expired = v({
+      availability: 'pre_order',
+      stock: 0,
+      pre_order_until: '2000-01-01',
+    })
+    expect(isPreOrderOpen(expired)).toBe(false)
+    expect(isVariantPurchasable(expired)).toBe(false)
+    expect(isProductVisibleInShop([expired])).toBe(false)
+    expect(isProductInPreOrderSection([expired])).toBe(false)
+    expect(getShopVisibleVariants([expired])).toEqual([])
+  })
+
+  it('keeps pre-order on the deadline day', () => {
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = String(today.getMonth() + 1).padStart(2, '0')
+    const d = String(today.getDate()).padStart(2, '0')
+    const open = v({
+      availability: 'pre_order',
+      stock: 0,
+      pre_order_until: `${y}-${m}-${d}`,
+    })
+    expect(isPreOrderOpen(open)).toBe(true)
+    expect(isProductVisibleInShop([open])).toBe(true)
   })
 })
