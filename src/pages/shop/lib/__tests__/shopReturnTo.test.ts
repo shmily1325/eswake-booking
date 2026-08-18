@@ -4,6 +4,7 @@ import {
   shopListPathFromLocation,
   SHOP_RETURN_TO_KEY,
 } from '../shopReturnTo'
+import { shopTo } from '../shopPaths'
 
 describe('shopReturnTo', () => {
   it('captures list path with query', () => {
@@ -22,5 +23,18 @@ describe('shopReturnTo', () => {
 
   it('falls back to /shop', () => {
     expect(getShopReturnTo(null)).toBe('/shop')
+  })
+})
+
+describe('shopTo', () => {
+  it('clears search so the same pathname can return home', () => {
+    expect(shopTo('/shop')).toEqual({ pathname: '/shop', search: '' })
+  })
+
+  it('keeps collection query when going back to a list', () => {
+    expect(shopTo('/shop?preorder=1')).toEqual({
+      pathname: '/shop',
+      search: '?preorder=1',
+    })
   })
 })

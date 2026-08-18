@@ -68,6 +68,8 @@ export interface ProductAvailabilitySummary {
   primaryBadge: 'in_stock' | 'pre_order' | 'sold_out' | null
   /** 最短 ETA（有多個 pre_order variant 時取第一個有值的） */
   preOrderEta: string | null
+  /** 預購 SKU 裡最早的截止日 YYYY-MM-DD */
+  preOrderUntil: string | null
 }
 
 export function summarizeProductAvailability(
@@ -80,6 +82,7 @@ export function summarizeProductAvailability(
       allSoldOut: true,
       primaryBadge: 'sold_out',
       preOrderEta: null,
+      preOrderUntil: null,
     }
   }
 
@@ -87,6 +90,7 @@ export function summarizeProductAvailability(
   let hasPreOrder = false
   let allSoldOut = true
   let preOrderEta: string | null = null
+  let preOrderUntil: string | null = null
 
   for (const v of variants) {
     const avail = getVariantAvailability(v)
@@ -100,6 +104,10 @@ export function summarizeProductAvailability(
       if (!preOrderEta && v.pre_order_eta?.trim()) {
         preOrderEta = v.pre_order_eta.trim()
       }
+      const until = v.pre_order_until?.trim().slice(0, 10)
+      if (until && /^\d{4}-\d{2}-\d{2}$/.test(until)) {
+        if (!preOrderUntil || until < preOrderUntil) preOrderUntil = until
+      }
     }
   }
 
@@ -108,7 +116,7 @@ export function summarizeProductAvailability(
   else if (hasPreOrder) primaryBadge = 'pre_order'
   else if (allSoldOut) primaryBadge = 'sold_out'
 
-  return { hasInStock, hasPreOrder, allSoldOut, primaryBadge, preOrderEta }
+  return { hasInStock, hasPreOrder, allSoldOut, primaryBadge, preOrderEta, preOrderUntil }
 }
 
 /** 商品是否至少有一個 variant 符合供貨 facet */

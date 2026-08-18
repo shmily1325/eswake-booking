@@ -24,6 +24,30 @@ export function formatPrice(amount: number): string {
   return `NT$ ${amount.toLocaleString('en-US')}`
 }
 
+const MONTHS_EN = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const
+
+/** 預購卡截止日：Order by Aug 28（跨年才加年份） */
+export function formatOrderByLabel(
+  isoDay: string,
+  now = new Date(),
+): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDay.trim().slice(0, 10))
+  if (!m) return null
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  const monthName = MONTHS_EN[month - 1]
+  if (!monthName) return null
+  const datePart =
+    now.getFullYear() === year
+      ? `${monthName} ${day}`
+      : `${monthName} ${day}, ${year}`
+  return `Order by ${datePart}`
+}
+
 /** DB 售價正規化（含字串數字）；無效或 0 視為未訂價 */
 export function normalizeShopPrice(value: unknown): number | null {
   if (value == null) return null

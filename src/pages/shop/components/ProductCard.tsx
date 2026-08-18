@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import type { ProductVariantRow, ProductRow } from '../../admin/products/types'
 import {
   formatProductPriceRange,
+  formatOrderByLabel,
   getProductImageUrl,
 } from '../lib/shopFormat'
 import { formatProductModelLine, formatProductTitle } from '../../admin/products/schema'
@@ -9,6 +10,7 @@ import {
   getShopVisibleVariants,
   summarizeProductAvailability,
 } from '../lib/productAvailability'
+import { formatCardSpecLine } from '../lib/variantSpecAxes'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_PRODUCT_IMG } from '../lib/shopUiStyle'
@@ -56,6 +58,14 @@ export function ProductCard({
     visibleVariants.length ? visibleVariants : variants,
   )
   const isInquiryOnly = priceText === '價格洽詢'
+  const specLine = formatCardSpecLine(
+    product.category,
+    visibleVariants.length ? visibleVariants : variants,
+  )
+  const orderBy =
+    inPreOrderView && summary.preOrderUntil
+      ? formatOrderByLabel(summary.preOrderUntil)
+      : null
 
   return (
     <Link
@@ -94,6 +104,9 @@ export function ProductCard({
         <div className="mt-0.5 text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem] leading-snug">
           {formatProductModelLine(product)}
         </div>
+        <div className="mt-1 h-4 text-[11px] text-gray-400 truncate">
+          {specLine || '\u00A0'}
+        </div>
         <div className="mt-2 min-h-7 flex items-end">
           {isInquiryOnly ? (
             <span className="inline-block px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-500 leading-none">
@@ -105,6 +118,9 @@ export function ProductCard({
             </span>
           )}
         </div>
+        {orderBy ? (
+          <div className="mt-1 text-[11px] text-gray-500">{orderBy}</div>
+        ) : null}
       </div>
     </Link>
   )

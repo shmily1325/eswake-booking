@@ -9,6 +9,7 @@ import {
   isProductInStockSection,
   isProductVisibleInShop,
   isVariantPurchasable,
+  summarizeProductAvailability,
 } from '../productAvailability'
 
 function v(partial: Partial<ProductVariantRow> & { stock?: number }): ProductVariantRow {
@@ -113,5 +114,13 @@ describe('shop visibility', () => {
     })
     expect(isPreOrderOpen(open)).toBe(true)
     expect(isProductVisibleInShop([open])).toBe(true)
+  })
+
+  it('uses the earliest open pre-order deadline', () => {
+    const summary = summarizeProductAvailability([
+      v({ availability: 'pre_order', stock: 0, pre_order_until: '2099-09-10' }),
+      v({ availability: 'pre_order', stock: 0, pre_order_until: '2099-08-28' }),
+    ])
+    expect(summary.preOrderUntil).toBe('2099-08-28')
   })
 })

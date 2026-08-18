@@ -13,6 +13,8 @@ interface ShopListHeroProps {
   title: string
   heroConfig: ShopHeroImageConfig | null
   parentGroup?: string | null
+  /** 預購專頁：標題下白字一句 */
+  notice?: string | null
 }
 
 function heroImgClass(heroConfig: ShopHeroImageConfig | null): string {
@@ -91,6 +93,7 @@ export function ShopListHero({
   title,
   heroConfig,
   parentGroup,
+  notice,
 }: ShopListHeroProps) {
   const isCatalog = mode === 'catalog'
   const hero = heroConfig
@@ -117,6 +120,11 @@ export function ShopListHero({
         >
           {title}
         </h1>
+        {notice ? (
+          <p className="mt-1.5 max-w-md text-[11px] sm:text-xs font-medium leading-snug text-white/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.75)]">
+            {notice}
+          </p>
+        ) : null}
       </div>
     )
 
@@ -149,6 +157,9 @@ export function ShopListHero({
         ) : (
           <div className="px-4 py-3 max-w-7xl mx-auto">
             <h1 className={HERO_TITLE + ' text-2xl'}>{title}</h1>
+            {notice ? (
+              <p className="mt-1.5 text-[11px] font-medium text-white/85">{notice}</p>
+            ) : null}
           </div>
         )}
       </div>

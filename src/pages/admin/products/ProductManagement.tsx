@@ -30,6 +30,9 @@ import {
   fetchAllProductsWithVariants,
   fetchVariantItemByLabelCode,
   flattenToVariantItems,
+  batchSetProductsPublic,
+  batchSetVariantsPreOrder,
+  batchSetVariantsPreOrderUntil,
 } from './api'
 import type { ProductWithVariants, ProductVariantRow, ProductRow, VariantListItem } from './types'
 import { getVariantAvailability, getVariantSellableStock } from '../../shop/lib/productAvailability'
@@ -39,6 +42,13 @@ import { variantMatchesSearchTokens } from './productSearchHaystack'
 import { isMissingLabelCode } from './labelCode'
 import { normalizeVariantCoverImages } from './coverImages'
 import { designSystem, getFontSize, getPageContentShellStyle, PAGE_MAX_WIDTHS } from '../../../styles/designSystem'
+import { ProductBatchBar, SelectCheck } from './ProductBatchBar'
+import {
+  formatBatchToast,
+  partitionPreOrderToggle,
+  partitionPreOrderUntil,
+  uniqueProductIdsFromSelection,
+} from './productBatch'
 
 const pageBg = designSystem.colors.background.main
 const { colors, borderRadius } = designSystem
@@ -185,6 +195,9 @@ export function ProductManagement({
 
   // 商品管理預設用商品分組；需要盤點時再切到一列一 SKU 的庫存檢視。
   const [layout, setLayout] = useState<'gallery' | 'table'>('gallery')
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [batchBusy, setBatchBusy] = useState(false)
 
   // 列表縮圖：封面優先 or 實拍優先（記憶於 localStorage）
   const [listImageMode, setListImageMode] = useState<ListImageMode>(() => {
@@ -227,8 +240,8 @@ export function ProductManagement({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, readOnly])
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async (opts?: { quiet?: boolean }) => {
+    if (!opts?.quiet) setLoading(true)
     try {
       const list = await fetchAllProductsWithVariants()
       setProducts(list)
@@ -236,7 +249,7 @@ export function ProductManagement({
       console.error('[ProductManagement] load failed', e)
       toast.error('載入商品失敗')
     } finally {
-      setLoading(false)
+      if (!opts?.quiet) setLoading(false)
     }
   }
 
@@ -373,6 +386,97 @@ export function ProductManagement({
    */
   const showCategoryColumn = activeSubCat === 'all'
 
+  useEffect(() => {
+    if (!selectMode) return
+    const visible = new Set(filteredItems.map((it) => it.variant.id))
+    setSelectedIds((prev) => {
+      let changed = false
+      const next = new Set<string>()
+      for (const id of prev) {
+        if (visible.has(id)) next.add(id)
+        else changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [filteredItems, selectMode])
+
+  const toggleVariantId = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleVariantIds = (ids: string[]) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      const allOn = ids.length > 0 && ids.every((vid) => next.has(vid))
+      if (allOn) ids.forEach((vid) => next.delete(vid))
+      else ids.forEach((vid) => next.add(vid))
+      return next
+    })
+  }
+
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const runBatch = async (work: () => Promise<string | null>) => {
+    if (batchBusy) return
+    setBatchBusy(true)
+    try {
+      const message = await work()
+      if (message) toast.success(message, 3200)
+      await loadData({ quiet: true })
+    } catch (error) {
+      console.error('[ProductManagement] batch failed', error)
+      toast.error('批次更新失敗')
+    } finally {
+      setBatchBusy(false)
+    }
+  }
+
+  const handleBatchPublic = (isPublic: boolean) =>
+    runBatch(async () => {
+      const productIds = uniqueProductIdsFromSelection(filteredItems, selectedIds)
+      if (productIds.length === 0) return '請先勾選'
+      await batchSetProductsPublic(productIds, isPublic)
+      return isPublic ? `已上架 ${productIds.length} 款` : `已下架 ${productIds.length} 款`
+    })
+
+  const handleBatchPreOrder = (accept: boolean) =>
+    runBatch(async () => {
+      const { applyIds, skippedInStock } = partitionPreOrderToggle(filteredItems, selectedIds)
+      if (applyIds.length === 0) {
+        return formatBatchToast(0, skippedInStock, accept ? '已開放預購' : '已關閉預購', '筆現貨')
+      }
+      await batchSetVariantsPreOrder(applyIds, accept)
+      return formatBatchToast(
+        applyIds.length,
+        skippedInStock,
+        accept ? '已開放預購' : '已關閉預購',
+        '筆現貨',
+      )
+    })
+
+  const handleBatchUntil = (until: string | null) =>
+    runBatch(async () => {
+      const { applyIds, skipped } = partitionPreOrderUntil(filteredItems, selectedIds)
+      if (applyIds.length === 0) {
+        return formatBatchToast(0, skipped, until ? '已設定到期日' : '已清除到期日', '筆非預購')
+      }
+      await batchSetVariantsPreOrderUntil(applyIds, until)
+      return formatBatchToast(
+        applyIds.length,
+        skipped,
+        until ? '已設定到期日' : '已清除到期日',
+        '筆非預購',
+      )
+    })
+
   // ====== 權限尚未確認/拒絕：先顯示 loading ======
   if (!accessChecked || !hasAccess) {
     return (
@@ -461,7 +565,9 @@ export function ProductManagement({
               padding: isMobile ? '12px 16px' : '20px',
               minHeight: '100dvh',
               background: pageBg,
-              paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+              paddingBottom: selectMode
+                ? 'max(168px, calc(148px + env(safe-area-inset-bottom)))'
+                : 'max(20px, env(safe-area-inset-bottom))',
             }
       }
     >
@@ -728,6 +834,28 @@ export function ProductManagement({
           >
             <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
             {canEdit && (
+              <button
+                type="button"
+                data-track="product_select_mode"
+                aria-pressed={selectMode}
+                onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+                style={{
+                  minHeight: isMobile ? 40 : 34,
+                  padding: '0 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${selectMode ? colors.text.primary : colors.border.main}`,
+                  background: selectMode ? colors.text.primary : colors.background.card,
+                  color: selectMode ? '#fff' : colors.text.primary,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {selectMode ? '選取中' : '選取'}
+              </button>
+            )}
+            {canEdit && (
               <ImageModeToggle
                 mode={listImageMode}
                 isMobile={isMobile}
@@ -768,6 +896,9 @@ export function ProductManagement({
             isMobile={isMobile}
             imageMode={displayImageMode}
             canEdit={canEdit}
+            selectMode={selectMode}
+            selectedIds={selectedIds}
+            onToggleProduct={toggleVariantIds}
             onImagePreview={(url, alt) => setImagePreview({ url, alt })}
             onCardClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
           />
@@ -776,6 +907,9 @@ export function ProductManagement({
             items={filteredItems}
             imageMode={displayImageMode}
             canEdit={canEdit}
+            selectMode={selectMode}
+            selectedIds={selectedIds}
+            onToggle={toggleVariantId}
             onImagePreview={(url, alt) => setImagePreview({ url, alt })}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
           />
@@ -785,8 +919,27 @@ export function ProductManagement({
             showCategoryColumn={showCategoryColumn}
             imageMode={displayImageMode}
             canEdit={canEdit}
+            selectMode={selectMode}
+            selectedIds={selectedIds}
+            onToggle={toggleVariantId}
             onImagePreview={(url, alt) => setImagePreview({ url, alt })}
             onRowClick={(productId, variantId) => setView(openProductEdit(productId, variantId))}
+          />
+        )}
+
+        {canEdit && selectMode && (
+          <ProductBatchBar
+            selectedCount={selectedIds.size}
+            visibleCount={filteredItems.length}
+            busy={batchBusy}
+            onSelectAll={() =>
+              setSelectedIds(new Set(filteredItems.map((it) => it.variant.id)))
+            }
+            onClear={() => setSelectedIds(new Set())}
+            onDone={exitSelectMode}
+            onSetPublic={(isPublic) => void handleBatchPublic(isPublic)}
+            onSetPreOrder={(accept) => void handleBatchPreOrder(accept)}
+            onSetUntil={(until) => void handleBatchUntil(until)}
           />
         )}
 
@@ -1656,6 +1809,9 @@ interface ProductGalleryGridProps {
   isMobile: boolean
   imageMode: ListImageMode
   canEdit: boolean
+  selectMode?: boolean
+  selectedIds?: ReadonlySet<string>
+  onToggleProduct?: (variantIds: string[]) => void
   onImagePreview?: (url: string, alt: string) => void
   onCardClick: (productId: string, variantId: string) => void
 }
@@ -1665,6 +1821,9 @@ function ProductGalleryGrid({
   isMobile,
   imageMode,
   canEdit,
+  selectMode = false,
+  selectedIds,
+  onToggleProduct,
   onImagePreview,
   onCardClick,
 }: ProductGalleryGridProps) {
@@ -1687,16 +1846,28 @@ function ProductGalleryGrid({
           : 'repeat(auto-fill, minmax(180px, 1fr))',
       }}
     >
-      {groupedItems.map((group) => (
-        <GalleryCard
-          key={group[0].product.id}
-          items={group}
-          imageMode={imageMode}
-          canEdit={canEdit}
-          onImagePreview={onImagePreview}
-          onClick={() => onCardClick(group[0].product.id, group[0].variant.id)}
-        />
-      ))}
+      {groupedItems.map((group) => {
+        const variantIds = group.map((it) => it.variant.id)
+        const selected =
+          selectMode &&
+          variantIds.length > 0 &&
+          variantIds.every((id) => selectedIds?.has(id))
+        return (
+          <GalleryCard
+            key={group[0].product.id}
+            items={group}
+            imageMode={imageMode}
+            canEdit={canEdit}
+            selectMode={selectMode}
+            selected={!!selected}
+            onImagePreview={onImagePreview}
+            onClick={() => {
+              if (selectMode) onToggleProduct?.(variantIds)
+              else onCardClick(group[0].product.id, group[0].variant.id)
+            }}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -1705,12 +1876,16 @@ function GalleryCard({
   items,
   imageMode,
   canEdit,
+  selectMode = false,
+  selected = false,
   onImagePreview,
   onClick,
 }: {
   items: VariantListItem[]
   imageMode: ListImageMode
   canEdit: boolean
+  selectMode?: boolean
+  selected?: boolean
   onImagePreview?: (url: string, alt: string) => void
   onClick: () => void
 }) {
@@ -1727,12 +1902,12 @@ function GalleryCard({
 
   return (
     <div
-      role={canEdit ? 'button' : undefined}
-      tabIndex={canEdit ? 0 : undefined}
-      data-track={canEdit ? 'product_edit_open' : undefined}
-      onClick={canEdit ? onClick : undefined}
+      role={canEdit || selectMode ? 'button' : undefined}
+      tabIndex={canEdit || selectMode ? 0 : undefined}
+      data-track={canEdit && !selectMode ? 'product_edit_open' : undefined}
+      onClick={canEdit || selectMode ? onClick : undefined}
       onKeyDown={(event) => {
-        if (!canEdit) return
+        if (!canEdit && !selectMode) return
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           onClick()
@@ -1742,11 +1917,11 @@ function GalleryCard({
         display: 'flex',
         flexDirection: 'column',
         background: colors.background.card,
-        border: `1px solid ${colors.border.light}`,
+        border: `2px solid ${selected ? colors.text.primary : colors.border.light}`,
         borderRadius: borderRadius.lg,
         padding: 8,
         textAlign: 'left',
-        cursor: canEdit ? 'pointer' : 'default',
+        cursor: canEdit || selectMode ? 'pointer' : 'default',
         width: '100%',
         boxSizing: 'border-box',
         transition: designSystem.transitions.fast,
@@ -1761,16 +1936,16 @@ function GalleryCard({
       }}
     >
       <div
-        role={imageUrl && onImagePreview ? 'button' : undefined}
-        tabIndex={imageUrl && onImagePreview ? 0 : undefined}
-        aria-label={imageUrl && onImagePreview ? `放大查看 ${formatProductTitle(product)}` : undefined}
-        onClick={imageUrl && onImagePreview
+        role={imageUrl && onImagePreview && !selectMode ? 'button' : undefined}
+        tabIndex={imageUrl && onImagePreview && !selectMode ? 0 : undefined}
+        aria-label={imageUrl && onImagePreview && !selectMode ? `放大查看 ${formatProductTitle(product)}` : undefined}
+        onClick={imageUrl && onImagePreview && !selectMode
           ? (event) => {
               event.stopPropagation()
               onImagePreview(imageUrl, formatProductTitle(product))
             }
           : undefined}
-        onKeyDown={imageUrl && onImagePreview
+        onKeyDown={imageUrl && onImagePreview && !selectMode
           ? (event) => {
               if (event.key !== 'Enter' && event.key !== ' ') return
               event.preventDefault()
@@ -1788,9 +1963,14 @@ function GalleryCard({
           justifyContent: 'center',
           overflow: 'hidden',
           position: 'relative',
-          cursor: imageUrl && onImagePreview ? 'zoom-in' : undefined,
+          cursor: imageUrl && onImagePreview && !selectMode ? 'zoom-in' : undefined,
         }}
       >
+        {selectMode && (
+          <div style={{ position: 'absolute', top: 2, left: 2, zIndex: 1 }}>
+            <SelectCheck checked={selected} onToggle={onClick} />
+          </div>
+        )}
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -2076,10 +2256,22 @@ interface MobileListViewProps {
   items: VariantListItem[]
   imageMode: ListImageMode
   canEdit: boolean
+  selectMode?: boolean
+  selectedIds?: ReadonlySet<string>
+  onToggle?: (variantId: string) => void
   onImagePreview: (url: string, alt: string) => void
   onRowClick: (productId: string, variantId: string) => void
 }
-function MobileListView({ items, imageMode, canEdit, onImagePreview, onRowClick }: MobileListViewProps) {
+function MobileListView({
+  items,
+  imageMode,
+  canEdit,
+  selectMode = false,
+  selectedIds,
+  onToggle,
+  onImagePreview,
+  onRowClick,
+}: MobileListViewProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {items.map((it) => (
@@ -2088,8 +2280,13 @@ function MobileListView({ items, imageMode, canEdit, onImagePreview, onRowClick 
           item={it}
           imageMode={imageMode}
           canEdit={canEdit}
+          selectMode={selectMode}
+          selected={!!selectedIds?.has(it.variant.id)}
           onImagePreview={onImagePreview}
-          onClick={() => onRowClick(it.product.id, it.variant.id)}
+          onClick={() => {
+            if (selectMode) onToggle?.(it.variant.id)
+            else onRowClick(it.product.id, it.variant.id)
+          }}
         />
       ))}
     </div>
@@ -2100,12 +2297,16 @@ function MobileListRow({
   item,
   imageMode,
   canEdit,
+  selectMode = false,
+  selected = false,
   onImagePreview,
   onClick,
 }: {
   item: VariantListItem
   imageMode: ListImageMode
   canEdit: boolean
+  selectMode?: boolean
+  selected?: boolean
   onImagePreview: (url: string, alt: string) => void
   onClick: () => void
 }) {
@@ -2120,11 +2321,11 @@ function MobileListRow({
 
   return (
     <div
-      role={canEdit ? 'button' : undefined}
-      tabIndex={canEdit ? 0 : undefined}
-      data-track={canEdit ? 'product_edit_open' : undefined}
-      onClick={canEdit ? onClick : undefined}
-      onKeyDown={canEdit ? (e) => {
+      role={canEdit || selectMode ? 'button' : undefined}
+      tabIndex={canEdit || selectMode ? 0 : undefined}
+      data-track={canEdit && !selectMode ? 'product_edit_open' : undefined}
+      onClick={canEdit || selectMode ? onClick : undefined}
+      onKeyDown={canEdit || selectMode ? (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           onClick()
@@ -2132,17 +2333,18 @@ function MobileListRow({
       } : undefined}
       style={{
         background: colors.background.card,
-        border: `1px solid ${colors.border.light}`,
+        border: `2px solid ${selected ? colors.text.primary : colors.border.light}`,
         borderRadius: 12,
         padding: 10,
         textAlign: 'left',
-        cursor: canEdit ? 'pointer' : 'default',
+        cursor: canEdit || selectMode ? 'pointer' : 'default',
         width: '100%',
         boxSizing: 'border-box',
       }}
     >
       {/* 查詢模式採圖片／商品資料／價格庫存三欄；管理資訊維持卡片全寬 */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        {selectMode && <SelectCheck checked={selected} onToggle={onClick} />}
         <div
           role={imageUrl ? 'button' : undefined}
           tabIndex={imageUrl ? 0 : undefined}
@@ -2346,7 +2548,7 @@ function MobileListRow({
           最近入庫：{compactStockInAt}
         </div>
       )}
-      {canEdit && (
+      {canEdit && !selectMode && (
         <div
           style={{
             display: 'flex',
@@ -2367,6 +2569,9 @@ interface DesktopTableProps {
   showCategoryColumn: boolean
   imageMode: ListImageMode
   canEdit: boolean
+  selectMode?: boolean
+  selectedIds?: ReadonlySet<string>
+  onToggle?: (variantId: string) => void
   onImagePreview: (url: string, alt: string) => void
   onRowClick: (productId: string, variantId: string) => void
 }
@@ -2375,6 +2580,9 @@ function DesktopTable({
   showCategoryColumn,
   imageMode,
   canEdit,
+  selectMode = false,
+  selectedIds,
+  onToggle,
   onImagePreview,
   onRowClick,
 }: DesktopTableProps) {
@@ -2398,6 +2606,7 @@ function DesktopTable({
             }}
           >
             <tr style={{ background: colors.secondary[50], color: colors.text.secondary, fontWeight: 600 }}>
+              {selectMode && <th style={thStyle('52px', 'center')} />}
               <th style={thStyle('60px')}>照片</th>
               <th style={thStyle('auto')}>商品 / SKU 規格</th>
               <th style={thStyle('90px', 'right')}>售價</th>
@@ -2421,13 +2630,35 @@ function DesktopTable({
               return (
                 <tr
                   key={it.variant.id}
-                  data-track={canEdit ? 'product_edit_open' : undefined}
-                  onClick={canEdit ? () => onRowClick(it.product.id, it.variant.id) : undefined}
+                  data-track={canEdit && !selectMode ? 'product_edit_open' : undefined}
+                  onClick={
+                    selectMode
+                      ? () => onToggle?.(it.variant.id)
+                      : canEdit
+                        ? () => onRowClick(it.product.id, it.variant.id)
+                        : undefined
+                  }
                   title={canEdit ? it.product.description ?? undefined : undefined}
-                  style={{ cursor: canEdit ? 'pointer' : 'default', borderTop: `1px solid ${colors.border.light}` }}
+                  style={{
+                    cursor: canEdit || selectMode ? 'pointer' : 'default',
+                    borderTop: `1px solid ${colors.border.light}`,
+                    background: selectedIds?.has(it.variant.id) ? colors.secondary[50] : 'transparent',
+                  }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = colors.background.hover)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = selectedIds?.has(it.variant.id)
+                      ? colors.secondary[50]
+                      : 'transparent')
+                  }
                 >
+                  {selectMode && (
+                    <td style={tdStyle('center')} onClick={(e) => e.stopPropagation()}>
+                      <SelectCheck
+                        checked={!!selectedIds?.has(it.variant.id)}
+                        onToggle={() => onToggle?.(it.variant.id)}
+                      />
+                    </td>
+                  )}
                   <td style={tdStyle()}>
                     {/* portrait 直式縮圖（9:16） */}
                     <div

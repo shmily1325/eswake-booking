@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatProductPriceRange, isProductListedInShop, normalizeShopPrice } from '../shopFormat'
+import { formatOrderByLabel, formatProductPriceRange, isProductListedInShop, normalizeShopPrice } from '../shopFormat'
 import type { ProductVariantRow, ProductWithVariants } from '../../../admin/products/types'
 
 function v(price: number | null | string): ProductVariantRow {
@@ -69,5 +69,19 @@ describe('isProductListedInShop', () => {
 
   it('hides sold-out products even if they have a cover', () => {
     expect(isProductListedInShop(product('https://img/a.jpg', 'in_stock', 0))).toBe(false)
+  })
+})
+
+describe('formatOrderByLabel', () => {
+  it('omits year when the deadline is this year', () => {
+    expect(formatOrderByLabel('2026-08-28', new Date('2026-01-01'))).toBe(
+      'Order by Aug 28',
+    )
+  })
+
+  it('keeps year when the deadline is another year', () => {
+    expect(formatOrderByLabel('2027-09-10', new Date('2026-01-01'))).toBe(
+      'Order by Sep 10, 2027',
+    )
   })
 })

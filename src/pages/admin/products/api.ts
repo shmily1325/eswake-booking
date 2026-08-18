@@ -9,6 +9,7 @@ import { supabase } from '../../../lib/supabase'
 import type { Database } from '../../../types/supabase'
 import type { AttributeValue, ProductRow, ProductVariantRow, ProductWithVariants, VariantListItem } from './types'
 import { deriveVariantAvailability } from './availabilityHelpers'
+import { normalizePreOrderUntil } from './productBatch'
 import { getCategoryLabelCode } from './schema'
 import { buildLabelPrefix, composeLabelCode, maxLabelSeq } from './labelCode'
 import {
@@ -256,6 +257,7 @@ export interface CreateVariantInput {
   acceptPreOrder?: boolean
   pre_order_eta?: string | null
   pre_order_note?: string | null
+  pre_order_until?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
   /** 封面 gallery；[0] 應與 cover_image_url/path 一致 */
@@ -334,6 +336,10 @@ export async function createVariant(input: CreateVariantInput): Promise<ProductV
     availability: availFields.availability,
     pre_order_eta: availFields.pre_order_eta,
     pre_order_note: availFields.pre_order_note,
+    pre_order_until:
+      availFields.availability === 'pre_order'
+        ? normalizePreOrderUntil(input.pre_order_until)
+        : null,
     cover_image_url: input.cover_image_url ?? null,
     cover_image_path: input.cover_image_path ?? null,
     cover_images: input.cover_images ?? [],
@@ -357,6 +363,7 @@ export interface UpdateVariantInput {
   acceptPreOrder?: boolean
   pre_order_eta?: string | null
   pre_order_note?: string | null
+  pre_order_until?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
   cover_images?: Array<{ url: string; path: string }>
@@ -396,6 +403,13 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
     patch.availability = availFields.availability
     patch.pre_order_eta = availFields.pre_order_eta
     patch.pre_order_note = availFields.pre_order_note
+    if (availFields.availability !== 'pre_order') {
+      patch.pre_order_until = null
+    }
+  }
+
+  if (input.pre_order_until !== undefined && patch.availability !== 'sold_out' && patch.availability !== 'in_stock') {
+    patch.pre_order_until = normalizePreOrderUntil(input.pre_order_until)
   }
 
   if (Object.keys(patch).length === 0) return
@@ -506,4 +520,59 @@ export async function fetchVariantItemByLabelCode(
     variant: variant as unknown as ProductVariantRow,
     product: product as unknown as ProductRow,
   }
+}
+
+const BATCH_CHUNK = 80
+
+async function updateRowsByIds(
+  table: 'products' | 'product_variants',
+  patch: Record<string, unknown>,
+  ids: string[],
+): Promise<void> {
+  for (let i = 0; i < ids.length; i += BATCH_CHUNK) {
+    const slice = ids.slice(i, i + BATCH_CHUNK)
+    const { error } = await supabase.from(table).update(patch).in('id', slice)
+    if (error) throw error
+  }
+}
+
+export async function batchSetProductsPublic(
+  productIds: string[],
+  isPublic: boolean,
+): Promise<void> {
+  if (productIds.length === 0) return
+  await updateRowsByIds('products', { is_public: isPublic }, productIds)
+}
+
+export async function batchSetVariantsPreOrder(
+  variantIds: string[],
+  accept: boolean,
+): Promise<void> {
+  if (variantIds.length === 0) return
+  if (accept) {
+    await updateRowsByIds('product_variants', { availability: 'pre_order' }, variantIds)
+    return
+  }
+  await updateRowsByIds(
+    'product_variants',
+    {
+      availability: 'sold_out',
+      pre_order_until: null,
+      pre_order_eta: null,
+      pre_order_note: null,
+    },
+    variantIds,
+  )
+}
+
+export async function batchSetVariantsPreOrderUntil(
+  variantIds: string[],
+  until: string | null,
+): Promise<void> {
+  if (variantIds.length === 0) return
+  await updateRowsByIds(
+    'product_variants',
+    { pre_order_until: normalizePreOrderUntil(until) },
+    variantIds,
+  )
 }

@@ -29,6 +29,7 @@ export const SHOP_LABEL = {
 export const SHOP_COPY = {
   tagline: 'Eat · Sleep · Wake',
   preOrderHint: '預購商品 · 詳情請 LINE 確認',
+  preOrderNotice: '限定期間販售，請留意各商品截止日。',
   showResults: (n: number) => `Show ${n}`,
   viewingAll: '全部商品',
   emptySearch: (q: string) => `找不到符合「${q}」的商品`,

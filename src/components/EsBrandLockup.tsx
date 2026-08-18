@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, type To } from 'react-router-dom'
 import { ES_BRAND } from '../lib/esBrandTokens'
 import { getFontSizePx } from '../styles/designSystem'
 
@@ -14,7 +14,7 @@ interface EsBrandLockupProps {
   brandFontSize?: number
   isMobile?: boolean
   /** 點擊 logo／字標導向（Shop 首頁等） */
-  brandTo?: string
+  brandTo?: To
   trailing?: ReactNode
   /** 綁定卡等置中版面 */
   align?: 'start' | 'center'

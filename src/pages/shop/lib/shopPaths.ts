@@ -25,6 +25,17 @@ export function shopListPath(search = ''): string {
   return `${base}${q}`
 }
 
+/**
+ * 拆成 React Router location。
+ * 同一 pathname（/shop → /shop?preorder=1）時，字串 `to="/shop"` 可能留下舊 query，
+ * 必須帶上 search: '' 才會回到 gallery 首頁。
+ */
+export function shopTo(path: string): { pathname: string; search: string } {
+  const q = path.indexOf('?')
+  if (q === -1) return { pathname: path || '/', search: '' }
+  return { pathname: path.slice(0, q) || '/', search: path.slice(q) }
+}
+
 export function shopCartPath(): string {
   const prefix = shopRoutePrefix()
   return prefix ? `${prefix}/cart` : '/cart'

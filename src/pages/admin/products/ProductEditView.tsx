@@ -41,6 +41,7 @@ import {
 } from './availabilityHelpers'
 import { ShopStatusPill, ShopVisibilityPill } from './ShopStatusPill'
 import { collectZeroStockWarnings } from './productSaveWarnings'
+import { normalizePreOrderUntil } from './productBatch'
 import { ProductLabelPreview } from './ProductLabelPreview'
 import {
   findDuplicateLabelCodes,
@@ -102,6 +103,8 @@ interface DraftVariant {
   reserved_qty: number
   /** 無庫存時是否開放預購（有庫存時忽略，自動為現貨） */
   acceptPreOrder: boolean
+  /** 預購截止日 YYYY-MM-DD；未填則一直掛到關掉預購 */
+  pre_order_until: string | null
   last_stock_in_at: string | null
   /** 封面 gallery；[0] 為主圖 */
   cover_images: DraftCoverImage[]
@@ -156,6 +159,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     stock: String(v.stock ?? 0),
     reserved_qty: v.reserved_qty ?? 0,
     acceptPreOrder: acceptPreOrderFromVariant(v),
+    pre_order_until: v.pre_order_until?.slice(0, 10) || null,
     last_stock_in_at: v.last_stock_in_at ?? null,
     cover_images,
     originalCoverImagePaths: cover_images.map((img) => img.path).filter(Boolean),
@@ -177,6 +181,7 @@ function emptyDraft(): DraftVariant {
     stock: '',
     reserved_qty: 0,
     acceptPreOrder: false,
+    pre_order_until: null,
     last_stock_in_at: null,
     cover_images: [],
     originalCoverImagePaths: [],
@@ -449,6 +454,7 @@ export function ProductEditView({
           stock: '',
           reserved_qty: 0,
           acceptPreOrder: lastActive.acceptPreOrder,
+          pre_order_until: lastActive.pre_order_until,
           last_stock_in_at: null,
           cover_images,
           originalCoverImagePaths: [],
@@ -849,6 +855,10 @@ export function ProductEditView({
           stock: stockNum,
           availability,
           pre_order_eta: null,
+          pre_order_until:
+            availability === 'pre_order'
+              ? normalizePreOrderUntil(d.pre_order_until)
+              : null,
           cover_image_url: primary.url,
           cover_image_path: primary.path,
           cover_images,
@@ -1908,6 +1918,8 @@ function VariantBlock({
               stock: digits,
               acceptPreOrder:
                 digits !== '' && Number(digits) > 0 ? false : draft.acceptPreOrder,
+              pre_order_until:
+                digits !== '' && Number(digits) > 0 ? null : draft.pre_order_until,
             })
           }
         />
@@ -1959,7 +1971,12 @@ function VariantBlock({
             <input
               type="checkbox"
               checked={draft.acceptPreOrder}
-              onChange={(e) => onChange({ acceptPreOrder: e.target.checked })}
+              onChange={(e) =>
+                onChange({
+                  acceptPreOrder: e.target.checked,
+                  pre_order_until: e.target.checked ? draft.pre_order_until : null,
+                })
+              }
               disabled={disabled || draft.pendingDelete}
               style={{ width: 16, height: 16, flexShrink: 0 }}
             />
@@ -1967,6 +1984,34 @@ function VariantBlock({
           </span>
           <ShopStatusPill status={shopStatus} isMobile={isMobile} />
         </label>
+        {draft.acceptPreOrder && (
+          <label
+            style={{
+              display: 'block',
+              marginTop: 8,
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.text.secondary,
+            }}
+          >
+            到期日
+            <input
+              type="date"
+              value={draft.pre_order_until ?? ''}
+              disabled={disabled || draft.pendingDelete}
+              onChange={(e) =>
+                onChange({ pre_order_until: e.target.value.trim() || null })
+              }
+              style={{
+                ...inputStyle,
+                marginTop: 4,
+                minHeight: 44,
+                fontSize: 16,
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            />
+          </label>
+        )}
       </div>
     )
 

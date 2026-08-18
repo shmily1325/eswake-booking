@@ -1,6 +1,11 @@
 import type { ProductVariantRow } from '../../admin/products/types'
 import { formatVariantAttributes } from '../lib/shopFormat'
 import {
+  collectSpecAxes,
+  findVariantForAxisValue,
+  specAttrValue,
+} from '../lib/variantSpecAxes'
+import {
   getShopVisibleVariants,
   getVariantAvailability,
   isVariantPurchasable,
@@ -20,54 +25,85 @@ export function VariantPicker({
   categoryId,
   onSelect,
 }: VariantPickerProps) {
-  // 與商城可見邏輯一致：現貨被留光（stock 全數送結帳保留）的規格視同缺貨不顯示
   const visible = getShopVisibleVariants(variants)
 
   if (visible.length === 0) {
     return <p className="text-sm text-gray-500">{SHOP_DETAIL.noVariants}</p>
   }
 
-  if (visible.length === 1) {
-    const v = visible[0]!
-    const attrsText = formatVariantAttributes(categoryId, v.attributes)
-    const avail = getVariantAvailability(v)
-    if (!attrsText && avail !== 'pre_order') return null
+  const axes = collectSpecAxes(categoryId, visible)
+  const selected = visible.find((v) => v.id === selectedVariantId) ?? visible[0]!
 
+  if (axes.length > 0) {
     return (
-      <div className="flex flex-wrap items-center gap-2 text-sm">
+      <div className="space-y-3">
+        {axes.map((axis) => (
+          <div key={axis.key}>
+            <div className="text-xs text-gray-400">{axis.label}</div>
+            <div className="mt-0.5 flex flex-wrap gap-x-1">
+              {axis.values.map((value) => {
+                const targetId = findVariantForAxisValue(
+                  visible,
+                  selected.id,
+                  axis.key,
+                  value,
+                )
+                const isSelected = specAttrValue(selected, axis.key) === value
+                const target = visible.find((v) => v.id === targetId)
+                const purchasable = target ? isVariantPurchasable(target) : false
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => targetId && onSelect(targetId)}
+                    disabled={!targetId}
+                    className={
+                      'min-h-11 min-w-11 px-1.5 text-sm transition-colors ' +
+                      (isSelected
+                        ? 'font-semibold text-zinc-900'
+                        : purchasable
+                          ? 'text-gray-400 hover:text-zinc-700'
+                          : 'text-gray-300 line-through')
+                    }
+                    aria-pressed={isSelected}
+                  >
+                    {value}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (visible.length === 1) {
+    const attrsText = formatVariantAttributes(categoryId, selected.attributes)
+    const avail = getVariantAvailability(selected)
+    if (!attrsText && avail !== 'pre_order') return null
+    return (
+      <div className="text-sm text-gray-400">
         {attrsText ? (
-          <span className="text-gray-700">
-            <span className="font-medium text-gray-500">{SHOP_DETAIL.variant}</span>
+          <>
+            <span>{SHOP_DETAIL.variant}</span>
             {' '}
             {attrsText}
-          </span>
+          </>
         ) : null}
-        {avail === 'pre_order' && (
-          <span className="text-amber-700 font-medium">
-            {SHOP_DETAIL.preOrder}
-            {v.pre_order_eta ? (
-              <span className="text-gray-500 font-normal">
-                {' '}
-                · 預計 {v.pre_order_eta}
-              </span>
-            ) : null}
-          </span>
-        )}
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
-      <div className="text-sm font-medium text-gray-700">{SHOP_DETAIL.variant}</div>
-      <div className="flex flex-wrap gap-2">
+    <div>
+      <div className="text-xs text-gray-400">{SHOP_DETAIL.variant}</div>
+      <div className="mt-0.5 flex flex-wrap gap-x-1">
         {visible.map((v) => {
           const isSelected = v.id === selectedVariantId
-          const avail = getVariantAvailability(v)
           const purchasable = isVariantPurchasable(v)
-          const attrsText = formatVariantAttributes(categoryId, v.attributes)
-          const label = attrsText || '(No spec data)'
-
+          const label =
+            formatVariantAttributes(categoryId, v.attributes) || '(No spec data)'
           return (
             <button
               key={v.id}
@@ -75,21 +111,16 @@ export function VariantPicker({
               onClick={() => onSelect(v.id)}
               disabled={!purchasable}
               className={
-                'relative px-3 py-2 text-sm rounded-md border-2 transition-all min-w-[80px] text-left ' +
+                'min-h-11 px-1.5 text-sm transition-colors ' +
                 (isSelected
-                  ? 'border-black bg-zinc-50 text-zinc-900'
-                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400') +
-                (!purchasable ? ' opacity-50 cursor-not-allowed' : '')
+                  ? 'font-semibold text-zinc-900'
+                  : purchasable
+                    ? 'text-gray-400 hover:text-zinc-700'
+                    : 'text-gray-300 line-through')
               }
               aria-pressed={isSelected}
             >
-              <div className="font-medium">{label}</div>
-              {avail === 'pre_order' && (
-                <div className="text-xs text-amber-700 mt-0.5">
-                  {SHOP_DETAIL.preOrder}
-                  {v.pre_order_eta ? ` · ${v.pre_order_eta}` : ''}
-                </div>
-              )}
+              {label}
             </button>
           )
         })}

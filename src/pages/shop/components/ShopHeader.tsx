@@ -9,6 +9,7 @@ import {
   isShopListPathname,
   shopCartPath,
   shopListPath,
+  shopTo,
 } from '../lib/shopPaths'
 
 const SEARCH_DEBOUNCE_MS = 280
@@ -53,9 +54,9 @@ export function ShopHeader({
       const trimmed = q.trim()
       if (trimmed) {
         const target = shopListPath(`q=${encodeURIComponent(trimmed)}`)
-        navigate(target, { replace: isListPage })
+        navigate(shopTo(target), { replace: isListPage })
       } else if (isListPage) {
-        navigate(shopListPath(), { replace: true })
+        navigate(shopTo(shopListPath()), { replace: true })
       }
     }
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -87,18 +88,17 @@ export function ShopHeader({
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
           {showBack && (
             <Link
-              to={backTo}
-              className="text-gray-300 hover:text-white text-sm flex items-center gap-1 shrink-0"
-              aria-label="Back to products"
+              to={shopTo(backTo)}
+              className="inline-flex items-center justify-center w-11 h-11 -ml-2 rounded-full text-white hover:bg-zinc-800 shrink-0"
+              aria-label="Back"
             >
-              <span aria-hidden>←</span>
-              <span className="hidden sm:inline">Back</span>
+              <BackIcon />
             </Link>
           )}
           <EsBrandLockup
             subtitle={ES_BRAND.shopAreaLabel}
             logoSize={28}
-            brandTo={shopListPath()}
+            brandTo={shopTo(shopListPath())}
             subtitleClassName={showBack ? 'hidden min-[380px]:block' : undefined}
             style={{ marginBottom: 0, alignItems: 'center' }}
           />
@@ -196,6 +196,25 @@ const HeaderSearchInput = forwardRef<HTMLInputElement, HeaderSearchInputProps>(
     )
   },
 )
+
+function BackIcon() {
+  return (
+    <svg
+      className="shrink-0"
+      width={22}
+      height={22}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  )
+}
 
 function SearchIcon({
   className,
