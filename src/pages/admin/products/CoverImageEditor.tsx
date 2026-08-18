@@ -272,12 +272,6 @@ export function CoverImageEditor({
     marginBottom: 6,
     display: 'block',
   }
-  const hintStyle: React.CSSProperties = {
-    fontSize: 12,
-    color: '#6b7280',
-    margin: '0 0 8px',
-    lineHeight: 1.4,
-  }
   const inputStyle: React.CSSProperties = {
     flex: 1,
     minWidth: 140,
@@ -304,14 +298,6 @@ export function CoverImageEditor({
           {images.length}/{MAX_VARIANT_COVER_IMAGES}
         </span>
       </label>
-      {!compact && (
-        <p style={hintStyle}>
-          Shop 封面可多張。第 1 張為主圖；可從相簿、剪貼簿或 URL 加入。
-        </p>
-      )}
-      {compact && (
-        <p style={hintStyle}>可多張封面；第 1 張為主圖。相簿／貼上／URL。</p>
-      )}
 
       {images.length > 0 && (
         <div style={{ marginBottom: 10 }}>
@@ -439,12 +425,6 @@ export function CoverImageEditor({
               </div>
             )
           })()}
-
-          {images.length > 1 && (
-            <p style={{ ...hintStyle, margin: '6px 0 0' }}>
-              點縮圖選取後可調整順序或移除；桌機也可直接拖曳排序。
-            </p>
-          )}
         </div>
       )}
 

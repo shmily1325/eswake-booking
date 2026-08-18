@@ -141,8 +141,7 @@ export function ProductLabelPreview({
         {hasPreview && (
           <>
             <p style={{ ...hintStyle, textAlign: isMobile ? 'center' : 'left' }}>
-              標籤約 {widthMm}×{heightMm} mm
-              {isMobile && <span style={{ marginLeft: 6, color: '#2563eb' }}>· 點預覽放大</span>}
+              {widthMm}×{heightMm} mm
             </p>
             <LabelDownloadButton
               labelCode={labelCode}
@@ -477,7 +476,7 @@ function LabelDownloadButton({
       if (result === 'shared') {
         setSuccessHint('請在分享選單點「儲存圖片」存入相簿')
       } else if (result === 'downloaded') {
-        setSuccessHint(isMobile ? '已下載；若未看到檔案，請改點「儲存標籤圖」用分享選單存相簿' : '已下載 PNG')
+        setSuccessHint('已下載')
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '儲存失敗')
@@ -486,10 +485,7 @@ function LabelDownloadButton({
     }
   }
 
-  const buttonLabel = isMobile ? '儲存標籤圖' : '下載標籤圖（PNG）'
-  const hintText = isMobile
-    ? `${widthMm}×${heightMm} mm · 點擊後選「儲存圖片」可存入相簿，再匯入標籤機`
-    : `${widthMm}×${heightMm} mm · 203 DPI，可匯入標籤機或列印軟體`
+  const buttonLabel = isMobile ? '儲存標籤圖' : '下載標籤圖'
 
   return (
     <div style={{ marginTop: fullWidth ? 12 : 8 }}>
@@ -520,9 +516,6 @@ function LabelDownloadButton({
       {error && (
         <p style={{ margin: '6px 0 0', fontSize: 12, color: '#c62828', lineHeight: 1.4 }}>{error}</p>
       )}
-      <p style={{ ...hintStyle, marginTop: 6, textAlign: fullWidth && isMobile ? 'center' : 'left' }}>
-        {hintText}
-      </p>
     </div>
   )
 }

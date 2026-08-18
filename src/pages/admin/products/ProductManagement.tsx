@@ -128,36 +128,10 @@ export function ProductManagement({
     onlySoldOut ||
     search.trim() !== ''
 
-  const activateStockStatusLayout = () => setLayout('table')
-
-  const toggleMissingPrice = () => {
-    setOnlyMissingPrice((v) => {
-      const next = !v
-      if (next) activateStockStatusLayout()
-      return next
-    })
-  }
-  const toggleMissingImage = () => {
-    setOnlyMissingImage((v) => {
-      const next = !v
-      if (next) activateStockStatusLayout()
-      return next
-    })
-  }
-  const toggleMissingCover = () => {
-    setOnlyMissingCover((v) => {
-      const next = !v
-      if (next) activateStockStatusLayout()
-      return next
-    })
-  }
-  const toggleMissingLabel = () => {
-    setOnlyMissingLabel((v) => {
-      const next = !v
-      if (next) activateStockStatusLayout()
-      return next
-    })
-  }
+  const toggleMissingPrice = () => setOnlyMissingPrice((v) => !v)
+  const toggleMissingImage = () => setOnlyMissingImage((v) => !v)
+  const toggleMissingCover = () => setOnlyMissingCover((v) => !v)
+  const toggleMissingLabel = () => setOnlyMissingLabel((v) => !v)
   /** 庫存狀態三選一：再按一次同 chip 取消 */
   const toggleInStock = () => {
     setOnlyInStock((v) => {
@@ -165,7 +139,6 @@ export function ProductManagement({
       if (next) {
         setOnlyPreOrder(false)
         setOnlySoldOut(false)
-        activateStockStatusLayout()
       }
       return next
     })
@@ -176,7 +149,6 @@ export function ProductManagement({
       if (next) {
         setOnlyInStock(false)
         setOnlySoldOut(false)
-        activateStockStatusLayout()
       }
       return next
     })
@@ -187,7 +159,6 @@ export function ProductManagement({
       if (next) {
         setOnlyInStock(false)
         setOnlyPreOrder(false)
-        activateStockStatusLayout()
       }
       return next
     })
@@ -589,7 +560,7 @@ export function ProductManagement({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜尋品牌、型號、貨號、標籤、規格"
+              placeholder={isMobile ? '搜尋' : '搜尋品牌、型號、貨號、標籤、規格'}
               style={{
                 width: '100%',
                 padding: search ? '10px 36px 10px 14px' : '10px 14px',
@@ -630,7 +601,6 @@ export function ProductManagement({
               gap: 8,
               alignItems: 'center',
               flexShrink: 0,
-              flexWrap: isMobile ? 'wrap' : 'nowrap',
               width: isMobile && canEdit ? '100%' : undefined,
             }}
           >
@@ -643,7 +613,7 @@ export function ProductManagement({
                 setStockScannerOpen(true)
               }}
             >
-              {isMobile && !canEdit ? '掃碼' : '掃碼查庫存'}
+              {isMobile ? '掃碼' : '掃碼查庫存'}
             </Button>
             {canEdit && (
               <Button
@@ -654,7 +624,7 @@ export function ProductManagement({
                   setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
                 }}
               >
-                + 新增商品
+                {isMobile ? '新增' : '+ 新增商品'}
               </Button>
             )}
           </div>
@@ -683,54 +653,6 @@ export function ProductManagement({
             onClearAll={clearAllFilters}
             isMobile={isMobile}
           />
-        )}
-
-        {canEdit && onlyInStock && (
-          <div
-            style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.success[700],
-              background: designSystem.colors.success[50],
-              border: `1px solid ${designSystem.colors.border.light}`,
-              borderRadius: designSystem.borderRadius.md,
-              padding: '8px 12px',
-              marginBottom: 10,
-            }}
-          >
-            正在查看現貨規格 · 可再疊加缺價／缺標籤等 · 再按一次「現貨」或清除篩選返回
-          </div>
-        )}
-
-        {canEdit && onlyPreOrder && (
-          <div
-            style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.warning[700],
-              background: designSystem.colors.warning[50],
-              border: `1px solid ${designSystem.colors.border.light}`,
-              borderRadius: designSystem.borderRadius.md,
-              padding: '8px 12px',
-              marginBottom: 10,
-            }}
-          >
-            正在查看預購規格 · 可再疊加缺價／沒封面等篩選 · 再按一次「預購」或清除篩選返回
-          </div>
-        )}
-
-        {canEdit && onlySoldOut && (
-          <div
-            style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.warning[700],
-              background: designSystem.colors.warning[50],
-              border: `1px solid ${designSystem.colors.border.light}`,
-              borderRadius: designSystem.borderRadius.md,
-              padding: '8px 12px',
-              marginBottom: 10,
-            }}
-          >
-            正在查看已售完商品 · 可再疊加待補篩選 · 再按一次「已售完」或清除篩選返回
-          </div>
         )}
 
         {scannedItem && (
@@ -810,29 +732,36 @@ export function ProductManagement({
           </div>
         </div>
 
-        {/* 清單工具：主要檢視與圖片來源切換 */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: 10,
-            flexWrap: isMobile ? 'nowrap' : 'wrap',
-            marginBottom: 14,
+            justifyContent: 'space-between',
+            gap: 8,
+            marginBottom: 12,
+            minWidth: 0,
           }}
         >
+          <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              flexWrap: isMobile ? 'nowrap' : 'wrap',
-              width: 'auto',
               minWidth: 0,
-              marginLeft: 'auto',
+              flexShrink: 0,
             }}
           >
-            <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
+            {canEdit && !isMobile && (
+              <ImageModeToggle
+                mode={listImageMode}
+                isMobile={isMobile}
+                onChange={(next) => {
+                  setListImageModePersist(next)
+                  trackClick(`product_list_image_${next}`, user?.email ?? undefined)
+                }}
+              />
+            )}
             {canEdit && (
               <button
                 type="button"
@@ -841,7 +770,7 @@ export function ProductManagement({
                 onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
                 style={{
                   minHeight: isMobile ? 40 : 34,
-                  padding: '0 12px',
+                  padding: '0 14px',
                   borderRadius: 8,
                   border: `1px solid ${selectMode ? colors.text.primary : colors.border.main}`,
                   background: selectMode ? colors.text.primary : colors.background.card,
@@ -854,16 +783,6 @@ export function ProductManagement({
               >
                 {selectMode ? '選取中' : '選取'}
               </button>
-            )}
-            {canEdit && (
-              <ImageModeToggle
-                mode={listImageMode}
-                isMobile={isMobile}
-                onChange={(next) => {
-                  setListImageModePersist(next)
-                  trackClick(`product_list_image_${next}`, user?.email ?? undefined)
-                }}
-              />
             )}
           </div>
         </div>
@@ -1159,19 +1078,6 @@ function isVariantMissingLabel(it: VariantListItem): boolean {
   return isMissingLabelCode(it.variant.label_code)
 }
 
-type StockStatusFilter = 'in_stock' | 'pre_order' | 'sold_out' | null
-
-function activeStockStatusLabel(
-  onlyInStock: boolean,
-  onlyPreOrder: boolean,
-  onlySoldOut: boolean,
-): StockStatusFilter {
-  if (onlyInStock) return 'in_stock'
-  if (onlyPreOrder) return 'pre_order'
-  if (onlySoldOut) return 'sold_out'
-  return null
-}
-
 interface InventoryDashboardProps {
   /** tab + 搜尋後的全部 SKU（含已售完），用來算庫存狀態與待補連動數字 */
   base: VariantListItem[]
@@ -1240,19 +1146,6 @@ function InventoryDashboard({
   const mainSku = baseSkuCount
   const mainStock = baseStockTotal
   const mainReserved = baseReservedTotal
-  const hasQualityFilter =
-    onlyMissingPrice || onlyMissingImage || onlyMissingCover || onlyMissingLabel
-  const hasStockStatusFilter = onlyInStock || onlyPreOrder || onlySoldOut
-  const hasAnyDashboardFilter = hasQualityFilter || hasStockStatusFilter
-  const stockStatus = activeStockStatusLabel(onlyInStock, onlyPreOrder, onlySoldOut)
-  const stockStatusHint =
-    stockStatus === 'in_stock'
-      ? '現貨'
-      : stockStatus === 'pre_order'
-        ? '預購'
-        : stockStatus === 'sold_out'
-          ? '已售完'
-          : null
 
   const stockStatusChips = (
     <>
@@ -1325,29 +1218,20 @@ function InventoryDashboard({
 
   if (isMobile) {
     return (
-      <div
-        style={{
-          background: colors.background.card,
-          borderRadius: borderRadius.lg,
-          marginBottom: 12,
-          border: `1px solid ${colors.border.light}`,
-          overflow: 'hidden',
-        }}
-      >
-        {/* 摘要列 */}
+      <div style={{ marginBottom: 10 }}>
         <div
           style={{
-            padding: '10px 12px 8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 10,
+            marginBottom: 8,
           }}
         >
-          <span style={{ fontSize: getFontSize('bodySmall', true), lineHeight: 1.45, minWidth: 0 }}>
-            <strong>{mainSku}</strong> 種規格
+          <span style={{ fontSize: getFontSize('bodySmall', true), lineHeight: 1.4, minWidth: 0 }}>
+            <strong>{mainSku}</strong> 種
             <span style={{ color: colors.text.disabled }}> · </span>
-            <strong>{mainStock}</strong> 件現貨
+            <strong>{mainStock}</strong> 件
             {mainReserved > 0 && (
               <>
                 <span style={{ color: colors.text.disabled }}> · </span>
@@ -1377,25 +1261,23 @@ function InventoryDashboard({
           )}
         </div>
 
-        {/* 庫存狀態 */}
         <div
           style={{
-            padding: '0 12px 10px',
             display: 'flex',
-            gap: 8,
+            gap: 6,
             alignItems: 'center',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           {stockStatusChips}
         </div>
 
-        {/* 待補：常開，數字跟庫存狀態連動 */}
         <div
           style={{
-            padding: '8px 12px 12px',
-            borderTop: `1px solid ${colors.border.light}`,
+            marginTop: 8,
             display: 'flex',
-            gap: 8,
+            gap: 6,
             alignItems: 'center',
             flexWrap: 'wrap',
           }}
@@ -1443,7 +1325,7 @@ function InventoryDashboard({
             {mainSku}
           </span>
           <span style={{ fontSize: getFontSize('caption', false), color: colors.text.secondary }}>
-            種商品規格
+            種
           </span>
         </div>
         <span style={{ color: colors.border.main }}>·</span>
@@ -1459,7 +1341,7 @@ function InventoryDashboard({
             {mainStock}
           </span>
           <span style={{ fontSize: getFontSize('caption', false), color: colors.text.secondary }}>
-            件可售現貨
+            件
           </span>
         </div>
         <span style={{ color: colors.border.main }}>·</span>
@@ -1475,7 +1357,7 @@ function InventoryDashboard({
             {mainReserved}
           </span>
           <span style={{ fontSize: getFontSize('caption', false), color: colors.text.secondary }}>
-            件待結帳保留
+            保留
           </span>
         </div>
       </div>
@@ -1503,37 +1385,24 @@ function InventoryDashboard({
       <div style={{ flex: 1 }} />
 
       {isFiltered && (
-        <div
+        <button
+          type="button"
+          data-track="product_filter_clear"
+          onClick={onClearAll}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
+            background: 'transparent',
+            border: 'none',
+            color: colors.text.secondary,
+            fontSize: getFontSize('caption', false),
+            cursor: 'pointer',
+            padding: 4,
+            textDecoration: 'underline',
+            flexShrink: 0,
             marginLeft: 'auto',
           }}
         >
-          <span style={{ fontSize: getFontSize('caption', false), color: colors.text.disabled }}>
-            {hasAnyDashboardFilter
-              ? `目前顯示${stockStatusHint ? `「${stockStatusHint}」` : ''}篩選結果`
-              : '目前顯示篩選結果'}
-          </span>
-          <button
-            type="button"
-            data-track="product_filter_clear"
-            onClick={onClearAll}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: colors.text.secondary,
-              fontSize: getFontSize('caption', false),
-              cursor: 'pointer',
-              padding: 4,
-              textDecoration: 'underline',
-              flexShrink: 0,
-            }}
-          >
-            清除
-          </button>
-        </div>
+          清除
+        </button>
       )}
     </div>
   )
@@ -1565,7 +1434,7 @@ function DashboardStatChip({
       onClick={onClick}
       data-track={trackId}
       disabled={isZero && !active}
-      title={isZero ? `沒有${label}的項目` : `點擊只顯示${label}`}
+        title={isZero ? `沒有${label}` : label}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -1781,24 +1650,24 @@ function LayoutToggle({ layout, onChange, isMobile }: LayoutToggleProps) {
       <button
         type="button"
         data-track="product_layout_table"
-        title="庫存 SKU：一列代表一個可定價、計庫存的 SKU"
-        aria-label="庫存 SKU"
+        title="列表"
+        aria-label="列表"
         aria-pressed={layout === 'table'}
         style={cellStyle(layout === 'table')}
         onClick={() => onChange('table')}
       >
-        庫存 SKU
+        列表
       </button>
       <button
         type="button"
         data-track="product_layout_gallery"
-        title="商品：同一商品的 SKU 會收在同一張卡片"
-        aria-label="商品分組"
+        title="卡片"
+        aria-label="卡片"
         aria-pressed={layout === 'gallery'}
         style={{ ...cellStyle(layout === 'gallery'), borderLeft: `1px solid ${colors.border.main}` }}
         onClick={() => onChange('gallery')}
       >
-        商品
+        卡片
       </button>
     </div>
   )
@@ -2865,19 +2734,17 @@ function EmptyState({ hasAnyProduct, canCreate, isMobile, onCreate }: EmptyState
         style={{
           fontSize: getFontSize('bodyLarge', isMobile),
           fontWeight: 600,
-          marginBottom: 6,
+          marginBottom: hasAnyProduct ? 6 : 18,
           color: colors.text.primary,
         }}
       >
         {hasAnyProduct ? '沒有符合的商品' : '還沒有任何商品'}
       </div>
-      <div style={{ fontSize: getFontSize('bodySmall', isMobile), marginBottom: 18 }}>
-        {hasAnyProduct
-          ? '試著清除篩選或調整關鍵字。'
-          : canCreate
-          ? '先建立第一個商品開始管理庫存。'
-          : '目前沒有商品資料。'}
-      </div>
+      {hasAnyProduct && (
+        <div style={{ fontSize: getFontSize('bodySmall', isMobile), marginBottom: 18 }}>
+          試試清除篩選
+        </div>
+      )}
       {canCreate && (
         <Button variant="primary" data-track="product_add_empty" onClick={onCreate}>
           + 新增商品

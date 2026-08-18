@@ -47,7 +47,6 @@ import {
   findDuplicateLabelCodes,
   isLabelCodeDirty,
   LABEL_CODE_MAX_LEN,
-  LABEL_CODE_RULE_HINT,
   normalizeLabelCode,
   sanitizeLabelCodeInput,
   validateLabelCodeFormat,
@@ -1135,17 +1134,19 @@ export function ProductEditView({
           flexWrap: 'wrap',
         }}
       >
-        <Button
-          variant="outline"
-          size="small"
-          data-track="product_edit_back"
-          onClick={mobileCreateWizard && createStep > 1
-            ? () => goToCreateStep((createStep - 1) as CreateStep)
-            : handleCancel}
-          disabled={saving}
-        >
-          {mobileCreateWizard && createStep > 1 ? '← 上一步' : '← 返回'}
-        </Button>
+        {!(isMobile && !readOnly) && (
+          <Button
+            variant="outline"
+            size="small"
+            data-track="product_edit_back"
+            onClick={mobileCreateWizard && createStep > 1
+              ? () => goToCreateStep((createStep - 1) as CreateStep)
+              : handleCancel}
+            disabled={saving}
+          >
+            {mobileCreateWizard && createStep > 1 ? '← 上一步' : '← 返回'}
+          </Button>
+        )}
         <h2
           style={{
             margin: 0,
@@ -1187,7 +1188,6 @@ export function ProductEditView({
               display: 'grid',
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: 6,
-              marginBottom: 8,
             }}
           >
             {([1, 2, 3] as CreateStep[]).map(step => (
@@ -1202,18 +1202,6 @@ export function ProductEditView({
                 }}
               />
             ))}
-          </div>
-          <div
-            style={{
-              fontSize: getFontSize('bodySmall', true),
-              color: designSystem.colors.text.secondary,
-            }}
-          >
-            步驟 {createStep} / 3 · {createStep === 1
-              ? '確認商品'
-              : createStep === 2
-                ? '建立規格與庫存'
-                : '圖片、標籤與商城'}
           </div>
         </div>
       )}
@@ -1292,10 +1280,7 @@ export function ProductEditView({
                 }}
               >
                 <div style={{ fontSize: getFontSize('bodySmall', isMobile), lineHeight: 1.5 }}>
-                  <strong>找到同型號商品，請先確認要放在哪一張商品卡。</strong>
-                  <div style={{ marginTop: 4 }}>
-                    尺寸等規格請加入既有商品；不同年份、顏色或外觀才建立新商品。年份無法確認可以留空。
-                  </div>
+                  <strong>已有同型號商品</strong>
                 </div>
                 <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
                   {sameModelCandidates.slice(0, 4).map((candidate) => (
@@ -1340,12 +1325,12 @@ export function ProductEditView({
                     onClick={() => setConfirmedSeparateProduct(true)}
                     style={{ marginTop: 10 }}
                   >
-                    確認是不同年份／外觀，建立新商品
+                    確認是新商品
                   </Button>
                 )}
                 {confirmedSeparateProduct && (
                   <div style={{ marginTop: 8, fontSize: getFontSize('caption', isMobile) }}>
-                    已確認獨立建立；請用年份、圖片或備註讓同事容易辨識。
+                    將建立新商品
                   </div>
                 )}
               </div>
@@ -1389,13 +1374,10 @@ export function ProductEditView({
               style={inputStyle}
               value={color}
               onChange={(e) => setColor(e.target.value)}
-              placeholder="例如：黑；板／鞋等可留空"
+              placeholder="黑"
               disabled={saving || readOnly}
               autoComplete="off"
             />
-            <div style={{ marginTop: 4, fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
-              一色一卡：顏色掛在商品卡，SKU 只保留尺寸等規格。
-            </div>
           </div>
           <div>
             <label style={labelStyle}>年份（選填）</label>
@@ -1403,12 +1385,9 @@ export function ProductEditView({
               style={inputStyle}
               value={modelYear}
               onChange={(value) => setModelYear(value)}
-              placeholder="例如：2025；無法確認可留空"
+              placeholder="2025"
               disabled={saving || readOnly}
             />
-            <div style={{ marginTop: 4, fontSize: getFontSize('caption', isMobile), color: designSystem.colors.text.secondary }}>
-              年份不同會分成不同商品卡，不確定時不要猜。
-            </div>
           </div>
           {!mobileCreateWizard && <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
             <label style={labelStyle}>備註</label>
@@ -1416,7 +1395,7 @@ export function ProductEditView({
               style={inputStyle}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="（可選）此商品的補充說明"
+              placeholder="備註"
               disabled={saving || readOnly}
             />
           </div>}
@@ -1435,7 +1414,7 @@ export function ProductEditView({
               color: designSystem.colors.text.primary,
             }}
           >
-            {mobileCreateWizard && createStep === 3 ? '完成商品設定' : '規格與庫存 (SKU)'}
+            規格與庫存
           </h3>
           <Badge variant="info" size="small">
             {drafts.filter((d) => !d.pendingDelete).length}
@@ -1449,7 +1428,7 @@ export function ProductEditView({
               style={inputStyle}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="（可選）此商品的補充說明"
+              placeholder="備註"
               disabled={saving}
             />
           </div>
@@ -1473,16 +1452,6 @@ export function ProductEditView({
             >
               商品封面
             </h3>
-            <p
-              style={{
-                margin: `0 0 ${designSystem.spacing.md} 0`,
-                fontSize: getFontSize('caption', isMobile),
-                color: designSystem.colors.text.secondary,
-                lineHeight: 1.4,
-              }}
-            >
-              一色一卡共用這組封面；底下各尺寸不用再各存一份。
-            </p>
             <CoverImageEditor
               images={productCoverImages}
               entityId={productEntityId}
@@ -1509,7 +1478,7 @@ export function ProductEditView({
               lineHeight: 1.4,
             }}
           >
-            此商品卡有多種顏色，封面仍放在各規格（避免不同色共用錯圖）。建議之後拆成一色一卡。
+            多色舊卡：封面在各規格
           </p>
         )}
 
@@ -1557,7 +1526,7 @@ export function ProductEditView({
         {!readOnly && (!mobileCreateWizard || createStep === 2) && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button variant="outline" size="small" data-track="product_sku_add" onClick={handleAddVariant} disabled={saving}>
-              + 新增規格 (SKU)
+              + 新增規格
             </Button>
             {drafts.some((d) => !d.pendingDelete) && (
               <span title="以最後一筆有效規格為範本（含封面與實品照，庫存歸 0）">
@@ -1644,15 +1613,6 @@ export function ProductEditView({
             <ShopVisibilityPill isPublic={isPublic} isMobile={isMobile} />
           </div>
         </label>
-        <p
-          style={{
-            margin: '10px 2px 0',
-            fontSize: getFontSize('caption', isMobile),
-            color: designSystem.colors.text.secondary,
-          }}
-        >
-          每個 SKU 的 Shop 封面可在上方規格卡底部展開設定。
-        </p>
         </div>}
       </section>}
 
@@ -2094,9 +2054,6 @@ function VariantBlock({
       <div>
         <label style={labelStyle}>
           售價
-          <span style={{ color: designSystem.colors.text.disabled, fontWeight: 400, marginLeft: 4 }}>
-            (留空＝待補)
-          </span>
         </label>
         <NumericTextInput
           variant="course"
@@ -2153,18 +2110,6 @@ function VariantBlock({
                 : '套用圖片到其他尺寸'}
           </Button>
         </span>
-        {hasAnyImage && otherSkuCount > 0 && (
-          <p
-            style={{
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.text.secondary,
-              margin: '6px 0 0',
-              lineHeight: 1.4,
-            }}
-          >
-            同色不同尺寸可共用圖；會各存一份，套用後記得按儲存。
-          </p>
-        )}
       </div>
     ) : null
 
@@ -2215,16 +2160,6 @@ function VariantBlock({
         >
           {draft.label_code.length}/{LABEL_CODE_MAX_LEN}
         </div>
-      </div>
-      <div
-        style={{
-          fontSize: getFontSize('caption', isMobile),
-          color: designSystem.colors.text.disabled,
-          marginBottom: 10,
-          lineHeight: 1.4,
-        }}
-      >
-        {LABEL_CODE_RULE_HINT}
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
         <input
@@ -2301,28 +2236,15 @@ function VariantBlock({
           >
             {labelCodeSaving ? '儲存中…' : '儲存標籤'}
           </Button>
-          {!draft.id && (
-            <p
-              style={{
-                fontSize: getFontSize('caption', isMobile),
-                color: designSystem.colors.text.secondary,
-                margin: '8px 0 0',
-                textAlign: isMobile ? 'center' : 'left',
-              }}
-            >
-              新建 SKU：可修改代碼後，與商品一起按「儲存」
-            </p>
-          )}
           {draft.id && isLabelCodeDirty(draft.label_code, draft.savedLabelCode) && (
             <p
               style={{
                 fontSize: getFontSize('caption', isMobile),
                 color: designSystem.colors.info[700],
                 margin: '6px 0 0',
-                textAlign: isMobile ? 'center' : 'left',
               }}
             >
-              標籤代碼尚未儲存
+              尚未儲存
             </p>
           )}
         </div>
