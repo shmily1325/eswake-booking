@@ -8,6 +8,7 @@ import {
 } from '../../../utils/fetchProductCoverImage'
 import { uploadProductImage } from '../../../utils/imageUpload'
 import { useToast } from '../../../components/ui'
+import { designSystem, getFontSize } from '../../../styles/designSystem'
 import {
   createCoverImageClientKey,
   MAX_VARIANT_COVER_IMAGES,
@@ -265,10 +266,11 @@ export function CoverImageEditor({
     commit(next)
   }
 
+  const { colors, borderRadius } = designSystem
   const labelStyle: React.CSSProperties = {
-    fontSize: compact ? 12 : 13,
+    fontSize: getFontSize('caption', Boolean(compact)),
     fontWeight: 600,
-    color: '#374151',
+    color: colors.text.primary,
     marginBottom: 6,
     display: 'block',
   }
@@ -276,25 +278,28 @@ export function CoverImageEditor({
     flex: 1,
     minWidth: 140,
     padding: '8px 10px',
-    borderRadius: 8,
-    border: '1px solid #d8d8d8',
-    fontSize: 13,
+    borderRadius: borderRadius.sm,
+    border: `1px solid ${colors.border.main}`,
+    fontSize: getFontSize('bodySmall', false),
+    background: colors.background.card,
+    color: colors.text.primary,
   }
   const buttonStyle: React.CSSProperties = {
     padding: '8px 12px',
-    borderRadius: 8,
-    border: '1px solid #d8d8d8',
-    background: disabled || busy ? '#f3f4f6' : '#fff',
+    borderRadius: borderRadius.sm,
+    border: `1px solid ${colors.border.main}`,
+    background: disabled || busy ? colors.secondary[100] : colors.background.card,
+    color: colors.text.primary,
     cursor: disabled || busy ? 'not-allowed' : 'pointer',
     whiteSpace: 'nowrap',
-    fontSize: 13,
+    fontSize: getFontSize('bodySmall', false),
   }
 
   return (
     <div>
       <label style={labelStyle}>
         封面
-        <span style={{ fontWeight: 400, color: '#9ca3af', marginLeft: 6 }}>
+        <span style={{ fontWeight: 400, color: colors.text.disabled, marginLeft: 6 }}>
           {images.length}/{MAX_VARIANT_COVER_IMAGES}
         </span>
       </label>
@@ -327,15 +332,15 @@ export function CoverImageEditor({
                   style={{
                     width: thumbSize,
                     height: Math.round((thumbSize * 5) / 4),
-                    borderRadius: 10,
+                    borderRadius: borderRadius.sm,
                     overflow: 'hidden',
                     border: selected
-                      ? '2px solid #2563eb'
+                      ? `1.5px solid ${colors.primary[500]}`
                       : idx === 0
-                        ? '2px solid #111'
-                        : '1px solid #e5e7eb',
+                        ? `1.5px solid ${colors.primary[500]}`
+                        : `1px solid ${colors.border.light}`,
                     position: 'relative',
-                    background: '#f3f4f6',
+                    background: colors.secondary[50],
                     cursor: disabled ? 'default' : 'pointer',
                     opacity: dragFromKey === img.clientKey ? 0.4 : 1,
                   }}
@@ -351,9 +356,9 @@ export function CoverImageEditor({
                       position: 'absolute',
                       left: 4,
                       bottom: 4,
-                      fontSize: 10,
-                      background: 'rgba(0,0,0,0.7)',
-                      color: '#fff',
+                      fontSize: getFontSize('caption', true),
+                      background: colors.primary[900],
+                      color: colors.background.card,
                       padding: '1px 5px',
                       borderRadius: 4,
                     }}
@@ -376,13 +381,10 @@ export function CoverImageEditor({
                   flexWrap: 'wrap',
                   alignItems: 'center',
                   marginTop: 8,
-                  padding: '6px 8px',
-                  background: '#f9fafb',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
+                  padding: '6px 0',
                 }}
               >
-                <span style={{ fontSize: 12, color: '#374151' }}>
+                <span style={{ fontSize: getFontSize('caption', true), color: colors.text.secondary }}>
                   第 {idx + 1} 張{idx === 0 ? '（主圖）' : ''}
                 </span>
                 <button
@@ -415,9 +417,8 @@ export function CoverImageEditor({
                   style={{
                     ...buttonStyle,
                     padding: '4px 10px',
-                    fontSize: 12,
-                    color: '#b91c1c',
-                    borderColor: '#fecaca',
+                    fontSize: getFontSize('caption', true),
+                    color: colors.danger[700],
                   }}
                 >
                   移除
@@ -486,13 +487,14 @@ export function CoverImageEditor({
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                fontSize: compact ? 12 : 13,
-                color: '#2563eb',
-                textDecoration: 'none',
+                fontSize: getFontSize('bodySmall', Boolean(compact)),
+                color: colors.text.secondary,
+                textDecoration: 'underline',
+                textUnderlineOffset: 2,
                 display: 'block',
               }}
             >
-              🔍 {link.label}
+              {link.label}
             </a>
           ))}
 
@@ -530,7 +532,7 @@ export function CoverImageEditor({
 
           {candidates.length > 1 && !atLimit && (
             <div>
-              <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+              <div style={{ fontSize: getFontSize('caption', true), color: colors.text.secondary, marginBottom: 6 }}>
                 其他候選（點縮圖可再加入）：
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -545,11 +547,11 @@ export function CoverImageEditor({
                       width: 56,
                       height: 70,
                       padding: 0,
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 8,
+                      border: `1px solid ${colors.border.light}`,
+                      borderRadius: borderRadius.sm,
                       overflow: 'hidden',
                       cursor: disabled || busy ? 'not-allowed' : 'pointer',
-                      background: '#fff',
+                      background: colors.background.card,
                     }}
                   >
                     <img

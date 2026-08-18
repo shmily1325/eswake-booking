@@ -1,8 +1,8 @@
 /**
  * Design thinking:
- * Current feel: gradient save CTA and tight bordered section cards feel like Material form chrome.
- * Hierarchy: product fields → SKU list → save; section frames stay quiet hairlines.
- * Primary task: edit product / SKU and save without loud decorative CTAs.
+ * Current feel: product fields and SKU list stack with spacing, not framed cards.
+ * Hierarchy: identity → SKU → Shop → delete; save stays the one primary action.
+ * Primary task: edit product / SKU and save.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Badge, useToast } from '../../../components/ui'
@@ -1468,12 +1468,8 @@ export function ProductEditView({
           <p
             style={{
               margin: `0 0 ${designSystem.spacing.md} 0`,
-              padding: '10px 12px',
-              borderRadius: designSystem.borderRadius.sm,
-              background: designSystem.colors.warning[50],
-              border: `1px solid ${designSystem.colors.warning[500]}`,
               fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.text.primary,
+              color: designSystem.colors.text.secondary,
               lineHeight: 1.4,
             }}
           >
@@ -1566,14 +1562,7 @@ export function ProductEditView({
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            padding: '12px 14px',
-            background: isPublic
-              ? designSystem.colors.warning[50]
-              : designSystem.colors.secondary[50],
-            border: `1px solid ${
-              isPublic ? designSystem.colors.warning[500] : designSystem.colors.border.light
-            }`,
-            borderRadius: designSystem.borderRadius.md,
+            padding: '4px 0',
             cursor: readOnly || saving ? 'not-allowed' : 'pointer',
             userSelect: 'none',
           }}
@@ -1587,7 +1576,7 @@ export function ProductEditView({
               width: 18,
               height: 18,
               cursor: 'inherit',
-              accentColor: designSystem.colors.warning[500],
+              accentColor: designSystem.colors.primary[500],
             }}
           />
           <div
@@ -1802,17 +1791,11 @@ function VariantBlock({
     .join(' / ')
 
   const blockStyle: React.CSSProperties = {
-    border: focused
-      ? `1.5px solid ${designSystem.colors.primary[500]}`
-      : `1px solid ${designSystem.colors.border.light}`,
-    borderRadius: designSystem.borderRadius.lg,
-    padding: isMobile ? 12 : 16,
-    marginBottom: 12,
-    background: draft.pendingDelete
-      ? designSystem.colors.secondary[50]
-      : focused
-        ? designSystem.colors.secondary[50]
-        : designSystem.colors.background.card,
+    border: focused ? `1px solid ${designSystem.colors.primary[500]}` : 'none',
+    borderRadius: designSystem.borderRadius.md,
+    padding: focused ? (isMobile ? 12 : 16) : isMobile ? '4px 0 16px' : '4px 0 20px',
+    marginBottom: 8,
+    background: 'transparent',
     opacity: draft.pendingDelete ? 0.55 : 1,
     position: 'relative',
     scrollMarginTop: isMobile ? 12 : 24,

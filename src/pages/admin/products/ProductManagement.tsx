@@ -155,7 +155,8 @@ export function ProductManagement({
   const [scannedItem, setScannedItem] = useState<VariantListItem | null>(null)
   const [imagePreview, setImagePreview] = useState<{ url: string; alt: string } | null>(null)
 
-  // 篩選：庫存狀態（現貨／預購／已售完，互斥）+ 資料待補（可複選、可疊加）
+  // 篩選：庫存狀態（現貨／預購／已售完，互斥）+ 未上架／待補（可複選、可疊加）
+  const [onlyUnlisted, setOnlyUnlisted] = useState(false)
   const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
   const [onlyMissingImage, setOnlyMissingImage] = useState(false)
   const [onlyMissingCover, setOnlyMissingCover] = useState(false)
@@ -168,6 +169,7 @@ export function ProductManagement({
   const [onlySoldOut, setOnlySoldOut] = useState(false)
 
   const clearAllFilters = () => {
+    setOnlyUnlisted(false)
     setOnlyMissingPrice(false)
     setOnlyMissingImage(false)
     setOnlyMissingCover(false)
@@ -178,6 +180,7 @@ export function ProductManagement({
     setSearch('')
   }
   const hasAnyFilter =
+    onlyUnlisted ||
     onlyMissingPrice ||
     onlyMissingImage ||
     onlyMissingCover ||
@@ -187,6 +190,7 @@ export function ProductManagement({
     onlySoldOut ||
     search.trim() !== ''
 
+  const toggleUnlisted = () => setOnlyUnlisted((v) => !v)
   const toggleMissingPrice = () => setOnlyMissingPrice((v) => !v)
   const toggleMissingImage = () => setOnlyMissingImage((v) => !v)
   const toggleMissingCover = () => setOnlyMissingCover((v) => !v)
@@ -349,7 +353,10 @@ export function ProductManagement({
       items = items.filter((it) => !isVariantSoldOut(it))
     }
 
-    // 待補資料：可與任一庫存狀態疊加
+    // 未上架／待補：可與任一庫存狀態疊加
+    if (onlyUnlisted) {
+      items = items.filter(isVariantUnlisted)
+    }
     if (onlyMissingPrice) {
       items = items.filter((it) => it.variant.price == null)
     }
@@ -373,6 +380,7 @@ export function ProductManagement({
     tabItems,
     searchQuery,
     hasSearch,
+    onlyUnlisted,
     onlyMissingPrice,
     onlyMissingImage,
     onlyMissingCover,
@@ -696,6 +704,7 @@ export function ProductManagement({
           <InventoryDashboard
             base={baseForCounts}
             isFiltered={hasAnyFilter}
+            onlyUnlisted={onlyUnlisted}
             onlyMissingPrice={onlyMissingPrice}
             onlyMissingImage={onlyMissingImage}
             onlyMissingCover={onlyMissingCover}
@@ -704,6 +713,7 @@ export function ProductManagement({
             onlyPreOrder={onlyPreOrder}
             onlySoldOut={onlySoldOut}
             soldOutCount={soldOutCount}
+            onToggleUnlisted={toggleUnlisted}
             onToggleMissingPrice={toggleMissingPrice}
             onToggleMissingImage={toggleMissingImage}
             onToggleMissingCover={toggleMissingCover}
@@ -1081,9 +1091,9 @@ function sortItemsByUpdated(items: VariantListItem[]): VariantListItem[] {
 }
 
 // ============================================================
-//  庫存儀表板：種數／件數 + 庫存狀態（現貨／預購／已售完）+ 資料待補
-//  - 庫存狀態互斥；待補可複選並與狀態疊加
-//  - 待補數字跟目前庫存狀態連動（選現貨 → 只算現貨裡的缺價等）
+//  庫存儀表板：種數／件數 + 庫存狀態（現貨／預購／已售完）+ 未上架／待補
+//  - 庫存狀態互斥；未上架與待補可複選並與狀態疊加
+//  - 未上架／待補數字跟目前庫存狀態連動（選現貨 → 只算現貨裡的未上架等）
 //  - 手機：狀態與待補都常開，不收合
 // ============================================================
 function isVariantSoldOut(it: VariantListItem): boolean {
@@ -1102,10 +1112,15 @@ function isVariantMissingLabel(it: VariantListItem): boolean {
   return isMissingLabelCode(it.variant.label_code)
 }
 
+function isVariantUnlisted(it: VariantListItem): boolean {
+  return !it.product.is_public
+}
+
 interface InventoryDashboardProps {
   /** tab + 搜尋後的全部 SKU（含已售完），用來算庫存狀態與待補連動數字 */
   base: VariantListItem[]
   isFiltered: boolean
+  onlyUnlisted: boolean
   onlyMissingPrice: boolean
   onlyMissingImage: boolean
   onlyMissingCover: boolean
@@ -1114,6 +1129,7 @@ interface InventoryDashboardProps {
   onlyPreOrder: boolean
   onlySoldOut: boolean
   soldOutCount: number
+  onToggleUnlisted: () => void
   onToggleMissingPrice: () => void
   onToggleMissingImage: () => void
   onToggleMissingCover: () => void
@@ -1127,6 +1143,7 @@ interface InventoryDashboardProps {
 function InventoryDashboard({
   base,
   isFiltered,
+  onlyUnlisted,
   onlyMissingPrice,
   onlyMissingImage,
   onlyMissingCover,
@@ -1135,6 +1152,7 @@ function InventoryDashboard({
   onlyPreOrder,
   onlySoldOut,
   soldOutCount,
+  onToggleUnlisted,
   onToggleMissingPrice,
   onToggleMissingImage,
   onToggleMissingCover,
@@ -1164,6 +1182,7 @@ function InventoryDashboard({
     (it) => !getVariantListImageUrl(it.variant, 'cover', it.product),
   ).length
   const missingLabelCount = qualityBase.filter(isVariantMissingLabel).length
+  const unlistedCount = qualityBase.filter(isVariantUnlisted).length
   const inStockCount = activeBase.filter(isVariantInStock).length
   const preOrderCount = activeBase.filter(isVariantPreOrder).length
 
@@ -1202,6 +1221,14 @@ function InventoryDashboard({
 
   const qualityChips = (
     <>
+      <DashboardStatChip
+        label="未上架"
+        count={unlistedCount}
+        active={onlyUnlisted}
+        onClick={onToggleUnlisted}
+        trackId="product_filter_unlisted"
+        isMobile={isMobile}
+      />
       <DashboardStatChip
         label="缺價"
         count={missingPriceCount}
@@ -1330,7 +1357,7 @@ function inventoryStatusBadge(
   isPublic: boolean,
 ): { bg: string; color: string; label: string } {
   if (!isPublic) {
-    return { bg: 'transparent', color: colors.text.disabled, label: '未公開' }
+    return { bg: 'transparent', color: colors.text.disabled, label: '未上架' }
   }
   const availability = getVariantAvailability(variant)
   if (availability === 'in_stock') {

@@ -73,8 +73,8 @@ describe('pickHomeGalleryItems', () => {
     expect(pickHomeGalleryItems(pool, 1, 4)).toHaveLength(4)
   })
 
-  it('defaults to sixteen homepage slides', () => {
-    expect(pickHomeGalleryItems(pool, 1)).toHaveLength(16)
+  it('defaults to eight homepage slides', () => {
+    expect(pickHomeGalleryItems(pool, 1)).toHaveLength(8)
   })
 
   it('returns a different order for a different seed', () => {

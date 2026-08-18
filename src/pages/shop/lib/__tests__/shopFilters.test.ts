@@ -63,7 +63,7 @@ describe('normalizeFilterState', () => {
     expect(next.subCat).toBe(ALL_SUBCATS)
   })
 
-  it('drops sport category when in pre-order brand mode', () => {
+  it('keeps pre-order type when a brand is selected', () => {
     const next = normalizeFilterState({
       ...defaultFilterState(),
       preOrderOnly: true,
@@ -72,8 +72,18 @@ describe('normalizeFilterState', () => {
       brands: ['Follow'],
     })
     expect(next.topLevel).toBe(ALL_GROUPS)
-    expect(next.subCat).toBe(ALL_SUBCATS)
+    expect(next.subCat).toBe('lifejacket')
     expect(next.brands).toEqual(['Follow'])
+  })
+
+  it('clears pre-order type when no brand is selected', () => {
+    const next = normalizeFilterState({
+      ...defaultFilterState(),
+      preOrderOnly: true,
+      subCat: 'lifejacket',
+      brands: [],
+    })
+    expect(next.subCat).toBe(ALL_SUBCATS)
   })
 })
 
@@ -176,6 +186,53 @@ describe('filterAndSortProducts', () => {
     })
     const filtered = filterAndSortProducts(base, wakeboarding)
     expect(filtered.every((p) => p.category === 'wb_board')).toBe(true)
+  })
+
+  it('filters pre-order products by type after a brand is selected', () => {
+    const vest = product('lifejacket', {
+      brand: 'Follow',
+      variants: [
+        {
+          id: 'v-vest',
+          product_id: 'p-vest',
+          stock: 0,
+          reserved_qty: 0,
+          availability: 'pre_order',
+          price: 100,
+          sku: 'sku',
+          color: null,
+          size: null,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+    })
+    const wetsuit = product('wetsuit', {
+      brand: 'Follow',
+      variants: [
+        {
+          id: 'v-ws',
+          product_id: 'p-ws',
+          stock: 0,
+          reserved_qty: 0,
+          availability: 'pre_order',
+          price: 100,
+          sku: 'sku',
+          color: null,
+          size: null,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+    })
+    const filters = normalizeFilterState({
+      ...defaultFilterState(),
+      preOrderOnly: true,
+      brands: ['Follow'],
+      subCat: 'lifejacket',
+    })
+    const filtered = filterAndSortProducts([vest, wetsuit], filters)
+    expect(filtered.map((p) => p.category)).toEqual(['lifejacket'])
   })
 })
 

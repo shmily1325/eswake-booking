@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { uploadProductImage } from '../../../utils/imageUpload'
 import { useToast } from '../../../components/ui'
+import { designSystem, getFontSize } from '../../../styles/designSystem'
 
 interface ImageUploaderProps {
   /** 目前圖片 URL（沒有則顯示空白上傳區） */
@@ -98,9 +99,11 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
   const containerStyle: React.CSSProperties = {
     width: size,
     height: Math.round((size * 16) / 9),
-    borderRadius: 12,
-    border: value ? '1px solid #e0e0e0' : '2px dashed #c8c8c8',
-    background: value ? '#fff' : '#fafafa',
+    borderRadius: designSystem.borderRadius.md,
+    border: value
+      ? `1px solid ${designSystem.colors.border.light}`
+      : `1px dashed ${designSystem.colors.border.main}`,
+    background: value ? designSystem.colors.background.card : 'transparent',
     cursor: disabled || uploading ? 'not-allowed' : 'pointer',
     overflow: 'hidden',
     position: 'relative',
@@ -108,9 +111,8 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    color: '#888',
-    fontSize: size >= 80 ? 13 : 11,
-    transition: 'border-color 0.15s',
+    color: designSystem.colors.text.disabled,
+    fontSize: size >= 80 ? getFontSize('bodySmall', false) : getFontSize('caption', true),
     userSelect: 'none',
   }
 
@@ -143,8 +145,8 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
                 height: 22,
                 borderRadius: '50%',
                 border: 'none',
-                background: 'rgba(0,0,0,0.6)',
-                color: '#fff',
+                background: designSystem.colors.primary[900],
+                color: designSystem.colors.background.card,
                 cursor: 'pointer',
                 fontSize: 12,
                 lineHeight: 1,
@@ -160,8 +162,7 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
         </>
       ) : (
         <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
-          <div style={{ fontSize: size >= 80 ? 24 : 18 }}>📷</div>
-          <div style={{ marginTop: 4 }}>
+          <div>
             {uploading ? '上傳中…' : disabled ? '無圖片' : emptyLabel}
           </div>
         </div>
@@ -175,8 +176,8 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 12,
-            color: '#444',
+            fontSize: getFontSize('caption', true),
+            color: designSystem.colors.text.primary,
           }}
         >
           上傳中…

@@ -159,7 +159,6 @@ export function ProductBatchBar({
           boxSizing: 'border-box',
           maxWidth: '100%',
           overflow: 'hidden',
-          boxShadow: designSystem.shadows.elevation[4],
         }}
       >
         <div
@@ -354,7 +353,7 @@ export function SelectCheck({
           borderRadius: 6,
           border: `2px solid ${checked ? colors.text.primary : colors.border.main}`,
           background: checked ? colors.text.primary : colors.background.card,
-          color: '#fff',
+          color: colors.background.card,
           fontSize: 14,
           fontWeight: 800,
           display: 'flex',

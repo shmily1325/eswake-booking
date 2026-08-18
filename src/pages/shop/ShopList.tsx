@@ -45,6 +45,7 @@ export function ShopList() {
     setPreOrderOnly,
     selectCategory,
     selectPreOrderBrand,
+    selectPreOrderCategory,
     setSortBy,
     clearRefinement,
     clearPillFilters,
@@ -102,7 +103,9 @@ export function ShopList() {
               <ShopPreOrderRefineBar
                 filters={filters}
                 brandCounts={facets.preOrderBrandCounts}
+                categoryCounts={facets.preOrderCategoryCounts}
                 onSelectBrand={selectPreOrderBrand}
+                onSelectCategory={selectPreOrderCategory}
               />
             ) : (
               <ShopCategoryBar
@@ -259,13 +262,13 @@ function HomeGalleryLoading() {
         <div key={row}>
           <div className="h-6 w-28 bg-white/10 rounded mb-3" />
           <div className="relative h-[calc(min(52vw,200px)*5/4)] md:h-[300px] lg:h-[min(40vw,475px)] max-w-full">
-            {Array.from({ length: 8 }).map((_, i) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
                 className="absolute top-0 left-0 w-[min(52vw,200px)] md:w-60 lg:w-[min(32vw,380px)] aspect-4/5 rounded-xl bg-zinc-800 animate-pulse origin-left"
                 style={{
-                  transform: `translateX(${i * 18}%) scale(${1 - i * 0.025})`,
-                  zIndex: 10 - i,
+                  transform: `translateX(${i * 34}%) scale(${1 - i * 0.04})`,
+                  zIndex: 4 - i,
                 }}
               />
             ))}

@@ -131,11 +131,11 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   )
 }
 
-/** 主圖約半屏，右邊疊出一排商品邊。 */
-const PEEK_PCT = 18
-const SCALE_STEP = 0.025
-const MAX_PEEK = 10
-const SWIPE_PX = 36
+/** 主圖 + 右邊 3 張；每張多露出一截，才看得出後面是商品。 */
+const PEEK_PCT = 34
+const SCALE_STEP = 0.04
+const MAX_PEEK = 4
+const SWIPE_PX = 40
 
 function HomeGalleryRow({
   title,
@@ -148,9 +148,11 @@ function HomeGalleryRow({
 }) {
   const navigate = useNavigate()
   const [front, setFront] = useState(0)
+  const [dragPx, setDragPx] = useState(0)
   const pointer = useRef<{ x: number; y: number } | null>(null)
   const pointerDelta = useRef({ x: 0, y: 0 })
   const scrolling = useRef(false)
+  const dragging = useRef(false)
   const count = items.length
   const safeFront = count > 0 ? front % count : 0
   const current = items[safeFront]
@@ -165,12 +167,16 @@ function HomeGalleryRow({
     pointer.current = null
     pointerDelta.current = { x: 0, y: 0 }
     scrolling.current = false
+    dragging.current = false
+    setDragPx(0)
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     pointer.current = { x: e.clientX, y: e.clientY }
     pointerDelta.current = { x: 0, y: 0 }
     scrolling.current = false
+    dragging.current = false
+    setDragPx(0)
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -180,23 +186,28 @@ function HomeGalleryRow({
     pointerDelta.current = { x: dx, y: dy }
     if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
       scrolling.current = true
+      setDragPx(0)
       return
     }
+    if (!canSlide) return
     if (Math.abs(dx) > 8) {
+      dragging.current = true
       e.currentTarget.setPointerCapture(e.pointerId)
+      setDragPx(dx)
     }
   }
 
   const onPointerUp = () => {
     const dx = pointerDelta.current.x
     const wasScroll = scrolling.current
+    const wasDrag = dragging.current
     resetPointer()
     if (wasScroll) return
-    if (canSlide && Math.abs(dx) >= SWIPE_PX) {
+    if (canSlide && wasDrag && Math.abs(dx) >= SWIPE_PX) {
       step(dx < 0 ? 1 : -1)
       return
     }
-    navigate(viewAllTo)
+    if (!wasDrag) navigate(viewAllTo)
   }
 
   return (
@@ -254,11 +265,17 @@ function HomeGalleryRow({
             return (
               <div
                 key={item.productId}
-                className="absolute inset-0 overflow-hidden rounded-xl bg-white shadow-[6px_0_18px_rgba(0,0,0,0.4)] transition-transform duration-300 ease-out origin-left"
+                className={
+                  'absolute inset-0 overflow-hidden rounded-xl bg-white shadow-[8px_0_20px_rgba(0,0,0,0.35)] origin-left ' +
+                  (dragPx !== 0
+                    ? ''
+                    : 'transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]')
+                }
                 style={{
-                  transform: `translateX(${offset * PEEK_PCT}%) scale(${1 - offset * SCALE_STEP})`,
+                  transform: `translateX(calc(${offset * PEEK_PCT}% + ${dragPx}px)) scale(${1 - offset * SCALE_STEP})`,
                   zIndex: MAX_PEEK - offset,
                   pointerEvents: 'none',
+                  opacity: offset === 0 ? 1 : 0.92,
                 }}
               >
                 <ImageOrFallback

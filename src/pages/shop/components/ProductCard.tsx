@@ -119,7 +119,7 @@ export function ProductCard({
           )}
         </div>
         {orderBy ? (
-          <div className="mt-1 text-[11px] text-gray-500">{orderBy}</div>
+          <div className="mt-1 text-[11px] font-medium text-red-600">{orderBy}</div>
         ) : null}
       </div>
     </Link>

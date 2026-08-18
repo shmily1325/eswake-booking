@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
+import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
 import { validateLabelCodeFormat } from './labelCode'
 import { saveLabelPng } from './labelImageExport'
 import {
@@ -278,9 +279,8 @@ function LabelExpandModal({
             maxHeight: 'min(88dvh, calc(100dvh - env(safe-area-inset-top) - 12px))',
             display: 'flex',
             flexDirection: 'column',
-            background: '#fff',
-            borderRadius: '16px 16px 0 0',
-            boxShadow: '0 -8px 32px rgba(0,0,0,0.28)',
+            background: designSystem.colors.background.card,
+            borderRadius: `${designSystem.borderRadius.xl} ${designSystem.borderRadius.xl} 0 0`,
             paddingTop: 12,
             paddingLeft: 'max(16px, env(safe-area-inset-left))',
             paddingRight: 'max(16px, env(safe-area-inset-right))',
@@ -299,19 +299,27 @@ function LabelExpandModal({
               flexShrink: 0,
             }}
           >
-            <span style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>標籤預覽</span>
+            <span
+              style={{
+                fontSize: getFontSize('h3', true),
+                fontWeight: 700,
+                color: designSystem.colors.text.primary,
+              }}
+            >
+              標籤預覽
+            </span>
             <button
               type="button"
               onClick={onClose}
               aria-label="關閉"
               style={{
                 border: 'none',
-                background: '#f3f4f6',
-                color: '#333',
+                background: 'transparent',
+                color: designSystem.colors.text.secondary,
                 width: 36,
                 height: 36,
-                borderRadius: 18,
-                fontSize: 18,
+                borderRadius: designSystem.borderRadius.full,
+                fontSize: 22,
                 lineHeight: 1,
                 cursor: 'pointer',
                 touchAction: 'manipulation',
@@ -342,16 +350,10 @@ function LabelExpandModal({
             type="button"
             onClick={onClose}
             style={{
+              ...getButtonStyle('outline', 'large', true),
               display: 'block',
               width: '100%',
               marginTop: 16,
-              padding: '14px 16px',
-              border: 'none',
-              borderRadius: 12,
-              background: '#111',
-              color: '#fff',
-              fontSize: 16,
-              fontWeight: 600,
               cursor: 'pointer',
               touchAction: 'manipulation',
               flexShrink: 0,
@@ -415,16 +417,10 @@ function LabelExpandModal({
           type="button"
           onClick={onClose}
           style={{
+            ...getButtonStyle('outline', 'large', false),
             display: 'block',
             width: '100%',
             marginTop: 16,
-            padding: '14px 16px',
-            border: 'none',
-            borderRadius: 12,
-            background: '#fff',
-            color: '#111',
-            fontSize: 16,
-            fontWeight: 600,
             cursor: 'pointer',
           }}
         >
@@ -495,15 +491,9 @@ function LabelDownloadButton({
         onClick={() => void handleDownload()}
         disabled={downloading}
         style={{
+          ...getButtonStyle('outline', isMobile ? 'large' : 'medium', isMobile),
           display: fullWidth ? 'block' : 'inline-block',
           width: fullWidth ? '100%' : undefined,
-          padding: isMobile ? '10px 14px' : '8px 12px',
-          borderRadius: 8,
-          border: '1px solid #333',
-          background: '#fff',
-          color: '#111',
-          fontSize: isMobile ? 14 : 13,
-          fontWeight: 600,
           cursor: downloading ? 'wait' : 'pointer',
           minHeight: isMobile ? 44 : undefined,
         }}
@@ -511,10 +501,28 @@ function LabelDownloadButton({
         {downloading ? '產生圖片中…' : buttonLabel}
       </button>
       {successHint && (
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: '#2e7d32', lineHeight: 1.4 }}>{successHint}</p>
+        <p
+          style={{
+            margin: '6px 0 0',
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary,
+            lineHeight: 1.4,
+          }}
+        >
+          {successHint}
+        </p>
       )}
       {error && (
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: '#c62828', lineHeight: 1.4 }}>{error}</p>
+        <p
+          style={{
+            margin: '6px 0 0',
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.danger[700],
+            lineHeight: 1.4,
+          }}
+        >
+          {error}
+        </p>
       )}
     </div>
   )
@@ -586,16 +594,23 @@ function LabelCard({ labelCode, productName, price, size, widthPx, formatError }
         style={{
           ...shellStyle,
           padding: `${m.pad}px`,
-          borderRadius: 6,
-          border: '1px solid #e5e7eb',
-          background: '#fff',
+          borderRadius: designSystem.borderRadius.sm,
+          border: `1px solid ${designSystem.colors.border.light}`,
+          background: designSystem.colors.background.card,
           display: 'flex',
           alignItems: 'center',
           gap: 10,
         }}
       >
         <EsLogo size={m.logo} faded />
-        <span style={{ fontSize: 13, color: '#aaa', lineHeight: 1.35, fontFamily: LABEL_FONT }}>
+        <span
+          style={{
+            fontSize: getFontSize('bodySmall', false),
+            color: designSystem.colors.text.disabled,
+            lineHeight: 1.35,
+            fontFamily: LABEL_FONT,
+          }}
+        >
           輸入代碼後顯示標籤預覽
         </span>
       </div>
@@ -609,12 +624,20 @@ function LabelCard({ labelCode, productName, price, size, widthPx, formatError }
         style={{
           ...shellStyle,
           padding: m.pad,
-          borderRadius: 6,
-          border: '1px solid #fecaca',
-          background: '#fef2f2',
+          borderRadius: designSystem.borderRadius.sm,
+          border: 'none',
+          background: 'transparent',
         }}
       >
-        <span style={{ fontSize: 13, color: '#b91c1c', fontFamily: LABEL_FONT }}>{formatError}</span>
+        <span
+          style={{
+            fontSize: getFontSize('bodySmall', false),
+            color: designSystem.colors.danger[700],
+            fontFamily: LABEL_FONT,
+          }}
+        >
+          {formatError}
+        </span>
       </div>
     )
   }
@@ -627,7 +650,6 @@ function LabelCard({ labelCode, productName, price, size, widthPx, formatError }
         background: '#fff',
         border: '1px solid #999',
         borderRadius: 3,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
         padding: m.pad,
         display: 'flex',
         flexDirection: 'column',
@@ -753,6 +775,6 @@ function EsLogo({ size, faded = false }: { size: number; faded?: boolean }) {
 
 const hintStyle: React.CSSProperties = {
   margin: '6px 0 0',
-  fontSize: 11,
-  color: '#999',
+  fontSize: getFontSize('caption', true),
+  color: designSystem.colors.text.disabled,
 }

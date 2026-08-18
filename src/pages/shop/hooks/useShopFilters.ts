@@ -54,10 +54,18 @@ export function useShopFilters(products: ProductWithVariants[]) {
       inStockOnly: false,
     })
     const preOrderBrandCounts = computeBrandCounts(preOrderNavProducts)
+    const preOrderCategoryPool =
+      filters.brands.length === 0
+        ? []
+        : preOrderNavProducts.filter((p) =>
+            filters.brands.includes((p.brand ?? '').trim()),
+          )
+    const preOrderCategoryCounts = computeFacets(preOrderCategoryPool).categoryCounts
     return {
       ...navFacets,
       brandCounts,
       preOrderBrandCounts,
+      preOrderCategoryCounts,
       preOrderCount: catalogFacets.preOrderCount,
     }
   }, [baseProducts, filters, catalogFacets.preOrderCount])
@@ -164,6 +172,18 @@ export function useShopFilters(products: ProductWithVariants[]) {
     [writeFilters],
   )
 
+  const selectPreOrderCategory = useCallback(
+    (subCat: string) => {
+      writeFilters({
+        preOrderOnly: true,
+        inStockOnly: false,
+        topLevel: ALL_GROUPS,
+        subCat,
+      })
+    },
+    [writeFilters],
+  )
+
   const setTopLevel = useCallback(
     (topLevel: TopLevel) => {
       selectCategory(topLevel, ALL_SUBCATS)
@@ -266,6 +286,7 @@ export function useShopFilters(products: ProductWithVariants[]) {
     setInStockOnly,
     selectCategory,
     selectPreOrderBrand,
+    selectPreOrderCategory,
     setTopLevel,
     setSubCat,
     toggleBrand,
