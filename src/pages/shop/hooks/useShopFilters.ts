@@ -54,19 +54,10 @@ export function useShopFilters(products: ProductWithVariants[]) {
       inStockOnly: false,
     })
     const preOrderBrandCounts = computeBrandCounts(preOrderNavProducts)
-    // 類型列常駐：未選品牌時列出全部預購商品的類型
-    const preOrderCategoryPool =
-      filters.brands.length === 0
-        ? preOrderNavProducts
-        : preOrderNavProducts.filter((p) =>
-            filters.brands.includes((p.brand ?? '').trim()),
-          )
-    const preOrderCategoryCounts = computeFacets(preOrderCategoryPool).categoryCounts
     return {
       ...navFacets,
       brandCounts,
       preOrderBrandCounts,
-      preOrderCategoryCounts,
       preOrderCount: catalogFacets.preOrderCount,
     }
   }, [baseProducts, filters, catalogFacets.preOrderCount])
@@ -166,22 +157,9 @@ export function useShopFilters(products: ProductWithVariants[]) {
         preOrderOnly: true,
         inStockOnly: false,
         topLevel: ALL_GROUPS,
-        // 換品牌時類型回到全部，避免停在新品牌沒有的類型上
         subCat: ALL_SUBCATS,
         brands: brand == null || prev.brands[0] === brand ? [] : [brand],
       }))
-    },
-    [writeFilters],
-  )
-
-  const selectPreOrderCategory = useCallback(
-    (subCat: string) => {
-      writeFilters({
-        preOrderOnly: true,
-        inStockOnly: false,
-        topLevel: ALL_GROUPS,
-        subCat,
-      })
     },
     [writeFilters],
   )
@@ -288,7 +266,6 @@ export function useShopFilters(products: ProductWithVariants[]) {
     setInStockOnly,
     selectCategory,
     selectPreOrderBrand,
-    selectPreOrderCategory,
     setTopLevel,
     setSubCat,
     toggleBrand,

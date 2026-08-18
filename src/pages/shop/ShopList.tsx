@@ -45,7 +45,6 @@ export function ShopList() {
     setPreOrderOnly,
     selectCategory,
     selectPreOrderBrand,
-    selectPreOrderCategory,
     setSortBy,
     clearRefinement,
     clearPillFilters,
@@ -99,17 +98,25 @@ export function ShopList() {
         />
         {!isHome && (
           <div className="sticky top-14 z-20 bg-black">
-            <ShopCategoryBar
-              filters={filters}
-              groupCounts={facets.groupCounts}
-              categoryCounts={facets.categoryCounts}
-              preOrderCount={facets.preOrderCount}
-              onSelectAll={selectAll}
-              onSelectCategory={selectCategory}
-              onSelectPreOrder={() => setPreOrderOnly(true)}
-              variant="dark"
-              fadeFromHero
-            />
+            {filters.preOrderOnly ? (
+              <ShopPreOrderRefineBar
+                filters={filters}
+                brandCounts={facets.preOrderBrandCounts}
+                onSelectBrand={selectPreOrderBrand}
+              />
+            ) : (
+              <ShopCategoryBar
+                filters={filters}
+                groupCounts={facets.groupCounts}
+                categoryCounts={facets.categoryCounts}
+                preOrderCount={facets.preOrderCount}
+                onSelectAll={selectAll}
+                onSelectCategory={selectCategory}
+                onSelectPreOrder={() => setPreOrderOnly(true)}
+                variant="dark"
+                fadeFromHero
+              />
+            )}
           </div>
         )}
       </section>
@@ -132,27 +139,21 @@ export function ShopList() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="flex gap-8 items-start">
           <div className="flex-1 min-w-0">
-            <ShopMobileListToolbar
-              refineCount={mobileRefineCount}
-              showRefine
-              onOpenFilters={() => setDrawerOpen(true)}
-            />
-
-            <div className="mb-3 hidden lg:flex items-center justify-end">
-              <ToolbarSort
-                sortBy={filters.sortBy}
-                onSortChange={setSortBy}
+            {!filters.preOrderOnly && (
+              <ShopMobileListToolbar
+                refineCount={mobileRefineCount}
+                showRefine
+                onOpenFilters={() => setDrawerOpen(true)}
               />
-            </div>
+            )}
 
-            {filters.preOrderOnly && (
-              <ShopPreOrderRefineBar
-                filters={filters}
-                brandCounts={facets.preOrderBrandCounts}
-                categoryCounts={facets.preOrderCategoryCounts}
-                onSelectBrand={selectPreOrderBrand}
-                onSelectCategory={selectPreOrderCategory}
-              />
+            {!filters.preOrderOnly && (
+              <div className="mb-3 hidden lg:flex items-center justify-end">
+                <ToolbarSort
+                  sortBy={filters.sortBy}
+                  onSortChange={setSortBy}
+                />
+              </div>
             )}
 
             <ActiveFilterPills
@@ -187,7 +188,13 @@ export function ShopList() {
                 onClear={clearListFilters}
               />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+              <div
+                className={
+                  filters.preOrderOnly
+                    ? 'grid grid-cols-2 gap-3 sm:gap-5'
+                    : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5'
+                }
+              >
                 {filteredProducts.map((p) => (
                   <ProductCard
                     key={p.id}
@@ -257,8 +264,16 @@ function HomeGalleryLoading() {
       {['pre', 'stock'].map((row) => (
         <div key={row}>
           <div className="h-6 w-28 bg-white/10 rounded mb-3" />
-          <div className="relative mx-auto w-[min(52vw,220px)] sm:w-60 aspect-4/5 animate-pulse">
-            <div className="absolute inset-0 bg-zinc-800 rounded-xl" />
+          <div className="flex gap-3 overflow-hidden">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="shrink-0 w-[min(78vw,340px)] animate-pulse">
+                <div className="aspect-4/5 bg-zinc-800 rounded-xl" />
+                <div className="mt-2.5 space-y-2">
+                  <div className="h-3 w-16 bg-white/10 rounded" />
+                  <div className="h-4 w-2/3 bg-white/10 rounded" />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ))}

@@ -71,16 +71,22 @@ function parseSort(raw: string | null): SortBy {
 
 /** 讓 group / cat URL 一致（cat 隱含所屬 shopGroup；跨組合時清掉 cat） */
 export function normalizeFilterState(state: ShopFilterState): ShopFilterState {
+  // 預購只篩品牌，不套運動大類／小類。
+  if (state.preOrderOnly) {
+    return {
+      ...state,
+      topLevel: ALL_GROUPS,
+      subCat: ALL_SUBCATS,
+      inStockOnly: false,
+    }
+  }
+
   let { topLevel, subCat } = state
   if (subCat === ALL_SUBCATS) return state
 
   const catDef = getAllCategories().find((c) => c.id === subCat)
   if (!catDef?.shopGroup) {
     return { ...state, subCat: ALL_SUBCATS }
-  }
-  // 預購是獨立導覽模式：品牌 → 小類，不套用一般商城的運動大類。
-  if (state.preOrderOnly) {
-    return { ...state, topLevel: ALL_GROUPS, inStockOnly: false }
   }
   if (topLevel === ALL_GROUPS) {
     topLevel = catDef.shopGroup
@@ -270,7 +276,7 @@ export function filterAndSortProducts(
     (p) =>
       productMatchesPreOrder(p, filters.preOrderOnly) &&
       productMatchesInStock(p, filters.inStockOnly) &&
-      productMatchesCategory(p, filters) &&
+      (filters.preOrderOnly || productMatchesCategory(p, filters)) &&
       productMatchesBrand(p, filters) &&
       productMatchesSearch(p, filters.search),
   )

@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { ProductWithVariants } from '../../admin/products/types'
 import { SHOP_GROUPS } from '../../admin/products/schema'
 import { ImageOrFallback } from './ImageOrFallback'
@@ -41,8 +41,8 @@ interface ShopHomeGalleriesProps {
 }
 
 /**
- * 目錄首頁：Pre-Order / In-Stock 疊卡輪播。
- * 點卡片或 View all 進對應專欄列表，不進單品。
+ * 目錄首頁：Pre-Order / In-Stock 橫滑 gallery。
+ * 卡片寬約 78vw，右邊露出下一張；點卡片或 View all 進列表，不進單品。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readSessionSeed)
@@ -131,9 +131,6 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   )
 }
 
-const STACK_PEEK = 3
-const SWIPE_PX = 36
-
 function HomeGalleryRow({
   title,
   items,
@@ -143,56 +140,7 @@ function HomeGalleryRow({
   items: HomeGalleryItem[]
   viewAllTo: string
 }) {
-  const navigate = useNavigate()
-  const [front, setFront] = useState(0)
-  const pointerStart = useRef<{ x: number; y: number } | null>(null)
-  const pointerDelta = useRef({ x: 0, y: 0 })
-  const scrolling = useRef(false)
-  const count = items.length
-  const current = items[front]
-
-  const resetPointer = () => {
-    pointerStart.current = null
-    pointerDelta.current = { x: 0, y: 0 }
-    scrolling.current = false
-  }
-
-  const step = (dir: 1 | -1) => {
-    if (count <= 1) return
-    setFront((i) => (i + dir + count) % count)
-  }
-
-  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    pointerStart.current = { x: e.clientX, y: e.clientY }
-    pointerDelta.current = { x: 0, y: 0 }
-    scrolling.current = false
-  }
-
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (pointerStart.current == null || scrolling.current) return
-    const dx = e.clientX - pointerStart.current.x
-    const dy = e.clientY - pointerStart.current.y
-    pointerDelta.current = { x: dx, y: dy }
-    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
-      scrolling.current = true
-      return
-    }
-    if (Math.abs(dx) > 8) {
-      e.currentTarget.setPointerCapture(e.pointerId)
-    }
-  }
-
-  const onPointerUp = () => {
-    const dx = pointerDelta.current.x
-    const wasScroll = scrolling.current
-    resetPointer()
-    if (wasScroll) return
-    if (Math.abs(dx) >= SWIPE_PX) {
-      step(dx < 0 ? 1 : -1)
-      return
-    }
-    navigate(viewAllTo)
-  }
+  const trackRef = useRef<HTMLDivElement>(null)
 
   return (
     <section aria-label={title}>
@@ -209,52 +157,37 @@ function HomeGalleryRow({
         </Link>
       </div>
 
-      <div className="px-4 sm:px-6">
-        <div
-          className="relative mx-auto w-[min(52vw,220px)] sm:w-60 aspect-4/5 select-none cursor-pointer"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={resetPointer}
-        >
-          {items.map((item, i) => {
-            const offset = (i - front + count) % count
-            if (offset >= STACK_PEEK) return null
-            return (
-              <div
-                key={item.productId}
-                className="absolute inset-0 overflow-hidden rounded-xl bg-white shadow-lg transition-transform duration-300 ease-out origin-top-left"
-                style={{
-                  transform: `translateX(${offset * 14}px) scale(${1 - offset * 0.06})`,
-                  zIndex: STACK_PEEK - offset,
-                  pointerEvents: offset === 0 ? 'auto' : 'none',
-                }}
-              >
-                <ImageOrFallback
-                  src={item.imageUrl}
-                  alt={item.title}
-                  loading={offset === 0 ? 'eager' : 'lazy'}
-                  imgClassName={SHOP_PRODUCT_IMG}
-                  fallback={<NoImagePlaceholder />}
-                />
-              </div>
-            )
-          })}
-        </div>
-
-        {current && (
+      <div
+        ref={trackRef}
+        className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {items.map((item, index) => (
           <Link
+            key={item.productId}
             to={viewAllTo}
-            className="block mx-auto mt-3 w-[min(52vw,220px)] sm:w-60 min-h-11"
+            className="snap-start shrink-0 w-[min(78vw,340px)] group"
           >
-            <div className="text-[11px] text-white/50 uppercase tracking-wide truncate">
-              {current.brand || '\u00A0'}
+            <div className="relative aspect-4/5 bg-white rounded-xl overflow-hidden">
+              <ImageOrFallback
+                src={item.imageUrl}
+                alt={item.title}
+                loading={index < 2 ? 'eager' : 'lazy'}
+                observeRoot={index < 2 ? undefined : trackRef}
+                imgClassName={SHOP_PRODUCT_IMG}
+                fallback={<NoImagePlaceholder />}
+              />
             </div>
-            <div className="mt-0.5 text-sm font-semibold text-white leading-snug line-clamp-2">
-              {current.title}
+            <div className="mt-2.5 min-h-11">
+              <div className="text-[11px] text-white/50 uppercase tracking-wide truncate">
+                {item.brand || '\u00A0'}
+              </div>
+              <div className="mt-0.5 text-sm font-semibold text-white leading-snug line-clamp-2">
+                {item.title}
+              </div>
             </div>
           </Link>
-        )}
+        ))}
       </div>
     </section>
   )

@@ -63,7 +63,7 @@ describe('normalizeFilterState', () => {
     expect(next.subCat).toBe(ALL_SUBCATS)
   })
 
-  it('keeps pre-order categories independent from catalog groups', () => {
+  it('drops sport category when in pre-order brand mode', () => {
     const next = normalizeFilterState({
       ...defaultFilterState(),
       preOrderOnly: true,
@@ -72,7 +72,7 @@ describe('normalizeFilterState', () => {
       brands: ['Follow'],
     })
     expect(next.topLevel).toBe(ALL_GROUPS)
-    expect(next.subCat).toBe('lifejacket')
+    expect(next.subCat).toBe(ALL_SUBCATS)
     expect(next.brands).toEqual(['Follow'])
   })
 })

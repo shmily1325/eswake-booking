@@ -1,101 +1,54 @@
-import { getAllCategories, getCategoryShopName } from '../../admin/products/schema'
-import { ALL_SUBCATS, type ShopFilterState } from '../lib/shopFilters'
+import { type ShopFilterState } from '../lib/shopFilters'
 import { SHOP_LABEL } from '../lib/shopCopy'
 
 interface ShopPreOrderRefineBarProps {
   filters: ShopFilterState
   brandCounts: Map<string, number>
-  categoryCounts: Map<string, number>
   onSelectBrand: (brand: string | null) => void
-  onSelectCategory: (subCat: string) => void
 }
 
 /**
- * 預購專用篩選列（白底、貼在商品格上方）。
- * 品牌與類型兩排都常駐，避免使用者不知道還有下一層可以選。
+ * 預購頁主篩：只留品牌一排，貼在 hero 下黑底，取代運動分類 chips。
  */
 export function ShopPreOrderRefineBar({
   filters,
   brandCounts,
-  categoryCounts,
   onSelectBrand,
-  onSelectCategory,
 }: ShopPreOrderRefineBarProps) {
   const brands = [...brandCounts.entries()].sort(([a], [b]) => a.localeCompare(b))
-  const categories = getAllCategories()
-    .filter((cat) => (categoryCounts.get(cat.id) ?? 0) > 0)
-    .map((cat) => ({ ...cat, count: categoryCounts.get(cat.id) ?? 0 }))
-
   if (brands.length === 0) return null
 
   const selectedBrand = filters.brands[0] ?? null
 
   return (
-    <div className="mb-4 space-y-1">
-      <RefineRow label={SHOP_LABEL.brand}>
-        <RefineChip active={selectedBrand == null} onClick={() => onSelectBrand(null)}>
+    <div className="relative max-lg:before:pointer-events-none max-lg:before:absolute max-lg:before:right-0 max-lg:before:top-0 max-lg:before:z-10 max-lg:before:h-full max-lg:before:w-10 max-lg:before:bg-linear-to-l max-lg:before:from-black max-lg:before:to-transparent">
+      <div
+        className="relative z-21 max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 py-2 sm:py-2.5 pb-2 sm:pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="tablist"
+        aria-label={SHOP_LABEL.brand}
+      >
+        <BrandChip
+          active={selectedBrand == null}
+          onClick={() => onSelectBrand(null)}
+        >
           {SHOP_LABEL.all}
-        </RefineChip>
+        </BrandChip>
         {brands.map(([brand, count]) => (
-          <RefineChip
+          <BrandChip
             key={brand}
             active={selectedBrand === brand}
             count={count}
             onClick={() => onSelectBrand(brand)}
           >
             {brand}
-          </RefineChip>
+          </BrandChip>
         ))}
-      </RefineRow>
-
-      {categories.length > 0 && (
-        <RefineRow label={SHOP_LABEL.type}>
-          <RefineChip
-            active={filters.subCat === ALL_SUBCATS}
-            onClick={() => onSelectCategory(ALL_SUBCATS)}
-          >
-            {SHOP_LABEL.all}
-          </RefineChip>
-          {categories.map((cat) => (
-            <RefineChip
-              key={cat.id}
-              active={filters.subCat === cat.id}
-              count={cat.count}
-              onClick={() => onSelectCategory(cat.id)}
-            >
-              {getCategoryShopName(cat)}
-            </RefineChip>
-          ))}
-        </RefineRow>
-      )}
-    </div>
-  )
-}
-
-function RefineRow({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center gap-2.5 sm:gap-3">
-      <span className="w-10 shrink-0 text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">
-        {label}
-      </span>
-      <div
-        className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto scroll-smooth py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="group"
-        aria-label={label}
-      >
-        {children}
       </div>
     </div>
   )
 }
 
-function RefineChip({
+function BrandChip({
   active,
   count,
   onClick,
@@ -109,25 +62,26 @@ function RefineChip({
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      aria-pressed={active}
       className={
-        'inline-flex shrink-0 items-center gap-1 h-8 px-3 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ' +
+        'snap-start shrink-0 max-lg:h-10 max-lg:px-4 max-lg:text-[15px] h-9 px-3.5 rounded-full text-sm font-medium leading-none whitespace-nowrap transition-colors ' +
         (active
-          ? 'bg-zinc-900 text-white'
-          : 'bg-gray-100 text-zinc-600 hover:bg-gray-200')
+          ? 'bg-white text-zinc-900 shadow-sm max-lg:font-semibold'
+          : 'bg-transparent text-white border border-white/55 hover:bg-white/10 hover:border-white')
       }
     >
-      <span>{children}</span>
-      {count != null && count > 0 && (
+      {children}
+      {count != null && count > 0 ? (
         <span
           className={
-            'tabular-nums text-[11px] ' + (active ? 'text-white/50' : 'text-gray-400')
+            'ml-1 tabular-nums ' + (active ? 'text-zinc-500' : 'text-white/55')
           }
         >
           {count}
         </span>
-      )}
+      ) : null}
     </button>
   )
 }
