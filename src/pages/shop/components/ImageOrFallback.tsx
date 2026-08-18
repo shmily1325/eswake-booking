@@ -42,18 +42,37 @@ export function ImageOrFallback({
     if (inView || !observeRoot) return
     const el = wrapRef.current
     if (!el) return
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setInView(true)
-      },
-      {
-        root: observeRoot.current,
-        rootMargin: '0px 80% 0px 80%',
-        threshold: 0.01,
-      },
-    )
-    io.observe(el)
-    return () => io.disconnect()
+
+    let io: IntersectionObserver | null = null
+    let cancelled = false
+    let raf = 0
+
+    const start = () => {
+      const root = observeRoot.current
+      if (!root) {
+        raf = requestAnimationFrame(start)
+        return
+      }
+      if (cancelled) return
+      io = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setInView(true)
+        },
+        {
+          root,
+          rootMargin: '0px 50% 0px 50%',
+          threshold: 0.01,
+        },
+      )
+      io.observe(el)
+    }
+
+    start()
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+      io?.disconnect()
+    }
   }, [inView, observeRoot])
 
   if (!src || errored) return <>{fallback}</>
@@ -69,6 +88,7 @@ export function ImageOrFallback({
       className={imgClassName}
       loading={loading}
       decoding="async"
+      draggable={false}
       fetchPriority={loading === 'eager' ? 'high' : 'auto'}
       onError={() => setErrored(true)}
     />

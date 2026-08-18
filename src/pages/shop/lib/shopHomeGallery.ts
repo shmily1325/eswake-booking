@@ -1,5 +1,5 @@
 /**
- * 首頁 Pre-Order / In-Stock gallery：從有圖商品抽一組，進頁 random 一次即可。
+ * 首頁 Pre-Order / In-Stock gallery：從有圖商品抽一組；每次載入頁面 shuffle 一次。
  */
 
 import type { ProductWithVariants } from '../../admin/products/types'

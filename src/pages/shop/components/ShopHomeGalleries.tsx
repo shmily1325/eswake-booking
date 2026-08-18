@@ -29,18 +29,30 @@ import {
 
 const GALLERY_SEED_KEY = 'eswake-shop-home-gallery-seed'
 
-function readSessionSeed(): number {
+/** 這次載入頁面抽一次；重新整理才換一批。避免 React 重掛載把畫面洗掉。 */
+function readVisitSeed(): number {
+  const loadId =
+    typeof performance !== 'undefined' && Number.isFinite(performance.timeOrigin)
+      ? String(performance.timeOrigin)
+      : ''
   try {
-    const existing = sessionStorage.getItem(GALLERY_SEED_KEY)
-    if (existing) {
-      const n = Number(existing)
-      if (Number.isFinite(n)) return n
+    const raw = sessionStorage.getItem(GALLERY_SEED_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw) as { loadId?: unknown; seed?: unknown }
+      if (
+        parsed.loadId === loadId &&
+        loadId !== '' &&
+        typeof parsed.seed === 'number' &&
+        Number.isFinite(parsed.seed)
+      ) {
+        return parsed.seed
+      }
     }
-    const next = (Math.random() * 0x7fffffff) | 0
-    sessionStorage.setItem(GALLERY_SEED_KEY, String(next))
-    return next
+    const seed = (Math.random() * 0x7fffffff) | 0
+    sessionStorage.setItem(GALLERY_SEED_KEY, JSON.stringify({ loadId, seed }))
+    return seed
   } catch {
-    return 1
+    return (Math.random() * 0x7fffffff) | 0
   }
 }
 
@@ -53,7 +65,7 @@ interface ShopHomeGalleriesProps {
  * 手機一列吸附；桌機兩欄並排，把寬螢幕填滿。點卡片進商品，View all 進列表。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
-  const [seed] = useState(readSessionSeed)
+  const [seed] = useState(readVisitSeed)
 
   const preOrderItems = useMemo(
     () =>
@@ -97,7 +109,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
       <div
         className={
           bothGalleries
-            ? 'space-y-10 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-10'
+            ? 'space-y-10 lg:space-y-0 lg:grid lg:grid-cols-2 lg:divide-x lg:divide-white/20'
             : 'space-y-10'
         }
       >
@@ -106,6 +118,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
             title={SHOP_LABEL.preOrder}
             items={preOrderItems}
             viewAllTo={shopPreOrderListPath()}
+            frameClass={bothGalleries ? 'lg:pr-8 xl:pr-10' : undefined}
           />
         )}
         {inStockItems.length > 0 && (
@@ -113,6 +126,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
             title={SHOP_LABEL.inStock}
             items={inStockItems}
             viewAllTo={shopInStockListPath()}
+            frameClass={bothGalleries ? 'lg:pl-8 xl:pl-10' : undefined}
           />
         )}
       </div>
@@ -154,10 +168,12 @@ function HomeGalleryRow({
   title,
   items,
   viewAllTo,
+  frameClass,
 }: {
   title: string
   items: HomeGalleryItem[]
   viewAllTo: string
+  frameClass?: string
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const canSlide = items.length > 1
@@ -172,14 +188,14 @@ function HomeGalleryRow({
   }
 
   return (
-    <section aria-label={title} className="min-w-0">
-      <div className="flex items-baseline justify-between gap-3 mb-3">
-        <h2 className="text-lg sm:text-xl font-black italic uppercase tracking-wider text-white">
+    <section aria-label={title} className={'min-w-0 ' + (frameClass ?? '')}>
+      <div className="flex items-center justify-between gap-3 h-11 mb-3">
+        <h2 className="text-lg sm:text-xl font-black italic uppercase tracking-wider text-white leading-none">
           {title}
         </h2>
         <Link
           to={shopTo(viewAllTo)}
-          className="inline-flex items-center gap-1 min-h-11 text-sm font-semibold text-white/80 hover:text-white"
+          className="inline-flex items-center gap-1 h-11 text-sm font-semibold text-white/80 hover:text-white leading-none"
         >
           {SHOP_LABEL.viewAll}
           <span aria-hidden>→</span>
@@ -198,7 +214,7 @@ function HomeGalleryRow({
           ref={scrollerRef}
           role="list"
           aria-label={title}
-          className="flex gap-3 overflow-x-auto overscroll-x-contain snap-x snap-mandatory scroll-smooth pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex gap-3 overflow-x-auto overscroll-x-contain touch-pan-x snap-x snap-proximity pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {items.map((item, index) => (
             <Link
@@ -207,26 +223,28 @@ function HomeGalleryRow({
               state={{ [SHOP_RETURN_TO_KEY]: shopListPath() }}
               data-gallery-card=""
               role="listitem"
+              draggable={false}
               className={
                 'snap-start shrink-0 ' +
                 SHOP_HOME_STRIP_CARD +
-                ' group block rounded-xl bg-white overflow-hidden'
+                ' block rounded-xl bg-white overflow-hidden'
               }
             >
               <div className="aspect-4/5 bg-white overflow-hidden">
                 <ImageOrFallback
                   src={item.imageUrl}
                   alt={item.title}
-                  loading={index === 0 ? 'eager' : 'lazy'}
+                  loading={index < 2 ? 'eager' : 'lazy'}
+                  observeRoot={scrollerRef}
                   imgClassName={SHOP_PRODUCT_IMG}
                   fallback={<NoImagePlaceholder />}
                 />
               </div>
               <div className="px-2.5 py-2">
-                <div className="text-[10px] text-gray-400 uppercase tracking-wide truncate">
+                <div className="h-4 text-[10px] text-gray-400 uppercase tracking-wide truncate">
                   {item.brand || '\u00A0'}
                 </div>
-                <div className="mt-0.5 text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
+                <div className="mt-0.5 text-xs font-semibold text-gray-900 leading-snug line-clamp-2 min-h-[2.25rem]">
                   {item.title}
                 </div>
               </div>
