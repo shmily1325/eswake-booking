@@ -215,6 +215,37 @@ function Get-TextSha256 {
     }
 }
 
+function Get-JsonArray {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return @()
+    }
+    if ($Value -is [System.Array]) {
+        return $Value
+    }
+    return @($Value)
+}
+
+function Parse-BackupDateTime {
+    param([AllowNull()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $null
+    }
+
+    $parsed = $null
+    $culture = [System.Globalization.CultureInfo]::InvariantCulture
+    $styles = [System.Globalization.DateTimeStyles]::RoundtripKind
+    if ([DateTime]::TryParse($Text, $culture, $styles, [ref]$parsed)) {
+        return $parsed
+    }
+    if ([DateTime]::TryParse($Text, [ref]$parsed)) {
+        return $parsed
+    }
+    return $null
+}
+
 function Sync-StorageBackup {
     $storageStartedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
     $storageRoot = Join-Path $script:Config.BackupRoot 'Storage-Backups\product-images'
@@ -259,14 +290,20 @@ function Sync-StorageBackup {
             $previous = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
         }
         $previousByPath = @{}
-        foreach ($item in @($previous.files)) {
-            $previousByPath[[string]$item.path] = $item
+        if ($null -ne $previous) {
+            foreach ($item in (Get-JsonArray $previous.files)) {
+                if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.path)) {
+                    continue
+                }
+                $previousByPath[[string]$item.path] = $item
+            }
         }
 
         $activeFiles = @()
         $currentPaths = @{}
         $totalBytes = [long]0
-        foreach ($item in @($remoteManifest.files)) {
+        $skippedDownloads = 0
+        foreach ($item in (Get-JsonArray $remoteManifest.files)) {
             $objectPath = [string]$item.path
             $currentPaths[$objectPath] = $true
             $destination = Get-StorageFilePath -Root $filesRoot -ObjectPath $objectPath
@@ -299,10 +336,13 @@ function Sync-StorageBackup {
                     $checksum = (Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash.ToLowerInvariant()
                     Move-Item -LiteralPath $temp -Destination $destination -Force
                 }
-                finally {
+                catch {
                     if (Test-Path -LiteralPath $temp) {
                         Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
                     }
+                    $skippedDownloads++
+                    Write-BackupLog "略過無法下載的商品圖片：$objectPath（$($_.Exception.Message)）" 'WARNING'
+                    continue
                 }
             }
 
@@ -318,28 +358,42 @@ function Sync-StorageBackup {
 
         $now = Get-Date
         $tombstones = @()
-        foreach ($oldItem in @($previous.files)) {
-            if (-not $currentPaths.ContainsKey([string]$oldItem.path)) {
-                $tombstones += [ordered]@{
-                    path        = [string]$oldItem.path
-                    size        = [long]$oldItem.size
-                    contentType = $oldItem.contentType
-                    sha256      = [string]$oldItem.sha256
-                    deletedAt   = $now.ToUniversalTime().ToString('o')
+        if ($null -ne $previous) {
+            foreach ($oldItem in (Get-JsonArray $previous.files)) {
+                $oldPath = [string]$oldItem.path
+                if ([string]::IsNullOrWhiteSpace($oldPath)) {
+                    continue
+                }
+                if (-not $currentPaths.ContainsKey($oldPath)) {
+                    $tombstones += [ordered]@{
+                        path        = $oldPath
+                        size        = [long]$oldItem.size
+                        contentType = $oldItem.contentType
+                        sha256      = [string]$oldItem.sha256
+                        deletedAt   = $now.ToUniversalTime().ToString('o')
+                    }
                 }
             }
-        }
-        foreach ($deleted in @($previous.tombstones)) {
-            if ($currentPaths.ContainsKey([string]$deleted.path)) {
-                continue
-            }
-            $deletedAt = [DateTime]::Parse([string]$deleted.deletedAt)
-            if ($deletedAt -lt $now.AddDays(-[int]$script:Config.KeepDays)) {
-                $expiredPath = Get-StorageFilePath -Root $filesRoot -ObjectPath ([string]$deleted.path)
-                Remove-Item -LiteralPath $expiredPath -Force -ErrorAction SilentlyContinue
-            }
-            else {
-                $tombstones += $deleted
+            foreach ($deleted in (Get-JsonArray $previous.tombstones)) {
+                $deletedPath = [string]$deleted.path
+                if ([string]::IsNullOrWhiteSpace($deletedPath)) {
+                    continue
+                }
+                if ($currentPaths.ContainsKey($deletedPath)) {
+                    continue
+                }
+                $deletedAt = Parse-BackupDateTime ([string]$deleted.deletedAt)
+                if ($null -eq $deletedAt) {
+                    Write-BackupLog "略過無效 tombstone deletedAt：$deletedPath" 'WARNING'
+                    continue
+                }
+                if ($deletedAt -lt $now.AddDays(-[int]$script:Config.KeepDays)) {
+                    $expiredPath = Get-StorageFilePath -Root $filesRoot -ObjectPath $deletedPath
+                    Remove-Item -LiteralPath $expiredPath -Force -ErrorAction SilentlyContinue
+                }
+                else {
+                    $tombstones += $deleted
+                }
             }
         }
 
@@ -371,7 +425,12 @@ function Sync-StorageBackup {
             recordsCount  = $activeFiles.Count
             executionTime = $elapsed
         }
-        Write-BackupLog "商品圖片備份成功：$($activeFiles.Count) 個檔案。" 'SUCCESS'
+        if ($skippedDownloads -gt 0) {
+            Write-BackupLog "商品圖片備份完成：$($activeFiles.Count) 個檔案，略過 $skippedDownloads 個無法下載的檔案。" 'SUCCESS'
+        }
+        else {
+            Write-BackupLog "商品圖片備份成功：$($activeFiles.Count) 個檔案。" 'SUCCESS'
+        }
     }
     catch {
         $message = $_.Exception.Message
