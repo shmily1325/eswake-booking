@@ -141,14 +141,14 @@ export function ProductHub() {
             end
             active={!onOrders && !onSales}
           >
-          商品
-        </AdminPillLink>
-        <AdminPillLink to="/products/orders" active={onOrders}>
-          訂單
-        </AdminPillLink>
-        {userIsAdmin && (
-          <AdminPillLink to="/products/sales" active={onSales}>
-            銷售
+            商品
+          </AdminPillLink>
+          <AdminPillLink to="/products/orders" active={onOrders}>
+            訂單
+          </AdminPillLink>
+          {userIsAdmin && (
+            <AdminPillLink to="/products/sales" active={onSales}>
+              銷售
             </AdminPillLink>
           )}
           <ExternalNavLink
