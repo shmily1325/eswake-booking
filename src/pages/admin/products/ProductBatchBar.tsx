@@ -18,6 +18,13 @@ interface ProductBatchBarProps {
   onSetUntil: (until: string | null) => void
 }
 
+const actionBtnStyle: React.CSSProperties = {
+  minWidth: 0,
+  padding: '12px 6px',
+  fontSize: 14,
+  overflow: 'hidden',
+}
+
 export function ProductBatchBar({
   selectedCount,
   visibleCount,
@@ -36,6 +43,30 @@ export function ProductBatchBar({
 
   return (
     <>
+      <style>{`
+        .product-batch-until {
+          display: block;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+          min-height: 48px;
+          padding: 10px 12px;
+          font-size: 16px;
+          border: 1px solid ${colors.border.main};
+          border-radius: ${borderRadius.md};
+          color: ${colors.text.primary};
+          background: ${colors.background.card};
+          -webkit-appearance: none;
+          appearance: none;
+        }
+        .product-batch-until::-webkit-datetime-edit,
+        .product-batch-until::-webkit-date-and-time-value {
+          min-width: 0;
+          width: 100%;
+          padding: 0;
+        }
+      `}</style>
       {sheet && (
         <div
           role="presentation"
@@ -73,21 +104,15 @@ export function ProductBatchBar({
 
       {sheet === 'until' && (
         <BatchSheet title="到期日" onClose={closeSheet}>
-          <input
-            type="date"
-            value={until}
-            onChange={(e) => setUntil(e.target.value)}
-            style={{
-              width: '100%',
-              minHeight: 48,
-              boxSizing: 'border-box',
-              padding: '10px 12px',
-              fontSize: 16,
-              border: `1px solid ${colors.border.main}`,
-              borderRadius: borderRadius.md,
-              color: colors.text.primary,
-            }}
-          />
+          <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+            <input
+              className="product-batch-until"
+              type="date"
+              lang="en"
+              value={until}
+              onChange={(e) => setUntil(e.target.value)}
+            />
+          </div>
           <Button
             fullWidth
             size="large"
@@ -97,7 +122,7 @@ export function ProductBatchBar({
               closeSheet()
             }}
           >
-            套用到期日
+            套用
           </Button>
           <Button
             fullWidth
@@ -124,6 +149,9 @@ export function ProductBatchBar({
           background: colors.background.card,
           borderTop: `1px solid ${colors.border.light}`,
           padding: '10px 12px calc(10px + env(safe-area-inset-bottom))',
+          boxSizing: 'border-box',
+          maxWidth: '100%',
+          overflow: 'hidden',
           boxShadow: designSystem.shadows.elevation[4],
         }}
       >
@@ -134,14 +162,24 @@ export function ProductBatchBar({
             justifyContent: 'space-between',
             gap: 8,
             marginBottom: 10,
+            minWidth: 0,
           }}
         >
-          <span style={{ fontSize: getFontSize('body', true), fontWeight: 700 }}>
-            已選 {selectedCount}
+          <span
+            style={{
+              fontSize: getFontSize('body', true),
+              fontWeight: 700,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            已選 {selectedCount}/{visibleCount}
           </span>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
             <TextBtn disabled={busy} onClick={onSelectAll}>
-              全選 {visibleCount}
+              全選
             </TextBtn>
             <TextBtn disabled={busy || selectedCount === 0} onClick={onClear}>
               清除
@@ -154,8 +192,9 @@ export function ProductBatchBar({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
             gap: 8,
+            minWidth: 0,
           }}
         >
           <Button
@@ -163,6 +202,7 @@ export function ProductBatchBar({
             size="large"
             variant="secondary"
             disabled={busy || selectedCount === 0}
+            style={actionBtnStyle}
             onClick={() => setSheet('public')}
           >
             上架
@@ -172,6 +212,7 @@ export function ProductBatchBar({
             size="large"
             variant="secondary"
             disabled={busy || selectedCount === 0}
+            style={actionBtnStyle}
             onClick={() => setSheet('preorder')}
           >
             預購
@@ -181,6 +222,7 @@ export function ProductBatchBar({
             size="large"
             variant="secondary"
             disabled={busy || selectedCount === 0}
+            style={actionBtnStyle}
             onClick={() => setSheet('until')}
           >
             到期日
@@ -215,12 +257,16 @@ function BatchSheet({
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         padding: '16px 16px calc(16px + env(safe-area-inset-bottom))',
+        boxSizing: 'border-box',
+        maxWidth: '100%',
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
+        minWidth: 0,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}>
         <strong style={{ fontSize: getFontSize('h3', true) }}>{title}</strong>
         <TextBtn onClick={onClose}>取消</TextBtn>
       </div>
@@ -245,7 +291,7 @@ function TextBtn({
       onClick={onClick}
       style={{
         minHeight: 44,
-        padding: '0 8px',
+        padding: '0 6px',
         border: 'none',
         background: 'transparent',
         color: colors.text.primary,
