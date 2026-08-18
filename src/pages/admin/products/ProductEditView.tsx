@@ -1054,11 +1054,10 @@ export function ProductEditView({
   }
   const mobileCreateWizard = isNew && isMobile && !readOnly
   const sectionStyle: React.CSSProperties = {
-    background: designSystem.colors.background.card,
-    borderRadius: designSystem.borderRadius.lg,
-    padding: isMobile ? 16 : 20,
-    marginBottom: 16,
-    border: mobileCreateWizard ? 'none' : `1px solid ${designSystem.colors.border.light}`,
+    background: 'transparent',
+    padding: 0,
+    marginBottom: isMobile ? 28 : 32,
+    border: 'none',
   }
   const showIdentitySection = !mobileCreateWizard || createStep === 1
   const showSkuCoreSection = !mobileCreateWizard || createStep === 2
@@ -1274,9 +1273,9 @@ export function ProductEditView({
                   marginTop: 10,
                   padding: 12,
                   borderRadius: designSystem.borderRadius.md,
-                  border: `1px solid ${designSystem.colors.warning[500]}`,
-                  background: designSystem.colors.warning[50],
-                  color: designSystem.colors.warning[700],
+                  border: `1px solid ${designSystem.colors.border.main}`,
+                  background: designSystem.colors.background.card,
+                  color: designSystem.colors.text.primary,
                 }}
               >
                 <div style={{ fontSize: getFontSize('bodySmall', isMobile), lineHeight: 1.5 }}>
@@ -1621,32 +1620,19 @@ export function ProductEditView({
         <section
           style={{
             ...sectionStyle,
-            marginTop: 16,
+            marginTop: 8,
             marginBottom: 0,
-            border: `1px solid ${designSystem.colors.danger[50]}`,
           }}
         >
           <h3
             style={{
               margin: '0 0 12px 0',
               fontSize: getFontSize('h3', isMobile),
-              fontWeight: 700,
-              color: designSystem.colors.danger[700],
+              fontWeight: 600,
+              color: designSystem.colors.text.primary,
             }}
           >
-            危險區
-            {!isMobile && (
-              <span
-                style={{
-                  fontSize: getFontSize('caption', isMobile),
-                  fontWeight: 400,
-                  color: designSystem.colors.text.secondary,
-                  marginLeft: 8,
-                }}
-              >
-                軟刪除，可恢復
-              </span>
-            )}
+            刪除
           </h3>
           <Button variant="danger" size="small" data-track="product_edit_delete_open" onClick={() => setConfirmDelete(true)} disabled={saving}>
             刪除整個商品

@@ -13,15 +13,14 @@ type ShopAvailability = ReturnType<typeof deriveVariantAvailability>
 const { colors } = designSystem
 
 const PILL: Record<ShopAvailability, { bg: string; color: string; label: string }> = {
-  in_stock: { bg: colors.success[50], color: colors.success[700], label: '現貨' },
-  pre_order: { bg: colors.warning[50], color: colors.warning[700], label: '預購' },
-  sold_out: { bg: colors.secondary[100], color: colors.text.disabled, label: '已售完' },
+  in_stock: { bg: 'transparent', color: colors.text.secondary, label: '現貨' },
+  pre_order: { bg: 'transparent', color: colors.text.primary, label: '預購' },
+  sold_out: { bg: 'transparent', color: colors.text.disabled, label: '已售完' },
 }
 
 const pillBase: CSSProperties = {
-  fontWeight: 600,
-  padding: '2px 8px',
-  borderRadius: designSystem.borderRadius.full,
+  fontWeight: 500,
+  padding: 0,
   flexShrink: 0,
 }
 
@@ -47,8 +46,8 @@ export function ShopVisibilityPill({ isPublic, isMobile }: { isPublic: boolean; 
       style={{
         ...pillBase,
         fontSize: getFontSize('caption', isMobile),
-        background: isPublic ? colors.warning[50] : colors.secondary[100],
-        color: isPublic ? colors.warning[700] : colors.text.disabled,
+        background: 'transparent',
+        color: isPublic ? colors.text.primary : colors.text.disabled,
       }}
     >
       {isPublic ? 'Shop 顯示' : 'Shop 隱藏'}
