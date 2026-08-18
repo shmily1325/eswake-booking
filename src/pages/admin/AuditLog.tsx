@@ -105,8 +105,9 @@ function parseDetails(details: string): ParsedDetails {
   const isBatchEdit = details.startsWith('批次修改')
   const isBatchDelete = details.startsWith('批次刪除')
   const isRepeat = details.startsWith('重複預約')
+  const isSwap = details.startsWith('互換')
   
-  if (isBatchEdit || isBatchDelete || isRepeat) {
+  if (isBatchEdit || isBatchDelete || isRepeat || isSwap) {
     // 提取筆數
     const countMatch = details.match(/(\d+)\s*筆/)
     if (countMatch) {
@@ -726,6 +727,10 @@ export function AuditLog() {
     if (details?.startsWith('批次修改')) return '批次修改'
     if (details?.startsWith('批次刪除')) return '批次刪除'
     if (details?.startsWith('重複預約')) return '重複'
+    if (details?.startsWith('互換船隻+時段')) return '互換船隻+時段'
+    if (details?.startsWith('互換船隻')) return '互換船隻'
+    if (details?.startsWith('互換時段')) return '互換時段'
+    if (details?.startsWith('互換')) return '互換'
     return getOperationConfig(action).label
   }
 
@@ -973,10 +978,14 @@ export function AuditLog() {
                     // 批次操作和重複預約：顯示筆數 + 內容 + 預約列表預覽
                     const isBatch = log.details?.startsWith('批次修改') || log.details?.startsWith('批次刪除')
                     const isRepeatBooking = log.details?.startsWith('重複預約')
+                    const isSwapBooking = log.details?.startsWith('互換')
                     
-                    if (isBatch || isRepeatBooking) {
+                    if (isBatch || isRepeatBooking || isSwapBooking) {
                       const parts: string[] = []
-                      
+
+                      if (isSwapBooking) {
+                        return log.details?.replace(/^互換[^：:]*[:：]\s*/, '') || '互換'
+                      }                      
                       if (isRepeatBooking) {
                         // 重複預約：顯示船隻、會員、教練
                         if (parsed.boat) parts.push(parsed.boat)

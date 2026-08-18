@@ -33,11 +33,19 @@ import {
   type RestrictionViewRow,
 } from '../utils/restrictionDayBlocks'
 import { BoatUnavailableDaySummary } from '../components/BoatUnavailableDaySummary'
-import { trackClickDedupedWithin } from '../utils/trackClick'
+import { trackClick, trackClickDedupedWithin } from '../utils/trackClick'
 import {
   filterDayViewAssignments,
   type DayViewAssignmentAnnouncement,
 } from '../utils/announcement'
+import {
+  executeBookingSwap,
+  getAvailableSwapModes,
+  swapModeLabel,
+  type SwapMode,
+} from '../utils/bookingSwap'
+import { logBookingSwap } from '../utils/auditLog'
+import { getDisplayContactName } from '../utils/bookingFormat'
 // import { checkGlobalRestriction } from '../utils/restriction'
 
 import type { Boat, Booking as BaseBooking, Coach } from '../types/booking'
@@ -105,6 +113,13 @@ export function DayView() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
 
+  /** 互換模式（預設關閉／收合） */
+  const [swapMode, setSwapMode] = useState(false)
+  const [swapSelectedIds, setSwapSelectedIds] = useState<number[]>([])
+  const [swapModes, setSwapModes] = useState<SwapMode[]>([])
+  const [swapChecking, setSwapChecking] = useState(false)
+  const [swapBusy, setSwapBusy] = useState(false)
+
   const [canUseSchedule, setCanUseSchedule] = useState(false)
   const [canUseRepeatBooking, setCanUseRepeatBooking] = useState(false)
 
@@ -124,10 +139,16 @@ export function DayView() {
   }, [user])
 
   const changeDate = (offset: number) => {
+    setSwapMode(false)
+    setSwapSelectedIds([])
+    setSwapModes([])
     setSearchParams({ date: addDaysToDate(dateParam, offset) })
   }
 
   const goToToday = () => {
+    setSwapMode(false)
+    setSwapSelectedIds([])
+    setSwapModes([])
     const today = getVenueDateString()
     setSearchParams({ date: today })
   }
@@ -135,6 +156,9 @@ export function DayView() {
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = e.target.value
     if (next === dateParam) return
+    setSwapMode(false)
+    setSwapSelectedIds([])
+    setSwapModes([])
     setSearchParams({ date: next })
     if (user?.email) {
       trackClickDedupedWithin(`day_date_pick:${next}`, user.email)
@@ -525,6 +549,21 @@ export function DayView() {
   }, [bookings])
 
   const handleCellClick = (_boatId: number, _timeSlot: string, booking?: Booking) => {
+    if (swapMode) {
+      if (!booking) return
+      setSwapSelectedIds(prev => {
+        if (prev.includes(booking.id)) {
+          return prev.filter(id => id !== booking.id)
+        }
+        if (prev.length >= 2) {
+          toast.info('請先取消其中一筆，再選另一筆')
+          return prev
+        }
+        return [...prev, booking.id]
+      })
+      return
+    }
+
     if (booking) {
       setSelectedBooking(booking)
       setEditDialogOpen(true)
@@ -537,6 +576,100 @@ export function DayView() {
       const currentMinute = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, '0')
       setSelectedTime(`${dateParam}T${currentHour}:${currentMinute}`)
       setDialogOpen(true)
+    }
+  }
+
+  useEffect(() => {
+    if (!swapMode || swapSelectedIds.length !== 2) {
+      setSwapModes([])
+      setSwapChecking(false)
+      return
+    }
+    const a = bookings.find(b => b.id === swapSelectedIds[0])
+    const b = bookings.find(b => b.id === swapSelectedIds[1])
+    if (!a || !b) {
+      setSwapModes([])
+      return
+    }
+    let cancelled = false
+    setSwapChecking(true)
+    getAvailableSwapModes(a, b)
+      .then(modes => {
+        if (cancelled) return
+        setSwapModes(modes)
+        if (modes.length === 0) {
+          trackClick('day_swap_pair_none', user?.email)
+        } else {
+          trackClick(`day_swap_pair_ok:${modes.join('+')}`, user?.email)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        setSwapModes([])
+        trackClick('day_swap_pair_none', user?.email)
+      })
+      .finally(() => {
+        if (!cancelled) setSwapChecking(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [swapMode, swapSelectedIds, bookings, user?.email])
+
+  const exitSwapMode = () => {
+    setSwapMode(false)
+    setSwapSelectedIds([])
+    setSwapModes([])
+  }
+
+  const handleDaySwap = async (mode: SwapMode) => {
+    const a = bookings.find(b => b.id === swapSelectedIds[0])
+    const b = bookings.find(b => b.id === swapSelectedIds[1])
+    if (!a || !b) return
+
+    const label = swapModeLabel(mode)
+    const confirmMsg =
+      `${label}\n\n` +
+      `${getDisplayContactName(a)} ${a.start_at.substring(11, 16)} ${a.boats?.name || ''}\n` +
+      `↔\n` +
+      `${getDisplayContactName(b)} ${b.start_at.substring(11, 16)} ${b.boats?.name || ''}\n\n` +
+      `確定互換？`
+    if (!confirm(confirmMsg)) {
+      trackClick(`day_swap_confirm_cancel:${mode}`, user?.email)
+      return
+    }
+
+    setSwapBusy(true)
+    try {
+      await executeBookingSwap({ a, b, mode })
+      const sharedCoaches = (a.coaches || [])
+        .filter(c => (b.coaches || []).some(o => o.id === c.id))
+        .map(c => c.name)
+        .filter(Boolean)
+      await logBookingSwap({
+        userEmail: user?.email || '',
+        mode,
+        a: {
+          studentName: getDisplayContactName(a),
+          startTime: a.start_at,
+          boatName: a.boats?.name || '未知',
+        },
+        b: {
+          studentName: getDisplayContactName(b),
+          startTime: b.start_at,
+          boatName: b.boats?.name || '未知',
+        },
+        coachNames: sharedCoaches,
+      })
+      trackClick(`day_swap_success:${mode}`, user?.email)
+      toast.success('已互換')
+      exitSwapMode()
+      await fetchData()
+    } catch (err: any) {
+      trackClick(`day_swap_fail:${mode}`, user?.email)
+      toast.error(err?.message || '互換失敗')
+    } finally {
+      setSwapBusy(false)
     }
   }
 
@@ -655,10 +788,12 @@ export function DayView() {
               gap: '8px',
               width: '100%',
               marginBottom: designSystem.spacing.md,
+              flexWrap: 'wrap',
             }}>
                 <button
                   data-track="day_new_booking"
                   onClick={() => {
+                    if (swapMode) exitSwapMode()
                     setSelectedBoatId(0)
                     const now = new Date()
                     const currentHour = String(now.getHours()).padStart(2, '0')
@@ -678,6 +813,7 @@ export function DayView() {
                   <button
                     data-track="day_repeat_booking"
                     onClick={() => {
+                      if (swapMode) exitSwapMode()
                       setSelectedBoatId(0)
                       const now = new Date()
                       const currentHour = String(now.getHours()).padStart(2, '0')
@@ -694,12 +830,50 @@ export function DayView() {
                     重複預約
                   </button>
                 )}
+                <button
+                  data-track={swapMode ? 'day_swap_exit' : 'day_swap_enter'}
+                  onClick={() => {
+                    if (swapMode) {
+                      exitSwapMode()
+                    } else {
+                      setSwapMode(true)
+                      setSwapSelectedIds([])
+                      setSwapModes([])
+                      toast.info('互換模式：請點選兩筆預約')
+                    }
+                  }}
+                  style={{
+                    ...getButtonStyle(swapMode ? 'primary' : 'outline', 'medium', isMobile),
+                    flex: isMobile ? '1 1 100%' : '0 0 auto',
+                    minWidth: isMobile ? '100%' : '88px',
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
+                  }}
+                >
+                  {swapMode ? '結束互換' : '互換'}
+                </button>
               </div>
+
+            {swapMode && (
+              <div style={{
+                marginBottom: '12px',
+                padding: isMobile ? '10px 12px' : '12px 14px',
+                borderRadius: designSystem.borderRadius.md,
+                border: `1px solid ${designSystem.colors.border.main}`,
+                background: designSystem.colors.background.card,
+                fontSize: isMobile ? '13px' : '14px',
+                color: designSystem.colors.text.secondary,
+                lineHeight: 1.5,
+              }}>
+                已選 {swapSelectedIds.length}/2。再點一次可取消選取。只會出現可互換的操作。
+              </div>
+            )}
 
             <div style={{
               opacity: dateChanging ? 0.45 : 1,
               transition: 'opacity 0.15s ease',
-              pointerEvents: dateChanging ? 'none' : 'auto'
+              pointerEvents: dateChanging ? 'none' : 'auto',
+              paddingBottom: swapMode ? (isMobile ? '140px' : '120px') : undefined,
             }}>
               <VirtualizedBookingList
                 boats={boats}
@@ -710,6 +884,8 @@ export function DayView() {
                 conflictReasons={conflictReasons}
                 boatUnavailableBlocks={boatUnavailableBlocks}
                 restrictionDayBlocks={restrictionDayBlocks}
+                swapMode={swapMode}
+                selectedBookingIds={new Set(swapSelectedIds)}
               />
             </div>
 
@@ -746,8 +922,9 @@ export function DayView() {
             </div>
         </>
 
-        {/* FAB 浮動新增按鈕 */}
-        <button
+        {/* FAB 浮動新增按鈕（互換模式隱藏，避免誤觸） */}
+        {!swapMode && (
+          <button
               data-track="day_new_booking_fab"
               onClick={() => {
                 setSelectedBoatId(0)
@@ -785,6 +962,77 @@ export function DayView() {
             >
               +
             </button>
+        )}
+
+        {swapMode && swapSelectedIds.length === 2 && (
+          <div
+            style={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 1100,
+              padding: isMobile ? '12px 12px max(16px, env(safe-area-inset-bottom))' : '16px',
+              background: designSystem.colors.background.card,
+              borderTop: `1px solid ${designSystem.colors.border.main}`,
+              boxShadow: '0 -4px 16px rgba(0,0,0,0.08)',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: PAGE_MAX_WIDTHS.wide,
+                margin: '0 auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              {swapChecking && (
+                <div style={{ fontSize: '13px', color: designSystem.colors.text.secondary }}>
+                  檢查可否互換…
+                </div>
+              )}
+              {!swapChecking && swapModes.length === 0 && (
+                <div style={{ fontSize: '13px', color: designSystem.colors.danger[700] }}>
+                  這兩筆無法互換（會衝突或條件不符）
+                </div>
+              )}
+              {!swapChecking &&
+                swapModes.map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    data-track={`day_swap_${mode}`}
+                    disabled={swapBusy}
+                    onClick={() => handleDaySwap(mode)}
+                    style={{
+                      ...getButtonStyle('primary', 'medium', isMobile),
+                      width: '100%',
+                      minHeight: '48px',
+                      opacity: swapBusy ? 0.6 : 1,
+                      cursor: swapBusy ? 'not-allowed' : 'pointer',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    {swapBusy ? '處理中…' : swapModeLabel(mode)}
+                  </button>
+                ))}
+              <button
+                type="button"
+                onClick={() => setSwapSelectedIds([])}
+                disabled={swapBusy}
+                style={{
+                  ...getButtonStyle('outline', 'small', isMobile),
+                  width: '100%',
+                  minHeight: '44px',
+                  touchAction: 'manipulation',
+                }}
+              >
+                清除選取
+              </button>
+            </div>
+          </div>
+        )}
 
         <NewBookingDialog
           isOpen={dialogOpen}

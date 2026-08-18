@@ -16,6 +16,10 @@ interface VirtualizedBookingListProps {
 	conflictReasons?: Map<number, string>
     boatUnavailableBlocks?: BoatUnavailableBlock[]
     restrictionDayBlocks?: RestrictionDayBlock[]
+    /** 互換模式：已選預約 id */
+    selectedBookingIds?: Set<number>
+    /** 互換模式中（改變點擊語意／樣式） */
+    swapMode?: boolean
 }
 
 export function VirtualizedBookingList({
@@ -27,6 +31,8 @@ export function VirtualizedBookingList({
     conflictReasons,
     boatUnavailableBlocks = [],
     restrictionDayBlocks = [],
+    selectedBookingIds,
+    swapMode = false,
 }: VirtualizedBookingListProps) {
     // 驗證並過濾資料，確保沒有 null/undefined
     const validBoats = React.useMemo(() => {
@@ -201,11 +207,13 @@ export function VirtualizedBookingList({
                                         const endHour = Math.floor(endMinutes / 60)
                                         const endMin = endMinutes % 60
                                         const endTimeStr = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`
+                                        const isSwapSelected = !!selectedBookingIds?.has(booking.id)
+                                        const isConflicted = !!conflictedBookingIds?.has(booking.id)
 
                                         return (
 											<div
                                                 key={booking.id}
-                                                data-track="day_edit_booking"
+                                                data-track={swapMode ? 'day_swap_select' : 'day_edit_booking'}
                                                 style={{
                                                     padding: isMobile ? '12px' : '14px 16px',
                                                     borderBottom: bookingIndex < boatBookings.length - 1 ? `1px solid ${designSystem.colors.border.light}` : 'none',
@@ -214,22 +222,32 @@ export function VirtualizedBookingList({
                                                     display: 'flex',
                                                     gap: isMobile ? '10px' : '14px',
                                                     alignItems: 'center',
-                                                    backgroundColor: designSystem.colors.background.card,
-                                                    border: conflictedBookingIds?.has(booking.id)
+                                                    backgroundColor: isSwapSelected
+                                                        ? `${designSystem.colors.primary[500]}14`
+                                                        : designSystem.colors.background.card,
+                                                    border: isSwapSelected
+                                                        ? `2px solid ${designSystem.colors.primary[500]}`
+                                                        : isConflicted
                                                         ? `2px solid ${designSystem.colors.danger[500]}`
                                                         : `1px solid ${designSystem.colors.border.light}`,
                                                     borderRadius: designSystem.borderRadius.md,
-                                                    boxShadow: conflictedBookingIds?.has(booking.id)
+                                                    boxShadow: isConflicted && !isSwapSelected
                                                         ? `0 0 0 1px ${designSystem.colors.danger[500]}22 inset`
+                                                        : undefined,
+                                                    outline: swapMode && !isSwapSelected
+                                                        ? `1px dashed ${designSystem.colors.border.main}`
                                                         : undefined,
                                                 }}
 												title={!isMobile ? (conflictReasons?.get(booking.id) || undefined) : undefined}
                                                 onClick={() => onBookingClick(booking.boat_id, booking.start_at.substring(11, 16), booking)}
                                                 onMouseEnter={(e) => {
+                                                    if (isSwapSelected) return
                                                     e.currentTarget.style.backgroundColor = designSystem.colors.background.hover
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.backgroundColor = designSystem.colors.background.card
+                                                    e.currentTarget.style.backgroundColor = isSwapSelected
+                                                        ? `${designSystem.colors.primary[500]}14`
+                                                        : designSystem.colors.background.card
                                                 }}
                                             >
                                                 {/* 時間區塊 */}

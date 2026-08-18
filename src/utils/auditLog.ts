@@ -377,3 +377,51 @@ export async function logCoachAssignment(params: CoachAssignmentLogParams) {
     }
   })()
 }
+
+export type BookingSwapLogMode = 'boat' | 'time' | 'boat_and_time'
+
+interface BookingSwapLogParams {
+  userEmail: string
+  mode: BookingSwapLogMode
+  a: { studentName: string; startTime: string; boatName: string }
+  b: { studentName: string; startTime: string; boatName: string }
+  coachNames?: string[]
+  filledBy?: string
+}
+
+/**
+ * 記錄預約互換（一筆操作，不要拆成兩次「修改預約」）
+ */
+export async function logBookingSwap(params: BookingSwapLogParams) {
+  const { userEmail, mode, a, b, coachNames, filledBy } = params
+
+  const modeLabel =
+    mode === 'boat' ? '互換船隻' : mode === 'time' ? '互換時段' : '互換船隻+時段'
+
+  const formatSide = (side: BookingSwapLogParams['a']) => {
+    const t = formatBookingTime(side.startTime)
+    return `${side.studentName} (${t} ${side.boatName})`
+  }
+
+  let details = `${modeLabel}：${formatSide(a)} ↔ ${formatSide(b)}`
+  if (coachNames && coachNames.length > 0) {
+    details += ` | 教練：${coachNames.join('、')}`
+  }
+  if (filledBy && filledBy.trim()) {
+    details += ` (填表人: ${filledBy.trim()})`
+  }
+
+  void (async () => {
+    const created_at = getVenueTimestamp()
+    const { error } = await supabase.from('audit_log').insert({
+      user_email: userEmail,
+      action: 'update',
+      table_name: 'bookings',
+      details,
+      created_at
+    })
+    if (error) {
+      console.error('審計日誌寫入錯誤:', error)
+    }
+  })()
+}
