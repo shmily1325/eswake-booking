@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import type { ProductWithVariants } from '../../admin/products/types'
 import { SHOP_GROUPS } from '../../admin/products/schema'
 import { ImageOrFallback } from './ImageOrFallback'
@@ -42,7 +42,7 @@ interface ShopHomeGalleriesProps {
 
 /**
  * 目錄首頁：Pre-Order / In-Stock 橫滑 gallery。
- * 卡片寬約 78vw，右邊露出下一張；點卡片或 View all 進列表，不進單品。
+ * 卡片略疊、可滑開；點卡片或 View all 進列表，不進單品。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readSessionSeed)
@@ -131,6 +131,10 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   )
 }
 
+/** 手機約半屏，右邊露出疊住的下一張；桌機固定較窄，才擠得出橫滑。 */
+const CARD_WIDTH = 'w-[min(58vw,220px)] sm:w-56'
+const CARD_OVERLAP = '-ml-10 sm:-ml-12'
+
 function HomeGalleryRow({
   title,
   items,
@@ -140,7 +144,86 @@ function HomeGalleryRow({
   items: HomeGalleryItem[]
   viewAllTo: string
 }) {
+  const navigate = useNavigate()
   const trackRef = useRef<HTMLDivElement>(null)
+  const [active, setActive] = useState(0)
+  const pointer = useRef<{
+    id: number
+    x: number
+    scroll: number
+    moved: boolean
+  } | null>(null)
+  const skipClick = useRef(false)
+  const current = items[active] ?? items[0]
+  const canSlide = items.length > 1
+
+  const syncActive = () => {
+    const el = trackRef.current
+    if (!el) return
+    const kids = el.children
+    let best = 0
+    let bestDist = Infinity
+    for (let i = 0; i < kids.length; i++) {
+      const dist = Math.abs((kids[i] as HTMLElement).offsetLeft - el.scrollLeft)
+      if (dist < bestDist) {
+        bestDist = dist
+        best = i
+      }
+    }
+    setActive(best)
+  }
+
+  const scrollToIndex = (index: number) => {
+    const el = trackRef.current
+    const child = el?.children[index] as HTMLElement | undefined
+    child?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
+  }
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'touch' || !canSlide) return
+    pointer.current = {
+      id: e.pointerId,
+      x: e.clientX,
+      scroll: e.currentTarget.scrollLeft,
+      moved: false,
+    }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const p = pointer.current
+    if (!p || p.id !== e.pointerId) return
+    const dx = e.clientX - p.x
+    if (!p.moved && Math.abs(dx) < 8) return
+    p.moved = true
+    skipClick.current = true
+    e.currentTarget.scrollLeft = p.scroll - dx
+  }
+
+  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const p = pointer.current
+    pointer.current = null
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    if (p?.moved) {
+      skipClick.current = true
+      syncActive()
+      return
+    }
+    if (p && e.pointerType !== 'touch') {
+      skipClick.current = true
+      navigate(viewAllTo)
+    }
+  }
+
+  const onCardClick = () => {
+    if (skipClick.current) {
+      skipClick.current = false
+      return
+    }
+    navigate(viewAllTo)
+  }
 
   return (
     <section aria-label={title}>
@@ -157,38 +240,100 @@ function HomeGalleryRow({
         </Link>
       </div>
 
-      <div
-        ref={trackRef}
-        className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        {items.map((item, index) => (
-          <Link
-            key={item.productId}
-            to={viewAllTo}
-            className="snap-start shrink-0 w-[min(78vw,340px)] group"
-          >
-            <div className="relative aspect-4/5 bg-white rounded-xl overflow-hidden">
-              <ImageOrFallback
-                src={item.imageUrl}
-                alt={item.title}
-                loading={index < 2 ? 'eager' : 'lazy'}
-                observeRoot={index < 2 ? undefined : trackRef}
-                imgClassName={SHOP_PRODUCT_IMG}
-                fallback={<NoImagePlaceholder />}
-              />
-            </div>
-            <div className="mt-2.5 min-h-11">
-              <div className="text-[11px] text-white/50 uppercase tracking-wide truncate">
-                {item.brand || '\u00A0'}
+      <div className="relative">
+        {canSlide && (
+          <>
+            <GalleryArrow
+              side="left"
+              disabled={active <= 0}
+              onClick={() => scrollToIndex(Math.max(0, active - 1))}
+            />
+            <GalleryArrow
+              side="right"
+              disabled={active >= items.length - 1}
+              onClick={() => scrollToIndex(Math.min(items.length - 1, active + 1))}
+            />
+          </>
+        )}
+
+        <div
+          ref={trackRef}
+          className={
+            'flex overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-1 overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
+            (canSlide ? 'md:cursor-grab md:active:cursor-grabbing' : '')
+          }
+          style={{ WebkitOverflowScrolling: 'touch' }}
+          onScroll={syncActive}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+        >
+          {items.map((item, index) => (
+            <button
+              key={item.productId}
+              type="button"
+              onClick={onCardClick}
+              className={
+                'p-0 bg-transparent border-0 appearance-none snap-start shrink-0 text-left cursor-pointer ' +
+                CARD_WIDTH +
+                (index > 0 ? ` ${CARD_OVERLAP}` : '')
+              }
+              style={{ zIndex: items.length - index }}
+            >
+              <div className="relative aspect-4/5 bg-white rounded-xl overflow-hidden shadow-[4px_0_16px_rgba(0,0,0,0.35)]">
+                <ImageOrFallback
+                  src={item.imageUrl}
+                  alt={item.title}
+                  loading={index < 2 ? 'eager' : 'lazy'}
+                  observeRoot={index < 2 ? undefined : trackRef}
+                  imgClassName={SHOP_PRODUCT_IMG}
+                  fallback={<NoImagePlaceholder />}
+                />
               </div>
-              <div className="mt-0.5 text-sm font-semibold text-white leading-snug line-clamp-2">
-                {item.title}
-              </div>
-            </div>
-          </Link>
-        ))}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {current && (
+        <Link
+          to={viewAllTo}
+          className="block px-4 sm:px-6 mt-3 min-h-11 max-w-[min(58vw,220px)] sm:max-w-56"
+        >
+          <div className="text-[11px] text-white/50 uppercase tracking-wide truncate">
+            {current.brand || '\u00A0'}
+          </div>
+          <div className="mt-0.5 text-sm font-semibold text-white leading-snug line-clamp-2">
+            {current.title}
+          </div>
+        </Link>
+      )}
     </section>
+  )
+}
+
+function GalleryArrow({
+  side,
+  disabled,
+  onClick,
+}: {
+  side: 'left' | 'right'
+  disabled: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={side === 'left' ? 'Previous' : 'Next'}
+      disabled={disabled}
+      onClick={onClick}
+      className={
+        'hidden md:flex absolute z-10 top-[38%] -translate-y-1/2 h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white hover:bg-black/75 disabled:opacity-25 disabled:pointer-events-none ' +
+        (side === 'left' ? 'left-2' : 'right-2')
+      }
+    >
+      <span aria-hidden>{side === 'left' ? '‹' : '›'}</span>
+    </button>
   )
 }

@@ -264,14 +264,16 @@ function HomeGalleryLoading() {
       {['pre', 'stock'].map((row) => (
         <div key={row}>
           <div className="h-6 w-28 bg-white/10 rounded mb-3" />
-          <div className="flex gap-3 overflow-hidden">
+          <div className="flex overflow-hidden">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="shrink-0 w-[min(78vw,340px)] animate-pulse">
+              <div
+                key={i}
+                className={
+                  'shrink-0 w-[min(58vw,220px)] sm:w-56 animate-pulse ' +
+                  (i > 0 ? '-ml-10 sm:-ml-12' : '')
+                }
+              >
                 <div className="aspect-4/5 bg-zinc-800 rounded-xl" />
-                <div className="mt-2.5 space-y-2">
-                  <div className="h-3 w-16 bg-white/10 rounded" />
-                  <div className="h-4 w-2/3 bg-white/10 rounded" />
-                </div>
               </div>
             ))}
           </div>
