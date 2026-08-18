@@ -22,6 +22,7 @@ export const SHOP_LABEL = {
   newest: 'Newest',
   priceAsc: 'Price: Low → High',
   priceDesc: 'Price: High → Low',
+  sortBy: 'Sort by',
   search: 'Search',
 } as const
 
