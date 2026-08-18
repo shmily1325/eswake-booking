@@ -21,6 +21,7 @@ import {
 import { getShopHeroForFilters } from './lib/shopHeroImages'
 import { useShopHeroPreload } from './hooks/useShopHeroPreload'
 import { SHOP_COPY, SHOP_LABEL } from './lib/shopCopy'
+import { SHOP_HOME_STRIP_CARD } from './lib/shopUiStyle'
 import { shopListPath } from './lib/shopPaths'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { ShopFooter } from './components/ShopFooter'
@@ -266,7 +267,7 @@ function HomeGalleryLoading() {
               {Array.from({ length: 3 }).map((_, i) => (
                 <div
                   key={i}
-                  className="w-[min(68vw,228px)] md:w-52 shrink-0 rounded-xl bg-zinc-800 animate-pulse aspect-4/5"
+                  className={SHOP_HOME_STRIP_CARD + ' shrink-0 rounded-xl bg-zinc-800 animate-pulse aspect-4/5'}
                 />
               ))}
             </div>

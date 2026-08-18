@@ -62,8 +62,9 @@ export const SHOP_HERO_KICKER =
 /** 商品照（卡／gallery／購物車縮圖）：白底完整放入，不裁切 */
 export const SHOP_PRODUCT_IMG = 'w-full h-full object-contain'
 
-/** 首頁橫滑卡寬：手機露出下一張，桌機兩欄裡約兩張半 */
-export const SHOP_HOME_STRIP_CARD = 'w-[min(68vw,228px)] md:w-52'
+/** 首頁橫滑卡寬：手機露出下一張；桌機一欄兩張加大卡，右邊再露出半張 */
+export const SHOP_HOME_STRIP_CARD =
+  'w-[min(68vw,228px)] md:w-60 lg:w-[calc((100%-0.75rem)/2.2)]'
 
 /** 單品主圖：手機不要吃半屏，桌機不要撐到 500px */
 export const SHOP_DETAIL_FRAME =
