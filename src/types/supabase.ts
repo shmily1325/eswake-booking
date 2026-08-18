@@ -1806,6 +1806,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      swap_bookings: {
+        Args: {
+          p_booking_a_id: number
+          p_booking_b_id: number
+          p_a_expected_boat_id: number
+          p_a_expected_start_at: string
+          p_a_new_boat_id: number
+          p_a_new_start_at: string
+          p_a_new_cleanup_minutes: number
+          p_b_expected_boat_id: number
+          p_b_expected_start_at: string
+          p_b_new_boat_id: number
+          p_b_new_start_at: string
+          p_b_new_cleanup_minutes: number
+        }
+        Returns: undefined
+      }
       update_member_membership: {
         Args: {
           p_boards?: Json | null

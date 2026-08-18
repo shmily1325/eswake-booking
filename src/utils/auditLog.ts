@@ -378,11 +378,11 @@ export async function logCoachAssignment(params: CoachAssignmentLogParams) {
   })()
 }
 
-export type BookingSwapLogMode = 'boat' | 'time' | 'boat_and_time'
+export type BookingSwapLogMode = 'swap'
 
 interface BookingSwapLogParams {
   userEmail: string
-  mode: BookingSwapLogMode
+  mode?: BookingSwapLogMode
   a: { studentName: string; startTime: string; boatName: string }
   b: { studentName: string; startTime: string; boatName: string }
   coachNames?: string[]
@@ -391,19 +391,18 @@ interface BookingSwapLogParams {
 
 /**
  * 記錄預約互換（一筆操作，不要拆成兩次「修改預約」）
+ * 互換＝兩筆整組對調（船＋時間）。
+ * 與其他 audit 不同：這裡會 await 並在失敗時拋錯，讓呼叫端可與「互換成功」分流提示。
  */
 export async function logBookingSwap(params: BookingSwapLogParams) {
-  const { userEmail, mode, a, b, coachNames, filledBy } = params
-
-  const modeLabel =
-    mode === 'boat' ? '互換船隻' : mode === 'time' ? '互換時段' : '互換船隻+時段'
+  const { userEmail, a, b, coachNames, filledBy } = params
 
   const formatSide = (side: BookingSwapLogParams['a']) => {
     const t = formatBookingTime(side.startTime)
     return `${side.studentName} (${t} ${side.boatName})`
   }
 
-  let details = `${modeLabel}：${formatSide(a)} ↔ ${formatSide(b)}`
+  let details = `互換：${formatSide(a)} ↔ ${formatSide(b)}`
   if (coachNames && coachNames.length > 0) {
     details += ` | 教練：${coachNames.join('、')}`
   }
@@ -411,17 +410,16 @@ export async function logBookingSwap(params: BookingSwapLogParams) {
     details += ` (填表人: ${filledBy.trim()})`
   }
 
-  void (async () => {
-    const created_at = getVenueTimestamp()
-    const { error } = await supabase.from('audit_log').insert({
-      user_email: userEmail,
-      action: 'update',
-      table_name: 'bookings',
-      details,
-      created_at
-    })
-    if (error) {
-      console.error('審計日誌寫入錯誤:', error)
-    }
-  })()
+  const created_at = getVenueTimestamp()
+  const { error } = await supabase.from('audit_log').insert({
+    user_email: userEmail,
+    action: 'update',
+    table_name: 'bookings',
+    details,
+    created_at,
+  })
+  if (error) {
+    console.error('審計日誌寫入錯誤:', error)
+    throw new Error('操作紀錄寫入失敗：' + error.message)
+  }
 }

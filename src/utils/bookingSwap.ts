@@ -12,7 +12,8 @@ import {
 import { isFacility, isOverlapAllowed } from './facility'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 
-export type SwapMode = 'boat' | 'time' | 'boat_and_time'
+/** 互換＝兩筆整組對調（船＋時間都換，時長各自保留） */
+export type SwapMode = 'swap'
 
 export interface SwapBookingLike {
   id: number
@@ -29,6 +30,11 @@ export interface SwapBookingLike {
 
 export interface SwapValidationResult {
   ok: boolean
+  reason?: string
+}
+
+export interface SwapAvailability {
+  modes: SwapMode[]
   reason?: string
 }
 
@@ -108,28 +114,15 @@ function boatNameOf(b: SwapBookingLike): string {
   return b.boats?.name || ''
 }
 
-/** 套用互換後的假設預約（時長各自保留） */
+/**
+ * 套用互換後的假設預約：整組對調——換到對方的船＋對方的開始時間，
+ * 時長與教練／駕駛各自保留。
+ */
 export function applySwapHypothetical(
   self: SwapBookingLike,
   other: SwapBookingLike,
-  mode: SwapMode
+  _mode: SwapMode = 'swap'
 ): SwapBookingLike {
-  if (mode === 'boat') {
-    const name = boatNameOf(other)
-    return {
-      ...self,
-      boat_id: other.boat_id,
-      boats: other.boats,
-      cleanup_minutes: cleanupForBoatName(name),
-    }
-  }
-  if (mode === 'time') {
-    return {
-      ...self,
-      start_at: replaceStartTime(self.start_at, timeOf(other.start_at)),
-    }
-  }
-  // boat_and_time：換對方的船 + 對方的開始時間
   const name = boatNameOf(other)
   return {
     ...self,
@@ -171,6 +164,45 @@ function checkBoatConflictLocal(
         ok: false,
         reason: `${boatName || '船隻'} 與 ${existing.contact_name}（${existingTime}）衝突`,
       }
+    }
+  }
+
+  return { ok: true }
+}
+
+/**
+ * 互換後兩筆是否自己撞自己（預檢必須做：validateOneSide 會把兩筆都 exclude，
+ * 漏掉這段會變成「按鈕可按、執行才失敗」）。
+ */
+export function checkSwapPairMutualConflict(
+  a: SwapBookingLike,
+  b: SwapBookingLike
+): SwapValidationResult {
+  const nameA = boatNameOf(a)
+  const nameB = boatNameOf(b)
+  const cleanupA = a.cleanup_minutes ?? cleanupForBoatName(nameA)
+  const cleanupB = b.cleanup_minutes ?? cleanupForBoatName(nameB)
+
+  if (a.boat_id === b.boat_id && !isOverlapAllowed(nameA) && !isOverlapAllowed(nameB)) {
+    const slotA = calculateTimeSlot(timeOf(a.start_at), a.duration_min, cleanupA)
+    const slotB = calculateTimeSlot(timeOf(b.start_at), b.duration_min, cleanupB)
+    if (checkTimeSlotConflict(slotA, slotB)) {
+      return {
+        ok: false,
+        reason: `互換後兩筆在 ${nameA || '同船'} 時段重疊`,
+      }
+    }
+  }
+
+  const peopleA = personIdsOf(a)
+  const peopleB = personIdsOf(b)
+  const sharePerson = peopleA.some(id => peopleB.includes(id))
+  // 同船豁免（與教練排班一致）
+  if (sharePerson && a.boat_id !== b.boat_id) {
+    const slotA = calculateTimeSlot(timeOf(a.start_at), a.duration_min)
+    const slotB = calculateTimeSlot(timeOf(b.start_at), b.duration_min)
+    if (checkTimeSlotConflict(slotA, slotB)) {
+      return { ok: false, reason: '互換後兩筆教練／駕駛時段衝突' }
     }
   }
 
@@ -482,36 +514,25 @@ export function canConsiderPair(a: SwapBookingLike, b: SwapBookingLike): SwapVal
 export async function validateBookingSwap(
   a: SwapBookingLike,
   b: SwapBookingLike,
-  mode: SwapMode,
+  _mode: SwapMode = 'swap',
   context?: SwapContext
 ): Promise<SwapValidationResult> {
   const base = canConsiderPair(a, b)
   if (!base.ok) return base
 
-  if (mode === 'boat' && a.boat_id === b.boat_id) {
-    return { ok: false, reason: '兩筆已是同一艘船' }
-  }
-  if (mode === 'time' && timeOf(a.start_at) === timeOf(b.start_at)) {
-    return { ok: false, reason: '兩筆已是同一開始時間' }
-  }
-  if (
-    mode === 'boat_and_time' &&
-    a.boat_id === b.boat_id &&
-    timeOf(a.start_at) === timeOf(b.start_at)
-  ) {
-    return { ok: false, reason: '兩筆船隻與時段皆相同' }
-  }
-
   const dateStr = dateOf(a.start_at)
   const ctx = context || (await loadSwapContext(dateStr))
   const excludeIds = new Set([a.id, b.id])
 
-  const hypoA = applySwapHypothetical(a, b, mode)
-  const hypoB = applySwapHypothetical(b, a, mode)
-  const checkPeople = mode === 'time' || mode === 'boat_and_time'
+  // 整組對調：兩邊都換船＋換時間，因此都要重驗教練／駕駛時段
+  const hypoA = applySwapHypothetical(a, b)
+  const hypoB = applySwapHypothetical(b, a)
 
-  const resA = validateOneSide(hypoA, ctx, excludeIds, { checkPeople })
-  const resB = validateOneSide(hypoB, ctx, excludeIds, { checkPeople })
+  const mutual = checkSwapPairMutualConflict(hypoA, hypoB)
+  if (!mutual.ok) return mutual
+
+  const resA = validateOneSide(hypoA, ctx, excludeIds, { checkPeople: true })
+  const resB = validateOneSide(hypoB, ctx, excludeIds, { checkPeople: true })
 
   if (!resA.ok) {
     return { ok: false, reason: `${a.contact_name}：${resA.reason}` }
@@ -522,118 +543,74 @@ export async function validateBookingSwap(
   return { ok: true }
 }
 
+/** 兩筆是否可互換（整組對調後放得下）。不可行時帶 reason 供 UI 顯示。 */
 export async function getAvailableSwapModes(
   a: SwapBookingLike,
   b: SwapBookingLike,
   context?: SwapContext
-): Promise<SwapMode[]> {
+): Promise<SwapAvailability> {
   const base = canConsiderPair(a, b)
-  if (!base.ok) return []
+  if (!base.ok) return { modes: [], reason: base.reason || '無法互換' }
 
-  const dateStr = dateOf(a.start_at)
-  const ctx = context || (await loadSwapContext(dateStr))
-  const candidates: SwapMode[] = []
-
-  if (a.boat_id !== b.boat_id) {
-    const boatOk = await validateBookingSwap(a, b, 'boat', ctx)
-    if (boatOk.ok) candidates.push('boat')
-  }
-  if (timeOf(a.start_at) !== timeOf(b.start_at)) {
-    const timeOk = await validateBookingSwap(a, b, 'time', ctx)
-    if (timeOk.ok) candidates.push('time')
-  }
-  if (a.boat_id !== b.boat_id && timeOf(a.start_at) !== timeOf(b.start_at)) {
-    const bothOk = await validateBookingSwap(a, b, 'boat_and_time', ctx)
-    if (bothOk.ok) candidates.push('boat_and_time')
-  }
-
-  return candidates
+  const ctx = context || (await loadSwapContext(dateOf(a.start_at)))
+  const result = await validateBookingSwap(a, b, 'swap', ctx)
+  if (!result.ok) return { modes: [], reason: result.reason || '無法互換' }
+  return { modes: ['swap'] }
 }
 
-export function swapModeLabel(mode: SwapMode): string {
-  if (mode === 'boat') return '互換船隻'
-  if (mode === 'time') return '互換時段'
-  return '互換船隻+時段'
+export function swapModeLabel(_mode: SwapMode = 'swap'): string {
+  return '互換'
+}
+
+function mapSwapRpcError(message: string): string {
+  if (message.includes('stale') || message.includes('modified') || message.includes('已被')) {
+    return '資料已被其他人修改，請重新整理後再試'
+  }
+  if (message.includes('cancelled') || message.includes('取消')) {
+    return '已取消的預約無法互換'
+  }
+  if (message.includes('not found') || message.includes('找不到')) {
+    return '找不到其中一筆預約，請重新整理'
+  }
+  if (message.includes('Not authenticated') || message.includes('登入')) {
+    return '請重新登入後再試'
+  }
+  return message || '互換失敗'
 }
 
 export async function executeBookingSwap(params: {
   a: SwapBookingLike
   b: SwapBookingLike
-  mode: SwapMode
+  mode?: SwapMode
 }): Promise<void> {
-  const { a, b, mode } = params
-  const validation = await validateBookingSwap(a, b, mode)
+  const { a, b } = params
+
+  // 寫入前再載一次當日資料，縮小競態窗
+  const freshCtx = await loadSwapContext(dateOf(a.start_at))
+  const validation = await validateBookingSwap(a, b, 'swap', freshCtx)
   if (!validation.ok) {
     throw new Error(validation.reason || '無法互換')
   }
 
-  const hypoA = applySwapHypothetical(a, b, mode)
-  const hypoB = applySwapHypothetical(b, a, mode)
+  const hypoA = applySwapHypothetical(a, b)
+  const hypoB = applySwapHypothetical(b, a)
 
-  const patchA: Record<string, unknown> = {}
-  const patchB: Record<string, unknown> = {}
+  const { error } = await supabase.rpc('swap_bookings', {
+    p_booking_a_id: a.id,
+    p_booking_b_id: b.id,
+    p_a_expected_boat_id: a.boat_id,
+    p_a_expected_start_at: a.start_at,
+    p_a_new_boat_id: hypoA.boat_id,
+    p_a_new_start_at: hypoA.start_at,
+    p_a_new_cleanup_minutes: hypoA.cleanup_minutes ?? cleanupForBoatName(boatNameOf(hypoA)),
+    p_b_expected_boat_id: b.boat_id,
+    p_b_expected_start_at: b.start_at,
+    p_b_new_boat_id: hypoB.boat_id,
+    p_b_new_start_at: hypoB.start_at,
+    p_b_new_cleanup_minutes: hypoB.cleanup_minutes ?? cleanupForBoatName(boatNameOf(hypoB)),
+  })
 
-  if (mode === 'boat' || mode === 'boat_and_time') {
-    patchA.boat_id = hypoA.boat_id
-    patchA.cleanup_minutes = hypoA.cleanup_minutes
-    patchB.boat_id = hypoB.boat_id
-    patchB.cleanup_minutes = hypoB.cleanup_minutes
-  }
-  if (mode === 'time' || mode === 'boat_and_time') {
-    patchA.start_at = hypoA.start_at
-    patchB.start_at = hypoB.start_at
-  }
-
-  const originalA = {
-    boat_id: a.boat_id,
-    start_at: a.start_at,
-    cleanup_minutes: a.cleanup_minutes ?? cleanupForBoatName(boatNameOf(a)),
-  }
-  const originalB = {
-    boat_id: b.boat_id,
-    start_at: b.start_at,
-    cleanup_minutes: b.cleanup_minutes ?? cleanupForBoatName(boatNameOf(b)),
-  }
-
-  const { error: errA } = await supabase.from('bookings').update(patchA).eq('id', a.id)
-  if (errA) {
-    throw new Error('更新第一筆預約失敗：' + errA.message)
-  }
-
-  const { error: errB } = await supabase.from('bookings').update(patchB).eq('id', b.id)
-  if (errB) {
-    await supabase.from('bookings').update(originalA).eq('id', a.id)
-    throw new Error('更新第二筆預約失敗，已還原第一筆：' + errB.message)
-  }
-
-  // 寫入後再驗現況（各排除自己；對方已是真實佔用）。失敗則整組還原。
-  const dateStr = dateOf(a.start_at)
-  const ctx = await loadSwapContext(dateStr)
-  const afterA = {
-    ...a,
-    ...patchA,
-    boats: hypoA.boats,
-    coaches: a.coaches,
-    drivers: a.drivers,
-  } as SwapBookingLike
-  const afterB = {
-    ...b,
-    ...patchB,
-    boats: hypoB.boats,
-    coaches: b.coaches,
-    drivers: b.drivers,
-  } as SwapBookingLike
-  const checkPeople = mode === 'time' || mode === 'boat_and_time'
-  const sideA = validateOneSide(afterA, ctx, new Set([a.id]), { checkPeople })
-  const sideB = validateOneSide(afterB, ctx, new Set([b.id]), { checkPeople })
-
-  if (!sideA.ok || !sideB.ok) {
-    await Promise.all([
-      supabase.from('bookings').update(originalA).eq('id', a.id),
-      supabase.from('bookings').update(originalB).eq('id', b.id),
-    ])
-    throw new Error(
-      `互換後偵測衝突，已還原：${!sideA.ok ? sideA.reason : sideB.reason}`
-    )
+  if (error) {
+    throw new Error(mapSwapRpcError(error.message))
   }
 }

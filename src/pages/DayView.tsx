@@ -39,6 +39,7 @@ import {
   type DayViewAssignmentAnnouncement,
 } from '../utils/announcement'
 import {
+  applySwapHypothetical,
   executeBookingSwap,
   getAvailableSwapModes,
   swapModeLabel,
@@ -117,6 +118,7 @@ export function DayView() {
   const [swapMode, setSwapMode] = useState(false)
   const [swapSelectedIds, setSwapSelectedIds] = useState<number[]>([])
   const [swapModes, setSwapModes] = useState<SwapMode[]>([])
+  const [swapBlockReason, setSwapBlockReason] = useState('')
   const [swapChecking, setSwapChecking] = useState(false)
   const [swapBusy, setSwapBusy] = useState(false)
 
@@ -142,6 +144,7 @@ export function DayView() {
     setSwapMode(false)
     setSwapSelectedIds([])
     setSwapModes([])
+    setSwapBlockReason('')
     setSearchParams({ date: addDaysToDate(dateParam, offset) })
   }
 
@@ -149,6 +152,7 @@ export function DayView() {
     setSwapMode(false)
     setSwapSelectedIds([])
     setSwapModes([])
+    setSwapBlockReason('')
     const today = getVenueDateString()
     setSearchParams({ date: today })
   }
@@ -159,6 +163,7 @@ export function DayView() {
     setSwapMode(false)
     setSwapSelectedIds([])
     setSwapModes([])
+    setSwapBlockReason('')
     setSearchParams({ date: next })
     if (user?.email) {
       trackClickDedupedWithin(`day_date_pick:${next}`, user.email)
@@ -582,6 +587,7 @@ export function DayView() {
   useEffect(() => {
     if (!swapMode || swapSelectedIds.length !== 2) {
       setSwapModes([])
+      setSwapBlockReason('')
       setSwapChecking(false)
       return
     }
@@ -589,23 +595,27 @@ export function DayView() {
     const b = bookings.find(b => b.id === swapSelectedIds[1])
     if (!a || !b) {
       setSwapModes([])
+      setSwapBlockReason('')
       return
     }
     let cancelled = false
     setSwapChecking(true)
+    setSwapBlockReason('')
     getAvailableSwapModes(a, b)
-      .then(modes => {
+      .then(result => {
         if (cancelled) return
-        setSwapModes(modes)
-        if (modes.length === 0) {
+        setSwapModes(result.modes)
+        setSwapBlockReason(result.modes.length === 0 ? (result.reason || '無法互換') : '')
+        if (result.modes.length === 0) {
           trackClick('day_swap_pair_none', user?.email)
         } else {
-          trackClick(`day_swap_pair_ok:${modes.join('+')}`, user?.email)
+          trackClick(`day_swap_pair_ok:${result.modes.join('+')}`, user?.email)
         }
       })
       .catch(() => {
         if (cancelled) return
         setSwapModes([])
+        setSwapBlockReason('檢查失敗，請稍後再試')
         trackClick('day_swap_pair_none', user?.email)
       })
       .finally(() => {
@@ -620,53 +630,60 @@ export function DayView() {
     setSwapMode(false)
     setSwapSelectedIds([])
     setSwapModes([])
+    setSwapBlockReason('')
   }
 
-  const handleDaySwap = async (mode: SwapMode) => {
+  const handleDaySwap = async () => {
     const a = bookings.find(b => b.id === swapSelectedIds[0])
     const b = bookings.find(b => b.id === swapSelectedIds[1])
     if (!a || !b) return
 
-    const label = swapModeLabel(mode)
+    const afterA = applySwapHypothetical(a, b)
+    const afterB = applySwapHypothetical(b, a)
     const confirmMsg =
-      `${label}\n\n` +
-      `${getDisplayContactName(a)} ${a.start_at.substring(11, 16)} ${a.boats?.name || ''}\n` +
-      `↔\n` +
-      `${getDisplayContactName(b)} ${b.start_at.substring(11, 16)} ${b.boats?.name || ''}\n\n` +
-      `確定互換？`
+      `互換這兩筆位置？\n\n` +
+      `${getDisplayContactName(a)} → ${afterA.start_at.substring(11, 16)} ${afterA.boats?.name || ''}\n` +
+      `${getDisplayContactName(b)} → ${afterB.start_at.substring(11, 16)} ${afterB.boats?.name || ''}`
     if (!confirm(confirmMsg)) {
-      trackClick(`day_swap_confirm_cancel:${mode}`, user?.email)
+      trackClick('day_swap_confirm_cancel', user?.email)
       return
     }
 
     setSwapBusy(true)
     try {
-      await executeBookingSwap({ a, b, mode })
+      await executeBookingSwap({ a, b, mode: 'swap' })
       const sharedCoaches = (a.coaches || [])
         .filter(c => (b.coaches || []).some(o => o.id === c.id))
         .map(c => c.name)
         .filter(Boolean)
-      await logBookingSwap({
-        userEmail: user?.email || '',
-        mode,
-        a: {
-          studentName: getDisplayContactName(a),
-          startTime: a.start_at,
-          boatName: a.boats?.name || '未知',
-        },
-        b: {
-          studentName: getDisplayContactName(b),
-          startTime: b.start_at,
-          boatName: b.boats?.name || '未知',
-        },
-        coachNames: sharedCoaches,
-      })
-      trackClick(`day_swap_success:${mode}`, user?.email)
+      try {
+        await logBookingSwap({
+          userEmail: user?.email || '',
+          a: {
+            studentName: getDisplayContactName(a),
+            startTime: a.start_at,
+            boatName: a.boats?.name || '未知',
+          },
+          b: {
+            studentName: getDisplayContactName(b),
+            startTime: b.start_at,
+            boatName: b.boats?.name || '未知',
+          },
+          coachNames: sharedCoaches,
+        })
+      } catch {
+        trackClick('day_swap_audit_fail', user?.email)
+        toast.success('已互換（操作紀錄寫入失敗，請告知管理員）')
+        exitSwapMode()
+        await fetchData()
+        return
+      }
+      trackClick('day_swap_success', user?.email)
       toast.success('已互換')
       exitSwapMode()
       await fetchData()
     } catch (err: any) {
-      trackClick(`day_swap_fail:${mode}`, user?.email)
+      trackClick('day_swap_fail', user?.email)
       toast.error(err?.message || '互換失敗')
     } finally {
       setSwapBusy(false)
@@ -839,6 +856,7 @@ export function DayView() {
                       setSwapMode(true)
                       setSwapSelectedIds([])
                       setSwapModes([])
+                      setSwapBlockReason('')
                       toast.info('互換模式：請點選兩筆預約')
                     }
                   }}
@@ -994,29 +1012,27 @@ export function DayView() {
               )}
               {!swapChecking && swapModes.length === 0 && (
                 <div style={{ fontSize: '13px', color: designSystem.colors.danger[700] }}>
-                  這兩筆無法互換（會衝突或條件不符）
+                  {swapBlockReason || '這兩筆無法互換'}
                 </div>
               )}
-              {!swapChecking &&
-                swapModes.map(mode => (
-                  <button
-                    key={mode}
-                    type="button"
-                    data-track={`day_swap_${mode}`}
-                    disabled={swapBusy}
-                    onClick={() => handleDaySwap(mode)}
-                    style={{
-                      ...getButtonStyle('primary', 'medium', isMobile),
-                      width: '100%',
-                      minHeight: '48px',
-                      opacity: swapBusy ? 0.6 : 1,
-                      cursor: swapBusy ? 'not-allowed' : 'pointer',
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    {swapBusy ? '處理中…' : swapModeLabel(mode)}
-                  </button>
-                ))}
+              {!swapChecking && swapModes.length > 0 && (
+                <button
+                  type="button"
+                  data-track="day_swap_do"
+                  disabled={swapBusy}
+                  onClick={() => handleDaySwap()}
+                  style={{
+                    ...getButtonStyle('primary', 'medium', isMobile),
+                    width: '100%',
+                    minHeight: '48px',
+                    opacity: swapBusy ? 0.6 : 1,
+                    cursor: swapBusy ? 'not-allowed' : 'pointer',
+                    touchAction: 'manipulation',
+                  }}
+                >
+                  {swapBusy ? '處理中…' : swapModeLabel()}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSwapSelectedIds([])}

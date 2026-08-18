@@ -727,7 +727,6 @@ export function AuditLog() {
     if (details?.startsWith('批次修改')) return '批次修改'
     if (details?.startsWith('批次刪除')) return '批次刪除'
     if (details?.startsWith('重複預約')) return '重複'
-    if (details?.startsWith('互換船隻+時段')) return '互換船隻+時段'
     if (details?.startsWith('互換船隻')) return '互換船隻'
     if (details?.startsWith('互換時段')) return '互換時段'
     if (details?.startsWith('互換')) return '互換'
