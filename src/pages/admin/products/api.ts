@@ -570,9 +570,14 @@ export async function batchSetVariantsPreOrderUntil(
   until: string | null,
 ): Promise<void> {
   if (variantIds.length === 0) return
-  await updateRowsByIds(
-    'product_variants',
-    { pre_order_until: normalizePreOrderUntil(until) },
-    variantIds,
-  )
+  const day = normalizePreOrderUntil(until)
+  for (let i = 0; i < variantIds.length; i += BATCH_CHUNK) {
+    const slice = variantIds.slice(i, i + BATCH_CHUNK)
+    const { error } = await supabase
+      .from('product_variants')
+      .update({ pre_order_until: day })
+      .in('id', slice)
+      .eq('availability', 'pre_order')
+    if (error) throw error
+  }
 }

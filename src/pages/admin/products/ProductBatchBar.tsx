@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Button } from '../../../components/ui'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
 
@@ -16,6 +16,8 @@ interface ProductBatchBarProps {
   onSetPublic: (isPublic: boolean) => void
   onSetPreOrder: (accept: boolean) => void
   onSetUntil: (until: string | null) => void
+  /** 到期日只對已開放預購的 SKU 有意義 */
+  untilEnabled?: boolean
 }
 
 const actionBtnStyle: React.CSSProperties = {
@@ -35,11 +37,16 @@ export function ProductBatchBar({
   onSetPublic,
   onSetPreOrder,
   onSetUntil,
+  untilEnabled = true,
 }: ProductBatchBarProps) {
   const [sheet, setSheet] = useState<BatchSheet>(null)
   const [until, setUntil] = useState('')
 
   const closeSheet = () => setSheet(null)
+
+  useEffect(() => {
+    if (!untilEnabled && sheet === 'until') setSheet(null)
+  }, [untilEnabled, sheet])
 
   return (
     <>
@@ -217,16 +224,21 @@ export function ProductBatchBar({
           >
             預購
           </Button>
-          <Button
-            fullWidth
-            size="large"
-            variant="secondary"
-            disabled={busy || selectedCount === 0}
-            style={actionBtnStyle}
-            onClick={() => setSheet('until')}
+          <span
+            title={selectedCount > 0 && !untilEnabled ? '僅預購可設定到期日' : undefined}
+            style={{ minWidth: 0, display: 'block' }}
           >
-            到期日
-          </Button>
+            <Button
+              fullWidth
+              size="large"
+              variant="secondary"
+              disabled={busy || selectedCount === 0 || !untilEnabled}
+              style={actionBtnStyle}
+              onClick={() => setSheet('until')}
+            >
+              到期日
+            </Button>
+          </span>
         </div>
       </div>
     </>
