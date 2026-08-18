@@ -1,8 +1,7 @@
 /**
  * Design thinking:
- * Current feel: cards lift on hover, green/orange status pills, and three equal
- * toolbar buttons still read as admin chrome after the filter-row pass.
- * Hierarchy: search + 新增 primary; list is the body; status is caption text.
+ * Current feel: near-black chrome, caption status, one primary action (新增).
+ * Hierarchy: search + 新增; list is the body; 待補 / 選取 stay on this screen.
  * Primary task: find a product, open it or batch-select it.
  */
 import { useEffect, useMemo, useState } from 'react'
@@ -1639,6 +1638,7 @@ function GalleryCard({
         width: '100%',
         boxSizing: 'border-box',
       }}
+    >
       <div
         role={imageUrl && onImagePreview && !selectMode ? 'button' : undefined}
         tabIndex={imageUrl && onImagePreview && !selectMode ? 0 : undefined}
