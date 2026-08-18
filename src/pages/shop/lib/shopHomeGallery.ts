@@ -14,7 +14,7 @@ import {
 
 export type HomeGalleryKind = 'pre-order' | 'in-stock'
 
-export const HOME_GALLERY_LIMIT = 5
+export const HOME_GALLERY_LIMIT = 16
 
 export interface HomeGalleryItem {
   productId: string

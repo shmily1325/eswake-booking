@@ -28,6 +28,7 @@ import { ShopDetailGallery } from './components/ShopDetailGallery'
 import type { GalleryImage } from './components/ShopDetailGallery'
 import { getShopReturnTo } from './lib/shopReturnTo'
 import { shopListPath } from './lib/shopPaths'
+import { SHOP_DETAIL_FRAME, SHOP_DETAIL_WRAP } from './lib/shopUiStyle'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { ShopFooter } from './components/ShopFooter'
 
@@ -404,7 +405,7 @@ function ProductDetailBody({
 function LoadingState() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 animate-pulse">
-      <div className="aspect-4/5 max-h-[56vh] md:max-h-[500px] max-w-[340px] sm:max-w-sm md:max-w-none mx-auto w-full bg-gray-100 rounded-lg" />
+      <div className={SHOP_DETAIL_WRAP + ' bg-gray-100 rounded-lg overflow-hidden ' + SHOP_DETAIL_FRAME} />
       <div className="space-y-3">
         <div className="h-3 w-1/4 bg-gray-100 rounded" />
         <div className="h-7 w-2/3 bg-gray-100 rounded" />

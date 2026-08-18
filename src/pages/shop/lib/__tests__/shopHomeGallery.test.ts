@@ -56,7 +56,7 @@ describe('collectHomeGalleryPool', () => {
 })
 
 describe('pickHomeGalleryItems', () => {
-  const pool = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'].map((id) => ({
+  const pool = 'abcdefghijklmnopqr'.split('').map((id) => ({
     productId: id,
     brand: 'Follow',
     title: id,
@@ -73,8 +73,8 @@ describe('pickHomeGalleryItems', () => {
     expect(pickHomeGalleryItems(pool, 1, 4)).toHaveLength(4)
   })
 
-  it('defaults to five homepage slides', () => {
-    expect(pickHomeGalleryItems(pool, 1)).toHaveLength(5)
+  it('defaults to sixteen homepage slides', () => {
+    expect(pickHomeGalleryItems(pool, 1)).toHaveLength(16)
   })
 
   it('returns a different order for a different seed', () => {

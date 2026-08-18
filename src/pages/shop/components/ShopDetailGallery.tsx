@@ -3,6 +3,7 @@ import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { ShopImageLightbox } from './ShopImageLightbox'
 import { useSnapCarousel } from '../hooks/useSnapCarousel'
+import { SHOP_DETAIL_FRAME, SHOP_DETAIL_WRAP } from '../lib/shopUiStyle'
 
 export interface GalleryImage {
   url: string
@@ -91,7 +92,7 @@ export function ShopDetailGallery({ images, alt, resetKey }: ShopDetailGalleryPr
 
   if (count === 0) {
     return (
-      <div className="relative aspect-4/5 max-h-[56vh] md:max-h-[500px] w-full max-w-[340px] sm:max-w-sm md:max-w-none mx-auto bg-gray-100 rounded-lg overflow-hidden">
+      <div className={'relative mx-auto md:mx-0 max-w-[280px] sm:max-w-[320px] md:max-w-[400px] bg-gray-100 rounded-lg overflow-hidden ' + SHOP_DETAIL_FRAME}>
         <NoImagePlaceholder />
       </div>
     )
@@ -106,7 +107,7 @@ export function ShopDetailGallery({ images, alt, resetKey }: ShopDetailGalleryPr
               ref={railRef}
               role="tablist"
               aria-label="Product images"
-              className="flex flex-col gap-2 w-[68px] max-h-[500px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex flex-col gap-2 w-[68px] max-h-[420px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {images.map((img, i) => {
                 const active = i === index
@@ -143,7 +144,7 @@ export function ShopDetailGallery({ images, alt, resetKey }: ShopDetailGalleryPr
           </div>
         )}
 
-        <div className="relative group w-full max-w-[340px] sm:max-w-sm md:max-w-none mx-auto md:flex-1 md:min-w-0">
+        <div className={SHOP_DETAIL_WRAP}>
           <div
             ref={trackRef}
             onScroll={handleScroll}
@@ -169,7 +170,7 @@ export function ShopDetailGallery({ images, alt, resetKey }: ShopDetailGalleryPr
                 onClick={() => setZoomOpen(true)}
                 aria-label={`放大檢視 ${img.label}`}
                 tabIndex={-1}
-                className="w-full shrink-0 snap-center aspect-4/5 max-h-[56vh] md:max-h-[500px] cursor-zoom-in"
+                className={'w-full shrink-0 snap-center cursor-zoom-in ' + SHOP_DETAIL_FRAME}
               >
                 {armed.has(i) ? (
                   <ImageOrFallback

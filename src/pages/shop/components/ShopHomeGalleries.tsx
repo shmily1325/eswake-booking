@@ -17,7 +17,7 @@ import {
 } from '../lib/shopPaths'
 import { computeFacets, getShopBaseProducts } from '../lib/shopFilters'
 import { SHOP_HERO_IMAGES } from '../lib/shopHeroImages'
-import { SHOP_PRODUCT_IMG } from '../lib/shopUiStyle'
+import { SHOP_PRODUCT_IMG, SHOP_HOME_FRONT_W, SHOP_HOME_FRONT_CARD, SHOP_GROUP_TILE } from '../lib/shopUiStyle'
 
 const GALLERY_SEED_KEY = 'eswake-shop-home-gallery-seed'
 
@@ -41,8 +41,8 @@ interface ShopHomeGalleriesProps {
 }
 
 /**
- * 目錄首頁：Pre-Order / In-Stock 橫滑 gallery。
- * 卡片略疊、可滑開；點卡片或 View all 進列表，不進單品。
+ * 目錄首頁：Pre-Order / In-Stock 扇形疊卡。
+ * 左邊主圖，右邊依序露出後面幾張；滑開換下一張。點圖或 View all 進列表。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readSessionSeed)
@@ -107,7 +107,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
                 <Link
                   key={group}
                   to={shopGroupListPath(group)}
-                  className="group relative aspect-3/4 overflow-hidden rounded-xl bg-zinc-800"
+                  className={SHOP_GROUP_TILE}
                 >
                   <img
                     src={hero.src}
@@ -131,9 +131,11 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   )
 }
 
-/** 手機約半屏，右邊露出疊住的下一張；桌機固定較窄，才擠得出橫滑。 */
-const CARD_WIDTH = 'w-[min(58vw,220px)] sm:w-56'
-const CARD_OVERLAP = '-ml-10 sm:-ml-12'
+/** 主圖約半屏，右邊疊出一排商品邊。 */
+const PEEK_PCT = 18
+const SCALE_STEP = 0.025
+const MAX_PEEK = 10
+const SWIPE_PX = 36
 
 function HomeGalleryRow({
   title,
@@ -145,81 +147,53 @@ function HomeGalleryRow({
   viewAllTo: string
 }) {
   const navigate = useNavigate()
-  const trackRef = useRef<HTMLDivElement>(null)
-  const [active, setActive] = useState(0)
-  const pointer = useRef<{
-    id: number
-    x: number
-    scroll: number
-    moved: boolean
-  } | null>(null)
-  const skipClick = useRef(false)
-  const current = items[active] ?? items[0]
-  const canSlide = items.length > 1
+  const [front, setFront] = useState(0)
+  const pointer = useRef<{ x: number; y: number } | null>(null)
+  const pointerDelta = useRef({ x: 0, y: 0 })
+  const scrolling = useRef(false)
+  const count = items.length
+  const safeFront = count > 0 ? front % count : 0
+  const current = items[safeFront]
+  const canSlide = count > 1
 
-  const syncActive = () => {
-    const el = trackRef.current
-    if (!el) return
-    const kids = el.children
-    let best = 0
-    let bestDist = Infinity
-    for (let i = 0; i < kids.length; i++) {
-      const dist = Math.abs((kids[i] as HTMLElement).offsetLeft - el.scrollLeft)
-      if (dist < bestDist) {
-        bestDist = dist
-        best = i
-      }
-    }
-    setActive(best)
+  const step = (dir: 1 | -1) => {
+    if (!canSlide) return
+    setFront((i) => (i + dir + count) % count)
   }
 
-  const scrollToIndex = (index: number) => {
-    const el = trackRef.current
-    const child = el?.children[index] as HTMLElement | undefined
-    child?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
+  const resetPointer = () => {
+    pointer.current = null
+    pointerDelta.current = { x: 0, y: 0 }
+    scrolling.current = false
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'touch' || !canSlide) return
-    pointer.current = {
-      id: e.pointerId,
-      x: e.clientX,
-      scroll: e.currentTarget.scrollLeft,
-      moved: false,
-    }
-    e.currentTarget.setPointerCapture(e.pointerId)
+    pointer.current = { x: e.clientX, y: e.clientY }
+    pointerDelta.current = { x: 0, y: 0 }
+    scrolling.current = false
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const p = pointer.current
-    if (!p || p.id !== e.pointerId) return
-    const dx = e.clientX - p.x
-    if (!p.moved && Math.abs(dx) < 8) return
-    p.moved = true
-    skipClick.current = true
-    e.currentTarget.scrollLeft = p.scroll - dx
-  }
-
-  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const p = pointer.current
-    pointer.current = null
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId)
-    }
-    if (p?.moved) {
-      skipClick.current = true
-      syncActive()
+    if (pointer.current == null || scrolling.current) return
+    const dx = e.clientX - pointer.current.x
+    const dy = e.clientY - pointer.current.y
+    pointerDelta.current = { x: dx, y: dy }
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+      scrolling.current = true
       return
     }
-    if (p && e.pointerType !== 'touch') {
-      skipClick.current = true
-      navigate(viewAllTo)
+    if (Math.abs(dx) > 8) {
+      e.currentTarget.setPointerCapture(e.pointerId)
     }
   }
 
-  const onCardClick = () => {
-    if (skipClick.current) {
-      skipClick.current = false
+  const onPointerUp = () => {
+    const dx = pointerDelta.current.x
+    const wasScroll = scrolling.current
+    resetPointer()
+    if (wasScroll) return
+    if (canSlide && Math.abs(dx) >= SWIPE_PX) {
+      step(dx < 0 ? 1 : -1)
       return
     }
     navigate(viewAllTo)
@@ -240,66 +214,71 @@ function HomeGalleryRow({
         </Link>
       </div>
 
-      <div className="relative">
+      <div className="relative overflow-x-clip px-4 sm:px-6">
         {canSlide && (
           <>
-            <GalleryArrow
-              side="left"
-              disabled={active <= 0}
-              onClick={() => scrollToIndex(Math.max(0, active - 1))}
-            />
-            <GalleryArrow
-              side="right"
-              disabled={active >= items.length - 1}
-              onClick={() => scrollToIndex(Math.min(items.length - 1, active + 1))}
-            />
+            <GalleryArrow side="left" onClick={() => step(-1)} />
+            <GalleryArrow side="right" onClick={() => step(1)} />
           </>
         )}
 
         <div
-          ref={trackRef}
+          role="group"
+          aria-roledescription="carousel"
+          aria-label={title}
+          tabIndex={canSlide ? 0 : -1}
           className={
-            'flex overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-1 overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
-            (canSlide ? 'md:cursor-grab md:active:cursor-grabbing' : '')
+            'relative w-full select-none touch-pan-y ' +
+            (canSlide ? 'cursor-pointer md:cursor-grab md:active:cursor-grabbing' : 'cursor-pointer')
           }
-          style={{ WebkitOverflowScrolling: 'touch' }}
-          onScroll={syncActive}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
+          onPointerCancel={resetPointer}
+          onDragStart={(e) => e.preventDefault()}
+          onKeyDown={(e) => {
+            if (!canSlide) return
+            if (e.key === 'ArrowRight') {
+              e.preventDefault()
+              step(1)
+            } else if (e.key === 'ArrowLeft') {
+              e.preventDefault()
+              step(-1)
+            }
+          }}
         >
-          {items.map((item, index) => (
-            <button
-              key={item.productId}
-              type="button"
-              onClick={onCardClick}
-              className={
-                'p-0 bg-transparent border-0 appearance-none snap-start shrink-0 text-left cursor-pointer ' +
-                CARD_WIDTH +
-                (index > 0 ? ` ${CARD_OVERLAP}` : '')
-              }
-              style={{ zIndex: items.length - index }}
-            >
-              <div className="relative aspect-4/5 bg-white rounded-xl overflow-hidden shadow-[4px_0_16px_rgba(0,0,0,0.35)]">
+          <div className={'relative ' + SHOP_HOME_FRONT_CARD}>
+          {items.map((item, i) => {
+            const offset = (i - safeFront + count) % count
+            if (offset >= MAX_PEEK) return null
+            return (
+              <div
+                key={item.productId}
+                className="absolute inset-0 overflow-hidden rounded-xl bg-white shadow-[6px_0_18px_rgba(0,0,0,0.4)] transition-transform duration-300 ease-out origin-left"
+                style={{
+                  transform: `translateX(${offset * PEEK_PCT}%) scale(${1 - offset * SCALE_STEP})`,
+                  zIndex: MAX_PEEK - offset,
+                  pointerEvents: 'none',
+                }}
+              >
                 <ImageOrFallback
                   src={item.imageUrl}
                   alt={item.title}
-                  loading={index < 2 ? 'eager' : 'lazy'}
-                  observeRoot={index < 2 ? undefined : trackRef}
+                  loading={offset < 3 ? 'eager' : 'lazy'}
                   imgClassName={SHOP_PRODUCT_IMG}
                   fallback={<NoImagePlaceholder />}
                 />
               </div>
-            </button>
-          ))}
+            )
+          })}
+          </div>
         </div>
       </div>
 
       {current && (
         <Link
           to={viewAllTo}
-          className="block px-4 sm:px-6 mt-3 min-h-11 max-w-[min(58vw,220px)] sm:max-w-56"
+          className={'block px-4 sm:px-6 mt-3 min-h-11 ' + SHOP_HOME_FRONT_W}
         >
           <div className="text-[11px] text-white/50 uppercase tracking-wide truncate">
             {current.brand || '\u00A0'}
@@ -315,21 +294,22 @@ function HomeGalleryRow({
 
 function GalleryArrow({
   side,
-  disabled,
   onClick,
 }: {
   side: 'left' | 'right'
-  disabled: boolean
   onClick: () => void
 }) {
   return (
     <button
       type="button"
       aria-label={side === 'left' ? 'Previous' : 'Next'}
-      disabled={disabled}
-      onClick={onClick}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
       className={
-        'hidden md:flex absolute z-10 top-[38%] -translate-y-1/2 h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white hover:bg-black/75 disabled:opacity-25 disabled:pointer-events-none ' +
+        'hidden md:flex absolute z-20 top-[42%] -translate-y-1/2 h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white hover:bg-black/75 ' +
         (side === 'left' ? 'left-2' : 'right-2')
       }
     >

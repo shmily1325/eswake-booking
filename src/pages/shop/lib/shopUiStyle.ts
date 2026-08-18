@@ -61,3 +61,20 @@ export const SHOP_HERO_KICKER =
 
 /** 商品照（卡／gallery／購物車縮圖）：白底完整放入，不裁切 */
 export const SHOP_PRODUCT_IMG = 'w-full h-full object-contain'
+
+/** 首頁疊卡主圖寬：手機約半屏、桌機中等，右邊留給露出的卡片 */
+export const SHOP_HOME_FRONT_W =
+  'w-[min(52vw,200px)] md:w-60 lg:w-[min(32vw,380px)]'
+
+export const SHOP_HOME_FRONT_CARD = SHOP_HOME_FRONT_W + ' aspect-4/5'
+
+/** 單品主圖：手機不要吃半屏，桌機不要撐到 500px */
+export const SHOP_DETAIL_FRAME =
+  'aspect-4/5 max-h-[min(42vh,340px)] md:max-h-[420px] w-full'
+
+export const SHOP_DETAIL_WRAP =
+  'relative group w-full max-w-[280px] sm:max-w-[320px] md:max-w-[400px] mx-auto md:mx-0'
+
+/** 分類入口磚：桌機固定高度，避免 3/4 在寬螢幕變很高 */
+export const SHOP_GROUP_TILE =
+  'group relative aspect-3/4 lg:aspect-auto lg:h-56 overflow-hidden rounded-xl bg-zinc-800'
