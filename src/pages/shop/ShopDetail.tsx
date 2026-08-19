@@ -372,12 +372,6 @@ function ProductDetailBody({
           />
         </div>
 
-        {product.description && (
-          <p className="mt-4 text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
-            {product.description}
-          </p>
-        )}
-
         <p className="mt-4 text-xs text-gray-500 leading-relaxed hidden lg:block">
           * {SHOP_DETAIL.lineNote}
         </p>

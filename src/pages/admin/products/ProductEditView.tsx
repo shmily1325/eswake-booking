@@ -1391,7 +1391,7 @@ export function ProductEditView({
             />
           </div>
           {!mobileCreateWizard && <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
-            <label style={labelStyle}>備註</label>
+            <label style={labelStyle}>內部備註</label>
             <input
               style={inputStyle}
               value={description}
@@ -1425,7 +1425,7 @@ export function ProductEditView({
 
         {mobileCreateWizard && createStep === 3 && (
           <div style={{ marginBottom: designSystem.spacing.lg }}>
-            <label style={labelStyle}>商品備註</label>
+            <label style={labelStyle}>內部備註</label>
             <input
               style={inputStyle}
               value={description}
