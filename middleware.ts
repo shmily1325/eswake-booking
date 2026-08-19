@@ -11,6 +11,7 @@ import {
   isAllowedShopHostPath,
   resolveShopHost,
   shopLegacyRedirectResponse,
+  shopToBookRedirectResponse,
 } from './src/lib/shopHost.js'
 import { getRouteOgMeta, injectRouteOgTags, normalizeOgPath } from './src/lib/routeOgMeta.js'
 
@@ -27,6 +28,9 @@ export default async function middleware(request: Request) {
   const hostname = url.hostname.toLowerCase()
 
   if (hostname === shopHost) {
+    const toBook = shopToBookRedirectResponse(url, bookHost)
+    if (toBook) return toBook
+
     const legacy = shopLegacyRedirectResponse(url)
     if (legacy) return legacy
 

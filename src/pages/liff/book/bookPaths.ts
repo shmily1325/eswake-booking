@@ -4,6 +4,7 @@ import {
   resolveBookHost,
   resolveGuideHost,
 } from '../../../lib/bookHost'
+import { isShopHostname } from '../../../lib/shopHost'
 
 const LEGACY_BOOK_PATH = '/book'
 const LEGACY_GUIDE_PATH = '/book/guide'
@@ -51,14 +52,22 @@ export function resolveGuidePublicUrl(): string {
   return `https://${resolveGuideHost()}`
 }
 
+function isOnShopHost(): boolean {
+  if (typeof window === 'undefined') return false
+  return isShopHostname(
+    window.location.hostname,
+    import.meta.env.VITE_SHOP_BASE_URL as string | undefined,
+  )
+}
+
 /** 對外預約表完整 URL */
 export function resolveBookPublicUrl(): string {
   const fromEnv = bookBaseUrlFromEnv()
   if (fromEnv) return fromEnv.replace(/\/$/, '')
   if (typeof window !== 'undefined') {
     if (isBookSubdomain()) return window.location.origin
-    // guide 子網域不支援 /book，改走 book 子網域
-    if (isGuideSubdomain()) return `https://${resolveBookHost()}`
+    // shop / guide 子網域沒有 /book，改走 book 子網域
+    if (isGuideSubdomain() || isOnShopHost()) return `https://${resolveBookHost()}`
     return `${window.location.origin}${LEGACY_BOOK_PATH}`
   }
   return `https://${resolveBookHost()}`

@@ -4,6 +4,7 @@ import {
   isShopPublicStaticPath,
   resolveShopHost,
   shopLegacyRedirectResponse,
+  shopToBookRedirectResponse,
 } from '../shopHost'
 
 describe('shopHost', () => {
@@ -27,6 +28,25 @@ describe('shopHost', () => {
     expect(isAllowedShopHostPath('/shop/heroes/catalog.jpg')).toBe(true)
     expect(isAllowedShopHostPath('/assets/index.js')).toBe(true)
     expect(isAllowedShopHostPath('/123e4567-e89b-12d3-a456-426614174000')).toBe(true)
+  })
+
+  it('sends /book on shop host to the booking subdomain', () => {
+    const book = new URL('https://shop.eswakeschool.com/book')
+    expect(shopToBookRedirectResponse(book, 'book.eswakeschool.com')?.headers.get('location')).toBe(
+      'https://book.eswakeschool.com/',
+    )
+
+    const withQuery = new URL('https://shop.eswakeschool.com/book/?lang=en')
+    expect(
+      shopToBookRedirectResponse(withQuery, 'book.eswakeschool.com')?.headers.get('location'),
+    ).toBe('https://book.eswakeschool.com/?lang=en')
+
+    expect(
+      shopToBookRedirectResponse(
+        new URL('https://shop.eswakeschool.com/cart'),
+        'book.eswakeschool.com',
+      ),
+    ).toBeNull()
   })
 
   it('blocks admin paths on shop host', () => {
