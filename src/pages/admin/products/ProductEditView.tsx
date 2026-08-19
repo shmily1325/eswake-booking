@@ -898,7 +898,7 @@ export function ProductEditView({
   const goToCreateStep = (step: CreateStep) => {
     setCreateStep(step)
     window.requestAnimationFrame(() => {
-      mobileScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     })
   }
 
@@ -1008,18 +1008,22 @@ export function ProductEditView({
   const showSkuCoreSection = !mobileCreateWizard || createStep === 2
   const showAdvancedSection = !mobileCreateWizard || createStep === 3
 
-  /** 與 AddMemberDialog / NewBookingDialog 相同：手機版底部按鈕欄（flex 底欄，非 fixed） */
+  /** 手機：取消／儲存固定貼在螢幕底，避開 Home 條 */
   const mobileFooterBar =
     isMobile && !readOnly ? (
       <div
         style={{
-          padding: '12px 0 0',
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-          borderTop: `1px solid ${designSystem.colors.border.light}`,
-          background: designSystem.colors.background.main,
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 40,
           display: 'flex',
-          gap: 8,
-          flexShrink: 0,
+          gap: 10,
+          padding: '12px 16px max(12px, env(safe-area-inset-bottom))',
+          borderTop: `1px solid ${designSystem.colors.border.light}`,
+          background: designSystem.colors.background.card,
+          boxShadow: '0 -8px 24px rgba(15, 23, 42, 0.08)',
         }}
       >
         <button
@@ -1047,7 +1051,7 @@ export function ProductEditView({
           disabled={saving || (mobileCreateWizard && createStep === 1 && identityNeedsDecision)}
           style={{
             ...getButtonStyle('primary', 'large', isMobile),
-            flex: 2,
+            flex: 1,
             opacity: saving || (mobileCreateWizard && createStep === 1 && identityNeedsDecision) ? 0.55 : 1,
             cursor: saving || (mobileCreateWizard && createStep === 1 && identityNeedsDecision) ? 'not-allowed' : 'pointer',
             touchAction: 'manipulation',
@@ -1078,19 +1082,15 @@ export function ProductEditView({
           flexWrap: 'wrap',
         }}
       >
-        {!(isMobile && !readOnly) && (
-          <Button
-            variant="outline"
-            size="small"
-            data-track="product_edit_back"
-            onClick={mobileCreateWizard && createStep > 1
-              ? () => goToCreateStep((createStep - 1) as CreateStep)
-              : handleCancel}
-            disabled={saving}
-          >
-            {mobileCreateWizard && createStep > 1 ? '← 上一步' : '← 返回'}
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size={isMobile ? 'large' : 'small'}
+          data-track="product_edit_back"
+          onClick={handleCancel}
+          disabled={saving}
+        >
+          ← 返回
+        </Button>
         <h2
           style={{
             margin: 0,
@@ -1480,6 +1480,44 @@ export function ProductEditView({
           </p>
         )}
 
+        {(!mobileCreateWizard || createStep === 3) && (
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              marginBottom: designSystem.spacing.lg,
+              padding: isMobile ? '12px 0' : '4px 0',
+              cursor: readOnly || saving ? 'not-allowed' : 'pointer',
+              userSelect: 'none',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              disabled={saving || readOnly}
+              style={{
+                width: 18,
+                height: 18,
+                cursor: 'inherit',
+                accentColor: designSystem.colors.primary[500],
+              }}
+            />
+            <span
+              style={{
+                fontSize: getFontSize('body', isMobile),
+                fontWeight: 600,
+                color: isPublic
+                  ? designSystem.colors.text.primary
+                  : designSystem.colors.text.disabled,
+              }}
+            >
+              {isPublic ? '上架' : '未上架'}
+            </span>
+          </label>
+        )}
+
         {visibleDrafts.map((d, idx) => (
           <VariantBlock
             key={d.clientKey}
@@ -1539,50 +1577,6 @@ export function ProductEditView({
             )}
           </div>
         )}
-
-        {/* 商城顯示：保留在同一個建檔群組中，作為完成規格後的次要設定 */}
-        {(!mobileCreateWizard || createStep === 3) && <div
-          style={{
-            marginTop: designSystem.spacing.lg,
-            paddingTop: designSystem.spacing.lg,
-            borderTop: `1px solid ${designSystem.colors.border.light}`,
-          }}
-        >
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '4px 0',
-            cursor: readOnly || saving ? 'not-allowed' : 'pointer',
-            userSelect: 'none',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={isPublic}
-            onChange={(e) => setIsPublic(e.target.checked)}
-            disabled={saving || readOnly}
-            style={{
-              width: 18,
-              height: 18,
-              cursor: 'inherit',
-              accentColor: designSystem.colors.primary[500],
-            }}
-          />
-          <span
-            style={{
-              fontSize: getFontSize('body', isMobile),
-              fontWeight: 600,
-              color: isPublic
-                ? designSystem.colors.text.primary
-                : designSystem.colors.text.disabled,
-            }}
-          >
-            {isPublic ? '上架' : '未上架'}
-          </span>
-        </label>
-        </div>}
       </section>}
 
       {/* 危險區（編輯模式才有；唯讀模式隱藏） */}
@@ -1643,26 +1637,14 @@ export function ProductEditView({
   if (isMobile) {
     return (
       <div
+        ref={mobileScrollRef}
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          minHeight: 0,
-          maxHeight: '100dvh',
+          paddingBottom: readOnly
+            ? 24
+            : 'calc(88px + env(safe-area-inset-bottom))',
         }}
       >
-        <div
-          ref={mobileScrollRef}
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflow: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            paddingBottom: 8,
-          }}
-        >
-          {mainContent}
-        </div>
+        {mainContent}
         {mobileFooterBar}
       </div>
     )
@@ -1757,13 +1739,17 @@ function VariantBlock({
   onToggleExpanded,
 }: VariantBlockProps) {
   const blockRef = useRef<HTMLDivElement>(null)
+  /** 手機編輯：常改欄位直接露出，不整塊收合 SKU */
+  const dailyFirst = isMobile && sectionMode === 'all'
   // 折疊：手機上已有 SKU 預設收合；從列表點進來的目標 SKU 強制展開
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (focused) return false
+    if (isMobile && sectionMode === 'all') return false
     return isMobile && draft.id != null && !draft.pendingDelete
   })
+  const [specsOpen, setSpecsOpen] = useState(false)
   // 桌機強制展開（避免從手機切到桌機時內容被卡住看不到；桌機本來也沒折疊互動）
-  const effectiveCollapsed = isMobile && (expanded !== undefined ? !expanded : collapsed)
+  const effectiveCollapsed = !dailyFirst && isMobile && (expanded !== undefined ? !expanded : collapsed)
 
   /** 規格摘要（給折疊狀態下的 header 顯示） */
   const summary = schemaFields
@@ -1798,16 +1784,16 @@ function VariantBlock({
     display: 'block',
   }
 
-  /** 手機才允許 collapse；點 header 切換 */
-  const headerClickable = isMobile && !draft.pendingDelete
+  /** 手機才允許 collapse；點 header 切換（編輯頁常改欄位已露出，不整塊收合） */
+  const headerClickable = isMobile && !draft.pendingDelete && !dailyFirst
   const onHeaderClick = () => {
     if (!headerClickable) return
     if (onToggleExpanded) onToggleExpanded()
     else setCollapsed((c) => !c)
   }
   const stop = (e: React.MouseEvent) => e.stopPropagation()
-  /** 封面：列表點進來的 SKU 直接展開，省一次點擊 */
-  const [coverExpanded, setCoverExpanded] = useState(focused)
+  /** 封面：列表點進來或手機編輯（多色）直接展開 */
+  const [coverExpanded, setCoverExpanded] = useState(focused || dailyFirst)
 
   useEffect(() => {
     if (!focused) return
@@ -2003,20 +1989,37 @@ function VariantBlock({
           : 'repeat(3, 1fr)',
       }}
     >
-      {stockField}
-      {preOrderField}
-      <div>
-        <label style={labelStyle}>
-          售價
-        </label>
-        <NumericTextInput
-          variant="course"
-          value={draft.price}
-          onChange={(price) => onChange({ price })}
-          placeholder="待補"
-          disabled={disabled || draft.pendingDelete}
-        />
-      </div>
+      {isMobile ? (
+        <>
+          {preOrderField}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={labelStyle}>售價</label>
+            <NumericTextInput
+              variant="course"
+              value={draft.price}
+              onChange={(price) => onChange({ price })}
+              placeholder="待補"
+              disabled={disabled || draft.pendingDelete}
+            />
+          </div>
+          {stockField}
+        </>
+      ) : (
+        <>
+          {stockField}
+          {preOrderField}
+          <div>
+            <label style={labelStyle}>售價</label>
+            <NumericTextInput
+              variant="course"
+              value={draft.price}
+              onChange={(price) => onChange({ price })}
+              placeholder="待補"
+              disabled={disabled || draft.pendingDelete}
+            />
+          </div>
+        </>
+      )}
     </div>
   )
 
@@ -2312,8 +2315,8 @@ function VariantBlock({
         >
           SKU #{index + 1}
         </span>
-        {/* 折疊狀態下顯示摘要：規格 + 庫存 / 貨號 */}
-        {effectiveCollapsed && (
+        {/* 折疊／手機編輯：header 顯示規格摘要 */}
+        {(effectiveCollapsed || dailyFirst) && (
           <span
             style={{
               flex: 1,
@@ -2326,12 +2329,14 @@ function VariantBlock({
             }}
           >
             {summary || draft.vendor_code || '（空白）'}
-            <span style={{ marginLeft: 8, color: designSystem.colors.text.disabled }}>
-              ·庫存 {draft.stock.trim() !== '' ? draft.stock : '未填'}
-            </span>
+            {effectiveCollapsed && (
+              <span style={{ marginLeft: 8, color: designSystem.colors.text.disabled }}>
+                ·庫存 {draft.stock.trim() !== '' ? draft.stock : '未填'}
+              </span>
+            )}
           </span>
         )}
-        {!effectiveCollapsed && <span style={{ flex: 1 }} />}
+        {!effectiveCollapsed && !dailyFirst && <span style={{ flex: 1 }} />}
         {draft.pendingDelete ? (
           <span style={{ color: designSystem.colors.danger[700], fontSize: getFontSize('bodySmall', isMobile) }}>
             （將刪除）
@@ -2382,7 +2387,67 @@ function VariantBlock({
         )}
       </div>
 
-      {effectiveCollapsed ? null : (
+      {effectiveCollapsed ? null : dailyFirst ? (
+        <>
+          {showSkuCovers && (
+            <>
+              <SectionLabel isMobile={isMobile} flush>
+                封面
+              </SectionLabel>
+              {coverEditor}
+              {applyImagesSection}
+            </>
+          )}
+          <SectionLabel isMobile={isMobile} flush={!showSkuCovers}>
+            庫存與售價
+          </SectionLabel>
+          {inventoryFieldsGrid}
+          <button
+            type="button"
+            onClick={() => setSpecsOpen((open) => !open)}
+            style={{
+              marginTop: 14,
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              padding: '12px 0 0',
+              border: 'none',
+              borderTop: `1px solid ${designSystem.colors.border.light}`,
+              background: 'transparent',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            <span
+              style={{
+                fontSize: getFontSize('bodySmall', isMobile),
+                fontWeight: 700,
+                color: designSystem.colors.text.secondary,
+              }}
+            >
+              規格資料
+            </span>
+            <span
+              style={{
+                fontSize: getFontSize('caption', isMobile),
+                color: designSystem.colors.info[700],
+                flexShrink: 0,
+              }}
+            >
+              {specsOpen ? '收合 ▴' : '展開 ▾'}
+            </span>
+          </button>
+          {specsOpen && (
+            <>
+              <div style={{ marginTop: 8 }}>{specFieldsGrid}</div>
+              {productPhotoSection}
+              {labelCodeSection}
+            </>
+          )}
+        </>
+      ) : (
         <>
           {(sectionMode === 'all' || sectionMode === 'core') && (
             <>

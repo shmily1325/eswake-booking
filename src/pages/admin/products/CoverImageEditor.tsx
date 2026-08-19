@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ImageUploader, type ImageUploaderHandle } from './ImageUploader'
-import { getProductImageSearchLinks } from './brandSearch'
 import {
   importProductImageFromUrl,
   resolveProductImageCandidates,
-  type ImageCandidate,
 } from '../../../utils/fetchProductCoverImage'
 import { uploadProductImage } from '../../../utils/imageUpload'
 import { useToast } from '../../../components/ui'
+import { useResponsive } from '../../../hooks/useResponsive'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
 import {
   createCoverImageClientKey,
@@ -33,39 +32,25 @@ export function CoverImageEditor({
   images,
   entityId,
   storageFolder = 'covers',
-  brand,
-  model,
-  vendorCode,
   compact,
   disabled,
   onChange,
   onUpload,
 }: CoverImageEditorProps) {
   const toast = useToast()
+  const { isMobile } = useResponsive()
   const uploaderRef = useRef<ImageUploaderHandle>(null)
   /** 避免連續上傳時閉包讀到舊的 images，後寫蓋掉先寫 */
   const imagesRef = useRef(images)
-  const [urlInput, setUrlInput] = useState('')
   const [resolving, setResolving] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [candidates, setCandidates] = useState<ImageCandidate[]>([])
   /** 被點選的封面（顯示單一操作列，避免每張圖都塞按鈕） */
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [dragFromKey, setDragFromKey] = useState<string | null>(null)
-  const [moreOpen, setMoreOpen] = useState(false)
 
   useEffect(() => {
     imagesRef.current = images
   }, [images])
-
-  useEffect(() => {
-    if (candidates.length > 1) setMoreOpen(true)
-  }, [candidates.length])
-
-  const searchLinks = useMemo(
-    () => getProductImageSearchLinks(brand, model, vendorCode),
-    [brand, model, vendorCode],
-  )
 
   const busy = resolving || importing
   const atLimit = images.length >= MAX_VARIANT_COVER_IMAGES
@@ -97,8 +82,6 @@ export function CoverImageEditor({
       onUpload?.(result.path)
       const wasEmpty = imagesRef.current.length === 0
       if (appendImage(result.publicUrl, result.path)) {
-        setUrlInput('')
-        setCandidates([])
         toast.success(wasEmpty ? '封面已上傳' : '已加入封面圖')
       }
     } catch (e) {
@@ -125,7 +108,6 @@ export function CoverImageEditor({
       })
       onUpload?.(result.path)
       if (appendImage(result.publicUrl, result.path)) {
-        setUrlInput('')
         if (!opts?.quiet) toast.success('封面已匯入')
         return true
       }
@@ -139,29 +121,21 @@ export function CoverImageEditor({
     }
   }
 
-  const handleResolve = async (urlOverride?: string) => {
-    const url = (urlOverride ?? urlInput).trim()
-    if (!url) {
-      toast.error('請貼上官網商品頁或圖片網址')
+  const handleResolve = async (url: string) => {
+    const trimmed = url.trim()
+    if (!trimmed) {
+      toast.error('剪貼簿沒有圖片或網址')
       return
     }
-    if (urlOverride) setUrlInput(url)
     setResolving(true)
-    setCandidates([])
     try {
-      const list = await resolveProductImageCandidates(url)
+      const list = await resolveProductImageCandidates(trimmed)
       if (list.length === 0) {
         toast.error('找不到商品圖')
         return
       }
-      setCandidates(list)
       const ok = await handleImport(list[0].url, { quiet: true })
-      if (!ok) return
-      if (list.length > 1) {
-        toast.success(`已匯入第 1 張，下方還有 ${list.length - 1} 張可加`)
-      } else {
-        toast.success('封面已匯入')
-      }
+      if (ok) toast.success('封面已匯入')
     } catch (e) {
       console.error('[CoverImageEditor] resolve failed', e)
       toast.error(e instanceof Error ? e.message : '解析網址失敗')
@@ -207,16 +181,11 @@ export function CoverImageEditor({
         return
       }
       const text = (await navigator.clipboard.readText()).trim()
-      if (!text) {
-        toast.error('剪貼簿是空的')
-        return
-      }
-      setUrlInput(text)
       if (/^https?:\/\//i.test(text) || text.startsWith('//')) {
         await handleResolve(text)
-      } else {
-        toast.success('已貼上文字，確認後按「從 URL 抓圖」')
+        return
       }
+      toast.error(text ? '剪貼簿沒有圖片或網址' : '剪貼簿是空的')
     } catch (e) {
       console.error('[CoverImageEditor] clipboard read failed', e)
       if (e instanceof DOMException && e.name === 'NotAllowedError') {
@@ -279,16 +248,7 @@ export function CoverImageEditor({
     marginBottom: 6,
     display: 'block',
   }
-  const inputStyle: React.CSSProperties = {
-    flex: 1,
-    minWidth: 140,
-    padding: '8px 10px',
-    borderRadius: borderRadius.sm,
-    border: `1px solid ${colors.border.main}`,
-    fontSize: getFontSize('bodySmall', false),
-    background: colors.background.card,
-    color: colors.text.primary,
-  }
+  const stack = compact || isMobile
   const buttonStyle: React.CSSProperties = {
     padding: '8px 12px',
     borderRadius: borderRadius.sm,
@@ -434,164 +394,76 @@ export function CoverImageEditor({
         </div>
       )}
 
-      <div
-        onPaste={handlePaste}
-        style={{
-          display: 'flex',
-          gap: 12,
-          alignItems: 'flex-start',
-          flexWrap: 'wrap',
-          flexDirection: compact ? 'column' : 'row',
-        }}
-      >
-        {!atLimit && (
-          <ImageUploader
-            ref={uploaderRef}
-            value={null}
-            entityId={entityId}
-            storageFolder={storageFolder}
-            disabled={disabled || busy || atLimit}
-            onChange={(next) => {
-              if (next.url && next.path) {
-                onUpload?.(next.path)
-                const wasEmpty = imagesRef.current.length === 0
-                if (appendImage(next.url, next.path)) {
-                  toast.success(wasEmpty ? '封面已上傳' : '已加入封面圖')
-                }
-              }
-            }}
-            onUpload={onUpload}
-            size={thumbSize}
-            emptyLabel="新增封面"
-          />
-        )}
-
+      {!atLimit && (
         <div
+          onPaste={handlePaste}
           style={{
-            flex: 1,
-            minWidth: compact ? undefined : 200,
-            width: compact ? '100%' : undefined,
-            display: 'grid',
-            gap: 8,
+            display: 'flex',
+            gap: 10,
+            alignItems: stack ? 'stretch' : 'flex-start',
+            flexWrap: 'wrap',
+            flexDirection: stack ? 'column' : 'row',
           }}
         >
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            {!atLimit && (
+          <div style={{ display: stack ? 'none' : undefined }}>
+            <ImageUploader
+              ref={uploaderRef}
+              value={null}
+              entityId={entityId}
+              storageFolder={storageFolder}
+              disabled={disabled || busy || atLimit}
+              onChange={(next) => {
+                if (next.url && next.path) {
+                  onUpload?.(next.path)
+                  const wasEmpty = imagesRef.current.length === 0
+                  if (appendImage(next.url, next.path)) {
+                    toast.success(wasEmpty ? '封面已上傳' : '已加入封面圖')
+                  }
+                }
+              }}
+              onUpload={onUpload}
+              size={thumbSize}
+              emptyLabel="從相簿選圖"
+            />
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: stack ? 'column' : 'row',
+              gap: 8,
+              flex: stack ? undefined : 1,
+              width: stack ? '100%' : undefined,
+            }}
+          >
+            {stack && (
               <button
                 type="button"
                 onClick={() => uploaderRef.current?.openPicker()}
                 disabled={disabled || busy}
-                style={buttonStyle}
+                style={{
+                  ...buttonStyle,
+                  minHeight: 48,
+                  width: '100%',
+                }}
               >
-                從相簿上傳
+                從相簿選圖
               </button>
             )}
             <button
               type="button"
-              onClick={() => setMoreOpen((open) => !open)}
-              disabled={disabled}
+              onClick={() => void handlePasteFromClipboard()}
+              disabled={disabled || busy}
               style={{
                 ...buttonStyle,
-                border: 'none',
-                background: 'transparent',
-                color: colors.text.secondary,
-                padding: '8px 4px',
+                minHeight: stack ? 48 : undefined,
+                width: stack ? '100%' : undefined,
               }}
             >
-              {moreOpen ? '收合其他' : '其他'}
+              {importing || resolving ? '貼上中…' : '從剪貼簿貼上'}
             </button>
           </div>
-
-          {moreOpen && (
-            <>
-          {searchLinks.map((link) => (
-            <a
-              key={link.url}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: getFontSize('bodySmall', Boolean(compact)),
-                color: colors.text.secondary,
-                textDecoration: 'underline',
-                textUnderlineOffset: 2,
-                display: 'block',
-              }}
-            >
-              {link.label}
-            </a>
-          ))}
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} onPaste={handlePaste}>
-            <input
-              style={inputStyle}
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="貼官網商品頁或圖片網址"
-              disabled={disabled || busy || atLimit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  void handleResolve()
-                }
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => void handlePasteFromClipboard()}
-              disabled={disabled || busy || atLimit}
-              style={buttonStyle}
-            >
-              從剪貼簿貼上
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleResolve()}
-              disabled={disabled || busy || atLimit || !urlInput.trim()}
-              style={buttonStyle}
-            >
-              {resolving ? '解析中…' : importing ? '匯入中…' : '從 URL 抓圖'}
-            </button>
-          </div>
-
-          {candidates.length > 1 && !atLimit && (
-            <div>
-              <div style={{ fontSize: getFontSize('caption', true), color: colors.text.secondary, marginBottom: 6 }}>
-                其他候選（點縮圖可再加入）：
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {candidates.slice(1).map((c) => (
-                  <button
-                    key={c.url}
-                    type="button"
-                    onClick={() => void handleImport(c.url)}
-                    disabled={disabled || busy || atLimit}
-                    title={c.source}
-                    style={{
-                      width: 56,
-                      height: 70,
-                      padding: 0,
-                      border: `1px solid ${colors.border.light}`,
-                      borderRadius: borderRadius.sm,
-                      overflow: 'hidden',
-                      cursor: disabled || busy ? 'not-allowed' : 'pointer',
-                      background: colors.background.card,
-                    }}
-                  >
-                    <img
-                      src={c.url}
-                      alt=""
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-            </>
-          )}
         </div>
-      </div>
+      )}
     </div>
   )
 }

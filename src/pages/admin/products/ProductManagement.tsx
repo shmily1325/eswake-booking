@@ -364,7 +364,7 @@ export function ProductManagement({
       items = items.filter((it) => !it.variant.image_url)
     }
     if (onlyMissingCover) {
-      items = items.filter((it) => !getVariantListImageUrl(it.variant, 'cover', it.product))
+      items = items.filter((it) => !hasCoverImage(it.variant, it.product))
     }
     if (onlyMissingLabel) {
       items = items.filter(isVariantMissingLabel)
@@ -1184,7 +1184,7 @@ function InventoryDashboard({
   const missingPriceCount = qualityBase.filter((it) => it.variant.price == null).length
   const missingImageCount = qualityBase.filter((it) => !it.variant.image_url).length
   const missingCoverCount = qualityBase.filter(
-    (it) => !getVariantListImageUrl(it.variant, 'cover', it.product),
+    (it) => !hasCoverImage(it.variant, it.product),
   ).length
   const missingLabelCount = qualityBase.filter(isVariantMissingLabel).length
   const unlistedCount = qualityBase.filter(isVariantUnlisted).length
@@ -1428,6 +1428,22 @@ function getVariantListImageUrl(
   product?: Pick<ProductRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'> | null,
 ): string | null {
   if (mode === 'photo') return variant.image_url ?? variant.cover_image_url ?? null
+  const coverUrl = primaryCoverUrl(variant, product)
+  return coverUrl ?? variant.image_url ?? null
+}
+
+/** 商品卡或 SKU 是否真的有封面（實拍不算） */
+function hasCoverImage(
+  variant: Pick<ProductVariantRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'>,
+  product?: Pick<ProductRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'> | null,
+): boolean {
+  return primaryCoverUrl(variant, product) != null
+}
+
+function primaryCoverUrl(
+  variant: Pick<ProductVariantRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'>,
+  product?: Pick<ProductRow, 'cover_image_url' | 'cover_image_path' | 'cover_images'> | null,
+): string | null {
   if (product) {
     const productCovers = normalizeVariantCoverImages(
       product.cover_images,
@@ -1441,7 +1457,7 @@ function getVariantListImageUrl(
     variant.cover_image_url,
     variant.cover_image_path,
   )
-  return covers[0]?.url ?? variant.cover_image_url ?? variant.image_url ?? null
+  return covers[0]?.url ?? variant.cover_image_url ?? null
 }
 
 function segmentedShell(isMobile: boolean): CSSProperties {
