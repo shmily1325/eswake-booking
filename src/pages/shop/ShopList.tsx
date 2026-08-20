@@ -13,7 +13,7 @@ import { ShopListHero } from './components/ShopListHero'
 import { ShopHomeGalleries } from './components/ShopHomeGalleries'
 import { useShopFilters } from './hooks/useShopFilters'
 import { useShopPromo } from './hooks/useShopPromo'
-import { foldLabel } from './lib/shopPricing'
+import { percentLabel } from './lib/shopPricing'
 import {
   getCollectionParentGroup,
   getHeroTitle,
@@ -31,7 +31,7 @@ import { ShopFooter } from './components/ShopFooter'
 /**
  * 商城列表。
  * - `/shop` 無 query：首頁 gallery（Pre-Order / In-Stock）
- * - `?preorder=1`：預購列表；`?stock=1`：現貨列表
+ * - `?preorder=1`：預購列表；`?stock=1`：現貨列表；`?sale=1`：紅標特價
  */
 export function ShopList() {
   const [products, setProducts] = useState<ProductWithVariants[]>([])
@@ -99,12 +99,12 @@ export function ShopList() {
           title={heroTitle}
           heroConfig={heroConfig}
           parentGroup={collectionParent}
-          notice={
-            filters.preOrderOnly
-              ? promo.preorder
-                ? `全館預購 ${foldLabel(promo.preorder.percent)}`
-                : SHOP_COPY.preOrderNotice
-              : null
+          offer={
+            filters.preOrderOnly && promo.preorder
+              ? percentLabel(promo.preorder.percent)
+              : filters.saleOnly && promo.tags.length === 1
+                ? percentLabel(promo.tags[0].percent)
+                : null
           }
         />
         {!isHome && (
@@ -190,13 +190,16 @@ export function ShopList() {
                         ? SHOP_COPY.emptyPreOrder
                         : filters.inStockOnly
                           ? SHOP_COPY.emptyInStock
-                          : SHOP_COPY.emptyCatalog
+                          : filters.saleOnly
+                            ? SHOP_COPY.emptySale
+                            : SHOP_COPY.emptyCatalog
                 }
                 showClear={
                   hasFilter ||
                   filters.search.trim().length > 0 ||
                   filters.preOrderOnly ||
-                  filters.inStockOnly
+                  filters.inStockOnly ||
+                  filters.saleOnly
                 }
                 onClear={clearListFilters}
               />

@@ -307,16 +307,13 @@ function ProductDetailBody({
         <div className="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums">
           {priceText}
         </div>
-        {shopPrice?.hasDiscount && shopPrice.caption && (
-          <span
-            className={
-              shopPrice.source === 'tag'
-                ? 'text-sm font-medium text-red-600'
-                : 'text-sm font-medium text-amber-700'
-            }
-          >
-            {shopPrice.caption}
+        {shopPrice?.hasDiscount && shopPrice.percent != null && (
+          <span className="text-xl sm:text-2xl font-black text-red-600 tabular-nums leading-none">
+            {shopPrice.percent}%
           </span>
+        )}
+        {shopPrice?.source === 'tag' && shopPrice.caption && (
+          <span className="text-sm font-medium text-red-600">{shopPrice.caption}</span>
         )}
       </div>
     </div>

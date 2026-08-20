@@ -56,6 +56,7 @@ export function useShopFilters(
       brands: [],
       preOrderOnly: true,
       inStockOnly: false,
+      saleOnly: false,
     })
     const preOrderBrandCounts = computeBrandCounts(preOrderNavProducts)
     const preOrderCategoryPool =
@@ -119,6 +120,7 @@ export function useShopFilters(
       brands: [],
       preOrderOnly: false,
       inStockOnly: prev.inStockOnly,
+      saleOnly: false,
     }))
   }, [writeFilters])
 
@@ -127,6 +129,7 @@ export function useShopFilters(
       writeFilters({
         preOrderOnly,
         inStockOnly: false,
+        saleOnly: false,
         topLevel: ALL_GROUPS,
         subCat: ALL_SUBCATS,
         brands: [],
@@ -140,6 +143,7 @@ export function useShopFilters(
       writeFilters({
         inStockOnly,
         preOrderOnly: false,
+        saleOnly: false,
         topLevel: ALL_GROUPS,
         subCat: ALL_SUBCATS,
         brands: [],
@@ -156,6 +160,7 @@ export function useShopFilters(
         subCat,
         preOrderOnly: false,
         inStockOnly: prev.inStockOnly,
+        saleOnly: prev.saleOnly,
         brands: [],
       }))
     },
@@ -168,6 +173,7 @@ export function useShopFilters(
         ...prev,
         preOrderOnly: true,
         inStockOnly: false,
+        saleOnly: false,
         topLevel: ALL_GROUPS,
         subCat: ALL_SUBCATS,
         brands: brand == null || prev.brands[0] === brand ? [] : [brand],
@@ -181,6 +187,7 @@ export function useShopFilters(
       writeFilters({
         preOrderOnly: true,
         inStockOnly: false,
+        saleOnly: false,
         topLevel: ALL_GROUPS,
         subCat,
       })
@@ -259,7 +266,7 @@ export function useShopFilters(
       brand?: string,
     ) => {
       if (key === 'preorder') {
-        writeFilters({ preOrderOnly: false, inStockOnly: false })
+        writeFilters({ preOrderOnly: false, inStockOnly: false, saleOnly: false })
       } else if (key === 'group') {
         writeFilters({ topLevel: ALL_GROUPS, subCat: ALL_SUBCATS })
       } else if (key === 'cat') {

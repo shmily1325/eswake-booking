@@ -13,8 +13,8 @@ interface ShopListHeroProps {
   title: string
   heroConfig: ShopHeroImageConfig | null
   parentGroup?: string | null
-  /** 預購專頁：標題下白字一句 */
-  notice?: string | null
+  /** 預購／特價專頁：與標題同行的小字，例如 80%。不要堆第二個大標。 */
+  offer?: string | null
 }
 
 function heroImgClass(heroConfig: ShopHeroImageConfig | null): string {
@@ -88,12 +88,37 @@ const HERO_TITLE =
   'font-black italic uppercase tracking-tight leading-none text-white ' +
   '[text-shadow:0_1px_0_rgba(0,0,0,0.9),0_4px_24px_rgba(0,0,0,0.75)]'
 
+const HERO_OFFER =
+  'font-black not-italic tracking-tight leading-none text-red-400 ' +
+  '[text-shadow:0_1px_0_rgba(0,0,0,0.85),0_4px_20px_rgba(0,0,0,0.7)]'
+
+function HeroTitleLockup({
+  title,
+  offer,
+  titleSize,
+  offerSize,
+}: {
+  title: string
+  offer?: string | null
+  titleSize: string
+  offerSize: string
+}) {
+  return (
+    <div className="flex items-baseline gap-2 sm:gap-3 min-w-0">
+      <h1 className={HERO_TITLE + ' min-w-0 ' + titleSize}>{title}</h1>
+      {offer ? (
+        <span className={HERO_OFFER + ' shrink-0 ' + offerSize}>{offer}</span>
+      ) : null}
+    </div>
+  )
+}
+
 export function ShopListHero({
   mode,
   title,
   heroConfig,
   parentGroup,
-  notice,
+  offer,
 }: ShopListHeroProps) {
   const isCatalog = mode === 'catalog'
   const hero = heroConfig
@@ -113,18 +138,12 @@ export function ShopListHero({
             {parentGroup}
           </p>
         )}
-        <h1
-          className={
-            HERO_TITLE + ' min-w-0 text-2xl sm:text-3xl md:text-4xl lg:text-5xl'
-          }
-        >
-          {title}
-        </h1>
-        {notice ? (
-          <p className="mt-1.5 max-w-md text-[11px] sm:text-xs font-medium leading-snug text-white/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.75)]">
-            {notice}
-          </p>
-        ) : null}
+        <HeroTitleLockup
+          title={title}
+          offer={offer}
+          titleSize="text-2xl sm:text-3xl md:text-4xl lg:text-5xl"
+          offerSize="text-lg sm:text-xl md:text-2xl lg:text-3xl"
+        />
       </div>
     )
 
@@ -156,10 +175,12 @@ export function ShopListHero({
           </>
         ) : (
           <div className="px-4 py-3 max-w-7xl mx-auto">
-            <h1 className={HERO_TITLE + ' text-2xl'}>{title}</h1>
-            {notice ? (
-              <p className="mt-1.5 text-[11px] font-medium text-white/85">{notice}</p>
-            ) : null}
+            <HeroTitleLockup
+              title={title}
+              offer={offer}
+              titleSize="text-2xl"
+              offerSize="text-lg"
+            />
           </div>
         )}
       </div>

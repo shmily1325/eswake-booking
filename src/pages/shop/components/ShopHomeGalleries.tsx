@@ -6,7 +6,7 @@ import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_COPY, SHOP_LABEL } from '../lib/shopCopy'
 import { useShopPromo } from '../hooks/useShopPromo'
-import { foldLabel } from '../lib/shopPricing'
+import { percentLabel } from '../lib/shopPricing'
 import {
   collectHomeGalleryPool,
   pickHomeGalleryItems,
@@ -17,6 +17,7 @@ import {
   shopInStockListPath,
   shopListPath,
   shopPreOrderListPath,
+  shopSaleListPath,
   shopProductPath,
   shopTo,
 } from '../lib/shopPaths'
@@ -64,12 +65,13 @@ interface ShopHomeGalleriesProps {
 
 /**
  * 目錄首頁：Pre-Order / In-Stock 原生橫滑。
- * 手機一列吸附；桌機兩欄並排，把寬螢幕填滿。點卡片進商品，View all 進列表。
+ * 手機一列吸附；桌機兩欄並排。
+ * 有紅標商品才出現第三區 Sale：桌機改整排橫滑，不跟上面擠成三欄。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readVisitSeed)
   const promo = useShopPromo()
-  const preorderFold = promo.preorder ? foldLabel(promo.preorder.percent) : null
+  const preorderFold = promo.preorder ? percentLabel(promo.preorder.percent) : null
 
   const preOrderItems = useMemo(
     () =>
@@ -87,6 +89,16 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
       ),
     [products, seed],
   )
+  const saleItems = useMemo(
+    () =>
+      pickHomeGalleryItems(
+        collectHomeGalleryPool(products, 'sale', promo.presets),
+        seed ^ 0x85ebca6b,
+      ),
+    [products, seed, promo.presets],
+  )
+  const saleKicker =
+    promo.tags.length === 1 ? percentLabel(promo.tags[0].percent) : null
 
   const listed = useMemo(() => getShopBaseProducts(products), [products])
   const groups = useMemo(() => {
@@ -97,6 +109,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   if (
     preOrderItems.length === 0 &&
     inStockItems.length === 0 &&
+    saleItems.length === 0 &&
     groups.length === 0
   ) {
     return (
@@ -135,6 +148,18 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
           />
         )}
       </div>
+
+      {saleItems.length > 0 && (
+        <div className="mt-10">
+          <HomeGalleryRow
+            title={SHOP_LABEL.sale}
+            kicker={saleKicker}
+            items={saleItems}
+            viewAllTo={shopSaleListPath()}
+            wide
+          />
+        </div>
+      )}
 
       {groups.length > 0 && (
         <section aria-label={SHOP_LABEL.catalog} className="mt-10">
@@ -175,12 +200,14 @@ function HomeGalleryRow({
   items,
   viewAllTo,
   frameClass,
+  wide = false,
 }: {
   title: string
   kicker?: string | null
   items: HomeGalleryItem[]
   viewAllTo: string
   frameClass?: string
+  wide?: boolean
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const canSlide = items.length > 1
@@ -197,10 +224,10 @@ function HomeGalleryRow({
   return (
     <section aria-label={title} className={'min-w-0 ' + (frameClass ?? '')}>
       <div className="flex items-center justify-between gap-3 h-11 mb-3">
-        <h2 className="text-lg sm:text-xl font-black italic uppercase tracking-wider text-white leading-none">
-          {title}
+        <h2 className="flex items-baseline min-w-0 text-lg sm:text-xl font-black italic uppercase tracking-wider text-white leading-none">
+          <span className="truncate">{title}</span>
           {kicker ? (
-            <span className="ml-2 not-italic font-semibold tracking-normal text-sm text-white/80">
+            <span className="ml-2 shrink-0 not-italic font-black tracking-tight text-base sm:text-lg text-red-400">
               {kicker}
             </span>
           ) : null}
@@ -238,7 +265,9 @@ function HomeGalleryRow({
               draggable={false}
               className={
                 'snap-start shrink-0 ' +
-                SHOP_HOME_STRIP_CARD +
+                (wide
+                  ? 'w-[min(68vw,228px)] md:w-60 lg:w-[calc((100%-2.25rem)/4.2)]'
+                  : SHOP_HOME_STRIP_CARD) +
                 ' block rounded-xl bg-white overflow-hidden'
               }
             >

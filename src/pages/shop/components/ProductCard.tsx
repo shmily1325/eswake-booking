@@ -128,9 +128,16 @@ export function ProductCard({
                   {priceSummary.originalText}
                 </span>
               )}
-              <span className="text-base sm:text-lg font-bold text-zinc-900 leading-none tabular-nums">
-                {priceSummary.saleText}
-              </span>
+              <div className="flex items-baseline gap-1.5 min-w-0">
+                <span className="text-base sm:text-lg font-bold text-zinc-900 leading-none tabular-nums">
+                  {priceSummary.saleText}
+                </span>
+                {priceSummary.percentLabel ? (
+                  <span className="text-sm sm:text-base font-black text-red-600 leading-none tabular-nums">
+                    {priceSummary.percentLabel}
+                  </span>
+                ) : null}
+              </div>
             </div>
           )}
         </div>

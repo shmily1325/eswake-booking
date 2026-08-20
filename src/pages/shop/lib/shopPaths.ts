@@ -61,6 +61,11 @@ export function shopPreOrderListPath(): string {
   return shopListPath('preorder=1')
 }
 
+/** 特價列表（首頁 Sale View all；無紅標商品時首頁不出現此區） */
+export function shopSaleListPath(): string {
+  return shopListPath('sale=1')
+}
+
 /** 運動大類列表（首頁分類入口） */
 export function shopGroupListPath(group: string): string {
   return shopListPath(`group=${encodeURIComponent(group)}`)

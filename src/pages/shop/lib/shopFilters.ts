@@ -13,6 +13,7 @@ import type { ProductWithVariants } from '../../admin/products/types'
 import { getMinSalePrice } from './shopPricing'
 import type { DiscountPreset } from './shopPricing'
 import { isProductListedInShop } from './shopFormat'
+import { productHasTagSale } from './shopHomeGallery'
 import {
   getShopVisibleVariants,
   isProductInPreOrderSection,
@@ -37,6 +38,8 @@ export interface ShopFilterState {
   preOrderOnly: boolean
   /** 僅現貨；與 preOrderOnly 互斥 */
   inStockOnly: boolean
+  /** 僅掛商品檔次（紅標等）；與 preorder / stock 互斥 */
+  saleOnly: boolean
 }
 
 export interface ShopFacets {
@@ -56,6 +59,7 @@ export function defaultFilterState(): ShopFilterState {
     search: '',
     preOrderOnly: false,
     inStockOnly: false,
+    saleOnly: false,
   }
 }
 
@@ -87,6 +91,7 @@ export function normalizeFilterState(state: ShopFilterState): ShopFilterState {
       topLevel: ALL_GROUPS,
       subCat,
       inStockOnly: false,
+      saleOnly: false,
     }
   }
 
@@ -123,8 +128,12 @@ export function parseFiltersFromSearchParams(
     sortBy: parseSort(params.get('sort')),
     search: params.get('q')?.trim() ?? '',
     preOrderOnly: params.get('preorder') === '1',
+    saleOnly:
+      params.get('preorder') !== '1' && params.get('sale') === '1',
     inStockOnly:
-      params.get('preorder') !== '1' && params.get('stock') === '1',
+      params.get('preorder') !== '1' &&
+      params.get('sale') !== '1' &&
+      params.get('stock') === '1',
   })
 }
 
@@ -132,6 +141,7 @@ export function buildShopSearchParams(filters: ShopFilterState): URLSearchParams
   const p = new URLSearchParams()
   if (filters.search) p.set('q', filters.search)
   if (filters.preOrderOnly) p.set('preorder', '1')
+  else if (filters.saleOnly) p.set('sale', '1')
   else if (filters.inStockOnly) p.set('stock', '1')
   if (filters.topLevel !== ALL_GROUPS) p.set('group', filters.topLevel)
   if (filters.subCat !== ALL_SUBCATS) p.set('cat', filters.subCat)
@@ -277,6 +287,15 @@ function productMatchesInStock(
   return isProductInStockSection(p.variants)
 }
 
+function productMatchesSale(
+  p: ProductWithVariants,
+  saleOnly: boolean,
+  presets: readonly DiscountPreset[],
+): boolean {
+  if (!saleOnly) return true
+  return productHasTagSale(p, presets)
+}
+
 export function filterAndSortProducts(
   baseProducts: ProductWithVariants[],
   filters: ShopFilterState,
@@ -286,6 +305,7 @@ export function filterAndSortProducts(
     (p) =>
       productMatchesPreOrder(p, filters.preOrderOnly) &&
       productMatchesInStock(p, filters.inStockOnly) &&
+      productMatchesSale(p, filters.saleOnly, presets) &&
       productMatchesCategory(p, filters) &&
       productMatchesBrand(p, filters) &&
       productMatchesSearch(p, filters.search),
@@ -316,6 +336,7 @@ export function countActiveFilters(filters: ShopFilterState): number {
   let n = 0
   if (filters.preOrderOnly) n++
   if (filters.inStockOnly) n++
+  if (filters.saleOnly) n++
   if (filters.topLevel !== ALL_GROUPS) n++
   if (filters.subCat !== ALL_SUBCATS) n++
   if (filters.brands.length > 0) n++
@@ -345,6 +366,13 @@ export function getShopFilterContextLabel(filters: ShopFilterState): string {
     filters.subCat === ALL_SUBCATS
   ) {
     return 'In-Stock'
+  }
+  if (
+    filters.saleOnly &&
+    filters.topLevel === ALL_GROUPS &&
+    filters.subCat === ALL_SUBCATS
+  ) {
+    return 'Sale'
   }
   if (filters.subCat !== ALL_SUBCATS) {
     const cat = getAllCategories().find((c) => c.id === filters.subCat)
@@ -378,6 +406,7 @@ export function getHeroTitle(filters: ShopFilterState): string {
   if (filters.topLevel !== ALL_GROUPS) return filters.topLevel
   if (filters.preOrderOnly) return 'Pre-Order'
   if (filters.inStockOnly) return 'In-Stock'
+  if (filters.saleOnly) return 'Sale'
   return 'Catalog'
 }
 
@@ -388,6 +417,7 @@ export function isShopCatalogHome(filters: ShopFilterState): boolean {
     filters.subCat === ALL_SUBCATS &&
     !filters.preOrderOnly &&
     !filters.inStockOnly &&
+    !filters.saleOnly &&
     !filters.search.trim() &&
     filters.brands.length === 0
   )

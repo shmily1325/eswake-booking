@@ -10,6 +10,7 @@ function product(
   availability: 'in_stock' | 'pre_order',
   image: string | null,
   stock = 1,
+  discountPresetId: string | null = null,
 ): ProductWithVariants {
   return {
     id,
@@ -25,7 +26,8 @@ function product(
         stock,
         reserved_qty: 0,
         availability,
-        price: 100,
+        price: 10000,
+        discount_preset_id: discountPresetId,
         cover_image_url: image,
         cover_images: image ? [{ url: image, path: '' }] : [],
         image_url: null,
@@ -52,6 +54,22 @@ describe('collectHomeGalleryPool', () => {
     expect(collectHomeGalleryPool(products, 'pre-order').map((p) => p.productId)).toEqual([
       'pre-photo',
     ])
+  })
+
+  it('keeps tagged leftovers in the sale pool and skips untagged stock', () => {
+    const red = {
+      id: 'red',
+      kind: 'tag' as const,
+      name: '紅標',
+      label: '紅標',
+      percent: 60,
+      is_active: true,
+      sort_order: 1,
+    }
+    const tagged = product('red-tag', 'in_stock', 'https://img/c.jpg', 1, 'red')
+    expect(
+      collectHomeGalleryPool([...products, tagged], 'sale', [red]).map((p) => p.productId),
+    ).toEqual(['red-tag'])
   })
 })
 

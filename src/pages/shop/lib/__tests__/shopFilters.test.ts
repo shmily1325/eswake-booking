@@ -110,7 +110,15 @@ describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
     expect(parseFiltersFromSearchParams(built).preOrderOnly).toBe(true)
   })
 
-  it('round-trips in-stock filter', () => {
+  it('round-trips sale filter', () => {
+    const built = buildShopSearchParams({
+      ...defaultFilterState(),
+      saleOnly: true,
+    })
+    expect(built.get('sale')).toBe('1')
+    expect(built.get('stock')).toBeNull()
+    expect(parseFiltersFromSearchParams(built).saleOnly).toBe(true)
+  })
     const built = buildShopSearchParams({
       ...defaultFilterState(),
       inStockOnly: true,
@@ -284,6 +292,9 @@ describe('isShopCatalogHome', () => {
     ).toBe(false)
     expect(
       isShopCatalogHome({ ...defaultFilterState(), inStockOnly: true }),
+    ).toBe(false)
+    expect(
+      isShopCatalogHome({ ...defaultFilterState(), saleOnly: true }),
     ).toBe(false)
     expect(
       isShopCatalogHome({ ...defaultFilterState(), search: 'ronix' }),

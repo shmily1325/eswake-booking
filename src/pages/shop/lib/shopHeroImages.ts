@@ -191,6 +191,13 @@ export function getShopHeroForFilters(
   isCatalogHome: boolean,
 ): ShopHeroImageConfig | null {
   if (isCatalogHome) return SHOP_HERO_IMAGES.catalog
+  if (
+    filters.saleOnly &&
+    filters.topLevel === ALL_GROUPS &&
+    filters.subCat === ALL_SUBCATS
+  ) {
+    return SHOP_HERO_IMAGES.catalog
+  }
   return getShopHeroConfigForCategory(filters.topLevel, filters.subCat)
 }
 

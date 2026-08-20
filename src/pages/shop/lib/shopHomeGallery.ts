@@ -11,8 +11,9 @@ import {
   isProductInPreOrderSection,
   isProductInStockSection,
 } from './productAvailability'
+import { resolveShopPrice, type DiscountPreset } from './shopPricing'
 
-export type HomeGalleryKind = 'pre-order' | 'in-stock'
+export type HomeGalleryKind = 'pre-order' | 'in-stock' | 'sale'
 
 export const HOME_GALLERY_LIMIT = 8
 
@@ -23,25 +24,48 @@ export interface HomeGalleryItem {
   imageUrl: string
 }
 
-function focusedVariants(product: ProductWithVariants, kind: HomeGalleryKind) {
+function focusedVariants(
+  product: ProductWithVariants,
+  kind: HomeGalleryKind,
+  presets: readonly DiscountPreset[] = [],
+) {
   const visible = getShopVisibleVariants(product.variants)
+  if (kind === 'sale') {
+    const tagged = visible.filter((v) => resolveShopPrice(v, presets).source === 'tag')
+    return tagged.length > 0 ? tagged : visible
+  }
   const wanted = kind === 'pre-order' ? 'pre_order' : 'in_stock'
   const focused = visible.filter((v) => getVariantAvailability(v) === wanted)
   return focused.length > 0 ? focused : visible
 }
 
+export function productHasTagSale(
+  product: ProductWithVariants,
+  presets: readonly DiscountPreset[],
+): boolean {
+  return getShopVisibleVariants(product.variants).some(
+    (v) => resolveShopPrice(v, presets).source === 'tag',
+  )
+}
+
 export function collectHomeGalleryPool(
   products: ProductWithVariants[],
   kind: HomeGalleryKind,
+  presets: readonly DiscountPreset[] = [],
 ): HomeGalleryItem[] {
   const items: HomeGalleryItem[] = []
   for (const product of products) {
     const matches =
       kind === 'pre-order'
         ? isProductInPreOrderSection(product.variants)
-        : isProductInStockSection(product.variants)
+        : kind === 'in-stock'
+          ? isProductInStockSection(product.variants)
+          : productHasTagSale(product, presets)
     if (!matches) continue
-    const imageUrl = getProductImageUrl(product, focusedVariants(product, kind))
+    const imageUrl = getProductImageUrl(
+      product,
+      focusedVariants(product, kind, presets),
+    )
     if (!imageUrl) continue
     items.push({
       productId: product.id,

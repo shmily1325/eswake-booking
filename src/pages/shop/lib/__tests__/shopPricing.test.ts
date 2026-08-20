@@ -4,6 +4,7 @@ import {
   foldLabel,
   formatInquiryUnitPrice,
   getMinSalePrice,
+  percentLabel,
   resolveShopPrice,
   saleFromOriginal,
   summarizeProductShopPrice,
@@ -50,6 +51,13 @@ describe('foldLabel', () => {
   it('maps 80 to 8折', () => {
     expect(foldLabel(80)).toBe('8折')
     expect(foldLabel(60)).toBe('6折')
+  })
+})
+
+describe('percentLabel', () => {
+  it('maps 80 to 80%', () => {
+    expect(percentLabel(80)).toBe('80%')
+    expect(percentLabel(60)).toBe('60%')
   })
 })
 
@@ -164,5 +172,6 @@ describe('summarizeProductShopPrice', () => {
     expect(summary.hasDiscount).toBe(true)
     expect(summary.saleText).toBe('NT$ 8,100')
     expect(summary.originalText).toBe('NT$ 10,125')
+    expect(summary.percentLabel).toBe('80%')
   })
 })
