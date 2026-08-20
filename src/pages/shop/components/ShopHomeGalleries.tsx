@@ -6,7 +6,6 @@ import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_COPY, SHOP_LABEL } from '../lib/shopCopy'
 import { useShopPromo } from '../hooks/useShopPromo'
-import { foldLabel } from '../lib/shopPricing'
 import {
   collectHomeGalleryPool,
   pickHomeGalleryItems,
@@ -71,8 +70,6 @@ interface ShopHomeGalleriesProps {
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readVisitSeed)
   const promo = useShopPromo()
-  const preorderFold = promo.preorder ? foldLabel(promo.preorder.percent) : null
-
   const preOrderItems = useMemo(
     () =>
       pickHomeGalleryItems(
@@ -97,8 +94,6 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
       ),
     [products, seed, promo.presets],
   )
-  const saleKicker =
-    promo.tags.length === 1 ? foldLabel(promo.tags[0].percent) : null
 
   const listed = useMemo(() => getShopBaseProducts(products), [products])
   const groups = useMemo(() => {
@@ -133,7 +128,6 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
         {preOrderItems.length > 0 && (
           <HomeGalleryRow
             title={SHOP_LABEL.preOrder}
-            kicker={preorderFold}
             items={preOrderItems}
             viewAllTo={shopPreOrderListPath()}
             frameClass={bothGalleries ? 'lg:pr-8 xl:pr-10' : undefined}
@@ -153,7 +147,6 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
         <div className="mt-10">
           <HomeGalleryRow
             title={SHOP_LABEL.sale}
-            kicker={saleKicker}
             items={saleItems}
             viewAllTo={shopSaleListPath()}
             wide
@@ -196,14 +189,12 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
 
 function HomeGalleryRow({
   title,
-  kicker,
   items,
   viewAllTo,
   frameClass,
   wide = false,
 }: {
   title: string
-  kicker?: string | null
   items: HomeGalleryItem[]
   viewAllTo: string
   frameClass?: string
@@ -224,13 +215,8 @@ function HomeGalleryRow({
   return (
     <section aria-label={title} className={'min-w-0 ' + (frameClass ?? '')}>
       <div className="flex items-center justify-between gap-3 h-11 mb-3">
-        <h2 className="flex items-baseline min-w-0 text-lg sm:text-xl font-black italic uppercase tracking-wider text-white leading-none">
-          <span className="truncate">{title}</span>
-          {kicker ? (
-            <span className="ml-2 shrink-0 not-italic font-black tracking-tight text-base sm:text-lg text-red-400">
-              {kicker}
-            </span>
-          ) : null}
+        <h2 className="min-w-0 text-lg sm:text-xl font-black italic uppercase tracking-wider text-white leading-none truncate">
+          {title}
         </h2>
         <Link
           to={shopTo(viewAllTo)}

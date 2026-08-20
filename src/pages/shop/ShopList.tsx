@@ -13,7 +13,6 @@ import { ShopListHero } from './components/ShopListHero'
 import { ShopHomeGalleries } from './components/ShopHomeGalleries'
 import { useShopFilters } from './hooks/useShopFilters'
 import { useShopPromo } from './hooks/useShopPromo'
-import { foldLabel } from './lib/shopPricing'
 import {
   getCollectionParentGroup,
   getHeroTitle,
@@ -99,13 +98,6 @@ export function ShopList() {
           title={heroTitle}
           heroConfig={heroConfig}
           parentGroup={collectionParent}
-          offer={
-            filters.preOrderOnly && promo.preorder
-              ? foldLabel(promo.preorder.percent)
-              : filters.saleOnly && promo.tags.length === 1
-                ? foldLabel(promo.tags[0].percent)
-                : null
-          }
         />
         {!isHome && (
           <div className="sticky top-14 z-20 bg-black">

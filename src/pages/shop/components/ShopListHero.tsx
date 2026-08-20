@@ -13,8 +13,6 @@ interface ShopListHeroProps {
   title: string
   heroConfig: ShopHeroImageConfig | null
   parentGroup?: string | null
-  /** 預購／特價專頁：與標題同行的小字，例如 8折。不要堆第二個大標。 */
-  offer?: string | null
 }
 
 function heroImgClass(heroConfig: ShopHeroImageConfig | null): string {
@@ -88,37 +86,11 @@ const HERO_TITLE =
   'font-black italic uppercase tracking-tight leading-none text-white ' +
   '[text-shadow:0_1px_0_rgba(0,0,0,0.9),0_4px_24px_rgba(0,0,0,0.75)]'
 
-const HERO_OFFER =
-  'font-black not-italic tracking-tight leading-none text-red-400 ' +
-  '[text-shadow:0_1px_0_rgba(0,0,0,0.85),0_4px_20px_rgba(0,0,0,0.7)]'
-
-function HeroTitleLockup({
-  title,
-  offer,
-  titleSize,
-  offerSize,
-}: {
-  title: string
-  offer?: string | null
-  titleSize: string
-  offerSize: string
-}) {
-  return (
-    <div className="flex items-baseline gap-2 sm:gap-3 min-w-0">
-      <h1 className={HERO_TITLE + ' min-w-0 ' + titleSize}>{title}</h1>
-      {offer ? (
-        <span className={HERO_OFFER + ' shrink-0 ' + offerSize}>{offer}</span>
-      ) : null}
-    </div>
-  )
-}
-
 export function ShopListHero({
   mode,
   title,
   heroConfig,
   parentGroup,
-  offer,
 }: ShopListHeroProps) {
   const isCatalog = mode === 'catalog'
   const hero = heroConfig
@@ -138,12 +110,9 @@ export function ShopListHero({
             {parentGroup}
           </p>
         )}
-        <HeroTitleLockup
-          title={title}
-          offer={offer}
-          titleSize="text-2xl sm:text-3xl md:text-4xl lg:text-5xl"
-          offerSize="text-lg sm:text-xl md:text-2xl lg:text-3xl"
-        />
+        <h1 className={HERO_TITLE + ' text-2xl sm:text-3xl md:text-4xl lg:text-5xl'}>
+          {title}
+        </h1>
       </div>
     )
 
@@ -175,12 +144,7 @@ export function ShopListHero({
           </>
         ) : (
           <div className="px-4 py-3 max-w-7xl mx-auto">
-            <HeroTitleLockup
-              title={title}
-              offer={offer}
-              titleSize="text-2xl"
-              offerSize="text-lg"
-            />
+            <h1 className={HERO_TITLE + ' text-2xl'}>{title}</h1>
           </div>
         )}
       </div>
