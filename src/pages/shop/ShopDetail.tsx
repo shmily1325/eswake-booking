@@ -8,6 +8,7 @@ import { DetailPurchaseActions } from './components/DetailPurchaseActions'
 import { ShopDetailQuantity } from './components/ShopDetailQuantity'
 import { VariantPicker } from './components/VariantPicker'
 import { useShopCart } from './hooks/useShopCart'
+import { useShopPromo } from './hooks/useShopPromo'
 import {
   formatPrice,
   getCategoryShopName,
@@ -59,6 +60,7 @@ export function ShopDetail() {
   const { productId } = useParams<{ productId: string }>()
   const location = useLocation()
   const { addItem } = useShopCart()
+  const promo = useShopPromo()
 
   const preview =
     productId && UUID_REGEX.test(productId)
@@ -149,6 +151,7 @@ export function ShopDetail() {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
     const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
+    const shopPrice = promo.resolve(selectedVariant)
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
@@ -156,7 +159,9 @@ export function ShopDetail() {
       categoryId: product.category ?? '',
       attributes: selectedVariant.attributes,
       imageUrl: selectedVariant.cover_image_url ?? selectedVariant.image_url ?? imageUrl ?? null,
-      unitPrice: selectedVariant.price,
+      unitPrice: shopPrice.sale,
+      originalPrice: shopPrice.original,
+      discountCaption: shopPrice.caption,
       quantity,
       availability: avail === 'pre_order' ? 'pre_order' : 'in_stock',
       preOrderEta: selectedVariant.pre_order_eta,
@@ -168,13 +173,16 @@ export function ShopDetail() {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
     const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
+    const shopPrice = promo.resolve(selectedVariant)
     const payload = buildSingleInquiry({
       productId: product.id,
       productName: productName || '(Unnamed product)',
       categoryId: product.category,
       attributes: selectedVariant.attributes,
       quantity,
-      unitPrice: selectedVariant.price,
+      unitPrice: shopPrice.sale,
+      originalPrice: shopPrice.original,
+      discountCaption: shopPrice.caption,
       isPreOrder: avail === 'pre_order',
       preOrderEta: selectedVariant.pre_order_eta,
     })
@@ -247,12 +255,14 @@ function ProductDetailBody({
   onAddToCart,
   onDirectInquiry,
 }: ProductDetailBodyProps) {
+  const promo = useShopPromo()
   const categoryName = getCategoryShopName(product.category)
   const variantAvail = selectedVariant ? getVariantAvailability(selectedVariant) : null
   const canPurchase = selectedVariant ? isVariantPurchasable(selectedVariant) : false
   const isPreOrder = variantAvail === 'pre_order'
-  const hasPrice = selectedVariant?.price != null
-  const priceText = hasPrice ? formatPrice(selectedVariant!.price!) : '價格洽詢'
+  const shopPrice = selectedVariant ? promo.resolve(selectedVariant) : null
+  const hasPrice = shopPrice?.sale != null
+  const priceText = hasPrice ? formatPrice(shopPrice!.sale!) : '價格洽詢'
 
   /**
    * gallery：商品卡封面（一色共用）優先；沒有才用 SKU 封面。
@@ -287,7 +297,29 @@ function ProductDetailBody({
   }, [product, selectedVariant, imageUrl])
 
   const priceBlock = hasPrice ? (
-    <div className="text-2xl sm:text-3xl font-bold text-zinc-900">{priceText}</div>
+    <div>
+      {shopPrice?.hasDiscount && shopPrice.original != null && (
+        <div className="text-sm text-gray-400 line-through tabular-nums">
+          {formatPrice(shopPrice.original)}
+        </div>
+      )}
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <div className="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums">
+          {priceText}
+        </div>
+        {shopPrice?.hasDiscount && shopPrice.caption && (
+          <span
+            className={
+              shopPrice.source === 'tag'
+                ? 'text-sm font-medium text-red-600'
+                : 'text-sm font-medium text-amber-700'
+            }
+          >
+            {shopPrice.caption}
+          </span>
+        )}
+      </div>
+    </div>
   ) : (
     <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">
       {priceText}
@@ -298,12 +330,17 @@ function ProductDetailBody({
     <>
     <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
       {/* 圖片 gallery：手機滑主圖 + 圓點，桌機縮圖列 + 箭頭 */}
-      <div>
+      <div className="relative">
         <ShopDetailGallery
           images={imageOptions}
           alt={formatProductTitle(product)}
           resetKey={`${product.id}:${selectedVariantId ?? ''}`}
         />
+        {shopPrice?.badge && (
+          <div className="absolute top-2 right-2 z-10 bg-red-600 text-white text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded shadow-sm leading-tight">
+            {shopPrice.badge}
+          </div>
+        )}
       </div>
 
       {/* 資訊區 */}

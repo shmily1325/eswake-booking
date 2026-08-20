@@ -12,6 +12,8 @@ import { ShopMobileListToolbar } from './components/ShopMobileListToolbar'
 import { ShopListHero } from './components/ShopListHero'
 import { ShopHomeGalleries } from './components/ShopHomeGalleries'
 import { useShopFilters } from './hooks/useShopFilters'
+import { useShopPromo } from './hooks/useShopPromo'
+import { foldLabel } from './lib/shopPricing'
 import {
   getCollectionParentGroup,
   getHeroTitle,
@@ -37,6 +39,7 @@ export function ShopList() {
   const [error, setError] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
+  const promo = useShopPromo()
   const {
     filters,
     facets,
@@ -52,7 +55,7 @@ export function ShopList() {
     clearPillFilters,
     clearFilter,
     clearListFilters,
-  } = useShopFilters(products)
+  } = useShopFilters(products, promo.presets)
 
   useEffect(() => {
     document.title = ES_BRAND.shopTitle
@@ -96,7 +99,13 @@ export function ShopList() {
           title={heroTitle}
           heroConfig={heroConfig}
           parentGroup={collectionParent}
-          notice={filters.preOrderOnly ? SHOP_COPY.preOrderNotice : null}
+          notice={
+            filters.preOrderOnly
+              ? promo.preorder
+                ? `全館預購 ${foldLabel(promo.preorder.percent)}`
+                : SHOP_COPY.preOrderNotice
+              : null
+          }
         />
         {!isHome && (
           <div className="sticky top-14 z-20 bg-black">

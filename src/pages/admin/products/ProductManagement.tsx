@@ -4,7 +4,7 @@
  * Hierarchy: search + 新增; list is the body; 待補 / 選取 stay on this screen.
  * Primary task: find a product, open it or batch-select it.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, createContext, useContext } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
@@ -34,8 +34,10 @@ import {
   batchSetVariantsPreOrder,
   batchSetVariantsPreOrderUntil,
 } from './api'
+import { batchSetVariantsDiscountPreset, fetchDiscountPresets } from './discountApi'
 import type { ProductWithVariants, ProductVariantRow, ProductRow, VariantListItem } from './types'
 import { getVariantAvailability, getVariantSellableStock } from '../../shop/lib/productAvailability'
+import { resolveShopPrice, foldLabel, type DiscountPreset } from '../../shop/lib/shopPricing'
 import { ProductEditView } from './ProductEditView'
 import { LabelCodeCameraScanner } from './LabelCodeCameraScanner'
 import { variantMatchesSearchTokens } from './productSearchHaystack'
@@ -121,6 +123,8 @@ function openProductEdit(productId: string, variantId: string): ViewMode {
   return { kind: 'edit', productId, focusVariantId: variantId }
 }
 
+const DiscountPresetsContext = createContext<DiscountPreset[]>([])
+
 export function ProductManagement({
   embedded = false,
   readOnly = false,
@@ -154,6 +158,7 @@ export function ProductManagement({
   const [stockScannerStatus, setStockScannerStatus] = useState<string | null>(null)
   const [scannedItem, setScannedItem] = useState<VariantListItem | null>(null)
   const [imagePreview, setImagePreview] = useState<{ url: string; alt: string } | null>(null)
+  const [discountPresets, setDiscountPresets] = useState<DiscountPreset[]>([])
 
   // 篩選：庫存狀態（現貨／預購／已售完，互斥）+ 未上架／待補（可複選、可疊加）
   const [onlyUnlisted, setOnlyUnlisted] = useState(false)
@@ -167,6 +172,8 @@ export function ProductManagement({
   const [onlyPreOrder, setOnlyPreOrder] = useState(false)
   /** 已售完 archive：active 時只顯示 sold_out；預設隱藏已售完（搜尋時仍會找到） */
   const [onlySoldOut, setOnlySoldOut] = useState(false)
+  /** 折扣檔次：只顯示已掛該檔次的 SKU（紅標／出清） */
+  const [discountPresetFilter, setDiscountPresetFilter] = useState<string | null>(null)
 
   const clearAllFilters = () => {
     setOnlyUnlisted(false)
@@ -177,6 +184,7 @@ export function ProductManagement({
     setOnlyInStock(false)
     setOnlyPreOrder(false)
     setOnlySoldOut(false)
+    setDiscountPresetFilter(null)
     setSearch('')
   }
   const hasAnyFilter =
@@ -188,6 +196,7 @@ export function ProductManagement({
     onlyInStock ||
     onlyPreOrder ||
     onlySoldOut ||
+    discountPresetFilter != null ||
     search.trim() !== ''
 
   const toggleUnlisted = () => setOnlyUnlisted((v) => !v)
@@ -277,8 +286,12 @@ export function ProductManagement({
   const loadData = async (opts?: { quiet?: boolean }) => {
     if (!opts?.quiet) setLoading(true)
     try {
-      const list = await fetchAllProductsWithVariants()
+      const [list, presets] = await Promise.all([
+        fetchAllProductsWithVariants(),
+        fetchDiscountPresets().catch(() => [] as DiscountPreset[]),
+      ])
       setProducts(list)
+      setDiscountPresets(presets)
     } catch (e) {
       console.error('[ProductManagement] load failed', e)
       toast.error('載入商品失敗')
@@ -369,6 +382,9 @@ export function ProductManagement({
     if (onlyMissingLabel) {
       items = items.filter(isVariantMissingLabel)
     }
+    if (discountPresetFilter) {
+      items = items.filter((it) => it.variant.discount_preset_id === discountPresetFilter)
+    }
 
     // 搜尋：多關鍵字（空白分隔）AND
     if (hasSearch) {
@@ -388,6 +404,7 @@ export function ProductManagement({
     onlyInStock,
     onlyPreOrder,
     onlySoldOut,
+    discountPresetFilter,
   ])
 
   /** tab + 搜尋，用來算儀表板數字與 chip 計數（含已售完） */
@@ -527,6 +544,16 @@ export function ProductManagement({
       )
     })
 
+  const handleBatchDiscount = (presetId: string | null) =>
+    runBatch(async () => {
+      const ids = filteredItems
+        .filter((it) => selectedIds.has(it.variant.id))
+        .map((it) => it.variant.id)
+      if (ids.length === 0) return '請先勾選'
+      await batchSetVariantsDiscountPreset(ids, presetId)
+      return presetId ? `已套用折扣 ${ids.length}` : `已取消檔次 ${ids.length}`
+    })
+
   // ====== 權限尚未確認/拒絕：先顯示 loading ======
   if (!accessChecked || !hasAccess) {
     return (
@@ -607,6 +634,7 @@ export function ProductManagement({
   }
 
   return (
+    <DiscountPresetsContext.Provider value={discountPresets}>
     <div
       style={
         embedded
@@ -716,6 +744,8 @@ export function ProductManagement({
             onlyInStock={onlyInStock}
             onlyPreOrder={onlyPreOrder}
             onlySoldOut={onlySoldOut}
+            discountPresetFilter={discountPresetFilter}
+            tagPresets={discountPresets.filter((p) => p.kind === 'tag')}
             soldOutCount={soldOutCount}
             onToggleUnlisted={toggleUnlisted}
             onToggleMissingPrice={toggleMissingPrice}
@@ -725,6 +755,9 @@ export function ProductManagement({
             onToggleInStock={toggleInStock}
             onTogglePreOrder={togglePreOrder}
             onToggleSoldOut={toggleSoldOut}
+            onToggleDiscountPreset={(id) =>
+              setDiscountPresetFilter((prev) => (prev === id ? null : id))
+            }
             onClearAll={clearAllFilters}
             isMobile={isMobile}
           />
@@ -734,6 +767,24 @@ export function ProductManagement({
           <StockCheckResult
             item={scannedItem}
             isMobile={isMobile}
+            canEdit={canEdit}
+            tagPresets={discountPresets.filter((p) => p.kind === 'tag' && p.is_active)}
+            onSetDiscount={(presetId) => {
+              void (async () => {
+                try {
+                  await batchSetVariantsDiscountPreset([scannedItem.variant.id], presetId)
+                  setScannedItem({
+                    ...scannedItem,
+                    variant: { ...scannedItem.variant, discount_preset_id: presetId },
+                  })
+                  toast.success(presetId ? '已套用折扣' : '已取消檔次')
+                  void loadData({ quiet: true })
+                } catch (error) {
+                  console.error(error)
+                  toast.error('折扣更新失敗')
+                }
+              })()
+            }}
             onClose={() => setScannedItem(null)}
           />
         )}
@@ -927,6 +978,10 @@ export function ProductManagement({
             onSetPublic={(isPublic) => void handleBatchPublic(isPublic)}
             onSetPreOrder={(accept) => void handleBatchPreOrder(accept)}
             onSetUntil={(until) => void handleBatchUntil(until)}
+            onSetDiscount={(presetId) => void handleBatchDiscount(presetId)}
+            tagPresets={discountPresets
+              .filter((p) => p.kind === 'tag' && p.is_active)
+              .map((p) => ({ id: p.id, name: p.name, percent: p.percent }))}
             preorderEnabled={selectedCanPreOrder}
             untilEnabled={selectedHasPreOrder}
           />
@@ -950,16 +1005,23 @@ export function ProductManagement({
       )}
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
+    </DiscountPresetsContext.Provider>
   )
 }
 
 function StockCheckResult({
   item,
   isMobile,
+  canEdit,
+  tagPresets,
+  onSetDiscount,
   onClose,
 }: {
   item: VariantListItem
   isMobile: boolean
+  canEdit: boolean
+  tagPresets: Array<{ id: string; name: string; percent: number }>
+  onSetDiscount: (presetId: string | null) => void
   onClose: () => void
 }) {
   const { product, variant } = item
@@ -1023,6 +1085,54 @@ function StockCheckResult({
         <StockCheckValue label="現有庫存" isMobile={isMobile}>{variant.stock}</StockCheckValue>
         <StockCheckValue label="待結帳保留" isMobile={isMobile}>{reserved}</StockCheckValue>
         <StockCheckValue label="可售現貨" isMobile={isMobile} emphasize>{sellable}</StockCheckValue>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          alignItems: 'center',
+          paddingTop: 12,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: getFontSize('caption', isMobile),
+              color: colors.text.secondary,
+              marginBottom: 3,
+            }}
+          >
+            售價
+          </div>
+          <PriceDisplay variant={variant} />
+        </div>
+        {canEdit && tagPresets.length > 0 && (
+          <label style={{ flex: 1, minWidth: 160 }}>
+            <div
+              style={{
+                fontSize: getFontSize('caption', isMobile),
+                color: colors.text.secondary,
+                marginBottom: 3,
+              }}
+            >
+              折扣檔次
+            </div>
+            <select
+              style={getInputStyle(isMobile)}
+              value={variant.discount_preset_id ?? ''}
+              onChange={(e) => onSetDiscount(e.target.value.trim() || null)}
+            >
+              <option value="">無（原價／預購全館）</option>
+              {tagPresets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {foldLabel(p.percent)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
     </section>
   )
@@ -1133,6 +1243,8 @@ interface InventoryDashboardProps {
   onlyInStock: boolean
   onlyPreOrder: boolean
   onlySoldOut: boolean
+  discountPresetFilter: string | null
+  tagPresets: Array<{ id: string; name: string }>
   soldOutCount: number
   onToggleUnlisted: () => void
   onToggleMissingPrice: () => void
@@ -1142,6 +1254,7 @@ interface InventoryDashboardProps {
   onToggleInStock: () => void
   onTogglePreOrder: () => void
   onToggleSoldOut: () => void
+  onToggleDiscountPreset: (id: string) => void
   onClearAll: () => void
   isMobile: boolean
 }
@@ -1156,6 +1269,8 @@ function InventoryDashboard({
   onlyInStock,
   onlyPreOrder,
   onlySoldOut,
+  discountPresetFilter,
+  tagPresets,
   soldOutCount,
   onToggleUnlisted,
   onToggleMissingPrice,
@@ -1165,6 +1280,7 @@ function InventoryDashboard({
   onToggleInStock,
   onTogglePreOrder,
   onToggleSoldOut,
+  onToggleDiscountPreset,
   onClearAll,
   isMobile,
 }: InventoryDashboardProps) {
@@ -1266,6 +1382,17 @@ function InventoryDashboard({
         trackId="product_filter_missing_label"
         isMobile={isMobile}
       />
+      {tagPresets.map((p) => (
+        <DashboardStatChip
+          key={p.id}
+          label={p.name}
+          count={qualityBase.filter((it) => it.variant.discount_preset_id === p.id).length}
+          active={discountPresetFilter === p.id}
+          onClick={() => onToggleDiscountPreset(p.id)}
+          trackId={`product_filter_discount_${p.name}`}
+          isMobile={isMobile}
+        />
+      ))}
     </>
   )
 
@@ -1394,9 +1521,17 @@ function formatCompactStockInAt(at: string | null | undefined): string | null {
   return `${Number(match[1])}/${Number(match[2])} ${match[3]}`
 }
 
-/** 售價顯示：null = 「缺」（橘標籤），其他 = "$1,234" */
-function PriceDisplay({ price, align = 'left' }: { price: number | null; align?: 'left' | 'right' }) {
-  if (price == null) {
+/** 售價顯示：null = 「缺」；有折扣時建議售價 + 店售 */
+function PriceDisplay({
+  variant,
+  align = 'left',
+}: {
+  variant: ProductVariantRow
+  align?: 'left' | 'right'
+}) {
+  const presets = useContext(DiscountPresetsContext)
+  const shop = resolveShopPrice(variant, presets)
+  if (shop.original == null && shop.sale == null) {
     return (
       <span
         style={{
@@ -1410,9 +1545,28 @@ function PriceDisplay({ price, align = 'left' }: { price: number | null; align?:
       </span>
     )
   }
+  if (shop.hasDiscount && shop.sale != null && shop.original != null) {
+    return (
+      <span
+        style={{ fontWeight: 600, color: colors.text.primary, textAlign: align, display: 'inline-block' }}
+        title={shop.caption ?? undefined}
+      >
+        <span style={{ textDecoration: 'line-through', color: colors.text.secondary, fontWeight: 500 }}>
+          ${shop.original.toLocaleString()}
+        </span>
+        {' '}
+        ${shop.sale.toLocaleString()}
+        {shop.caption ? (
+          <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: colors.text.secondary }}>
+            {shop.caption}
+          </span>
+        ) : null}
+      </span>
+    )
+  }
   return (
     <span style={{ fontWeight: 600, color: colors.text.primary, textAlign: align }}>
-      ${price.toLocaleString()}
+      ${shop.sale!.toLocaleString()}
     </span>
   )
 }
@@ -1814,7 +1968,7 @@ function GalleryCard({
                 {label}
               </div>
               <div style={{ marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <PriceDisplay price={current.variant.price} />
+                <PriceDisplay variant={current.variant} />
                 <span>可售 {sellable}</span>
               </div>
             </div>
@@ -2248,7 +2402,7 @@ function MobileListRow({
               fontWeight: 600,
               whiteSpace: 'nowrap',
             }}>
-              <PriceDisplay price={variant.price} />
+              <PriceDisplay variant={variant} />
             </div>
             <span style={{
               color: colors.text.secondary,
@@ -2275,7 +2429,7 @@ function MobileListRow({
           }}
         >
           <div style={{ color: colors.text.primary, fontWeight: 600 }}>
-            <PriceDisplay price={variant.price} />
+            <PriceDisplay variant={variant} />
           </div>
           <span style={{ color: colors.border.main }} aria-hidden="true">｜</span>
           <span>庫存 {stock}</span>
@@ -2465,7 +2619,7 @@ function DesktopTable({
                     )}
                   </td>
                   <td style={tdStyle('right')}>
-                    <PriceDisplay price={it.variant.price} align="right" />
+                    <PriceDisplay variant={it.variant} align="right" />
                   </td>
                   {canEdit && (
                     <td

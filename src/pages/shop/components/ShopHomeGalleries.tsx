@@ -5,6 +5,8 @@ import { SHOP_GROUPS } from '../../admin/products/schema'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_COPY, SHOP_LABEL } from '../lib/shopCopy'
+import { useShopPromo } from '../hooks/useShopPromo'
+import { foldLabel } from '../lib/shopPricing'
 import {
   collectHomeGalleryPool,
   pickHomeGalleryItems,
@@ -66,6 +68,8 @@ interface ShopHomeGalleriesProps {
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readVisitSeed)
+  const promo = useShopPromo()
+  const preorderFold = promo.preorder ? foldLabel(promo.preorder.percent) : null
 
   const preOrderItems = useMemo(
     () =>
@@ -116,6 +120,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
         {preOrderItems.length > 0 && (
           <HomeGalleryRow
             title={SHOP_LABEL.preOrder}
+            kicker={preorderFold}
             items={preOrderItems}
             viewAllTo={shopPreOrderListPath()}
             frameClass={bothGalleries ? 'lg:pr-8 xl:pr-10' : undefined}
@@ -166,11 +171,13 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
 
 function HomeGalleryRow({
   title,
+  kicker,
   items,
   viewAllTo,
   frameClass,
 }: {
   title: string
+  kicker?: string | null
   items: HomeGalleryItem[]
   viewAllTo: string
   frameClass?: string
@@ -192,6 +199,11 @@ function HomeGalleryRow({
       <div className="flex items-center justify-between gap-3 h-11 mb-3">
         <h2 className="text-lg sm:text-xl font-black italic uppercase tracking-wider text-white leading-none">
           {title}
+          {kicker ? (
+            <span className="ml-2 not-italic font-semibold tracking-normal text-sm text-white/80">
+              {kicker}
+            </span>
+          ) : null}
         </h2>
         <Link
           to={shopTo(viewAllTo)}

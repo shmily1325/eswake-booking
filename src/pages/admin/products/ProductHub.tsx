@@ -34,6 +34,7 @@ import { ProductManagement } from './ProductManagement'
 
 import { OrderManagement } from '../orders/OrderManagement'
 import { ShopSettlementStatisticsTab } from '../orders/ShopSettlementStatisticsTab'
+import { DiscountSettings } from './DiscountSettings'
 
 
 
@@ -118,6 +119,7 @@ export function ProductHub() {
 
   const onOrders = location.pathname.includes('/products/orders')
   const onSales = location.pathname.includes('/products/sales')
+  const onDiscounts = location.pathname.includes('/products/discounts')
 
 
 
@@ -139,7 +141,7 @@ export function ProductHub() {
           <AdminPillLink
             to="/products"
             end
-            active={!onOrders && !onSales}
+            active={!onOrders && !onSales && !onDiscounts}
           >
             商品
           </AdminPillLink>
@@ -149,6 +151,11 @@ export function ProductHub() {
           {userIsAdmin && (
             <AdminPillLink to="/products/sales" active={onSales}>
               銷售
+            </AdminPillLink>
+          )}
+          {canEdit && (
+            <AdminPillLink to="/products/discounts" active={onDiscounts}>
+              折扣
             </AdminPillLink>
           )}
           <ExternalNavLink
@@ -175,6 +182,9 @@ export function ProductHub() {
         />
 
         {canEdit && <Route path="orders" element={<OrderManagement embedded />} />}
+        {canEdit && (
+          <Route path="discounts" element={<DiscountSettings embedded />} />
+        )}
         {userIsAdmin && (
           <Route
             path="sales"

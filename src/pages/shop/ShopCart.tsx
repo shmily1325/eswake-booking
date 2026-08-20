@@ -176,9 +176,19 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
             onChange={onChangeQuantity}
           />
           <div className="text-right">
-            <div className="text-sm sm:text-base font-semibold text-zinc-900">
+            <div className="text-sm sm:text-base font-semibold text-zinc-900 tabular-nums">
               {subtotal != null ? formatPrice(subtotal) : '價格洽詢'}
             </div>
+            {item.originalPrice != null &&
+              item.unitPrice != null &&
+              item.originalPrice > item.unitPrice && (
+                <div className="text-xs text-gray-400 line-through tabular-nums">
+                  {formatPrice(item.originalPrice * item.quantity)}
+                </div>
+              )}
+            {item.discountCaption && (
+              <div className="text-xs text-gray-500">{item.discountCaption}</div>
+            )}
             {item.unitPrice != null && item.quantity > 1 && (
               <div className="text-xs text-gray-500">
                 單價 {formatPrice(item.unitPrice)}

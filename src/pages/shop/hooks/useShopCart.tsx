@@ -100,7 +100,14 @@ export function ShopCartProvider({ children }: { children: ReactNode }) {
       if (existing) {
         return prev.map((it) =>
           it.variantId === input.variantId
-            ? { ...it, quantity: it.quantity + qty, addedAt: Date.now() }
+            ? {
+                ...it,
+                quantity: it.quantity + qty,
+                addedAt: Date.now(),
+                unitPrice: input.unitPrice,
+                originalPrice: input.originalPrice ?? it.originalPrice,
+                discountCaption: input.discountCaption ?? it.discountCaption,
+              }
             : it
         )
       }
@@ -112,8 +119,12 @@ export function ShopCartProvider({ children }: { children: ReactNode }) {
         attributes: input.attributes,
         imageUrl: input.imageUrl,
         unitPrice: input.unitPrice,
+        originalPrice: input.originalPrice ?? null,
+        discountCaption: input.discountCaption ?? null,
         quantity: qty,
         addedAt: Date.now(),
+        availability: input.availability,
+        preOrderEta: input.preOrderEta,
       }
       return [...prev, next]
     })

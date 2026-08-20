@@ -1158,6 +1158,7 @@ export type Database = {
           image_url: string | null
           image_path: string | null
           is_active: boolean
+          discount_preset_id: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -1182,6 +1183,7 @@ export type Database = {
           image_url?: string | null
           image_path?: string | null
           is_active?: boolean
+          discount_preset_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -1206,10 +1208,18 @@ export type Database = {
           image_url?: string | null
           image_path?: string | null
           is_active?: boolean
+          discount_preset_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_variants_discount_preset_id_fkey"
+            columns: ["discount_preset_id"]
+            isOneToOne: false
+            referencedRelation: "shop_discount_presets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_variants_product_id_fkey"
             columns: ["product_id"]
@@ -1218,6 +1228,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shop_discount_presets: {
+        Row: {
+          id: string
+          kind: string
+          name: string
+          label: string
+          percent: number
+          is_active: boolean
+          sort_order: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          kind: string
+          name: string
+          label: string
+          percent: number
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          kind?: string
+          name?: string
+          label?: string
+          percent?: number
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       system_settings: {
         Row: {

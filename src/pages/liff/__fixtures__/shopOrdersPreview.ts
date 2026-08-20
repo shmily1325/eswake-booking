@@ -49,6 +49,7 @@ function item(
       pre_order_eta: null,
       pre_order_note: null,
       pre_order_until: null,
+      discount_preset_id: null,
       last_stock_in_at: stock > 0 ? '2026-06-28T08:00:00' : null,
       cover_image_url: null,
       cover_image_path: null,

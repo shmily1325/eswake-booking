@@ -20,8 +20,12 @@ import {
   type SortBy,
   type TopLevel,
 } from '../lib/shopFilters'
+import type { DiscountPreset } from '../lib/shopPricing'
 
-export function useShopFilters(products: ProductWithVariants[]) {
+export function useShopFilters(
+  products: ProductWithVariants[],
+  presets: readonly DiscountPreset[] = [],
+) {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const filters = useMemo(
@@ -71,8 +75,8 @@ export function useShopFilters(products: ProductWithVariants[]) {
   }, [baseProducts, filters, catalogFacets.preOrderCount])
 
   const filteredProducts = useMemo(
-    () => filterAndSortProducts(baseProducts, filters),
-    [baseProducts, filters],
+    () => filterAndSortProducts(baseProducts, filters, presets),
+    [baseProducts, filters, presets],
   )
 
   const activeFilterCount = countActiveFilters(filters)

@@ -15,6 +15,7 @@
 
 import type { CartItem } from '../types'
 import { formatPrice, formatVariantAttributes } from './shopFormat'
+import { formatInquiryUnitPrice, type ShopPrice } from './shopPricing'
 
 /**
  * ES Wake 正式官方帳號 ID。
@@ -108,8 +109,34 @@ interface SingleInquiryInput {
   attributes: Record<string, unknown>
   quantity: number
   unitPrice: number | null
+  originalPrice?: number | null
+  discountCaption?: string | null
   isPreOrder?: boolean
   preOrderEta?: string | null
+}
+
+function lineUnitText(input: {
+  unitPrice: number | null
+  originalPrice?: number | null
+  discountCaption?: string | null
+}): string {
+  const sale = input.unitPrice
+  const original = input.originalPrice ?? sale
+  const price: ShopPrice = {
+    original,
+    sale,
+    hasDiscount: Boolean(
+      sale != null &&
+        original != null &&
+        input.discountCaption &&
+        sale < original,
+    ),
+    badge: null,
+    caption: input.discountCaption ?? null,
+    percent: null,
+    source: null,
+  }
+  return formatInquiryUnitPrice(price)
 }
 
 /** 內部：渲染單筆品項詢問的純文字訊息（不負責 URL） */
@@ -130,9 +157,7 @@ function renderSingleMessage(
     if (input.preOrderEta?.trim()) lines.push(`預計到貨：${input.preOrderEta.trim()}`)
   }
   lines.push(`數量：${input.quantity}`)
-  lines.push(
-    `單價：${input.unitPrice != null ? formatPrice(input.unitPrice) : '洽詢'}`
-  )
+  lines.push(`單價：${lineUnitText(input)}`)
   if (productUrl) lines.push(`商品頁：${productUrl}`)
   lines.push('', '請聯絡我，謝謝！')
   return lines.join('\n')
@@ -165,9 +190,7 @@ function renderCartMessage(items: CartItem[], includeUrls: boolean): string {
       lines.push(`　預計到貨：${it.preOrderEta.trim()}`)
     }
     lines.push(`　數量：${it.quantity}`)
-    lines.push(
-      `　單價：${it.unitPrice != null ? formatPrice(it.unitPrice) : '洽詢'}`
-    )
+    lines.push(`　單價：${lineUnitText(it)}`)
     if (productUrl) lines.push(`　商品頁：${productUrl}`)
     lines.push('')
   })

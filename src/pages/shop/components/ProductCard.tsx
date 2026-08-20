@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { ProductVariantRow, ProductRow } from '../../admin/products/types'
 import {
-  formatProductPriceRange,
   formatOrderByLabel,
   getProductImageUrl,
 } from '../lib/shopFormat'
+import { summarizeProductShopPrice } from '../lib/shopPricing'
+import { useShopPromo } from '../hooks/useShopPromo'
 import { formatProductModelLine, formatProductTitle } from '../../admin/products/schema'
 import {
   getShopVisibleVariants,
@@ -51,13 +52,15 @@ export function ProductCard({
     location.search,
   )
 
+  const promo = useShopPromo()
   const visibleVariants = getShopVisibleVariants(variants)
   const summary = summarizeProductAvailability(variants)
   const imageUrl = getProductImageUrl(product, visibleVariants.length ? visibleVariants : variants)
-  const priceText = formatProductPriceRange(
+  const priceSummary = summarizeProductShopPrice(
     visibleVariants.length ? visibleVariants : variants,
+    promo.presets,
   )
-  const isInquiryOnly = priceText === '價格洽詢'
+  const isInquiryOnly = priceSummary.inquiry
   const specLine = formatCardSpecLine(
     product.category,
     visibleVariants.length ? visibleVariants : variants,
@@ -90,6 +93,12 @@ export function ProductCard({
           </div>
         )}
 
+        {priceSummary.badge && (
+          <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded shadow-sm leading-tight">
+            {priceSummary.badge}
+          </div>
+        )}
+
         {summary.hasPreOrder && inPreOrderView && summary.preOrderEta && (
           <div className="absolute top-2 left-2 max-w-[85%] rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-white backdrop-blur-sm">
             {summary.preOrderEta}
@@ -110,12 +119,19 @@ export function ProductCard({
         <div className="mt-2 min-h-7 flex items-end">
           {isInquiryOnly ? (
             <span className="inline-block px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-500 leading-none">
-              {priceText}
+              {priceSummary.saleText}
             </span>
           ) : (
-            <span className="text-base sm:text-lg font-bold text-zinc-900 leading-none tabular-nums">
-              {priceText}
-            </span>
+            <div className="flex flex-col gap-0.5">
+              {priceSummary.hasDiscount && priceSummary.originalText && (
+                <span className="text-xs text-gray-400 line-through tabular-nums leading-none">
+                  {priceSummary.originalText}
+                </span>
+              )}
+              <span className="text-base sm:text-lg font-bold text-zinc-900 leading-none tabular-nums">
+                {priceSummary.saleText}
+              </span>
+            </div>
           )}
         </div>
         {orderBy ? (

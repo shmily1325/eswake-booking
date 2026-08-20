@@ -10,7 +10,9 @@ import {
 } from '../../admin/products/schema'
 import { SHOP_COPY } from './shopCopy'
 import type { ProductWithVariants } from '../../admin/products/types'
-import { getMinPrice, isProductListedInShop } from './shopFormat'
+import { getMinSalePrice } from './shopPricing'
+import type { DiscountPreset } from './shopPricing'
+import { isProductListedInShop } from './shopFormat'
 import {
   getShopVisibleVariants,
   isProductInPreOrderSection,
@@ -278,6 +280,7 @@ function productMatchesInStock(
 export function filterAndSortProducts(
   baseProducts: ProductWithVariants[],
   filters: ShopFilterState,
+  presets: readonly DiscountPreset[] = [],
 ): ProductWithVariants[] {
   let list = baseProducts.filter(
     (p) =>
@@ -297,8 +300,8 @@ export function filterAndSortProducts(
   } else {
     const dir = filters.sortBy === 'price-asc' ? 1 : -1
     list = [...list].sort((a, b) => {
-      const ap = getMinPrice(getShopVisibleVariants(a.variants))
-      const bp = getMinPrice(getShopVisibleVariants(b.variants))
+      const ap = getMinSalePrice(getShopVisibleVariants(a.variants), presets)
+      const bp = getMinSalePrice(getShopVisibleVariants(b.variants), presets)
       if (ap == null && bp == null) return 0
       if (ap == null) return 1
       if (bp == null) return -1

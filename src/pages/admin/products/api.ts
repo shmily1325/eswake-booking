@@ -264,6 +264,7 @@ export interface CreateVariantInput {
   cover_images?: Array<{ url: string; path: string }>
   image_url?: string | null
   image_path?: string | null
+  discount_preset_id?: string | null
 }
 
 /** 把使用者輸入的售價正規化為 NULL 或非負整數 */
@@ -345,6 +346,7 @@ export async function createVariant(input: CreateVariantInput): Promise<ProductV
     cover_images: input.cover_images ?? [],
     image_url: input.image_url ?? null,
     image_path: input.image_path ?? null,
+    discount_preset_id: input.discount_preset_id ?? null,
   }
   const { data, error } = await supabase.from('product_variants').insert(payload).select().single()
   if (error) throw error
@@ -369,6 +371,7 @@ export interface UpdateVariantInput {
   cover_images?: Array<{ url: string; path: string }>
   image_url?: string | null
   image_path?: string | null
+  discount_preset_id?: string | null
 }
 
 export async function updateVariant(variantId: string, input: UpdateVariantInput): Promise<void> {
@@ -384,6 +387,9 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
   if (input.cover_images !== undefined) patch.cover_images = input.cover_images
   if (input.image_url !== undefined) patch.image_url = input.image_url
   if (input.image_path !== undefined) patch.image_path = input.image_path
+  if (input.discount_preset_id !== undefined) {
+    patch.discount_preset_id = input.discount_preset_id
+  }
 
   if (
     input.availability !== undefined ||

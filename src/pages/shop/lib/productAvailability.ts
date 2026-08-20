@@ -13,7 +13,9 @@ export function isVariantAvailability(v: unknown): v is VariantAvailability {
 }
 
 /** 讀 SKU 供貨狀態；舊資料無欄位時依 stock 推導 */
-export function getVariantAvailability(v: ProductVariantRow): VariantAvailability {
+export function getVariantAvailability(
+  v: Pick<ProductVariantRow, 'availability' | 'stock'>,
+): VariantAvailability {
   const stock = v.stock ?? 0
   if (isVariantAvailability(v.availability)) {
     if (v.availability === 'in_stock' && stock <= 0) return 'sold_out'
@@ -47,7 +49,10 @@ export function isPreOrderDeadlinePassed(
 }
 
 /** 此 SKU 是否為仍有效的預購（庫存 0 + 開預購 + 未過截止） */
-export function isPreOrderOpen(v: ProductVariantRow, today = shopLocalIsoDate()): boolean {
+export function isPreOrderOpen(
+  v: Pick<ProductVariantRow, 'availability' | 'stock' | 'pre_order_until'>,
+  today = shopLocalIsoDate(),
+): boolean {
   if (getVariantAvailability(v) !== 'pre_order') return false
   return !isPreOrderDeadlinePassed(v.pre_order_until, today)
 }

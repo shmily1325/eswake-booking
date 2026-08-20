@@ -36,6 +36,7 @@ import {
   updateProduct,
   updateVariant,
 } from './api'
+import { fetchDiscountPresets } from './discountApi'
 import type { ProductVariantRow, ProductWithVariants } from './types'
 import {
   acceptPreOrderFromVariant,
@@ -44,6 +45,12 @@ import {
 import { ShopStatusPill } from './ShopStatusPill'
 import { collectZeroStockWarnings } from './productSaveWarnings'
 import { normalizePreOrderUntil } from './productBatch'
+import {
+  activeTagPresets,
+  foldLabel,
+  resolveShopPrice,
+  type DiscountPreset,
+} from '../../shop/lib/shopPricing'
 import { ProductLabelPreview } from './ProductLabelPreview'
 import {
   findDuplicateLabelCodes,
@@ -120,6 +127,7 @@ interface DraftVariant {
   originalImagePath: string | null
   /** 已存在但需刪除的 SKU 在儲存時批次處理 */
   pendingDelete?: boolean
+  discount_preset_id: string | null
 }
 
 type CreateStep = 1 | 2 | 3
@@ -166,6 +174,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     image_url: v.image_url,
     image_path: v.image_path,
     originalImagePath: v.image_path,
+    discount_preset_id: v.discount_preset_id ?? null,
   }
 }
 
@@ -188,6 +197,7 @@ function emptyDraft(): DraftVariant {
     image_url: null,
     image_path: null,
     originalImagePath: null,
+    discount_preset_id: null,
   }
 }
 
@@ -213,6 +223,7 @@ export function ProductEditView({
   const [applyingImagesIdx, setApplyingImagesIdx] = useState<number | null>(null)
   const [labelCodeGeneratingIdx, setLabelCodeGeneratingIdx] = useState<number | null>(null)
   const [original, setOriginal] = useState<ProductWithVariants | null>(null)
+  const [discountPresets, setDiscountPresets] = useState<DiscountPreset[]>([])
 
   const [category, setCategory] = useState<string>(defaultCategory ?? Object.keys(CATEGORY_SCHEMAS)[0] ?? 'lifejacket')
   const [brand, setBrand] = useState('')
@@ -315,6 +326,20 @@ export function ProductEditView({
   }, [drafts, normalizedProductColor])
   const useProductLevelCovers = !isMultiColorProduct
   const productEntityId = productId ?? createdProductId
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchDiscountPresets()
+      .then((list) => {
+        if (!cancelled) setDiscountPresets(list)
+      })
+      .catch((error) => {
+        console.error('[ProductEditView] discount presets', error)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     setServerIdentityMatch(null)
@@ -461,12 +486,34 @@ export function ProductEditView({
           image_url: photo?.url ?? null,
           image_path: photo?.path ?? null,
           originalImagePath: null,
+          discount_preset_id: lastActive.discount_preset_id,
         },
       ])
       setActiveSkuIndex(drafts.length)
     } finally {
       setDuplicating(false)
     }
+  }
+
+  /**
+   * 將指定 SKU 的折扣檔次複製到本商品其他規格。
+   */
+  const handleApplyDiscountToAllSizes = (sourceIdx: number) => {
+    const source = drafts[sourceIdx]
+    if (!source || source.pendingDelete) return
+    const targetCount = drafts.filter((d, i) => i !== sourceIdx && !d.pendingDelete).length
+    if (targetCount === 0) {
+      toast.error('沒有其他尺寸可套用')
+      return
+    }
+    setDrafts((prev) =>
+      prev.map((d, i) =>
+        i === sourceIdx || d.pendingDelete
+          ? d
+          : { ...d, discount_preset_id: source.discount_preset_id },
+      ),
+    )
+    toast.success(`已套用折扣到其他 ${targetCount} 個尺寸`)
   }
 
   /**
@@ -808,6 +855,7 @@ export function ProductEditView({
           cover_images,
           image_url: d.image_url,
           image_path: d.image_path,
+          discount_preset_id: d.discount_preset_id,
         }
         if (d.id) {
           await updateVariant(d.id, payload)
@@ -1543,6 +1591,8 @@ export function ProductEditView({
             onApplyImagesToAllSizes={
               isMultiColorProduct ? () => void handleApplyImagesToAllSizes(idx) : undefined
             }
+            discountPresets={discountPresets}
+            onApplyDiscountToAllSizes={() => handleApplyDiscountToAllSizes(idx)}
             labelCodeGenerating={labelCodeGeneratingIdx === idx}
             onGenerateLabelCode={() => void handleGenerateLabelCode(idx)}
             sectionMode={mobileCreateWizard
@@ -1679,6 +1729,8 @@ interface VariantBlockProps {
   /** 任一 SKU 正在套用／複製圖片時，鎖住按鈕 */
   imagesBusy?: boolean
   onApplyImagesToAllSizes?: () => void
+  discountPresets: DiscountPreset[]
+  onApplyDiscountToAllSizes?: () => void
   labelCodeGenerating?: boolean
   onGenerateLabelCode?: () => void
   sectionMode?: VariantSectionMode
@@ -1732,6 +1784,8 @@ function VariantBlock({
   applyingImages = false,
   imagesBusy = false,
   onApplyImagesToAllSizes,
+  discountPresets,
+  onApplyDiscountToAllSizes,
   labelCodeGenerating = false,
   onGenerateLabelCode,
   sectionMode = 'all',
@@ -1977,7 +2031,69 @@ function VariantBlock({
     </div>
   )
 
+  const discountPreview = resolveShopPrice(
+    {
+      price: draft.price.trim() === '' ? null : Number(draft.price),
+      discount_preset_id: draft.discount_preset_id,
+      stock: Number(draft.stock) || 0,
+      availability: deriveVariantAvailability(Number(draft.stock) || 0, draft.acceptPreOrder),
+      pre_order_until: draft.pre_order_until,
+    },
+    discountPresets,
+  )
+  const discountField = (
+    <div style={{ marginTop: 8 }}>
+      <label style={labelStyle}>折扣檔次</label>
+      <select
+        style={inputStyle}
+        value={draft.discount_preset_id ?? ''}
+        disabled={disabled || draft.pendingDelete}
+        onChange={(e) => onChange({ discount_preset_id: e.target.value.trim() || null })}
+      >
+        <option value="">無（預購全館或原價）</option>
+        {activeTagPresets(discountPresets).map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name} {foldLabel(p.percent)}
+          </option>
+        ))}
+      </select>
+      {discountPreview.hasDiscount && discountPreview.sale != null && (
+        <div
+          style={{
+            marginTop: 4,
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary,
+          }}
+        >
+          店售 ${discountPreview.sale.toLocaleString()}
+          {discountPreview.caption ? ` · ${discountPreview.caption}` : ''}
+        </div>
+      )}
+      {!readOnly && otherSkuCount > 0 && onApplyDiscountToAllSizes && (
+        <button
+          type="button"
+          disabled={disabled || draft.pendingDelete}
+          onClick={onApplyDiscountToAllSizes}
+          style={{
+            marginTop: 6,
+            border: 'none',
+            background: 'none',
+            padding: 0,
+            minHeight: 44,
+            color: designSystem.colors.text.primary,
+            fontSize: getFontSize('caption', isMobile),
+            fontWeight: 600,
+            cursor: disabled ? 'default' : 'pointer',
+          }}
+        >
+          套用折扣到其他 {otherSkuCount} 個尺寸
+        </button>
+      )}
+    </div>
+  )
+
   const inventoryFieldsGrid = (
+    <>
     <div
       style={{
         display: 'grid',
@@ -2021,6 +2137,8 @@ function VariantBlock({
         </>
       )}
     </div>
+    {discountField}
+    </>
   )
 
   const productPhotoSection = (

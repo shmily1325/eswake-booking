@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button } from '../../../components/ui'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
+import { foldLabel } from '../../shop/lib/shopPricing'
 
 const { colors, borderRadius } = designSystem
 
-export type BatchSheet = 'public' | 'preorder' | 'until' | null
+export type BatchSheet = 'public' | 'preorder' | 'until' | 'discount' | null
 
 interface ProductBatchBarProps {
   selectedCount: number
@@ -16,13 +17,15 @@ interface ProductBatchBarProps {
   onSetPublic: (isPublic: boolean) => void
   onSetPreOrder: (accept: boolean) => void
   onSetUntil: (until: string | null) => void
+  onSetDiscount: (presetId: string | null) => void
+  tagPresets: Array<{ id: string; name: string; percent: number }>
   /** 無庫存 SKU 才能開放／關閉預購 */
   preorderEnabled?: boolean
   /** 到期日只對已開放預購的 SKU 有意義 */
   untilEnabled?: boolean
 }
 
-const actionBtnStyle: React.CSSProperties = {
+const actionBtnStyle: CSSProperties = {
   minWidth: 0,
   padding: '12px 6px',
   fontSize: 14,
@@ -39,6 +42,8 @@ export function ProductBatchBar({
   onSetPublic,
   onSetPreOrder,
   onSetUntil,
+  onSetDiscount,
+  tagPresets,
   preorderEnabled = true,
   untilEnabled = true,
 }: ProductBatchBarProps) {
@@ -150,6 +155,37 @@ export function ProductBatchBar({
         </BatchSheet>
       )}
 
+      {sheet === 'discount' && (
+        <BatchSheet title="折扣檔次" onClose={closeSheet}>
+          <Button
+            fullWidth
+            size="large"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => {
+              onSetDiscount(null)
+              closeSheet()
+            }}
+          >
+            取消檔次（原價／預購全館）
+          </Button>
+          {tagPresets.map((p) => (
+            <Button
+              key={p.id}
+              fullWidth
+              size="large"
+              disabled={busy}
+              onClick={() => {
+                onSetDiscount(p.id)
+                closeSheet()
+              }}
+            >
+              {p.name} {foldLabel(p.percent)}
+            </Button>
+          ))}
+        </BatchSheet>
+      )}
+
       <div
         style={{
           position: 'fixed',
@@ -202,7 +238,7 @@ export function ProductBatchBar({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
             gap: 8,
             minWidth: 0,
           }}
@@ -247,6 +283,16 @@ export function ProductBatchBar({
               到期日
             </Button>
           </span>
+          <Button
+            fullWidth
+            size="large"
+            variant="secondary"
+            disabled={busy || selectedCount === 0 || tagPresets.length === 0}
+            style={actionBtnStyle}
+            onClick={() => setSheet('discount')}
+          >
+            折扣
+          </Button>
         </div>
       </div>
     </>

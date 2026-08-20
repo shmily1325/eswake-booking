@@ -32,6 +32,10 @@ export interface CartItem {
 
   /** 單價（NT$，整數）；null = 售價未定（仍可放進購物車，LINE 訊息會註明「價格洽詢」） */
   unitPrice: number | null
+  /** 建議售價 snapshot；有折扣時與 unitPrice 不同 */
+  originalPrice?: number | null
+  /** LINE 用：預購 8折 / 紅標 6折 */
+  discountCaption?: string | null
   /** 數量，至少 1 */
   quantity: number
 
