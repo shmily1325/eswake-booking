@@ -11,17 +11,19 @@ import { useShopCart } from './hooks/useShopCart'
 import { useShopPromo } from './hooks/useShopPromo'
 import {
   formatPrice,
+  formatPreOrderFooter,
   getCategoryShopName,
   getProductCoverImages,
   getProductDetailHeroImageUrl,
   isProductListedInShop,
 } from './lib/shopFormat'
-import { formatProductModelLine, formatProductTitle } from '../admin/products/schema'
-import { normalizeVariantCoverImages } from '../admin/products/coverImages'
 import {
-  getVariantAvailability,
-  isVariantPurchasable,
-} from './lib/productAvailability'
+  formatProductModelName,
+  formatProductSecondaryLine,
+  formatProductTitle,
+} from '../admin/products/schema'
+import { normalizeVariantCoverImages } from '../admin/products/coverImages'
+import { getVariantAvailability, isVariantPurchasable } from './lib/productAvailability'
 import { SHOP_DETAIL } from './lib/shopCopy'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
@@ -263,6 +265,7 @@ function ProductDetailBody({
   const shopPrice = selectedVariant ? promo.resolve(selectedVariant) : null
   const hasPrice = shopPrice?.sale != null
   const priceText = hasPrice ? formatPrice(shopPrice!.sale!) : '價格洽詢'
+  const secondaryLine = formatProductSecondaryLine(product)
 
   /**
    * gallery：商品卡封面（一色共用）優先；沒有才用 SKU 封面。
@@ -298,24 +301,21 @@ function ProductDetailBody({
 
   const priceBlock = hasPrice ? (
     <div>
+      <div className="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums">
+        {priceText}
+      </div>
       {shopPrice?.hasDiscount && shopPrice.original != null && (
-        <div className="text-sm text-gray-400 line-through tabular-nums">
-          {formatPrice(shopPrice.original)}
+        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-gray-400 line-through tabular-nums">
+            {formatPrice(shopPrice.original)}
+          </span>
+          {shopPrice.caption ? (
+            <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-500 leading-none">
+              {shopPrice.caption}
+            </span>
+          ) : null}
         </div>
       )}
-      <div className="flex items-baseline gap-2 flex-wrap">
-        <div className="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums">
-          {priceText}
-        </div>
-        {shopPrice?.hasDiscount && shopPrice.percent != null && (
-          <span className="text-xl sm:text-2xl font-black text-red-600 tabular-nums leading-none">
-            {shopPrice.percent}%
-          </span>
-        )}
-        {shopPrice?.source === 'tag' && shopPrice.caption && (
-          <span className="text-sm font-medium text-red-600">{shopPrice.caption}</span>
-        )}
-      </div>
     </div>
   ) : (
     <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">
@@ -354,10 +354,7 @@ function ProductDetailBody({
         </Link>
 
         {/*
-          標題層級（Ronix 風）：
-          - Brand：小字 + ALL-CAPS + uppercase tracking-widest 當 kicker（雜誌封面那種小品牌標）
-          - Model：大字 + Inter Black 900，跟 list hero 的字重呼應
-          - Model 不上 italic：模型名常有數字（"RXT 142"）、太多斜體不好讀
+          標題層級：品牌 kicker → 型號最大 → 顏色 · 年份次要
         */}
         {product.brand && (
           <div className="text-xs sm:text-sm font-bold tracking-[0.18em] text-gray-500 uppercase">
@@ -365,23 +362,25 @@ function ProductDetailBody({
           </div>
         )}
         <h1 className="mt-1 text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 tracking-tight leading-tight">
-          {formatProductModelLine(product)}
+          {formatProductModelName(product)}
         </h1>
+        {secondaryLine ? (
+          <div className="mt-1 text-sm sm:text-base text-gray-500">
+            {secondaryLine}
+          </div>
+        ) : null}
 
-        <div className="mt-3 sm:mt-4 flex items-baseline gap-3 flex-wrap">
-          {priceBlock}
-          {isPreOrder && (
-            <span className="text-sm text-amber-700 font-medium">
-              {SHOP_DETAIL.preOrder}
-              {selectedVariant?.pre_order_eta ? (
-                <span className="text-gray-500 font-normal">
-                  {' '}
-                  · 預計 {selectedVariant.pre_order_eta}
-                </span>
-              ) : null}
-            </span>
-          )}
-        </div>
+        <div className="mt-3 sm:mt-4">{priceBlock}</div>
+        {isPreOrder && (
+          <div className="mt-2 text-xs sm:text-sm font-semibold tracking-wide text-amber-800">
+            {formatPreOrderFooter(selectedVariant?.pre_order_until)}
+            {selectedVariant?.pre_order_eta ? (
+              <span className="ml-2 font-normal text-gray-500">
+                預計 {selectedVariant.pre_order_eta}
+              </span>
+            ) : null}
+          </div>
+        )}
 
         <div className="mt-4">
           <VariantPicker

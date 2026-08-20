@@ -13,7 +13,7 @@ interface ShopListHeroProps {
   title: string
   heroConfig: ShopHeroImageConfig | null
   parentGroup?: string | null
-  /** 預購／特價專頁：與標題同行的小字，例如 80%。不要堆第二個大標。 */
+  /** 預購／特價專頁：與標題同行的小字，例如 8折。不要堆第二個大標。 */
   offer?: string | null
 }
 

@@ -1,12 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { ProductVariantRow, ProductRow } from '../../admin/products/types'
-import {
-  formatOrderByLabel,
-  getProductImageUrl,
-} from '../lib/shopFormat'
+import { formatPreOrderFooter, getProductImageUrl } from '../lib/shopFormat'
 import { summarizeProductShopPrice } from '../lib/shopPricing'
 import { useShopPromo } from '../hooks/useShopPromo'
-import { formatProductModelLine, formatProductTitle } from '../../admin/products/schema'
+import {
+  formatProductModelName,
+  formatProductSecondaryLine,
+  formatProductTitle,
+} from '../../admin/products/schema'
 import {
   getShopVisibleVariants,
   summarizeProductAvailability,
@@ -15,7 +16,6 @@ import { formatCardSpecLine } from '../lib/variantSpecAxes'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_PRODUCT_IMG } from '../lib/shopUiStyle'
-import { SHOP_LABEL } from '../lib/shopCopy'
 import { shopProductPath } from '../lib/shopPaths'
 import {
   SHOP_PRODUCT_PREVIEW_KEY,
@@ -26,8 +26,6 @@ import {
 interface ProductCardProps {
   product: ProductRow
   variants: ProductVariantRow[]
-  /** 已在預購頁時省略 Pre-Order 字樣，只保留到貨時間 */
-  inPreOrderView?: boolean
 }
 
 function cardNavigationState(
@@ -41,11 +39,7 @@ function cardNavigationState(
   }
 }
 
-export function ProductCard({
-  product,
-  variants,
-  inPreOrderView = false,
-}: ProductCardProps) {
+export function ProductCard({ product, variants }: ProductCardProps) {
   const location = useLocation()
   const returnTo = shopListPathFromLocation(
     location.pathname,
@@ -65,10 +59,11 @@ export function ProductCard({
     product.category,
     visibleVariants.length ? visibleVariants : variants,
   )
-  const orderBy =
-    inPreOrderView && summary.preOrderUntil
-      ? formatOrderByLabel(summary.preOrderUntil)
-      : null
+  const modelName = formatProductModelName(product)
+  const secondaryLine = formatProductSecondaryLine(product)
+  const preOrderFooter = summary.hasPreOrder
+    ? formatPreOrderFooter(summary.preOrderUntil)
+    : null
 
   return (
     <Link
@@ -84,24 +79,9 @@ export function ProductCard({
           fallback={<NoImagePlaceholder />}
         />
 
-        {summary.hasPreOrder && !inPreOrderView && (
-          <div className="absolute top-2 left-2 max-w-[85%] bg-amber-600 text-white text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded shadow-sm leading-tight">
-            {SHOP_LABEL.preOrder}
-            {summary.preOrderEta ? (
-              <span className="font-normal opacity-90"> · {summary.preOrderEta}</span>
-            ) : null}
-          </div>
-        )}
-
         {priceSummary.badge && (
           <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded shadow-sm leading-tight">
             {priceSummary.badge}
-          </div>
-        )}
-
-        {summary.hasPreOrder && inPreOrderView && summary.preOrderEta && (
-          <div className="absolute top-2 left-2 max-w-[85%] rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-white backdrop-blur-sm">
-            {summary.preOrderEta}
           </div>
         )}
       </div>
@@ -110,39 +90,51 @@ export function ProductCard({
         <div className="h-4 text-[11px] text-gray-400 uppercase tracking-wide truncate">
           {product.brand || '\u00A0'}
         </div>
-        <div className="mt-0.5 text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem] leading-snug">
-          {formatProductModelLine(product)}
+        <div className="mt-0.5 text-base sm:text-lg font-black text-zinc-900 leading-tight line-clamp-2">
+          {modelName}
         </div>
-        <div className="mt-1 h-4 text-[11px] text-gray-400 truncate">
-          {specLine || '\u00A0'}
-        </div>
-        <div className="mt-2 min-h-7 flex items-end">
+        {secondaryLine ? (
+          <div className="mt-0.5 text-xs text-gray-500 truncate">
+            {secondaryLine}
+          </div>
+        ) : null}
+
+        <div className="mt-2">
           {isInquiryOnly ? (
             <span className="inline-block px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-500 leading-none">
               {priceSummary.saleText}
             </span>
           ) : (
-            <div className="flex flex-col gap-0.5">
-              {priceSummary.hasDiscount && priceSummary.originalText && (
-                <span className="text-xs text-gray-400 line-through tabular-nums leading-none">
-                  {priceSummary.originalText}
-                </span>
-              )}
-              <div className="flex items-baseline gap-1.5 min-w-0">
-                <span className="text-base sm:text-lg font-bold text-zinc-900 leading-none tabular-nums">
-                  {priceSummary.saleText}
-                </span>
-                {priceSummary.percentLabel ? (
-                  <span className="text-sm sm:text-base font-black text-red-600 leading-none tabular-nums">
-                    {priceSummary.percentLabel}
-                  </span>
-                ) : null}
+            <div>
+              <div className="text-base sm:text-lg font-bold text-zinc-900 tabular-nums leading-none">
+                {priceSummary.saleText}
               </div>
+              {priceSummary.hasDiscount && priceSummary.originalText ? (
+                <div className="mt-1 flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] text-gray-400 line-through tabular-nums">
+                    {priceSummary.originalText}
+                  </span>
+                  {priceSummary.offerCaption ? (
+                    <span className="inline-flex shrink-0 items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 leading-none">
+                      {priceSummary.offerCaption}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           )}
         </div>
-        {orderBy ? (
-          <div className="mt-1 text-[11px] font-medium text-red-600">{orderBy}</div>
+
+        {specLine ? (
+          <div className="mt-1.5 text-[11px] text-gray-400 truncate">
+            {specLine}
+          </div>
+        ) : null}
+
+        {preOrderFooter ? (
+          <div className="mt-2 text-[10px] sm:text-[11px] font-semibold tracking-wide text-amber-800">
+            {preOrderFooter}
+          </div>
         ) : null}
       </div>
     </Link>

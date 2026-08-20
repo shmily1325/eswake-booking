@@ -45,8 +45,12 @@ describe('collectHomeGalleryPool', () => {
   ]
 
   it('keeps in-stock products that have a cover', () => {
-    expect(collectHomeGalleryPool(products, 'in-stock').map((p) => p.productId)).toEqual([
-      'stock-photo',
+    expect(collectHomeGalleryPool(products, 'in-stock')).toEqual([
+      expect.objectContaining({
+        productId: 'stock-photo',
+        title: 'stock-photo',
+        subtitle: 'red',
+      }),
     ])
   })
 
@@ -78,6 +82,7 @@ describe('pickHomeGalleryItems', () => {
     productId: id,
     brand: 'Follow',
     title: id,
+    subtitle: '',
     imageUrl: `https://img/${id}.jpg`,
   }))
 

@@ -42,11 +42,6 @@ export function isDiscountPercent(n: number): n is DiscountPercent {
   return (DISCOUNT_PERCENTS as readonly number[]).includes(n)
 }
 
-/** 80 → 80%（店售佔原價的比例，跟 8折同一件事） */
-export function percentLabel(percent: number): string {
-  return `${percent}%`
-}
-
 /** 80 → 8折 */
 export function foldLabel(percent: number): string {
   if (percent % 10 === 0 && percent >= 10 && percent <= 90) {
@@ -182,8 +177,8 @@ export interface ProductShopPriceSummary {
   originalText: string | null
   hasDiscount: boolean
   badge: string | null
-  /** 列表卡價錢旁：80% / 60%；SKU 折數不一致時不顯示 */
-  percentLabel: string | null
+  /** 原價旁說明：預購 8折／紅標 6折；SKU 文案不一致時不顯示 */
+  offerCaption: string | null
 }
 
 /** 列表卡：折後價為主；全部有折扣才劃掉原價。 */
@@ -201,7 +196,7 @@ export function summarizeProductShopPrice(
       originalText: null,
       hasDiscount: false,
       badge: null,
-      percentLabel: null,
+      offerCaption: null,
     }
   }
   const sales = priced.map((p) => p.sale)
@@ -213,8 +208,10 @@ export function summarizeProductShopPrice(
   const originals = priced.map((p) => p.original)
   const minOriginal = Math.min(...originals)
   const badges = new Set(priced.map((p) => p.badge).filter(Boolean) as string[])
-  const percents = new Set(
-    priced.filter((p) => p.hasDiscount && p.percent != null).map((p) => p.percent as number),
+  const captions = new Set(
+    priced
+      .filter((p) => p.hasDiscount && p.caption)
+      .map((p) => p.caption as string),
   )
   return {
     inquiry: false,
@@ -222,7 +219,6 @@ export function summarizeProductShopPrice(
     originalText: allDiscounted ? formatPrice(minOriginal) : null,
     hasDiscount: allDiscounted,
     badge: badges.size === 1 ? [...badges][0] : null,
-    percentLabel:
-      allDiscounted && percents.size === 1 ? percentLabel([...percents][0]) : null,
+    offerCaption: allDiscounted && captions.size === 1 ? [...captions][0] : null,
   }
 }

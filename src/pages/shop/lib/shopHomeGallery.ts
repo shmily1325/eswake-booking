@@ -3,7 +3,10 @@
  */
 
 import type { ProductWithVariants } from '../../admin/products/types'
-import { formatProductModelLine } from '../../admin/products/schema'
+import {
+  formatProductModelName,
+  formatProductSecondaryLine,
+} from '../../admin/products/schema'
 import { getProductImageUrl } from './shopFormat'
 import {
   getShopVisibleVariants,
@@ -21,6 +24,7 @@ export interface HomeGalleryItem {
   productId: string
   brand: string
   title: string
+  subtitle: string
   imageUrl: string
 }
 
@@ -70,7 +74,8 @@ export function collectHomeGalleryPool(
     items.push({
       productId: product.id,
       brand: (product.brand ?? '').trim(),
-      title: formatProductModelLine(product),
+      title: formatProductModelName(product),
+      subtitle: formatProductSecondaryLine(product),
       imageUrl,
     })
   }

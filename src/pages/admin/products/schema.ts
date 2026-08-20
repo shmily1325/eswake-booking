@@ -128,7 +128,31 @@ export function normalizeVariantAttributes(
 }
 
 /**
- * 商品卡標題列（不含品牌）：型號 · 顏色 · 年份
+ * 店售主標：型號本身。例：ASSET
+ */
+export function formatProductModelName(
+  product: { model?: string | null },
+  unnamed = '(Unnamed product)',
+): string {
+  return product.model?.trim() || unnamed
+}
+
+/**
+ * 店售次標：顏色 · 年份。例：SLATE · 2027
+ */
+export function formatProductSecondaryLine(product: {
+  color?: string | null
+  model_year?: number | null
+}): string {
+  const parts: string[] = []
+  const color = product.color?.trim()
+  if (color) parts.push(color)
+  if (product.model_year != null) parts.push(String(product.model_year))
+  return parts.join(' · ')
+}
+
+/**
+ * 單列標題（不含品牌）：型號 · 顏色 · 年份
  * 例：Affiliate · 綠 · 2027
  */
 export function formatProductModelLine(
@@ -139,13 +163,9 @@ export function formatProductModelLine(
   },
   unnamed = '(Unnamed product)',
 ): string {
-  const parts: string[] = []
-  const model = product.model?.trim()
-  parts.push(model || unnamed)
-  const color = product.color?.trim()
-  if (color) parts.push(color)
-  if (product.model_year != null) parts.push(String(product.model_year))
-  return parts.join(' · ')
+  const model = formatProductModelName(product, unnamed)
+  const secondary = formatProductSecondaryLine(product)
+  return secondary ? `${model} · ${secondary}` : model
 }
 
 /** 品牌 + 型號列（訂單／alt 用） */

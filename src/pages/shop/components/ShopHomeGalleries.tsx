@@ -6,7 +6,7 @@ import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_COPY, SHOP_LABEL } from '../lib/shopCopy'
 import { useShopPromo } from '../hooks/useShopPromo'
-import { percentLabel } from '../lib/shopPricing'
+import { foldLabel } from '../lib/shopPricing'
 import {
   collectHomeGalleryPool,
   pickHomeGalleryItems,
@@ -71,7 +71,7 @@ interface ShopHomeGalleriesProps {
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readVisitSeed)
   const promo = useShopPromo()
-  const preorderFold = promo.preorder ? percentLabel(promo.preorder.percent) : null
+  const preorderFold = promo.preorder ? foldLabel(promo.preorder.percent) : null
 
   const preOrderItems = useMemo(
     () =>
@@ -98,7 +98,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
     [products, seed, promo.presets],
   )
   const saleKicker =
-    promo.tags.length === 1 ? percentLabel(promo.tags[0].percent) : null
+    promo.tags.length === 1 ? foldLabel(promo.tags[0].percent) : null
 
   const listed = useMemo(() => getShopBaseProducts(products), [products])
   const groups = useMemo(() => {
@@ -285,9 +285,14 @@ function HomeGalleryRow({
                 <div className="h-4 text-[10px] text-gray-400 uppercase tracking-wide truncate">
                   {item.brand || '\u00A0'}
                 </div>
-                <div className="mt-0.5 text-xs font-semibold text-gray-900 leading-snug line-clamp-2 min-h-[2.25rem]">
+                <div className="mt-0.5 text-xs sm:text-sm font-black text-zinc-900 leading-snug line-clamp-2">
                   {item.title}
                 </div>
+                {item.subtitle ? (
+                  <div className="mt-0.5 text-[10px] text-gray-500 truncate">
+                    {item.subtitle}
+                  </div>
+                ) : null}
               </div>
             </Link>
           ))}

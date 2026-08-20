@@ -29,11 +29,7 @@ const MONTHS_EN = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ] as const
 
-/** 預購卡截止日：Order by Aug 28（跨年才加年份） */
-export function formatOrderByLabel(
-  isoDay: string,
-  now = new Date(),
-): string | null {
+function formatEnglishDay(isoDay: string, now = new Date()): string | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDay.trim().slice(0, 10))
   if (!m) return null
   const year = Number(m[1])
@@ -41,11 +37,18 @@ export function formatOrderByLabel(
   const day = Number(m[3])
   const monthName = MONTHS_EN[month - 1]
   if (!monthName) return null
-  const datePart =
-    now.getFullYear() === year
-      ? `${monthName} ${day}`
-      : `${monthName} ${day}, ${year}`
-  return `Order by ${datePart}`
+  return now.getFullYear() === year
+    ? `${monthName} ${day}`
+    : `${monthName} ${day}, ${year}`
+}
+
+/** 預購卡 footer：PRE-ORDER · Ends Sep 10（跨年才加年份） */
+export function formatPreOrderFooter(
+  isoDay?: string | null,
+  now = new Date(),
+): string {
+  const datePart = isoDay ? formatEnglishDay(isoDay, now) : null
+  return datePart ? `PRE-ORDER · Ends ${datePart}` : 'PRE-ORDER'
 }
 
 /** DB 售價正規化（含字串數字）；無效或 0 視為未訂價 */

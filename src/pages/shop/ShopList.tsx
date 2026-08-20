@@ -13,7 +13,7 @@ import { ShopListHero } from './components/ShopListHero'
 import { ShopHomeGalleries } from './components/ShopHomeGalleries'
 import { useShopFilters } from './hooks/useShopFilters'
 import { useShopPromo } from './hooks/useShopPromo'
-import { percentLabel } from './lib/shopPricing'
+import { foldLabel } from './lib/shopPricing'
 import {
   getCollectionParentGroup,
   getHeroTitle,
@@ -101,9 +101,9 @@ export function ShopList() {
           parentGroup={collectionParent}
           offer={
             filters.preOrderOnly && promo.preorder
-              ? percentLabel(promo.preorder.percent)
+              ? foldLabel(promo.preorder.percent)
               : filters.saleOnly && promo.tags.length === 1
-                ? percentLabel(promo.tags[0].percent)
+                ? foldLabel(promo.tags[0].percent)
                 : null
           }
         />
@@ -210,7 +210,6 @@ export function ShopList() {
                     key={p.id}
                     product={p}
                     variants={p.variants}
-                    inPreOrderView={filters.preOrderOnly}
                   />
                 ))}
               </div>

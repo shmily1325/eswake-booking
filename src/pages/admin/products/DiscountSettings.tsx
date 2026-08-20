@@ -16,7 +16,6 @@ import {
   activePreorderPreset,
   foldLabel,
   isDiscountPercent,
-  percentLabel,
   resolveShopPrice,
   type DiscountPercent,
   type DiscountPreset,
@@ -340,7 +339,7 @@ function PricePreview({ price }: { price: ReturnType<typeof resolveShopPrice> })
       <strong>NT$ {price.sale.toLocaleString()}</strong>
       {price.percent != null ? (
         <span style={{ fontWeight: 800, color: colors.danger[500] }}>
-          {percentLabel(price.percent)}
+          {foldLabel(price.percent)}
         </span>
       ) : null}
     </div>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { formatOrderByLabel, formatProductPriceRange, isProductListedInShop, normalizeShopPrice } from '../shopFormat'
+import { formatPreOrderFooter, formatProductPriceRange, isProductListedInShop, normalizeShopPrice } from '../shopFormat'
+import {
+  formatProductModelLine,
+  formatProductModelName,
+  formatProductSecondaryLine,
+} from '../../../admin/products/schema'
 import type { ProductVariantRow, ProductWithVariants } from '../../../admin/products/types'
 
 function v(price: number | null | string): ProductVariantRow {
@@ -72,16 +77,36 @@ describe('isProductListedInShop', () => {
   })
 })
 
-describe('formatOrderByLabel', () => {
+describe('formatPreOrderFooter', () => {
   it('omits year when the deadline is this year', () => {
-    expect(formatOrderByLabel('2026-08-28', new Date('2026-01-01'))).toBe(
-      'Order by Aug 28',
+    expect(formatPreOrderFooter('2026-08-28', new Date('2026-01-01'))).toBe(
+      'PRE-ORDER · Ends Aug 28',
     )
   })
 
   it('keeps year when the deadline is another year', () => {
-    expect(formatOrderByLabel('2027-09-10', new Date('2026-01-01'))).toBe(
-      'Order by Sep 10, 2027',
+    expect(formatPreOrderFooter('2027-09-10', new Date('2026-01-01'))).toBe(
+      'PRE-ORDER · Ends Sep 10, 2027',
     )
+  })
+
+  it('falls back to PRE-ORDER when there is no deadline', () => {
+    expect(formatPreOrderFooter(null)).toBe('PRE-ORDER')
+  })
+})
+
+describe('shop product title layers', () => {
+  const product = { model: 'ASSET', color: 'SLATE', model_year: 2027 }
+
+  it('keeps the model as the primary name', () => {
+    expect(formatProductModelName(product)).toBe('ASSET')
+  })
+
+  it('puts color and year on the secondary line', () => {
+    expect(formatProductSecondaryLine(product)).toBe('SLATE · 2027')
+  })
+
+  it('still joins them for single-line admin titles', () => {
+    expect(formatProductModelLine(product)).toBe('ASSET · SLATE · 2027')
   })
 })
