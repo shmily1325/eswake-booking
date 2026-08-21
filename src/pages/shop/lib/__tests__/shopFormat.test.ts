@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatPreOrderFooter, formatProductPriceRange, isProductListedInShop, normalizeShopPrice } from '../shopFormat'
+import { formatPreOrderDeadline, formatPreOrderFooter, formatProductPriceRange, isProductListedInShop, normalizeShopPrice } from '../shopFormat'
 import {
   formatProductModelLine,
   formatProductModelName,
@@ -92,6 +92,24 @@ describe('formatPreOrderFooter', () => {
 
   it('falls back to PRE-ORDER when there is no deadline', () => {
     expect(formatPreOrderFooter(null)).toBe('PRE-ORDER')
+  })
+})
+
+describe('formatPreOrderDeadline', () => {
+  it('uses 截止 M/D when the deadline is this year', () => {
+    expect(formatPreOrderDeadline('2026-09-10', new Date('2026-01-01'))).toBe(
+      '截止 9/10',
+    )
+  })
+
+  it('adds the year when the deadline is another year', () => {
+    expect(formatPreOrderDeadline('2027-09-10', new Date('2026-01-01'))).toBe(
+      '截止 2027/9/10',
+    )
+  })
+
+  it('returns null when there is no deadline', () => {
+    expect(formatPreOrderDeadline(null)).toBeNull()
   })
 })
 

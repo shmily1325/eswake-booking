@@ -60,11 +60,27 @@ export const SHOP_HERO_KICKER =
   'text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-white/75'
 
 /** 商品照（卡／gallery／購物車縮圖）：白底完整放入，不裁切 */
-export const SHOP_PRODUCT_IMG = 'w-full h-full object-contain'
+export const SHOP_PRODUCT_IMG =
+  'max-h-full max-w-full w-full h-full object-contain object-center'
 
-/** 首頁橫滑卡寬：手機露出下一張；桌機一欄兩張加大卡，右邊再露出半張 */
+/** 列表／首頁圖框：一致比例、padding、置中；不依商品改 scale */
+export const SHOP_PRODUCT_FRAME =
+  'aspect-4/5 bg-white overflow-hidden p-3'
+
+export const SHOP_HOME_PRODUCT_FRAME = SHOP_PRODUCT_FRAME
+export const SHOP_HOME_PRODUCT_IMG = SHOP_PRODUCT_IMG
+
+/** 商品卡折扣：黑底白字小標，預購／SALE 同一套 */
+export const SHOP_DISCOUNT_BADGE =
+  'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 bg-zinc-900 text-white text-[11px] font-semibold leading-none'
+
+/** 首頁橫滑卡寬：手機露出下一張；桌機一欄兩張，右邊再露出下一張提示可滑 */
 export const SHOP_HOME_STRIP_CARD =
-  'w-[min(68vw,228px)] md:w-60 lg:w-[calc((100%-0.75rem)/2.2)]'
+  'w-[min(68vw,228px)] md:w-60 lg:w-[calc((100%-0.75rem)/2.25)]'
+
+/** 首頁商品 section：手機直向；桌機兩欄，奇數自然佔一欄 */
+export const SHOP_HOME_GALLERY_GRID =
+  'space-y-10 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-x-10 lg:gap-y-10'
 
 /** 單品主圖：手機不要吃半屏，桌機不要撐到 500px */
 export const SHOP_DETAIL_FRAME =

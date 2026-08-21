@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { ProductVariantRow, ProductRow } from '../../admin/products/types'
-import { formatPreOrderFooter, getProductImageUrl } from '../lib/shopFormat'
+import { formatPreOrderDeadline, getProductImageUrl } from '../lib/shopFormat'
 import { summarizeProductShopPrice } from '../lib/shopPricing'
 import { useShopPromo } from '../hooks/useShopPromo'
 import {
@@ -15,7 +15,11 @@ import {
 import { formatCardSpecLine } from '../lib/variantSpecAxes'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
-import { SHOP_PRODUCT_IMG } from '../lib/shopUiStyle'
+import {
+  SHOP_DISCOUNT_BADGE,
+  SHOP_PRODUCT_FRAME,
+  SHOP_PRODUCT_IMG,
+} from '../lib/shopUiStyle'
 import { shopProductPath } from '../lib/shopPaths'
 import {
   SHOP_PRODUCT_PREVIEW_KEY,
@@ -61,8 +65,8 @@ export function ProductCard({ product, variants }: ProductCardProps) {
   )
   const modelName = formatProductModelName(product)
   const secondaryLine = formatProductSecondaryLine(product)
-  const preOrderFooter = summary.hasPreOrder
-    ? formatPreOrderFooter(summary.preOrderUntil)
+  const deadline = summary.hasPreOrder
+    ? formatPreOrderDeadline(summary.preOrderUntil)
     : null
 
   return (
@@ -71,23 +75,17 @@ export function ProductCard({ product, variants }: ProductCardProps) {
       state={cardNavigationState(returnTo, product, variants)}
       className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >
-      <div className="relative aspect-4/5 bg-white overflow-hidden">
+      <div className={SHOP_PRODUCT_FRAME}>
         <ImageOrFallback
           src={imageUrl}
           alt={formatProductTitle(product)}
           imgClassName={SHOP_PRODUCT_IMG}
           fallback={<NoImagePlaceholder />}
         />
-
-        {priceSummary.badge && (
-          <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded shadow-sm leading-tight">
-            {priceSummary.badge}
-          </div>
-        )}
       </div>
 
-      <div className="p-3 flex flex-col">
-        <div className="h-4 text-[11px] text-gray-400 uppercase tracking-wide truncate">
+      <div className="px-3 pt-2.5 pb-3 flex flex-col">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-600 truncate">
           {product.brand || '\u00A0'}
         </div>
         <div className="mt-0.5 text-base sm:text-lg font-black text-zinc-900 leading-tight line-clamp-2">
@@ -99,23 +97,23 @@ export function ProductCard({ product, variants }: ProductCardProps) {
           </div>
         ) : null}
 
-        <div className="mt-2">
+        <div className="mt-3">
           {isInquiryOnly ? (
-            <span className="inline-block px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-500 leading-none">
+            <div className="text-sm text-gray-500 leading-none">
               {priceSummary.saleText}
-            </span>
+            </div>
           ) : (
             <div>
               <div className="text-base sm:text-lg font-bold text-zinc-900 tabular-nums leading-none">
                 {priceSummary.saleText}
               </div>
               {priceSummary.hasDiscount && priceSummary.originalText ? (
-                <div className="mt-1 flex items-center gap-1.5 min-w-0">
-                  <span className="text-[11px] text-gray-400 line-through tabular-nums">
+                <div className="mt-1.5 flex items-center gap-2 min-w-0 flex-wrap">
+                  <span className="text-xs text-gray-400 line-through tabular-nums">
                     {priceSummary.originalText}
                   </span>
                   {priceSummary.offerCaption ? (
-                    <span className="inline-flex shrink-0 items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 leading-none">
+                    <span className={SHOP_DISCOUNT_BADGE}>
                       {priceSummary.offerCaption}
                     </span>
                   ) : null}
@@ -126,14 +124,14 @@ export function ProductCard({ product, variants }: ProductCardProps) {
         </div>
 
         {specLine ? (
-          <div className="mt-1.5 text-[11px] text-gray-400 truncate">
+          <div className="mt-2 text-xs text-zinc-600 truncate">
             {specLine}
           </div>
         ) : null}
 
-        {preOrderFooter ? (
-          <div className="mt-2 text-[10px] sm:text-[11px] font-semibold tracking-wide text-amber-800">
-            {preOrderFooter}
+        {deadline ? (
+          <div className="mt-1.5 text-[11px] text-gray-400">
+            {deadline}
           </div>
         ) : null}
       </div>

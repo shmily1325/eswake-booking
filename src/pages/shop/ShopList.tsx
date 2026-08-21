@@ -22,7 +22,7 @@ import {
 import { getShopHeroForFilters } from './lib/shopHeroImages'
 import { useShopHeroPreload } from './hooks/useShopHeroPreload'
 import { SHOP_COPY, SHOP_LABEL } from './lib/shopCopy'
-import { SHOP_HOME_STRIP_CARD } from './lib/shopUiStyle'
+import { SHOP_HOME_GALLERY_GRID, SHOP_HOME_STRIP_CARD } from './lib/shopUiStyle'
 import { shopListPath } from './lib/shopPaths'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { ShopFooter } from './components/ShopFooter'
@@ -262,7 +262,7 @@ function ToolbarSort({ sortBy, onSortChange, className = '' }: ToolbarSortProps)
 function HomeGalleryLoading() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
-      <div className="space-y-10 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-10">
+      <div className={SHOP_HOME_GALLERY_GRID}>
         {['pre', 'stock'].map((row) => (
           <div key={row} className="min-w-0">
             <div className="h-6 w-28 bg-white/10 rounded mb-3" />

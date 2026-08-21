@@ -51,6 +51,23 @@ export function formatPreOrderFooter(
   return datePart ? `PRE-ORDER · Ends ${datePart}` : 'PRE-ORDER'
 }
 
+/** 商品卡預購截止：截止 9/10。沒有日期就不顯示。跨年才加年份。 */
+export function formatPreOrderDeadline(
+  isoDay?: string | null,
+  now = new Date(),
+): string | null {
+  if (!isoDay) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDay.trim().slice(0, 10))
+  if (!m) return null
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  return now.getFullYear() === year
+    ? `截止 ${month}/${day}`
+    : `截止 ${year}/${month}/${day}`
+}
+
 /** DB 售價正規化（含字串數字）；無效或 0 視為未訂價 */
 export function normalizeShopPrice(value: unknown): number | null {
   if (value == null) return null

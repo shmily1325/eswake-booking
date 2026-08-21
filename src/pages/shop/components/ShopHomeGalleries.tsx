@@ -24,7 +24,9 @@ import { SHOP_RETURN_TO_KEY } from '../lib/shopReturnTo'
 import { computeFacets, getShopBaseProducts } from '../lib/shopFilters'
 import { SHOP_HERO_IMAGES } from '../lib/shopHeroImages'
 import {
-  SHOP_PRODUCT_IMG,
+  SHOP_HOME_GALLERY_GRID,
+  SHOP_HOME_PRODUCT_FRAME,
+  SHOP_HOME_PRODUCT_IMG,
   SHOP_HOME_STRIP_CARD,
   SHOP_GROUP_TILE,
 } from '../lib/shopUiStyle'
@@ -63,9 +65,8 @@ interface ShopHomeGalleriesProps {
 }
 
 /**
- * 目錄首頁：Pre-Order / In-Stock 原生橫滑。
- * 手機一列吸附；桌機兩欄並排。
- * 有紅標商品才出現第三區 Sale：桌機改整排橫滑，不跟上面擠成三欄。
+ * 目錄首頁：Pre-Order / In-Stock / Sale 原生橫滑。
+ * 手機直向堆疊；桌機同一套兩欄 grid，不因奇數寫特例。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readVisitSeed)
@@ -95,18 +96,47 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
     [products, seed, promo.presets],
   )
 
+  const galleries = useMemo(() => {
+    const rows: {
+      key: string
+      title: string
+      items: HomeGalleryItem[]
+      viewAllTo: string
+    }[] = []
+    if (preOrderItems.length > 0) {
+      rows.push({
+        key: 'pre-order',
+        title: SHOP_LABEL.preOrder,
+        items: preOrderItems,
+        viewAllTo: shopPreOrderListPath(),
+      })
+    }
+    if (inStockItems.length > 0) {
+      rows.push({
+        key: 'in-stock',
+        title: SHOP_LABEL.inStock,
+        items: inStockItems,
+        viewAllTo: shopInStockListPath(),
+      })
+    }
+    if (saleItems.length > 0) {
+      rows.push({
+        key: 'sale',
+        title: SHOP_LABEL.sale,
+        items: saleItems,
+        viewAllTo: shopSaleListPath(),
+      })
+    }
+    return rows
+  }, [preOrderItems, inStockItems, saleItems])
+
   const listed = useMemo(() => getShopBaseProducts(products), [products])
   const groups = useMemo(() => {
     const counts = computeFacets(listed).groupCounts
     return SHOP_GROUPS.filter((g) => (counts.get(g) ?? 0) > 0)
   }, [listed])
 
-  if (
-    preOrderItems.length === 0 &&
-    inStockItems.length === 0 &&
-    saleItems.length === 0 &&
-    groups.length === 0
-  ) {
+  if (galleries.length === 0 && groups.length === 0) {
     return (
       <p className="px-4 sm:px-6 py-16 text-center text-sm text-white/55">
         {SHOP_COPY.emptyCatalog}
@@ -114,43 +144,18 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
     )
   }
 
-  const bothGalleries = preOrderItems.length > 0 && inStockItems.length > 0
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
-      <div
-        className={
-          bothGalleries
-            ? 'space-y-10 lg:space-y-0 lg:grid lg:grid-cols-2 lg:divide-x lg:divide-white/20'
-            : 'space-y-10'
-        }
-      >
-        {preOrderItems.length > 0 && (
-          <HomeGalleryRow
-            title={SHOP_LABEL.preOrder}
-            items={preOrderItems}
-            viewAllTo={shopPreOrderListPath()}
-            frameClass={bothGalleries ? 'lg:pr-8 xl:pr-10' : undefined}
-          />
-        )}
-        {inStockItems.length > 0 && (
-          <HomeGalleryRow
-            title={SHOP_LABEL.inStock}
-            items={inStockItems}
-            viewAllTo={shopInStockListPath()}
-            frameClass={bothGalleries ? 'lg:pl-8 xl:pl-10' : undefined}
-          />
-        )}
-      </div>
-
-      {saleItems.length > 0 && (
-        <div className="mt-10">
-          <HomeGalleryRow
-            title={SHOP_LABEL.sale}
-            items={saleItems}
-            viewAllTo={shopSaleListPath()}
-            wide
-          />
+      {galleries.length > 0 && (
+        <div className={SHOP_HOME_GALLERY_GRID}>
+          {galleries.map((gallery) => (
+            <HomeGalleryRow
+              key={gallery.key}
+              title={gallery.title}
+              items={gallery.items}
+              viewAllTo={gallery.viewAllTo}
+            />
+          ))}
         </div>
       )}
 
@@ -191,14 +196,10 @@ function HomeGalleryRow({
   title,
   items,
   viewAllTo,
-  frameClass,
-  wide = false,
 }: {
   title: string
   items: HomeGalleryItem[]
   viewAllTo: string
-  frameClass?: string
-  wide?: boolean
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const canSlide = items.length > 1
@@ -213,7 +214,7 @@ function HomeGalleryRow({
   }
 
   return (
-    <section aria-label={title} className={'min-w-0 ' + (frameClass ?? '')}>
+    <section aria-label={title} className="min-w-0">
       <div className="flex items-center justify-between gap-3 h-11 mb-3">
         <h2 className="min-w-0 text-lg sm:text-xl font-black italic uppercase tracking-wider text-white leading-none truncate">
           {title}
@@ -232,6 +233,10 @@ function HomeGalleryRow({
           <>
             <StripArrow side="left" onClick={() => scrollByCard(-1)} />
             <StripArrow side="right" onClick={() => scrollByCard(1)} />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-10 bg-linear-to-r from-transparent to-black lg:block"
+            />
           </>
         )}
 
@@ -251,27 +256,25 @@ function HomeGalleryRow({
               draggable={false}
               className={
                 'snap-start shrink-0 ' +
-                (wide
-                  ? 'w-[min(68vw,228px)] md:w-60 lg:w-[calc((100%-2.25rem)/4.2)]'
-                  : SHOP_HOME_STRIP_CARD) +
+                SHOP_HOME_STRIP_CARD +
                 ' block rounded-xl bg-white overflow-hidden'
               }
             >
-              <div className="aspect-4/5 bg-white overflow-hidden">
+              <div className={SHOP_HOME_PRODUCT_FRAME}>
                 <ImageOrFallback
                   src={item.imageUrl}
                   alt={item.title}
                   loading={index < 2 ? 'eager' : 'lazy'}
                   observeRoot={scrollerRef}
-                  imgClassName={SHOP_PRODUCT_IMG}
+                  imgClassName={SHOP_HOME_PRODUCT_IMG}
                   fallback={<NoImagePlaceholder />}
                 />
               </div>
               <div className="px-2.5 py-2">
-                <div className="h-4 text-[10px] text-gray-400 uppercase tracking-wide truncate">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-600 truncate">
                   {item.brand || '\u00A0'}
                 </div>
-                <div className="mt-0.5 text-xs sm:text-sm font-black text-zinc-900 leading-snug line-clamp-2">
+                <div className="mt-0.5 text-sm font-black text-zinc-900 leading-snug line-clamp-2">
                   {item.title}
                 </div>
                 {item.subtitle ? (
