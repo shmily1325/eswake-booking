@@ -30,9 +30,9 @@ export interface ShopPrice {
   /** 客人要付的價（無折扣時 = original） */
   sale: number | null
   hasDiscount: boolean
-  /** 卡片 badge（紅標）；預購全館不重複掛，已有 Pre-Order */
+  /** 卡片 badge：特價顯示折數（6折），預購不重複掛（已有 Pre-Order） */
   badge: string | null
-  /** LINE／後台說明：預購 8折、紅標 6折 */
+  /** LINE／後台說明：預購 8折、6折 */
   caption: string | null
   percent: number | null
   source: DiscountKind | null
@@ -75,9 +75,7 @@ export function activeTagPresets(
 function captionFor(preset: DiscountPreset): string {
   const fold = foldLabel(preset.percent)
   if (preset.kind === 'preorder') return `預購 ${fold}`
-  const label = preset.label.trim() || preset.name.trim() || fold
-  if (label.includes('折')) return label
-  return `${label} ${fold}`
+  return fold
 }
 
 function fromPreset(original: number, preset: DiscountPreset): ShopPrice {
@@ -98,7 +96,7 @@ function fromPreset(original: number, preset: DiscountPreset): ShopPrice {
     original,
     sale,
     hasDiscount: true,
-    badge: preset.kind === 'tag' ? (preset.label.trim() || foldLabel(preset.percent)) : null,
+    badge: preset.kind === 'tag' ? foldLabel(preset.percent) : null,
     caption: captionFor(preset),
     percent: preset.percent,
     source: preset.kind,
@@ -177,10 +175,12 @@ export interface ProductShopPriceSummary {
   originalText: string | null
   hasDiscount: boolean
   badge: string | null
-  /** 原價旁說明：預購 8折／紅標 6折；SKU 文案不一致時不顯示 */
+  /** 原價旁說明：預購 8折／6折；SKU 文案不一致時不顯示 */
   offerCaption: string | null
-  /** 全部折扣來源一致時才有；用來分 amber / 紅標 */
+  /** 全部折扣來源一致時才有；用來分 amber / 特價紅 */
   offerSource: DiscountKind | null
+  /** 全部同一折數時才有：8折、6折 */
+  offerFold: string | null
 }
 
 /** 列表卡：折後價為主；全部有折扣才劃掉原價。 */
@@ -200,6 +200,7 @@ export function summarizeProductShopPrice(
       badge: null,
       offerCaption: null,
       offerSource: null,
+      offerFold: null,
     }
   }
   const sales = priced.map((p) => p.sale)
@@ -221,6 +222,11 @@ export function summarizeProductShopPrice(
       .filter((p) => p.hasDiscount && p.source)
       .map((p) => p.source as DiscountKind),
   )
+  const percents = new Set(
+    priced
+      .filter((p) => p.hasDiscount && p.percent != null)
+      .map((p) => p.percent as number),
+  )
   return {
     inquiry: false,
     saleText,
@@ -229,5 +235,9 @@ export function summarizeProductShopPrice(
     badge: badges.size === 1 ? [...badges][0] : null,
     offerCaption: allDiscounted && captions.size === 1 ? [...captions][0] : null,
     offerSource: allDiscounted && sources.size === 1 ? [...sources][0] : null,
+    offerFold:
+      allDiscounted && percents.size === 1
+        ? foldLabel([...percents][0]!)
+        : null,
   }
 }

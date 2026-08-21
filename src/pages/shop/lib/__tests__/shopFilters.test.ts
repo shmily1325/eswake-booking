@@ -5,12 +5,16 @@ import {
   ALL_SUBCATS,
   buildShopSearchParams,
   computeBrandCounts,
+  computeSizeCounts,
   defaultFilterState,
   filterAndSortProducts,
   filterProductsForBrandFacets,
+  filterProductsForSizeFacets,
+  formatSizeFacetLabel,
   normalizeFilterState,
   parseFiltersFromSearchParams,
   pruneUnavailableBrands,
+  pruneUnavailableSizes,
   getCollectionParentGroup,
   isShopCatalogHome,
 } from '../shopFilters'
@@ -35,12 +39,37 @@ function product(
         sku: 'sku',
         color: null,
         size: null,
+        attributes: {},
         created_at: '',
         updated_at: '',
       },
     ],
     ...overrides,
   } as ProductWithVariants
+}
+
+function sizedProduct(
+  category: string,
+  brand: string,
+  sizes: string[],
+): ProductWithVariants {
+  return product(category, {
+    brand,
+    variants: sizes.map((size, i) => ({
+      id: `${category}-${brand}-${size}-${i}`,
+      product_id: 'p1',
+      stock: 1,
+      reserved_qty: 0,
+      availability: 'in_stock' as const,
+      price: 100,
+      sku: `sku-${size}`,
+      color: null,
+      size: null,
+      attributes: { size },
+      created_at: '',
+      updated_at: '',
+    })),
+  })
 }
 
 describe('normalizeFilterState', () => {
@@ -85,6 +114,16 @@ describe('normalizeFilterState', () => {
     })
     expect(next.subCat).toBe(ALL_SUBCATS)
   })
+
+  it('clears sizes when leaving a subcategory', () => {
+    const next = normalizeFilterState({
+      ...defaultFilterState(),
+      topLevel: 'Wakeboarding',
+      subCat: ALL_SUBCATS,
+      sizes: ['26'],
+    })
+    expect(next.sizes).toEqual([])
+  })
 })
 
 describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
@@ -119,6 +158,8 @@ describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
     expect(built.get('stock')).toBeNull()
     expect(parseFiltersFromSearchParams(built).saleOnly).toBe(true)
   })
+
+  it('round-trips in-stock filter', () => {
     const built = buildShopSearchParams({
       ...defaultFilterState(),
       inStockOnly: true,
@@ -126,6 +167,23 @@ describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
     expect(built.get('stock')).toBe('1')
     expect(built.get('preorder')).toBeNull()
     expect(parseFiltersFromSearchParams(built).inStockOnly).toBe(true)
+  })
+
+  it('round-trips brand and size filters', () => {
+    const built = buildShopSearchParams({
+      ...defaultFilterState(),
+      topLevel: 'Wakeboarding',
+      subCat: 'wb_boots',
+      brands: ['Ronix'],
+      sizes: ['26', '27'],
+    })
+    expect(built.get('brand')).toBe(encodeURIComponent('Ronix'))
+    expect(built.get('size')).toBe(`${encodeURIComponent('26')},${encodeURIComponent('27')}`)
+
+    const parsed = parseFiltersFromSearchParams(built)
+    expect(parsed.brands).toEqual(['Ronix'])
+    expect(parsed.sizes).toEqual(['26', '27'])
+    expect(parsed.subCat).toBe('wb_boots')
   })
 
   it('prefers pre-order when both flags appear in the URL', () => {
@@ -299,6 +357,9 @@ describe('isShopCatalogHome', () => {
     expect(
       isShopCatalogHome({ ...defaultFilterState(), search: 'ronix' }),
     ).toBe(false)
+    expect(
+      isShopCatalogHome({ ...defaultFilterState(), sizes: ['26'] }),
+    ).toBe(false)
   })
 })
 
@@ -311,3 +372,76 @@ describe('getCollectionParentGroup', () => {
     expect(getCollectionParentGroup(filters)).toBe('Essentials')
   })
 })
+
+describe('size facets', () => {
+  const boots26 = sizedProduct('wb_boots', 'Ronix', ['26', '27'])
+  const boots28 = sizedProduct('wb_boots', 'Hyperlite', ['28'])
+  const vest = sizedProduct('lifejacket', 'Follow', ['S', 'M'])
+
+  it('keeps a product if any selected size matches a variant', () => {
+    const filtered = filterAndSortProducts([boots26, boots28], {
+      ...defaultFilterState(),
+      topLevel: 'Wakeboarding',
+      subCat: 'wb_boots',
+      sizes: ['26'],
+    })
+    expect(filtered.map((p) => p.brand)).toEqual(['Ronix'])
+  })
+
+  it('ORs selected sizes', () => {
+    const filtered = filterAndSortProducts([boots26, boots28], {
+      ...defaultFilterState(),
+      topLevel: 'Wakeboarding',
+      subCat: 'wb_boots',
+      sizes: ['26', '28'],
+    })
+    expect(filtered.map((p) => p.brand).sort()).toEqual(['Hyperlite', 'Ronix'])
+  })
+
+  it('only lists sizes in the selected subcategory', () => {
+    const filters = {
+      ...defaultFilterState(),
+      topLevel: 'Wakeboarding' as const,
+      subCat: 'wb_boots',
+    }
+    const counts = computeSizeCounts(
+      filterProductsForSizeFacets([boots26, boots28, vest], filters),
+    )
+    expect([...counts.keys()].sort()).toEqual(['26', '27', '28'])
+  })
+
+  it('lists no sizes until a subcategory is selected', () => {
+    const filters = {
+      ...defaultFilterState(),
+      topLevel: 'Wakeboarding' as const,
+    }
+    expect(
+      filterProductsForSizeFacets([boots26, vest], filters),
+    ).toEqual([])
+  })
+
+  it('drops selected sizes that are unavailable in the new category', () => {
+    const withSize = {
+      ...defaultFilterState(),
+      topLevel: 'Wakeboarding' as const,
+      subCat: 'wb_boots',
+      sizes: ['26'],
+    }
+    const vestCat = normalizeFilterState({
+      ...withSize,
+      topLevel: 'Essentials',
+      subCat: 'lifejacket',
+    })
+    const pruned = pruneUnavailableSizes(
+      vestCat,
+      computeSizeCounts(filterProductsForSizeFacets([boots26, vest], vestCat)),
+    )
+    expect(pruned.sizes).toEqual([])
+  })
+
+  it('appends cm for boots size chips', () => {
+    expect(formatSizeFacetLabel('wb_boots', '26')).toBe('26cm')
+    expect(formatSizeFacetLabel('lifejacket', 'M')).toBe('M')
+  })
+})
+

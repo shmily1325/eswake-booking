@@ -34,7 +34,7 @@ export interface CartItem {
   unitPrice: number | null
   /** 建議售價 snapshot；有折扣時與 unitPrice 不同 */
   originalPrice?: number | null
-  /** LINE 用：預購 8折 / 紅標 6折 */
+  /** LINE 用：預購 8折 / 6折 */
   discountCaption?: string | null
   /** 數量，至少 1 */
   quantity: number

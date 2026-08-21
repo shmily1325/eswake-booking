@@ -6,6 +6,7 @@ import { ShopHeader } from './components/ShopHeader'
 import { ProductCard } from './components/ProductCard'
 import { ActiveFilterPills } from './components/ActiveFilterPills'
 import { ShopFilterDrawer } from './components/ShopFilterDrawer'
+import { ShopFilterSidebar } from './components/ShopFilterSidebar'
 import { ShopCategoryBar } from './components/ShopMobileCategoryBar'
 import { ShopPreOrderRefineBar } from './components/ShopPreOrderRefineBar'
 import { ShopMobileListToolbar } from './components/ShopMobileListToolbar'
@@ -14,6 +15,7 @@ import { ShopHomeGalleries } from './components/ShopHomeGalleries'
 import { useShopFilters } from './hooks/useShopFilters'
 import { useShopPromo } from './hooks/useShopPromo'
 import {
+  countRefineFilters,
   getCollectionParentGroup,
   getHeroTitle,
   isShopCatalogHome,
@@ -30,7 +32,7 @@ import { ShopFooter } from './components/ShopFooter'
 /**
  * 商城列表。
  * - `/shop` 無 query：首頁 gallery（Pre-Order / In-Stock）
- * - `?preorder=1`：預購列表；`?stock=1`：現貨列表；`?sale=1`：紅標特價
+ * - `?preorder=1`：預購列表；`?stock=1`：現貨列表；`?sale=1`：非預購特價
  */
 export function ShopList() {
   const [products, setProducts] = useState<ProductWithVariants[]>([])
@@ -49,6 +51,8 @@ export function ShopList() {
     selectCategory,
     selectPreOrderBrand,
     selectPreOrderCategory,
+    toggleBrand,
+    toggleSize,
     setSortBy,
     clearRefinement,
     clearPillFilters,
@@ -86,7 +90,7 @@ export function ShopList() {
   const heroConfig = getShopHeroForFilters(filters, showFullHero)
   useShopHeroPreload(heroConfig)
   const collectionParent = getCollectionParentGroup(filters)
-  const mobileRefineCount = filters.sortBy !== 'newest' ? 1 : 0
+  const mobileRefineCount = countRefineFilters(filters)
 
   return (
     <div className={'min-h-screen ' + (isHome ? 'bg-black' : 'bg-gray-50')}>
@@ -143,6 +147,15 @@ export function ShopList() {
         <>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="flex gap-8 items-start">
+          {!filters.preOrderOnly && (
+            <ShopFilterSidebar
+              filters={filters}
+              brandCounts={facets.brandCounts}
+              sizeCounts={facets.sizeCounts}
+              onToggleBrand={toggleBrand}
+              onToggleSize={toggleSize}
+            />
+          )}
           <div className="flex-1 min-w-0">
             {!filters.preOrderOnly && (
               <ShopMobileListToolbar
@@ -214,7 +227,11 @@ export function ShopList() {
         open={drawerOpen}
         resultCount={filteredProducts.length}
         filters={filters}
+        brandCounts={facets.brandCounts}
+        sizeCounts={facets.sizeCounts}
         onClose={() => setDrawerOpen(false)}
+        onToggleBrand={toggleBrand}
+        onToggleSize={toggleSize}
         onSortChange={setSortBy}
         onClearAll={clearRefinement}
       />

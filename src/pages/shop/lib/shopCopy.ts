@@ -7,6 +7,7 @@ export const SHOP_LABEL = {
   filter: 'Filter',
   sort: 'Sort',
   brand: 'Brand',
+  size: 'Size',
   availability: 'Availability',
   category: 'Category',
   type: 'Type',

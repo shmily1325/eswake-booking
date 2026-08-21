@@ -24,7 +24,9 @@ export function ShopBrandFilter({
     [brandCounts],
   )
 
-  if (brands.length === 0) return null
+  const show =
+    brands.length >= 2 || filters.brands.some((b) => brandCounts.has(b))
+  if (!show) return null
 
   if (layout === 'chips') {
     return (

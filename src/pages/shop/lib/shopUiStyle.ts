@@ -26,7 +26,7 @@
  *
  * ── 有風格 Character ──
  * - 字：標題／logo 區 font-black italic uppercase；內文正常 sans。
- * - 色：黑 + 白 + zinc；預購 amber-600；避免再引入新主色。
+ * - 色：黑 + 白 + zinc；預購 amber-600；特價 red-500／red-600。避免再引入新主色。
  * - 圖：hero 全幅裁切；商品照白底 object-contain，不裁板頭／衣襬。
  *
  * ── 文案 ──
@@ -42,7 +42,7 @@
  * | 首頁     | hero + gallery + 三大類入口 | 同左 |
  * | 分類     | 列表頁 hero 下黑底 chips；子分類無 All | 同左 + 側欄 |
  * | 件數     | 子 chip 數字；Filter drawer「Show N」       |              |
- * | 品牌等   | Filter drawer     | 側欄        |
+ * | 品牌／尺碼 | Filter drawer（尺碼僅已選小類） | 側欄 |
  * | 搜尋     | header 放大鏡展開 | header      |
  *
  * ── 新增功能前自問 ──

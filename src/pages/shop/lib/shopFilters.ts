@@ -5,6 +5,7 @@
 import {
   getAllCategories,
   getCategoryShopName,
+  getSkuFields,
   SHOP_GROUPS,
   type ShopGroup,
 } from '../../admin/products/schema'
@@ -20,6 +21,7 @@ import {
   isProductInStockSection,
 } from './productAvailability'
 import { productMatchesShopSearch } from './shopProductSearch'
+import { specAttrValue } from './variantSpecAxes'
 
 export type ShopCatalogMode = 'catalog' | 'pre-order' | 'in-stock'
 
@@ -33,12 +35,14 @@ export interface ShopFilterState {
   topLevel: TopLevel
   subCat: string
   brands: string[]
+  /** 尺碼多選；僅在已選小類時有意義（Boots cm、Vest S/M/L 不可混） */
+  sizes: string[]
   sortBy: SortBy
   search: string
   preOrderOnly: boolean
   /** 僅現貨；與 preOrderOnly 互斥 */
   inStockOnly: boolean
-  /** 僅掛商品檔次（紅標等）；與 preorder / stock 互斥 */
+  /** 僅非預購的掛檔次特價；與 preorder / stock 互斥 */
   saleOnly: boolean
 }
 
@@ -55,6 +59,7 @@ export function defaultFilterState(): ShopFilterState {
     topLevel: ALL_GROUPS,
     subCat: ALL_SUBCATS,
     brands: [],
+    sizes: [],
     sortBy: 'newest',
     search: '',
     preOrderOnly: false,
@@ -90,24 +95,32 @@ export function normalizeFilterState(state: ShopFilterState): ShopFilterState {
       ...state,
       topLevel: ALL_GROUPS,
       subCat,
+      sizes: subCat === ALL_SUBCATS ? [] : state.sizes,
       inStockOnly: false,
       saleOnly: false,
     }
   }
 
   let { topLevel, subCat } = state
-  if (subCat === ALL_SUBCATS) return state
+  if (subCat === ALL_SUBCATS) {
+    return state.sizes.length === 0 ? state : { ...state, sizes: [] }
+  }
 
   const catDef = getAllCategories().find((c) => c.id === subCat)
   if (!catDef?.shopGroup) {
-    return { ...state, subCat: ALL_SUBCATS }
+    return { ...state, subCat: ALL_SUBCATS, sizes: [] }
   }
   if (topLevel === ALL_GROUPS) {
     topLevel = catDef.shopGroup
   } else if (catDef.shopGroup !== topLevel) {
     subCat = ALL_SUBCATS
   }
-  return { ...state, topLevel, subCat }
+  return {
+    ...state,
+    topLevel,
+    subCat,
+    sizes: subCat === ALL_SUBCATS ? [] : state.sizes,
+  }
 }
 
 export function parseFiltersFromSearchParams(
@@ -120,11 +133,19 @@ export function parseFiltersFromSearchParams(
         .map((b) => decodeURIComponent(b.trim()))
         .filter(Boolean)
     : []
+  const sizesRaw = params.get('size')
+  const sizes = sizesRaw
+    ? sizesRaw
+        .split(',')
+        .map((s) => decodeURIComponent(s.trim()))
+        .filter(Boolean)
+    : []
 
   return normalizeFilterState({
     topLevel: parseShopGroup(params.get('group')),
     subCat: params.get('cat')?.trim() || ALL_SUBCATS,
     brands,
+    sizes,
     sortBy: parseSort(params.get('sort')),
     search: params.get('q')?.trim() ?? '',
     preOrderOnly: params.get('preorder') === '1',
@@ -147,6 +168,9 @@ export function buildShopSearchParams(filters: ShopFilterState): URLSearchParams
   if (filters.subCat !== ALL_SUBCATS) p.set('cat', filters.subCat)
   if (filters.brands.length > 0) {
     p.set('brand', filters.brands.map(encodeURIComponent).join(','))
+  }
+  if (filters.sizes.length > 0) {
+    p.set('size', filters.sizes.map(encodeURIComponent).join(','))
   }
   if (filters.sortBy !== 'newest') p.set('sort', filters.sortBy)
   return p
@@ -215,7 +239,7 @@ export function computeFacets(baseProducts: ProductWithVariants[]): ShopFacets {
   }
 }
 
-/** 品牌 facet：依目前分類 + 搜尋結果，不含已勾選品牌 */
+/** 品牌 facet：依目前分類 + 搜尋 + 尺碼，不含已勾選品牌 */
 export function filterProductsForBrandFacets(
   baseProducts: ProductWithVariants[],
   filters: ShopFilterState,
@@ -228,7 +252,27 @@ export function filterProductsForBrandFacets(
   return pool.filter(
     (p) =>
       productMatchesCategory(p, filters) &&
-      productMatchesSearch(p, filters.search),
+      productMatchesSearch(p, filters.search) &&
+      productMatchesSize(p, filters),
+  )
+}
+
+/** 尺碼 facet：依目前分類 + 搜尋 + 品牌，不含已勾選尺碼 */
+export function filterProductsForSizeFacets(
+  baseProducts: ProductWithVariants[],
+  filters: ShopFilterState,
+): ProductWithVariants[] {
+  if (filters.subCat === ALL_SUBCATS) return []
+  const pool = getFacetProductPool(
+    baseProducts,
+    filters.preOrderOnly,
+    filters.inStockOnly,
+  )
+  return pool.filter(
+    (p) =>
+      productMatchesCategory(p, filters) &&
+      productMatchesSearch(p, filters.search) &&
+      productMatchesBrand(p, filters),
   )
 }
 
@@ -243,6 +287,21 @@ export function computeBrandCounts(
   return brandCounts
 }
 
+export function computeSizeCounts(
+  products: ProductWithVariants[],
+): Map<string, number> {
+  const sizeCounts = new Map<string, number>()
+  for (const p of products) {
+    const seen = new Set<string>()
+    for (const size of productSizeValues(p)) {
+      if (seen.has(size)) continue
+      seen.add(size)
+      sizeCounts.set(size, (sizeCounts.get(size) ?? 0) + 1)
+    }
+  }
+  return sizeCounts
+}
+
 export function pruneUnavailableBrands(
   state: ShopFilterState,
   availableBrands: Map<string, number>,
@@ -250,6 +309,40 @@ export function pruneUnavailableBrands(
   if (state.brands.length === 0) return state
   const brands = state.brands.filter((b) => availableBrands.has(b))
   return brands.length === state.brands.length ? state : { ...state, brands }
+}
+
+export function pruneUnavailableSizes(
+  state: ShopFilterState,
+  availableSizes: Map<string, number>,
+): ShopFilterState {
+  if (state.sizes.length === 0) return state
+  const sizes = state.sizes.filter((s) => availableSizes.has(s))
+  return sizes.length === state.sizes.length ? state : { ...state, sizes }
+}
+
+/** 側欄／drawer 顯示尺碼：Boots 的 26 → 26cm */
+export function formatSizeFacetLabel(
+  categoryId: string | null | undefined,
+  size: string,
+): string {
+  const field = getSkuFields(categoryId).find((f) => f.key === 'size')
+  const suffix = field?.displaySuffix
+  if (!suffix || size.endsWith(suffix)) return size
+  return size + suffix
+}
+
+function productSizeValues(p: ProductWithVariants): string[] {
+  const variants = getShopVisibleVariants(p.variants)
+  const pool = variants.length > 0 ? variants : p.variants
+  const sizes: string[] = []
+  const seen = new Set<string>()
+  for (const v of pool) {
+    const size = specAttrValue(v, 'size')
+    if (!size || seen.has(size)) continue
+    seen.add(size)
+    sizes.push(size)
+  }
+  return sizes
 }
 
 function productMatchesCategory(p: ProductWithVariants, filters: ShopFilterState): boolean {
@@ -265,6 +358,12 @@ function productMatchesBrand(p: ProductWithVariants, filters: ShopFilterState): 
   if (filters.brands.length === 0) return true
   const brand = (p.brand ?? '').trim()
   return filters.brands.includes(brand)
+}
+
+function productMatchesSize(p: ProductWithVariants, filters: ShopFilterState): boolean {
+  if (filters.sizes.length === 0) return true
+  const selected = new Set(filters.sizes)
+  return productSizeValues(p).some((size) => selected.has(size))
 }
 
 function productMatchesSearch(p: ProductWithVariants, search: string): boolean {
@@ -308,6 +407,7 @@ export function filterAndSortProducts(
       productMatchesSale(p, filters.saleOnly, presets) &&
       productMatchesCategory(p, filters) &&
       productMatchesBrand(p, filters) &&
+      productMatchesSize(p, filters) &&
       productMatchesSearch(p, filters.search),
   )
 
@@ -340,7 +440,17 @@ export function countActiveFilters(filters: ShopFilterState): number {
   if (filters.topLevel !== ALL_GROUPS) n++
   if (filters.subCat !== ALL_SUBCATS) n++
   if (filters.brands.length > 0) n++
+  if (filters.sizes.length > 0) n++
   if (filters.search.trim()) n++
+  return n
+}
+
+/** Filter drawer／按鈕角標：品牌、尺碼、排序（不含分類 chips） */
+export function countRefineFilters(filters: ShopFilterState): number {
+  let n = 0
+  if (filters.brands.length > 0) n++
+  if (filters.sizes.length > 0) n++
+  if (filters.sortBy !== 'newest') n++
   return n
 }
 
@@ -419,7 +529,8 @@ export function isShopCatalogHome(filters: ShopFilterState): boolean {
     !filters.inStockOnly &&
     !filters.saleOnly &&
     !filters.search.trim() &&
-    filters.brands.length === 0
+    filters.brands.length === 0 &&
+    filters.sizes.length === 0
   )
 }
 

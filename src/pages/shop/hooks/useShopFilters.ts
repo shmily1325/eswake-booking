@@ -7,15 +7,18 @@ import {
   buildShopSearchParams,
   computeBrandCounts,
   computeFacets,
+  computeSizeCounts,
   countActiveFilters,
   defaultFilterState,
   filterAndSortProducts,
   filterProductsForBrandFacets,
+  filterProductsForSizeFacets,
   getShopBaseProducts,
   hasNonDefaultFilters,
   normalizeFilterState,
   parseFiltersFromSearchParams,
   pruneUnavailableBrands,
+  pruneUnavailableSizes,
   type ShopFilterState,
   type SortBy,
   type TopLevel,
@@ -49,11 +52,15 @@ export function useShopFilters(
     const brandCounts = computeBrandCounts(
       filterProductsForBrandFacets(baseProducts, filters),
     )
+    const sizeCounts = computeSizeCounts(
+      filterProductsForSizeFacets(baseProducts, filters),
+    )
     const preOrderNavProducts = filterProductsForBrandFacets(baseProducts, {
       ...filters,
       topLevel: ALL_GROUPS,
       subCat: ALL_SUBCATS,
       brands: [],
+      sizes: [],
       preOrderOnly: true,
       inStockOnly: false,
       saleOnly: false,
@@ -69,6 +76,7 @@ export function useShopFilters(
     return {
       ...navFacets,
       brandCounts,
+      sizeCounts,
       preOrderBrandCounts,
       preOrderCategoryCounts,
       preOrderCount: catalogFacets.preOrderCount,
@@ -98,13 +106,20 @@ export function useShopFilters(
               ? patch(current)
               : { ...current, ...patch },
           )
-          const pruned = pruneUnavailableBrands(
+          const withBrands = pruneUnavailableBrands(
             next,
             computeBrandCounts(
               filterProductsForBrandFacets(baseProducts, next),
             ),
           )
-          return buildShopSearchParams(pruned)
+          return buildShopSearchParams(
+            pruneUnavailableSizes(
+              withBrands,
+              computeSizeCounts(
+                filterProductsForSizeFacets(baseProducts, withBrands),
+              ),
+            ),
+          )
         },
         { replace },
       )
@@ -118,6 +133,7 @@ export function useShopFilters(
       topLevel: ALL_GROUPS,
       subCat: ALL_SUBCATS,
       brands: [],
+      sizes: [],
       preOrderOnly: false,
       inStockOnly: prev.inStockOnly,
       saleOnly: false,
@@ -133,6 +149,7 @@ export function useShopFilters(
         topLevel: ALL_GROUPS,
         subCat: ALL_SUBCATS,
         brands: [],
+        sizes: [],
       })
     },
     [writeFilters],
@@ -147,6 +164,7 @@ export function useShopFilters(
         topLevel: ALL_GROUPS,
         subCat: ALL_SUBCATS,
         brands: [],
+        sizes: [],
       })
     },
     [writeFilters],
@@ -162,6 +180,7 @@ export function useShopFilters(
         inStockOnly: prev.inStockOnly,
         saleOnly: prev.saleOnly,
         brands: [],
+        sizes: [],
       }))
     },
     [writeFilters],
@@ -176,6 +195,7 @@ export function useShopFilters(
         saleOnly: false,
         topLevel: ALL_GROUPS,
         subCat: ALL_SUBCATS,
+        sizes: [],
         brands: brand == null || prev.brands[0] === brand ? [] : [brand],
       }))
     },
@@ -221,6 +241,18 @@ export function useShopFilters(
     [writeFilters],
   )
 
+  const toggleSize = useCallback(
+    (size: string) => {
+      writeFilters((prev) => {
+        const set = new Set(prev.sizes)
+        if (set.has(size)) set.delete(size)
+        else set.add(size)
+        return { ...prev, sizes: [...set] }
+      })
+    },
+    [writeFilters],
+  )
+
   const setSortBy = useCallback(
     (sortBy: SortBy) => {
       writeFilters({ sortBy })
@@ -249,32 +281,39 @@ export function useShopFilters(
   }, [writeFilters])
 
   const clearRefinement = useCallback(() => {
-    writeFilters({ sortBy: 'newest' })
+    writeFilters({ brands: [], sizes: [], sortBy: 'newest' })
   }, [writeFilters])
 
   /** 清除 pills 顯示的 refine（不動分類 chips） */
   const clearPillFilters = useCallback(() => {
     writeFilters({
       search: '',
+      brands: [],
+      sizes: [],
       sortBy: 'newest',
     })
   }, [writeFilters])
 
   const clearFilter = useCallback(
     (
-      key: 'preorder' | 'group' | 'cat' | 'brand' | 'search' | 'sort',
-      brand?: string,
+      key: 'preorder' | 'group' | 'cat' | 'brand' | 'size' | 'search' | 'sort',
+      value?: string,
     ) => {
       if (key === 'preorder') {
         writeFilters({ preOrderOnly: false, inStockOnly: false, saleOnly: false })
       } else if (key === 'group') {
-        writeFilters({ topLevel: ALL_GROUPS, subCat: ALL_SUBCATS })
+        writeFilters({ topLevel: ALL_GROUPS, subCat: ALL_SUBCATS, sizes: [] })
       } else if (key === 'cat') {
-        writeFilters({ subCat: ALL_SUBCATS })
-      } else if (key === 'brand' && brand) {
+        writeFilters({ subCat: ALL_SUBCATS, sizes: [] })
+      } else if (key === 'brand' && value) {
         writeFilters((prev) => ({
           ...prev,
-          brands: prev.brands.filter((b) => b !== brand),
+          brands: prev.brands.filter((b) => b !== value),
+        }))
+      } else if (key === 'size' && value) {
+        writeFilters((prev) => ({
+          ...prev,
+          sizes: prev.sizes.filter((s) => s !== value),
         }))
       } else if (key === 'search') {
         writeFilters({ search: '' })
@@ -301,6 +340,7 @@ export function useShopFilters(
     setTopLevel,
     setSubCat,
     toggleBrand,
+    toggleSize,
     setSortBy,
     setSearch,
     clearListFilters,

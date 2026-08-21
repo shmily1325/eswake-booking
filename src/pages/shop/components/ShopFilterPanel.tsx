@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ShopBrandFilter } from './ShopBrandFilter'
+import { ShopSizeFilter } from './ShopSizeFilter'
 import {
   getCategoryShopName,
   SHOP_GROUPS,
@@ -20,12 +21,15 @@ interface ShopFilterPanelProps {
   groupCounts: Map<ShopGroup, number>
   categoryCounts: Map<string, number>
   brandCounts: Map<string, number>
+  sizeCounts: Map<string, number>
   onSelectAll: () => void
   onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
   onPreOrderOnlyChange: (v: boolean) => void
   onToggleBrand: (brand: string) => void
+  onToggleSize: (size: string) => void
   hideCategory?: boolean
   hideBrand?: boolean
+  hideAvailability?: boolean
 }
 
 export function ShopFilterPanel({
@@ -34,12 +38,15 @@ export function ShopFilterPanel({
   groupCounts,
   categoryCounts,
   brandCounts,
+  sizeCounts,
   onSelectAll,
   onSelectCategory,
   onPreOrderOnlyChange,
   onToggleBrand,
+  onToggleSize,
   hideCategory = false,
   hideBrand = false,
+  hideAvailability = false,
 }: ShopFilterPanelProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() =>
     filters.topLevel !== ALL_GROUPS ? new Set([filters.topLevel]) : new Set(),
@@ -132,7 +139,13 @@ export function ShopFilterPanel({
         />
       )}
 
-      {preOrderCount > 0 && (
+      <ShopSizeFilter
+        filters={filters}
+        sizeCounts={sizeCounts}
+        onToggleSize={onToggleSize}
+      />
+
+      {!hideAvailability && preOrderCount > 0 && (
         <FilterSection title={SHOP_LABEL.availability}>
           <label className="flex items-center gap-2.5 min-h-[44px] px-1 cursor-pointer rounded-md hover:bg-gray-50">
             <input

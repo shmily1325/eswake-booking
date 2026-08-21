@@ -21,7 +21,7 @@ describe('LINE inquiry prices', () => {
     )
   })
 
-  it('writes 紅標 caption for leftover stock', () => {
+  it('writes fold caption for leftover stock', () => {
     const payload = buildSingleInquiry({
       productId: 'p1',
       productName: 'Follow ANTHEM',
@@ -30,11 +30,11 @@ describe('LINE inquiry prices', () => {
       quantity: 1,
       unitPrice: 6075,
       originalPrice: 10125,
-      discountCaption: '紅標 6折',
+      discountCaption: '6折',
       isPreOrder: false,
     })
     expect(payload.message).toContain(
-      '單價：NT$ 6,075（紅標 6折，原價 NT$ 10,125）',
+      '單價：NT$ 6,075（6折，原價 NT$ 10,125）',
     )
   })
 

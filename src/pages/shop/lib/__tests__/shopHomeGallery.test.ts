@@ -50,6 +50,9 @@ describe('collectHomeGalleryPool', () => {
         productId: 'stock-photo',
         title: 'stock-photo',
         subtitle: 'red',
+        saleText: 'NT$ 10,000',
+        originalText: null,
+        offerFold: null,
       }),
     ])
   })
@@ -57,6 +60,26 @@ describe('collectHomeGalleryPool', () => {
   it('keeps pre-order products that have a cover', () => {
     expect(collectHomeGalleryPool(products, 'pre-order').map((p) => p.productId)).toEqual([
       'pre-photo',
+    ])
+  })
+
+  it('shows pre-order fold and sale price when a campaign is on', () => {
+    const preorder = {
+      id: 'pre',
+      kind: 'preorder' as const,
+      name: '預購全館',
+      label: '8折',
+      percent: 80,
+      is_active: true,
+      sort_order: 0,
+    }
+    expect(collectHomeGalleryPool(products, 'pre-order', [preorder])).toEqual([
+      expect.objectContaining({
+        productId: 'pre-photo',
+        saleText: 'NT$ 8,000',
+        originalText: 'NT$ 10,000',
+        offerFold: '8折',
+      }),
     ])
   })
 
@@ -71,9 +94,35 @@ describe('collectHomeGalleryPool', () => {
       sort_order: 1,
     }
     const tagged = product('red-tag', 'in_stock', 'https://img/c.jpg', 1, 'red')
+    const withTagged = [...products, tagged]
+    const sale = collectHomeGalleryPool(withTagged, 'sale', [red])
+    expect(sale).toEqual([
+      expect.objectContaining({
+        productId: 'red-tag',
+        saleText: 'NT$ 6,000',
+        originalText: 'NT$ 10,000',
+        offerFold: '6折',
+      }),
+    ])
     expect(
-      collectHomeGalleryPool([...products, tagged], 'sale', [red]).map((p) => p.productId),
-    ).toEqual(['red-tag'])
+      collectHomeGalleryPool(withTagged, 'in-stock', [red]).map((p) => p.productId),
+    ).toEqual(['stock-photo'])
+  })
+
+  it('keeps tagged pre-order out of the sale pool', () => {
+    const red = {
+      id: 'red',
+      kind: 'tag' as const,
+      name: '紅標',
+      label: '紅標',
+      percent: 60,
+      is_active: true,
+      sort_order: 1,
+    }
+    const taggedPre = product('pre-red', 'pre_order', 'https://img/d.jpg', 0, 'red')
+    expect(
+      collectHomeGalleryPool([taggedPre], 'sale', [red]).map((p) => p.productId),
+    ).toEqual([])
   })
 })
 
@@ -84,6 +133,9 @@ describe('pickHomeGalleryItems', () => {
     title: id,
     subtitle: '',
     imageUrl: `https://img/${id}.jpg`,
+    saleText: null,
+    originalText: null,
+    offerFold: null,
   }))
 
   it('is stable for the same seed', () => {

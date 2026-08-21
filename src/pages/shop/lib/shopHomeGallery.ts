@@ -14,7 +14,11 @@ import {
   isProductInPreOrderSection,
   isProductInStockSection,
 } from './productAvailability'
-import { resolveShopPrice, type DiscountPreset } from './shopPricing'
+import {
+  resolveShopPrice,
+  summarizeProductShopPrice,
+  type DiscountPreset,
+} from './shopPricing'
 
 export type HomeGalleryKind = 'pre-order' | 'in-stock' | 'sale'
 
@@ -26,6 +30,12 @@ export interface HomeGalleryItem {
   title: string
   subtitle: string
   imageUrl: string
+  /** 折後價或售價 */
+  saleText: string | null
+  /** 有折扣時劃掉的原價 */
+  originalText: string | null
+  /** 8折、6折；特價列沒有一致折數時改顯示 SALE */
+  offerFold: string | null
 }
 
 function focusedVariants(
@@ -47,6 +57,7 @@ export function productHasTagSale(
   product: ProductWithVariants,
   presets: readonly DiscountPreset[],
 ): boolean {
+  if (isProductInPreOrderSection(product.variants)) return false
   return getShopVisibleVariants(product.variants).some(
     (v) => resolveShopPrice(v, presets).source === 'tag',
   )
@@ -63,20 +74,23 @@ export function collectHomeGalleryPool(
       kind === 'pre-order'
         ? isProductInPreOrderSection(product.variants)
         : kind === 'in-stock'
-          ? isProductInStockSection(product.variants)
+          ? isProductInStockSection(product.variants) &&
+            !productHasTagSale(product, presets)
           : productHasTagSale(product, presets)
     if (!matches) continue
-    const imageUrl = getProductImageUrl(
-      product,
-      focusedVariants(product, kind, presets),
-    )
+    const focused = focusedVariants(product, kind, presets)
+    const imageUrl = getProductImageUrl(product, focused)
     if (!imageUrl) continue
+    const price = summarizeProductShopPrice(focused, presets)
     items.push({
       productId: product.id,
       brand: (product.brand ?? '').trim(),
       title: formatProductModelName(product),
       subtitle: formatProductSecondaryLine(product),
       imageUrl,
+      saleText: price && !price.inquiry ? price.saleText : null,
+      originalText: price?.hasDiscount ? price.originalText : null,
+      offerFold: price?.offerFold ?? null,
     })
   }
   return items

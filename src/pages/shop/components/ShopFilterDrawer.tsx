@@ -1,24 +1,33 @@
 import { useEffect } from 'react'
+import { ShopBrandFilter } from './ShopBrandFilter'
+import { ShopSizeFilter } from './ShopSizeFilter'
 import type { ShopFilterState, SortBy } from '../lib/shopFilters'
+import { countRefineFilters } from '../lib/shopFilters'
 import { SHOP_COPY, SHOP_LABEL } from '../lib/shopCopy'
 
 interface ShopFilterDrawerProps {
   open: boolean
   resultCount: number
   filters: ShopFilterState
+  brandCounts: Map<string, number>
+  sizeCounts: Map<string, number>
   onClose: () => void
+  onToggleBrand: (brand: string) => void
+  onToggleSize: (size: string) => void
   onSortChange: (v: SortBy) => void
   onClearAll: () => void
 }
 
-/**
- * 手機版 filter sheet：預購、品牌、排序（分類在上方 chips）。
- */
+/** 手機版 filter sheet：品牌、尺碼、排序（分類在上方 chips）。 */
 export function ShopFilterDrawer({
   open,
   resultCount,
   filters,
+  brandCounts,
+  sizeCounts,
   onClose,
+  onToggleBrand,
+  onToggleSize,
   onSortChange,
   onClearAll,
 }: ShopFilterDrawerProps) {
@@ -33,8 +42,7 @@ export function ShopFilterDrawer({
 
   if (!open) return null
 
-  const hasRefinement =
-    filters.sortBy !== 'newest'
+  const hasRefinement = countRefineFilters(filters) > 0
 
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
@@ -70,6 +78,17 @@ export function ShopFilterDrawer({
 
         <div className="flex-1 overflow-y-auto px-4 py-4 overscroll-contain">
           <div className="space-y-6">
+            <ShopBrandFilter
+              filters={filters}
+              brandCounts={brandCounts}
+              onToggleBrand={onToggleBrand}
+              layout="list"
+            />
+            <ShopSizeFilter
+              filters={filters}
+              sizeCounts={sizeCounts}
+              onToggleSize={onToggleSize}
+            />
             <div>
               <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400 mb-2">
                 {SHOP_LABEL.sort}

@@ -1,11 +1,16 @@
-import { type ShopFilterState, type SortBy } from '../lib/shopFilters'
+import {
+  ALL_SUBCATS,
+  formatSizeFacetLabel,
+  type ShopFilterState,
+  type SortBy,
+} from '../lib/shopFilters'
 import { SHOP_LABEL } from '../lib/shopCopy'
 
 interface ActiveFilterPillsProps {
   filters: ShopFilterState
   onClear: (
-    key: 'preorder' | 'group' | 'cat' | 'brand' | 'search' | 'sort',
-    brand?: string,
+    key: 'preorder' | 'group' | 'cat' | 'brand' | 'size' | 'search' | 'sort',
+    value?: string,
   ) => void
   onClearAll: () => void
 }
@@ -17,10 +22,24 @@ export function ActiveFilterPills({
   onClearAll,
 }: ActiveFilterPillsProps) {
   const pills: {
-    key: 'search' | 'sort'
+    key: 'search' | 'sort' | 'brand' | 'size'
     label: string
+    value?: string
   }[] = []
 
+  if (!filters.preOrderOnly) {
+    for (const brand of filters.brands) {
+      pills.push({ key: 'brand', label: brand, value: brand })
+    }
+    const categoryId = filters.subCat !== ALL_SUBCATS ? filters.subCat : null
+    for (const size of filters.sizes) {
+      pills.push({
+        key: 'size',
+        label: formatSizeFacetLabel(categoryId, size),
+        value: size,
+      })
+    }
+  }
   if (filters.sortBy !== 'newest') {
     pills.push({ key: 'sort', label: sortLabel(filters.sortBy) })
   }
@@ -34,9 +53,9 @@ export function ActiveFilterPills({
     <div className="flex flex-wrap items-center gap-1.5 mb-3">
       {pills.map((pill) => (
         <button
-          key={`${pill.key}-${pill.label}`}
+          key={`${pill.key}-${pill.value ?? pill.label}`}
           type="button"
-          onClick={() => onClear(pill.key)}
+          onClick={() => onClear(pill.key, pill.value)}
           className="inline-flex items-center gap-1 h-8 px-2.5 text-xs font-medium rounded-full bg-zinc-900 text-white"
         >
           <span>{pill.label}</span>

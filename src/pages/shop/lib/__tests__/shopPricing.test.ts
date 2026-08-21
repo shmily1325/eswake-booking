@@ -81,8 +81,8 @@ describe('resolveShopPrice', () => {
     )
     expect(price.sale).toBe(6075)
     expect(price.source).toBe('tag')
-    expect(price.badge).toBe('紅標')
-    expect(price.caption).toBe('紅標 6折')
+    expect(price.badge).toBe('6折')
+    expect(price.caption).toBe('6折')
   })
 
   it('applies a tag on in-stock leftovers', () => {
@@ -144,13 +144,13 @@ describe('formatInquiryUnitPrice', () => {
     )
   })
 
-  it('includes 紅標 caption', () => {
+  it('includes fold caption without 紅標', () => {
     const price = resolveShopPrice(
       vest({ discount_preset_id: 'red', stock: 2, availability: 'in_stock' }),
       [PREORDER, RED],
     )
     expect(formatInquiryUnitPrice(price)).toBe(
-      'NT$ 6,075（紅標 6折，原價 NT$ 10,125）',
+      'NT$ 6,075（6折，原價 NT$ 10,125）',
     )
   })
 })
@@ -166,6 +166,7 @@ describe('summarizeProductShopPrice', () => {
     expect(summary.originalText).toBe('NT$ 10,125')
     expect(summary.offerCaption).toBe('預購 8折')
     expect(summary.offerSource).toBe('preorder')
+    expect(summary.offerFold).toBe('8折')
   })
 
   it('marks leftover stock as a tag offer', () => {
@@ -176,7 +177,8 @@ describe('summarizeProductShopPrice', () => {
       discount_preset_id: 'red',
     })
     const summary = summarizeProductShopPrice([leftover], [PREORDER, RED])
-    expect(summary.offerCaption).toBe('紅標 6折')
+    expect(summary.offerCaption).toBe('6折')
     expect(summary.offerSource).toBe('tag')
+    expect(summary.offerFold).toBe('6折')
   })
 })

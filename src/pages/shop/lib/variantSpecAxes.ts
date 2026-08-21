@@ -71,7 +71,7 @@ export function formatCardSpecLine(
   return axis ? axis.values.join(' · ') : ''
 }
 
-function sortSpecValues(values: string[], key: string): string[] {
+export function sortSpecValues(values: string[], key: string): string[] {
   if (key !== 'size') return values
   return [...values].sort((a, b) => {
     const ra = sizeRank(a)

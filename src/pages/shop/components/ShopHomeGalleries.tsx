@@ -74,18 +74,18 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const preOrderItems = useMemo(
     () =>
       pickHomeGalleryItems(
-        collectHomeGalleryPool(products, 'pre-order'),
+        collectHomeGalleryPool(products, 'pre-order', promo.presets),
         seed,
       ),
-    [products, seed],
+    [products, seed, promo.presets],
   )
   const inStockItems = useMemo(
     () =>
       pickHomeGalleryItems(
-        collectHomeGalleryPool(products, 'in-stock'),
+        collectHomeGalleryPool(products, 'in-stock', promo.presets),
         seed ^ 0x9e3779b9,
       ),
-    [products, seed],
+    [products, seed, promo.presets],
   )
   const saleItems = useMemo(
     () =>
@@ -154,6 +154,13 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
               title={gallery.title}
               items={gallery.items}
               viewAllTo={gallery.viewAllTo}
+              accent={
+                gallery.key === 'sale'
+                  ? 'sale'
+                  : gallery.key === 'pre-order'
+                    ? 'preorder'
+                    : undefined
+              }
             />
           ))}
         </div>
@@ -196,13 +203,16 @@ function HomeGalleryRow({
   title,
   items,
   viewAllTo,
+  accent,
 }: {
   title: string
   items: HomeGalleryItem[]
   viewAllTo: string
+  accent?: 'sale' | 'preorder'
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const canSlide = items.length > 1
+  const isSale = accent === 'sale'
 
   const scrollByCard = (dir: 1 | -1) => {
     const el = scrollerRef.current
@@ -214,9 +224,17 @@ function HomeGalleryRow({
   }
 
   return (
-    <section aria-label={title} className="min-w-0">
+    <section
+      aria-label={title}
+      className={'min-w-0' + (isSale ? ' lg:col-span-2' : '')}
+    >
       <div className="flex items-center justify-between gap-3 h-11 mb-3">
-        <h2 className="min-w-0 text-lg sm:text-xl font-black italic uppercase tracking-wider text-white leading-none truncate">
+        <h2
+          className={
+            'min-w-0 text-lg sm:text-xl font-black italic uppercase tracking-wider leading-none truncate ' +
+            (isSale ? 'text-red-500' : 'text-white')
+          }
+        >
           {title}
         </h2>
         <Link
@@ -260,7 +278,7 @@ function HomeGalleryRow({
                 ' block rounded-xl bg-white overflow-hidden'
               }
             >
-              <div className={SHOP_HOME_PRODUCT_FRAME}>
+              <div className={'relative ' + SHOP_HOME_PRODUCT_FRAME}>
                 <ImageOrFallback
                   src={item.imageUrl}
                   alt={item.title}
@@ -269,6 +287,15 @@ function HomeGalleryRow({
                   imgClassName={SHOP_HOME_PRODUCT_IMG}
                   fallback={<NoImagePlaceholder />}
                 />
+                {isSale ? (
+                  <span className="absolute top-2 left-2 z-10 bg-red-600 text-white text-[10px] font-black italic uppercase tracking-wider px-2 py-1">
+                    {item.offerFold || SHOP_LABEL.sale}
+                  </span>
+                ) : accent === 'preorder' && item.offerFold ? (
+                  <span className="absolute top-2 left-2 z-10 bg-amber-700 text-white text-[10px] font-black italic uppercase tracking-wider px-2 py-1">
+                    {item.offerFold}
+                  </span>
+                ) : null}
               </div>
               <div className="px-2.5 py-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-600 truncate">
@@ -280,6 +307,23 @@ function HomeGalleryRow({
                 {item.subtitle ? (
                   <div className="mt-0.5 text-[10px] text-gray-500 truncate">
                     {item.subtitle}
+                  </div>
+                ) : null}
+                {item.saleText ? (
+                  <div className="mt-1.5 flex items-baseline gap-1.5 min-w-0">
+                    <span
+                      className={
+                        'text-sm font-bold tabular-nums leading-none truncate ' +
+                        (isSale ? 'text-red-600' : 'text-zinc-900')
+                      }
+                    >
+                      {item.saleText}
+                    </span>
+                    {item.originalText ? (
+                      <span className="text-[11px] text-gray-400 line-through tabular-nums leading-none truncate">
+                        {item.originalText}
+                      </span>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
