@@ -165,5 +165,18 @@ describe('summarizeProductShopPrice', () => {
     expect(summary.saleText).toBe('NT$ 8,100')
     expect(summary.originalText).toBe('NT$ 10,125')
     expect(summary.offerCaption).toBe('預購 8折')
+    expect(summary.offerSource).toBe('preorder')
+  })
+
+  it('marks leftover stock as a tag offer', () => {
+    const leftover = vest({
+      id: 'v-red',
+      stock: 2,
+      availability: 'in_stock',
+      discount_preset_id: 'red',
+    })
+    const summary = summarizeProductShopPrice([leftover], [PREORDER, RED])
+    expect(summary.offerCaption).toBe('紅標 6折')
+    expect(summary.offerSource).toBe('tag')
   })
 })

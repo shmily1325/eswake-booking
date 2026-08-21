@@ -16,9 +16,10 @@ import { formatCardSpecLine } from '../lib/variantSpecAxes'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import {
-  SHOP_DISCOUNT_BADGE,
+  SHOP_PREORDER_DEADLINE,
   SHOP_PRODUCT_FRAME,
   SHOP_PRODUCT_IMG,
+  shopDiscountBadgeClass,
 } from '../lib/shopUiStyle'
 import { shopProductPath } from '../lib/shopPaths'
 import {
@@ -113,7 +114,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
                     {priceSummary.originalText}
                   </span>
                   {priceSummary.offerCaption ? (
-                    <span className={SHOP_DISCOUNT_BADGE}>
+                    <span className={shopDiscountBadgeClass(priceSummary.offerSource)}>
                       {priceSummary.offerCaption}
                     </span>
                   ) : null}
@@ -130,7 +131,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
         ) : null}
 
         {deadline ? (
-          <div className="mt-1.5 text-[11px] text-gray-400">
+          <div className={'mt-1.5 ' + SHOP_PREORDER_DEADLINE}>
             {deadline}
           </div>
         ) : null}

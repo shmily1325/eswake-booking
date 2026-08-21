@@ -11,7 +11,7 @@ import { useShopCart } from './hooks/useShopCart'
 import { useShopPromo } from './hooks/useShopPromo'
 import {
   formatPrice,
-  formatPreOrderFooter,
+  formatPreOrderDeadline,
   getCategoryShopName,
   getProductCoverImages,
   getProductDetailHeroImageUrl,
@@ -31,7 +31,11 @@ import { ShopDetailGallery } from './components/ShopDetailGallery'
 import type { GalleryImage } from './components/ShopDetailGallery'
 import { getShopReturnTo } from './lib/shopReturnTo'
 import { shopListPath } from './lib/shopPaths'
-import { SHOP_DETAIL_FRAME, SHOP_DETAIL_WRAP } from './lib/shopUiStyle'
+import {
+  SHOP_DETAIL_FRAME,
+  SHOP_DETAIL_WRAP,
+  shopDiscountBadgeClass,
+} from './lib/shopUiStyle'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { ShopFooter } from './components/ShopFooter'
 
@@ -310,7 +314,7 @@ function ProductDetailBody({
             {formatPrice(shopPrice.original)}
           </span>
           {shopPrice.caption ? (
-            <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-500 leading-none">
+            <span className={shopDiscountBadgeClass(shopPrice.source) + ' sm:text-xs'}>
               {shopPrice.caption}
             </span>
           ) : null}
@@ -333,11 +337,6 @@ function ProductDetailBody({
           alt={formatProductTitle(product)}
           resetKey={`${product.id}:${selectedVariantId ?? ''}`}
         />
-        {shopPrice?.badge && (
-          <div className="absolute top-2 right-2 z-10 bg-red-600 text-white text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded shadow-sm leading-tight">
-            {shopPrice.badge}
-          </div>
-        )}
       </div>
 
       {/* 資訊區 */}
@@ -372,8 +371,8 @@ function ProductDetailBody({
 
         <div className="mt-3 sm:mt-4">{priceBlock}</div>
         {isPreOrder && (
-          <div className="mt-2 text-xs sm:text-sm font-semibold tracking-wide text-amber-800">
-            {formatPreOrderFooter(selectedVariant?.pre_order_until)}
+          <div className="mt-2 text-xs sm:text-sm text-amber-800">
+            {formatPreOrderDeadline(selectedVariant?.pre_order_until) ?? SHOP_DETAIL.preOrder}
             {selectedVariant?.pre_order_eta ? (
               <span className="ml-2 font-normal text-gray-500">
                 預計 {selectedVariant.pre_order_eta}

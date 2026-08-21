@@ -179,6 +179,8 @@ export interface ProductShopPriceSummary {
   badge: string | null
   /** 原價旁說明：預購 8折／紅標 6折；SKU 文案不一致時不顯示 */
   offerCaption: string | null
+  /** 全部折扣來源一致時才有；用來分 amber / 紅標 */
+  offerSource: DiscountKind | null
 }
 
 /** 列表卡：折後價為主；全部有折扣才劃掉原價。 */
@@ -197,6 +199,7 @@ export function summarizeProductShopPrice(
       hasDiscount: false,
       badge: null,
       offerCaption: null,
+      offerSource: null,
     }
   }
   const sales = priced.map((p) => p.sale)
@@ -213,6 +216,11 @@ export function summarizeProductShopPrice(
       .filter((p) => p.hasDiscount && p.caption)
       .map((p) => p.caption as string),
   )
+  const sources = new Set(
+    priced
+      .filter((p) => p.hasDiscount && p.source)
+      .map((p) => p.source as DiscountKind),
+  )
   return {
     inquiry: false,
     saleText,
@@ -220,5 +228,6 @@ export function summarizeProductShopPrice(
     hasDiscount: allDiscounted,
     badge: badges.size === 1 ? [...badges][0] : null,
     offerCaption: allDiscounted && captions.size === 1 ? [...captions][0] : null,
+    offerSource: allDiscounted && sources.size === 1 ? [...sources][0] : null,
   }
 }

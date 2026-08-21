@@ -70,9 +70,28 @@ export const SHOP_PRODUCT_FRAME =
 export const SHOP_HOME_PRODUCT_FRAME = SHOP_PRODUCT_FRAME
 export const SHOP_HOME_PRODUCT_IMG = SHOP_PRODUCT_IMG
 
-/** 商品卡折扣：黑底白字小標，預購／SALE 同一套 */
+/** 折扣小標共用形狀；預購 amber、SALE 紅、來源不明時黑 */
+const SHOP_DISCOUNT_BADGE_BASE =
+  'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[11px] font-semibold leading-none'
+
 export const SHOP_DISCOUNT_BADGE =
-  'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 bg-zinc-900 text-white text-[11px] font-semibold leading-none'
+  SHOP_DISCOUNT_BADGE_BASE + ' bg-zinc-900 text-white'
+
+export const SHOP_DISCOUNT_BADGE_PREORDER =
+  SHOP_DISCOUNT_BADGE_BASE + ' bg-amber-700 text-white'
+
+export const SHOP_DISCOUNT_BADGE_SALE =
+  SHOP_DISCOUNT_BADGE_BASE + ' bg-red-600 text-white'
+
+export function shopDiscountBadgeClass(
+  source: 'preorder' | 'tag' | null | undefined,
+): string {
+  if (source === 'tag') return SHOP_DISCOUNT_BADGE_SALE
+  if (source === 'preorder') return SHOP_DISCOUNT_BADGE_PREORDER
+  return SHOP_DISCOUNT_BADGE
+}
+
+export const SHOP_PREORDER_DEADLINE = 'text-[11px] text-amber-800'
 
 /** 首頁橫滑卡寬：手機露出下一張；桌機一欄兩張，右邊再露出下一張提示可滑 */
 export const SHOP_HOME_STRIP_CARD =
