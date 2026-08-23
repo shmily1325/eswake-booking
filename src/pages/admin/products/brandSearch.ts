@@ -22,7 +22,7 @@ export function getProductImageSearchLinks(
       label: `Follow 官網搜「${m || b}」`,
       url: `https://www.followwake.com/search?q=${encodeURIComponent(m || b)}`,
     })
-  } else if (key === 'lf' || key === 'liquid force') {
+  } else if (key === 'lf' || key === 'liquid force' || key === 'liquid force skim') {
     links.push({
       label: `Liquid Force 官網搜「${m || b}」`,
       url: `https://www.liquidforce.com/search?q=${encodeURIComponent(m || b)}`,

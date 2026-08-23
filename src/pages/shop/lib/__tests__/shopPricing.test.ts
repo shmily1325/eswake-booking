@@ -54,10 +54,11 @@ describe('foldLabel', () => {
 })
 
 describe('saleFromOriginal', () => {
-  it('rounds 台灣建議售價 × 折數', () => {
+  it('floors 台灣建議售價 × 折數 to the tens', () => {
     expect(saleFromOriginal(10125, 80)).toBe(8100)
-    expect(saleFromOriginal(6885, 80)).toBe(5508)
-    expect(saleFromOriginal(10125, 60)).toBe(6075)
+    expect(saleFromOriginal(10120, 80)).toBe(8090)
+    expect(saleFromOriginal(6885, 80)).toBe(5500)
+    expect(saleFromOriginal(10125, 60)).toBe(6070)
   })
 })
 
@@ -79,7 +80,7 @@ describe('resolveShopPrice', () => {
       vest({ discount_preset_id: 'red', stock: 0, availability: 'pre_order' }),
       [PREORDER, RED],
     )
-    expect(price.sale).toBe(6075)
+    expect(price.sale).toBe(6070)
     expect(price.source).toBe('tag')
     expect(price.badge).toBe('6折')
     expect(price.caption).toBe('6折')
@@ -94,7 +95,7 @@ describe('resolveShopPrice', () => {
       }),
       [PREORDER, RED],
     )
-    expect(price.sale).toBe(6075)
+    expect(price.sale).toBe(6070)
     expect(price.source).toBe('tag')
   })
 
@@ -132,7 +133,7 @@ describe('getMinSalePrice', () => {
         ],
         [PREORDER],
       ),
-    ).toBe(4212)
+    ).toBe(4210)
   })
 })
 
@@ -150,7 +151,7 @@ describe('formatInquiryUnitPrice', () => {
       [PREORDER, RED],
     )
     expect(formatInquiryUnitPrice(price)).toBe(
-      'NT$ 6,075（6折，原價 NT$ 10,125）',
+      'NT$ 6,070（6折，原價 NT$ 10,125）',
     )
   })
 })

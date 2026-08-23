@@ -50,8 +50,9 @@ export function foldLabel(percent: number): string {
   return `${percent}折`
 }
 
+/** 折後價無條件去個位數：10,125 × 8折 → 8,100；10,120 × 8折 → 8,090 */
 export function saleFromOriginal(original: number, percent: number): number {
-  return Math.round((original * percent) / 100)
+  return Math.floor((original * percent) / 100 / 10) * 10
 }
 
 export function activePreorderPreset(
