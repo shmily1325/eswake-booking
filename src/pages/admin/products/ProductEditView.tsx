@@ -49,8 +49,10 @@ import {
   activeTagPresets,
   foldLabel,
   resolveShopPrice,
+  TAG_ON_PREORDER_HINT,
   type DiscountPreset,
 } from '../../shop/lib/shopPricing'
+import { isPreOrderOpen } from '../../shop/lib/productAvailability'
 import { ProductLabelPreview } from './ProductLabelPreview'
 import {
   findDuplicateLabelCodes,
@@ -513,7 +515,7 @@ export function ProductEditView({
           : { ...d, discount_preset_id: source.discount_preset_id },
       ),
     )
-    toast.success(`已套用折扣到其他 ${targetCount} 個尺寸`)
+    toast.success(`已套用到其他 ${targetCount} 個尺寸`)
   }
 
   /**
@@ -2043,20 +2045,36 @@ function VariantBlock({
   )
   const discountField = (
     <div style={{ marginTop: 8 }}>
-      <label style={labelStyle}>折扣檔次</label>
+      <label style={labelStyle}>檔期</label>
       <select
         style={inputStyle}
         value={draft.discount_preset_id ?? ''}
         disabled={disabled || draft.pendingDelete}
         onChange={(e) => onChange({ discount_preset_id: e.target.value.trim() || null })}
       >
-        <option value="">無（預購全館或原價）</option>
+        <option value="">無（原價／預購全館）</option>
         {activeTagPresets(discountPresets).map((p) => (
           <option key={p.id} value={p.id}>
             {p.name} {foldLabel(p.percent)}
           </option>
         ))}
       </select>
+      {isPreOrderOpen({
+        stock: Number(draft.stock) || 0,
+        availability: deriveVariantAvailability(Number(draft.stock) || 0, draft.acceptPreOrder),
+        pre_order_until: draft.pre_order_until,
+      }) ? (
+        <div
+          style={{
+            marginTop: 4,
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary,
+            lineHeight: 1.4,
+          }}
+        >
+          {TAG_ON_PREORDER_HINT}
+        </div>
+      ) : null}
       {discountPreview.hasDiscount && discountPreview.sale != null && (
         <div
           style={{
@@ -2086,7 +2104,7 @@ function VariantBlock({
             cursor: disabled ? 'default' : 'pointer',
           }}
         >
-          套用折扣到其他 {otherSkuCount} 個尺寸
+          套用到其他 {otherSkuCount} 個尺寸
         </button>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { supabase } from '../../../lib/supabase'
-import type { DiscountKind, DiscountPercent, DiscountPreset } from '../../shop/lib/shopPricing'
-import { isDiscountPercent } from '../../shop/lib/shopPricing'
+import type { DiscountKind, DiscountPreset } from '../../shop/lib/shopPricing'
+import { foldLabel, isDiscountPercent } from '../../shop/lib/shopPricing'
 
 type PresetRow = {
   id: string
@@ -36,8 +36,9 @@ export async function fetchDiscountPresets(): Promise<DiscountPreset[]> {
 
 export async function updatePreorderDiscount(input: {
   isActive: boolean
-  percent: DiscountPercent
+  percent: number
 }): Promise<void> {
+  if (!isDiscountPercent(input.percent)) throw new Error('請填 1–9.9 折')
   const { data: existing, error: findError } = await supabase
     .from('shop_discount_presets')
     .select('id')
@@ -48,7 +49,7 @@ export async function updatePreorderDiscount(input: {
   const patch = {
     kind: 'preorder' as const,
     name: '預購全館',
-    label: `${input.percent / 10}折`,
+    label: foldLabel(input.percent),
     percent: input.percent,
     is_active: input.isActive,
     sort_order: 0,
@@ -70,12 +71,12 @@ export async function updatePreorderDiscount(input: {
 export async function createTagPreset(input: {
   name: string
   label: string
-  percent: DiscountPercent
+  percent: number
 }): Promise<DiscountPreset> {
   const name = input.name.trim()
   const label = input.label.trim() || name
-  if (!name) throw new Error('請填檔次名稱')
-  if (!isDiscountPercent(input.percent)) throw new Error('請選幾折')
+  if (!name) throw new Error('請填檔期名稱')
+  if (!isDiscountPercent(input.percent)) throw new Error('請填 1–9.9 折')
 
   const { data: maxRow } = await supabase
     .from('shop_discount_presets')
@@ -109,7 +110,7 @@ export async function updateTagPreset(
   if (patch.name !== undefined) next.name = patch.name.trim()
   if (patch.label !== undefined) next.label = patch.label.trim()
   if (patch.percent !== undefined) {
-    if (!isDiscountPercent(patch.percent)) throw new Error('請選幾折')
+    if (!isDiscountPercent(patch.percent)) throw new Error('請填 1–9.9 折')
     next.percent = patch.percent
   }
   if (patch.is_active !== undefined) next.is_active = patch.is_active

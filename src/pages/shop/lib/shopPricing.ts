@@ -5,12 +5,18 @@
  * 折扣檔次疊上去：指定檔次優先，否則走預購全館。
  */
 
+/** 預購 SKU 可掛 Sale 檔期，但仍留在 Pre-Order，不進店面 Sale。 */
+export const TAG_ON_PREORDER_HINT = '預購商品掛檔後仍在 Pre-Order，不會進 Sale。'
+
 import type { ProductVariantRow } from '../../admin/products/types'
 import { isPreOrderOpen } from './productAvailability'
 import { formatPrice, normalizeShopPrice } from './shopFormat'
 
-export const DISCOUNT_PERCENTS = [90, 80, 70, 60, 50] as const
-export type DiscountPercent = (typeof DISCOUNT_PERCENTS)[number]
+/** 後台快捷檔：9 / 85 / 8 / 7 / 6 / 5 折。自訂折數走 10–99。 */
+export const DISCOUNT_PERCENTS = [90, 85, 80, 70, 60, 50] as const
+export const DISCOUNT_PERCENT_MIN = 10
+export const DISCOUNT_PERCENT_MAX = 99
+export type DiscountPercent = number
 
 export type DiscountKind = 'preorder' | 'tag'
 
@@ -38,16 +44,33 @@ export interface ShopPrice {
   source: DiscountKind | null
 }
 
-export function isDiscountPercent(n: number): n is DiscountPercent {
-  return (DISCOUNT_PERCENTS as readonly number[]).includes(n)
+export function isDiscountPercent(n: number): boolean {
+  return Number.isInteger(n) && n >= DISCOUNT_PERCENT_MIN && n <= DISCOUNT_PERCENT_MAX
 }
 
-/** 80 → 8折 */
+/** 80 → 8折；85 → 85折 */
 export function foldLabel(percent: number): string {
   if (percent % 10 === 0 && percent >= 10 && percent <= 90) {
     return `${percent / 10}折`
   }
   return `${percent}折`
+}
+
+/** 80 → "8"；85 → "8.5"（給「幾折」輸入框） */
+export function formatFoldInput(percent: number): string {
+  const fold = percent / 10
+  return Number.isInteger(fold) ? String(fold) : fold.toFixed(1)
+}
+
+/**
+ * 「8」「8.5」「85」→ 80 / 85 / 85。
+ * 大於 10 當成售價百分比；1–10 當成幾折。
+ */
+export function parseFoldInput(raw: string): number | null {
+  const n = Number(String(raw).trim())
+  if (!Number.isFinite(n) || n <= 0) return null
+  const percent = n > 10 ? Math.round(n) : Math.round(n * 10)
+  return isDiscountPercent(percent) ? percent : null
 }
 
 /** 折後價無條件去個位數：10,125 × 8折 → 8,100；10,120 × 8折 → 8,090 */

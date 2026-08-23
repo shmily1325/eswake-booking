@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import type { ProductVariantRow } from '../../../admin/products/types'
 import {
   foldLabel,
+  formatFoldInput,
   formatInquiryUnitPrice,
   getMinSalePrice,
+  isDiscountPercent,
+  parseFoldInput,
   resolveShopPrice,
   saleFromOriginal,
   summarizeProductShopPrice,
@@ -47,9 +50,40 @@ function vest(
 }
 
 describe('foldLabel', () => {
-  it('maps 80 to 8折', () => {
+  it('maps tens to 8折 and halves to 85折', () => {
     expect(foldLabel(80)).toBe('8折')
     expect(foldLabel(60)).toBe('6折')
+    expect(foldLabel(85)).toBe('85折')
+    expect(foldLabel(75)).toBe('75折')
+  })
+})
+
+describe('parseFoldInput / formatFoldInput', () => {
+  it('accepts 幾折 and percent-style input', () => {
+    expect(parseFoldInput('8')).toBe(80)
+    expect(parseFoldInput('8.5')).toBe(85)
+    expect(parseFoldInput('85')).toBe(85)
+    expect(parseFoldInput('7.5')).toBe(75)
+    expect(parseFoldInput('9.9')).toBe(99)
+    expect(parseFoldInput('0.5')).toBeNull()
+    expect(parseFoldInput('100')).toBeNull()
+  })
+
+  it('round-trips chip values', () => {
+    expect(formatFoldInput(80)).toBe('8')
+    expect(formatFoldInput(85)).toBe('8.5')
+    expect(parseFoldInput(formatFoldInput(75))).toBe(75)
+  })
+})
+
+describe('isDiscountPercent', () => {
+  it('allows any integer 10–99', () => {
+    expect(isDiscountPercent(80)).toBe(true)
+    expect(isDiscountPercent(85)).toBe(true)
+    expect(isDiscountPercent(73)).toBe(true)
+    expect(isDiscountPercent(9)).toBe(false)
+    expect(isDiscountPercent(100)).toBe(false)
+    expect(isDiscountPercent(8.5)).toBe(false)
   })
 })
 
@@ -84,6 +118,16 @@ describe('resolveShopPrice', () => {
     expect(price.source).toBe('tag')
     expect(price.badge).toBe('6折')
     expect(price.caption).toBe('6折')
+  })
+
+  it('applies a custom fold like 85', () => {
+    const mid = { ...RED, percent: 85 }
+    const price = resolveShopPrice(
+      vest({ stock: 2, availability: 'in_stock', discount_preset_id: 'red' }),
+      [PREORDER, mid],
+    )
+    expect(price.sale).toBe(8600)
+    expect(price.badge).toBe('85折')
   })
 
   it('applies a tag on in-stock leftovers', () => {

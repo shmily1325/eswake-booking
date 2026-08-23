@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState, createContext, useContext } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
 import { Footer } from '../../../components/Footer'
@@ -36,8 +36,13 @@ import {
 } from './api'
 import { batchSetVariantsDiscountPreset, fetchDiscountPresets } from './discountApi'
 import type { ProductWithVariants, ProductVariantRow, ProductRow, VariantListItem } from './types'
-import { getVariantAvailability, getVariantSellableStock } from '../../shop/lib/productAvailability'
-import { resolveShopPrice, foldLabel, type DiscountPreset } from '../../shop/lib/shopPricing'
+import { getVariantAvailability, getVariantSellableStock, isPreOrderOpen } from '../../shop/lib/productAvailability'
+import { resolveShopPrice, foldLabel, TAG_ON_PREORDER_HINT, type DiscountPreset } from '../../shop/lib/shopPricing'
+import {
+  FILTER_DISCOUNT_PARAM,
+  SELECT_PARAM,
+  readDiscountQuery,
+} from './productDiscountQuery'
 import { ProductEditView } from './ProductEditView'
 import { LabelCodeCameraScanner } from './LabelCodeCameraScanner'
 import { variantMatchesSearchTokens } from './productSearchHaystack'
@@ -134,8 +139,10 @@ export function ProductManagement({
 } = {}) {
   const user = useAuthUser()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
   const { isMobile } = useResponsive()
+  const { filterId, select: selectFromQuery } = readDiscountQuery(searchParams.toString())
 
   const [hasAccess, setHasAccess] = useState(false)
   const [accessChecked, setAccessChecked] = useState(false)
@@ -172,8 +179,12 @@ export function ProductManagement({
   const [onlyPreOrder, setOnlyPreOrder] = useState(false)
   /** 已售完 archive：active 時只顯示 sold_out；預設隱藏已售完（搜尋時仍會找到） */
   const [onlySoldOut, setOnlySoldOut] = useState(false)
-  /** 折扣檔次：只顯示已掛該檔次的 SKU（紅標／出清） */
-  const [discountPresetFilter, setDiscountPresetFilter] = useState<string | null>(null)
+  /** 檔期：只顯示已掛該 Sale 檔期的 SKU */
+  const [discountPresetFilter, setDiscountPresetFilter] = useState<string | null>(filterId)
+
+  useEffect(() => {
+    if (filterId) setDiscountPresetFilter(filterId)
+  }, [filterId])
 
   const clearAllFilters = () => {
     setOnlyUnlisted(false)
@@ -186,6 +197,12 @@ export function ProductManagement({
     setOnlySoldOut(false)
     setDiscountPresetFilter(null)
     setSearch('')
+    const next = new URLSearchParams(searchParams)
+    next.delete(FILTER_DISCOUNT_PARAM)
+    next.delete(SELECT_PARAM)
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
   }
   const hasAnyFilter =
     onlyUnlisted ||
@@ -241,6 +258,15 @@ export function ProductManagement({
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [batchBusy, setBatchBusy] = useState(false)
+
+  useEffect(() => {
+    if (!selectFromQuery || !canEdit) return
+    setSelectMode(true)
+    const next = new URLSearchParams(searchParams)
+    if (!next.has(SELECT_PARAM)) return
+    next.delete(SELECT_PARAM)
+    setSearchParams(next, { replace: true })
+  }, [selectFromQuery, canEdit, searchParams, setSearchParams])
 
   // 列表縮圖：封面優先 or 實拍優先（記憶於 localStorage）
   const [listImageMode, setListImageMode] = useState<ListImageMode>(() => {
@@ -546,12 +572,16 @@ export function ProductManagement({
 
   const handleBatchDiscount = (presetId: string | null) =>
     runBatch(async () => {
-      const ids = filteredItems
-        .filter((it) => selectedIds.has(it.variant.id))
-        .map((it) => it.variant.id)
+      const selected = filteredItems.filter((it) => selectedIds.has(it.variant.id))
+      const ids = selected.map((it) => it.variant.id)
       if (ids.length === 0) return '請先勾選'
       await batchSetVariantsDiscountPreset(ids, presetId)
-      return presetId ? `已套用折扣 ${ids.length}` : `已取消檔次 ${ids.length}`
+      if (!presetId) return `已取消檔期 ${ids.length}`
+      const preCount = selected.filter((it) => isPreOrderOpen(it.variant)).length
+      if (preCount > 0) {
+        return `已掛 ${ids.length}（${preCount} 件預購，不進 Sale）`
+      }
+      return `已掛 ${ids.length}`
     })
 
   // ====== 權限尚未確認/拒絕：先顯示 loading ======
@@ -638,7 +668,14 @@ export function ProductManagement({
     <div
       style={
         embedded
-          ? { minHeight: 'auto', background: 'transparent', padding: 0 }
+          ? {
+              minHeight: 'auto',
+              background: 'transparent',
+              padding: 0,
+              paddingBottom: selectMode
+                ? 'max(168px, calc(148px + env(safe-area-inset-bottom)))'
+                : 0,
+            }
           : {
               padding: isMobile ? '12px 16px' : '20px',
               minHeight: '100dvh',
@@ -777,11 +814,11 @@ export function ProductManagement({
                     ...scannedItem,
                     variant: { ...scannedItem.variant, discount_preset_id: presetId },
                   })
-                  toast.success(presetId ? '已套用折扣' : '已取消檔次')
+                  toast.success(presetId ? '已掛檔期' : '已取消檔期')
                   void loadData({ quiet: true })
                 } catch (error) {
                   console.error(error)
-                  toast.error('折扣更新失敗')
+                  toast.error('檔期更新失敗')
                 }
               })()
             }}
@@ -1117,7 +1154,7 @@ function StockCheckResult({
                 marginBottom: 3,
               }}
             >
-              折扣檔次
+              檔期
             </div>
             <select
               style={getInputStyle(isMobile)}
@@ -1131,6 +1168,18 @@ function StockCheckResult({
                 </option>
               ))}
             </select>
+            {isPreOrderOpen(variant) ? (
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: getFontSize('caption', isMobile),
+                  color: colors.text.secondary,
+                  lineHeight: 1.4,
+                }}
+              >
+                {TAG_ON_PREORDER_HINT}
+              </div>
+            ) : null}
           </label>
         )}
       </div>

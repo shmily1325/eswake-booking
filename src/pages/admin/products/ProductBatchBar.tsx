@@ -156,7 +156,7 @@ export function ProductBatchBar({
       )}
 
       {sheet === 'discount' && (
-        <BatchSheet title="折扣檔次" onClose={closeSheet}>
+        <BatchSheet title="掛檔期" onClose={closeSheet}>
           <Button
             fullWidth
             size="large"
@@ -167,7 +167,7 @@ export function ProductBatchBar({
               closeSheet()
             }}
           >
-            取消檔次（原價／預購全館）
+            取消檔期（原價／預購全館）
           </Button>
           {tagPresets.map((p) => (
             <Button
@@ -291,7 +291,7 @@ export function ProductBatchBar({
             style={actionBtnStyle}
             onClick={() => setSheet('discount')}
           >
-            折扣
+            檔期
           </Button>
         </div>
       </div>
