@@ -42,6 +42,7 @@ function item(
       vendor_code: null,
       attributes,
       price: unit_price,
+      member_price: null,
       cost: null,
       stock,
       reserved_qty,
