@@ -35,6 +35,7 @@ import { ProductManagement } from './ProductManagement'
 import { OrderManagement } from '../orders/OrderManagement'
 import { ShopSettlementStatisticsTab } from '../orders/ShopSettlementStatisticsTab'
 import { DiscountSettings } from './DiscountSettings'
+import { SizeChartSettings } from './SizeChartSettings'
 
 
 
@@ -120,6 +121,7 @@ export function ProductHub() {
   const onOrders = location.pathname.includes('/products/orders')
   const onSales = location.pathname.includes('/products/sales')
   const onDiscounts = location.pathname.includes('/products/discounts')
+  const onSizeCharts = location.pathname.includes('/products/size-charts')
 
 
 
@@ -141,7 +143,7 @@ export function ProductHub() {
           <AdminPillLink
             to="/products"
             end
-            active={!onOrders && !onSales && !onDiscounts}
+            active={!onOrders && !onSales && !onDiscounts && !onSizeCharts}
           >
             商品
           </AdminPillLink>
@@ -156,6 +158,11 @@ export function ProductHub() {
           {canEdit && (
             <AdminPillLink to="/products/discounts" active={onDiscounts}>
               折扣
+            </AdminPillLink>
+          )}
+          {canEdit && (
+            <AdminPillLink to="/products/size-charts" active={onSizeCharts}>
+              尺寸表
             </AdminPillLink>
           )}
           <ExternalNavLink
@@ -184,6 +191,9 @@ export function ProductHub() {
         {canEdit && <Route path="orders" element={<OrderManagement embedded />} />}
         {canEdit && (
           <Route path="discounts" element={<DiscountSettings embedded />} />
+        )}
+        {canEdit && (
+          <Route path="size-charts" element={<SizeChartSettings embedded />} />
         )}
         {userIsAdmin && (
           <Route

@@ -136,7 +136,7 @@ export async function fetchProductWithVariants(productId: string): Promise<Produ
     })
   const { product_variants: _omit, size_charts, ...product } = row
   void _omit
-  return { ...(product as ProductRow), variants, size_chart: size_charts ?? null }
+  return { ...(product as ProductRow), variants, size_chart: size_charts?.is_active ? size_charts : null }
 }
 
 /** 載入可供商品共用的尺寸表。 */
@@ -149,6 +149,40 @@ export async function fetchSizeCharts(): Promise<SizeChartRow[]> {
     .order('name', { ascending: true })
   if (error) throw error
   return (data ?? []) as SizeChartRow[]
+}
+
+export async function fetchProductBrands(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('brand')
+    .eq('is_active', true)
+  if (error) throw error
+  const set = new Set<string>()
+  for (const row of data ?? []) {
+    const brand = row.brand?.trim()
+    if (brand) set.add(brand)
+  }
+  return Array.from(set).sort((a, b) => {
+    if (a.toLowerCase() === 'follow') return -1
+    if (b.toLowerCase() === 'follow') return 1
+    return a.localeCompare(b)
+  })
+}
+
+export async function fetchSizeChartUsage(): Promise<Record<string, number>> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('size_chart_id')
+    .eq('is_active', true)
+    .not('size_chart_id', 'is', null)
+  if (error) throw error
+  const counts: Record<string, number> = {}
+  for (const row of data ?? []) {
+    const id = row.size_chart_id
+    if (!id) continue
+    counts[id] = (counts[id] ?? 0) + 1
+  }
+  return counts
 }
 
 /** 建立一筆可共用尺寸表；圖片應先上傳至 product-images bucket。 */
@@ -172,6 +206,35 @@ export async function createSizeChart(input: {
     .single()
   if (error) throw error
   return data as SizeChartRow
+}
+
+export async function updateSizeChart(
+  id: string,
+  patch: {
+    name?: string
+    brand?: string | null
+    image_url?: string
+    image_path?: string
+  },
+): Promise<void> {
+  const next: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.name !== undefined) next.name = patch.name.trim()
+  if (patch.brand !== undefined) next.brand = patch.brand?.trim() ?? ''
+  if (patch.image_url !== undefined) next.image_url = patch.image_url
+  if (patch.image_path !== undefined) next.image_path = patch.image_path
+  const { error } = await supabase.from('size_charts').update(next).eq('id', id)
+  if (error) throw error
+}
+
+/** 停用尺寸表；已掛商品會拿掉，前台不再顯示。 */
+export async function deactivateSizeChart(id: string): Promise<void> {
+  const { error: productError } = await supabase
+    .from('products')
+    .update({ size_chart_id: null })
+    .eq('size_chart_id', id)
+  if (productError) throw productError
+  const { error } = await supabase.from('size_charts').update({ is_active: false }).eq('id', id)
+  if (error) throw error
 }
 
 export interface CreateProductInput {
@@ -287,10 +350,11 @@ export async function applySizeChartToSameModel(input: {
   category: string
   brand: string
   model: string
+  model_year?: number | null
   size_chart_id: string | null
   updated_by?: string | null
 }): Promise<void> {
-  const { error } = await supabase
+  let query = supabase
     .from('products')
     .update({
       size_chart_id: input.size_chart_id,
@@ -300,6 +364,11 @@ export async function applySizeChartToSameModel(input: {
     .eq('category', input.category)
     .ilike('brand', input.brand.trim())
     .ilike('model', input.model.trim())
+  query =
+    input.model_year == null
+      ? query.is('model_year', null)
+      : query.eq('model_year', input.model_year)
+  const { error } = await query
   if (error) throw error
 }
 

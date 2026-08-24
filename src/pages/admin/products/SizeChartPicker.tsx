@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useToast } from '../../../components/ui'
 import { designSystem, getFontSize, getInputStyle } from '../../../styles/designSystem'
 import { removeProductImage, uploadProductImage } from '../../../utils/imageUpload'
@@ -46,12 +47,13 @@ export function SizeChartPicker({
 
   const sortedCharts = useMemo(() => {
     const normalizedBrand = brand.trim().toLowerCase()
-    return [...charts].sort((a, b) => {
-      const aMatch = normalizedBrand && a.brand.trim().toLowerCase() === normalizedBrand ? 0 : 1
-      const bMatch = normalizedBrand && b.brand.trim().toLowerCase() === normalizedBrand ? 0 : 1
-      return aMatch - bMatch || a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name)
-    })
-  }, [charts, brand])
+    const own = charts.filter((chart) => chart.brand.trim().toLowerCase() === normalizedBrand)
+    const selected = charts.find((chart) => chart.id === value)
+    if (selected && !own.some((chart) => chart.id === selected.id)) {
+      return [selected, ...own]
+    }
+    return own
+  }, [charts, brand, value])
 
   const selected = charts.find((chart) => chart.id === value) ?? null
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,7 +64,7 @@ export function SizeChartPicker({
       toast.error('請選擇圖片檔')
       return
     }
-    const name = window.prompt('尺寸表名稱', `${brand.trim() || '品牌'} 尺寸表`)?.trim()
+    const name = window.prompt('名稱（例如 男背心 2027）')?.trim()
     if (!name) return
 
     setCreating(true)
@@ -106,7 +108,7 @@ export function SizeChartPicker({
           <option value="">{loading ? '載入中…' : '不顯示尺寸表'}</option>
           {sortedCharts.map((chart) => (
             <option key={chart.id} value={chart.id}>
-              {[chart.brand, chart.name].filter(Boolean).join(' · ')}
+              {chart.name}
             </option>
           ))}
         </select>
@@ -125,6 +127,15 @@ export function SizeChartPicker({
         >
           {creating ? '上傳中…' : '＋ 新增尺寸表'}
         </button>
+        <Link
+          to="/products/size-charts"
+          style={{
+            fontSize: getFontSize('bodySmall', false),
+            color: designSystem.colors.text.secondary,
+          }}
+        >
+          管理全部
+        </Link>
       </div>
       {selected && (
         <a href={selected.image_url} target="_blank" rel="noreferrer" style={{ width: 'fit-content' }}>

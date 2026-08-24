@@ -832,6 +832,7 @@ export function ProductEditView({
           category,
           brand,
           model,
+          model_year: parsedModelYear,
           size_chart_id: sizeChartId,
           updated_by: currentUserEmail ?? null,
         })
@@ -1604,7 +1605,7 @@ export function ProductEditView({
                   onChange={(event) => setApplySizeChartToModel(event.target.checked)}
                   disabled={saving}
                 />
-                同步套用到相同品牌、類別與型號的所有顏色
+                同步套用到同年份、同型號的所有顏色
               </label>
             )}
           </div>
