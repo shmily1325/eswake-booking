@@ -250,6 +250,8 @@ export interface CreateVariantInput {
   attributes: Record<string, AttributeValue>
   /** null = 售價待補（前端顯示「缺」）；0 = 真的免費贈品 */
   price: number | null
+  /** ES SERIES 會員價；其他類別可留空 */
+  member_price?: number | null
   cost?: number | null
   stock?: number
   availability?: string
@@ -332,6 +334,7 @@ export async function createVariant(input: CreateVariantInput): Promise<ProductV
     vendor_code: input.vendor_code?.trim() || null,
     attributes: input.attributes,
     price: normalizePrice(input.price),
+    member_price: normalizePrice(input.member_price),
     cost: input.cost ?? null,
     stock,
     availability: availFields.availability,
@@ -358,6 +361,7 @@ export interface UpdateVariantInput {
   vendor_code?: string | null
   attributes?: Record<string, AttributeValue>
   price?: number | null
+  member_price?: number | null
   cost?: number | null
   stock?: number
   availability?: string
@@ -380,6 +384,9 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
   if (input.vendor_code !== undefined) patch.vendor_code = input.vendor_code?.trim() || null
   if (input.attributes !== undefined) patch.attributes = input.attributes
   if (input.price !== undefined) patch.price = normalizePrice(input.price)
+  if (input.member_price !== undefined) {
+    patch.member_price = normalizePrice(input.member_price)
+  }
   if (input.cost !== undefined) patch.cost = input.cost
   if (input.stock !== undefined) patch.stock = Math.max(0, Math.round(input.stock))
   if (input.cover_image_url !== undefined) patch.cover_image_url = input.cover_image_url

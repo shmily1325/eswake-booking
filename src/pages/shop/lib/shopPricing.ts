@@ -197,6 +197,8 @@ export interface ProductShopPriceSummary {
   inquiry: boolean
   saleText: string
   originalText: string | null
+  /** ES SERIES 會員價；與售價並列，不劃掉原價 */
+  memberText: string | null
   hasDiscount: boolean
   badge: string | null
   /** 原價旁說明：預購 8折／6折；SKU 文案不一致時不顯示 */
@@ -205,6 +207,18 @@ export interface ProductShopPriceSummary {
   offerSource: DiscountKind | null
   /** 全部同一折數時才有：8折、6折 */
   offerFold: string | null
+}
+
+export function summarizeMemberPriceText(
+  variants: Array<Pick<ProductVariantRow, 'member_price'>>,
+): string | null {
+  const prices = variants
+    .map((v) => normalizeShopPrice(v.member_price))
+    .filter((n): n is number => n != null)
+  if (prices.length === 0) return null
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
+  return min === max ? formatPrice(min) : `${formatPrice(min)} 起`
 }
 
 /** 列表卡：折後價為主；全部有折扣才劃掉原價。 */
@@ -220,6 +234,7 @@ export function summarizeProductShopPrice(
       inquiry: true,
       saleText: '價格洽詢',
       originalText: null,
+      memberText: summarizeMemberPriceText(variants),
       hasDiscount: false,
       badge: null,
       offerCaption: null,
@@ -255,6 +270,7 @@ export function summarizeProductShopPrice(
     inquiry: false,
     saleText,
     originalText: allDiscounted ? formatPrice(minOriginal) : null,
+    memberText: summarizeMemberPriceText(variants),
     hasDiscount: allDiscounted,
     badge: badges.size === 1 ? [...badges][0] : null,
     offerCaption: allDiscounted && captions.size === 1 ? [...captions][0] : null,

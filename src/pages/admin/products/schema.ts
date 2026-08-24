@@ -38,10 +38,23 @@ export interface FieldDef {
  * 命名沿用 Ronix 等品牌的「-ing 形」：表示「這項運動的整套裝備」，
  * 而不是單指「板子」這個物件，因為這個 group 包含 board / boots / fin / handle 等多種品項。
  *
- * 'Essentials' 代表通用品項（救生衣、防寒衣、服飾這類不分 WB/WS 的物件，
- * 不管玩什麼運動都用得到的「必備裝備」）。
+ * 'ES' 是自家系列（顯示名 ES SERIES），用類別歸屬，不卡品牌。
+ * 只出現在 ES SERIES，不進 WB / WS / Essentials，也不進 Pre-Order / In-Stock / Sale。
+ * 'Essentials' 代表通用品項（救生衣、防寒衣、服飾這類不分 WB/WS 的物件）。
  */
-export type ShopGroup = 'Essentials' | 'Wakeboarding' | 'Wakesurfing'
+export type ShopGroup = 'ES' | 'Wakeboarding' | 'Wakesurfing' | 'Essentials'
+
+/** 後台 tab／商城分類列顯示名。 */
+export const SHOP_GROUP_LABEL: Record<ShopGroup, string> = {
+  ES: 'ES SERIES',
+  Wakeboarding: 'Wakeboarding',
+  Wakesurfing: 'Wakesurfing',
+  Essentials: 'Essentials',
+}
+
+export function getShopGroupLabel(group: ShopGroup): string {
+  return SHOP_GROUP_LABEL[group]
+}
 
 export interface CategoryDef {
   id: string
@@ -182,7 +195,23 @@ export function formatProductTitle(
   return [brand, line].filter(Boolean).join(' ').trim()
 }
 
+export function isEsSeriesCategory(category: string | null | undefined): boolean {
+  return getCategory(category)?.shopGroup === 'ES'
+}
+
 export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
+  es_series: {
+    id: 'es_series',
+    name: 'ES SERIES',
+    shopName: 'ES SERIES',
+    sortOrder: 5,
+    icon: '⭐',
+    shopGroup: 'ES',
+    fields: [
+      { ...GENDER_FIELD },
+      { key: 'size', label: '尺寸', type: 'text', required: false },
+    ],
+  },
   lifejacket: {
     id: 'lifejacket',
     name: '救生衣',
@@ -438,6 +467,7 @@ export const CATEGORY_SCHEMAS: Record<string, CategoryDef> = {
  * 每個 key 必須對應 CATEGORY_SCHEMAS；新增類別時記得補這裡。
  */
 export const CATEGORY_LABEL_CODES: Record<string, string> = {
+  es_series: 'ESSERIES',
   lifejacket: 'VEST',
   wetsuit: 'WETSUIT',
   apparel: 'APPAREL',
@@ -467,11 +497,14 @@ export function getAllCategories(): CategoryDef[] {
 }
 
 /**
- * 商城兩層分類列要的上層分組（固定順序）。
- * 運動類別擺前面（Wakeboarding / Wakesurfing），客人通常是衝著主項目來的；
- * 'Essentials'（救生衣、防寒衣等通用品項）擺最後當補貨用。
+ * 商城／後台上層分組順序：ES SERIES 在 Wakeboarding 前面；Essentials 維持最後。
  */
-export const SHOP_GROUPS: ShopGroup[] = ['Wakeboarding', 'Wakesurfing', 'Essentials']
+export const SHOP_GROUPS: ShopGroup[] = [
+  'ES',
+  'Wakeboarding',
+  'Wakesurfing',
+  'Essentials',
+]
 
 /** 取分類在商城前台要顯示的名稱（英文優先，fallback 用中文 name） */
 export function getCategoryShopName(cat: CategoryDef): string {

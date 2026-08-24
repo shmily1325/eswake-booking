@@ -13,6 +13,7 @@ export const SHOP_LABEL = {
   type: 'Type',
   preOrder: 'Pre-Order',
   preOrderOnly: 'Pre-Order only',
+  esSeries: 'ES SERIES',
   inStock: 'In-Stock',
   sale: 'Sale',
   viewAll: 'View all',
@@ -57,4 +58,5 @@ export const SHOP_DETAIL = {
   imagePhoto: 'Photo',
   noVariants: '此商品目前沒有可選規格',
   preOrder: '預購',
+  memberPrice: '會員價',
 } as const

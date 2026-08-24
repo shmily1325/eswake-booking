@@ -1,10 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ProductWithVariants } from '../../admin/products/types'
-import { SHOP_GROUPS } from '../../admin/products/schema'
+import { SHOP_GROUPS, getShopGroupLabel } from '../../admin/products/schema'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
-import { SHOP_COPY, SHOP_LABEL } from '../lib/shopCopy'
+import { SHOP_COPY, SHOP_DETAIL, SHOP_LABEL } from '../lib/shopCopy'
 import { useShopPromo } from '../hooks/useShopPromo'
 import {
   collectHomeGalleryPool,
@@ -65,8 +65,7 @@ interface ShopHomeGalleriesProps {
 }
 
 /**
- * 目錄首頁：Pre-Order / In-Stock / Sale 原生橫滑。
- * 手機直向堆疊；桌機同一套兩欄 grid，不因奇數寫特例。
+ * 目錄首頁：Pre-Order / ES Series / In-Stock / Sale。有貨才出現，順序固定。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readVisitSeed)
@@ -76,6 +75,14 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
       pickHomeGalleryItems(
         collectHomeGalleryPool(products, 'pre-order', promo.presets),
         seed,
+      ),
+    [products, seed, promo.presets],
+  )
+  const esSeriesItems = useMemo(
+    () =>
+      pickHomeGalleryItems(
+        collectHomeGalleryPool(products, 'es-series', promo.presets),
+        seed ^ 0x7f4a7c15,
       ),
     [products, seed, promo.presets],
   )
@@ -111,6 +118,14 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
         viewAllTo: shopPreOrderListPath(),
       })
     }
+    if (esSeriesItems.length > 0) {
+      rows.push({
+        key: 'es-series',
+        title: SHOP_LABEL.esSeries,
+        items: esSeriesItems,
+        viewAllTo: shopGroupListPath('ES'),
+      })
+    }
     if (inStockItems.length > 0) {
       rows.push({
         key: 'in-stock',
@@ -128,7 +143,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
       })
     }
     return rows
-  }, [preOrderItems, inStockItems, saleItems])
+  }, [preOrderItems, esSeriesItems, inStockItems, saleItems])
 
   const listed = useMemo(() => getShopBaseProducts(products), [products])
   const groups = useMemo(() => {
@@ -187,7 +202,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
                   />
                   <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/15 to-transparent" />
                   <span className="absolute inset-x-1.5 bottom-2.5 text-center text-[11px] sm:text-sm font-black italic uppercase tracking-wide text-white leading-tight">
-                    {group}
+                    {getShopGroupLabel(group)}
                   </span>
                 </Link>
               )
@@ -324,6 +339,11 @@ function HomeGalleryRow({
                         {item.originalText}
                       </span>
                     ) : null}
+                  </div>
+                ) : null}
+                {item.memberText ? (
+                  <div className="mt-1 text-[11px] font-semibold text-zinc-800 tabular-nums leading-none">
+                    {SHOP_DETAIL.memberPrice} {item.memberText}
                   </div>
                 ) : null}
               </div>

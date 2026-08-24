@@ -16,6 +16,8 @@ import {
   pruneUnavailableBrands,
   pruneUnavailableSizes,
   getCollectionParentGroup,
+  getHeroTitle,
+  getShopFilterContextLabel,
   isShopCatalogHome,
 } from '../shopFilters'
 
@@ -127,6 +129,15 @@ describe('normalizeFilterState', () => {
 })
 
 describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
+  it('parses ES SERIES as its own brand group', () => {
+    const parsed = parseFiltersFromSearchParams(new URLSearchParams('group=ES'))
+    expect(parsed.topLevel).toBe('ES')
+    expect(parsed.subCat).toBe(ALL_SUBCATS)
+    expect(
+      parseFiltersFromSearchParams(new URLSearchParams('group=ES+SERIES')).topLevel,
+    ).toBe('ES')
+  })
+
   it('round-trips wakeboarding group filter', () => {
     const built = buildShopSearchParams(
       { ...defaultFilterState(), topLevel: 'Wakeboarding', subCat: ALL_SUBCATS },
@@ -370,6 +381,80 @@ describe('getCollectionParentGroup', () => {
       subCat: 'lifejacket',
     })
     expect(getCollectionParentGroup(filters)).toBe('Essentials')
+  })
+})
+
+describe('ES SERIES group', () => {
+  it('shows ES and keeps Essentials as its own label', () => {
+    expect(getHeroTitle({ ...defaultFilterState(), topLevel: 'ES' })).toBe('ES SERIES')
+    expect(getHeroTitle({ ...defaultFilterState(), topLevel: 'Essentials' })).toBe(
+      'Essentials',
+    )
+    expect(
+      getShopFilterContextLabel({
+        ...defaultFilterState(),
+        topLevel: 'Essentials',
+      }),
+    ).toBe('Essentials')
+  })
+
+  it('prefixes subcategory with Essentials', () => {
+    const filters = normalizeFilterState({
+      ...defaultFilterState(),
+      topLevel: 'Essentials',
+      subCat: 'apparel',
+    })
+    expect(getShopFilterContextLabel(filters)).toBe('Essentials · Apparel')
+  })
+
+  it('still lists ES SERIES products on the unfiltered catalog', () => {
+    const esItem = product('es_series', { brand: 'Follow' })
+    const vest = product('lifejacket', { brand: 'Follow' })
+    const filtered = filterAndSortProducts([esItem, vest], defaultFilterState())
+    expect(filtered.map((p) => p.category).sort()).toEqual(['es_series', 'lifejacket'])
+  })
+
+  it('lists only ES SERIES category products in the ES group', () => {
+    const esItem = product('es_series', { brand: 'Follow' })
+    const vest = product('lifejacket', { brand: 'Follow' })
+    const filtered = filterAndSortProducts([esItem, vest], {
+      ...defaultFilterState(),
+      topLevel: 'ES',
+    })
+    expect(filtered.map((p) => p.category)).toEqual(['es_series'])
+  })
+
+  it('keeps ES SERIES out of Pre-Order, In-Stock, and Sale lists', () => {
+    const esItem = product('es_series')
+    const vest = product('lifejacket')
+    expect(
+      filterAndSortProducts([esItem, vest], {
+        ...defaultFilterState(),
+        preOrderOnly: true,
+      }).map((p) => p.category),
+    ).toEqual([])
+    expect(
+      filterAndSortProducts([esItem, vest], {
+        ...defaultFilterState(),
+        inStockOnly: true,
+      }).map((p) => p.category),
+    ).toEqual(['lifejacket'])
+    expect(
+      filterAndSortProducts([esItem, vest], {
+        ...defaultFilterState(),
+        saleOnly: true,
+      }).map((p) => p.category),
+    ).toEqual([])
+  })
+
+  it('keeps ES SERIES products out of Essentials', () => {
+    const esItem = product('es_series')
+    const vest = product('lifejacket')
+    const filtered = filterAndSortProducts([esItem, vest], {
+      ...defaultFilterState(),
+      topLevel: 'Essentials',
+    })
+    expect(filtered.map((p) => p.category)).toEqual(['lifejacket'])
   })
 })
 

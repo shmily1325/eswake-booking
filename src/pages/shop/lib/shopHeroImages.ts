@@ -40,6 +40,17 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     // 手機略放大裁切；桌機維持較廣
     heroScaleClass: 'max-sm:scale-[1.12] sm:scale-[1.03]',
   },
+  ES: {
+    src: '/shop/heroes/apparel.webp',
+    objectPosition: '72% 32%',
+    objectPositionClass:
+      'object-[68%_34%] sm:object-[70%_32%] md:object-[72%_30%]',
+    collectionObjectPosition: '68% 38%',
+    collectionObjectPositionClass:
+      'object-[66%_34%] max-sm:object-[68%_32%] sm:object-[70%_36%] md:object-[68%_42%] lg:object-[66%_46%]',
+    tallCollectionBand: true,
+    heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.02] md:scale-[1.0]',
+  },
   Wakesurfing: {
     src: '/shop/heroes/wakesurfing.webp',
     objectPosition: 'center 28%',

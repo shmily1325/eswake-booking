@@ -212,6 +212,18 @@ describe('summarizeProductShopPrice', () => {
     expect(summary.offerCaption).toBe('預購 8折')
     expect(summary.offerSource).toBe('preorder')
     expect(summary.offerFold).toBe('8折')
+    expect(summary.memberText).toBeNull()
+  })
+
+  it('lists member price without treating it as a discount', () => {
+    const summary = summarizeProductShopPrice(
+      [vest({ availability: 'in_stock', stock: 1, member_price: 8000 })],
+      [],
+    )
+    expect(summary.hasDiscount).toBe(false)
+    expect(summary.saleText).toBe('NT$ 10,125')
+    expect(summary.originalText).toBeNull()
+    expect(summary.memberText).toBe('NT$ 8,000')
   })
 
   it('marks leftover stock as a tag offer', () => {

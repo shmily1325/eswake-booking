@@ -1,11 +1,12 @@
 /**
- * 首頁 Pre-Order / In-Stock gallery：從有圖商品抽一組；每次載入頁面 shuffle 一次。
+ * 首頁 Pre-Order / ES Series / In-Stock / Sale：從有圖商品抽一組；每次載入頁面 shuffle 一次。
  */
 
 import type { ProductWithVariants } from '../../admin/products/types'
 import {
   formatProductModelName,
   formatProductSecondaryLine,
+  isEsSeriesCategory,
 } from '../../admin/products/schema'
 import { getProductImageUrl } from './shopFormat'
 import {
@@ -20,7 +21,11 @@ import {
   type DiscountPreset,
 } from './shopPricing'
 
-export type HomeGalleryKind = 'pre-order' | 'in-stock' | 'sale'
+export type HomeGalleryKind = 'pre-order' | 'es-series' | 'in-stock' | 'sale'
+
+export function isEsSeriesProduct(product: { category?: string | null }): boolean {
+  return isEsSeriesCategory(product.category)
+}
 
 export const HOME_GALLERY_LIMIT = 8
 
@@ -36,6 +41,8 @@ export interface HomeGalleryItem {
   originalText: string | null
   /** 8折、6折；特價列沒有一致折數時改顯示 SALE */
   offerFold: string | null
+  /** ES SERIES 會員價；不劃掉售價 */
+  memberText: string | null
 }
 
 function focusedVariants(
@@ -70,13 +77,18 @@ export function collectHomeGalleryPool(
 ): HomeGalleryItem[] {
   const items: HomeGalleryItem[] = []
   for (const product of products) {
+    const es = isEsSeriesProduct(product)
     const matches =
-      kind === 'pre-order'
-        ? isProductInPreOrderSection(product.variants)
-        : kind === 'in-stock'
-          ? isProductInStockSection(product.variants) &&
-            !productHasTagSale(product, presets)
-          : productHasTagSale(product, presets)
+      kind === 'es-series'
+        ? es
+        : es
+          ? false
+          : kind === 'pre-order'
+            ? isProductInPreOrderSection(product.variants)
+            : kind === 'in-stock'
+              ? isProductInStockSection(product.variants) &&
+                !productHasTagSale(product, presets)
+              : productHasTagSale(product, presets)
     if (!matches) continue
     const focused = focusedVariants(product, kind, presets)
     const imageUrl = getProductImageUrl(product, focused)
@@ -91,6 +103,7 @@ export function collectHomeGalleryPool(
       saleText: price && !price.inquiry ? price.saleText : null,
       originalText: price?.hasDiscount ? price.originalText : null,
       offerFold: price?.offerFold ?? null,
+      memberText: price?.memberText ?? null,
     })
   }
   return items

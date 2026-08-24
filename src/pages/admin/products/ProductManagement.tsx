@@ -18,6 +18,7 @@ import { formatDateTime } from '../../../utils/formatters'
 import {
   CATEGORY_SCHEMAS,
   SHOP_GROUPS,
+  getShopGroupLabel,
   formatAttributes,
   formatProductModelLine,
   formatProductTitle,
@@ -837,7 +838,7 @@ export function ProductManagement({
         >
           {/*
             兩層分類 tab（跟商城前台 ShopList 同步的 UX 與命名）：
-              Row 1：上層分組（全部 / Wakeboarding / Wakesurfing / Essentials）
+              Row 1：上層分組（全部 / ES SERIES / Wakeboarding / Wakesurfing / Essentials）
               Row 2：當前 group 底下的子分類（只在選中具體 group 時顯示）
             子分類 label 直接用 shopName（例：'Boards' / 'Boots' / 'Fins'），跟
             商城前台 ShopList 看到的命名一致，減少切換時的認知負擔。
@@ -864,7 +865,7 @@ export function ProductManagement({
               {SHOP_GROUPS.map((g) => (
                 <CategoryTab
                   key={g}
-                  label={g}
+                  label={getShopGroupLabel(g)}
                   active={activeGroup === g}
                   onClick={() => setActiveGroup(g)}
                   trackId={`product_group_${g}`}
@@ -874,7 +875,7 @@ export function ProductManagement({
             </ChipRow>
 
             {/* Row 2：子分類（依當前 group 動態切，'all' group 時不顯示） */}
-            {activeGroup !== 'all' && (
+            {activeGroup !== 'all' && activeGroup !== 'ES' && (
               <ChipRow>
                 <CategoryTab
                   label="全部"
@@ -1610,12 +1611,23 @@ function PriceDisplay({
             {shop.caption}
           </span>
         ) : null}
+        {variant.member_price != null ? (
+          <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: colors.text.secondary }}>
+            會員 ${variant.member_price.toLocaleString()}
+          </span>
+        ) : null}
       </span>
     )
   }
+  const member = variant.member_price
   return (
-    <span style={{ fontWeight: 600, color: colors.text.primary, textAlign: align }}>
+    <span style={{ fontWeight: 600, color: colors.text.primary, textAlign: align, display: 'inline-block' }}>
       ${shop.sale!.toLocaleString()}
+      {member != null ? (
+        <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: colors.text.secondary }}>
+          會員 ${member.toLocaleString()}
+        </span>
+      ) : null}
     </span>
   )
 }

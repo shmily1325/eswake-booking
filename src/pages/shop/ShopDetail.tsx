@@ -269,6 +269,10 @@ function ProductDetailBody({
   const shopPrice = selectedVariant ? promo.resolve(selectedVariant) : null
   const hasPrice = shopPrice?.sale != null
   const priceText = hasPrice ? formatPrice(shopPrice!.sale!) : '價格洽詢'
+  const memberPrice =
+    selectedVariant?.member_price != null
+      ? formatPrice(selectedVariant.member_price)
+      : null
   const secondaryLine = formatProductSecondaryLine(product)
 
   /**
@@ -303,28 +307,37 @@ function ProductDetailBody({
     return options
   }, [product, selectedVariant, imageUrl])
 
-  const priceBlock = hasPrice ? (
+  const priceBlock = (
     <div>
-      <div className="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums">
-        {priceText}
-      </div>
-      {shopPrice?.hasDiscount && shopPrice.original != null && (
-        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-gray-400 line-through tabular-nums">
-            {formatPrice(shopPrice.original)}
-          </span>
-          {shopPrice.caption ? (
-            <span className={shopDiscountBadgeClass(shopPrice.source) + ' sm:text-xs'}>
-              {shopPrice.caption}
-            </span>
-          ) : null}
+      {hasPrice ? (
+        <div>
+          <div className="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums">
+            {priceText}
+          </div>
+          {shopPrice?.hasDiscount && shopPrice.original != null && (
+            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-gray-400 line-through tabular-nums">
+                {formatPrice(shopPrice.original)}
+              </span>
+              {shopPrice.caption ? (
+                <span className={shopDiscountBadgeClass(shopPrice.source) + ' sm:text-xs'}>
+                  {shopPrice.caption}
+                </span>
+              ) : null}
+            </div>
+          )}
         </div>
+      ) : (
+        <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">
+          {priceText}
+        </span>
       )}
+      {memberPrice ? (
+        <div className="mt-2 text-base sm:text-lg font-semibold text-zinc-800 tabular-nums">
+          {SHOP_DETAIL.memberPrice} {memberPrice}
+        </div>
+      ) : null}
     </div>
-  ) : (
-    <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">
-      {priceText}
-    </span>
   )
 
   return (

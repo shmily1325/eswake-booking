@@ -21,6 +21,7 @@ import {
   isShopCatalogHome,
   type SortBy,
 } from './lib/shopFilters'
+import { getShopGroupLabel } from '../admin/products/schema'
 import { getShopHeroForFilters } from './lib/shopHeroImages'
 import { useShopHeroPreload } from './hooks/useShopHeroPreload'
 import { SHOP_COPY, SHOP_LABEL } from './lib/shopCopy'
@@ -31,7 +32,7 @@ import { ShopFooter } from './components/ShopFooter'
 
 /**
  * 商城列表。
- * - `/shop` 無 query：首頁 gallery（Pre-Order / In-Stock）
+ * - `/shop` 無 query：首頁 gallery（Pre-Order / ES Series / In-Stock / Sale）
  * - `?preorder=1`：預購列表；`?stock=1`：現貨列表；`?sale=1`：非預購特價
  */
 export function ShopList() {
@@ -101,7 +102,9 @@ export function ShopList() {
           mode={showFullHero ? 'catalog' : 'collection'}
           title={heroTitle}
           heroConfig={heroConfig}
-          parentGroup={collectionParent}
+          parentGroup={
+            collectionParent ? getShopGroupLabel(collectionParent) : null
+          }
         />
         {!isHome && (
           <div className="sticky top-14 z-20 bg-black">

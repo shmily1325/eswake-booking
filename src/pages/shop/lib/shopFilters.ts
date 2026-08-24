@@ -5,7 +5,9 @@
 import {
   getAllCategories,
   getCategoryShopName,
+  getShopGroupLabel,
   getSkuFields,
+  isEsSeriesCategory,
   SHOP_GROUPS,
   type ShopGroup,
 } from '../../admin/products/schema'
@@ -71,6 +73,8 @@ export function defaultFilterState(): ShopFilterState {
 function parseShopGroup(raw: string | null): TopLevel {
   if (!raw) return ALL_GROUPS
   const decoded = decodeURIComponent(raw)
+  const groupKey = decoded.replace(/\s+/g, ' ').toUpperCase()
+  if (groupKey === 'ES' || groupKey === 'ES SERIES') return 'ES'
   if (SHOP_GROUPS.includes(decoded as ShopGroup)) return decoded as ShopGroup
   return ALL_GROUPS
 }
@@ -102,6 +106,12 @@ export function normalizeFilterState(state: ShopFilterState): ShopFilterState {
   }
 
   let { topLevel, subCat } = state
+  // ES 是品牌系列，沒有第二層分類
+  if (topLevel === 'ES') {
+    return subCat === ALL_SUBCATS && state.sizes.length === 0
+      ? state
+      : { ...state, subCat: ALL_SUBCATS, sizes: [] }
+  }
   if (subCat === ALL_SUBCATS) {
     return state.sizes.length === 0 ? state : { ...state, sizes: [] }
   }
@@ -204,10 +214,16 @@ export function getFacetProductPool(
   inStockOnly = false,
 ): ProductWithVariants[] {
   if (preOrderOnly) {
-    return baseProducts.filter((p) => isProductInPreOrderSection(p.variants))
+    return baseProducts.filter(
+      (p) =>
+        !isEsSeriesCategory(p.category) && isProductInPreOrderSection(p.variants),
+    )
   }
   if (inStockOnly) {
-    return baseProducts.filter((p) => isProductInStockSection(p.variants))
+    return baseProducts.filter(
+      (p) =>
+        !isEsSeriesCategory(p.category) && isProductInStockSection(p.variants),
+    )
   }
   return baseProducts
 }
@@ -218,7 +234,16 @@ export function computeFacets(baseProducts: ProductWithVariants[]): ShopFacets {
   let preOrderCount = 0
 
   for (const p of baseProducts) {
-    if (isProductInPreOrderSection(p.variants)) preOrderCount++
+    if (
+      !isEsSeriesCategory(p.category) &&
+      isProductInPreOrderSection(p.variants)
+    ) {
+      preOrderCount++
+    }
+    if (isEsSeriesCategory(p.category)) {
+      groupCounts.set('ES', (groupCounts.get('ES') ?? 0) + 1)
+      continue
+    }
     const cat = p.category ?? 'other'
     categoryCounts.set(cat, (categoryCounts.get(cat) ?? 0) + 1)
     const catDef = getAllCategories().find((c) => c.id === p.category)
@@ -346,6 +371,15 @@ function productSizeValues(p: ProductWithVariants): string[] {
 }
 
 function productMatchesCategory(p: ProductWithVariants, filters: ShopFilterState): boolean {
+  if (isEsSeriesCategory(p.category)) {
+    if (filters.preOrderOnly || filters.inStockOnly || filters.saleOnly) {
+      return false
+    }
+    if (filters.topLevel === ALL_GROUPS) {
+      return filters.subCat === ALL_SUBCATS
+    }
+    return filters.topLevel === 'ES'
+  }
   if (filters.topLevel !== ALL_GROUPS) {
     const cat = getAllCategories().find((c) => c.id === p.category)
     if (cat?.shopGroup !== filters.topLevel) return false
@@ -375,6 +409,7 @@ function productMatchesPreOrder(
   preOrderOnly: boolean,
 ): boolean {
   if (!preOrderOnly) return true
+  if (isEsSeriesCategory(p.category)) return false
   return isProductInPreOrderSection(p.variants)
 }
 
@@ -383,6 +418,7 @@ function productMatchesInStock(
   inStockOnly: boolean,
 ): boolean {
   if (!inStockOnly) return true
+  if (isEsSeriesCategory(p.category)) return false
   return isProductInStockSection(p.variants)
 }
 
@@ -392,6 +428,7 @@ function productMatchesSale(
   presets: readonly DiscountPreset[],
 ): boolean {
   if (!saleOnly) return true
+  if (isEsSeriesCategory(p.category)) return false
   return productHasTagSale(p, presets)
 }
 
@@ -489,11 +526,11 @@ export function getShopFilterContextLabel(filters: ShopFilterState): string {
     if (cat) {
       const group =
         filters.topLevel !== ALL_GROUPS ? filters.topLevel : cat.shopGroup
-      if (group) return `${group} · ${getCategoryShopName(cat)}`
+      if (group) return `${getShopGroupLabel(group)} · ${getCategoryShopName(cat)}`
       return getCategoryShopName(cat)
     }
   }
-  if (filters.topLevel !== ALL_GROUPS) return filters.topLevel
+  if (filters.topLevel !== ALL_GROUPS) return getShopGroupLabel(filters.topLevel)
   return SHOP_COPY.viewingAll
 }
 
@@ -513,7 +550,7 @@ export function getHeroTitle(filters: ShopFilterState): string {
     const cat = getAllCategories().find((c) => c.id === filters.subCat)
     if (cat) return getCategoryShopName(cat)
   }
-  if (filters.topLevel !== ALL_GROUPS) return filters.topLevel
+  if (filters.topLevel !== ALL_GROUPS) return getShopGroupLabel(filters.topLevel)
   if (filters.preOrderOnly) return 'Pre-Order'
   if (filters.inStockOnly) return 'In-Stock'
   if (filters.saleOnly) return 'Sale'
@@ -537,7 +574,7 @@ export function isShopCatalogHome(filters: ShopFilterState): boolean {
 /** 子分類頁顯示上層 group（例：Apparel → Essentials） */
 export function getCollectionParentGroup(
   filters: ShopFilterState,
-): string | null {
+): ShopGroup | null {
   if (filters.subCat === ALL_SUBCATS) return null
   if (filters.topLevel === ALL_GROUPS) return null
   return filters.topLevel
@@ -547,7 +584,7 @@ export function getSubCategoriesForGroup(
   topLevel: TopLevel,
   categoryCounts: Map<string, number>,
 ) {
-  if (topLevel === ALL_GROUPS) return []
+  if (topLevel === ALL_GROUPS || topLevel === 'ES') return []
   return getAllCategories()
     .filter((c) => c.shopGroup === topLevel && (categoryCounts.get(c.id) ?? 0) > 0)
     .map((c) => ({ ...c, count: categoryCounts.get(c.id) ?? 0 }))

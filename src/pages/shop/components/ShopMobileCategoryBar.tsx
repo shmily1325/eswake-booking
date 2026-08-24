@@ -1,5 +1,6 @@
 import {
   getCategoryShopName,
+  getShopGroupLabel,
   SHOP_GROUPS,
   type ShopGroup,
 } from '../../admin/products/schema'
@@ -100,7 +101,7 @@ export function ShopCategoryBar({
               onWarmHover={() => void preloadShopHeroForCategory(g, ALL_SUBCATS)}
               onDark={onDark}
             >
-              {g}
+              {getShopGroupLabel(g)}
             </CategoryChip>
           )
         })}

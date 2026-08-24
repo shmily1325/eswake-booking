@@ -15,6 +15,7 @@ import {
 import { formatCardSpecLine } from '../lib/variantSpecAxes'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
+import { SHOP_DETAIL } from '../lib/shopCopy'
 import {
   SHOP_PREORDER_DEADLINE,
   SHOP_PRODUCT_FRAME,
@@ -122,6 +123,11 @@ export function ProductCard({ product, variants }: ProductCardProps) {
               ) : null}
             </div>
           )}
+          {priceSummary.memberText ? (
+            <div className="mt-1.5 text-sm font-semibold text-zinc-800 tabular-nums leading-none">
+              {SHOP_DETAIL.memberPrice} {priceSummary.memberText}
+            </div>
+          ) : null}
         </div>
 
         {specLine ? (

@@ -3,6 +3,7 @@ import { ShopBrandFilter } from './ShopBrandFilter'
 import { ShopSizeFilter } from './ShopSizeFilter'
 import {
   getCategoryShopName,
+  getShopGroupLabel,
   SHOP_GROUPS,
   type ShopGroup,
 } from '../../admin/products/schema'
@@ -102,7 +103,7 @@ export function ShopFilterPanel({
                     }
                   >
                     <Chevron className={expanded ? 'rotate-90' : ''} />
-                    {g}
+                    {getShopGroupLabel(g)}
                   </button>
 
                   {expanded && subs.length > 0 && (

@@ -19,6 +19,7 @@ import {
   formatProductTitle,
   getSkuFields,
   getCategory,
+  isEsSeriesCategory,
   normalizeGenderValue,
   normalizeVariantAttributes,
   validateAttributes,
@@ -107,6 +108,7 @@ interface DraftVariant {
   vendor_code: string
   attributes: Record<string, string>
   price: string
+  member_price: string
   stock: string
   /** 已送結帳、待結帳的保留量（唯讀提示用；不可在此頁編輯） */
   reserved_qty: number
@@ -166,6 +168,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     attributes: attrs,
     // price 為 null 時保留空字串（UI 顯示「待補」），不要強制變成 "0"
     price: v.price == null ? '' : String(v.price),
+    member_price: v.member_price == null ? '' : String(v.member_price),
     stock: String(v.stock ?? 0),
     reserved_qty: v.reserved_qty ?? 0,
     acceptPreOrder: acceptPreOrderFromVariant(v),
@@ -189,6 +192,7 @@ function emptyDraft(): DraftVariant {
     vendor_code: '',
     attributes: {},
     price: '',
+    member_price: '',
     stock: '',
     reserved_qty: 0,
     acceptPreOrder: false,
@@ -478,6 +482,7 @@ export function ProductEditView({
           vendor_code: lastActive.vendor_code,
           attributes: { ...lastActive.attributes },
           price: lastActive.price,
+          member_price: lastActive.member_price,
           stock: '',
           reserved_qty: 0,
           acceptPreOrder: lastActive.acceptPreOrder,
@@ -684,6 +689,12 @@ export function ProductEditView({
         const priceNum = Number(d.price)
         if (!Number.isFinite(priceNum) || priceNum < 0) return `規格 #${i + 1}：售價需為非負整數，或留空表待補`
       }
+      if (d.member_price.trim() !== '') {
+        const memberNum = Number(d.member_price)
+        if (!Number.isFinite(memberNum) || memberNum < 0) {
+          return `規格 #${i + 1}：會員價需為非負整數，或留空`
+        }
+      }
       if (d.stock.trim() === '') return `規格 #${i + 1}：庫存為必填`
       const stockNum = Number(d.stock)
       if (!Number.isFinite(stockNum) || stockNum < 0) return `規格 #${i + 1}：庫存需為非負整數`
@@ -845,6 +856,7 @@ export function ProductEditView({
           vendor_code: d.vendor_code,
           attributes: normalizeVariantAttributes(d.attributes),
           price: d.price.trim() === '' ? null : Number(d.price),
+          member_price: d.member_price.trim() === '' ? null : Number(d.member_price),
           stock: stockNum,
           availability,
           pre_order_eta: null,
@@ -980,6 +992,7 @@ export function ProductEditView({
     const hasDraftWork = drafts.some(d =>
       d.stock.trim() !== '' ||
       d.price.trim() !== '' ||
+      d.member_price.trim() !== '' ||
       d.vendor_code.trim() !== '' ||
       d.label_code.trim() !== '' ||
       Object.values(d.attributes).some(value => value.trim() !== '') ||
@@ -2136,6 +2149,18 @@ function VariantBlock({
               disabled={disabled || draft.pendingDelete}
             />
           </div>
+          {isEsSeriesCategory(categoryId) && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>會員價</label>
+              <NumericTextInput
+                variant="course"
+                value={draft.member_price}
+                onChange={(member_price) => onChange({ member_price })}
+                placeholder="選填"
+                disabled={disabled || draft.pendingDelete}
+              />
+            </div>
+          )}
           {stockField}
         </>
       ) : (
@@ -2152,6 +2177,18 @@ function VariantBlock({
               disabled={disabled || draft.pendingDelete}
             />
           </div>
+          {isEsSeriesCategory(categoryId) && (
+            <div>
+              <label style={labelStyle}>會員價</label>
+              <NumericTextInput
+                variant="course"
+                value={draft.member_price}
+                onChange={(member_price) => onChange({ member_price })}
+                placeholder="選填"
+                disabled={disabled || draft.pendingDelete}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

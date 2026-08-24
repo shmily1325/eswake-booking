@@ -11,11 +11,13 @@ function product(
   image: string | null,
   stock = 1,
   discountPresetId: string | null = null,
+  category = 'lifejacket',
+  brand = 'Follow',
 ): ProductWithVariants {
   return {
     id,
-    category: 'lifejacket',
-    brand: 'Follow',
+    category,
+    brand,
     model: id,
     color: 'red',
     is_public: true,
@@ -38,23 +40,30 @@ function product(
 
 describe('collectHomeGalleryPool', () => {
   const products = [
-    product('stock-photo', 'in_stock', 'https://img/a.jpg'),
-    product('stock-blank', 'in_stock', null),
+    product('es-photo', 'in_stock', 'https://img/es.jpg', 1, null, 'es_series'),
+    product('es-pre', 'pre_order', 'https://img/es-pre.jpg', 0, null, 'es_series'),
+    product('es-blank', 'in_stock', null),
+    product('stock-photo', 'in_stock', 'https://img/a.jpg', 1, null, 'wb_board'),
+    product('stock-blank', 'in_stock', null, 1, null, 'wb_board'),
     product('pre-photo', 'pre_order', 'https://img/b.jpg', 0),
     product('pre-blank', 'pre_order', null, 0),
   ]
 
-  it('keeps in-stock products that have a cover', () => {
-    expect(collectHomeGalleryPool(products, 'in-stock')).toEqual([
-      expect.objectContaining({
-        productId: 'stock-photo',
-        title: 'stock-photo',
-        subtitle: 'red',
-        saleText: 'NT$ 10,000',
-        originalText: null,
-        offerFold: null,
-      }),
+    it('keeps every listed ES SERIES product in the ES Series pool', () => {
+    expect(collectHomeGalleryPool(products, 'es-series').map((p) => p.productId)).toEqual([
+      'es-photo',
+      'es-pre',
     ])
+  })
+
+  it('keeps ES SERIES out of In-Stock, Pre-Order, and Sale', () => {
+    expect(collectHomeGalleryPool(products, 'in-stock').map((p) => p.productId)).toEqual([
+      'stock-photo',
+    ])
+    expect(collectHomeGalleryPool(products, 'pre-order').map((p) => p.productId)).toEqual([
+      'pre-photo',
+    ])
+    expect(collectHomeGalleryPool(products, 'sale').map((p) => p.productId)).toEqual([])
   })
 
   it('keeps pre-order products that have a cover', () => {
@@ -107,6 +116,35 @@ describe('collectHomeGalleryPool', () => {
     expect(
       collectHomeGalleryPool(withTagged, 'in-stock', [red]).map((p) => p.productId),
     ).toEqual(['stock-photo'])
+    expect(
+      collectHomeGalleryPool(withTagged, 'es-series', [red]).map((p) => p.productId),
+    ).toEqual(['es-photo', 'es-pre'])
+  })
+
+  it('keeps tagged ES SERIES leftovers in ES Series, not Sale', () => {
+    const red = {
+      id: 'red',
+      kind: 'tag' as const,
+      name: '紅標',
+      label: '紅標',
+      percent: 60,
+      is_active: true,
+      sort_order: 1,
+    }
+    const taggedEs = product(
+      'es-sale',
+      'in_stock',
+      'https://img/es-sale.jpg',
+      1,
+      'red',
+      'es_series',
+    )
+    expect(
+      collectHomeGalleryPool([taggedEs], 'sale', [red]).map((p) => p.productId),
+    ).toEqual([])
+    expect(
+      collectHomeGalleryPool([taggedEs], 'es-series', [red]).map((p) => p.productId),
+    ).toEqual(['es-sale'])
   })
 
   it('keeps tagged pre-order out of the sale pool', () => {
@@ -136,6 +174,7 @@ describe('pickHomeGalleryItems', () => {
     saleText: null,
     originalText: null,
     offerFold: null,
+    memberText: null,
   }))
 
   it('is stable for the same seed', () => {
