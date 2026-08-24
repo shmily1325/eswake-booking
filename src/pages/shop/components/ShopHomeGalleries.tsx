@@ -239,10 +239,7 @@ function HomeGalleryRow({
   }
 
   return (
-    <section
-      aria-label={title}
-      className={'min-w-0' + (isSale ? ' lg:col-span-2' : '')}
-    >
+    <section aria-label={title} className="min-w-0">
       <div className="flex items-center justify-between gap-3 h-11 mb-3">
         <h2
           className={

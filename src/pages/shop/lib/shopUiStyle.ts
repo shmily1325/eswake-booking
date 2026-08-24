@@ -93,11 +93,11 @@ export function shopDiscountBadgeClass(
 
 export const SHOP_PREORDER_DEADLINE = 'text-[11px] text-amber-800'
 
-/** 首頁橫滑卡寬：手機露出下一張；桌機一欄兩張，右邊再露出下一張提示可滑 */
+/** 首頁橫滑卡寬：手機全寬露出下一張；桌機一欄兩張，右邊再露出下一張提示可滑 */
 export const SHOP_HOME_STRIP_CARD =
   'w-[min(68vw,228px)] md:w-60 lg:w-[calc((100%-0.75rem)/2.25)]'
 
-/** 首頁商品 section：手機直向；桌機兩欄，奇數自然佔一欄 */
+/** 首頁商品 section：手機直向；桌機兩欄（In-Stock | Sale） */
 export const SHOP_HOME_GALLERY_GRID =
   'space-y-10 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-x-10 lg:gap-y-10'
 
