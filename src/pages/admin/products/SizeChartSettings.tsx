@@ -226,7 +226,7 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
 
   return (
     <div style={wrap}>
-      {!embedded && <ToastContainer />}
+      <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
       <div
         style={{
           display: 'flex',
