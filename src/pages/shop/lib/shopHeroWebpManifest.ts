@@ -2,6 +2,7 @@
 export const SHOP_HERO_WEBP_SRCS = new Set<string>([
   '/shop/heroes/apparel.webp',
   '/shop/heroes/catalog.webp',
+  '/shop/heroes/es-series.webp',
   '/shop/heroes/essentials.webp',
   '/shop/heroes/lifejacket.webp',
   '/shop/heroes/wakeboarding.webp',

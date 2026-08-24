@@ -41,15 +41,16 @@ export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
     heroScaleClass: 'max-sm:scale-[1.12] sm:scale-[1.03]',
   },
   ES: {
-    src: '/shop/heroes/apparel.webp',
-    objectPosition: '72% 32%',
-    objectPositionClass:
-      'object-[68%_34%] sm:object-[70%_32%] md:object-[72%_30%]',
-    collectionObjectPosition: '68% 38%',
+    src: '/shop/heroes/es-series.webp',
+    objectPosition: 'center 64%',
+    // 直幅原圖，水壺那排位在下段（約 51%–68% 高）。橫幅裁切只留窄帶，
+    // 所以 X 置中（寬永遠滿版）、Y 壓低才不會切到瓶蓋提環；窄帶愈扁 Y 要愈小。
+    objectPositionClass: 'object-[center_64%] lg:object-[center_62%]',
+    collectionObjectPosition: 'center 63%',
     collectionObjectPositionClass:
-      'object-[66%_34%] max-sm:object-[68%_32%] sm:object-[70%_36%] md:object-[68%_42%] lg:object-[66%_46%]',
+      'object-[center_63%] max-sm:object-[center_62%] sm:object-[center_63%]',
     tallCollectionBand: true,
-    heroScaleClass: 'max-sm:scale-[1.08] sm:scale-[1.02] md:scale-[1.0]',
+    heroScaleClass: 'scale-[1.02]',
   },
   Wakesurfing: {
     src: '/shop/heroes/wakesurfing.webp',
