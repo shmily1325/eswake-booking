@@ -7,7 +7,14 @@
 
 import { supabase } from '../../../lib/supabase'
 import type { Database } from '../../../types/supabase'
-import type { AttributeValue, ProductRow, ProductVariantRow, ProductWithVariants, VariantListItem } from './types'
+import type {
+  AttributeValue,
+  ProductRow,
+  ProductVariantRow,
+  ProductWithVariants,
+  SizeChartRow,
+  VariantListItem,
+} from './types'
 import { deriveVariantAvailability } from './availabilityHelpers'
 import { normalizePreOrderUntil } from './productBatch'
 import { getCategoryLabelCode } from './schema'
@@ -110,7 +117,7 @@ export function flattenToVariantItems(list: ProductWithVariants[]): VariantListI
 export async function fetchProductWithVariants(productId: string): Promise<ProductWithVariants | null> {
   const { data, error } = await supabase
     .from('products')
-    .select('*, product_variants(*)')
+    .select('*, product_variants(*), size_charts(*)')
     .eq('id', productId)
     .maybeSingle()
   if (error) throw error
@@ -118,6 +125,7 @@ export async function fetchProductWithVariants(productId: string): Promise<Produ
 
   const row = data as ProductRow & {
     product_variants?: ProductVariantRow[] | null
+    size_charts?: SizeChartRow | null
   }
   const variants = (row.product_variants ?? [])
     .filter((v) => v.is_active)
@@ -126,9 +134,44 @@ export async function fetchProductWithVariants(productId: string): Promise<Produ
       const tb = b.created_at ? new Date(b.created_at).getTime() : 0
       return ta - tb
     })
-  const { product_variants: _omit, ...product } = row
+  const { product_variants: _omit, size_charts, ...product } = row
   void _omit
-  return { ...(product as ProductRow), variants }
+  return { ...(product as ProductRow), variants, size_chart: size_charts ?? null }
+}
+
+/** 載入可供商品共用的尺寸表。 */
+export async function fetchSizeCharts(): Promise<SizeChartRow[]> {
+  const { data, error } = await supabase
+    .from('size_charts')
+    .select('*')
+    .eq('is_active', true)
+    .order('brand', { ascending: true })
+    .order('name', { ascending: true })
+  if (error) throw error
+  return (data ?? []) as SizeChartRow[]
+}
+
+/** 建立一筆可共用尺寸表；圖片應先上傳至 product-images bucket。 */
+export async function createSizeChart(input: {
+  name: string
+  brand?: string | null
+  image_url: string
+  image_path: string
+  created_by?: string | null
+}): Promise<SizeChartRow> {
+  const { data, error } = await supabase
+    .from('size_charts')
+    .insert({
+      name: input.name.trim(),
+      brand: input.brand?.trim() ?? '',
+      image_url: input.image_url,
+      image_path: input.image_path,
+      created_by: input.created_by ?? null,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data as SizeChartRow
 }
 
 export interface CreateProductInput {
@@ -137,6 +180,7 @@ export interface CreateProductInput {
   model: string
   model_year?: number | null
   color?: string | null
+  size_chart_id?: string | null
   description?: string | null
   cover_image_url?: string | null
   cover_image_path?: string | null
@@ -188,6 +232,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductR
       model: input.model.trim(),
       model_year: input.model_year ?? null,
       color: input.color?.trim() || null,
+      size_chart_id: input.size_chart_id ?? null,
       description: input.description?.trim() || null,
       cover_image_url: input.cover_image_url ?? null,
       cover_image_path: input.cover_image_path ?? null,
@@ -207,6 +252,7 @@ export interface UpdateProductInput {
   model?: string
   model_year?: number | null
   color?: string | null
+  size_chart_id?: string | null
   description?: string | null
   category?: string
   cover_image_url?: string | null
@@ -222,6 +268,7 @@ export async function updateProduct(productId: string, input: UpdateProductInput
   if (input.model !== undefined) patch.model = input.model.trim()
   if (input.model_year !== undefined) patch.model_year = input.model_year
   if (input.color !== undefined) patch.color = input.color?.trim() || null
+  if (input.size_chart_id !== undefined) patch.size_chart_id = input.size_chart_id
   if (input.description !== undefined) patch.description = input.description?.trim() || null
   if (input.category !== undefined) patch.category = input.category
   if (input.cover_image_url !== undefined) patch.cover_image_url = input.cover_image_url
@@ -232,6 +279,27 @@ export async function updateProduct(productId: string, input: UpdateProductInput
   if (Object.keys(patch).length === 0) return
 
   const { error } = await supabase.from('products').update(patch).eq('id', productId)
+  if (error) throw error
+}
+
+/** 將尺寸表同步到同品牌、類別、型號的所有有效商品（通常是不同顏色卡）。 */
+export async function applySizeChartToSameModel(input: {
+  category: string
+  brand: string
+  model: string
+  size_chart_id: string | null
+  updated_by?: string | null
+}): Promise<void> {
+  const { error } = await supabase
+    .from('products')
+    .update({
+      size_chart_id: input.size_chart_id,
+      updated_by: input.updated_by ?? null,
+    })
+    .eq('is_active', true)
+    .eq('category', input.category)
+    .ilike('brand', input.brand.trim())
+    .ilike('model', input.model.trim())
   if (error) throw error
 }
 

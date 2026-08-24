@@ -12,6 +12,7 @@ import type { Database } from '../../../types/supabase'
 export type AttributeValue = string | number | null
 
 export type ProductRow = Database['public']['Tables']['products']['Row']
+export type SizeChartRow = Database['public']['Tables']['size_charts']['Row']
 
 type RawVariantRow = Database['public']['Tables']['product_variants']['Row']
 
@@ -22,6 +23,7 @@ export type ProductVariantRow = Omit<RawVariantRow, 'attributes'> & {
 /** 列表頁要用的合併型別：商品 + 它的所有 SKU */
 export interface ProductWithVariants extends ProductRow {
   variants: ProductVariantRow[]
+  size_chart?: SizeChartRow | null
 }
 
 /** 列表頁顯示的扁平化單列：每個 SKU 一列，但帶上商品資訊 */

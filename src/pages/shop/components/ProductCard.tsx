@@ -15,7 +15,7 @@ import {
 import { formatCardSpecLine } from '../lib/variantSpecAxes'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
-import { SHOP_DETAIL } from '../lib/shopCopy'
+import { SHOP_DETAIL, SHOP_LABEL } from '../lib/shopCopy'
 import {
   SHOP_PREORDER_DEADLINE,
   SHOP_PRODUCT_FRAME,
@@ -119,6 +119,10 @@ export function ProductCard({ product, variants }: ProductCardProps) {
                       {priceSummary.offerCaption}
                     </span>
                   ) : null}
+                </div>
+              ) : priceSummary.partialSale ? (
+                <div className="mt-1.5">
+                  <span className={shopDiscountBadgeClass('tag')}>{SHOP_LABEL.sale}</span>
                 </div>
               ) : null}
             </div>

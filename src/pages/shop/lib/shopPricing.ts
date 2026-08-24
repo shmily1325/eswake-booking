@@ -207,6 +207,8 @@ export interface ProductShopPriceSummary {
   offerSource: DiscountKind | null
   /** 全部同一折數時才有：8折、6折 */
   offerFold: string | null
+  /** 部分 SKU 掛 Sale、其餘原價；卡片掛 Sale、不劃掉原價 */
+  partialSale: boolean
 }
 
 export function summarizeMemberPriceText(
@@ -240,6 +242,7 @@ export function summarizeProductShopPrice(
       offerCaption: null,
       offerSource: null,
       offerFold: null,
+      partialSale: false,
     }
   }
   const sales = priced.map((p) => p.sale)
@@ -279,5 +282,7 @@ export function summarizeProductShopPrice(
       allDiscounted && percents.size === 1
         ? foldLabel([...percents][0]!)
         : null,
+    partialSale:
+      !allDiscounted && priced.some((p) => p.hasDiscount && p.source === 'tag'),
   }
 }

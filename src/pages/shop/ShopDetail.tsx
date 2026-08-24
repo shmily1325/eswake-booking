@@ -38,6 +38,7 @@ import {
 } from './lib/shopUiStyle'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { ShopFooter } from './components/ShopFooter'
+import { ProductSizeChart } from './components/ProductSizeChart'
 
 /** Supabase 的 `id` 是 uuid，亂打字串會炸出 22P02 錯誤，先在 client 擋掉 */
 const UUID_REGEX =
@@ -402,6 +403,8 @@ function ProductDetailBody({
             onSelect={onSelectVariant}
           />
         </div>
+
+        {product.size_chart ? <ProductSizeChart chart={product.size_chart} /> : null}
 
         <div className="mt-4 flex items-center gap-3">
           <span className="text-sm font-medium text-gray-700">{SHOP_DETAIL.quantity}</span>

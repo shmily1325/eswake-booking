@@ -93,8 +93,8 @@ export async function uploadProductImage(
   file: File,
   opts: {
     variantId?: string | null
-    /** Storage 子目錄：variants（SKU 圖）或 covers（商城封面） */
-    storageFolder?: 'variants' | 'covers'
+    /** Storage 子目錄：variants（SKU 圖）、covers（商城封面）或 size-charts（尺寸表） */
+    storageFolder?: 'variants' | 'covers' | 'size-charts'
     /** 對應 variants/{id} 或 covers/{id} 的 id；新建時用 'new' */
     entityId?: string | null
     compress?: CompressOptions
@@ -124,7 +124,7 @@ export async function uploadProductImage(
 export async function copyProductImage(
   sourcePath: string,
   opts: {
-    storageFolder?: 'variants' | 'covers'
+    storageFolder?: 'variants' | 'covers' | 'size-charts'
     entityId?: string | null
   } = {},
 ): Promise<UploadProductImageResult> {

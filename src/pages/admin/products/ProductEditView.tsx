@@ -12,6 +12,7 @@ import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../../
 import { useResponsive } from '../../../hooks/useResponsive'
 import { CoverImageEditor } from './CoverImageEditor'
 import { ImageUploader } from './ImageUploader'
+import { SizeChartPicker } from './SizeChartPicker'
 import {
   CATEGORY_SCHEMAS,
   formatAttributes,
@@ -30,6 +31,7 @@ import {
   createVariant,
   deleteProduct,
   deleteVariant,
+  applySizeChartToSameModel,
   fetchProductWithVariants,
   findExistingProductIdentity,
   findLabelCodeConflict,
@@ -237,6 +239,8 @@ export function ProductEditView({
   const [modelYear, setModelYear] = useState('')
   const [color, setColor] = useState('')
   const [description, setDescription] = useState('')
+  const [sizeChartId, setSizeChartId] = useState<string | null>(null)
+  const [applySizeChartToModel, setApplySizeChartToModel] = useState(true)
   /**
    * 是否上架到商城（/shop 對外可見）。
    * - 新商品預設 true（上架到商城）
@@ -371,6 +375,7 @@ export function ProductEditView({
         setModelYear(p.model_year?.toString() ?? '')
         setColor(p.color ?? '')
         setDescription(p.description ?? '')
+        setSizeChartId(p.size_chart_id)
         setIsPublic(p.is_public)
         const loadedProductCovers = draftCoverImagesFromVariant(
           p.cover_images,
@@ -773,6 +778,7 @@ export function ProductEditView({
             model_year: parsedModelYear,
             color: normalizedProductColor,
             description: description.trim() || null,
+            size_chart_id: sizeChartId,
             cover_images: productCovers,
             cover_image_url: productPrimary.url,
             cover_image_path: productPrimary.path,
@@ -792,6 +798,7 @@ export function ProductEditView({
             model_year: parsedModelYear,
             color: normalizedProductColor,
             description: description.trim() || null,
+            size_chart_id: sizeChartId,
             cover_images: productCovers,
             cover_image_url: productPrimary.url,
             cover_image_path: productPrimary.path,
@@ -810,6 +817,7 @@ export function ProductEditView({
           model_year: parsedModelYear,
           color: normalizedProductColor,
           description: description.trim() || null,
+          size_chart_id: sizeChartId,
           cover_images: productCovers,
           cover_image_url: productPrimary.url,
           cover_image_path: productPrimary.path,
@@ -817,6 +825,16 @@ export function ProductEditView({
           updated_by: currentUserEmail ?? null,
         })
         setOriginalProductCoverPaths(productCovers.map((img) => img.path).filter(Boolean))
+      }
+
+      if (applySizeChartToModel) {
+        await applySizeChartToSameModel({
+          category,
+          brand,
+          model,
+          size_chart_id: sizeChartId,
+          updated_by: currentUserEmail ?? null,
+        })
       }
 
       // 標籤代碼：跨商品唯一（DB index + 存檔前查詢）
@@ -1541,6 +1559,55 @@ export function ProductEditView({
           >
             多色舊卡：封面在各規格
           </p>
+        )}
+
+        {(!mobileCreateWizard || createStep === 3) && (
+          <div
+            style={{
+              marginBottom: designSystem.spacing.lg,
+              paddingBottom: designSystem.spacing.lg,
+              borderBottom: `1px solid ${designSystem.colors.border.light}`,
+            }}
+          >
+            <h3
+              style={{
+                margin: `0 0 ${designSystem.spacing.sm} 0`,
+                fontSize: getFontSize('h3', isMobile),
+                fontWeight: 700,
+                color: designSystem.colors.text.primary,
+              }}
+            >
+              尺寸表
+            </h3>
+            <SizeChartPicker
+              value={sizeChartId}
+              brand={brand}
+              currentUserEmail={currentUserEmail}
+              disabled={saving || readOnly}
+              onChange={setSizeChartId}
+            />
+            {!readOnly && (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginTop: designSystem.spacing.sm,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  color: designSystem.colors.text.secondary,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={applySizeChartToModel}
+                  onChange={(event) => setApplySizeChartToModel(event.target.checked)}
+                  disabled={saving}
+                />
+                同步套用到相同品牌、類別與型號的所有顏色
+              </label>
+            )}
+          </div>
         )}
 
         {(!mobileCreateWizard || createStep === 3) && (

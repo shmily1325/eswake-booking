@@ -1086,6 +1086,7 @@ export type Database = {
           brand: string
           model: string
           model_year: number | null
+          size_chart_id: string | null
           color: string | null
           description: string | null
           cover_image_url: string | null
@@ -1104,6 +1105,7 @@ export type Database = {
           brand: string
           model: string
           model_year?: number | null
+          size_chart_id?: string | null
           color?: string | null
           description?: string | null
           cover_image_url?: string | null
@@ -1122,6 +1124,7 @@ export type Database = {
           brand?: string
           model?: string
           model_year?: number | null
+          size_chart_id?: string | null
           color?: string | null
           description?: string | null
           cover_image_url?: string | null
@@ -1134,7 +1137,15 @@ export type Database = {
           created_by?: string | null
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_size_chart_id_fkey"
+            columns: ["size_chart_id"]
+            isOneToOne: false
+            referencedRelation: "size_charts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_variants: {
         Row: {
@@ -1265,6 +1276,42 @@ export type Database = {
           sort_order?: number
           created_at?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      size_charts: {
+        Row: {
+          id: string
+          name: string
+          brand: string
+          image_url: string
+          image_path: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          brand?: string
+          image_url: string
+          image_path: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          brand?: string
+          image_url?: string
+          image_path?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
         }
         Relationships: []
       }

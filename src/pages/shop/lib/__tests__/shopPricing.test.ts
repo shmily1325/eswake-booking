@@ -226,6 +226,45 @@ describe('summarizeProductShopPrice', () => {
     expect(summary.memberText).toBe('NT$ 8,000')
   })
 
+  it('flags Sale when only some SKUs are tagged', () => {
+    const tagged = vest({
+      id: 'v-red',
+      stock: 2,
+      availability: 'in_stock',
+      discount_preset_id: 'red',
+    })
+    const full = vest({
+      id: 'v-full',
+      stock: 1,
+      availability: 'in_stock',
+    })
+    const summary = summarizeProductShopPrice([tagged, full], [PREORDER, RED])
+    expect(summary.hasDiscount).toBe(false)
+    expect(summary.partialSale).toBe(true)
+    expect(summary.originalText).toBeNull()
+    expect(summary.saleText).toBe('NT$ 6,070 起')
+    expect(summary.offerCaption).toBeNull()
+  })
+
+  it('does not flag partial Sale when every SKU is tagged', () => {
+    const a = vest({
+      id: 'a',
+      stock: 1,
+      availability: 'in_stock',
+      discount_preset_id: 'red',
+    })
+    const b = vest({
+      id: 'b',
+      stock: 1,
+      availability: 'in_stock',
+      discount_preset_id: 'red',
+    })
+    const summary = summarizeProductShopPrice([a, b], [PREORDER, RED])
+    expect(summary.partialSale).toBe(false)
+    expect(summary.hasDiscount).toBe(true)
+    expect(summary.offerCaption).toBe('6折')
+  })
+
   it('marks leftover stock as a tag offer', () => {
     const leftover = vest({
       id: 'v-red',
@@ -237,5 +276,6 @@ describe('summarizeProductShopPrice', () => {
     expect(summary.offerCaption).toBe('6折')
     expect(summary.offerSource).toBe('tag')
     expect(summary.offerFold).toBe('6折')
+    expect(summary.partialSale).toBe(false)
   })
 })
