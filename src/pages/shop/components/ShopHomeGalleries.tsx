@@ -25,9 +25,12 @@ import { computeFacets, getShopBaseProducts } from '../lib/shopFilters'
 import { SHOP_HERO_IMAGES } from '../lib/shopHeroImages'
 import {
   SHOP_HOME_GALLERY_GRID,
+  SHOP_HOME_GALLERY_SLOT_EMPTY,
   SHOP_HOME_PRODUCT_FRAME,
   SHOP_HOME_PRODUCT_IMG,
+  SHOP_HOME_STRIP_BODY,
   SHOP_HOME_STRIP_CARD,
+  SHOP_GROUP_GRID,
   SHOP_GROUP_TILE,
 } from '../lib/shopUiStyle'
 
@@ -65,7 +68,8 @@ interface ShopHomeGalleriesProps {
 }
 
 /**
- * 目錄首頁：Pre-Order / ES Series / In-Stock / Sale。有貨才出現，順序固定。
+ * 目錄首頁 2×2：Pre-Order | ES Series / In-Stock | Sale。
+ * 沒貨的區不畫，桌機仍佔原格。卡片寬高固定。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readVisitSeed)
@@ -103,47 +107,41 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
     [products, seed, promo.presets],
   )
 
-  const galleries = useMemo(() => {
-    const rows: {
-      key: string
-      title: string
-      items: HomeGalleryItem[]
-      viewAllTo: string
-    }[] = []
-    if (preOrderItems.length > 0) {
-      rows.push({
-        key: 'pre-order',
-        title: SHOP_LABEL.preOrder,
-        items: preOrderItems,
-        viewAllTo: shopPreOrderListPath(),
-      })
-    }
-    if (esSeriesItems.length > 0) {
-      rows.push({
-        key: 'es-series',
-        title: SHOP_LABEL.esSeries,
-        items: esSeriesItems,
-        viewAllTo: shopGroupListPath('ES'),
-      })
-    }
-    if (inStockItems.length > 0) {
-      rows.push({
-        key: 'in-stock',
-        title: SHOP_LABEL.inStock,
-        items: inStockItems,
-        viewAllTo: shopInStockListPath(),
-      })
-    }
-    if (saleItems.length > 0) {
-      rows.push({
-        key: 'sale',
-        title: SHOP_LABEL.sale,
-        items: saleItems,
-        viewAllTo: shopSaleListPath(),
-      })
-    }
-    return rows
-  }, [preOrderItems, esSeriesItems, inStockItems, saleItems])
+  const slots = useMemo(
+    () =>
+      [
+        {
+          key: 'pre-order',
+          title: SHOP_LABEL.preOrder,
+          items: preOrderItems,
+          viewAllTo: shopPreOrderListPath(),
+          accent: 'preorder' as const,
+        },
+        {
+          key: 'es-series',
+          title: SHOP_LABEL.esSeries,
+          items: esSeriesItems,
+          viewAllTo: shopGroupListPath('ES'),
+          accent: undefined,
+        },
+        {
+          key: 'in-stock',
+          title: SHOP_LABEL.inStock,
+          items: inStockItems,
+          viewAllTo: shopInStockListPath(),
+          accent: undefined,
+        },
+        {
+          key: 'sale',
+          title: SHOP_LABEL.sale,
+          items: saleItems,
+          viewAllTo: shopSaleListPath(),
+          accent: 'sale' as const,
+        },
+      ] as const,
+    [preOrderItems, esSeriesItems, inStockItems, saleItems],
+  )
+  const hasGallery = slots.some((slot) => slot.items.length > 0)
 
   const listed = useMemo(() => getShopBaseProducts(products), [products])
   const groups = useMemo(() => {
@@ -151,7 +149,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
     return SHOP_GROUPS.filter((g) => (counts.get(g) ?? 0) > 0)
   }, [listed])
 
-  if (galleries.length === 0 && groups.length === 0) {
+  if (!hasGallery && groups.length === 0) {
     return (
       <p className="px-4 sm:px-6 py-16 text-center text-sm text-white/55">
         {SHOP_COPY.emptyCatalog}
@@ -161,29 +159,31 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
-      {galleries.length > 0 && (
+      {hasGallery && (
         <div className={SHOP_HOME_GALLERY_GRID}>
-          {galleries.map((gallery) => (
-            <HomeGalleryRow
-              key={gallery.key}
-              title={gallery.title}
-              items={gallery.items}
-              viewAllTo={gallery.viewAllTo}
-              accent={
-                gallery.key === 'sale'
-                  ? 'sale'
-                  : gallery.key === 'pre-order'
-                    ? 'preorder'
-                    : undefined
-              }
-            />
-          ))}
+          {slots.map((slot) =>
+            slot.items.length > 0 ? (
+              <HomeGalleryRow
+                key={slot.key}
+                title={slot.title}
+                items={slot.items}
+                viewAllTo={slot.viewAllTo}
+                accent={slot.accent}
+              />
+            ) : (
+              <div
+                key={slot.key}
+                className={SHOP_HOME_GALLERY_SLOT_EMPTY}
+                aria-hidden
+              />
+            ),
+          )}
         </div>
       )}
 
       {groups.length > 0 && (
         <section aria-label={SHOP_LABEL.catalog} className="mt-10">
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className={SHOP_GROUP_GRID}>
             {groups.map((group) => {
               const hero = SHOP_HERO_IMAGES[group]
               return (
@@ -309,40 +309,42 @@ function HomeGalleryRow({
                   </span>
                 ) : null}
               </div>
-              <div className="px-2.5 py-2">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-600 truncate">
+              <div className={SHOP_HOME_STRIP_BODY}>
+                <div className="h-4 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 truncate leading-4">
                   {item.brand || '\u00A0'}
                 </div>
-                <div className="mt-0.5 text-sm font-black text-zinc-900 leading-snug line-clamp-2">
+                <div className="mt-0.5 h-10 text-sm font-black text-zinc-900 leading-5 line-clamp-2">
                   {item.title}
                 </div>
-                {item.subtitle ? (
-                  <div className="mt-0.5 text-[10px] text-gray-500 truncate">
-                    {item.subtitle}
-                  </div>
-                ) : null}
-                {item.saleText ? (
-                  <div className="mt-1.5 flex items-baseline gap-1.5 min-w-0">
-                    <span
-                      className={
-                        'text-sm font-bold tabular-nums leading-none truncate ' +
-                        (isSale ? 'text-red-600' : 'text-zinc-900')
-                      }
-                    >
-                      {item.saleText}
-                    </span>
-                    {item.originalText ? (
-                      <span className="text-[11px] text-gray-400 line-through tabular-nums leading-none truncate">
-                        {item.originalText}
+                <div className="mt-0.5 h-3.5 flex items-center text-[10px] text-gray-500 truncate">
+                  {item.subtitle || '\u00A0'}
+                </div>
+                <div className="mt-1.5 h-4 flex items-baseline gap-1.5 min-w-0">
+                  {item.saleText ? (
+                    <>
+                      <span
+                        className={
+                          'text-sm font-bold tabular-nums leading-none truncate ' +
+                          (isSale ? 'text-red-600' : 'text-zinc-900')
+                        }
+                      >
+                        {item.saleText}
                       </span>
-                    ) : null}
-                  </div>
-                ) : null}
-                {item.memberText ? (
-                  <div className="mt-1 text-[11px] font-semibold text-zinc-800 tabular-nums leading-none">
-                    {SHOP_DETAIL.memberPrice} {item.memberText}
-                  </div>
-                ) : null}
+                      {item.originalText ? (
+                        <span className="text-[11px] text-gray-400 line-through tabular-nums leading-none truncate">
+                          {item.originalText}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    '\u00A0'
+                  )}
+                </div>
+                <div className="mt-1 h-3.5 flex items-center text-[11px] font-semibold text-zinc-800 tabular-nums truncate">
+                  {item.memberText
+                    ? `${SHOP_DETAIL.memberPrice} ${item.memberText}`
+                    : '\u00A0'}
+                </div>
               </div>
             </Link>
           ))}

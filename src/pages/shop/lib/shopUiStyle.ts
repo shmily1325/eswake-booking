@@ -93,13 +93,18 @@ export function shopDiscountBadgeClass(
 
 export const SHOP_PREORDER_DEADLINE = 'text-[11px] text-amber-800'
 
-/** 首頁橫滑卡寬：手機全寬露出下一張；桌機一欄兩張，右邊再露出下一張提示可滑 */
-export const SHOP_HOME_STRIP_CARD =
-  'w-[min(68vw,228px)] md:w-60 lg:w-[calc((100%-0.75rem)/2.25)]'
+/** 首頁橫滑卡：寬高固定。少一區或少一行字，卡片仍一樣大 */
+export const SHOP_HOME_STRIP_CARD = 'w-[min(68vw,228px)] md:w-60 flex flex-col'
 
-/** 首頁商品 section：手機直向；桌機兩欄（In-Stock | Sale） */
+/** 品牌 + 兩行名 + 副標 + 售價 + 會員價，空也留位 */
+export const SHOP_HOME_STRIP_BODY = 'px-2.5 py-2 h-[8.25rem] flex flex-col'
+
+/** 首頁 2×2：手機一欄只排有貨的區；桌機四格位置固定 */
 export const SHOP_HOME_GALLERY_GRID =
-  'space-y-10 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-x-10 lg:gap-y-10'
+  'grid grid-cols-1 gap-y-10 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-10'
+
+/** 桌機佔住空格，避免後面的區往前補、卡片跟著變寬 */
+export const SHOP_HOME_GALLERY_SLOT_EMPTY = 'hidden lg:block min-w-0'
 
 /** 單品主圖：手機不要吃半屏，桌機不要撐到 500px */
 export const SHOP_DETAIL_FRAME =
@@ -108,6 +113,9 @@ export const SHOP_DETAIL_FRAME =
 export const SHOP_DETAIL_WRAP =
   'relative group w-full max-w-[280px] sm:max-w-[320px] md:max-w-[400px] mx-auto md:mx-0'
 
-/** 分類入口磚：桌機固定高度，避免 3/4 在寬螢幕變很高 */
+/** 分類入口：手機也 2×2。四張入口不必橫滑，直向會太長 */
+export const SHOP_GROUP_GRID = 'grid grid-cols-2 gap-2 sm:gap-3'
+
+/** 分類入口磚：手機扁長，四張一屏看完；桌機固定高 */
 export const SHOP_GROUP_TILE =
-  'group relative aspect-3/4 lg:aspect-auto lg:h-56 overflow-hidden rounded-xl bg-zinc-800'
+  'group relative aspect-[16/10] lg:aspect-auto lg:h-64 overflow-hidden rounded-xl bg-zinc-800'
