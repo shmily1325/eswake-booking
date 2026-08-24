@@ -24,6 +24,16 @@ function sameBrand(a: string, b: string) {
   return a.trim().toLowerCase() === b.trim().toLowerCase()
 }
 
+/** Supabase 的 Postgrest／Storage error 不是 Error 實例，只靠 instanceof 會吞掉原因。 */
+function failureMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === 'object') {
+    const { message } = error as { message?: unknown }
+    if (typeof message === 'string' && message) return `${fallback}：${message}`
+  }
+  return fallback
+}
+
 export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) {
   const toast = useToast()
   const user = useAuthUser()
@@ -105,8 +115,9 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
       await load()
       toast.success('已新增尺寸表')
     } catch (error) {
+      console.error('[SizeChartSettings] create failed', error)
       if (uploadedPath) await removeProductImage(uploadedPath)
-      toast.error(error instanceof Error ? error.message : '新增失敗')
+      toast.error(failureMessage(error, '新增失敗'))
     } finally {
       setSaving(false)
     }
@@ -141,8 +152,9 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
       await load()
       toast.success('已更換圖片')
     } catch (error) {
+      console.error('[SizeChartSettings] replace failed', error)
       if (uploadedPath) await removeProductImage(uploadedPath)
-      toast.error(error instanceof Error ? error.message : '更換失敗')
+      toast.error(failureMessage(error, '更換失敗'))
     } finally {
       setSaving(false)
     }
@@ -155,8 +167,9 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
     try {
       await updateSizeChart(chart.id, { name: next })
       await load()
-    } catch {
-      toast.error('改名稱失敗')
+    } catch (error) {
+      console.error('[SizeChartSettings] rename failed', error)
+      toast.error(failureMessage(error, '改名稱失敗'))
     } finally {
       setSaving(false)
     }
@@ -175,8 +188,9 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
       await deactivateSizeChart(chart.id)
       await load()
       toast.success('已刪除')
-    } catch {
-      toast.error('刪除失敗')
+    } catch (error) {
+      console.error('[SizeChartSettings] remove failed', error)
+      toast.error(failureMessage(error, '刪除失敗'))
     } finally {
       setSaving(false)
     }
