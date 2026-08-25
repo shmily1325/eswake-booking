@@ -100,6 +100,8 @@ describe('offline disaster-recovery artifact', () => {
       'reservation_restrictions',
       'boat_unavailable_dates',
       'shop_order_settlements',
+      'size_charts',
+      'shop_discount_presets',
       'backup_logs',
       'admin_users',
       'allowed_users',

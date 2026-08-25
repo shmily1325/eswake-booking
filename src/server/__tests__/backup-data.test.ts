@@ -68,8 +68,14 @@ describe('generateSqlBackup', () => {
 
   it('keeps required operational tables in restorable parent-first order', () => {
     expect(BACKUP_TABLES).toContain('reservation_restrictions')
+    expect(BACKUP_TABLES).toContain('size_charts')
+    expect(BACKUP_TABLES).toContain('shop_discount_presets')
     expect(BACKUP_TABLES.indexOf('daily_announcements'))
       .toBeLessThan(BACKUP_TABLES.indexOf('reservation_restrictions'))
+    expect(BACKUP_TABLES.indexOf('size_charts'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('products'))
+    expect(BACKUP_TABLES.indexOf('shop_discount_presets'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('product_variants'))
     expect(BACKUP_TABLES.indexOf('bookings'))
       .toBeLessThan(BACKUP_TABLES.indexOf('booking_members'))
     expect(new Set(BACKUP_TABLES).size).toBe(BACKUP_TABLES.length)
@@ -84,6 +90,61 @@ describe('generateSqlBackup', () => {
     expect(sql.match(/^BEGIN;$/gm)).toHaveLength(1)
     expect(sql.match(/^COMMIT;$/gm)).toHaveLength(1)
     expect(sql).toContain('-- 表: reservation_restrictions (0 筆記錄)')
+  })
+
+  it('writes size charts and discount presets before the rows that reference them', () => {
+    const { data, stats } = emptyBackup()
+    data.size_charts = [{
+      id: 'chart-1',
+      name: "男救生衣 Men's Vest 2027",
+      brand: 'Follow',
+      image_url: 'https://example.test/chart.webp',
+      image_path: 'size-charts/chart-1.webp',
+      is_active: true,
+    }]
+    data.products = [{
+      id: 'product-1',
+      brand: 'Follow',
+      model: 'ANTHEM P1',
+      size_chart_id: 'chart-1',
+    }]
+    data.shop_discount_presets = [{
+      id: 'preset-red',
+      kind: 'tag',
+      name: '紅標',
+      label: '紅標',
+      percent: 80,
+      is_active: true,
+    }]
+    data.product_variants = [{
+      id: 'variant-1',
+      product_id: 'product-1',
+      discount_preset_id: 'preset-red',
+      attributes: { size: 'M' },
+    }]
+    stats.size_charts = 1
+    stats.products = 1
+    stats.shop_discount_presets = 1
+    stats.product_variants = 1
+
+    const sql = generateSqlBackup(data, stats, '2026-08-25T06:00:00')
+    const truncate = sql.split('\n').find((line) => line.startsWith('TRUNCATE TABLE')) ?? ''
+    const manifestLine = sql.split('\n').find((line) => line.startsWith('-- ESWAKE_BACKUP_MANIFEST: '))
+    const manifest = JSON.parse(manifestLine!.replace('-- ESWAKE_BACKUP_MANIFEST: ', ''))
+
+    expect(truncate).toContain('size_charts')
+    expect(truncate).toContain('shop_discount_presets')
+    expect(sql).toContain('INSERT INTO size_charts')
+    expect(sql).toContain('INSERT INTO shop_discount_presets')
+    expect(sql).toContain("INSERT INTO products (id, brand, model, size_chart_id) VALUES ('product-1', 'Follow', 'ANTHEM P1', 'chart-1');")
+    expect(sql).toContain("INSERT INTO product_variants (id, product_id, discount_preset_id, attributes) VALUES ('variant-1', 'product-1', 'preset-red', '{\"size\":\"M\"}'::jsonb);")
+    expect(sql.indexOf('INSERT INTO size_charts'))
+      .toBeLessThan(sql.indexOf('INSERT INTO products'))
+    expect(sql.indexOf('INSERT INTO shop_discount_presets'))
+      .toBeLessThan(sql.indexOf('INSERT INTO product_variants'))
+    expect(manifest.tables).toEqual([...BACKUP_TABLES])
+    expect(manifest.stats.size_charts).toBe(1)
+    expect(manifest.stats.shop_discount_presets).toBe(1)
   })
 })
 
@@ -122,7 +183,54 @@ describe('fetchBackupData', () => {
     const result = await fetchBackupData(supabase as unknown as SupabaseClient)
     expect(result.stats.members).toBe(1001)
     expect(calls.get('members')).toBe(2)
+    expect(result.stats.size_charts).toBe(0)
+    expect(result.stats.shop_discount_presets).toBe(0)
+    expect(result.data.size_charts).toEqual([])
+    expect(result.data.shop_discount_presets).toEqual([])
+    expect(BACKUP_TABLES.every((table) => calls.has(table))).toBe(true)
     expect(result.totalRecords).toBe(1001)
+  })
+
+  it('keeps paging past the Supabase 1000-row page until the table is empty', async () => {
+    const ranges: Array<{ table: string; from: number; to: number }> = []
+    const supabase = {
+      from(table: string) {
+        return {
+          select() {
+            return {
+              order() {
+                return {
+                  range(from: number, to: number) {
+                    ranges.push({ table, from, to })
+                    const data = table === 'size_charts' && from === 0
+                      ? Array.from({ length: 1000 }, (_, id) => ({ id: `chart-${id}` }))
+                      : table === 'size_charts' && from === 1000
+                        ? Array.from({ length: 12 }, (_, id) => ({ id: `chart-${1000 + id}` }))
+                        : table === 'shop_discount_presets'
+                          ? [{ id: 'preset-red' }, { id: 'preset-preorder' }]
+                          : []
+                    return {
+                      abortSignal() {
+                        return Promise.resolve({ data, error: null })
+                      },
+                    }
+                  },
+                }
+              },
+            }
+          },
+        }
+      },
+    }
+
+    const result = await fetchBackupData(supabase as unknown as SupabaseClient)
+    expect(result.stats.size_charts).toBe(1012)
+    expect(result.stats.shop_discount_presets).toBe(2)
+    expect(result.data.size_charts.at(-1)).toEqual({ id: 'chart-1011' })
+    expect(ranges.filter((call) => call.table === 'size_charts')).toEqual([
+      { table: 'size_charts', from: 0, to: 999 },
+      { table: 'size_charts', from: 1000, to: 1999 },
+    ])
   })
 
   it('limits concurrent table reads', async () => {
