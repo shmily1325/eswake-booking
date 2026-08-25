@@ -151,38 +151,32 @@ export async function fetchSizeCharts(): Promise<SizeChartRow[]> {
   return (data ?? []) as SizeChartRow[]
 }
 
-export async function fetchProductBrands(): Promise<string[]> {
+/** 尺寸表頁需要的品牌清單與掛載數；一次查詢就好，不要分兩次掃商品表。 */
+export async function fetchSizeChartMeta(): Promise<{
+  brands: string[]
+  usage: Record<string, number>
+}> {
   const { data, error } = await supabase
     .from('products')
-    .select('brand')
+    .select('brand, size_chart_id')
     .eq('is_active', true)
   if (error) throw error
-  const set = new Set<string>()
+
+  const brandSet = new Set<string>()
+  const usage: Record<string, number> = {}
   for (const row of data ?? []) {
     const brand = row.brand?.trim()
-    if (brand) set.add(brand)
+    if (brand) brandSet.add(brand)
+    if (row.size_chart_id) {
+      usage[row.size_chart_id] = (usage[row.size_chart_id] ?? 0) + 1
+    }
   }
-  return Array.from(set).sort((a, b) => {
+  const brands = Array.from(brandSet).sort((a, b) => {
     if (a.toLowerCase() === 'follow') return -1
     if (b.toLowerCase() === 'follow') return 1
     return a.localeCompare(b)
   })
-}
-
-export async function fetchSizeChartUsage(): Promise<Record<string, number>> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('size_chart_id')
-    .eq('is_active', true)
-    .not('size_chart_id', 'is', null)
-  if (error) throw error
-  const counts: Record<string, number> = {}
-  for (const row of data ?? []) {
-    const id = row.size_chart_id
-    if (!id) continue
-    counts[id] = (counts[id] ?? 0) + 1
-  }
-  return counts
+  return { brands, usage }
 }
 
 /** 建立一筆可共用尺寸表；圖片應先上傳至 product-images bucket。 */
@@ -713,6 +707,14 @@ export async function batchSetVariantsPreOrder(
     },
     variantIds,
   )
+}
+
+export async function batchSetVariantsPrice(
+  variantIds: string[],
+  price: number | null,
+): Promise<void> {
+  if (variantIds.length === 0) return
+  await updateRowsByIds('product_variants', { price }, variantIds)
 }
 
 export async function batchSetVariantsPreOrderUntil(

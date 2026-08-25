@@ -195,7 +195,7 @@ export function DiscountSettings({ embedded = false }: { embedded?: boolean }) {
       <div
         style={{
           width: '100%',
-          maxWidth: PAGE_MAX_WIDTHS.hub,
+          maxWidth: PAGE_MAX_WIDTHS.content,
           margin: '0 auto',
           padding: embedded ? 0 : isMobile ? 12 : 20,
           color: designSystem.colors.text.secondary,
@@ -210,7 +210,7 @@ export function DiscountSettings({ embedded = false }: { embedded?: boolean }) {
     <div
       style={{
         width: '100%',
-        maxWidth: PAGE_MAX_WIDTHS.hub,
+        maxWidth: PAGE_MAX_WIDTHS.content,
         margin: '0 auto',
         minWidth: 0,
         padding: embedded ? 0 : isMobile ? 12 : 20,
@@ -255,7 +255,7 @@ export function DiscountSettings({ embedded = false }: { embedded?: boolean }) {
             style={{ width: 24, height: 24, margin: 0, flexShrink: 0 }}
           />
         </label>
-        <Hint>開放預購的商品自動套用，不進 Sale。</Hint>
+        <Hint isMobile={isMobile}>開放預購的商品自動套用，不進 Sale。</Hint>
         <FoldPicker
           percent={preorderPercent}
           disabled={saving || !preorderOn}
@@ -263,13 +263,13 @@ export function DiscountSettings({ embedded = false }: { embedded?: boolean }) {
           inputStyle={inputStyle}
           onChange={(percent) => void handlePreorder(true, percent)}
         />
-        <PricePreview price={examplePreorder} />
+        <PricePreview price={examplePreorder} isMobile={isMobile} />
       </section>
 
       <section style={cardStyle}>
         <div>
           <div style={{ fontSize: getFontSize('h3', isMobile), fontWeight: 700 }}>Sale 檔期</div>
-          <Hint>現貨掛上後進 Sale。點件數可直接勾選。</Hint>
+          <Hint isMobile={isMobile}>現貨掛上後進 Sale。點件數可直接勾選。</Hint>
         </div>
 
         {campaigns.length === 0 && !adding && (
@@ -337,10 +337,10 @@ export function DiscountSettings({ embedded = false }: { embedded?: boolean }) {
                     inputStyle={inputStyle}
                     onChange={(percent) => void handleCampaignPercent(p.id, percent)}
                   />
-                  <PricePreview price={example} />
+                  <PricePreview price={example} isMobile={isMobile} />
                 </>
               ) : (
-                <div style={{ color: designSystem.colors.text.secondary, fontSize: 14 }}>
+                <div style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('body', isMobile) }}>
                   已結束 · {foldLabel(p.percent)}
                 </div>
               )}
@@ -412,6 +412,7 @@ export function DiscountSettings({ embedded = false }: { embedded?: boolean }) {
                   },
                 ],
               )}
+              isMobile={isMobile}
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <Button
@@ -469,13 +470,13 @@ export function DiscountSettings({ embedded = false }: { embedded?: boolean }) {
   )
 }
 
-function Hint({ children }: { children: string }) {
+function Hint({ children, isMobile }: { children: string; isMobile: boolean }) {
   return (
     <div
       style={{
         marginTop: 4,
         color: designSystem.colors.text.secondary,
-        fontSize: 13,
+        fontSize: getFontSize('bodySmall', isMobile),
         lineHeight: 1.45,
       }}
     >
@@ -520,7 +521,7 @@ function FoldPicker({
           style={{
             flexShrink: 0,
             color: designSystem.colors.text.secondary,
-            fontSize: 13,
+            fontSize: getFontSize('bodySmall', isMobile),
             fontWeight: 600,
           }}
         >
@@ -587,7 +588,7 @@ function FoldPicker({
                 background: active ? designSystem.colors.danger[50] : designSystem.colors.background.card,
                 color: active ? designSystem.colors.danger[700] : designSystem.colors.text.primary,
                 fontWeight: active ? 800 : 600,
-                fontSize: 14,
+                fontSize: getFontSize('button', isMobile),
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 opacity: disabled ? 0.55 : 1,
                 touchAction: 'manipulation',
@@ -646,11 +647,17 @@ function CommitInput({
   )
 }
 
-function PricePreview({ price }: { price: ReturnType<typeof resolveShopPrice> }) {
+function PricePreview({
+  price,
+  isMobile,
+}: {
+  price: ReturnType<typeof resolveShopPrice>
+  isMobile: boolean
+}) {
   const { colors } = designSystem
   if (!price.hasDiscount || price.original == null || price.sale == null) {
     return (
-      <div style={{ color: colors.text.secondary, fontSize: 14 }}>
+      <div style={{ color: colors.text.secondary, fontSize: getFontSize('body', isMobile) }}>
         客人看到原價
       </div>
     )

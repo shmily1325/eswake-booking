@@ -2,10 +2,11 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button } from '../../../components/ui'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
 import { foldLabel } from '../../shop/lib/shopPricing'
+import { parseBatchPrice } from './productBatch'
 
 const { colors, borderRadius } = designSystem
 
-export type BatchSheet = 'public' | 'preorder' | 'until' | 'discount' | null
+export type BatchSheet = 'public' | 'preorder' | 'until' | 'discount' | 'price' | null
 
 interface ProductBatchBarProps {
   selectedCount: number
@@ -17,6 +18,7 @@ interface ProductBatchBarProps {
   onSetPublic: (isPublic: boolean) => void
   onSetPreOrder: (accept: boolean) => void
   onSetUntil: (until: string | null) => void
+  onSetPrice: (price: number | null) => void
   onSetDiscount: (presetId: string | null) => void
   tagPresets: Array<{ id: string; name: string; percent: number }>
   /** 無庫存 SKU 才能開放／關閉預購 */
@@ -28,7 +30,7 @@ interface ProductBatchBarProps {
 const actionBtnStyle: CSSProperties = {
   minWidth: 0,
   padding: '12px 6px',
-  fontSize: 14,
+  fontSize: getFontSize('button', true),
   overflow: 'hidden',
 }
 
@@ -42,6 +44,7 @@ export function ProductBatchBar({
   onSetPublic,
   onSetPreOrder,
   onSetUntil,
+  onSetPrice,
   onSetDiscount,
   tagPresets,
   preorderEnabled = true,
@@ -49,6 +52,7 @@ export function ProductBatchBar({
 }: ProductBatchBarProps) {
   const [sheet, setSheet] = useState<BatchSheet>(null)
   const [until, setUntil] = useState('')
+  const [price, setPrice] = useState('')
 
   const closeSheet = () => setSheet(null)
 
@@ -60,7 +64,8 @@ export function ProductBatchBar({
   return (
     <>
       <style>{`
-        .product-batch-until {
+        .product-batch-until,
+        .product-batch-price {
           display: block;
           width: 100%;
           max-width: 100%;
@@ -151,6 +156,48 @@ export function ProductBatchBar({
             }}
           >
             清除到期日
+          </Button>
+        </BatchSheet>
+      )}
+
+      {sheet === 'price' && (
+        <BatchSheet title="售價" onClose={closeSheet}>
+          <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+            <input
+              className="product-batch-price"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              placeholder="例如 6470"
+              value={price}
+              onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
+            />
+          </div>
+          <Button
+            fullWidth
+            size="large"
+            disabled={busy || parseBatchPrice(price) == null}
+            onClick={() => {
+              const value = parseBatchPrice(price)
+              if (value == null) return
+              onSetPrice(value)
+              closeSheet()
+            }}
+          >
+            套用
+          </Button>
+          <Button
+            fullWidth
+            size="large"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => {
+              onSetPrice(null)
+              closeSheet()
+            }}
+          >
+            清除售價（待補）
           </Button>
         </BatchSheet>
       )}
@@ -293,6 +340,18 @@ export function ProductBatchBar({
           >
             檔期
           </Button>
+          <span style={{ gridColumn: '1 / -1', minWidth: 0, display: 'block' }}>
+            <Button
+              fullWidth
+              size="large"
+              variant="secondary"
+              disabled={busy || selectedCount === 0}
+              style={actionBtnStyle}
+              onClick={() => setSheet('price')}
+            >
+              售價
+            </Button>
+          </span>
         </div>
       </div>
     </>

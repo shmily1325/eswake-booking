@@ -3,8 +3,10 @@ import type { ProductRow, ProductVariantRow, VariantListItem } from '../types'
 import {
   formatBatchToast,
   normalizePreOrderUntil,
+  parseBatchPrice,
   partitionPreOrderToggle,
   partitionPreOrderUntil,
+  selectedVariantIds,
   uniqueProductIdsFromSelection,
 } from '../productBatch'
 
@@ -39,6 +41,26 @@ describe('normalizePreOrderUntil', () => {
   it('rejects empty', () => {
     expect(normalizePreOrderUntil('')).toBeNull()
     expect(normalizePreOrderUntil(null)).toBeNull()
+  })
+})
+
+describe('parseBatchPrice', () => {
+  it('accepts digits with thousand separators', () => {
+    expect(parseBatchPrice('6470')).toBe(6470)
+    expect(parseBatchPrice(' 6,470 ')).toBe(6470)
+    expect(parseBatchPrice('0')).toBe(0)
+  })
+
+  it('rejects blank and non-integer input', () => {
+    expect(parseBatchPrice('')).toBeNull()
+    expect(parseBatchPrice('6470.5')).toBeNull()
+    expect(parseBatchPrice('-100')).toBeNull()
+  })
+})
+
+describe('selectedVariantIds', () => {
+  it('keeps every selected SKU so each size can carry its own price', () => {
+    expect(selectedVariantIds(rows, new Set(['v1', 'v2']))).toEqual(['v1', 'v2'])
   })
 })
 

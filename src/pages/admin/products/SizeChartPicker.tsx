@@ -26,6 +26,8 @@ export function SizeChartPicker({
   const [charts, setCharts] = useState<SizeChartRow[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [newName, setNewName] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -56,7 +58,7 @@ export function SizeChartPicker({
   }, [charts, brand, value])
 
   const selected = charts.find((chart) => chart.id === value) ?? null
-  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
@@ -64,13 +66,23 @@ export function SizeChartPicker({
       toast.error('請選擇圖片檔')
       return
     }
-    const name = window.prompt('名稱（例如 男背心 2027）')?.trim()
-    if (!name) return
+    setPendingFile(file)
+    setNewName('')
+  }
+
+  const cancelPending = () => {
+    setPendingFile(null)
+    setNewName('')
+  }
+
+  const handleCreate = async () => {
+    const name = newName.trim()
+    if (!pendingFile || !name) return
 
     setCreating(true)
     let uploadedPath: string | null = null
     try {
-      const uploaded = await uploadProductImage(file, {
+      const uploaded = await uploadProductImage(pendingFile, {
         storageFolder: 'size-charts',
         entityId: brand.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'shared',
         compress: { maxWidth: 2200, maxHeight: 2200, quality: 0.9 },
@@ -85,6 +97,7 @@ export function SizeChartPicker({
       })
       setCharts((rows) => [...rows, chart])
       onChange(chart.id)
+      cancelPending()
       toast.success('尺寸表已建立並選取')
     } catch (error) {
       if (uploadedPath) await removeProductImage(uploadedPath)
@@ -137,6 +150,50 @@ export function SizeChartPicker({
           管理全部
         </Link>
       </div>
+      {pendingFile && (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <input
+            style={inputStyle}
+            placeholder="男救生衣 2027"
+            value={newName}
+            disabled={creating}
+            onChange={(event) => setNewName(event.target.value)}
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              disabled={creating}
+              onClick={cancelPending}
+              style={{
+                padding: '9px 14px',
+                borderRadius: designSystem.borderRadius.md,
+                border: `1px solid ${designSystem.colors.border.main}`,
+                background: designSystem.colors.background.card,
+                cursor: creating ? 'not-allowed' : 'pointer',
+                fontSize: getFontSize('bodySmall', false),
+              }}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              disabled={creating || !newName.trim()}
+              onClick={() => void handleCreate()}
+              style={{
+                padding: '9px 14px',
+                borderRadius: designSystem.borderRadius.md,
+                border: `1px solid ${designSystem.colors.border.main}`,
+                background: designSystem.colors.text.primary,
+                color: '#fff',
+                cursor: creating || !newName.trim() ? 'not-allowed' : 'pointer',
+                fontSize: getFontSize('bodySmall', false),
+              }}
+            >
+              {creating ? '上傳中…' : '新增'}
+            </button>
+          </div>
+        </div>
+      )}
       {selected && (
         <a href={selected.image_url} target="_blank" rel="noreferrer" style={{ width: 'fit-content' }}>
           <img

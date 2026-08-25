@@ -7,8 +7,7 @@ import { removeProductImage, uploadProductImage } from '../../../utils/imageUplo
 import {
   createSizeChart,
   deactivateSizeChart,
-  fetchProductBrands,
-  fetchSizeChartUsage,
+  fetchSizeChartMeta,
   fetchSizeCharts,
   updateSizeChart,
 } from './api'
@@ -47,20 +46,24 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
   const [replaceId, setReplaceId] = useState<string | null>(null)
   const [brandFilter, setBrandFilter] = useState(ALL_BRANDS)
   const [productBrands, setProductBrands] = useState<string[]>([])
+  const [adding, setAdding] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newBrand, setNewBrand] = useState('Follow')
+  const [newFile, setNewFile] = useState<File | null>(null)
   const brandFilterReady = useRef(false)
 
+  /** 先畫出尺寸表本身，商品用量與品牌清單較重，讓它晚一步補上。 */
   const load = async () => {
-    const [rows, counts, brands] = await Promise.all([
-      fetchSizeCharts(),
-      fetchSizeChartUsage().catch(() => ({} as Record<string, number>)),
-      fetchProductBrands().catch(() => [] as string[]),
-    ])
+    const rows = await fetchSizeCharts()
     setCharts(rows)
-    setUsage(counts)
-    setProductBrands(brands)
+    setLoading(false)
+    const meta = await fetchSizeChartMeta().catch(() => null)
+    if (!meta) return
+    setUsage(meta.usage)
+    setProductBrands(meta.brands)
     if (!brandFilterReady.current) {
       brandFilterReady.current = true
-      const follow = brands.find((brand) => brand.toLowerCase() === 'follow')
+      const follow = meta.brands.find((brand) => brand.toLowerCase() === 'follow')
       if (follow) setBrandFilter(follow)
     }
   }
@@ -83,7 +86,13 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleCreate = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const closeAdd = () => {
+    setAdding(false)
+    setNewName('')
+    setNewFile(null)
+  }
+
+  const handlePickCreateFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
@@ -91,15 +100,17 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
       toast.error('請選擇圖片檔')
       return
     }
-    const brand =
-      brandFilter || window.prompt('品牌', 'Follow')?.trim() || ''
-    if (!brand) return
-    const name = window.prompt('名稱（不要含品牌，例如 男背心 2027）')?.trim()
-    if (!name) return
+    setNewFile(file)
+  }
+
+  const handleCreate = async () => {
+    const brand = (brandFilter || newBrand).trim()
+    const name = newName.trim()
+    if (!brand || !name || !newFile) return
     setSaving(true)
     let uploadedPath: string | null = null
     try {
-      const uploaded = await uploadProductImage(file, {
+      const uploaded = await uploadProductImage(newFile, {
         storageFolder: 'size-charts',
         entityId: slugBrand(brand),
         compress: { maxWidth: 2200, maxHeight: 2200, quality: 0.9 },
@@ -112,6 +123,7 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
         image_path: uploaded.path,
         created_by: user?.email ?? null,
       })
+      closeAdd()
       await load()
       toast.success('已新增尺寸表')
     } catch (error) {
@@ -229,7 +241,7 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
   const inputStyle = getInputStyle(isMobile)
   const wrap = {
     width: '100%',
-    maxWidth: PAGE_MAX_WIDTHS.hub,
+    maxWidth: PAGE_MAX_WIDTHS.content,
     margin: '0 auto',
     padding: embedded ? 0 : isMobile ? 12 : 20,
   } as const
@@ -259,16 +271,21 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
               color: designSystem.colors.text.secondary,
             }}
           >
-            依品牌整理。年份寫在名稱裡（例如 男背心 2027）。新年度請新增一張，不要覆蓋舊圖。
+            年份寫在名稱裡。新年度新增一張。
           </div>
         </div>
-        <Button
-          variant="primary"
-          disabled={saving}
-          onClick={() => fileRef.current?.click()}
-        >
-          ＋ 新增
-        </Button>
+        {!adding && (
+          <Button
+            variant="primary"
+            disabled={saving}
+            onClick={() => {
+              setNewBrand(brandFilter || 'Follow')
+              setAdding(true)
+            }}
+          >
+            新增
+          </Button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -299,7 +316,54 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
         )}
       </div>
 
-      {visibleCharts.length === 0 && (
+      {adding && (
+        <div
+          style={{
+            display: 'grid',
+            gap: 10,
+            marginBottom: 16,
+            padding: isMobile ? 10 : 14,
+            borderRadius: designSystem.borderRadius.md,
+            background: designSystem.colors.background.main,
+            border: `1px solid ${designSystem.colors.border.light}`,
+          }}
+        >
+          {!brandFilter && (
+            <input
+              style={{ ...inputStyle, minHeight: isMobile ? 48 : undefined }}
+              placeholder="品牌"
+              value={newBrand}
+              onChange={(event) => setNewBrand(event.target.value)}
+            />
+          )}
+          <input
+            style={{ ...inputStyle, minHeight: isMobile ? 48 : undefined }}
+            placeholder="男救生衣 2027"
+            value={newName}
+            onChange={(event) => setNewName(event.target.value)}
+          />
+          <Button
+            variant="secondary"
+            disabled={saving}
+            onClick={() => fileRef.current?.click()}
+          >
+            {newFile ? newFile.name : '選擇圖片'}
+          </Button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <Button variant="outline" disabled={saving} onClick={closeAdd}>
+              取消
+            </Button>
+            <Button
+              disabled={saving || !newName.trim() || !newFile || !(brandFilter || newBrand.trim())}
+              onClick={() => void handleCreate()}
+            >
+              新增
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {visibleCharts.length === 0 && !adding && (
         <div style={{ color: designSystem.colors.text.secondary }}>
           {brandFilter ? `還沒有 ${brandFilter} 的尺寸表` : '還沒有尺寸表'}
         </div>
@@ -311,10 +375,8 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
             <div
               style={{
                 marginBottom: 8,
-                fontSize: 12,
-                fontWeight: 800,
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
+                fontSize: getFontSize('caption', isMobile),
+                fontWeight: 700,
                 color: designSystem.colors.text.secondary,
               }}
             >
@@ -333,7 +395,7 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
                       alignItems: 'center',
                       padding: 12,
                       background: designSystem.colors.background.card,
-                      border: `1px solid ${designSystem.colors.border.main}`,
+                      border: `1px solid ${designSystem.colors.border.light}`,
                       borderRadius: designSystem.borderRadius.lg,
                     }}
                   >
@@ -341,6 +403,8 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
                       <img
                         src={chart.image_url}
                         alt={chart.name}
+                        loading="lazy"
+                        decoding="async"
                         style={{
                           width: '100%',
                           height: isMobile ? 120 : 140,
@@ -401,7 +465,7 @@ export function SizeChartSettings({ embedded = false }: { embedded?: boolean }) 
         ))}
       </div>
 
-      <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCreate} />
+      <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePickCreateFile} />
       <input ref={replaceRef} type="file" accept="image/*" hidden onChange={handleReplace} />
     </div>
   )

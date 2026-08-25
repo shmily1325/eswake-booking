@@ -34,6 +34,7 @@ import {
   batchSetProductsPublic,
   batchSetVariantsPreOrder,
   batchSetVariantsPreOrderUntil,
+  batchSetVariantsPrice,
 } from './api'
 import { batchSetVariantsDiscountPreset, fetchDiscountPresets } from './discountApi'
 import type { ProductWithVariants, ProductVariantRow, ProductRow, VariantListItem } from './types'
@@ -55,6 +56,7 @@ import {
   formatBatchToast,
   partitionPreOrderToggle,
   partitionPreOrderUntil,
+  selectedVariantIds,
   uniqueProductIdsFromSelection,
 } from './productBatch'
 
@@ -571,6 +573,14 @@ export function ProductManagement({
       )
     })
 
+  const handleBatchPrice = (price: number | null) =>
+    runBatch(async () => {
+      const ids = selectedVariantIds(filteredItems, selectedIds)
+      if (ids.length === 0) return '請先勾選'
+      await batchSetVariantsPrice(ids, price)
+      return price == null ? `已清除售價 ${ids.length}` : `已改售價 ${ids.length}`
+    })
+
   const handleBatchDiscount = (presetId: string | null) =>
     runBatch(async () => {
       const selected = filteredItems.filter((it) => selectedIds.has(it.variant.id))
@@ -1016,6 +1026,7 @@ export function ProductManagement({
             onSetPublic={(isPublic) => void handleBatchPublic(isPublic)}
             onSetPreOrder={(accept) => void handleBatchPreOrder(accept)}
             onSetUntil={(until) => void handleBatchUntil(until)}
+            onSetPrice={(price) => void handleBatchPrice(price)}
             onSetDiscount={(presetId) => void handleBatchDiscount(presetId)}
             tagPresets={discountPresets
               .filter((p) => p.kind === 'tag' && p.is_active)

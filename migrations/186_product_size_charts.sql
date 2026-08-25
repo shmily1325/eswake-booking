@@ -33,7 +33,6 @@ COMMENT ON TABLE size_charts IS
 COMMENT ON COLUMN products.size_chart_id IS
   '商品詳情頁顯示的共用尺寸表；同型號不同顏色可指向同一筆。';
 
--- 本專案商品資料表由應用層權限控管，沿用相同策略。
-ALTER TABLE size_charts DISABLE ROW LEVEL SECURITY;
+-- 權限與 policy 見 188（supabase 會自動 re-enable RLS，故不在此 DISABLE）。
 
 SELECT 'Reusable product size charts created' AS status;
