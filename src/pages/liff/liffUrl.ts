@@ -35,8 +35,8 @@ export function resolveRuntimeLiffId(
   const clientId = new URLSearchParams(search).get('liffClientId')
   if (!clientId) return primary || migration
 
-  if (channelIdFromLiffId(migration) === clientId) return migration
-  if (channelIdFromLiffId(primary) === clientId) return primary
+  if (migration === clientId || channelIdFromLiffId(migration) === clientId) return migration
+  if (primary === clientId || channelIdFromLiffId(primary) === clientId) return primary
   return primary
 }
 

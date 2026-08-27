@@ -13,6 +13,16 @@ describe('resolveRuntimeLiffId', () => {
     expect(resolveRuntimeLiffId(legacy, migration, '?liffClientId=1656777386')).toBe(migration)
   })
 
+  it('selects the migration LIFF when LINE sends the full LIFF ID', () => {
+    expect(
+      resolveRuntimeLiffId(
+        legacy,
+        migration,
+        '?liffClientId=1656777386-newApp',
+      ),
+    ).toBe(migration)
+  })
+
   it('keeps the legacy LIFF for the legacy LINE client ID', () => {
     expect(resolveRuntimeLiffId(legacy, migration, '?liffClientId=2008652154')).toBe(legacy)
   })
