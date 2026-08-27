@@ -904,6 +904,7 @@ export type Database = {
       }
       line_bindings: {
         Row: {
+          can_push: boolean
           completed_at: string | null
           created_at: string | null
           expires_at: string | null
@@ -912,10 +913,12 @@ export type Database = {
           line_user_id: string
           member_id: string | null
           phone: string | null
+          source_channel_id: string | null
           status: string | null
           verification_code: string | null
         }
         Insert: {
+          can_push?: boolean
           completed_at?: string | null
           created_at?: string | null
           expires_at?: string | null
@@ -924,10 +927,12 @@ export type Database = {
           line_user_id: string
           member_id?: string | null
           phone?: string | null
+          source_channel_id?: string | null
           status?: string | null
           verification_code?: string | null
         }
         Update: {
+          can_push?: boolean
           completed_at?: string | null
           created_at?: string | null
           expires_at?: string | null
@@ -936,6 +941,7 @@ export type Database = {
           line_user_id?: string
           member_id?: string | null
           phone?: string | null
+          source_channel_id?: string | null
           status?: string | null
           verification_code?: string | null
         }
@@ -1713,8 +1719,10 @@ export type Database = {
       bind_liff_member: {
         Args: {
           p_birthday?: string | null
+          p_can_push?: boolean
           p_line_user_id: string
           p_phone: string
+          p_source_channel_id: string
         }
         Returns: Json
       }

@@ -300,6 +300,7 @@ export function MemberDetailDialog({
   // LINE 綁定狀態
   const [lineBound, setLineBound] = useState(false)
   const [lineUserId, setLineUserId] = useState<string | null>(null)
+  const [lineCanPush, setLineCanPush] = useState(false)
 
   useEffect(() => {
     if (!open) {
@@ -348,7 +349,7 @@ export function MemberDetailDialog({
           .order('slot_number', { ascending: true }),
         supabase
           .from('line_bindings')
-          .select('line_user_id')
+          .select('line_user_id, can_push')
           .eq('member_id', memberId)
           .eq('status', 'active'),
         supabase
@@ -373,6 +374,7 @@ export function MemberDetailDialog({
       const activeBinding = (lineBindingResult.data || [])[0]
       setLineBound(Boolean(activeBinding))
       setLineUserId(activeBinding?.line_user_id || null)
+      setLineCanPush(activeBinding?.can_push === true)
 
       // 如果有配對會員，載入配對會員資料
       let partnerData = null
@@ -1017,10 +1019,23 @@ export function MemberDetailDialog({
                         {/* 第三行：LINE＋移除綁定 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span
-                            title={lineBound ? (lineUserId ? `已綁定 (${lineUserId})` : '已綁定') : '未綁定'}
-                            style={getBadgeStyle(lineBound ? 'success' : 'default', 'small')}
+                            title={
+                              !lineBound
+                                ? 'LINE 未綁定'
+                                : lineCanPush
+                                  ? (lineUserId ? `LINE 已綁定 (${lineUserId})` : 'LINE 已綁定')
+                                  : '需重新綁定'
+                            }
+                            style={getBadgeStyle(
+                              !lineBound ? 'default' : lineCanPush ? 'success' : 'warning',
+                              'small',
+                            )}
                           >
-                            {lineBound ? 'LINE 已綁定' : 'LINE 未綁定'}
+                            {!lineBound
+                              ? 'LINE 未綁定'
+                              : lineCanPush
+                                ? 'LINE 已綁定'
+                                : '需重新綁定'}
                           </span>
                           {lineBound && (
                             <button

@@ -33,7 +33,11 @@ import { BrandCopyrightBlock } from '../../components/BrandCopyrightBlock'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { LIFF_THEME } from './liffUiStyles'
 import { LiffBootScreen } from './LiffBootScreen'
-import { buildLiffShareUrl, getCurrentLiffDeepLinkSuffix } from './liffUrl'
+import {
+  buildLiffShareUrl,
+  getCurrentLiffDeepLinkSuffix,
+  resolveRuntimeLiffId,
+} from './liffUrl'
 import {
   bindLiffMember,
   ensureLiffLoggedIn,
@@ -70,7 +74,10 @@ function startMemberBackgroundLoads(
 export function LiffMyBookings() {
   useRouteDocumentMeta(ROUTE_OG_BY_PATH['/liff'])
   const toast = useToast()
-  const liffId = import.meta.env.VITE_LIFF_ID as string | undefined
+  const liffId = resolveRuntimeLiffId(
+    import.meta.env.VITE_LIFF_ID as string | undefined,
+    import.meta.env.VITE_LIFF_MIGRATION_ID as string | undefined,
+  )
   const liffOpenUrl = liffId
     ? buildLiffShareUrl(liffId, getCurrentLiffDeepLinkSuffix())
     : null

@@ -43,13 +43,19 @@ https://developers.line.biz/console/
 
 ---
 
-## 🔐 第二步：創建 LIFF App
+## 🔐 第二步：創建 LINE Login Channel 與 LIFF App
 
-### 1. 在同一個 Channel 中找到 LIFF 區塊
-- 滾動到 **LIFF** 區塊
-- 點擊 "Add" 按鈕
+### 1. 在同一個 Provider 建立 LINE Login Channel
+- LINE Login Channel 必須與 Messaging API Channel 位於同一個 Provider。
+- 同一個 LINE 使用者在相同 Provider 的兩種 Channel 會取得相同 user ID，才能直接推播。
+- 不要建立在另一個 Provider；Channel 建立後無法搬移。
+- 在 LINE Login Channel 的 **Basic settings** 將 **Linked OA** 設為 ES WAKE SCHOOL 官方帳號。
 
-### 2. 填寫 LIFF 設定
+若只有 Messaging API Channel Admin、沒有 Provider Admin，無法新增 Channel。ES WAKE SCHOOL
+目前可改用該 Messaging API Channel 內既有的 LIFF `1656777386-ezW1BJ5Q`；
+LINE 仍允許既有 Messaging API LIFF 繼續使用，而且它與 Bot 的 user ID 相容。
+
+### 2. 在 LINE Login Channel 的 LIFF 分頁新增 App
 - **LIFF app name**: ES Wake 會員專區
 - **Size**: Full
 - **Endpoint URL**: 
@@ -75,6 +81,9 @@ https://developers.line.biz/console/
 |---------|------|------|
 | `LINE_CHANNEL_ACCESS_TOKEN` | LINE Channel Access Token | `eyJhbGc...` |
 | `VITE_LIFF_ID` | LIFF App ID | `1234567890-abcdefgh` |
+| `VITE_LIFF_MIGRATION_ID` | 搬移測試期間的新 LIFF App ID；切換完成後可移除 | `2345678901-abcdefgh` |
+| `LINE_LIFF_ALLOWED_CHANNEL_IDS` | 允許存取會員 API 的 LINE Login Channel ID，逗號分隔 | `1234567890,2345678901` |
+| `LINE_PUSH_LIFF_CHANNEL_IDS` | 與 Messaging API 同 Provider、可推播的 LINE Login Channel ID | `2345678901` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role Key（已有） | `eyJhbGc...` |
 | `VITE_SUPABASE_URL` | Supabase URL（已有） | `https://xxx.supabase.co` |
 
@@ -83,6 +92,22 @@ https://developers.line.biz/console/
 2. 前往 **Settings** → **Environment Variables**
 3. 依次添加上述變數
 4. **重新部署**專案使變數生效
+
+Channel access token 與 Channel secret 都是機密，只能直接填入 Vercel；不要貼到聊天、文件或截圖。
+
+### ES WAKE SCHOOL 搬移期間設定
+
+在切換 Rich Menu 之前先並行設定：
+
+```text
+VITE_LIFF_MIGRATION_ID=1656777386-ezW1BJ5Q
+LINE_LIFF_ALLOWED_CHANNEL_IDS=2008652154,1656777386
+LINE_PUSH_LIFF_CHANNEL_IDS=1656777386
+```
+
+先部署雙 LIFF 版本並完成本人測試，再將既有 LIFF 的 Endpoint URL 從舊廠商網址改為
+`https://eswake-booking.vercel.app/liff`。正式切換完成後，才把 `VITE_LIFF_ID`
+改成 `1656777386-ezW1BJ5Q`。
 
 ---
 

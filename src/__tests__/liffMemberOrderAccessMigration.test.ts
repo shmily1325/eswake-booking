@@ -122,9 +122,11 @@ describe('LIFF member and order access hardening', () => {
   })
 
   it('derives identity from a verified LINE access token', () => {
+    expect(api).toContain("'https://api.line.me/oauth2/v2.1/verify'")
     expect(api).toContain("'https://api.line.me/v2/profile'")
     expect(api).toContain('Authorization: `Bearer ${token}`')
-    expect(api).toContain('const lineUserId = await verifyLineUser(req)')
+    expect(api).toContain('const lineIdentity = await verifyLineUser(req)')
+    expect(api).toContain('const lineUserId = lineIdentity.userId')
     expect(api).not.toMatch(/bodyValue\(req,\s*['"]lineUserId['"]\)/)
     expect(api).toContain("p_line_user_id: lineUserId")
   })

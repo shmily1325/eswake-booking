@@ -2,7 +2,11 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LiffBootScreen } from './pages/liff/LiffBootScreen'
-import { buildLiffShareUrl, getCurrentLiffDeepLinkSuffix } from './pages/liff/liffUrl'
+import {
+  buildLiffShareUrl,
+  getCurrentLiffDeepLinkSuffix,
+  resolveRuntimeLiffId,
+} from './pages/liff/liffUrl'
 
 const LiffMyBookings = lazy(() =>
   import('./pages/LiffMyBookings').then(m => ({ default: m.LiffMyBookings })),
@@ -27,7 +31,10 @@ function LiffFallbackRedirect() {
 
 /** LIFF 專用入口：不載入 Admin / Shop 路由表 */
 export default function AppLiff() {
-  const memberLiffId = import.meta.env.VITE_LIFF_ID as string | undefined
+  const memberLiffId = resolveRuntimeLiffId(
+    import.meta.env.VITE_LIFF_ID as string | undefined,
+    import.meta.env.VITE_LIFF_MIGRATION_ID as string | undefined,
+  )
   const memberLiffOpenUrl = memberLiffId
     ? buildLiffShareUrl(memberLiffId, getCurrentLiffDeepLinkSuffix())
     : null

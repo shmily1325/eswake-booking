@@ -11,6 +11,35 @@ export function buildLiffShareUrl(liffId: string, suffix = ''): string {
   return `https://liff.line.me/${liffId}${normalizedSuffix}`
 }
 
+function channelIdFromLiffId(liffId: string | undefined): string | null {
+  const normalized = liffId?.trim()
+  if (!normalized) return null
+  const separator = normalized.indexOf('-')
+  return separator > 0 ? normalized.slice(0, separator) : normalized
+}
+
+/**
+ * During LIFF provider migration both LIFF URLs point to the same endpoint.
+ * LINE adds liffClientId to the endpoint URL, so select the matching full LIFF
+ * ID without interrupting users who still enter through the legacy URL.
+ */
+export function resolveRuntimeLiffId(
+  primaryLiffId: string | undefined,
+  migrationLiffId: string | undefined,
+  search = typeof window === 'undefined' ? '' : window.location.search,
+): string | undefined {
+  const primary = primaryLiffId?.trim() || undefined
+  const migration = migrationLiffId?.trim() || undefined
+  if (!migration) return primary
+
+  const clientId = new URLSearchParams(search).get('liffClientId')
+  if (!clientId) return primary || migration
+
+  if (channelIdFromLiffId(migration) === clientId) return migration
+  if (channelIdFromLiffId(primary) === clientId) return primary
+  return primary
+}
+
 /** Preserve the original LIFF state, or ordinary query/hash, when reopening through liff.line.me. */
 export function getCurrentLiffDeepLinkSuffix(
   location: Pick<Location, 'pathname' | 'search' | 'hash'> = window.location,

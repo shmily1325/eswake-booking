@@ -81,6 +81,17 @@ export function BindingForm({
           }}
         >
           用手機與生日確認身份
+          <span
+            style={{
+              display: 'block',
+              marginTop: 8,
+              color: LIFF_THEME.mutedLight,
+              fontSize: getFontSizePx('bodySmall', true),
+              lineHeight: 1.55,
+            }}
+          >
+            會員專區已更新，既有會員請重新確認一次，原有資料不受影響。
+          </span>
         </p>
 
         <div style={{ marginBottom: 18 }}>
