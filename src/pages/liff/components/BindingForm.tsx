@@ -80,7 +80,7 @@ export function BindingForm({
             lineHeight: 1.55,
           }}
         >
-          用手機與生日確認身份
+          首次使用請綁定您的電話號碼
           <span
             style={{
               display: 'block',
@@ -90,7 +90,7 @@ export function BindingForm({
               lineHeight: 1.55,
             }}
           >
-            會員專區已更新，既有會員請重新確認一次，原有資料不受影響。
+            會員專區已更新，既有會員請重新綁定
           </span>
         </p>
 
