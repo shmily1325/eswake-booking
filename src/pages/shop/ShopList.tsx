@@ -22,7 +22,10 @@ import {
   type SortBy,
 } from './lib/shopFilters'
 import { getShopGroupLabel } from '../admin/products/schema'
-import { getShopHeroForFilters } from './lib/shopHeroImages'
+import {
+  getRandomShopHomeHero,
+  getShopHeroForFilters,
+} from './lib/shopHeroImages'
 import { useShopHeroPreload } from './hooks/useShopHeroPreload'
 import { SHOP_COPY, SHOP_LABEL } from './lib/shopCopy'
 import { SHOP_HOME_GALLERY_GRID, SHOP_HOME_STRIP_CARD } from './lib/shopUiStyle'
@@ -40,6 +43,7 @@ export function ShopList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [homeHeroConfig] = useState(getRandomShopHomeHero)
 
   const promo = useShopPromo()
   const {
@@ -88,7 +92,9 @@ export function ShopList() {
   const heroTitle = getHeroTitle(filters)
   const isHome = isShopCatalogHome(filters)
   const showFullHero = isHome
-  const heroConfig = getShopHeroForFilters(filters, showFullHero)
+  const heroConfig = isHome
+    ? homeHeroConfig
+    : getShopHeroForFilters(filters, showFullHero)
   useShopHeroPreload(heroConfig)
   const collectionParent = getCollectionParentGroup(filters)
   const mobileRefineCount = countRefineFilters(filters)

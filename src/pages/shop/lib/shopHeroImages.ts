@@ -19,6 +19,39 @@ export type ShopHeroImageConfig = {
   heroScaleClass?: string
 }
 
+/** Shop 首頁每次進入時隨機挑選一張，停留期間不輪播。 */
+export const SHOP_HOME_HERO_IMAGES: readonly ShopHeroImageConfig[] = [
+  {
+    src: '/shop/heroes/shop-home-1.webp',
+    objectPosition: 'center 48%',
+    objectPositionClass: 'object-[center_48%]',
+    heroScaleClass: 'scale-100',
+  },
+  {
+    src: '/shop/heroes/shop-home-2.webp',
+    objectPosition: 'center 55%',
+    objectPositionClass: 'object-[center_55%]',
+    heroScaleClass: 'scale-100',
+  },
+  {
+    src: '/shop/heroes/shop-home-3.webp',
+    objectPosition: 'center 42%',
+    objectPositionClass: 'object-[center_42%]',
+    heroScaleClass: 'scale-100',
+  },
+  {
+    src: '/shop/heroes/shop-home-4.webp',
+    objectPosition: 'center 48%',
+    objectPositionClass: 'object-[center_48%]',
+    heroScaleClass: 'scale-100',
+  },
+]
+
+export function getRandomShopHomeHero(): ShopHeroImageConfig {
+  const index = Math.floor(Math.random() * SHOP_HOME_HERO_IMAGES.length)
+  return SHOP_HOME_HERO_IMAGES[index]
+}
+
 export const SHOP_HERO_IMAGES: Record<ShopHeroKey, ShopHeroImageConfig> = {
   catalog: {
     src: '/shop/heroes/catalog.webp',
