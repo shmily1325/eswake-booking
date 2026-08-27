@@ -23,6 +23,10 @@ describe('resolveRuntimeLiffId', () => {
     ).toBe(migration)
   })
 
+  it('selects the migration LIFF from an explicit endpoint marker', () => {
+    expect(resolveRuntimeLiffId(legacy, migration, '?liff_migration=1')).toBe(migration)
+  })
+
   it('keeps the legacy LIFF for the legacy LINE client ID', () => {
     expect(resolveRuntimeLiffId(legacy, migration, '?liffClientId=2008652154')).toBe(legacy)
   })

@@ -32,7 +32,10 @@ export function resolveRuntimeLiffId(
   const migration = migrationLiffId?.trim() || undefined
   if (!migration) return primary
 
-  const clientId = new URLSearchParams(search).get('liffClientId')
+  const params = new URLSearchParams(search)
+  if (params.get('liff_migration') === '1') return migration
+
+  const clientId = params.get('liffClientId')
   if (!clientId) return primary || migration
 
   if (migration === clientId || channelIdFromLiffId(migration) === clientId) return migration
