@@ -186,7 +186,7 @@ export function BindingForm({
           >
             <div>{bindingError}</div>
             {isMemberPhoneNotFound ? (
-              <div>請確認手機號碼是否正確，或私訊官方帳號協助綁定</div>
+              <div>請確認手機號碼是否正確，或私訊官方協助綁定</div>
             ) : oaUrl ? (
               <div>若資料正確，可私訊官方協助綁定。</div>
             ) : null}
@@ -208,7 +208,7 @@ export function BindingForm({
 
         {oaUrl && (
           <button type="button" onClick={openOfficialContact} style={liffGhostBtn}>
-            私訊官方帳號
+            私訊官方
           </button>
         )}
       </div>
