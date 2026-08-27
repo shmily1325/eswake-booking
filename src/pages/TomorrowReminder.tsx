@@ -62,6 +62,8 @@ type PushResult = {
   error?: string
 }
 
+const FISH_REMINDER_COPY_RECIPIENT = '澤澤'
+
 export function TomorrowReminder() {
   const user = useAuthUser()
   const navigate = useNavigate()
@@ -110,6 +112,11 @@ export function TomorrowReminder() {
   const [showTemplateEditor, setShowTemplateEditor] = useState(false)
   const [memberIdsByName, setMemberIdsByName] = useState<Record<string, string[]>>({})
   const [bookingIdsByMemberId, setBookingIdsByMemberId] = useState<Record<string, number[]>>({})
+  const [additionalReminderNames, setAdditionalReminderNames] = useState<string[]>([])
+  const [bookingStudentNamesByMemberId, setBookingStudentNamesByMemberId] =
+    useState<Record<string, string[]>>({})
+  const [bookingStudentNamesByName, setBookingStudentNamesByName] =
+    useState<Record<string, string[]>>({})
   const [lineBindings, setLineBindings] = useState<TomorrowReminderBindingRow[]>([])
   const [selectedPushMemberIds, setSelectedPushMemberIds] = useState<Set<string>>(new Set())
   const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({})
@@ -158,6 +165,9 @@ export function TomorrowReminder() {
     setStudentLanguages({})
     setMemberIdsByName({})
     setBookingIdsByMemberId({})
+    setAdditionalReminderNames([])
+    setBookingStudentNamesByMemberId({})
+    setBookingStudentNamesByName({})
     setLineBindings([])
     setSelectedPushMemberIds(new Set())
     setMessageDrafts({})
@@ -246,6 +256,9 @@ export function TomorrowReminder() {
 
         const nextMemberIdsByName: Record<string, string[]> = {}
         const nextBookingIdsByMemberId: Record<string, number[]> = {}
+        const nextAdditionalReminderNames: string[] = []
+        const nextBookingStudentNamesByMemberId: Record<string, string[]> = {}
+        const nextBookingStudentNamesByName: Record<string, string[]> = {}
 
         // ✅ 組合教練、駕駛和會員資料，並更新 contact_name 為最新暱稱
         bookingsData.forEach((booking: any) => {
@@ -268,6 +281,51 @@ export function TomorrowReminder() {
           })
         })
 
+        const fishBookingIds = bookingsData
+          .filter((booking: Booking) =>
+            booking.contact_name.split(',').map((name) => name.trim()).includes('Fish')
+          )
+          .map((booking: Booking) => booking.id)
+
+        if (fishBookingIds.length > 0) {
+          const hasNamedZheBooking = bookingsData.some((booking: Booking) =>
+            booking.contact_name
+              .split(',')
+              .map((name) => name.trim())
+              .includes(FISH_REMINDER_COPY_RECIPIENT)
+          )
+          const { data: additionalMembers, error: additionalMembersError } = await supabase
+            .from('members')
+            .select('id, name, nickname')
+            .or(
+              `name.eq.${FISH_REMINDER_COPY_RECIPIENT},nickname.eq.${FISH_REMINDER_COPY_RECIPIENT}`,
+            )
+          if (additionalMembersError) throw additionalMembersError
+
+          if (additionalMembers && additionalMembers.length > 1) {
+            console.error('Multiple members matched the 澤澤 reminder rule')
+          }
+
+          if (additionalMembers?.length === 1) {
+            const member = additionalMembers[0]
+            const displayName = member.nickname || member.name || FISH_REMINDER_COPY_RECIPIENT
+            const memberIds = nextMemberIdsByName[displayName] || []
+            if (!memberIds.includes(member.id)) memberIds.push(member.id)
+            nextMemberIdsByName[displayName] = memberIds
+            const ownBookingIds = nextBookingIdsByMemberId[member.id] || []
+            if (ownBookingIds.length === 0 && !hasNamedZheBooking) {
+              nextBookingIdsByMemberId[member.id] = Array.from(new Set(fishBookingIds))
+              nextBookingStudentNamesByMemberId[member.id] = ['Fish']
+              if (!nextAdditionalReminderNames.includes(displayName)) {
+                nextAdditionalReminderNames.push(displayName)
+              }
+            }
+          } else if (!hasNamedZheBooking) {
+            nextAdditionalReminderNames.push(FISH_REMINDER_COPY_RECIPIENT)
+            nextBookingStudentNamesByName[FISH_REMINDER_COPY_RECIPIENT] = ['Fish']
+          }
+        }
+
         const memberIds = Array.from(new Set(Object.values(nextMemberIdsByName).flat()))
         if (memberIds.length > 0) {
           const { data: bindingsData, error: bindingsError } = await supabase
@@ -284,6 +342,9 @@ export function TomorrowReminder() {
         }
         setMemberIdsByName(nextMemberIdsByName)
         setBookingIdsByMemberId(nextBookingIdsByMemberId)
+        setAdditionalReminderNames(nextAdditionalReminderNames)
+        setBookingStudentNamesByMemberId(nextBookingStudentNamesByMemberId)
+        setBookingStudentNamesByName(nextBookingStudentNamesByName)
       }
 
       if (!isLatestRequest()) return
@@ -295,15 +356,32 @@ export function TomorrowReminder() {
     }
   }
 
-  const studentNames = useMemo(() => getTomorrowStudentList(bookings), [bookings])
+  const studentNames = useMemo(() => {
+    const names = Array.from(new Set([
+      ...getTomorrowStudentList(bookings),
+      ...additionalReminderNames,
+    ])).sort()
+    if (additionalReminderNames.length === 0) return names
+
+    const namesWithoutCopies = names.filter((name) => !additionalReminderNames.includes(name))
+    const fishIndex = namesWithoutCopies.indexOf('Fish')
+    namesWithoutCopies.splice(
+      fishIndex >= 0 ? fishIndex + 1 : namesWithoutCopies.length,
+      0,
+      ...additionalReminderNames,
+    )
+    return namesWithoutCopies
+  }, [additionalReminderNames, bookings])
 
   const generateMessageForStudent = (
     studentName: string,
     language: ReminderLanguage,
     sourceBookings: Booking[] = bookings,
+    bookingStudentNames?: string[],
   ): string =>
     generateTomorrowReminderMessage({
       studentName,
+      bookingStudentNames,
       bookings: sourceBookings,
       language,
       templates: {
@@ -333,8 +411,18 @@ export function TomorrowReminder() {
       bindings: lineBindings,
       bookingCountByName,
       bookingIdsByMemberId,
+      bookingStudentNamesByMemberId,
+      bookingStudentNamesByName,
     })
-  }, [bookingIdsByMemberId, bookings, lineBindings, memberIdsByName, studentNames])
+  }, [
+    bookingIdsByMemberId,
+    bookingStudentNamesByMemberId,
+    bookingStudentNamesByName,
+    bookings,
+    lineBindings,
+    memberIdsByName,
+    studentNames,
+  ])
 
   const pushableRecipients = useMemo(
     () => recipients.filter((recipient) => recipient.status === 'pushable'),
@@ -363,10 +451,14 @@ export function TomorrowReminder() {
     const recipientBookings = recipient.memberId && bookingIds.size > 0
       ? bookings.filter((booking) => bookingIds.has(booking.id))
       : bookings
+    const messageStudentName = recipient.bookingStudentNames?.includes('Fish')
+      ? 'Fish'
+      : recipient.name
     return generateMessageForStudent(
-      recipient.name,
+      messageStudentName,
       studentLanguages[recipient.key] || 'zh',
       recipientBookings,
+      recipient.bookingStudentNames,
     )
   }
 
@@ -639,7 +731,9 @@ export function TomorrowReminder() {
                 color: designSystem.colors.text.primary,
                 lineHeight: 1.35,
               }}>
-                {recipient.name}
+                {recipient.bookingStudentNames?.includes('Fish')
+                  ? `${recipient.name}(Fish提醒)`
+                  : recipient.name}
               </span>
               <span style={getBadgeStyle(statusTone, 'small')}>{statusLabel}</span>
             </div>

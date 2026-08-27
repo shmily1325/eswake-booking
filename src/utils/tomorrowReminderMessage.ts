@@ -84,11 +84,12 @@ export function getBookingsForStudent<T extends TomorrowReminderBooking>(
 
 export function generateTomorrowReminderMessage(params: {
   studentName: string
+  bookingStudentNames?: string[]
   bookings: TomorrowReminderBooking[]
   language: ReminderLanguage
   templates: TomorrowReminderTemplates
 }): string {
-  const { studentName, bookings, language, templates } = params
+  const { studentName, bookingStudentNames, bookings, language, templates } = params
   const {
     includeWeatherWarning,
     weatherWarning,
@@ -97,7 +98,13 @@ export function generateTomorrowReminderMessage(params: {
     englishWeatherWarning,
   } = templates
 
-  const studentBookings = getBookingsForStudent(bookings, studentName)
+  const sourceNames = Array.from(new Set([studentName, ...(bookingStudentNames || [])]))
+  const studentBookings = bookings
+    .filter((booking) => {
+      const contactNames = splitContactNames(booking.contact_name)
+      return sourceNames.some((name) => contactNames.includes(name))
+    })
+    .sort((a, b) => a.start_at.localeCompare(b.start_at))
 
   if (language === 'en') {
     const appointmentTimes = Array.from(new Set(

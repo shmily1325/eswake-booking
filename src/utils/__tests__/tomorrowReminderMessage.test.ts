@@ -104,6 +104,18 @@ describe('generateTomorrowReminderMessage', () => {
     )
   })
 
+  it('可使用 Fish 的身分產生轉送提醒', () => {
+    const message = generateTomorrowReminderMessage({
+      studentName: 'Fish',
+      bookingStudentNames: ['Fish'],
+      bookings: [booking('Fish', '2026-05-15T10:00:00')],
+      language: 'zh',
+      templates,
+    })
+    expect(message).toContain('Fish你好')
+    expect(message).toContain('0930抵達')
+  })
+
   it('Safin 用極簡版稱呼李伯', () => {
     const message = generateTomorrowReminderMessage({
       studentName: 'Safin',

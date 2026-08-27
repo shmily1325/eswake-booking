@@ -16,6 +16,7 @@ export type TomorrowReminderRecipient = {
   status: TomorrowReminderRecipientStatus
   bookingCount: number
   bookingIds: number[]
+  bookingStudentNames?: string[]
 }
 
 export function buildTomorrowReminderRecipients(params: {
@@ -24,6 +25,8 @@ export function buildTomorrowReminderRecipients(params: {
   bindings: TomorrowReminderBindingRow[]
   bookingCountByName: Record<string, number>
   bookingIdsByMemberId?: Record<string, number[]>
+  bookingStudentNamesByMemberId?: Record<string, string[]>
+  bookingStudentNamesByName?: Record<string, string[]>
 }): TomorrowReminderRecipient[] {
   const bindingByMember = new Map<string, boolean>()
   params.bindings.forEach((binding) => {
@@ -33,6 +36,7 @@ export function buildTomorrowReminderRecipients(params: {
   return params.studentNames.flatMap<TomorrowReminderRecipient>((name) => {
     const memberIds = Array.from(new Set(params.memberIdsByName[name] || []))
     if (memberIds.length === 0) {
+      const bookingStudentNames = params.bookingStudentNamesByName?.[name]
       return [{
         key: `guest:${name}`,
         name,
@@ -40,11 +44,13 @@ export function buildTomorrowReminderRecipients(params: {
         status: 'guest' as const,
         bookingCount: params.bookingCountByName[name] || 0,
         bookingIds: [],
+        ...(bookingStudentNames?.length ? { bookingStudentNames } : {}),
       }]
     }
 
     return memberIds.map((memberId) => {
       const bookingIds = Array.from(new Set(params.bookingIdsByMemberId?.[memberId] || []))
+      const bookingStudentNames = params.bookingStudentNamesByMemberId?.[memberId]
       return {
         key: `member:${memberId}`,
         name,
@@ -56,6 +62,7 @@ export function buildTomorrowReminderRecipients(params: {
             : 'rebind' as const,
         bookingCount: bookingIds.length || params.bookingCountByName[name] || 0,
         bookingIds,
+        ...(bookingStudentNames?.length ? { bookingStudentNames } : {}),
       }
     })
   })

@@ -68,6 +68,23 @@ describe('buildTomorrowReminderRecipients', () => {
     expect(recipients.map((recipient) => recipient.bookingIds)).toEqual([[101], [202]])
   })
 
+  it('keeps the source student for an additional reminder recipient', () => {
+    const [recipient] = buildTomorrowReminderRecipients({
+      studentNames: ['澤澤'],
+      memberIdsByName: { 澤澤: ['member-zhe'] },
+      bindings: [{ member_id: 'member-zhe', can_push: true }],
+      bookingCountByName: {},
+      bookingIdsByMemberId: { 'member-zhe': [101] },
+      bookingStudentNamesByMemberId: { 'member-zhe': ['Fish'] },
+    })
+
+    expect(recipient).toMatchObject({
+      memberId: 'member-zhe',
+      bookingIds: [101],
+      bookingStudentNames: ['Fish'],
+    })
+  })
+
   it('sends only selected, unsent, pushable recipients', () => {
     const recipients: TomorrowReminderRecipient[] = [
       { key: 'member:m1', name: 'Selected', memberId: 'm1', status: 'pushable', bookingCount: 1, bookingIds: [] },
