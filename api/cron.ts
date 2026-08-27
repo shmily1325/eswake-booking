@@ -63,11 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 18:30 UTC - incremental product-image backup
     if (hours === 18 && minutes === 30) {
       const storageHandler = (await import('./backup-storage.js')).default;
-      const storageReq = {
-        ...req,
-        query: { ...req.query, mode: 'cloud' },
-      } as VercelRequest;
-      return storageHandler(storageReq, res);
+      req.query = { ...req.query, mode: 'cloud' };
+      return storageHandler(req, res);
     }
 
     // 如果時間不匹配，返回提示
