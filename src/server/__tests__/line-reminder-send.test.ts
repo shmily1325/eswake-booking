@@ -164,10 +164,10 @@ describe('manual LINE reminder send API', () => {
       },
     ],
     [
-      'over 50 recipients',
+      'over 100 recipients',
       {
         date: '2026-08-28',
-        recipients: Array.from({ length: 51 }, (_, index) => ({
+        recipients: Array.from({ length: 101 }, (_, index) => ({
           memberId: `member-${index}`,
           message: 'Reminder',
         })),

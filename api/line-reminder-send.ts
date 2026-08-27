@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 const LINE_PUSH_URL = 'https://api.line.me/v2/bot/message/push'
-const MAX_RECIPIENTS = 50
+const MAX_RECIPIENTS = 100
 const MAX_MESSAGE_LENGTH = 5_000
 
 const SUPER_ADMINS = new Set([
@@ -184,10 +184,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const auth = await authenticate(req, supabase)
-    if (!auth.ok) return sendError(res, auth.status, auth.error)
+    if (auth.ok === false) return sendError(res, auth.status, auth.error)
 
     const parsed = parseBody(req.body)
-    if (!parsed.ok) return sendError(res, 400, parsed.error)
+    if (parsed.ok === false) return sendError(res, 400, parsed.error)
 
     const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN
     if (!lineToken) {
