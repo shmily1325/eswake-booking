@@ -281,8 +281,8 @@ export function ProductManagement({
     setListImageMode(next)
     if (typeof window !== 'undefined') window.localStorage.setItem('products_list_image', next)
   }
-  // 唯讀商品查詢固定以實拍為主、缺圖才用封面；管理頁仍保留切換選項。
-  const displayImageMode: ListImageMode = canEdit ? listImageMode : 'photo'
+  // 唯讀商品查詢固定以封面為主、缺圖才用實拍；管理頁仍保留切換選項。
+  const displayImageMode: ListImageMode = canEdit ? listImageMode : 'cover'
 
   // 權限檢查（沿用 BoatManagement 的模式）
   useEffect(() => {
@@ -435,6 +435,10 @@ export function ProductManagement({
     onlySoldOut,
     discountPresetFilter,
   ])
+  const filteredProductCount = useMemo(
+    () => new Set(filteredItems.map((item) => item.product.id)).size,
+    [filteredItems],
+  )
 
   /** tab + 搜尋，用來算儀表板數字與 chip 計數（含已售完） */
   const baseForCounts: VariantListItem[] = useMemo(() => {
@@ -921,7 +925,19 @@ export function ProductManagement({
             minWidth: 0,
           }}
         >
-          <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <LayoutToggle layout={layout} onChange={setLayout} isMobile={isMobile} />
+            <span
+              aria-live="polite"
+              style={{
+                color: colors.text.secondary,
+                fontSize: getFontSize('caption', isMobile),
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {loading ? '載入中…' : `${filteredProductCount} 個商品 · ${filteredItems.length} 個 SKU`}
+            </span>
+          </div>
           <div
             style={{
               display: 'flex',
@@ -1594,15 +1610,22 @@ function PriceDisplay({
   const shop = resolveShopPrice(variant, presets)
   if (shop.original == null && shop.sale == null) {
     return (
-      <span
-        style={{
-          fontSize: getFontSize('caption', false),
-          fontWeight: 500,
-          color: colors.text.secondary,
-        }}
-        title="售價待補"
-      >
-        缺
+      <span style={{ textAlign: align, display: 'inline-block' }}>
+        <span
+          style={{
+            fontSize: getFontSize('caption', false),
+            fontWeight: 500,
+            color: colors.text.secondary,
+          }}
+          title="售價待補"
+        >
+          售價待補
+        </span>
+        {variant.member_price != null ? (
+          <span style={{ display: 'block', fontSize: 11, fontWeight: 600, color: colors.text.primary }}>
+            會員價 ${variant.member_price.toLocaleString()}
+          </span>
+        ) : null}
       </span>
     )
   }
@@ -1624,7 +1647,7 @@ function PriceDisplay({
         ) : null}
         {variant.member_price != null ? (
           <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: colors.text.secondary }}>
-            會員 ${variant.member_price.toLocaleString()}
+            會員價 ${variant.member_price.toLocaleString()}
           </span>
         ) : null}
       </span>
@@ -1636,7 +1659,7 @@ function PriceDisplay({
       ${shop.sale!.toLocaleString()}
       {member != null ? (
         <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: colors.text.secondary }}>
-          會員 ${member.toLocaleString()}
+          會員價 ${member.toLocaleString()}
         </span>
       ) : null}
     </span>
@@ -1889,12 +1912,12 @@ function GalleryCard({
 
   return (
     <div
-      role={canEdit || selectMode ? 'button' : undefined}
-      tabIndex={canEdit || selectMode ? 0 : undefined}
-      data-track={canEdit && !selectMode ? 'product_edit_open' : undefined}
-      onClick={canEdit || selectMode ? onClick : undefined}
+      role="button"
+      tabIndex={0}
+      data-track={!selectMode ? (canEdit ? 'product_edit_open' : 'product_query_detail_open') : undefined}
+      onClick={onClick}
       onKeyDown={(event) => {
-        if (!canEdit && !selectMode) return
+        if (event.target !== event.currentTarget) return
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           onClick()
@@ -1908,7 +1931,7 @@ function GalleryCard({
         borderRadius: borderRadius.lg,
         padding: 8,
         textAlign: 'left',
-        cursor: canEdit || selectMode ? 'pointer' : 'default',
+        cursor: 'pointer',
         width: '100%',
         boxSizing: 'border-box',
       }}
@@ -1953,7 +1976,12 @@ function GalleryCard({
           <img
             src={imageUrl}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: imageMode === 'cover' ? 'contain' : 'cover',
+              display: 'block',
+            }}
             loading="lazy"
           />
         ) : (
@@ -2050,7 +2078,10 @@ function GalleryCard({
             <button
               type="button"
               data-track="product_query_expand"
-              onClick={() => setExpanded((current) => !current)}
+              onClick={(event) => {
+                event.stopPropagation()
+                setExpanded((current) => !current)
+              }}
               style={{
                 minHeight: 40,
                 padding: '6px 0 0',
@@ -2297,23 +2328,24 @@ function MobileListRow({
 
   return (
     <div
-      role={canEdit || selectMode ? 'button' : undefined}
-      tabIndex={canEdit || selectMode ? 0 : undefined}
-      data-track={canEdit && !selectMode ? 'product_edit_open' : undefined}
-      onClick={canEdit || selectMode ? onClick : undefined}
-      onKeyDown={canEdit || selectMode ? (e) => {
+      role="button"
+      tabIndex={0}
+      data-track={!selectMode ? (canEdit ? 'product_edit_open' : 'product_query_detail_open') : undefined}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           onClick()
         }
-      } : undefined}
+      }}
       style={{
         background: colors.background.card,
         border: `1px solid ${selected ? colors.primary[500] : colors.border.light}`,
         borderRadius: borderRadius.lg,
         padding: 10,
         textAlign: 'left',
-        cursor: canEdit || selectMode ? 'pointer' : 'default',
+        cursor: 'pointer',
         width: '100%',
         boxSizing: 'border-box',
       }}
@@ -2356,7 +2388,11 @@ function MobileListRow({
             <img
               src={imageUrl}
               alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: imageMode === 'cover' ? 'contain' : 'cover',
+              }}
               loading="lazy"
             />
           ) : (
@@ -2600,17 +2636,24 @@ function DesktopTable({
               return (
                 <tr
                   key={it.variant.id}
-                  data-track={canEdit && !selectMode ? 'product_edit_open' : undefined}
+                  role="button"
+                  tabIndex={0}
+                  data-track={!selectMode ? (canEdit ? 'product_edit_open' : 'product_query_detail_open') : undefined}
                   onClick={
                     selectMode
                       ? () => onToggle?.(it.variant.id)
-                      : canEdit
-                        ? () => onRowClick(it.product.id, it.variant.id)
-                        : undefined
+                      : () => onRowClick(it.product.id, it.variant.id)
                   }
-                  title={canEdit ? it.product.description ?? undefined : undefined}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault()
+                    if (selectMode) onToggle?.(it.variant.id)
+                    else onRowClick(it.product.id, it.variant.id)
+                  }}
+                  title={it.product.description ?? undefined}
                   style={{
-                    cursor: canEdit || selectMode ? 'pointer' : 'default',
+                    cursor: 'pointer',
                     borderTop: `1px solid ${colors.border.light}`,
                     background: selectedIds?.has(it.variant.id) ? colors.secondary[50] : 'transparent',
                   }}
@@ -2664,7 +2707,15 @@ function DesktopTable({
                       }}
                     >
                       {imageUrl ? (
-                        <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img
+                          src={imageUrl}
+                          alt=""
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: imageMode === 'cover' ? 'contain' : 'cover',
+                          }}
+                        />
                       ) : (
                         <span style={{ fontSize: getFontSize('caption', true), color: colors.text.disabled }}>
                           —
