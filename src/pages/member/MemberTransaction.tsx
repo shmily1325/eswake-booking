@@ -43,6 +43,7 @@ interface MemberWithLastTransaction extends Member {
   lastTransactionDate?: string | null
   lastTransactionCreatedAt?: string | null  // 最新交易的 created_at
   line_binding_user_id?: string | null
+  line_binding_can_push?: boolean
   last_liff_login_at?: string | null
   is_line_bound?: boolean
   board_expiry_dates?: string[]
@@ -67,7 +68,7 @@ export function MemberTransaction() {
 
   const [sortBy, setSortBy] = useState<'updatedAt' | 'lastLiffLogin'>('updatedAt')
   const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all') // 會員種類篩選
-  const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
+  const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'rebind' | 'unbound'>('all')
   const [yearPanelRefreshKey, setYearPanelRefreshKey] = useState(0)
 
   const view: StorageView = searchParams.get('view') === 'year' ? 'year' : 'ledger'
@@ -149,7 +150,7 @@ export function MemberTransaction() {
             .order('created_at', { ascending: false }),
           supabase
             .from('line_bindings')
-            .select('member_id, line_user_id, last_liff_login_at')
+            .select('member_id, line_user_id, last_liff_login_at, can_push')
             .eq('status', 'active'),
           supabase
             .from('board_storage')
@@ -187,12 +188,17 @@ export function MemberTransaction() {
       }
 
       const lineBindingsData = lineBindingsResult.data || []
-      const memberIdToLineBinding: Record<string, { lineUserId: string; lastLiffLoginAt: string | null }> = {}
+      const memberIdToLineBinding: Record<string, {
+        lineUserId: string
+        lastLiffLoginAt: string | null
+        canPush: boolean
+      }> = {}
       lineBindingsData.forEach((b) => {
         if (b.member_id) {
           memberIdToLineBinding[b.member_id] = {
             lineUserId: b.line_user_id,
             lastLiffLoginAt: b.last_liff_login_at,
+            canPush: b.can_push === true,
           }
         }
       })
@@ -219,6 +225,7 @@ export function MemberTransaction() {
         lastTransactionDate: lastTransactionMap[m.id]?.date || null,
         lastTransactionCreatedAt: lastTransactionMap[m.id]?.createdAt || null,
         line_binding_user_id: memberIdToLineBinding[m.id]?.lineUserId || null,
+        line_binding_can_push: memberIdToLineBinding[m.id]?.canPush === true,
         last_liff_login_at: memberIdToLineBinding[m.id]?.lastLiffLoginAt || null,
         is_line_bound: Boolean(memberIdToLineBinding[m.id]),
         board_expiry_dates: boardExpiryDatesByMember[m.id] || [],
@@ -265,7 +272,9 @@ export function MemberTransaction() {
     }
 
     if (lineBindingFilter === 'bound') {
-      result = result.filter(m => m.is_line_bound)
+      result = result.filter(m => m.is_line_bound && m.line_binding_can_push)
+    } else if (lineBindingFilter === 'rebind') {
+      result = result.filter(m => m.is_line_bound && !m.line_binding_can_push)
     } else if (lineBindingFilter === 'unbound') {
       result = result.filter(m => !m.is_line_bound)
     }
@@ -427,7 +436,7 @@ export function MemberTransaction() {
         {isMobile ? (
           <>
             {/* 不另設「全部」選項；再次點擊已選狀態即可清除篩選。 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%', marginBottom: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', width: '100%', marginBottom: '10px' }}>
               <button
                 type="button"
                 data-track="member_filter_line_bound"
@@ -438,7 +447,19 @@ export function MemberTransaction() {
                   ...getFilterChipStyle(lineBindingFilter === 'bound', 'info'),
                 }}
               >
-                LINE 綁定 ({members.filter(m => m.is_line_bound).length})
+                LINE 已綁定 ({members.filter(m => m.is_line_bound && m.line_binding_can_push).length})
+              </button>
+              <button
+                type="button"
+                data-track="member_filter_line_rebind"
+                aria-pressed={lineBindingFilter === 'rebind'}
+                onClick={() => setLineBindingFilter(lineBindingFilter === 'rebind' ? 'all' : 'rebind')}
+                style={{
+                  ...getButtonStyle('outline', 'medium', true),
+                  ...getFilterChipStyle(lineBindingFilter === 'rebind', 'warning'),
+                }}
+              >
+                需重新綁定 ({members.filter(m => m.is_line_bound && !m.line_binding_can_push).length})
               </button>
               <button
                 type="button"
@@ -510,7 +531,19 @@ export function MemberTransaction() {
                   ...getFilterChipStyle(lineBindingFilter === 'bound', 'info'),
                 }}
               >
-                LINE 已綁定 ({members.filter(m => m.is_line_bound).length})
+                LINE 已綁定 ({members.filter(m => m.is_line_bound && m.line_binding_can_push).length})
+              </button>
+
+              <button
+                type="button"
+                data-track="member_filter_line_rebind"
+                onClick={() => setLineBindingFilter(lineBindingFilter === 'rebind' ? 'all' : 'rebind')}
+                style={{
+                  ...getButtonStyle('outline', 'small', false),
+                  ...getFilterChipStyle(lineBindingFilter === 'rebind', 'warning'),
+                }}
+              >
+                需重新綁定 ({members.filter(m => m.is_line_bound && !m.line_binding_can_push).length})
               </button>
 
               <button
@@ -717,10 +750,27 @@ export function MemberTransaction() {
                   {/* LINE 綁定狀態（資訊區塊） */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span
-                      title={member.is_line_bound ? '已綁定 LINE' : '未綁定 LINE'}
-                      style={getBadgeStyle(member.is_line_bound ? 'success' : 'default', 'small')}
+                      title={
+                        !member.is_line_bound
+                          ? 'LINE 未綁定'
+                          : member.line_binding_can_push
+                            ? 'LINE 已綁定'
+                            : '需重新綁定'
+                      }
+                      style={getBadgeStyle(
+                        !member.is_line_bound
+                          ? 'default'
+                          : member.line_binding_can_push
+                            ? 'success'
+                            : 'warning',
+                        'small',
+                      )}
                     >
-                      {member.is_line_bound ? 'LINE 已綁定' : 'LINE 未綁定'}
+                      {!member.is_line_bound
+                        ? 'LINE 未綁定'
+                        : member.line_binding_can_push
+                          ? 'LINE 已綁定'
+                          : '需重新綁定'}
                     </span>
                     {member.is_line_bound && member.last_liff_login_at && (
                       <span style={{

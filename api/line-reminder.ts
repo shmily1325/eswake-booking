@@ -77,12 +77,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .select('booking_id, coaches:coach_id(name)')
       .in('booking_id', bookingIds);
 
-    // Query LINE bindings for active users
+    // Only bindings migrated to the Messaging API provider can receive pushes.
     const memberIds = bookingMembersData?.map((bm: any) => bm.member_id) || [];
     const { data: lineBindings } = await supabase
       .from('line_bindings')
       .select('member_id, line_user_id, members:member_id(name)')
       .eq('status', 'active')
+      .eq('can_push', true)
       .in('member_id', memberIds);
 
     // Map booking IDs to members with LINE

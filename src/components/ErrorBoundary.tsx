@@ -2,7 +2,7 @@ import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { EsBrandLockup } from './EsBrandLockup'
 import { ES_BRAND } from '../lib/esBrandTokens'
-import { designSystem, getButtonStyle } from '../styles/designSystem'
+import { designSystem, getButtonStyle, getFontSize } from '../styles/designSystem'
 
 interface Props {
   children: ReactNode
@@ -13,6 +13,7 @@ interface State {
   hasError: boolean
   error: Error | null
   errorInfo: ErrorInfo | null
+  showFullError: boolean
 }
 
 /**
@@ -60,11 +61,17 @@ export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
-    errorInfo: null
+    errorInfo: null,
+    showFullError: false,
   }
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null }
+    return {
+      hasError: true,
+      error,
+      errorInfo: null,
+      showFullError: !isChunkLoadError(error),
+    }
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -81,12 +88,44 @@ export class ErrorBoundary extends Component<Props, State> {
 
     this.setState({
       error,
-      errorInfo
+      errorInfo,
+      showFullError: true,
     })
   }
 
   public render() {
     if (this.state.hasError) {
+      if (!this.state.showFullError && isChunkLoadError(this.state.error)) {
+        return (
+          <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: ES_BRAND.pageBg,
+            color: designSystem.colors.text.secondary,
+            fontFamily: "var(--font-ui, 'PingFang TC', 'Microsoft JhengHei UI', 'Microsoft JhengHei', system-ui, sans-serif)",
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: designSystem.spacing.md,
+            }}>
+              <EsBrandLockup
+                variant="onLight"
+                align="center"
+                logoSize={40}
+                style={{ opacity: 0.55 }}
+              />
+              <div style={{ fontSize: getFontSize('body', false) }}>
+                正在更新系統…
+              </div>
+            </div>
+          </div>
+        )
+      }
+
       if (this.props.fallback) {
         return this.props.fallback
       }

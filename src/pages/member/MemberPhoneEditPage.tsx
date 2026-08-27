@@ -31,6 +31,7 @@ interface MemberRow {
   partner?: { name: string; nickname: string | null } | null
   /** 來自 line_bindings（status=active） */
   is_line_bound: boolean
+  line_binding_can_push: boolean
 }
 
 function membershipLabel(type: string): string {
@@ -82,7 +83,7 @@ export function MemberPhoneEditPage() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'unbound'>('all')
+  const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'rebind' | 'unbound'>('all')
   /** 正在編輯手機的會員 id（按「編輯」或點電話欄才會解鎖輸入） */
   const [editingMemberIds, setEditingMemberIds] = useState<Set<string>>(() => new Set())
 
@@ -108,19 +109,31 @@ export function MemberPhoneEditPage() {
           )
           .eq('status', 'active')
           .order('nickname', { ascending: true, nullsFirst: false }),
-        supabase.from('line_bindings').select('member_id, line_user_id').eq('status', 'active'),
+        supabase.from('line_bindings').select('member_id, line_user_id, can_push').eq('status', 'active'),
       ])
 
       if (membersRes.error) throw membersRes.error
       if (lineRes.error) throw lineRes.error
 
-      const lineBindingsData = (lineRes.data || []) as { member_id: string; line_user_id: string }[]
-      const memberIdToLine: Record<string, string> = {}
+      const lineBindingsData = (lineRes.data || []) as {
+        member_id: string
+        line_user_id: string
+        can_push: boolean
+      }[]
+      const memberIdToLine: Record<string, { lineUserId: string; canPush: boolean }> = {}
       lineBindingsData.forEach((b) => {
-        if (b.member_id) memberIdToLine[b.member_id] = b.line_user_id
+        if (b.member_id) {
+          memberIdToLine[b.member_id] = {
+            lineUserId: b.line_user_id,
+            canPush: b.can_push === true,
+          }
+        }
       })
 
-      const rows = (membersRes.data || []) as Omit<MemberRow, 'is_line_bound' | 'partner'>[]
+      const rows = (membersRes.data || []) as Omit<
+        MemberRow,
+        'is_line_bound' | 'line_binding_can_push' | 'partner'
+      >[]
       const partnerIds = [...new Set(rows.map((m) => m.membership_partner_id).filter(Boolean))] as string[]
 
       let partnersMap: Record<string, { name: string; nickname: string | null }> = {}
@@ -136,6 +149,7 @@ export function MemberPhoneEditPage() {
         ...m,
         partner: m.membership_partner_id ? partnersMap[m.membership_partner_id] || null : null,
         is_line_bound: Boolean(memberIdToLine[m.id]),
+        line_binding_can_push: memberIdToLine[m.id]?.canPush === true,
       }))
 
       setMembers(withPartners)
@@ -185,7 +199,10 @@ export function MemberPhoneEditPage() {
   const filtered = useMemo(() => {
     if (lineBindingFilter === 'all') return searchFiltered
     if (lineBindingFilter === 'bound') {
-      return searchFiltered.filter((m) => m.is_line_bound)
+      return searchFiltered.filter((m) => m.is_line_bound && m.line_binding_can_push)
+    }
+    if (lineBindingFilter === 'rebind') {
+      return searchFiltered.filter((m) => m.is_line_bound && !m.line_binding_can_push)
     }
     return searchFiltered.filter((m) => !m.is_line_bound)
   }, [searchFiltered, lineBindingFilter])
@@ -225,8 +242,9 @@ export function MemberPhoneEditPage() {
     return null
   }
 
-  const lineBoundCount = members.filter((m) => m.is_line_bound).length
-  const lineUnboundCount = members.length - lineBoundCount
+  const lineBoundCount = members.filter((m) => m.is_line_bound && m.line_binding_can_push).length
+  const lineRebindCount = members.filter((m) => m.is_line_bound && !m.line_binding_can_push).length
+  const lineUnboundCount = members.filter((m) => !m.is_line_bound).length
   const memberMetaRowStyle: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: isMobile ? '64px minmax(0, 1fr)' : '72px minmax(0, 1fr)',
@@ -283,7 +301,7 @@ export function MemberPhoneEditPage() {
           data-track="member_phone_line_filter"
           style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? 'repeat(3, minmax(0, 1fr))' : 'auto auto auto',
+            gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'auto auto auto auto',
             gap: '8px',
             flexShrink: 0,
             width: isMobile ? '100%' : 'auto',
@@ -314,6 +332,19 @@ export function MemberPhoneEditPage() {
             }}
           >
             已綁定 ({lineBoundCount})
+          </button>
+          <button
+            type="button"
+            data-track="member_phone_filter_rebind"
+            onClick={() => setLineBindingFilter(lineBindingFilter === 'rebind' ? 'all' : 'rebind')}
+            style={{
+              ...getButtonStyle('outline', 'small', isMobile),
+              ...getFilterChipStyle(lineBindingFilter === 'rebind', 'warning'),
+              minHeight: 44,
+              padding: '8px 10px',
+            }}
+          >
+            需重新綁定 ({lineRebindCount})
           </button>
           <button
             type="button"
@@ -416,19 +447,36 @@ export function MemberPhoneEditPage() {
                       手機
                     </span>
                     <span
-                      title={m.is_line_bound ? 'LINE 已綁定' : 'LINE 未綁定'}
+                      title={
+                        !m.is_line_bound
+                          ? 'LINE 未綁定'
+                          : m.line_binding_can_push
+                            ? 'LINE 已綁定'
+                            : '需重新綁定'
+                      }
                       style={{
-                        ...getBadgeStyle(m.is_line_bound ? 'success' : 'default', 'small'),
+                        ...getBadgeStyle(
+                          !m.is_line_bound
+                            ? 'default'
+                            : m.line_binding_can_push
+                              ? 'success'
+                              : 'warning',
+                          'small',
+                        ),
                         whiteSpace: 'nowrap',
                       }}
                     >
                       {isMobile
-                        ? m.is_line_bound
-                          ? '已綁定'
-                          : '未綁定'
-                        : m.is_line_bound
-                          ? 'LINE 已綁定'
-                          : 'LINE 未綁定'}
+                        ? !m.is_line_bound
+                          ? '未綁定'
+                          : m.line_binding_can_push
+                            ? '已綁定'
+                            : '需重新綁定'
+                        : !m.is_line_bound
+                          ? 'LINE 未綁定'
+                          : m.line_binding_can_push
+                            ? 'LINE 已綁定'
+                            : '需重新綁定'}
                     </span>
                   </div>
                   {isMobile ? (

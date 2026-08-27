@@ -6444,7 +6444,8 @@
                 es: sortedMembers.filter(member => member.membership_type === 'es').length,
                 membershipExpiry: sortedMembers.filter(member => member.membership_end_date && member.membership_end_date.slice(0, 10) <= soon).length,
                 boardExpiry: sortedMembers.filter(member => (member.board_slots || []).some(slot => slot.expires_at && slot.expires_at.slice(0, 10) <= soon)).length,
-                lineBound: sortedMembers.filter(member => !!member.line_binding).length,
+                lineBound: sortedMembers.filter(member => member.line_binding?.can_push === true).length,
+                lineRebind: sortedMembers.filter(member => member.line_binding && member.line_binding.can_push !== true).length,
                 lineUnbound: sortedMembers.filter(member => !member.line_binding).length
             };
             
@@ -6470,6 +6471,7 @@
                         <button class="offline-filter-chip" data-member-filter="membership-expiry" onclick="setMemberFilter('membership-expiry', this)">會籍到期 (${memberCounts.membershipExpiry})</button>
                         <button class="offline-filter-chip" data-member-filter="board-expiry" onclick="setMemberFilter('board-expiry', this)">置板到期 (${memberCounts.boardExpiry})</button>
                         <button class="offline-filter-chip" data-member-filter="line-bound" onclick="setMemberFilter('line-bound', this)">LINE 已綁定 (${memberCounts.lineBound})</button>
+                        <button class="offline-filter-chip" data-member-filter="line-rebind" onclick="setMemberFilter('line-rebind', this)">需重新綁定 (${memberCounts.lineRebind})</button>
                         <button class="offline-filter-chip" data-member-filter="line-unbound" onclick="setMemberFilter('line-unbound', this)">LINE 未綁定 (${memberCounts.lineUnbound})</button>
                     </div>
                     <div id="member-filter-count" style="font-size:13px;color:#777;text-align:center;"></div>
@@ -6532,7 +6534,7 @@
                             ${member.birthday ? `<div>${formatDate(member.birthday)}</div>` : ''}
                             ${member.partner ? `<div>配對：${escapeHtml(member.partner.nickname || member.partner.name || '')}</div>` : ''}
                         </div>
-                        <div style="margin-top:10px;"><span class="es-badge ${member.line_binding ? 'success' : 'neutral'}">LINE ${member.line_binding ? '已綁定' : '未綁定'}</span></div>
+                        <div style="margin-top:10px;"><span class="es-badge ${!member.line_binding ? 'neutral' : member.line_binding.can_push === true ? 'success' : 'warning'}">${!member.line_binding ? 'LINE 未綁定' : member.line_binding.can_push === true ? 'LINE 已綁定' : '需重新綁定'}</span></div>
                         ${member.membership_start_date || member.membership_end_date ? `
                             <div style="color: ${isExpired(member.membership_end_date) ? '#f44336' : '#666'}; margin-top: 8px; font-size: 13px;">
                                 會籍：${member.membership_start_date ? formatDate(member.membership_start_date) : '?'} → ${member.membership_end_date ? formatDate(member.membership_end_date) : '?'}
@@ -6595,7 +6597,8 @@
                     (currentMemberFilter === 'es' && member.membership_type === 'es') ||
                     (currentMemberFilter === 'membership-expiry' && member.membership_end_date && member.membership_end_date.slice(0, 10) <= soon) ||
                     (currentMemberFilter === 'board-expiry' && (member.board_slots || []).some(slot => slot.expires_at && slot.expires_at.slice(0, 10) <= soon)) ||
-                    (currentMemberFilter === 'line-bound' && !!member.line_binding) ||
+                    (currentMemberFilter === 'line-bound' && member.line_binding?.can_push === true) ||
+                    (currentMemberFilter === 'line-rebind' && member.line_binding && member.line_binding.can_push !== true) ||
                     (currentMemberFilter === 'line-unbound' && !member.line_binding);
                 return matchesSearch && matchesFilter;
             });
@@ -6674,7 +6677,8 @@
                 member: sortedMembers.filter(member => !['guest', 'es'].includes(member.membership_type)).length,
                 guest: sortedMembers.filter(member => member.membership_type === 'guest').length,
                 es: sortedMembers.filter(member => member.membership_type === 'es').length,
-                lineBound: sortedMembers.filter(member => !!member.line_binding).length,
+                lineBound: sortedMembers.filter(member => member.line_binding?.can_push === true).length,
+                lineRebind: sortedMembers.filter(member => member.line_binding && member.line_binding.can_push !== true).length,
                 lineUnbound: sortedMembers.filter(member => !member.line_binding).length
             };
             
@@ -6697,6 +6701,7 @@
                         <button class="offline-filter-chip" data-transaction-filter="guest" onclick="setTransactionFilter('guest', this)">非會員 (${transactionCounts.guest})</button>
                         <button class="offline-filter-chip" data-transaction-filter="es" onclick="setTransactionFilter('es', this)">ES (${transactionCounts.es})</button>
                         <button class="offline-filter-chip" data-transaction-filter="line-bound" onclick="setTransactionFilter('line-bound', this)">LINE 已綁定 (${transactionCounts.lineBound})</button>
+                        <button class="offline-filter-chip" data-transaction-filter="line-rebind" onclick="setTransactionFilter('line-rebind', this)">需重新綁定 (${transactionCounts.lineRebind})</button>
                         <button class="offline-filter-chip" data-transaction-filter="line-unbound" onclick="setTransactionFilter('line-unbound', this)">LINE 未綁定 (${transactionCounts.lineUnbound})</button>
                         <button class="offline-filter-chip active" data-transaction-sort="recent" onclick="setTransactionSort('recent', this)">最近更新</button>
                         <button class="offline-filter-chip" data-transaction-sort="line" onclick="setTransactionSort('line', this)">LINE 登入</button>
@@ -6736,7 +6741,7 @@
                             <h3 style="margin: 0; font-size: 18px; font-weight: bold; color: #333;">${escapeHtml(displayName)}</h3>
                             ${member.nickname ? `<span style="font-size: 13px; color: #999;">(${escapeHtml(member.name)})</span>` : ''}
                             <span class="es-badge neutral">${membershipLabel}</span>
-                            <span class="es-badge ${member.line_binding ? 'success' : 'neutral'}">LINE ${member.line_binding ? '已綁定' : '未綁定'}</span>
+                            <span class="es-badge ${!member.line_binding ? 'neutral' : member.line_binding.can_push === true ? 'success' : 'warning'}">${!member.line_binding ? 'LINE 未綁定' : member.line_binding.can_push === true ? 'LINE 已綁定' : '需重新綁定'}</span>
                         </div>
                         ${member.phone ? `<div style="font-size:13px;color:#666;">${escapeHtml(member.phone)}</div>` : ''}
                         ${member.lastTransactionDate ? `
@@ -6810,7 +6815,8 @@
                     (currentTransactionFilter === 'member' && !['guest', 'es'].includes(member.membership_type)) ||
                     (currentTransactionFilter === 'guest' && member.membership_type === 'guest') ||
                     (currentTransactionFilter === 'es' && member.membership_type === 'es') ||
-                    (currentTransactionFilter === 'line-bound' && !!member.line_binding) ||
+                    (currentTransactionFilter === 'line-bound' && member.line_binding?.can_push === true) ||
+                    (currentTransactionFilter === 'line-rebind' && member.line_binding && member.line_binding.can_push !== true) ||
                     (currentTransactionFilter === 'line-unbound' && !member.line_binding);
                 return matchesSearch && matchesFilter;
             }).sort((a, b) => currentTransactionSort === 'line'

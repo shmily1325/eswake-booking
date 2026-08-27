@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
@@ -14,6 +14,7 @@ import { PageShell } from '../components/PageShell'
 import { BookingDateNav } from '../components/BookingDateNav'
 import {
   designSystem,
+  getBadgeStyle,
   getButtonStyle,
   getEmptyStateStyle,
   getFontSize,
@@ -21,13 +22,24 @@ import {
   getLabelStyle,
 } from '../styles/designSystem'
 import { hasViewAccess } from '../utils/auth'
-import { getFacilityMessageLabel } from '../utils/facility'
-import { displayCoachNameForTomorrowMessage } from '../utils/tomorrowReminderDisplay'
+import {
+  generateTomorrowReminderMessage,
+  getTomorrowStudentList,
+} from '../utils/tomorrowReminderMessage'
+import { resolveContactNamesWithMembers } from '../utils/tomorrowReminderMembers'
+import {
+  buildTomorrowReminderRecipients,
+  buildReminderSendPayload,
+  getSelectedPushRecipients,
+  type TomorrowReminderBindingRow,
+  type TomorrowReminderRecipient,
+} from '../utils/tomorrowReminderRecipients'
 import {
   getCoachTomorrowReminderLines,
   TOMORROW_COACH_REMINDER_TARGET_COACHES
 } from '../utils/coachTomorrowReminderLines'
 import { useTomorrowReminderTemplates } from '../hooks/useTomorrowReminderTemplates'
+import { ToastContainer, useToast } from '../components/ui'
 
 interface Booking {
   id: number
@@ -44,14 +56,22 @@ interface Booking {
 
 type ReminderLanguage = 'zh' | 'en'
 
+type PushResult = {
+  memberId: string
+  ok: boolean
+  error?: string
+}
+
 export function TomorrowReminder() {
   const user = useAuthUser()
   const navigate = useNavigate()
   const { isMobile } = useResponsive()
+  const toast = useToast()
   const weatherWarningRef = useRef<HTMLTextAreaElement>(null)
   const footerTextRef = useRef<HTMLTextAreaElement>(null)
   const englishMessageTemplateRef = useRef<HTMLTextAreaElement>(null)
   const englishWeatherWarningRef = useRef<HTMLTextAreaElement>(null)
+  const fetchRequestIdRef = useRef(0)
 
   // 權限檢查：需要一般權限
   useEffect(() => {
@@ -78,6 +98,8 @@ export function TomorrowReminder() {
   }
 
   const [selectedDate, setSelectedDate] = useState(getDefaultDate())
+  const selectedDateRef = useRef(selectedDate)
+  selectedDateRef.current = selectedDate
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   const [copiedStudent, setCopiedStudent] = useState<string | null>(null)
@@ -86,6 +108,15 @@ export function TomorrowReminder() {
   const [selectedCoachReminder, setSelectedCoachReminder] = useState<string | null>(null)
   const [studentLanguages, setStudentLanguages] = useState<Record<string, ReminderLanguage>>({})
   const [showTemplateEditor, setShowTemplateEditor] = useState(false)
+  const [memberIdsByName, setMemberIdsByName] = useState<Record<string, string[]>>({})
+  const [bookingIdsByMemberId, setBookingIdsByMemberId] = useState<Record<string, number[]>>({})
+  const [lineBindings, setLineBindings] = useState<TomorrowReminderBindingRow[]>([])
+  const [selectedPushMemberIds, setSelectedPushMemberIds] = useState<Set<string>>(new Set())
+  const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({})
+  const [pushStatusByMemberId, setPushStatusByMemberId] = useState<
+    Record<string, { status: 'sent' | 'error'; error?: string }>
+  >({})
+  const [sending, setSending] = useState(false)
 
   const {
     includeWeatherWarning,
@@ -125,12 +156,22 @@ export function TomorrowReminder() {
     setSelectedStudent(null)
     setSelectedCoachReminder(null)
     setStudentLanguages({})
+    setMemberIdsByName({})
+    setBookingIdsByMemberId({})
+    setLineBindings([])
+    setSelectedPushMemberIds(new Set())
+    setMessageDrafts({})
+    setPushStatusByMemberId({})
     // 換日時先清空，避免新資料載入前畫面殘留前一天的學員/教練清單
     setBookings([])
     fetchData()
   }, [selectedDate])
 
   const fetchData = async () => {
+    const requestId = ++fetchRequestIdRef.current
+    const requestedDate = selectedDate
+    const isLatestRequest = () =>
+      requestId === fetchRequestIdRef.current && requestedDate === selectedDateRef.current
     setLoading(true)
     try {
       const startOfDay = `${selectedDate}T00:00:00`
@@ -203,261 +244,257 @@ export function TomorrowReminder() {
           }
         }
 
+        const nextMemberIdsByName: Record<string, string[]> = {}
+        const nextBookingIdsByMemberId: Record<string, number[]> = {}
+
         // ✅ 組合教練、駕駛和會員資料，並更新 contact_name 為最新暱稱
         bookingsData.forEach((booking: any) => {
           booking.coaches = coachesByBooking[booking.id] || []
           booking.drivers = driversByBooking[booking.id] || []
 
-          // ✅ 如果有會員資料，智能更新名稱：保留訪客，更新會員
+          // ✅ 有會員資料時更新名稱：保留訪客，會員換成最新暱稱
           const members = membersByBooking[booking.id] || []
-          if (members.length > 0) {
-            const originalNames = booking.contact_name.split(',').map((n: string) => n.trim())
-
-            // 策略：如果名字數量 = 會員數量，直接全部替換（純會員預約）
-            if (members.length === originalNames.length) {
-              booking.contact_name = members.map(m => m.nickname || m.name).join(', ')
-            } else {
-              // 混合預約：需要區分會員和訪客
-              const updatedNames: string[] = []
-              const processedMemberIds = new Set<string>()
-
-              originalNames.forEach((name: string) => {
-                // 嘗試匹配會員（完全匹配或部分匹配）
-                const matchedMember = members.find(m => {
-                  // 完全匹配
-                  if (name === m.name || name === m.nickname) return true
-                  // 部分匹配：處理 "Ingrid/Joanna" 這種複合名稱
-                  const nameParts = name.split('/').map(p => p.trim())
-                  if (nameParts.some(part => part === m.name || part === m.nickname)) return true
-                  return false
-                })
-
-                if (matchedMember && !processedMemberIds.has(matchedMember.id)) {
-                  // 找到會員：用最新暱稱
-                  updatedNames.push(matchedMember.nickname || matchedMember.name)
-                  processedMemberIds.add(matchedMember.id)
-                } else if (!matchedMember) {
-                  // 不是會員：保留訪客名字
-                  updatedNames.push(name)
-                }
-              })
-
-              // 確保所有會員都出現（防止遺漏）
-              members.forEach(m => {
-                if (!processedMemberIds.has(m.id)) {
-                  updatedNames.push(m.nickname || m.name)
-                }
-              })
-
-              if (updatedNames.length > 0) {
-                booking.contact_name = updatedNames.join(', ')
-              }
-            }
-          }
-          // 如果沒有會員資料，保持原始的 contact_name（純訪客）
+          const resolved = resolveContactNamesWithMembers(booking.contact_name, members)
+          booking.contact_name = resolved.contactName
+          members.forEach((member: { id: string; name?: string | null; nickname?: string | null }) => {
+            const displayName = member.nickname || member.name || ''
+            if (!displayName) return
+            const ids = nextMemberIdsByName[displayName] || []
+            if (!ids.includes(member.id)) ids.push(member.id)
+            nextMemberIdsByName[displayName] = ids
+            const bookingIds = nextBookingIdsByMemberId[member.id] || []
+            if (!bookingIds.includes(booking.id)) bookingIds.push(booking.id)
+            nextBookingIdsByMemberId[member.id] = bookingIds
+          })
         })
+
+        const memberIds = Array.from(new Set(Object.values(nextMemberIdsByName).flat()))
+        if (memberIds.length > 0) {
+          const { data: bindingsData, error: bindingsError } = await supabase
+            .from('line_bindings')
+            .select('member_id, can_push')
+            .eq('status', 'active')
+            .in('member_id', memberIds)
+          if (bindingsError) throw bindingsError
+          if (!isLatestRequest()) return
+          setLineBindings((bindingsData || []) as TomorrowReminderBindingRow[])
+        } else {
+          if (!isLatestRequest()) return
+          setLineBindings([])
+        }
+        setMemberIdsByName(nextMemberIdsByName)
+        setBookingIdsByMemberId(nextBookingIdsByMemberId)
       }
 
+      if (!isLatestRequest()) return
       setBookings(bookingsData || [])
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
-      setLoading(false)
+      if (isLatestRequest()) setLoading(false)
     }
   }
 
-  const formatTimeNoColon = (dateString: string): string => {
-    // 純字符串處理
-    const datetime = dateString.substring(0, 16) // "2025-11-01T13:55"
-    const [, timeStr] = datetime.split('T')
-    const [hours, minutes] = timeStr.split(':')
-    return `${hours}${minutes}`
-  }
-
-  const getArrivalTimeNoColon = (dateString: string): string => {
-    // 純字符串處理，提前30分鐘
-    const datetime = dateString.substring(0, 16)
-    const [, timeStr] = datetime.split('T')
-    const [hour, minute] = timeStr.split(':').map(Number)
-    const totalMinutes = hour * 60 + minute - 30
-    const arrivalHour = Math.floor(totalMinutes / 60)
-    const arrivalMinute = totalMinutes % 60
-    return `${arrivalHour.toString().padStart(2, '0')}${arrivalMinute.toString().padStart(2, '0')}`
-  }
-
-  /** 與 getArrivalTimeNoColon 同邏輯，顯示為 HH:MM */
-  const getArrivalTimeWithColon = (dateString: string): string => {
-    const raw = getArrivalTimeNoColon(dateString)
-    return `${raw.slice(0, 2)}:${raw.slice(2, 4)}`
-  }
-
-  /** 不產生「預約人提醒訊息」條目 */
-  const EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS = new Set(['Ming'])
-
-  // ✅ 改為以單一會員為主軸
-  const getStudentList = (): string[] => {
-    const students = new Set<string>()
-    bookings.forEach(booking => {
-      // 拆分會員名字（用逗號分隔）
-      const names = booking.contact_name.split(',').map(n => n.trim())
-      names.forEach(name => students.add(name))
-    })
-    return Array.from(students)
-      .filter((name) => !EXCLUDED_FROM_TOMORROW_STUDENT_REMINDERS.has(name))
-      .sort()
-  }
-
-  // ✅ 特殊會員：需要額外顯示船和開船教練資訊
-  const SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小', '火隆', '火龍']
-
-  /** 明日提醒極簡版：名單為 Safin 時稱呼李伯 */
-  const SAFIN_TOMORROW_STUDENT_NAMES = new Set(['Safin'])
+  const studentNames = useMemo(() => getTomorrowStudentList(bookings), [bookings])
 
   const generateMessageForStudent = (
     studentName: string,
-    language: ReminderLanguage = studentLanguages[studentName] || 'zh'
-  ): string => {
-    // ✅ 找出所有包含此會員的預約
-    const studentBookings = bookings
-      .filter(b => {
-        const names = b.contact_name.split(',').map(n => n.trim())
-        return names.includes(studentName)
-      })
-      .sort((a, b) => a.start_at.localeCompare(b.start_at)) // 按時間排序
-
-    if (language === 'en') {
-      const appointmentTimes = Array.from(new Set(
-        studentBookings.map(booking => getArrivalTimeWithColon(booking.start_at))
-      ))
-      const appointment = appointmentTimes.length === 1
-        ? `an appointment tomorrow at ${appointmentTimes[0]}`
-        : `appointments tomorrow at ${appointmentTimes.join(' and ')}`
-      const weather = includeWeatherWarning ? `\n\n${englishWeatherWarning}` : ''
-
-      return englishMessageTemplate
-        .split('{username}').join(studentName)
-        .split('{appointment}').join(appointment)
-        .split('{weather}').join(weather)
-    }
-
-    if (SAFIN_TOMORROW_STUDENT_NAMES.has(studentName) && studentBookings.length > 0) {
-      return [
-        '你好李伯',
-        ...studentBookings.map(
-          (booking) => `明天有預約，請 ${getArrivalTimeWithColon(booking.start_at)} 抵達`
-        ),
-      ].join('\n')
-    }
-
-    // ✅ 檢查是否有 PAPA 教練的預約
-    const hasPapaCoach = studentBookings.some(booking =>
-      booking.coaches?.some(coach =>
-        coach.name.toUpperCase() === 'PAPA'
-      )
-    )
-
-    let message = `${studentName}你好\n提醒你，明天有預約\n`
-
-    // ✅ 如果有 PAPA 教練，加上現金提醒
-    if (hasPapaCoach) {
-      message += `請幫我帶現金直接給Papa\n`
-    }
-
-    message += '\n'
-
-    // ✅ 特殊會員：加入船和開船教練資訊（從第一個預約取得）
-    if (SPECIAL_MEMBERS_FOR_BOAT_INFO.includes(studentName) && studentBookings.length > 0) {
-      const firstBooking = studentBookings[0]
-      const boatName = firstBooking.boats?.name || ''
-      // 駕駛：優先使用 booking_drivers，如果沒有則使用教練
-      const driverNames = firstBooking.drivers && firstBooking.drivers.length > 0
-        ? firstBooking.drivers.map(d => d.name).join('/')
-        : (firstBooking.coaches && firstBooking.coaches.length > 0
-            ? firstBooking.coaches.map(c => c.name).join('/')
-            : '')
-
-      if (boatName) {
-        // 有駕駛才顯示開船資訊，沒有就只顯示船名
-        if (driverNames) {
-          message += `船：${boatName} / 開船：${driverNames}\n`
-        } else {
-          message += `船：${boatName}\n`
-        }
-      }
-    }
-
-    let previousCoachNames = ''
-    let boatCount = 0  // 只計算真正的船（不含彈簧床）
-
-    // ✅ 按順序處理每個預約
-    studentBookings.forEach((booking, index) => {
-      const hasCoach = booking.coaches && booking.coaches.length > 0
-      const coachNames = hasCoach
-        ? booking.coaches!.map(c => displayCoachNameForTomorrowMessage(studentName, c.name)).join('/')
-        : ''
-      const startTime = formatTimeNoColon(booking.start_at)
-      const boatName = booking.boats?.name || ''
-      const facilityLabel = getFacilityMessageLabel(boatName)
-      const isFacilityBooking = !!facilityLabel
-
-      // 如果不是彈簧床、陸上課程，船次計數增加
-      if (!isFacilityBooking) {
-        boatCount++
-      }
-
-      if (index === 0) {
-        // 第一個預約：教練 + 抵達時間 + 下水時間（或設施標籤）
-        const arrivalTime = getArrivalTimeNoColon(booking.start_at)
-        if (hasCoach) {
-          message += `${coachNames}教練\n`
-        }
-        message += `${arrivalTime}抵達\n`
-        message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
-        previousCoachNames = coachNames
-      } else {
-        // 第二個預約之後
-        // 如果當前是船（不是設施）且船次 >= 2，空一行並標註船次
-        if (!isFacilityBooking && boatCount >= 2) {
-          const shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : `第${boatCount}船`
-          message += `\n${shipLabel}\n`
-        }
-
-        // 檢查是否同一個教練（空字串也視為相同，避免重複顯示空內容）
-        if (coachNames === previousCoachNames) {
-          // 同一個教練：只顯示時間，不顯示教練名稱
-          message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
-        } else {
-          // 不同教練：顯示教練名稱 + 時間（如果有教練才顯示）
-          if (hasCoach) {
-            message += `${coachNames}教練\n`
-          }
-          message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
-          previousCoachNames = coachNames
-        }
-      }
+    language: ReminderLanguage,
+    sourceBookings: Booking[] = bookings,
+  ): string =>
+    generateTomorrowReminderMessage({
+      studentName,
+      bookings: sourceBookings,
+      language,
+      templates: {
+        includeWeatherWarning,
+        weatherWarning,
+        footerText,
+        englishMessageTemplate,
+        englishWeatherWarning,
+      },
     })
 
-    message += '\n'
+  const recipients = useMemo(() => {
+    const bookingCountByName: Record<string, number> = {}
+    studentNames.forEach((studentName) => {
+      const uniqueBookingKeys = new Set<string>()
+      bookings.forEach((booking) => {
+        const names = booking.contact_name.split(',').map((name) => name.trim())
+        if (!names.includes(studentName)) return
+        uniqueBookingKeys.add(`${booking.boat_id}-${booking.start_at}-${booking.duration_min}`)
+      })
+      bookingCountByName[studentName] = uniqueBookingKeys.size
+    })
 
-    if (includeWeatherWarning) {
-      message += weatherWarning + '\n\n'
-    }
+    return buildTomorrowReminderRecipients({
+      studentNames,
+      memberIdsByName,
+      bindings: lineBindings,
+      bookingCountByName,
+      bookingIdsByMemberId,
+    })
+  }, [bookingIdsByMemberId, bookings, lineBindings, memberIdsByName, studentNames])
 
-    message += footerText
+  const pushableRecipients = useMemo(
+    () => recipients.filter((recipient) => recipient.status === 'pushable'),
+    [recipients],
+  )
+  const manualRecipients = useMemo(
+    () => recipients.filter((recipient) => recipient.status !== 'pushable'),
+    [recipients],
+  )
 
-    return message
+  useEffect(() => {
+    setSelectedPushMemberIds(
+      new Set(
+        pushableRecipients
+          .map((recipient) => recipient.memberId)
+          .filter((memberId): memberId is string => !!memberId),
+      ),
+    )
+  }, [pushableRecipients])
+
+  const messageForRecipient = (recipient: TomorrowReminderRecipient): string => {
+    const draft = messageDrafts[recipient.key]
+    if (draft !== undefined) return draft
+
+    const bookingIds = new Set(recipient.bookingIds)
+    const recipientBookings = recipient.memberId && bookingIds.size > 0
+      ? bookings.filter((booking) => bookingIds.has(booking.id))
+      : bookings
+    return generateMessageForStudent(
+      recipient.name,
+      studentLanguages[recipient.key] || 'zh',
+      recipientBookings,
+    )
   }
 
-  const handleCopyForStudent = (studentName: string) => {
-    const message = generateMessageForStudent(
-      studentName,
-      studentLanguages[studentName] || 'zh'
-    )
+  const handleCopyForRecipient = (recipient: TomorrowReminderRecipient) => {
+    const message = messageForRecipient(recipient)
     navigator.clipboard.writeText(message).then(() => {
-      setCopiedStudent(studentName)
+      setCopiedStudent(recipient.key)
       setTimeout(() => setCopiedStudent(null), 2000)
     })
   }
+
+  const handleLanguageChange = (recipient: TomorrowReminderRecipient, language: ReminderLanguage) => {
+    setStudentLanguages((current) => ({ ...current, [recipient.key]: language }))
+    setMessageDrafts((current) => {
+      const next = { ...current }
+      delete next[recipient.key]
+      return next
+    })
+    setCopiedStudent(null)
+  }
+
+  const togglePushRecipient = (memberId: string) => {
+    if (pushStatusByMemberId[memberId]?.status === 'sent') return
+    setSelectedPushMemberIds((current) => {
+      const next = new Set(current)
+      if (next.has(memberId)) next.delete(memberId)
+      else next.add(memberId)
+      return next
+    })
+  }
+
+  const selectedPushRecipients = getSelectedPushRecipients(
+    recipients,
+    selectedPushMemberIds,
+    new Set(
+      Object.entries(pushStatusByMemberId)
+        .filter(([, status]) => status.status === 'sent')
+        .map(([memberId]) => memberId),
+    ),
+  )
+
+  const sendRecipients = async (
+    targetRecipients: TomorrowReminderRecipient[],
+    confirmation: string,
+  ) => {
+    if (sending || targetRecipients.length === 0) return
+    const invalidRecipient = targetRecipients.find((recipient) => {
+      const message = messageForRecipient(recipient).trim()
+      return message.length === 0 || message.length > 5000
+    })
+    if (invalidRecipient) {
+      setSelectedStudent(invalidRecipient.key)
+      toast.warning(`${invalidRecipient.name} 的訊息必須為 1–5000 個字元`)
+      return
+    }
+
+    const confirmed = window.confirm(confirmation)
+    if (!confirmed) return
+
+    setSending(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (!token) throw new Error('登入已失效，請重新登入')
+
+      const response = await fetch('/api/line-reminder-send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date: selectedDate,
+          recipients: buildReminderSendPayload(targetRecipients, messageForRecipient),
+        }),
+      })
+      const body = await response.json().catch(() => null) as
+        | { results?: PushResult[]; error?: string }
+        | null
+      if (!response.ok && !body?.results) {
+        throw new Error(body?.error || 'LINE 傳送失敗')
+      }
+      if (!body?.results) throw new Error('LINE 傳送結果格式錯誤')
+
+      const results = body.results
+      const nextStatuses: Record<string, { status: 'sent' | 'error'; error?: string }> = {}
+      const successfulIds = new Set<string>()
+      results.forEach((result) => {
+        nextStatuses[result.memberId] = result.ok
+          ? { status: 'sent' }
+          : { status: 'error', error: result.error || '傳送失敗' }
+        if (result.ok) successfulIds.add(result.memberId)
+      })
+      setPushStatusByMemberId((current) => ({ ...current, ...nextStatuses }))
+      setSelectedPushMemberIds((current) => {
+        const next = new Set(current)
+        successfulIds.forEach((memberId) => next.delete(memberId))
+        return next
+      })
+
+      const failedCount = results.filter((result) => !result.ok).length
+      const successCount = results.length - failedCount
+      if (!response.ok) {
+        toast.warning(`訊息已處理，但操作紀錄寫入失敗；請勿重送已成功的 ${successCount} 位`)
+      } else if (failedCount > 0) {
+        toast.warning(`已傳送 ${successCount} 位，${failedCount} 位失敗，可再次重試`)
+      } else {
+        toast.success(`已傳送 ${successCount} 位會員`)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'LINE 傳送失敗'
+      toast.error(message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleSendSelected = () =>
+    sendRecipients(
+      selectedPushRecipients,
+      `確定要傳送 ${selectedDate} 的提醒給 ${selectedPushRecipients.length} 位會員嗎？`,
+    )
+
+  const handleSendRecipient = (recipient: TomorrowReminderRecipient) =>
+    sendRecipients(
+      [recipient],
+      `確定要傳送 ${selectedDate} 的提醒給 ${recipient.name} 嗎？`,
+    )
 
   const coachReminderBlocks =
     !loading && bookings.length > 0
@@ -511,6 +548,254 @@ export function TomorrowReminder() {
     flexDirection: 'column',
     gap: designSystem.spacing.sm,
   } as const
+
+  const renderRecipientCard = (recipient: TomorrowReminderRecipient) => {
+    const isExpanded = selectedStudent === recipient.key
+    const isCopied = copiedStudent === recipient.key
+    const language = studentLanguages[recipient.key] || 'zh'
+    const memberId = recipient.memberId
+    const pushState = memberId ? pushStatusByMemberId[memberId] : undefined
+    const isPushable = recipient.status === 'pushable' && !!memberId
+    const isSelected = isPushable && selectedPushMemberIds.has(memberId)
+    const statusLabel =
+      pushState?.status === 'sent'
+        ? '已傳送'
+        : recipient.status === 'pushable'
+          ? 'LINE 已綁定'
+          : recipient.status === 'rebind'
+            ? '需重新綁定'
+            : recipient.status === 'unbound'
+              ? 'LINE 未綁定'
+              : '非會員'
+    const statusTone: 'success' | 'warning' | 'default' =
+      pushState?.status === 'sent'
+        ? 'success'
+        : recipient.status === 'pushable'
+          ? 'success'
+          : recipient.status === 'rebind'
+            ? 'warning'
+            : 'default'
+
+    return (
+      <div
+        key={recipient.key}
+        style={{
+          overflow: 'hidden',
+          border: `1px solid ${
+            pushState?.status === 'error'
+              ? designSystem.colors.danger[500]
+              : designSystem.colors.border.light
+          }`,
+          borderRadius: designSystem.borderRadius.md,
+          background: designSystem.colors.background.card,
+          boxShadow: isExpanded ? designSystem.shadows.xs : 'none',
+          transition: designSystem.transitions.fast,
+        }}
+      >
+        <div
+          data-track="tomorrow_expand"
+          onClick={() => setSelectedStudent(isExpanded ? null : recipient.key)}
+          style={{
+            minHeight: isMobile ? '64px' : '58px',
+            padding: isMobile ? '10px 10px' : '11px 12px',
+            background: isExpanded
+              ? designSystem.colors.secondary[50]
+              : designSystem.colors.background.card,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: designSystem.spacing.sm,
+            touchAction: 'manipulation',
+          }}
+        >
+          {isPushable && (
+            <input
+              type="checkbox"
+              aria-label={`選取 ${recipient.name}`}
+              checked={isSelected}
+              disabled={pushState?.status === 'sent'}
+              onClick={(event) => event.stopPropagation()}
+              onChange={() => togglePushRecipient(memberId)}
+              style={{
+                width: 20,
+                height: 20,
+                flexShrink: 0,
+                accentColor: designSystem.colors.success[500],
+              }}
+            />
+          )}
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: designSystem.spacing.xs,
+              flexWrap: 'wrap',
+              marginBottom: 3,
+            }}>
+              <span style={{
+                fontSize: getFontSize('body', isMobile),
+                fontWeight: 600,
+                color: designSystem.colors.text.primary,
+                lineHeight: 1.35,
+              }}>
+                {recipient.name}
+              </span>
+              <span style={getBadgeStyle(statusTone, 'small')}>{statusLabel}</span>
+            </div>
+            <div style={{
+              fontSize: getFontSize('caption', isMobile),
+              color: designSystem.colors.text.secondary,
+            }}>
+              {recipient.bookingCount} 個預約
+            </div>
+          </div>
+
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: 3,
+              border: `1px solid ${designSystem.colors.border.main}`,
+              borderRadius: designSystem.borderRadius.sm,
+              background: designSystem.colors.secondary[50],
+              flexShrink: 0,
+            }}
+            role="group"
+            aria-label={`${recipient.name} 的提醒訊息語言`}
+          >
+            {([
+              { value: 'zh', label: '中' },
+              { value: 'en', label: 'EN' },
+            ] as const).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                data-track={`tomorrow_language_${option.value}`}
+                aria-pressed={language === option.value}
+                onClick={() => handleLanguageChange(recipient, option.value)}
+                style={{
+                  minWidth: option.value === 'zh' ? 36 : 42,
+                  minHeight: isMobile ? 40 : 34,
+                  padding: isMobile ? '8px 9px' : '6px 9px',
+                  border: 'none',
+                  borderRadius: 7,
+                  background:
+                    language === option.value
+                      ? designSystem.colors.secondary[200]
+                      : 'transparent',
+                  color:
+                    language === option.value
+                      ? designSystem.colors.text.primary
+                      : designSystem.colors.text.secondary,
+                  fontSize: getFontSize('button', isMobile),
+                  fontWeight: language === option.value ? 650 : 500,
+                  cursor: 'pointer',
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <span
+            aria-hidden="true"
+            style={{
+              color: designSystem.colors.text.secondary,
+              fontSize: getFontSize('bodySmall', isMobile),
+              transform: isExpanded ? 'rotate(180deg)' : 'none',
+              transition: designSystem.transitions.fast,
+              flexShrink: 0,
+            }}
+          >
+            ▼
+          </span>
+        </div>
+
+        {isExpanded && (
+          <div style={{
+            padding: isMobile ? '10px 12px 12px' : '12px 14px 14px',
+            borderTop: `1px solid ${designSystem.colors.border.light}`,
+          }}>
+            <textarea
+              aria-label={`${recipient.name} 的提醒訊息`}
+              value={messageForRecipient(recipient)}
+              onChange={(event) =>
+                setMessageDrafts((current) => ({
+                  ...current,
+                  [recipient.key]: event.target.value,
+                }))
+              }
+              style={{
+                ...getInputStyle(isMobile),
+                width: '100%',
+                minHeight: isMobile ? 210 : 240,
+                boxSizing: 'border-box',
+                fontSize: isMobile ? 16 : getFontSize('body', false),
+                lineHeight: 1.55,
+                fontFamily: 'inherit',
+                resize: 'vertical',
+                marginBottom: designSystem.spacing.sm,
+              }}
+            />
+            {pushState?.status === 'error' && (
+              <div style={{
+                color: designSystem.colors.danger[700],
+                fontSize: getFontSize('caption', isMobile),
+                marginBottom: designSystem.spacing.sm,
+              }}>
+                傳送失敗：{pushState.error || '請稍後重試'}
+              </div>
+            )}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isPushable ? '1fr 1fr' : '1fr',
+              gap: designSystem.spacing.sm,
+            }}>
+              <button
+                type="button"
+                data-track="tomorrow_copy"
+                onClick={() => handleCopyForRecipient(recipient)}
+                style={{
+                  ...getButtonStyle(isCopied ? 'success' : 'outline', 'medium', isMobile),
+                  width: '100%',
+                  minHeight: isMobile ? 46 : undefined,
+                  touchAction: 'manipulation',
+                }}
+              >
+                {isCopied ? '已複製' : '複製提醒'}
+              </button>
+              {isPushable && (
+                <button
+                  type="button"
+                  data-track="tomorrow_line_send_one"
+                  onClick={() => void handleSendRecipient(recipient)}
+                  disabled={sending || pushState?.status === 'sent'}
+                  style={{
+                    ...getButtonStyle(
+                      pushState?.status === 'sent' ? 'success' : 'primary',
+                      'medium',
+                      isMobile,
+                    ),
+                    width: '100%',
+                    minHeight: isMobile ? 46 : undefined,
+                    touchAction: 'manipulation',
+                  }}
+                >
+                  {pushState?.status === 'sent'
+                    ? '已傳送'
+                    : sending
+                      ? '傳送中…'
+                      : '傳送此人'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <PageShell variant="focused" mobilePadding="12px" desktopPadding="20px">
@@ -789,220 +1074,65 @@ export function TomorrowReminder() {
           <>
           <div style={pageCardStyle}>
             <h2 style={sectionTitleStyle}>
-              預約人提醒訊息 ({getStudentList().length} 位)
+              可 LINE 傳送 ({pushableRecipients.length} 位)
             </h2>
             <div style={{
-              marginTop: isMobile ? '-5px' : '-6px',
-              marginBottom: isMobile ? '10px' : '12px',
+              marginTop: isMobile ? -5 : -6,
+              marginBottom: isMobile ? 10 : 12,
               color: designSystem.colors.text.secondary,
               fontSize: getFontSize('caption', isMobile),
               lineHeight: 1.4,
             }}>
-              點選會員可預覽並複製提醒
+              預設全選；點選會員可修改這次傳送的文字
             </div>
+            {pushableRecipients.length > 0 ? (
+              <div style={memberListStyle}>
+                {pushableRecipients.map(renderRecipientCard)}
+              </div>
+            ) : (
+              <div style={getEmptyStateStyle(isMobile)}>目前沒有可推播的預約人</div>
+            )}
 
-            <div style={memberListStyle}>
-              {getStudentList().map((studentName) => {
-                const isExpanded = selectedStudent === studentName
-                const isCopied = copiedStudent === studentName
-                const studentLanguage = studentLanguages[studentName] || 'zh'
-                // ✅ 修改：查找包含此會員的所有預約
-                const studentBookings = bookings.filter(b => {
-                  const names = b.contact_name.split(',').map(n => n.trim())
-                  return names.includes(studentName)
-                })
-
-                const uniqueBookingKeys = new Set<string>()
-                studentBookings.forEach(b => {
-                  const key = `${b.boat_id}-${b.start_at}-${b.duration_min}`
-                  uniqueBookingKeys.add(key)
-                })
-                const uniqueBookingCount = uniqueBookingKeys.size
-
-                return (
-                  <div
-                    key={studentName}
-                    style={{
-                      overflow: 'hidden',
-                      border: `1px solid ${designSystem.colors.border.light}`,
-                      borderRadius: designSystem.borderRadius.md,
-                      background: designSystem.colors.background.card,
-                      boxShadow: isExpanded ? designSystem.shadows.xs : 'none',
-                      transition: designSystem.transitions.fast,
-                    }}
-                  >
-                    <div
-                      data-track="tomorrow_expand"
-                      onClick={() => setSelectedStudent(isExpanded ? null : studentName)}
-                      style={{
-                        minHeight: isMobile ? '60px' : '56px',
-                        padding: isMobile ? '10px 8px 10px 12px' : '11px 10px 11px 14px',
-                        background: isExpanded ? designSystem.colors.secondary[50] : designSystem.colors.background.card,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: designSystem.spacing.sm,
-                        touchAction: 'manipulation'
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          fontSize: getFontSize('body', isMobile),
-                          fontWeight: '600',
-                          color: designSystem.colors.text.primary,
-                          marginBottom: '2px',
-                          lineHeight: 1.35,
-                        }}>
-                          {studentName}
-                        </div>
-                        <div style={{
-                          fontSize: getFontSize('caption', isMobile),
-                          color: designSystem.colors.text.secondary
-                        }}>
-                          {uniqueBookingCount} 個預約
-                        </div>
-                      </div>
-
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: designSystem.spacing.sm,
-                        flexShrink: 0,
-                      }}>
-                        <div
-                          onClick={(event) => event.stopPropagation()}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 0,
-                            padding: '3px',
-                            border: `1px solid ${designSystem.colors.border.main}`,
-                            borderRadius: designSystem.borderRadius.sm,
-                            background: designSystem.colors.secondary[50],
-                          }}
-                          role="group"
-                          aria-label={`${studentName} 的提醒訊息語言`}
-                        >
-                          {([
-                            { value: 'zh', label: '中' },
-                            { value: 'en', label: 'EN' },
-                          ] as const).map(option => (
-                            <button
-                              key={option.value}
-                              type="button"
-                              data-track={`tomorrow_language_${option.value}`}
-                              aria-pressed={studentLanguage === option.value}
-                              onClick={() => {
-                                setStudentLanguages(current => ({
-                                  ...current,
-                                  [studentName]: option.value,
-                                }))
-                                setCopiedStudent(null)
-                              }}
-                              style={{
-                                minWidth: option.value === 'zh' ? '36px' : '42px',
-                                minHeight: isMobile ? '40px' : '34px',
-                                padding: isMobile ? '8px 10px' : '6px 9px',
-                                border: 'none',
-                                borderRadius: '7px',
-                                background: studentLanguage === option.value
-                                  ? designSystem.colors.secondary[200]
-                                  : 'transparent',
-                                color: studentLanguage === option.value
-                                  ? designSystem.colors.text.primary
-                                  : designSystem.colors.text.secondary,
-                                fontSize: getFontSize('button', isMobile),
-                                fontWeight: studentLanguage === option.value ? '650' : '500',
-                                lineHeight: 1,
-                                cursor: 'pointer',
-                                transition: designSystem.transitions.fast,
-                                boxShadow: studentLanguage === option.value
-                                  ? designSystem.shadows.xs
-                                  : 'none',
-                              }}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                        <div
-                          aria-hidden="true"
-                          style={{
-                            width: isMobile ? '36px' : '30px',
-                            height: isMobile ? '44px' : '34px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: designSystem.colors.text.secondary,
-                          }}
-                        >
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            style={{
-                              transition: 'transform 0.18s ease',
-                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                            }}
-                          >
-                            <path
-                              d="M4 6L8 10L12 6"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Expanded Content */}
-                    {isExpanded && (
-                      <div style={{
-                        padding: isMobile ? '10px 12px 12px' : '12px 14px 14px',
-                        borderTop: `1px solid ${designSystem.colors.border.light}`,
-                        background: designSystem.colors.background.card
-                      }}>
-                        {/* Preview Message */}
-                        <div style={{
-                          background: designSystem.colors.background.main,
-                          padding: isMobile ? '10px' : '12px',
-                          borderRadius: designSystem.borderRadius.md,
-                          whiteSpace: 'pre-wrap',
-                          fontSize: getFontSize('body', isMobile),
-                          lineHeight: 1.55,
-                          color: designSystem.colors.text.primary,
-                          fontFamily: 'inherit',
-                          marginBottom: designSystem.spacing.sm,
-                          maxHeight: isMobile ? '300px' : '400px',
-                          overflowY: 'auto',
-                          WebkitOverflowScrolling: 'touch'
-                        }}>
-                          {generateMessageForStudent(studentName, studentLanguage)}
-                        </div>
-
-                        {/* Copy Button */}
-                        <button
-                          data-track="tomorrow_copy"
-                          onClick={() => handleCopyForStudent(studentName)}
-                          style={{
-                            ...getButtonStyle(isCopied ? 'success' : 'primary', 'medium', isMobile),
-                            width: '100%',
-                            touchAction: 'manipulation',
-                          }}
-                        >
-                          {isCopied ? '✓ 已複製' : '複製提醒'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            {!isMobile && pushableRecipients.length > 0 && (
+              <button
+                type="button"
+                data-track="tomorrow_line_send_selected"
+                onClick={() => void handleSendSelected()}
+                disabled={sending || selectedPushRecipients.length === 0}
+                style={{
+                  ...getButtonStyle(
+                    selectedPushRecipients.length > 0 ? 'primary' : 'outline',
+                    'large',
+                    false,
+                  ),
+                  width: '100%',
+                  marginTop: designSystem.spacing.md,
+                }}
+              >
+                {sending ? '傳送中…' : `傳送已選 ${selectedPushRecipients.length} 位`}
+              </button>
+            )}
           </div>
+
+          {manualRecipients.length > 0 && (
+            <div style={pageCardStyle}>
+              <h2 style={sectionTitleStyle}>
+                需人工傳送 ({manualRecipients.length} 位)
+              </h2>
+              <div style={{
+                marginTop: isMobile ? -5 : -6,
+                marginBottom: isMobile ? 10 : 12,
+                color: designSystem.colors.text.secondary,
+                fontSize: getFontSize('caption', isMobile),
+                lineHeight: 1.4,
+              }}>
+                未完成新 LINE 綁定或非會員，請複製後人工傳送
+              </div>
+              <div style={memberListStyle}>
+                {manualRecipients.map(renderRecipientCard)}
+              </div>
+            </div>
+          )}
 
           {coachReminderBlocks.length > 0 && (
             <div style={pageCardStyle}>
@@ -1112,7 +1242,41 @@ export function TomorrowReminder() {
           </>
         )}
 
+        {isMobile && pushableRecipients.length > 0 && (
+          <div style={{
+            position: 'sticky',
+            bottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
+            zIndex: designSystem.zIndex.dropdown,
+            padding: 8,
+            margin: '0 0 10px',
+            borderRadius: designSystem.borderRadius.lg,
+            background: 'rgba(255,255,255,0.96)',
+            border: `1px solid ${designSystem.colors.border.light}`,
+            boxShadow: designSystem.shadows.elevation[4],
+          }}>
+            <button
+              type="button"
+              data-track="tomorrow_line_send_selected"
+              onClick={() => void handleSendSelected()}
+              disabled={sending || selectedPushRecipients.length === 0}
+              style={{
+                ...getButtonStyle(
+                  selectedPushRecipients.length > 0 ? 'primary' : 'outline',
+                  'large',
+                  true,
+                ),
+                width: '100%',
+                minHeight: 48,
+                touchAction: 'manipulation',
+              }}
+            >
+              {sending ? '傳送中…' : `傳送已選 ${selectedPushRecipients.length} 位`}
+            </button>
+          </div>
+        )}
+
         <Footer />
+        <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </PageShell>
   )
 }
