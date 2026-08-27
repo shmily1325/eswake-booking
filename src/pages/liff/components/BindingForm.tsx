@@ -46,6 +46,7 @@ export function BindingForm({
 }: BindingFormProps) {
   const isFormValid = phone && birthYear && birthMonth && birthDay
   const oaUrl = import.meta.env.VITE_LINE_OA_URL as string | undefined
+  const isMemberPhoneNotFound = bindingError?.includes('找不到此手機號碼的會員資料') ?? false
 
   function openOfficialContact() {
     if (!oaUrl) return
@@ -180,10 +181,15 @@ export function BindingForm({
               fontSize: getFontSizePx('button', true),
               color: LIFF_THEME.dangerText,
               lineHeight: 1.5,
+              textAlign: 'center',
             }}
           >
-            {bindingError}
-            {oaUrl ? ' 若資料正確，可私訊官方協助綁定。' : null}
+            <div>{bindingError}</div>
+            {isMemberPhoneNotFound ? (
+              <div>請確認手機號碼是否正確，或私訊官方帳號協助綁定</div>
+            ) : oaUrl ? (
+              <div>若資料正確，可私訊官方協助綁定。</div>
+            ) : null}
           </div>
         )}
 
