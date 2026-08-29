@@ -127,6 +127,7 @@ export async function fetchDiscountPresetUsage(): Promise<Record<string, number>
   const { data, error } = await supabase
     .from('product_variants')
     .select('discount_preset_id')
+    .eq('is_active', true)
     .not('discount_preset_id', 'is', null)
   if (error) throw error
   const counts: Record<string, number> = {}
