@@ -3,6 +3,7 @@ import type { ProductVariantRow } from '../../admin/products/types'
 import {
   getShopVisibleVariants,
   getVariantAvailability,
+  getVariantPurchaseLimit,
   getVariantSellableStock,
   isPreOrderOpen,
   isProductInPreOrderSection,
@@ -51,6 +52,20 @@ describe('getVariantAvailability', () => {
   it('computes sellable stock after reservations', () => {
     expect(getVariantSellableStock(v({ stock: 5, reserved_qty: 2 }))).toBe(3)
     expect(getVariantSellableStock(v({ stock: 2, reserved_qty: 5 }))).toBe(0)
+  })
+
+  it('limits in-stock quantity to sellable stock', () => {
+    expect(
+      getVariantPurchaseLimit(
+        v({ availability: 'in_stock', stock: 5, reserved_qty: 2 }),
+      ),
+    ).toBe(3)
+  })
+
+  it('keeps the configured quantity limit for pre-orders', () => {
+    expect(
+      getVariantPurchaseLimit(v({ availability: 'pre_order', stock: 0 }), 99),
+    ).toBe(99)
   })
 })
 

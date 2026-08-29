@@ -65,6 +65,16 @@ export function isVariantPurchasable(v: ProductVariantRow): boolean {
   return false
 }
 
+/** 單次可選數量；現貨不得超過可售庫存，預購沿用介面上限。 */
+export function getVariantPurchaseLimit(
+  v: ProductVariantRow,
+  preOrderLimit = 99,
+): number {
+  return getVariantAvailability(v) === 'in_stock'
+    ? getVariantSellableStock(v)
+    : preOrderLimit
+}
+
 export interface ProductAvailabilitySummary {
   hasInStock: boolean
   hasPreOrder: boolean

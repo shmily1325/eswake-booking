@@ -23,7 +23,11 @@ import {
   formatProductTitle,
 } from '../admin/products/schema'
 import { normalizeVariantCoverImages } from '../admin/products/coverImages'
-import { getVariantAvailability, isVariantPurchasable } from './lib/productAvailability'
+import {
+  getVariantAvailability,
+  getVariantPurchaseLimit,
+  isVariantPurchasable,
+} from './lib/productAvailability'
 import { SHOP_DETAIL } from './lib/shopCopy'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
@@ -149,6 +153,13 @@ export function ShopDetail() {
     if (!product || !selectedVariantId) return null
     return product.variants.find((v) => v.id === selectedVariantId) ?? null
   }, [product, selectedVariantId])
+  const quantityLimit = selectedVariant
+    ? Math.max(1, getVariantPurchaseLimit(selectedVariant))
+    : 99
+
+  useEffect(() => {
+    setQuantity((current) => Math.min(current, quantityLimit))
+  }, [quantityLimit])
 
   const imageUrl = product
     ? getProductDetailHeroImageUrl(product, selectedVariant, product.variants)
@@ -169,7 +180,8 @@ export function ShopDetail() {
       unitPrice: shopPrice.sale,
       originalPrice: shopPrice.original,
       discountCaption: shopPrice.caption,
-      quantity,
+      quantity: Math.min(quantity, quantityLimit),
+      maxQuantity: quantityLimit,
       availability: avail === 'pre_order' ? 'pre_order' : 'in_stock',
       preOrderEta: selectedVariant.pre_order_eta,
     })
@@ -186,7 +198,7 @@ export function ShopDetail() {
       productName: productName || '(Unnamed product)',
       categoryId: product.category,
       attributes: selectedVariant.attributes,
-      quantity,
+      quantity: Math.min(quantity, quantityLimit),
       unitPrice: shopPrice.sale,
       originalPrice: shopPrice.original,
       discountCaption: shopPrice.caption,
@@ -222,6 +234,7 @@ export function ShopDetail() {
             selectedVariantId={selectedVariantId}
             onSelectVariant={setSelectedVariantId}
             quantity={quantity}
+            quantityLimit={quantityLimit}
             onChangeQuantity={setQuantity}
             onAddToCart={handleAddToCart}
             onDirectInquiry={handleDirectInquiry}
@@ -246,6 +259,7 @@ interface ProductDetailBodyProps {
   selectedVariantId: string | null
   onSelectVariant: (id: string) => void
   quantity: number
+  quantityLimit: number
   onChangeQuantity: (n: number) => void
   onAddToCart: () => void
   onDirectInquiry: () => void
@@ -258,6 +272,7 @@ function ProductDetailBody({
   selectedVariantId,
   onSelectVariant,
   quantity,
+  quantityLimit,
   onChangeQuantity,
   onAddToCart,
   onDirectInquiry,
@@ -408,7 +423,16 @@ function ProductDetailBody({
 
         <div className="mt-4 flex items-center gap-3">
           <span className="text-sm font-medium text-gray-700">{SHOP_DETAIL.quantity}</span>
-          <ShopDetailQuantity value={quantity} onChange={onChangeQuantity} />
+          <ShopDetailQuantity
+            value={quantity}
+            max={quantityLimit}
+            onChange={onChangeQuantity}
+          />
+          {variantAvail === 'in_stock' && canPurchase && (
+            <span className="text-xs text-gray-500">
+              最多 {quantityLimit} 件
+            </span>
+          )}
         </div>
 
         <div className="mt-6 hidden lg:block">

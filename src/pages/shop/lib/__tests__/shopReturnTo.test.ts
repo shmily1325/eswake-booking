@@ -4,7 +4,7 @@ import {
   shopListPathFromLocation,
   SHOP_RETURN_TO_KEY,
 } from '../shopReturnTo'
-import { shopTo } from '../shopPaths'
+import { shopSearchPath, shopTo } from '../shopPaths'
 
 describe('shopReturnTo', () => {
   it('captures list path with query', () => {
@@ -36,5 +36,19 @@ describe('shopTo', () => {
       pathname: '/shop',
       search: '?preorder=1',
     })
+  })
+})
+
+describe('shopSearchPath', () => {
+  it('preserves collection and availability filters when searching', () => {
+    expect(
+      shopSearchPath('?group=Wakeboarding&stock=1&sort=price-asc', 'board'),
+    ).toBe('/shop?group=Wakeboarding&stock=1&sort=price-asc&q=board')
+  })
+
+  it('only removes q when clearing a search', () => {
+    expect(shopSearchPath('?preorder=1&q=board&brand=Follow', '')).toBe(
+      '/shop?preorder=1&brand=Follow',
+    )
   })
 })

@@ -60,7 +60,7 @@ export function ShopCategoryBar({
   return (
     <div
       className={
-        'sticky top-14 z-20 ' +
+        'relative z-20 ' +
         (onDark
           ? fadeFromHero
             ? 'bg-black border-b-0 pt-0 pb-1'

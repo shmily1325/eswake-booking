@@ -113,7 +113,10 @@ export function ShopList() {
           }
         />
         {!isHome && (
-          <div className="sticky top-14 z-20 bg-black">
+          <div
+            className="sticky z-20 bg-black"
+            style={{ top: 'var(--shop-header-height, 3.5rem)' }}
+          >
             {filters.preOrderOnly ? (
               <ShopPreOrderRefineBar
                 filters={filters}

@@ -25,6 +25,15 @@ export function shopListPath(search = ''): string {
   return `${base}${q}`
 }
 
+/** 更新列表搜尋字串，保留既有分類、供貨狀態、排序與 refine 條件。 */
+export function shopSearchPath(currentSearch: string, query: string): string {
+  const params = new URLSearchParams(currentSearch)
+  const trimmed = query.trim()
+  if (trimmed) params.set('q', trimmed)
+  else params.delete('q')
+  return shopListPath(params.toString())
+}
+
 /**
  * 拆成 React Router location。
  * 同一 pathname（/shop → /shop?preorder=1）時，字串 `to="/shop"` 可能留下舊 query，

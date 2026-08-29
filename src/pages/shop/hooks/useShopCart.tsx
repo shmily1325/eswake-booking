@@ -51,10 +51,24 @@ function loadFromStorage(): CartItem[] {
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.filter(isValidCartItem)
+    return parsed.filter(isValidCartItem).map((item) => ({
+      ...item,
+      quantity: clampCartQuantity(item.quantity, item.maxQuantity),
+    }))
   } catch {
     return []
   }
+}
+
+function normalizeMaxQuantity(maxQuantity: number | undefined): number | undefined {
+  if (!Number.isFinite(maxQuantity) || (maxQuantity ?? 0) < 1) return undefined
+  return Math.floor(maxQuantity!)
+}
+
+function clampCartQuantity(quantity: number, maxQuantity?: number): number {
+  const normalized = Math.max(1, Math.floor(quantity))
+  const max = normalizeMaxQuantity(maxQuantity)
+  return max == null ? normalized : Math.min(normalized, max)
 }
 
 function isValidCartItem(v: unknown): v is CartItem {
@@ -65,7 +79,9 @@ function isValidCartItem(v: unknown): v is CartItem {
     typeof obj.productId === 'string' &&
     typeof obj.productName === 'string' &&
     typeof obj.quantity === 'number' &&
-    obj.quantity > 0
+    obj.quantity > 0 &&
+    (obj.maxQuantity == null ||
+      (typeof obj.maxQuantity === 'number' && obj.maxQuantity > 0))
   )
 }
 
@@ -93,16 +109,19 @@ export function ShopCartProvider({ children }: { children: ReactNode }) {
   }, [items])
 
   const addItem = useCallback<CartContextValue['addItem']>((input) => {
-    const qty = input.quantity ?? 1
+    const inputMax = normalizeMaxQuantity(input.maxQuantity)
+    const qty = clampCartQuantity(input.quantity ?? 1, inputMax)
     if (qty <= 0) return
     setItems((prev) => {
       const existing = prev.find((it) => it.variantId === input.variantId)
       if (existing) {
+        const maxQuantity = inputMax ?? existing.maxQuantity
         return prev.map((it) =>
           it.variantId === input.variantId
             ? {
                 ...it,
-                quantity: it.quantity + qty,
+                quantity: clampCartQuantity(it.quantity + qty, maxQuantity),
+                maxQuantity,
                 addedAt: Date.now(),
                 unitPrice: input.unitPrice,
                 originalPrice: input.originalPrice ?? it.originalPrice,
@@ -122,6 +141,7 @@ export function ShopCartProvider({ children }: { children: ReactNode }) {
         originalPrice: input.originalPrice ?? null,
         discountCaption: input.discountCaption ?? null,
         quantity: qty,
+        maxQuantity: inputMax,
         addedAt: Date.now(),
         availability: input.availability,
         preOrderEta: input.preOrderEta,
@@ -137,7 +157,11 @@ export function ShopCartProvider({ children }: { children: ReactNode }) {
       return
     }
     setItems((prev) =>
-      prev.map((it) => (it.variantId === variantId ? { ...it, quantity } : it))
+      prev.map((it) =>
+        it.variantId === variantId
+          ? { ...it, quantity: clampCartQuantity(quantity, it.maxQuantity) }
+          : it
+      )
     )
   }, [])
 

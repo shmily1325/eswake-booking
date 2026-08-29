@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { EsBrandLockup } from '../../../components/EsBrandLockup'
 import { ES_BRAND } from '../../../lib/esBrandTokens'
@@ -9,6 +9,7 @@ import {
   isShopListPathname,
   shopCartPath,
   shopListPath,
+  shopSearchPath,
   shopTo,
 } from '../lib/shopPaths'
 
@@ -32,6 +33,7 @@ export function ShopHeader({
 
   const [query, setQuery] = useState(urlQuery)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(() => urlQuery.length > 0)
+  const headerRef = useRef<HTMLElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -46,6 +48,29 @@ export function ShopHeader({
     }
   }, [])
 
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    if (!header) return
+    const root = document.documentElement
+    const updateHeight = () => {
+      root.style.setProperty('--shop-header-height', `${header.offsetHeight}px`)
+    }
+    updateHeight()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateHeight)
+      return () => {
+        window.removeEventListener('resize', updateHeight)
+        root.style.removeProperty('--shop-header-height')
+      }
+    }
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(header)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('--shop-header-height')
+    }
+  }, [])
+
   const backTo = getShopReturnTo(location.state)
   const isListPage = isShopListPathname(location.pathname)
 
@@ -53,10 +78,10 @@ export function ShopHeader({
     const run = () => {
       const trimmed = q.trim()
       if (trimmed) {
-        const target = shopListPath(`q=${encodeURIComponent(trimmed)}`)
+        const target = shopSearchPath(isListPage ? location.search : '', trimmed)
         navigate(shopTo(target), { replace: isListPage })
       } else if (isListPage) {
-        navigate(shopTo(shopListPath()), { replace: true })
+        navigate(shopTo(shopSearchPath(location.search, '')), { replace: true })
       }
     }
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -77,8 +102,17 @@ export function ShopHeader({
     requestAnimationFrame(() => mobileInputRef.current?.focus())
   }
 
+  const handleBack = () => {
+    if (location.key !== 'default' && window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate(shopTo(backTo), { replace: true })
+  }
+
   return (
     <header
+      ref={headerRef}
       className={
         'sticky top-0 z-30 bg-black text-white border-b border-white/10 ' +
         (blendBelow ? 'shadow-none' : '')
@@ -87,13 +121,14 @@ export function ShopHeader({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-14 py-2 flex items-center justify-between gap-2 sm:gap-3 md:justify-start">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
           {showBack && (
-            <Link
-              to={shopTo(backTo)}
+            <button
+              type="button"
+              onClick={handleBack}
               className="inline-flex items-center justify-center w-11 h-11 -ml-2 rounded-full text-white hover:bg-zinc-800 shrink-0"
-              aria-label="Back"
+              aria-label="上一頁"
             >
               <BackIcon />
-            </Link>
+            </button>
           )}
           <EsBrandLockup
             subtitle={ES_BRAND.shopAreaLabel}

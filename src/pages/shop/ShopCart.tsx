@@ -69,7 +69,7 @@ export function ShopCart() {
     <div className="min-h-screen bg-gray-50">
       <ShopHeader showBack />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-56 sm:py-10">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
             Cart
@@ -173,6 +173,7 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
         <div className="mt-auto pt-2 flex items-center justify-between gap-2">
           <QuantityStepper
             value={item.quantity}
+            max={item.maxQuantity}
             onChange={onChangeQuantity}
           />
           <div className="text-right">
@@ -238,7 +239,7 @@ function CartSummary({
   onInquiry,
 }: CartSummaryProps) {
   return (
-    <div className="sticky bottom-0 bg-white border-t border-gray-200 -mx-4 px-4 py-4 sm:relative sm:bottom-auto sm:mx-0 sm:px-6 sm:py-5 sm:border-0 sm:rounded-xl sm:shadow-sm">
+    <div className="sticky bottom-0 z-20 bg-white border-t border-gray-200 -mx-4 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:relative sm:bottom-auto sm:mx-0 sm:px-6 sm:py-5 sm:border-0 sm:rounded-xl sm:shadow-sm">
       <div className="flex items-end justify-between mb-3">
         <div className="text-sm text-gray-600">
           預估金額（共 {totalCount} 件）

@@ -38,6 +38,8 @@ export interface CartItem {
   discountCaption?: string | null
   /** 數量，至少 1 */
   quantity: number
+  /** 現貨為加入時的可售庫存；預購為介面允許上限。 */
+  maxQuantity?: number
 
   /** 加入購物車的時間，用來排序與除錯 */
   addedAt: number
