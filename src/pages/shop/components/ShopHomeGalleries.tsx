@@ -195,6 +195,8 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
                   <img
                     src={hero.src}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className={
                       'absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 ' +
                       hero.objectPositionClass
@@ -274,7 +276,7 @@ function HomeGalleryRow({
           ref={scrollerRef}
           role="list"
           aria-label={title}
-          className="flex gap-3 overflow-x-auto overscroll-x-contain touch-pan-x snap-x snap-proximity pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex gap-3 overflow-x-auto overscroll-x-contain snap-x snap-proximity pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {items.map((item, index) => (
             <Link
