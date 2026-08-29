@@ -366,12 +366,16 @@ export async function applySizeChartToSameModel(input: {
   if (error) throw error
 }
 
-/** 軟刪商品：is_active = false（連帶它的 variants 會在列表查詢時被過濾） */
+/** 軟刪商品：停用商品與 SKU，並釋放標籤代碼供重建後的 SKU 沿用。 */
 export async function deleteProduct(productId: string): Promise<void> {
   const { error } = await supabase.from('products').update({ is_active: false }).eq('id', productId)
   if (error) throw error
-  // 同時把它的 variants 也設為 inactive，避免列表撈到孤兒
-  await supabase.from('product_variants').update({ is_active: false }).eq('product_id', productId)
+  // 同時停用 variants，避免列表撈到孤兒；停用後掃碼不再會指向它們。
+  const { error: variantError } = await supabase
+    .from('product_variants')
+    .update({ is_active: false, label_code: null })
+    .eq('product_id', productId)
+  if (variantError) throw variantError
 }
 
 export interface CreateVariantInput {
@@ -563,7 +567,10 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
 }
 
 export async function deleteVariant(variantId: string): Promise<void> {
-  const { error } = await supabase.from('product_variants').update({ is_active: false }).eq('id', variantId)
+  const { error } = await supabase
+    .from('product_variants')
+    .update({ is_active: false, label_code: null })
+    .eq('id', variantId)
   if (error) throw error
 }
 
