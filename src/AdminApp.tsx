@@ -8,7 +8,6 @@ import { HomePage } from './pages/HomePage'
 import { ClickTrackProvider } from './components/ClickTrackProvider'
 import { isAllowedUser } from './utils/auth'
 import { canAccessBoatOperations } from './utils/boatOperationsAccess'
-import { canAccessLiffMigration } from './utils/liffMigrationAccess'
 
 const DayView = lazy(() => import('./pages/DayView').then(module => ({ default: module.DayView })))
 const SearchPage = lazy(() => import('./pages/SearchPage').then(module => ({ default: module.SearchPage })))
@@ -19,7 +18,6 @@ const CoachAdmin = lazy(() => import('./pages/coach/CoachAdmin').then(module => 
 const CoachAssignment = lazy(() => import('./pages/coach/CoachAssignment').then(module => ({ default: module.CoachAssignment })))
 const AuditLog = lazy(() => import('./pages/admin/AuditLog').then(module => ({ default: module.AuditLog })))
 const TomorrowReminder = lazy(() => import('./pages/TomorrowReminder').then(module => ({ default: module.TomorrowReminder })))
-const LiffMigration = lazy(() => import('./pages/LiffMigration').then(module => ({ default: module.LiffMigration })))
 const MemberManagement = lazy(() => import('./pages/member/MemberManagement').then(module => ({ default: module.MemberManagement })))
 const MemberPhoneEditPage = lazy(() => import('./pages/member/MemberPhoneEditPage').then(module => ({ default: module.MemberPhoneEditPage })))
 const BoardManagement = lazy(() => import('./pages/admin/BoardManagement').then(module => ({ default: module.BoardManagement })))
@@ -136,10 +134,6 @@ function AdminAppContent() {
             <Route path="/coach-assignment" element={<CoachAssignment />} />
             <Route path="/audit-log" element={<AuditLog />} />
             <Route path="/tomorrow" element={<TomorrowReminder />} />
-            <Route
-              path="/liff-migration"
-              element={canAccessLiffMigration(user) ? <LiffMigration /> : <Navigate to="/unauthorized" replace />}
-            />
             <Route path="/quick-transaction" element={<QuickTransaction />} />
             <Route path="/member-transaction" element={<MemberTransaction />} />
             <Route path="/bao" element={<BaoHub />} />

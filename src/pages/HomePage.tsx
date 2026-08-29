@@ -19,7 +19,6 @@ import { ExternalNavLink } from '../components/ExternalNavLink'
 import { PageShell } from '../components/PageShell'
 import { designSystem, getFontSize } from '../styles/designSystem'
 import { BOAT_OPERATIONS_ALLOWED_EMAILS } from '../utils/boatOperationsAccess'
-import { LIFF_MIGRATION_ALLOWED_EMAILS } from '../utils/liffMigrationAccess'
 import { useState, useEffect, type CSSProperties } from 'react'
 
 /** 首頁導航 track id（去掉 query，避免 nav_coach-time-off?month=… 每次月份不同） */
@@ -187,12 +186,6 @@ export function HomePage() {
       icon: '⏰',
       link: '/tomorrow',
       requiresViewAccess: true
-    },
-    {
-      title: 'LIFF 搬移',
-      icon: '🔄',
-      link: '/liff-migration',
-      visibleForEmails: LIFF_MIGRATION_ALLOWED_EMAILS
     },
     {
       title: '編輯記錄',

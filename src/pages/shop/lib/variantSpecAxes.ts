@@ -23,7 +23,12 @@ const AXIS_LABEL: Record<string, string> = {
 
 export function specAttrValue(variant: ProductVariantRow, key: string): string {
   const raw = variant.attributes?.[key]
-  if (key === 'gender') return formatGenderDisplay(raw) ?? ''
+  if (key === 'gender') {
+    const gender = formatGenderDisplay(raw)
+    if (gender === 'Male') return "MEN'S"
+    if (gender === 'Female') return "WOMEN'S"
+    return ''
+  }
   if (raw == null || String(raw).trim() === '') return ''
   return String(raw).trim()
 }
@@ -42,7 +47,8 @@ export function collectSpecAxes(
       seen.add(value)
       values.push(value)
     }
-    if (values.length < 2) continue
+    // 性別即使只有一個值也要顯示，讓單一男款／女款商品不會看不出版型。
+    if (values.length === 0 || (values.length < 2 && field.key !== 'gender')) continue
     axes.push({
       key: field.key,
       label: AXIS_LABEL[field.key] ?? field.label,
@@ -52,20 +58,29 @@ export function collectSpecAxes(
   return axes
 }
 
-/** 列表卡灰字：優先尺寸（即使只有一個），否則第一個有變化的規格 */
+/** 列表卡灰字：性別（若有）＋尺寸；否則第一個有變化的規格 */
 export function formatCardSpecLine(
   categoryId: string | null | undefined,
   variants: ProductVariantRow[],
 ): string {
+  const genders: string[] = []
   const sizes: string[] = []
-  const seen = new Set<string>()
+  const seenGenders = new Set<string>()
+  const seenSizes = new Set<string>()
   for (const variant of variants) {
+    const gender = specAttrValue(variant, 'gender')
+    if (gender && !seenGenders.has(gender)) {
+      seenGenders.add(gender)
+      genders.push(gender)
+    }
     const size = specAttrValue(variant, 'size')
-    if (!size || seen.has(size)) continue
-    seen.add(size)
+    if (!size || seenSizes.has(size)) continue
+    seenSizes.add(size)
     sizes.push(size)
   }
-  if (sizes.length > 0) return sortSpecValues(sizes, 'size').join(' · ')
+  if (genders.length > 0 || sizes.length > 0) {
+    return [...genders, ...sortSpecValues(sizes, 'size')].join(' · ')
+  }
 
   const axis = collectSpecAxes(categoryId, variants)[0]
   return axis ? axis.values.join(' · ') : ''

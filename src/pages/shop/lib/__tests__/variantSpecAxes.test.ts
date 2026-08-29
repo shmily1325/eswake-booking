@@ -29,6 +29,18 @@ describe('collectSpecAxes', () => {
   it('hides axes that do not vary', () => {
     expect(collectSpecAxes('lifejacket', [v('only', { size: 'M' })])).toEqual([])
   })
+
+  it('shows gender even when every variant has the same value', () => {
+    expect(
+      collectSpecAxes('lifejacket', [
+        v('s', { gender: 'Female', size: 'S' }),
+        v('m', { gender: 'Female', size: 'M' }),
+      ]),
+    ).toEqual([
+      { key: 'gender', label: '性別', values: ["WOMEN'S"] },
+      { key: 'size', label: '尺寸', values: ['S', 'M'] },
+    ])
+  })
 })
 
 describe('formatCardSpecLine', () => {
@@ -38,6 +50,15 @@ describe('formatCardSpecLine', () => {
 
   it('still shows a single size on the card', () => {
     expect(formatCardSpecLine('lifejacket', [v('only', { size: 'M' })])).toBe('M')
+  })
+
+  it('shows gender before sizes on the card', () => {
+    expect(
+      formatCardSpecLine('lifejacket', [
+        v('s', { gender: 'Male', size: 'S' }),
+        v('m', { gender: 'Male', size: 'M' }),
+      ]),
+    ).toBe("MEN'S · S · M")
   })
 })
 

@@ -161,6 +161,7 @@ export function ProductManagement({
    */
   const [activeGroup, setActiveGroup] = useState<'all' | ShopGroup>('all')
   const [activeSubCat, setActiveSubCat] = useState<string>('all')
+  const [activeBrand, setActiveBrand] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>({ kind: 'list' })
   const [stockScannerOpen, setStockScannerOpen] = useState(false)
@@ -199,6 +200,7 @@ export function ProductManagement({
     setOnlyPreOrder(false)
     setOnlySoldOut(false)
     setDiscountPresetFilter(null)
+    setActiveBrand('all')
     setSearch('')
     const next = new URLSearchParams(searchParams)
     next.delete(FILTER_DISCOUNT_PARAM)
@@ -217,6 +219,7 @@ export function ProductManagement({
     onlyPreOrder ||
     onlySoldOut ||
     discountPresetFilter != null ||
+    activeBrand !== 'all' ||
     search.trim() !== ''
 
   const toggleUnlisted = () => setOnlyUnlisted((v) => !v)
@@ -373,16 +376,42 @@ export function ProductManagement({
     return allItems.filter((it) => it.product.category === activeSubCat)
   }, [allItems, activeGroup, activeSubCat])
 
-  /** 切換 group 時把子分類重設回「全部」，避免殘留舊 group 的選擇 */
+  /** 切換 group 時把子分類與品牌重設回「全部」，避免殘留舊篩選 */
   useEffect(() => {
     setActiveSubCat('all')
+    setActiveBrand('all')
   }, [activeGroup])
+
+  /** 切換子分類時品牌也重設，避免選到新分類中不存在的品牌 */
+  useEffect(() => {
+    setActiveBrand('all')
+  }, [activeSubCat])
+
+  /** 品牌直接由目前分組／分類下的商品產生；新增品牌後不需另外維護清單。 */
+  const brandOptions = useMemo(() => {
+    const byNormalizedName = new Map<string, string>()
+    for (const item of tabItems) {
+      const brand = item.product.brand.trim()
+      if (brand) byNormalizedName.set(brand.toLocaleLowerCase(), brand)
+    }
+    return Array.from(byNormalizedName.values()).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' }),
+    )
+  }, [tabItems])
+
+  const brandItems = useMemo(() => {
+    if (activeBrand === 'all') return tabItems
+    const normalizedBrand = activeBrand.toLocaleLowerCase()
+    return tabItems.filter(
+      (item) => item.product.brand.trim().toLocaleLowerCase() === normalizedBrand,
+    )
+  }, [tabItems, activeBrand])
 
   const searchQuery = search.trim()
   const hasSearch = searchQuery !== ''
 
   const filteredItems: VariantListItem[] = useMemo(() => {
-    let items = tabItems
+    let items = brandItems
 
     // 庫存狀態：現貨／預購／已售完互斥；未選時預設隱藏已售完（搜尋時仍顯示）
     if (onlySoldOut) {
@@ -422,7 +451,7 @@ export function ProductManagement({
 
     return sortItemsByUpdated(items)
   }, [
-    tabItems,
+    brandItems,
     searchQuery,
     hasSearch,
     onlyUnlisted,
@@ -442,9 +471,9 @@ export function ProductManagement({
 
   /** tab + 搜尋，用來算儀表板數字與 chip 計數（含已售完） */
   const baseForCounts: VariantListItem[] = useMemo(() => {
-    if (!hasSearch) return tabItems
-    return tabItems.filter((it) => variantMatchesSearchTokens(it, searchQuery))
-  }, [tabItems, searchQuery, hasSearch])
+    if (!hasSearch) return brandItems
+    return brandItems.filter((it) => variantMatchesSearchTokens(it, searchQuery))
+  }, [brandItems, searchQuery, hasSearch])
 
   const soldOutCount = useMemo(
     () => baseForCounts.filter(isVariantSoldOut).length,
@@ -841,7 +870,7 @@ export function ProductManagement({
           />
         )}
 
-        {/* 系列與分類只負責篩選，不混入排序與顯示控制 */}
+        {/* 系列、分類與品牌只負責篩選，不混入排序與顯示控制 */}
         <div
           style={{
             display: 'flex',
@@ -851,7 +880,7 @@ export function ProductManagement({
           }}
         >
           {/*
-            兩層分類 tab（跟商城前台 ShopList 同步的 UX 與命名）：
+            分類 tab（跟商城前台 ShopList 同步的 UX 與命名）：
               Row 1：上層分組（全部 / ES SERIES / Wakeboarding / Wakesurfing / Essentials）
               Row 2：當前 group 底下的子分類（只在選中具體 group 時顯示）
             子分類 label 直接用 shopName（例：'Boards' / 'Boots' / 'Fins'），跟
@@ -910,6 +939,29 @@ export function ProductManagement({
                       isMobile={isMobile}
                     />
                   ))}
+              </ChipRow>
+            )}
+
+            {/* Row 3：品牌由目前商品資料自動產生 */}
+            {brandOptions.length > 0 && (
+              <ChipRow>
+                <CategoryTab
+                  label="全部品牌"
+                  active={activeBrand === 'all'}
+                  onClick={() => setActiveBrand('all')}
+                  trackId="product_brand_all"
+                  isMobile={isMobile}
+                />
+                {brandOptions.map((brand) => (
+                  <CategoryTab
+                    key={brand.toLocaleLowerCase()}
+                    label={brand}
+                    active={activeBrand.toLocaleLowerCase() === brand.toLocaleLowerCase()}
+                    onClick={() => setActiveBrand(brand)}
+                    trackId={`product_brand_${brand.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '_')}`}
+                    isMobile={isMobile}
+                  />
+                ))}
               </ChipRow>
             )}
           </div>
