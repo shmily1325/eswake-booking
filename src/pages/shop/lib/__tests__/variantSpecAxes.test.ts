@@ -3,6 +3,7 @@ import type { ProductVariantRow } from '../../../admin/products/types'
 import {
   collectSpecAxes,
   findVariantForAxisValue,
+  formatCardGenderLabel,
   formatCardSpecLine,
 } from '../variantSpecAxes'
 
@@ -52,13 +53,28 @@ describe('formatCardSpecLine', () => {
     expect(formatCardSpecLine('lifejacket', [v('only', { size: 'M' })])).toBe('M')
   })
 
-  it('shows gender before sizes on the card', () => {
+  it('keeps gender out of the size line', () => {
     expect(
       formatCardSpecLine('lifejacket', [
         v('s', { gender: 'Male', size: 'S' }),
         v('m', { gender: 'Male', size: 'M' }),
       ]),
-    ).toBe("MEN'S · S · M")
+    ).toBe('S · M')
+  })
+})
+
+describe('formatCardGenderLabel', () => {
+  it('formats a single gender as a shop label', () => {
+    expect(
+      formatCardGenderLabel([
+        v('s', { gender: 'Male', size: 'S' }),
+        v('m', { gender: 'Male', size: 'M' }),
+      ]),
+    ).toBe("MEN'S")
+  })
+
+  it('returns nothing when gender is absent', () => {
+    expect(formatCardGenderLabel(vests)).toBe('')
   })
 })
 

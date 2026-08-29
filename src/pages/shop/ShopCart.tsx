@@ -5,6 +5,7 @@ import { QuantityStepper } from './components/QuantityStepper'
 import { LineInquiryModal } from './components/LineInquiryModal'
 import { ImageOrFallback } from './components/ImageOrFallback'
 import { useShopCart } from './hooks/useShopCart'
+import { useShopPositionRestore } from './hooks/useShopPositionRestore'
 import type { CartItem } from './types'
 import {
   formatPrice,
@@ -12,7 +13,9 @@ import {
 } from './lib/shopFormat'
 import { NoImagePlaceholder } from './components/NoImagePlaceholder'
 import { buildCartInquiry, launchInquiry } from './lib/lineDeepLink'
-import { shopListPath, shopProductPath } from './lib/shopPaths'
+import { shopCartPath, shopListPath, shopProductPath } from './lib/shopPaths'
+import { saveShopListPosition } from './lib/shopListPosition'
+import { SHOP_RETURN_TO_KEY } from './lib/shopReturnTo'
 import { SHOP_PRODUCT_IMG } from './lib/shopUiStyle'
 import { ShopFooter } from './components/ShopFooter'
 import { ES_BRAND } from '../../lib/esBrandTokens'
@@ -40,6 +43,8 @@ export function ShopCart() {
 
   /** 桌機 fallback modal 的訊息；null = 不顯示 */
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
+  const cartReturnTo = shopCartPath()
+  useShopPositionRestore(cartReturnTo)
 
   useEffect(() => {
     document.title = `Cart | ${ES_BRAND.shopTitle}`
@@ -134,12 +139,17 @@ interface CartLineProps {
 function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
   const attrsText = formatVariantAttributes(item.categoryId, item.attributes)
   const subtotal = item.unitPrice != null ? item.unitPrice * item.quantity : null
+  const cartReturnTo = shopCartPath()
+  const detailState = { [SHOP_RETURN_TO_KEY]: cartReturnTo }
+  const savePosition = () => saveShopListPosition(cartReturnTo)
 
   return (
     <li className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl shadow-sm">
       {/* 縮圖：優先用 snapshot 圖片，沒有就 ES Wake logo 水印佔位 */}
       <Link
         to={shopProductPath(item.productId)}
+        state={detailState}
+        onClick={savePosition}
         className="shrink-0 w-16 h-20 sm:w-20 sm:h-24 rounded-md overflow-hidden bg-white hover:opacity-90 transition-opacity"
         aria-label="Back to product"
       >
@@ -155,6 +165,8 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
       <div className="flex-1 min-w-0 flex flex-col">
         <Link
           to={shopProductPath(item.productId)}
+          state={detailState}
+          onClick={savePosition}
           className="text-sm sm:text-base font-semibold text-zinc-900 hover:text-black underline-offset-2 hover:underline line-clamp-2"
         >
           {item.productName}

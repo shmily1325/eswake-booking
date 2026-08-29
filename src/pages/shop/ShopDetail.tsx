@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { getShopProductPreview } from './lib/shopReturnTo'
 import { fetchProductWithVariants } from '../admin/products/api'
@@ -8,6 +8,7 @@ import { DetailPurchaseActions } from './components/DetailPurchaseActions'
 import { ShopDetailQuantity } from './components/ShopDetailQuantity'
 import { VariantPicker } from './components/VariantPicker'
 import { useShopCart } from './hooks/useShopCart'
+import { useShopCatalog } from './hooks/useShopCatalog'
 import { useShopPromo } from './hooks/useShopPromo'
 import {
   formatPrice,
@@ -71,20 +72,28 @@ export function ShopDetail() {
   const { productId } = useParams<{ productId: string }>()
   const location = useLocation()
   const { addItem } = useShopCart()
+  const catalog = useShopCatalog()
   const promo = useShopPromo()
 
   const preview =
     productId && UUID_REGEX.test(productId)
       ? getShopProductPreview(location.state, productId)
       : null
+  const cachedProduct =
+    productId && UUID_REGEX.test(productId)
+      ? catalog.getProduct(productId)
+      : null
+  const initialProduct = preview ?? cachedProduct
 
-  const [product, setProduct] = useState<ProductWithVariants | null>(preview)
-  const [loading, setLoading] = useState(!preview)
+  const [product, setProduct] = useState<ProductWithVariants | null>(initialProduct)
+  const [loading, setLoading] = useState(!initialProduct)
   const [error, setError] = useState<string | null>(null)
 
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(() =>
-    preview ? pickDefaultVariantId(preview.variants) : null,
+    initialProduct ? pickDefaultVariantId(initialProduct.variants) : null,
   )
+  const productRef = useRef(product)
+  productRef.current = product
   const [quantity, setQuantity] = useState(1)
   /** 桌機 fallback modal 要顯示的訊息；null = 不顯示 */
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
@@ -108,7 +117,7 @@ export function ShopDetail() {
       setLoading(false)
       return
     }
-    if (!preview) setLoading(true)
+    if (productRef.current?.id !== productId) setLoading(true)
     void (async () => {
       try {
         const p = await fetchProductWithVariants(productId)
@@ -120,6 +129,7 @@ export function ShopDetail() {
           return
         }
         setProduct(p)
+        catalog.mergeProduct(p)
         setError(null)
         setSelectedVariantId((prev) => {
           if (prev && p.variants.some((v) => v.id === prev)) return prev
@@ -135,11 +145,13 @@ export function ShopDetail() {
     return () => {
       cancelled = true
     }
-  }, [productId, preview])
+  }, [productId, preview, catalog.mergeProduct])
 
   useEffect(() => {
     if (!productId || !UUID_REGEX.test(productId)) return
-    const next = getShopProductPreview(location.state, productId)
+    const next =
+      getShopProductPreview(location.state, productId) ??
+      catalog.getProduct(productId)
     if (!next) return
     setProduct(next)
     setSelectedVariantId((prev) => {
@@ -147,7 +159,7 @@ export function ShopDetail() {
       return pickDefaultVariantId(next.variants)
     })
     setLoading(false)
-  }, [productId, location.state])
+  }, [productId, location.state, catalog.getProduct])
 
   const selectedVariant: ProductVariantRow | null = useMemo(() => {
     if (!product || !selectedVariantId) return null

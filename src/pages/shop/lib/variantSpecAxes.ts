@@ -58,31 +58,35 @@ export function collectSpecAxes(
   return axes
 }
 
-/** 列表卡灰字：性別（若有）＋尺寸；否則第一個有變化的規格 */
+/** 列表卡性別標籤；少數混合商品以斜線合併。 */
+export function formatCardGenderLabel(variants: ProductVariantRow[]): string {
+  const genders: string[] = []
+  const seen = new Set<string>()
+  for (const variant of variants) {
+    const gender = specAttrValue(variant, 'gender')
+    if (!gender || seen.has(gender)) continue
+    seen.add(gender)
+    genders.push(gender)
+  }
+  return genders.join(' / ')
+}
+
+/** 列表卡灰字：優先尺寸（即使只有一個），否則第一個非性別規格。 */
 export function formatCardSpecLine(
   categoryId: string | null | undefined,
   variants: ProductVariantRow[],
 ): string {
-  const genders: string[] = []
   const sizes: string[] = []
-  const seenGenders = new Set<string>()
   const seenSizes = new Set<string>()
   for (const variant of variants) {
-    const gender = specAttrValue(variant, 'gender')
-    if (gender && !seenGenders.has(gender)) {
-      seenGenders.add(gender)
-      genders.push(gender)
-    }
     const size = specAttrValue(variant, 'size')
     if (!size || seenSizes.has(size)) continue
     seenSizes.add(size)
     sizes.push(size)
   }
-  if (genders.length > 0 || sizes.length > 0) {
-    return [...genders, ...sortSpecValues(sizes, 'size')].join(' · ')
-  }
+  if (sizes.length > 0) return sortSpecValues(sizes, 'size').join(' · ')
 
-  const axis = collectSpecAxes(categoryId, variants)[0]
+  const axis = collectSpecAxes(categoryId, variants).find(({ key }) => key !== 'gender')
   return axis ? axis.values.join(' · ') : ''
 }
 

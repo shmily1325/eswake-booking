@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { fetchAllProductsWithVariants } from '../admin/products/api'
-import type { ProductWithVariants } from '../admin/products/types'
 import { ShopHeader } from './components/ShopHeader'
 import { ProductCard } from './components/ProductCard'
 import { ActiveFilterPills } from './components/ActiveFilterPills'
@@ -12,7 +10,9 @@ import { ShopPreOrderRefineBar } from './components/ShopPreOrderRefineBar'
 import { ShopMobileListToolbar } from './components/ShopMobileListToolbar'
 import { ShopListHero } from './components/ShopListHero'
 import { ShopHomeGalleries } from './components/ShopHomeGalleries'
+import { useShopCatalog } from './hooks/useShopCatalog'
 import { useShopFilters } from './hooks/useShopFilters'
+import { useShopPositionRestore } from './hooks/useShopPositionRestore'
 import { useShopPromo } from './hooks/useShopPromo'
 import {
   countRefineFilters,
@@ -39,12 +39,14 @@ import { ShopFooter } from './components/ShopFooter'
  * - `?preorder=1`：預購列表；`?stock=1`：現貨列表；`?sale=1`：非預購特價
  */
 export function ShopList() {
-  const [products, setProducts] = useState<ProductWithVariants[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const location = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [homeHeroConfig] = useState(getRandomShopHomeHero)
 
+  const catalog = useShopCatalog()
+  const { products } = catalog
+  const loading = !catalog.ready
+  const error = products.length === 0 ? catalog.error : null
   const promo = useShopPromo()
   const {
     filters,
@@ -70,24 +72,10 @@ export function ShopList() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const list = await fetchAllProductsWithVariants({ publicOnly: true })
-        if (cancelled) return
-        setProducts(list.filter((p) => p.variants.length > 0))
-        setError(null)
-      } catch (e) {
-        if (cancelled) return
-        setError(e instanceof Error ? e.message : String(e))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    void catalog.ensureLoaded()
+  }, [catalog.ensureLoaded])
+
+  useShopPositionRestore(shopListPath(location.search), catalog.ready && !error)
 
   const heroTitle = getHeroTitle(filters)
   const isHome = isShopCatalogHome(filters)

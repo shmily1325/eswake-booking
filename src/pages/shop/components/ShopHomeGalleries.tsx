@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ProductWithVariants } from '../../admin/products/types'
 import { SHOP_GROUPS, getShopGroupLabel } from '../../admin/products/schema'
@@ -21,6 +21,10 @@ import {
   shopTo,
 } from '../lib/shopPaths'
 import { SHOP_RETURN_TO_KEY } from '../lib/shopReturnTo'
+import {
+  readShopListPosition,
+  saveShopListPosition,
+} from '../lib/shopListPosition'
 import { computeFacets, getShopBaseProducts } from '../lib/shopFilters'
 import { SHOP_HERO_IMAGES } from '../lib/shopHeroImages'
 import {
@@ -165,6 +169,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
             slot.items.length > 0 ? (
               <HomeGalleryRow
                 key={slot.key}
+                galleryKey={slot.key}
                 title={slot.title}
                 items={slot.items}
                 viewAllTo={slot.viewAllTo}
@@ -217,11 +222,13 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
 }
 
 function HomeGalleryRow({
+  galleryKey,
   title,
   items,
   viewAllTo,
   accent,
 }: {
+  galleryKey: string
   title: string
   items: HomeGalleryItem[]
   viewAllTo: string
@@ -230,6 +237,14 @@ function HomeGalleryRow({
   const scrollerRef = useRef<HTMLDivElement>(null)
   const canSlide = items.length > 1
   const isSale = accent === 'sale'
+  const returnTo = shopListPath()
+
+  useLayoutEffect(() => {
+    const savedLeft = readShopListPosition(returnTo)?.horizontal[galleryKey]
+    if (typeof savedLeft === 'number' && scrollerRef.current) {
+      scrollerRef.current.scrollLeft = savedLeft
+    }
+  }, [galleryKey, returnTo])
 
   const scrollByCard = (dir: 1 | -1) => {
     const el = scrollerRef.current
@@ -282,7 +297,13 @@ function HomeGalleryRow({
             <Link
               key={item.productId}
               to={shopProductPath(item.productId)}
-              state={{ [SHOP_RETURN_TO_KEY]: shopListPath() }}
+              state={{ [SHOP_RETURN_TO_KEY]: returnTo }}
+              onClick={() =>
+                saveShopListPosition(returnTo, {
+                  key: galleryKey,
+                  left: scrollerRef.current?.scrollLeft ?? 0,
+                })
+              }
               data-gallery-card=""
               role="listitem"
               draggable={false}

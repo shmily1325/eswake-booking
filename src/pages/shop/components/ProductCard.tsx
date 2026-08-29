@@ -12,7 +12,10 @@ import {
   getShopVisibleVariants,
   summarizeProductAvailability,
 } from '../lib/productAvailability'
-import { formatCardSpecLine } from '../lib/variantSpecAxes'
+import {
+  formatCardGenderLabel,
+  formatCardSpecLine,
+} from '../lib/variantSpecAxes'
 import { ImageOrFallback } from './ImageOrFallback'
 import { NoImagePlaceholder } from './NoImagePlaceholder'
 import { SHOP_DETAIL, SHOP_LABEL } from '../lib/shopCopy'
@@ -28,6 +31,7 @@ import {
   SHOP_RETURN_TO_KEY,
   shopListPathFromLocation,
 } from '../lib/shopReturnTo'
+import { saveShopListPosition } from '../lib/shopListPosition'
 
 interface ProductCardProps {
   product: ProductRow
@@ -65,6 +69,9 @@ export function ProductCard({ product, variants }: ProductCardProps) {
     product.category,
     visibleVariants.length ? visibleVariants : variants,
   )
+  const genderLabel = formatCardGenderLabel(
+    visibleVariants.length ? visibleVariants : variants,
+  )
   const modelName = formatProductModelName(product)
   const secondaryLine = formatProductSecondaryLine(product)
   const deadline = summary.hasPreOrder
@@ -75,6 +82,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
     <Link
       to={shopProductPath(product.id)}
       state={cardNavigationState(returnTo, product, variants)}
+      onClick={() => saveShopListPosition(returnTo)}
       className="group block bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden transition-all"
     >
       <div className={SHOP_PRODUCT_FRAME}>
@@ -134,9 +142,16 @@ export function ProductCard({ product, variants }: ProductCardProps) {
           ) : null}
         </div>
 
-        {specLine ? (
-          <div className="mt-2 text-xs text-zinc-600 truncate">
-            {specLine}
+        {genderLabel || specLine ? (
+          <div className="mt-2 flex min-w-0 items-center gap-2">
+            {genderLabel ? (
+              <span className="inline-flex shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-zinc-600">
+                {genderLabel}
+              </span>
+            ) : null}
+            {specLine ? (
+              <span className="truncate text-xs text-zinc-600">{specLine}</span>
+            ) : null}
           </div>
         ) : null}
 
