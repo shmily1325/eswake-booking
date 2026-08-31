@@ -80,7 +80,7 @@ describe('liffOrderStatus', () => {
     const pending = mockItem({ id: 'b', qty: 1, qty_pending_bill: 1, stock: 1, reserved_qty: 1 })
     const order = mockOrder([waiting, pending])
     expect(liffOrderStatus(order)).toBe('partial')
-    expect(liffOrderProgressSummary(order)).toBe('待收款 1 件 · 等貨 2 件')
+    expect(liffOrderProgressSummary(order)).toBe('待付款 1 件 · 等貨 2 件')
   })
 
   it('shows partial for single line with paid and waiting qty', () => {

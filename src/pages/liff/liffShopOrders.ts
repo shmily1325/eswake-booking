@@ -32,9 +32,9 @@ export const LIFF_ORDER_STATUS: Record<
   cancelled: { label: '已取消', color: c.text.disabled, bg: c.background.main },
   done: { label: '已完成', color: c.success[700], bg: c.success[50] },
   partial: { label: '部分到貨', color: c.secondary[700], bg: c.secondary[50] },
-  pending_pay: { label: '待收款', color: c.warning[700], bg: c.warning[50] },
+  pending_pay: { label: '待付款', color: c.warning[700], bg: c.warning[50] },
   waiting: { label: '等貨中', color: c.warning[700], bg: c.warning[50] },
-  processing: { label: '處理中', color: c.info[700], bg: c.info[50] },
+  processing: { label: '準備結帳', color: c.info[700], bg: c.info[50] },
 }
 
 export type LiffOrderQtySummary = {
@@ -59,7 +59,7 @@ export function liffOrderQtySummary(order: LiffShopOrder): LiffOrderQtySummary {
   return { totalQty, paid, pending, waiting }
 }
 
-/** 同時有多種進度（例如部分等貨、部分待收款） */
+/** 同時有多種進度（例如部分等貨、部分待付款） */
 export function liffOrderIsMixed(order: LiffShopOrder): boolean {
   if (order.cancelled_at || orderIsFullySettled(order)) return false
   const kinds = new Set<string>()
@@ -77,7 +77,7 @@ export function liffOrderProgressSummary(order: LiffShopOrder): string | null {
   const { paid, pending, waiting } = liffOrderQtySummary(order)
   const parts: string[] = []
   if (paid > 0) parts.push(`已到 ${paid} 件`)
-  if (pending > 0) parts.push(`待收款 ${pending} 件`)
+  if (pending > 0) parts.push(`待付款 ${pending} 件`)
   if (waiting > 0) parts.push(`等貨 ${waiting} 件`)
   return parts.length > 0 ? parts.join(' · ') : null
 }
@@ -110,7 +110,7 @@ export function liffOrderItemProgressChips(item: LiffShopOrder['items'][number])
     chips.push({ label: `已到${item.qty_paid}`, color: '#2e7d32', bg: '#e8f5e9' })
   }
   if (item.qty_pending_bill > 0) {
-    chips.push({ label: `待收${item.qty_pending_bill}`, color: '#6a1b9a', bg: '#f3e5f5' })
+    chips.push({ label: `待付${item.qty_pending_bill}`, color: '#6a1b9a', bg: '#f3e5f5' })
   }
   if (open > 0) {
     chips.push({ label: `等貨${open}`, color: '#ef6c00', bg: '#fff4e0' })
@@ -146,7 +146,7 @@ export function liffHiddenItemsProgressHint(items: LiffShopOrder['items']): stri
   }
   const parts: string[] = []
   if (paid > 0) parts.push(`已到 ${paid}`)
-  if (pending > 0) parts.push(`待收款 ${pending}`)
+  if (pending > 0) parts.push(`待付款 ${pending}`)
   if (waiting > 0) parts.push(`等貨 ${waiting}`)
   if (parts.length === 0) return null
   return `另有 ${items.length} 項：${parts.join(' · ')}`
