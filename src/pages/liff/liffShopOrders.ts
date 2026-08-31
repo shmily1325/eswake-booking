@@ -4,6 +4,7 @@ import {
   orderHasPendingBill,
   orderHasWaitingStock,
   orderIsFullySettled,
+  qtyBillable,
   qtyOpen,
   settlementAmountTotal,
 } from '../admin/orders/orderUtils'
@@ -41,6 +42,7 @@ export type LiffOrderQtySummary = {
   totalQty: number
   paid: number
   pending: number
+  ready: number
   waiting: number
 }
 
@@ -48,35 +50,39 @@ export type LiffOrderQtySummary = {
 export function liffOrderQtySummary(order: LiffShopOrder): LiffOrderQtySummary {
   let paid = 0
   let pending = 0
+  let ready = 0
   let waiting = 0
   let totalQty = 0
   for (const it of order.items) {
+    const open = qtyOpen(it)
+    const billable = qtyBillable(it)
     totalQty += it.qty
     paid += it.qty_paid
     pending += it.qty_pending_bill
-    waiting += qtyOpen(it)
+    ready += billable
+    waiting += Math.max(0, open - billable)
   }
-  return { totalQty, paid, pending, waiting }
+  return { totalQty, paid, pending, ready, waiting }
 }
 
-/** 同時有多種進度（例如部分等貨、部分待付款） */
+/** 同時有多種進度（例如部分已到貨、部分等貨或待付款） */
 export function liffOrderIsMixed(order: LiffShopOrder): boolean {
   if (order.cancelled_at || orderIsFullySettled(order)) return false
+  const { paid, pending, ready, waiting } = liffOrderQtySummary(order)
   const kinds = new Set<string>()
-  for (const it of order.items) {
-    if (it.qty_paid > 0) kinds.add('paid')
-    if (it.qty_pending_bill > 0) kinds.add('pending')
-    if (qtyOpen(it) > 0) kinds.add('waiting')
-  }
+  if (paid > 0) kinds.add('paid')
+  if (pending > 0) kinds.add('pending')
+  if (ready > 0) kinds.add('ready')
+  if (waiting > 0) kinds.add('waiting')
   return kinds.size > 1
 }
 
 /** 訂單卡一行摘要：部分到貨時顯示各階段件數 */
 export function liffOrderProgressSummary(order: LiffShopOrder): string | null {
   if (!liffOrderIsMixed(order)) return null
-  const { paid, pending, waiting } = liffOrderQtySummary(order)
+  const { paid, pending, ready, waiting } = liffOrderQtySummary(order)
   const parts: string[] = []
-  if (paid > 0) parts.push(`已到 ${paid} 件`)
+  if (paid + ready > 0) parts.push(`已到 ${paid + ready} 件`)
   if (pending > 0) parts.push(`待付款 ${pending} 件`)
   if (waiting > 0) parts.push(`等貨 ${waiting} 件`)
   return parts.length > 0 ? parts.join(' · ') : null
@@ -105,15 +111,17 @@ export type LiffItemProgressChip = { label: string; color: string; bg: string }
 
 export function liffOrderItemProgressChips(item: LiffShopOrder['items'][number]): LiffItemProgressChip[] {
   const open = qtyOpen(item)
+  const ready = qtyBillable(item)
+  const waiting = Math.max(0, open - ready)
   const chips: LiffItemProgressChip[] = []
-  if (item.qty_paid > 0) {
-    chips.push({ label: `已到${item.qty_paid}`, color: '#2e7d32', bg: '#e8f5e9' })
+  if (item.qty_paid + ready > 0) {
+    chips.push({ label: `已到${item.qty_paid + ready}`, color: '#2e7d32', bg: '#e8f5e9' })
   }
   if (item.qty_pending_bill > 0) {
     chips.push({ label: `待付${item.qty_pending_bill}`, color: '#6a1b9a', bg: '#f3e5f5' })
   }
-  if (open > 0) {
-    chips.push({ label: `等貨${open}`, color: '#ef6c00', bg: '#fff4e0' })
+  if (waiting > 0) {
+    chips.push({ label: `等貨${waiting}`, color: '#ef6c00', bg: '#fff4e0' })
   }
   return chips
 }
@@ -136,16 +144,18 @@ export function formatLiffOrderItemLine(
 
 /** 收合時提示被藏起來的品項進度 */
 export function liffHiddenItemsProgressHint(items: LiffShopOrder['items']): string | null {
-  let paid = 0
+  let arrived = 0
   let pending = 0
   let waiting = 0
   for (const it of items) {
-    paid += it.qty_paid
+    const open = qtyOpen(it)
+    const ready = qtyBillable(it)
+    arrived += it.qty_paid + ready
     pending += it.qty_pending_bill
-    waiting += qtyOpen(it)
+    waiting += Math.max(0, open - ready)
   }
   const parts: string[] = []
-  if (paid > 0) parts.push(`已到 ${paid}`)
+  if (arrived > 0) parts.push(`已到 ${arrived}`)
   if (pending > 0) parts.push(`待付款 ${pending}`)
   if (waiting > 0) parts.push(`等貨 ${waiting}`)
   if (parts.length === 0) return null

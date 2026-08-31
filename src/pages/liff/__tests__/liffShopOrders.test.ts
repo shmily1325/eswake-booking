@@ -96,6 +96,14 @@ describe('liffOrderStatus', () => {
     expect(liffOrderStatus(mockOrder([item]))).toBe('waiting')
   })
 
+  it('shows partial when stock covers only part of the ordered quantity', () => {
+    const item = mockItem({ id: 'a', qty: 3, stock: 1 })
+    const order = mockOrder([item])
+
+    expect(liffOrderStatus(order)).toBe('partial')
+    expect(liffOrderProgressSummary(order)).toBe('已到 1 件 · 等貨 2 件')
+  })
+
   it('shows processing when stock covers open qty (not 等貨中)', () => {
     const item = mockItem({ id: 'a', qty: 2, stock: 5, reserved_qty: 0 })
     expect(liffOrderStatus(mockOrder([item]))).toBe('processing')
