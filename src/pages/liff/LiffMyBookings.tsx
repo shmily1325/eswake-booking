@@ -56,7 +56,7 @@ function startMemberBackgroundLoads(
     setMemberEnriching: (v: boolean) => void
     setShopOrders: (orders: LiffShopOrder[]) => void
     loadBookings: (id: string) => Promise<void>
-    loadShopOrders: (id: string, silent: boolean) => Promise<void>
+    loadShopOrders: (id: string, silent: boolean) => Promise<boolean>
   },
   initialShopOrders?: LiffShopOrder[],
 ) {
@@ -127,14 +127,15 @@ export function LiffMyBookings() {
 
   const expiryBannerLines = useMemo(() => buildLiffExpiryBannerLines(member), [member])
 
-  const loadShopOrders = useCallback(async (userId: string, silent = false) => {
+  const loadShopOrders = useCallback(async (userId: string, silent = false): Promise<boolean> => {
     setLoadingShopOrders(true)
     try {
       setShopOrders(await fetchLiffShopOrders(userId))
+      return true
     } catch (err: unknown) {
       console.error('載入商品訂單失敗:', err)
       if (!silent) toast.error('載入商品訂單失敗')
-      setShopOrders([])
+      return false
     } finally {
       setLoadingShopOrders(false)
     }
@@ -223,7 +224,7 @@ export function LiffMyBookings() {
           setShopOrders,
           loadBookings,
           loadShopOrders,
-        }, bootstrap.orders)
+        }, bootstrap.ordersAvailable ? bootstrap.orders : undefined)
         liffTrack({
           icon_id: 'liff_open',
           line_user_id: userId,
@@ -287,8 +288,9 @@ export function LiffMyBookings() {
   const refreshShopOrders = useCallback(async () => {
     if (!lineUserId) return
     triggerHaptic('light')
-    await loadShopOrders(lineUserId, true)
-    toast.success('訂單已更新')
+    const updated = await loadShopOrders(lineUserId, true)
+    if (updated) toast.success('訂單已更新')
+    else toast.error('訂單更新失敗，已保留原資料')
   }, [lineUserId, loadShopOrders, toast])
 
   // 刷新資料
@@ -309,8 +311,12 @@ export function LiffMyBookings() {
       if (refreshedMember) {
         await loadBookings(refreshedMember.id)
         setMember(refreshedMember)
-        setShopOrders(bootstrap.orders)
-        toast.success('資料已更新')
+        if (bootstrap.ordersAvailable) {
+          setShopOrders(bootstrap.orders)
+          toast.success('資料已更新')
+        } else {
+          toast.error('商品訂單更新失敗，已保留原資料')
+        }
       }
     } catch (err: unknown) {
       console.error('刷新失敗:', err)

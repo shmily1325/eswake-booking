@@ -229,17 +229,20 @@ export async function fetchMemberByLineUserId(
 
 type MemberBootstrapRpcResult = MemberProfileRpcResult & {
   orders?: unknown[]
+  orders_available?: boolean
 }
 
 export async function fetchLiffMemberBootstrap<TOrder>(): Promise<{
   member: Member | null
   orders: TOrder[]
+  ordersAvailable: boolean
 }> {
   const result = await callLiffMemberApi<MemberBootstrapRpcResult>('bootstrap')
   if (!result?.success) throw new Error(result?.error || '會員資料載入失敗')
   return {
     member: result.member ? memberFromRpcPayload(result.member) : null,
     orders: Array.isArray(result.orders) ? result.orders as TOrder[] : [],
+    ordersAvailable: result.orders_available !== false,
   }
 }
 

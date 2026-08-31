@@ -147,7 +147,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(200).json({ success: false, error: '會員資料載入失敗' })
         }
         if (!profile.member) {
-          return res.status(200).json({ success: true, member: null, orders: [] })
+          return res.status(200).json({
+            success: true,
+            member: null,
+            orders: [],
+            orders_available: true,
+          })
         }
 
         const ordersRpc = await supabase.rpc('get_liff_shop_orders', {
@@ -159,6 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             success: true,
             member: profile.member,
             orders: [],
+            orders_available: false,
           })
         }
 
@@ -171,12 +177,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             success: true,
             member: profile.member,
             orders: [],
+            orders_available: false,
           })
         }
         return res.status(200).json({
           success: true,
           member: profile.member,
           orders: Array.isArray(orders.orders) ? orders.orders : [],
+          orders_available: true,
         })
       }
       case 'profile':

@@ -149,6 +149,8 @@ export async function createShopOrder(input: CreateOrderInput): Promise<string> 
         variant_id: line.variant_id,
         unit_price: line.unit_price,
         qty: line.qty,
+        was_preorder: line.was_preorder,
+        brand_snapshot: line.brand_snapshot,
       })),
     )
     if (ie) throw new Error(ie.message)
@@ -181,6 +183,8 @@ export async function updateShopOrder(orderId: string, input: UpdateOrderInput):
           variant_id: line.variant_id,
           unit_price: line.unit_price,
           qty: line.qty,
+          was_preorder: line.was_preorder,
+          brand_snapshot: line.brand_snapshot,
         })),
       )
       if (ie) throw new Error(ie.message)

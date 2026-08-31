@@ -43,6 +43,8 @@ interface DraftLine {
   unit_price: number
   qty: number
   label: string
+  was_preorder?: boolean
+  brand_snapshot?: string | null
 }
 
 interface CreateOrderDraftSnapshot {
@@ -162,6 +164,8 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           unit_price: it.unit_price,
           qty: it.qty,
           label: lineLabel(it.variant?.product, it.variant),
+          was_preorder: it.was_preorder,
+          brand_snapshot: it.brand_snapshot,
         })),
       )
       setGuestNameInput('')
@@ -406,10 +410,12 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             shipping_info: shippingInfo,
             customer_note: customerNote,
             internal_notes: internalNotes,
-            lines: payloadLines.map(({ variant_id, unit_price, qty }) => ({
+            lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot }) => ({
               variant_id,
               unit_price,
               qty,
+              was_preorder,
+              brand_snapshot,
             })),
             updated_by: userEmail ?? null,
           })
@@ -429,10 +435,12 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           shipping_info: shippingInfo,
           customer_note: customerNote,
           internal_notes: internalNotes,
-          lines: payloadLines.map(({ variant_id, unit_price, qty }) => ({
+          lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot }) => ({
             variant_id,
             unit_price,
             qty,
+            was_preorder,
+            brand_snapshot,
           })),
           created_by: userEmail ?? null,
         })

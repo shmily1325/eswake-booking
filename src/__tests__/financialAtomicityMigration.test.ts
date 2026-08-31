@@ -10,6 +10,10 @@ const deductionMigration = readFileSync(
   resolve(process.cwd(), 'migrations/165_deduction_fifo_never_blocks.sql'),
   'utf8',
 )
+const orderTransitionMigration = readFileSync(
+  resolve(process.cwd(), 'migrations/198_make_shop_order_transitions_atomic.sql'),
+  'utf8',
+)
 
 describe('financial atomicity migrations', () => {
   it('preflights and locks every shop line before inventory mutation', () => {
@@ -60,6 +64,26 @@ describe('financial atomicity migrations', () => {
     expect(shopMigration).toContain('WHEN insufficient_privilege THEN RAISE;')
     expect(shopMigration).toContain(
       'GRANT EXECUTE ON FUNCTION public.settle_shop_order(UUID, JSONB, UUID, TEXT, UUID, TEXT, TEXT)',
+    )
+  })
+
+  it('preflights submit, cancel, and void before mutating order state', () => {
+    for (const marker of [
+      'CREATE OR REPLACE FUNCTION public.submit_shop_order_billing(',
+      'CREATE OR REPLACE FUNCTION public.cancel_shop_order_billing(',
+      'CREATE OR REPLACE FUNCTION public.void_shop_order(',
+    ]) {
+      expect(orderTransitionMigration).toContain(marker)
+    }
+    expect(orderTransitionMigration.match(/-- Preflight/g)?.length).toBe(3)
+    expect(orderTransitionMigration.match(/-- Mutation phase/g)?.length).toBe(3)
+    expect(orderTransitionMigration).toContain('送結帳品項不可重複')
+    expect(orderTransitionMigration).toContain('撤回品項不可重複')
+    expect(orderTransitionMigration).toContain(
+      "RAISE EXCEPTION '送結帳庫存狀態已變更",
+    )
+    expect(orderTransitionMigration).toContain(
+      "RAISE EXCEPTION '作廢訂單庫存狀態已變更",
     )
   })
 

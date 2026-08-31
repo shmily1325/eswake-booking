@@ -88,7 +88,7 @@ describe('liffOrderStatus', () => {
     const order = mockOrder([item])
     expect(liffOrderIsMixed(order)).toBe(true)
     expect(liffOrderStatus(order)).toBe('partial')
-    expect(liffOrderProgressSummary(order)).toBe('已到 1 件 · 等貨 2 件')
+    expect(liffOrderProgressSummary(order)).toBe('已完成 1 件 · 等貨 2 件')
   })
 
   it('shows waiting only when all open qty and no stock', () => {
@@ -96,17 +96,17 @@ describe('liffOrderStatus', () => {
     expect(liffOrderStatus(mockOrder([item]))).toBe('waiting')
   })
 
-  it('shows partial when stock covers only part of the ordered quantity', () => {
+  it('does not promise unallocated shared stock to the member', () => {
     const item = mockItem({ id: 'a', qty: 3, stock: 1 })
     const order = mockOrder([item])
 
-    expect(liffOrderStatus(order)).toBe('partial')
-    expect(liffOrderProgressSummary(order)).toBe('已到 1 件 · 等貨 2 件')
+    expect(liffOrderStatus(order)).toBe('waiting')
+    expect(liffOrderProgressSummary(order)).toBeNull()
   })
 
-  it('shows processing when stock covers open qty (not 等貨中)', () => {
+  it('stays waiting until staff explicitly sends checkout', () => {
     const item = mockItem({ id: 'a', qty: 2, stock: 5, reserved_qty: 0 })
-    expect(liffOrderStatus(mockOrder([item]))).toBe('processing')
+    expect(liffOrderStatus(mockOrder([item]))).toBe('waiting')
   })
 
   it('treats missing stock as zero (LIFF must select stock fields)', () => {

@@ -2,9 +2,7 @@ import { designSystem } from '../../styles/designSystem'
 import { formatAttributes } from '../admin/products/schema'
 import {
   orderHasPendingBill,
-  orderHasWaitingStock,
   orderIsFullySettled,
-  qtyBillable,
   qtyOpen,
   settlementAmountTotal,
 } from '../admin/orders/orderUtils'
@@ -23,7 +21,6 @@ export type LiffOrderStatusKey =
   | 'partial'
   | 'pending_pay'
   | 'waiting'
-  | 'processing'
 
 /** 狀態文字色（對齊 designSystem；LIFF 列表不再用彩色 pill） */
 export const LIFF_ORDER_STATUS: Record<
@@ -35,14 +32,12 @@ export const LIFF_ORDER_STATUS: Record<
   partial: { label: '部分到貨', color: c.secondary[700], bg: c.secondary[50] },
   pending_pay: { label: '待付款', color: c.warning[700], bg: c.warning[50] },
   waiting: { label: '等貨中', color: c.warning[700], bg: c.warning[50] },
-  processing: { label: '準備結帳', color: c.info[700], bg: c.info[50] },
 }
 
 export type LiffOrderQtySummary = {
   totalQty: number
   paid: number
   pending: number
-  ready: number
   waiting: number
 }
 
@@ -50,29 +45,24 @@ export type LiffOrderQtySummary = {
 export function liffOrderQtySummary(order: LiffShopOrder): LiffOrderQtySummary {
   let paid = 0
   let pending = 0
-  let ready = 0
   let waiting = 0
   let totalQty = 0
   for (const it of order.items) {
-    const open = qtyOpen(it)
-    const billable = qtyBillable(it)
     totalQty += it.qty
     paid += it.qty_paid
     pending += it.qty_pending_bill
-    ready += billable
-    waiting += Math.max(0, open - billable)
+    waiting += qtyOpen(it)
   }
-  return { totalQty, paid, pending, ready, waiting }
+  return { totalQty, paid, pending, waiting }
 }
 
-/** 同時有多種進度（例如部分已到貨、部分等貨或待付款） */
+/** 同時有多種已明確處理的進度（不以尚未分配的共用庫存推測到貨）。 */
 export function liffOrderIsMixed(order: LiffShopOrder): boolean {
   if (order.cancelled_at || orderIsFullySettled(order)) return false
-  const { paid, pending, ready, waiting } = liffOrderQtySummary(order)
+  const { paid, pending, waiting } = liffOrderQtySummary(order)
   const kinds = new Set<string>()
   if (paid > 0) kinds.add('paid')
   if (pending > 0) kinds.add('pending')
-  if (ready > 0) kinds.add('ready')
   if (waiting > 0) kinds.add('waiting')
   return kinds.size > 1
 }
@@ -80,9 +70,9 @@ export function liffOrderIsMixed(order: LiffShopOrder): boolean {
 /** 訂單卡一行摘要：部分到貨時顯示各階段件數 */
 export function liffOrderProgressSummary(order: LiffShopOrder): string | null {
   if (!liffOrderIsMixed(order)) return null
-  const { paid, pending, ready, waiting } = liffOrderQtySummary(order)
+  const { paid, pending, waiting } = liffOrderQtySummary(order)
   const parts: string[] = []
-  if (paid + ready > 0) parts.push(`已到 ${paid + ready} 件`)
+  if (paid > 0) parts.push(`已完成 ${paid} 件`)
   if (pending > 0) parts.push(`待付款 ${pending} 件`)
   if (waiting > 0) parts.push(`等貨 ${waiting} 件`)
   return parts.length > 0 ? parts.join(' · ') : null
@@ -93,8 +83,7 @@ export function liffOrderStatus(order: LiffShopOrder): LiffOrderStatusKey {
   if (orderIsFullySettled(order)) return 'done'
   if (liffOrderIsMixed(order)) return 'partial'
   if (orderHasPendingBill(order)) return 'pending_pay'
-  if (orderHasWaitingStock(order)) return 'waiting'
-  return 'processing'
+  return 'waiting'
 }
 
 /** 已完成訂單的實際結帳總額；沒有結帳紀錄時不顯示金額。 */
@@ -111,17 +100,15 @@ export type LiffItemProgressChip = { label: string; color: string; bg: string }
 
 export function liffOrderItemProgressChips(item: LiffShopOrder['items'][number]): LiffItemProgressChip[] {
   const open = qtyOpen(item)
-  const ready = qtyBillable(item)
-  const waiting = Math.max(0, open - ready)
   const chips: LiffItemProgressChip[] = []
-  if (item.qty_paid + ready > 0) {
-    chips.push({ label: `已到${item.qty_paid + ready}`, color: '#2e7d32', bg: '#e8f5e9' })
+  if (item.qty_paid > 0) {
+    chips.push({ label: `已完成${item.qty_paid}`, color: '#2e7d32', bg: '#e8f5e9' })
   }
   if (item.qty_pending_bill > 0) {
     chips.push({ label: `待付${item.qty_pending_bill}`, color: '#6a1b9a', bg: '#f3e5f5' })
   }
-  if (waiting > 0) {
-    chips.push({ label: `等貨${waiting}`, color: '#ef6c00', bg: '#fff4e0' })
+  if (open > 0) {
+    chips.push({ label: `等貨${open}`, color: '#ef6c00', bg: '#fff4e0' })
   }
   return chips
 }
@@ -144,18 +131,16 @@ export function formatLiffOrderItemLine(
 
 /** 收合時提示被藏起來的品項進度 */
 export function liffHiddenItemsProgressHint(items: LiffShopOrder['items']): string | null {
-  let arrived = 0
+  let paid = 0
   let pending = 0
   let waiting = 0
   for (const it of items) {
-    const open = qtyOpen(it)
-    const ready = qtyBillable(it)
-    arrived += it.qty_paid + ready
+    paid += it.qty_paid
     pending += it.qty_pending_bill
-    waiting += Math.max(0, open - ready)
+    waiting += qtyOpen(it)
   }
   const parts: string[] = []
-  if (arrived > 0) parts.push(`已到 ${arrived}`)
+  if (paid > 0) parts.push(`已完成 ${paid}`)
   if (pending > 0) parts.push(`待付款 ${pending}`)
   if (waiting > 0) parts.push(`等貨 ${waiting}`)
   if (parts.length === 0) return null

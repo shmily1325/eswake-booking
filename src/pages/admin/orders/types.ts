@@ -33,6 +33,10 @@ export interface ShopOrderItemRow {
   qty: number
   qty_pending_bill: number
   qty_paid: number
+  /** 開單當下是否為預購；部署過渡期可能尚未回傳。 */
+  was_preorder?: boolean
+  /** 開單當下品牌快照，供年度品牌統計。 */
+  brand_snapshot?: string | null
   created_at: string
   updated_at: string
 }
@@ -82,6 +86,9 @@ export interface OrderLineInput {
   variant_id: string
   unit_price: number
   qty: number
+  /** 編輯既有訂單時帶回原始統計快照；新列留空由 DB 自動判斷。 */
+  was_preorder?: boolean
+  brand_snapshot?: string | null
 }
 
 export interface CreateOrderInput {

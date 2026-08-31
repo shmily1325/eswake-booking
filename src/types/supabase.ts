@@ -1563,6 +1563,8 @@ export type Database = {
           qty: number
           qty_pending_bill: number
           qty_paid: number
+          was_preorder: boolean
+          brand_snapshot: string | null
           created_at: string
           updated_at: string
         }
@@ -1574,6 +1576,8 @@ export type Database = {
           qty?: number
           qty_pending_bill?: number
           qty_paid?: number
+          was_preorder?: boolean
+          brand_snapshot?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1585,6 +1589,8 @@ export type Database = {
           qty?: number
           qty_pending_bill?: number
           qty_paid?: number
+          was_preorder?: boolean
+          brand_snapshot?: string | null
           created_at?: string
           updated_at?: string
         }

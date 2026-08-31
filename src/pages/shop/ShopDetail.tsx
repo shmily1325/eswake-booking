@@ -73,6 +73,8 @@ export function ShopDetail() {
   const location = useLocation()
   const { addItem } = useShopCart()
   const catalog = useShopCatalog()
+  const getCatalogProduct = catalog.getProduct
+  const mergeCatalogProduct = catalog.mergeProduct
   const promo = useShopPromo()
 
   const preview =
@@ -81,9 +83,9 @@ export function ShopDetail() {
       : null
   const cachedProduct =
     productId && UUID_REGEX.test(productId)
-      ? catalog.getProduct(productId)
+      ? getCatalogProduct(productId)
       : null
-  const initialProduct = preview ?? cachedProduct
+  const initialProduct = cachedProduct ?? preview
 
   const [product, setProduct] = useState<ProductWithVariants | null>(initialProduct)
   const [loading, setLoading] = useState(!initialProduct)
@@ -93,6 +95,7 @@ export function ShopDetail() {
     initialProduct ? pickDefaultVariantId(initialProduct.variants) : null,
   )
   const productRef = useRef(product)
+  const resolvedProductIdRef = useRef<string | null>(null)
   productRef.current = product
   const [quantity, setQuantity] = useState(1)
   /** 桌機 fallback modal 要顯示的訊息；null = 不顯示 */
@@ -112,6 +115,7 @@ export function ShopDetail() {
     // 沒帶 productId 或格式不像 UUID（例如 /shop/abc 亂打）：直接視為「找不到」，
     // 不要打 Supabase（會回 22P02 invalid input syntax for uuid，那是技術錯誤、不該秀給客人）
     if (!productId || !UUID_REGEX.test(productId)) {
+      resolvedProductIdRef.current = null
       setProduct(null)
       setError(null)
       setLoading(false)
@@ -123,13 +127,15 @@ export function ShopDetail() {
         const p = await fetchProductWithVariants(productId)
         if (cancelled) return
         if (!p || !p.is_public || !isProductListedInShop(p)) {
+          resolvedProductIdRef.current = productId
           setProduct(null)
           setError(null)
           setSelectedVariantId(null)
           return
         }
+        resolvedProductIdRef.current = productId
         setProduct(p)
-        catalog.mergeProduct(p)
+        mergeCatalogProduct(p)
         setError(null)
         setSelectedVariantId((prev) => {
           if (prev && p.variants.some((v) => v.id === prev)) return prev
@@ -145,13 +151,14 @@ export function ShopDetail() {
     return () => {
       cancelled = true
     }
-  }, [productId, preview, catalog.mergeProduct])
+  }, [productId, preview, mergeCatalogProduct])
 
   useEffect(() => {
     if (!productId || !UUID_REGEX.test(productId)) return
+    if (resolvedProductIdRef.current === productId) return
     const next =
-      getShopProductPreview(location.state, productId) ??
-      catalog.getProduct(productId)
+      getCatalogProduct(productId) ??
+      getShopProductPreview(location.state, productId)
     if (!next) return
     setProduct(next)
     setSelectedVariantId((prev) => {
@@ -159,7 +166,7 @@ export function ShopDetail() {
       return pickDefaultVariantId(next.variants)
     })
     setLoading(false)
-  }, [productId, location.state, catalog.getProduct])
+  }, [productId, location.state, getCatalogProduct])
 
   const selectedVariant: ProductVariantRow | null = useMemo(() => {
     if (!product || !selectedVariantId) return null
