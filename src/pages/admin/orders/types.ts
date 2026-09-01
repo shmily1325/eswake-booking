@@ -73,6 +73,19 @@ export interface ShopOrderSettlementWithDetails extends ShopOrderSettlementRow {
   charge_member_name: string | null
 }
 
+export interface ShopPreorderReportLine {
+  id: string
+  order_id: string
+  order_no: string
+  contact_name: string
+  order_created_at: string
+  brand: string
+  unit_price: number
+  qty: number
+  qty_pending_bill: number
+  qty_paid: number
+}
+
 export interface SettlementSnapshotLine {
   item_id: string
   variant_id: string

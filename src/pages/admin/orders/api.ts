@@ -17,6 +17,7 @@ import type {
   OrderLineInput,
   OrderPaymentMethod,
   SettlementSnapshotLine,
+  ShopPreorderReportLine,
   ShopOrderSettlementRow,
   ShopOrderSettlementWithDetails,
   ShopOrderWithItems,
@@ -349,6 +350,53 @@ export async function fetchSettlementsInRange(
       ? row.charge_member.nickname || row.charge_member.name
       : null,
   })).filter((row) => options?.includeVoided || !row.order_cancelled_at)
+}
+
+/** 依開單日期查未作廢的預購品項，包含等貨、待付款與已完成數量。 */
+export async function fetchPreorderReportInRange(
+  startDate: string,
+  endDate: string,
+): Promise<ShopPreorderReportLine[]> {
+  const { data, error } = await supabase
+    .from('shop_order_items')
+    .select(
+      `
+      id, order_id, unit_price, qty, qty_pending_bill, qty_paid, brand_snapshot,
+      shop_orders!inner(order_no, contact_name, created_at, cancelled_at)
+    `,
+    )
+    .eq('was_preorder', true)
+    .is('shop_orders.cancelled_at', null)
+    .gte('shop_orders.created_at', `${startDate}T00:00:00`)
+    .lte('shop_orders.created_at', `${endDate}T23:59:59`)
+  if (error) throw new Error(error.message)
+
+  return ((data ?? []) as unknown as Array<{
+    id: string
+    order_id: string
+    unit_price: number
+    qty: number
+    qty_pending_bill: number
+    qty_paid: number
+    brand_snapshot: string | null
+    shop_orders: {
+      order_no: string
+      contact_name: string
+      created_at: string
+      cancelled_at: string | null
+    }
+  }>).map((row) => ({
+    id: row.id,
+    order_id: row.order_id,
+    order_no: row.shop_orders.order_no,
+    contact_name: row.shop_orders.contact_name,
+    order_created_at: row.shop_orders.created_at,
+    brand: row.brand_snapshot?.trim() || '其他品牌',
+    unit_price: Number(row.unit_price),
+    qty: Number(row.qty),
+    qty_pending_bill: Number(row.qty_pending_bill),
+    qty_paid: Number(row.qty_paid),
+  }))
 }
 
 export async function countOrderTransactions(orderId: string): Promise<number> {

@@ -13,7 +13,11 @@ import { formatCurrency, formatDateTime, extractDate, extractTime } from '../../
 import { supabase } from '../../../lib/supabase'
 import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
 import { getCategory, getCategoryShopName } from '../products/schema'
-import { fetchSettlementsInRange } from './api'
+import { fetchPreorderReportInRange, fetchSettlementsInRange } from './api'
+import {
+  summarizePreorderReport,
+  type PreorderReportSummary,
+} from './preorderReport'
 import {
   filterSettlementsBySearch,
   formatSettlementLineDisplay,
@@ -21,7 +25,11 @@ import {
   settlementListTotal,
   type SettlementLineDisplay,
 } from './settleUtils'
-import type { OrderPaymentMethod, ShopOrderSettlementWithDetails } from './types'
+import type {
+  OrderPaymentMethod,
+  ShopOrderSettlementWithDetails,
+  ShopPreorderReportLine,
+} from './types'
 import { PAYMENT_METHOD_LABELS } from './types'
 
 interface Props {
@@ -73,6 +81,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
   const [salesGroupBy, setSalesGroupBy] = useState<SalesGroupBy>('brand')
   const [loading, setLoading] = useState(false)
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
+  const [preorderLines, setPreorderLines] = useState<ShopPreorderReportLine[]>([])
   const [detailSearch, setDetailSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedSalesGroupIds, setExpandedSalesGroupIds] = useState<Set<string>>(
@@ -86,7 +95,10 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
 
   useEffect(() => {
     setSettlements([])
+    setPreorderLines([])
     void loadData()
+    // 僅在統計期間改變時重新查詢；toast identity 不應觸發資料重載。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate])
 
   const loadData = async () => {
@@ -94,8 +106,12 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
     setLoading(true)
     try {
       const { start, end } = dateRangeFromSelection(selectedDate)
-      const rows = await fetchSettlementsInRange(start, end)
+      const [rows, preorderRows] = await Promise.all([
+        fetchSettlementsInRange(start, end),
+        fetchPreorderReportInRange(start, end),
+      ])
       setSettlements(rows)
+      setPreorderLines(preorderRows)
       const variantIds = [
         ...new Set(rows.flatMap((r) => r.items_snapshot.map((l) => l.variant_id))),
       ]
@@ -139,6 +155,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
       const msg = e instanceof Error ? e.message : '載入失敗'
       toast.error(msg)
       setSettlements([])
+      setPreorderLines([])
     } finally {
       setLoading(false)
     }
@@ -259,6 +276,11 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
       }))
   }, [salesGroupBy, settlements, variantDisplay, variantSalesMeta])
 
+  const preorderSummary = useMemo(
+    () => summarizePreorderReport(preorderLines),
+    [preorderLines],
+  )
+
   const allSalesGroupsExpanded =
     salesGroups.length > 0 && salesGroups.every((group) => expandedSalesGroupIds.has(group.id))
   const detailSettlements = useMemo(
@@ -299,17 +321,17 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>載入中…</div>
-      ) : settlements.length === 0 ? (
+      ) : settlements.length === 0 && preorderLines.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>
           {selectedDate.length === 10
-            ? '當日無結帳紀錄'
+            ? '當日無銷售或預購紀錄'
             : selectedDate.length === 4
-              ? '此年度尚無結帳紀錄'
-              : '當月無結帳紀錄'}
+              ? '此年度尚無銷售或預購紀錄'
+              : '當月無銷售或預購紀錄'}
         </div>
       ) : (
         <>
-          {!rankingOnly && (
+          {!rankingOnly && settlements.length > 0 && (
             <div
               style={{
                 background: colors.background.card,
@@ -349,6 +371,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
             </div>
           )}
 
+          {settlements.length > 0 && (
           <div
             style={{
               background: colors.background.card,
@@ -750,8 +773,11 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
               )
             })}
           </div>
+          )}
 
-          {!rankingOnly && (
+          <PreorderReportCard summary={preorderSummary} isMobile={isMobile} />
+
+          {!rankingOnly && settlements.length > 0 && (
             <>
               <div
                 style={{
@@ -1212,6 +1238,183 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
         </>
       )}
     </div>
+  )
+}
+
+function PreorderReportCard({
+  summary,
+  isMobile,
+}: {
+  summary: PreorderReportSummary
+  isMobile: boolean
+}) {
+  return (
+    <section
+      style={{
+        background: colors.background.card,
+        border: `1px solid ${colors.border.light}`,
+        borderRadius: borderRadius.lg,
+        overflow: 'hidden',
+        marginBottom: 24,
+      }}
+    >
+      <div
+        style={{
+          padding: isMobile ? 16 : '18px 20px',
+          borderBottom: `1px solid ${colors.border.light}`,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'baseline',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: getFontSize('h3', isMobile),
+                fontWeight: 700,
+                lineHeight: 1.35,
+              }}
+            >
+              預購總表
+            </h2>
+            <p
+              style={{
+                margin: `${spacing.xs} 0 0`,
+                color: colors.text.secondary,
+                fontSize: getFontSize('caption', isMobile),
+              }}
+            >
+              依開單日期統計，包含等貨、待付款與已完成；不含作廢訂單
+            </p>
+          </div>
+          {summary.orderCount > 0 && (
+            <strong
+              style={{
+                color: colors.text.primary,
+                fontSize: getFontSize('body', isMobile),
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {summary.orderCount} 筆 · {summary.qty} 件 · {formatCurrency(summary.amount, false)}
+            </strong>
+          )}
+        </div>
+        {summary.orderCount > 0 && (
+          <div
+            style={{
+              marginTop: 10,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 8,
+              color: colors.text.secondary,
+              fontSize: getFontSize('bodySmall', isMobile),
+            }}
+          >
+            <span>等貨 {summary.waiting} 件</span>
+            <span>·</span>
+            <span>待付款 {summary.pending} 件</span>
+            <span>·</span>
+            <span>已完成 {summary.paid} 件</span>
+          </div>
+        )}
+      </div>
+
+      {summary.brands.length === 0 ? (
+        <div style={{ padding: 28, textAlign: 'center', color: colors.text.disabled }}>
+          此期間沒有預購訂單
+        </div>
+      ) : isMobile ? (
+        <div>
+          {summary.brands.map((row, index) => (
+            <div
+              key={row.brand}
+              style={{
+                padding: '13px 16px',
+                borderTop: index > 0 ? `1px solid ${colors.border.light}` : 'none',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  gap: 12,
+                }}
+              >
+                <strong style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{row.brand}</strong>
+                <strong style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                  {formatCurrency(row.amount, false)}
+                </strong>
+              </div>
+              <div
+                style={{
+                  marginTop: 5,
+                  color: colors.text.secondary,
+                  fontSize: getFontSize('bodySmall', true),
+                  lineHeight: 1.5,
+                }}
+              >
+                {row.orderCount} 筆 · 共 {row.qty} 件
+              </div>
+              <div
+                style={{
+                  marginTop: 2,
+                  color: colors.text.disabled,
+                  fontSize: getFontSize('caption', true),
+                }}
+              >
+                等貨 {row.waiting} · 待付款 {row.pending} · 已完成 {row.paid}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table
+            style={{
+              width: '100%',
+              minWidth: 720,
+              borderCollapse: 'collapse',
+              fontSize: getFontSize('bodySmall', false),
+            }}
+          >
+            <thead>
+              <tr style={{ background: colors.secondary[50] }}>
+                <th style={thStyle()}>品牌</th>
+                <th style={thStyle('center')}>訂單</th>
+                <th style={thStyle('center')}>總件數</th>
+                <th style={thStyle('center')}>等貨</th>
+                <th style={thStyle('center')}>待付款</th>
+                <th style={thStyle('center')}>已完成</th>
+                <th style={thStyle('right')}>訂單金額</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.brands.map((row) => (
+                <tr key={row.brand} style={{ borderTop: `1px solid ${colors.border.light}` }}>
+                  <td style={{ ...tdStyle(), fontWeight: 600 }}>{row.brand}</td>
+                  <td style={tdStyle('center')}>{row.orderCount} 筆</td>
+                  <td style={tdStyle('center')}>{row.qty}</td>
+                  <td style={tdStyle('center')}>{row.waiting}</td>
+                  <td style={tdStyle('center')}>{row.pending}</td>
+                  <td style={tdStyle('center')}>{row.paid}</td>
+                  <td style={{ ...tdStyle('right'), fontWeight: 700 }}>
+                    {formatCurrency(row.amount, false)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   )
 }
 
