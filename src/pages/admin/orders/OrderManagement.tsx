@@ -671,11 +671,10 @@ function OrderCard({
   const status = orderStatusMeta(statusKey)
   const showSubmit = orderCanSubmitBilling(order)
   const showCancelBill = !cancelled && orderHasPendingBill(order)
-  const catalogPriceTotal = order.items.reduce(
-    (total, item) => total + (item.variant.price == null ? 0 : item.variant.price * item.qty),
+  const orderAmountTotal = order.items.reduce(
+    (total, item) => total + item.unit_price * item.qty,
     0,
   )
-  const unpricedItemCount = order.items.filter((item) => item.variant.price == null).length
   const settledTotal = statusKey === 'settled' ? settlementAmountTotal(order.settlements) : null
   return (
     <div
@@ -781,7 +780,7 @@ function OrderCard({
             fontSize: getFontSize('bodySmall', isMobile),
           }}
         >
-          <span>商品定價合計</span>
+          <span>訂單金額</span>
           <strong
             style={{
               color: colors.text.primary,
@@ -789,13 +788,8 @@ function OrderCard({
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            NT${formatCurrency(catalogPriceTotal, false)}
+            NT${formatCurrency(orderAmountTotal, false)}
           </strong>
-          {unpricedItemCount > 0 && (
-            <span style={{ color: colors.warning[700] }}>
-              （不含 {unpricedItemCount} 項未定價商品）
-            </span>
-          )}
           {settledTotal !== null && (
             <>
               <span style={{ color: colors.border.main }}>·</span>
@@ -950,8 +944,7 @@ function OrderItemRow({
   const { title, subtitle } = formatOrderItemParts(item)
   const chips = itemQtyChipsForCard(item, order)
   const thumbSize = isMobile ? 44 : 48
-  const catalogPrice =
-    item.variant.price == null ? '未定價' : `NT$${formatCurrency(item.variant.price, false)}`
+  const orderUnitPrice = `NT$${formatCurrency(item.unit_price, false)}`
   return (
     <div
       style={{
@@ -1004,13 +997,13 @@ function OrderItemRow({
         style={{
           fontSize: getFontSize('bodySmall', isMobile),
           fontWeight: 700,
-          color: item.variant.price == null ? colors.warning[700] : colors.text.primary,
+          color: colors.text.primary,
           textAlign: 'right',
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
         }}
       >
-        {catalogPrice} ×{item.qty}
+        {orderUnitPrice} ×{item.qty}
       </div>
       {chips.length > 0 && (
         <div

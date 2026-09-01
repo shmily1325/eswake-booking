@@ -32,4 +32,15 @@ describe('order management context details', () => {
     )
     expect(source).toContain('<span>結帳金額</span>')
   })
+
+  it('shows the saved order price instead of the current catalog price', () => {
+    expect(source).toContain(
+      '(total, item) => total + item.unit_price * item.qty',
+    )
+    expect(source).toContain(
+      'const orderUnitPrice = `NT$${formatCurrency(item.unit_price, false)}`',
+    )
+    expect(source).toContain('<span>訂單金額</span>')
+    expect(source).not.toContain('item.variant.price * item.qty')
+  })
 })
