@@ -25,6 +25,9 @@ import { LabelCodeCameraScanner } from '../products/LabelCodeCameraScanner'
 import { formatAttributes, formatProductTitle } from '../products/schema'
 import { buildVariantSearchHaystack } from '../products/productSearchHaystack'
 import type { VariantListItem } from '../products/types'
+import { fetchDiscountPresets } from '../products/discountApi'
+import type { DiscountPreset } from '../../shop/lib/shopPricing'
+import { formatPrice } from '../../shop/lib/shopFormat'
 import {
   countOrderTransactions,
   createShopOrder,
@@ -34,6 +37,7 @@ import {
 } from './api'
 import { formatDateTime } from '../../../utils/formatters'
 import { confirmVoidOrder } from './orderUtils'
+import { resolveOrderLinePrice } from './orderLinePricing'
 import { OrderMemberPicker, resolveContactName } from './OrderMemberPicker'
 import type { DeliveryMethod, ShopOrderWithItems } from './types'
 
@@ -45,6 +49,8 @@ interface DraftLine {
   label: string
   was_preorder?: boolean
   brand_snapshot?: string | null
+  suggested_original_price?: number | null
+  suggested_discount_caption?: string | null
 }
 
 interface CreateOrderDraftSnapshot {
@@ -126,6 +132,8 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   const [lines, setLines] = useState<DraftLine[]>([])
   const [variantSearch, setVariantSearch] = useState('')
   const [variants, setVariants] = useState<VariantListItem[]>([])
+  const [discountPresets, setDiscountPresets] = useState<DiscountPreset[]>([])
+  const [pricingReady, setPricingReady] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [scanOpen, setScanOpen] = useState(false)
@@ -143,9 +151,14 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
 
   useEffect(() => {
     if (!open) return
-    fetchAllProductsWithVariants()
-      .then((list) => setVariants(flattenToVariantItems(list)))
-      .catch(() => setSaveError('載入商品失敗'))
+    setPricingReady(false)
+    Promise.all([fetchAllProductsWithVariants(), fetchDiscountPresets()])
+      .then(([list, presets]) => {
+        setVariants(flattenToVariantItems(list))
+        setDiscountPresets(presets)
+        setPricingReady(true)
+      })
+      .catch(() => setSaveError('載入商品與折扣失敗，請稍後再試'))
   }, [open])
 
   useEffect(() => {
@@ -242,9 +255,10 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   ])
 
   useEffect(() => {
-    if (!open || order || !prefillVariantId || variants.length === 0) return
+    if (!open || order || !pricingReady || !prefillVariantId || variants.length === 0) return
     const item = variants.find((v) => v.variant.id === prefillVariantId)
     if (!item) return
+    const suggestedPrice = resolveOrderLinePrice(item, discountPresets)
     setLines((prev) => {
       if (prev.some((l) => l.variant_id === prefillVariantId)) return prev
       return [
@@ -252,13 +266,15 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         {
           key: `new-${item.variant.id}-${Date.now()}`,
           variant_id: item.variant.id,
-          unit_price: item.variant.price ?? 0,
+          unit_price: suggestedPrice.unitPrice,
           qty: 1,
           label: lineLabel(item.product, item.variant),
+          suggested_original_price: suggestedPrice.originalPrice,
+          suggested_discount_caption: suggestedPrice.discountCaption,
         },
       ]
     })
-  }, [open, order, prefillVariantId, variants])
+  }, [open, order, pricingReady, prefillVariantId, variants, discountPresets])
 
   const filteredVariants = useMemo(() => {
     const q = variantSearch.trim().toLowerCase()
@@ -281,6 +297,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     (item: VariantListItem) => {
       if (locked) return false
       const label = lineLabel(item.product, item.variant)
+      const suggestedPrice = resolveOrderLinePrice(item, discountPresets)
       let incremented = false
       setLines((prev) => {
         const existing = prev.find((line) => line.variant_id === item.variant.id)
@@ -295,21 +312,23 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           {
             key: `new-${item.variant.id}-${Date.now()}`,
             variant_id: item.variant.id,
-            unit_price: item.variant.price ?? 0,
+            unit_price: suggestedPrice.unitPrice,
             qty: 1,
             label,
+            suggested_original_price: suggestedPrice.originalPrice,
+            suggested_discount_caption: suggestedPrice.discountCaption,
           },
         ]
       })
       setVariantSearch('')
       return incremented
     },
-    [locked],
+    [locked, discountPresets],
   )
 
   const handleLabelCodeScan = useCallback(
     async (labelCode: string) => {
-      if (locked || scanBusy) return
+      if (locked || scanBusy || !pricingReady) return
       const normalized = labelCode.trim().toUpperCase()
       const localItem = labelCodeVariantMap.get(normalized)
       if (localItem) {
@@ -343,7 +362,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         setScanBusy(false)
       }
     },
-    [addOrIncrementVariant, labelCodeVariantMap, locked, scanBusy],
+    [addOrIncrementVariant, labelCodeVariantMap, locked, pricingReady, scanBusy],
   )
 
   if (!open) return null
@@ -359,17 +378,50 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
 
   const addVariant = (item: VariantListItem) => {
     if (locked) return
+    const suggestedPrice = resolveOrderLinePrice(item, discountPresets)
     setLines((prev) => [
       ...prev,
       {
         key: `new-${item.variant.id}-${Date.now()}`,
         variant_id: item.variant.id,
-        unit_price: item.variant.price ?? 0,
+        unit_price: suggestedPrice.unitPrice,
         qty: 1,
         label: lineLabel(item.product, item.variant),
+        suggested_original_price: suggestedPrice.originalPrice,
+        suggested_discount_caption: suggestedPrice.discountCaption,
       },
     ])
     setVariantSearch('')
+  }
+
+  const applyCurrentShopPrices = () => {
+    if (locked || !pricingReady || lines.length === 0) return
+    const itemByVariantId = new Map(variants.map((item) => [item.variant.id, item]))
+    const unavailableCount = lines.filter((line) => {
+      const item = itemByVariantId.get(line.variant_id)
+      return !item || item.variant.price == null
+    }).length
+    if (unavailableCount > 0) {
+      globalToast.error(`有 ${unavailableCount} 項商品目前無法取得售價，未更新`)
+      return
+    }
+    if (!window.confirm('確定依目前商城折扣重新計算全部品項單價？更新後仍需按「儲存」。')) {
+      return
+    }
+    setLines((prev) =>
+      prev.map((line) => {
+        const item = itemByVariantId.get(line.variant_id)
+        if (!item) return line
+        const suggestedPrice = resolveOrderLinePrice(item, discountPresets)
+        return {
+          ...line,
+          unit_price: suggestedPrice.unitPrice,
+          suggested_original_price: suggestedPrice.originalPrice,
+          suggested_discount_caption: suggestedPrice.discountCaption,
+        }
+      }),
+    )
+    globalToast.success('已帶入目前商城價格，請確認後儲存')
   }
 
   const selectedMemberLabel = memberSearch.selectedMemberId
@@ -638,6 +690,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                 value={variantSearch}
                 onChange={(e) => setVariantSearch(e.target.value)}
                 placeholder="搜尋品牌、型號、規格、貨號、標籤代碼"
+                disabled={!pricingReady}
                 style={{
                   ...inputStyle,
                   flex: 1,
@@ -647,6 +700,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               <button
                 type="button"
                 data-track="product_order_scan_open"
+                disabled={!pricingReady}
                 onClick={() => {
                   setScanStatus(null)
                   setScanOpen(true)
@@ -712,6 +766,20 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               </div>
             )}
           </>
+        )}
+
+        {order && !locked && lines.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <button
+              type="button"
+              data-track="product_order_apply_shop_prices"
+              disabled={!pricingReady}
+              onClick={applyCurrentShopPrices}
+              style={getButtonStyle('outline', 'small', isMobile)}
+            >
+              套用目前商城價格
+            </button>
+          </div>
         )}
 
         <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 0 }}>
@@ -807,10 +875,31 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                     placeholder="請輸入金額"
                     onChange={(unit_price) => {
                       setLines((prev) =>
-                        prev.map((l, i) => (i === idx ? { ...l, unit_price } : l)),
+                        prev.map((l, i) =>
+                          i === idx
+                            ? {
+                                ...l,
+                                unit_price,
+                                suggested_original_price: null,
+                                suggested_discount_caption: null,
+                              }
+                            : l,
+                        ),
                       )
                     }}
                   />
+                  {line.suggested_discount_caption && line.suggested_original_price != null && (
+                    <div
+                      style={{
+                        marginTop: 4,
+                        fontSize: getFontSize('caption', isMobile),
+                        color: designSystem.colors.text.secondary,
+                      }}
+                    >
+                      {line.suggested_discount_caption} · 原價{' '}
+                      {formatPrice(line.suggested_original_price)}
+                    </div>
+                  )}
                 </div>
                 {!locked && !isMobile && (
                   <button

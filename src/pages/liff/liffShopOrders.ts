@@ -91,6 +91,16 @@ export function liffOrderSettledTotal(order: LiffShopOrder): number | null {
   return settlementAmountTotal(order.settlements)
 }
 
+/** 尚未完成時顯示訂單目前記錄的品項金額。 */
+export function liffOrderQuotedTotal(order: LiffShopOrder): number {
+  return order.items.reduce((total, item) => {
+    const unitPrice = Number(item.unit_price)
+    const qty = Number(item.qty)
+    if (!Number.isFinite(unitPrice) || !Number.isFinite(qty)) return total
+    return total + unitPrice * qty
+  }, 0)
+}
+
 export function liffDeliveryLabel(method: string): string {
   if (method === 'shipping') return '寄送'
   return '面交'

@@ -8,6 +8,7 @@ import {
   formatLiffOrderItemLine,
   liffDeliveryLabel,
   liffOrderProgressSummary,
+  liffOrderQuotedTotal,
   liffOrderSettledTotal,
   liffOrderStatus,
 } from '../liffShopOrders'
@@ -34,6 +35,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
   const progressSummary = liffOrderProgressSummary(order)
   const inProgress = statusKey !== 'done' && statusKey !== 'cancelled'
   const settledTotal = statusKey === 'done' ? liffOrderSettledTotal(order) : null
+  const displayTotal = settledTotal ?? liffOrderQuotedTotal(order)
 
   return (
     <div
@@ -181,6 +183,15 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
               <div
                 style={{
                   fontSize: getFontSizePx('bodySmall', true),
+                  color: LIFF_THEME.muted,
+                  marginTop: 3,
+                }}
+              >
+                單價 ${item.unit_price.toLocaleString()} × {item.qty} 件
+              </div>
+              <div
+                style={{
+                  fontSize: getFontSizePx('bodySmall', true),
                   color: LIFF_THEME.mutedLight,
                   marginTop: 4,
                 }}
@@ -191,27 +202,25 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
           )
         })}
       </div>
-      {settledTotal !== null && (
-        <div
-          style={{
-            marginTop: 12,
-            paddingTop: 10,
-            borderTop: `1px solid ${LIFF_THEME.rowDivider}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'baseline',
-            gap: 12,
-            color: LIFF_THEME.inkSoft,
-          }}
-        >
-          <span style={{ fontSize: getFontSizePx('bodySmall', true), color: LIFF_THEME.muted }}>
-            結帳金額
-          </span>
-          <strong style={{ fontSize: getFontSizePx('body', true) }}>
-            ${settledTotal.toLocaleString()}
-          </strong>
-        </div>
-      )}
+      <div
+        style={{
+          marginTop: 12,
+          paddingTop: 10,
+          borderTop: `1px solid ${LIFF_THEME.rowDivider}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          gap: 12,
+          color: LIFF_THEME.inkSoft,
+        }}
+      >
+        <span style={{ fontSize: getFontSizePx('bodySmall', true), color: LIFF_THEME.muted }}>
+          {settledTotal !== null ? '結帳金額' : '訂單金額'}
+        </span>
+        <strong style={{ fontSize: getFontSizePx('body', true) }}>
+          ${displayTotal.toLocaleString()}
+        </strong>
+      </div>
     </div>
   )
 }

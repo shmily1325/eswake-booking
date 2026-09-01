@@ -4,6 +4,7 @@ import {
   liffHiddenItemsProgressHint,
   liffOrderIsMixed,
   liffOrderProgressSummary,
+  liffOrderQuotedTotal,
   liffOrderSettledTotal,
   liffOrderStatus,
 } from '../liffShopOrders'
@@ -146,5 +147,15 @@ describe('liffOrderSettledTotal', () => {
       settlements: [{ amount_total: 1200 }, { amount_total: Number.NaN }],
     }
     expect(liffOrderSettledTotal(order)).toBe(1200)
+  })
+})
+
+describe('liffOrderQuotedTotal', () => {
+  it('sums the saved unit price for every ordered item', () => {
+    const order = mockOrder([
+      mockItem({ id: 'a', qty: 2, unit_price: 5910 }),
+      mockItem({ id: 'b', qty: 1, unit_price: 1200 }),
+    ])
+    expect(liffOrderQuotedTotal(order)).toBe(13020)
   })
 })
