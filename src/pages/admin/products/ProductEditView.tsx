@@ -660,7 +660,7 @@ export function ProductEditView({
       return `· ${label}`
     })
     return [
-      '以下規格庫存仍是 0，儲存後會變成「已售完」（商城不顯示）：',
+      '以下規格庫存仍是 0，儲存後會變成「已售完」（Shop 不顯示）：',
       '',
       ...lines,
       '',

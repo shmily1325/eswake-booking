@@ -405,7 +405,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       globalToast.error(`有 ${unavailableCount} 項商品目前無法取得售價，未更新`)
       return
     }
-    if (!window.confirm('確定依目前商城折扣重新計算全部品項單價？更新後仍需按「儲存」。')) {
+    if (!window.confirm('確定依 Shop 目前售價重新計算全部品項單價？更新後仍需按「儲存」。')) {
       return
     }
     setLines((prev) =>
@@ -421,7 +421,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         }
       }),
     )
-    globalToast.success('已帶入目前商城價格，請確認後儲存')
+    globalToast.success('已帶入 Shop 目前售價，請確認後儲存')
   }
 
   const selectedMemberLabel = memberSearch.selectedMemberId
@@ -684,8 +684,42 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
 
         {!locked && (
           <>
-            <label style={{ ...getLabelStyle(isMobile), marginBottom: 6 }}>加入商品</label>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                marginBottom: 8,
+              }}
+            >
+              <label style={{ ...getLabelStyle(isMobile), margin: 0 }}>加入商品</label>
+              {order && lines.length > 0 && (
+                <button
+                  type="button"
+                  data-track="product_order_apply_shop_prices"
+                  disabled={!pricingReady}
+                  onClick={applyCurrentShopPrices}
+                  style={{
+                    ...getButtonStyle('outline', 'small', isMobile),
+                    flexShrink: 0,
+                    minHeight: 36,
+                    padding: '7px 12px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  帶入 Shop 目前售價
+                </button>
+              )}
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) auto',
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
               <input
                 value={variantSearch}
                 onChange={(e) => setVariantSearch(e.target.value)}
@@ -768,54 +802,36 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           </>
         )}
 
-        {order && !locked && lines.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-            <button
-              type="button"
-              data-track="product_order_apply_shop_prices"
-              disabled={!pricingReady}
-              onClick={applyCurrentShopPrices}
-              style={getButtonStyle('outline', 'small', isMobile)}
-            >
-              套用目前商城價格
-            </button>
-          </div>
-        )}
-
-        <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 0 }}>
+        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {lines.map((line, idx) => (
             <div
               key={line.key}
               style={{
-                padding: isMobile ? 12 : '0 0 10px',
-                marginBottom: isMobile ? 0 : 10,
-                borderRadius: isMobile ? designSystem.borderRadius.md : 0,
-                background: isMobile ? designSystem.colors.background.main : 'transparent',
-                border: isMobile ? `1px solid ${designSystem.colors.border.light}` : 'none',
-                borderBottom:
-                  !isMobile && idx < lines.length - 1
-                    ? `1px solid ${designSystem.colors.border.light}`
-                    : 'none',
+                padding: isMobile ? 12 : 14,
+                borderRadius: designSystem.borderRadius.md,
+                background: designSystem.colors.background.main,
+                border: `1px solid ${designSystem.colors.border.light}`,
               }}
             >
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'flex-start',
+                  alignItems: 'center',
                   gap: 8,
-                  marginBottom: isMobile ? 10 : 8,
+                  marginBottom: 12,
                 }}
               >
                 <span style={{
                   flex: 1,
                   fontSize: getFontSize('body', isMobile),
+                  fontWeight: 600,
                   lineHeight: 1.4,
                   minWidth: 0,
                   color: designSystem.colors.text.primary,
                 }}>
                   {line.label}
                 </span>
-                {!locked && isMobile && (
+                {!locked && (
                   <button
                     type="button"
                     data-track="product_order_line_remove"
@@ -831,7 +847,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                       lineHeight: 1,
                       minWidth: 44,
                       minHeight: 44,
-                      margin: -10,
+                      margin: -8,
                       padding: 10,
                     }}
                   >
@@ -842,13 +858,16 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? 'minmax(96px, 1fr) minmax(0, 2fr)' : '140px 1fr auto',
-                  gap: 10,
-                  alignItems: 'end',
+                  gridTemplateColumns: isMobile
+                    ? 'minmax(88px, 0.7fr) minmax(150px, 1.5fr)'
+                    : '112px minmax(220px, 300px)',
+                  gap: isMobile ? 12 : 16,
+                  alignItems: 'start',
+                  maxWidth: isMobile ? 'none' : 428,
                 }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={mutedLabel}>數量</div>
+                  <div style={mutedLabel}>數量（件）</div>
                   <PrimaryNumericInput
                     value={line.qty}
                     min={1}
@@ -857,22 +876,25 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                     onChange={(qty) => {
                       setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, qty } : l)))
                     }}
-                    suffix={
-                      <span style={{
-                        fontSize: getFontSize('body', isMobile),
-                        color: designSystem.colors.text.secondary,
-                      }}>
-                        件
-                      </span>
-                    }
+                    style={{
+                      width: '100%',
+                      padding: '11px 12px',
+                      fontSize: 16,
+                    }}
                   />
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={mutedLabel}>單價</div>
+                  <div style={mutedLabel}>單價（NT$）</div>
                   <MoneyInput
                     value={line.unit_price}
                     disabled={locked}
                     placeholder="請輸入金額"
+                    prefix={null}
+                    style={{
+                      width: '100%',
+                      padding: '11px 12px',
+                      fontSize: 16,
+                    }}
                     onChange={(unit_price) => {
                       setLines((prev) =>
                         prev.map((l, i) =>
@@ -901,25 +923,6 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                     </div>
                   )}
                 </div>
-                {!locked && !isMobile && (
-                  <button
-                    type="button"
-                    data-track="product_order_line_remove"
-                    aria-label="移除此品項"
-                    onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      color: designSystem.colors.danger[700],
-                      fontSize: 22,
-                      minWidth: 44,
-                      minHeight: 44,
-                    }}
-                  >
-                    ×
-                  </button>
-                )}
               </div>
             </div>
           ))}
