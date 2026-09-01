@@ -80,6 +80,9 @@ export interface ShopPreorderReportLine {
   contact_name: string
   order_created_at: string
   brand: string
+  variant_id: string
+  item_title: string
+  item_subtitle: string
   unit_price: number
   qty: number
   qty_pending_bill: number

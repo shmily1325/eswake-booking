@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabase'
 import { getLocalDateString } from '../../../utils/date'
+import { formatAttributes } from '../products/schema'
 import { sortPendingBillOrders } from './orderUtils'
 import { formatShopOrderRpcError } from './shopOrderRpcErrors'
 
@@ -362,7 +363,11 @@ export async function fetchPreorderReportInRange(
     .select(
       `
       id, order_id, unit_price, qty, qty_pending_bill, qty_paid, brand_snapshot,
-      shop_orders!inner(order_no, contact_name, created_at, cancelled_at)
+      shop_orders!inner(order_no, contact_name, created_at, cancelled_at),
+      variant:product_variants(
+        id, vendor_code, attributes,
+        product:products(brand, model, model_year, category)
+      )
     `,
     )
     .eq('was_preorder', true)
@@ -379,24 +384,47 @@ export async function fetchPreorderReportInRange(
     qty_pending_bill: number
     qty_paid: number
     brand_snapshot: string | null
+    variant: {
+      id: string
+      vendor_code: string | null
+      attributes: Record<string, string | number | null> | null
+      product: {
+        brand: string
+        model: string
+        model_year: number | null
+        category: string
+      } | null
+    } | null
     shop_orders: {
       order_no: string
       contact_name: string
       created_at: string
       cancelled_at: string | null
     }
-  }>).map((row) => ({
-    id: row.id,
-    order_id: row.order_id,
-    order_no: row.shop_orders.order_no,
-    contact_name: row.shop_orders.contact_name,
-    order_created_at: row.shop_orders.created_at,
-    brand: row.brand_snapshot?.trim() || '其他品牌',
-    unit_price: Number(row.unit_price),
-    qty: Number(row.qty),
-    qty_pending_bill: Number(row.qty_pending_bill),
-    qty_paid: Number(row.qty_paid),
-  }))
+  }>).map((row) => {
+    const product = row.variant?.product
+    const specification = product
+      ? formatAttributes(product.category, row.variant?.attributes ?? {})
+      : ''
+    const itemTitle = product
+      ? `${product.brand} ${product.model}${product.model_year != null ? ` · ${product.model_year}` : ''}`
+      : row.variant?.vendor_code || '商品'
+    return {
+      id: row.id,
+      order_id: row.order_id,
+      order_no: row.shop_orders.order_no,
+      contact_name: row.shop_orders.contact_name,
+      order_created_at: row.shop_orders.created_at,
+      brand: row.brand_snapshot?.trim() || product?.brand.trim() || '其他品牌',
+      variant_id: row.variant?.id || row.id,
+      item_title: itemTitle,
+      item_subtitle: [specification, row.variant?.vendor_code].filter(Boolean).join(' · '),
+      unit_price: Number(row.unit_price),
+      qty: Number(row.qty),
+      qty_pending_bill: Number(row.qty_pending_bill),
+      qty_paid: Number(row.qty_paid),
+    }
+  })
 }
 
 export async function countOrderTransactions(orderId: string): Promise<number> {

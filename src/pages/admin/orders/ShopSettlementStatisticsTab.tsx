@@ -1249,8 +1249,14 @@ function PreorderReportCard({
   isMobile: boolean
 }) {
   const [expandedBrands, setExpandedBrands] = useState<Set<string>>(() => new Set())
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set())
   const allExpanded =
-    summary.brands.length > 0 && summary.brands.every((row) => expandedBrands.has(row.brand))
+    summary.brands.length > 0 &&
+    summary.brands.every(
+      (row) =>
+        expandedBrands.has(row.brand) &&
+        row.items.every((item) => expandedItems.has(`${row.brand}\u0000${item.id}`)),
+    )
 
   return (
     <section
@@ -1347,11 +1353,20 @@ function PreorderReportCard({
             >
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setExpandedBrands(
                     allExpanded ? new Set() : new Set(summary.brands.map((row) => row.brand)),
                   )
-                }
+                  setExpandedItems(
+                    allExpanded
+                      ? new Set()
+                      : new Set(
+                          summary.brands.flatMap((row) =>
+                            row.items.map((item) => `${row.brand}\u0000${item.id}`),
+                          ),
+                        ),
+                  )
+                }}
                 style={{ ...getButtonStyle('secondary', 'small', isMobile), boxShadow: 'none' }}
               >
                 {allExpanded ? '全部收合' : '全部展開'}
@@ -1479,62 +1494,147 @@ function PreorderReportCard({
                     >
                       等貨 {row.waiting} · 待付款 {row.pending} · 已完成 {row.paid}
                     </div>
-                    {row.orders.map((order, orderIndex) => (
-                      <div
-                        key={order.orderId}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'minmax(0, 1fr) auto',
-                          gap: 10,
-                          padding: '8px 0',
-                          borderTop:
-                            orderIndex > 0 ? `1px solid ${colors.border.light}` : 'none',
-                        }}
-                      >
-                        <div style={{ minWidth: 0 }}>
-                          <Link
-                            to={`/products/orders?q=${encodeURIComponent(order.orderNo)}`}
+                    {row.items.map((item) => {
+                      const itemExpansionId = `${row.brand}\u0000${item.id}`
+                      const itemExpanded = expandedItems.has(itemExpansionId)
+                      return (
+                        <div key={item.id} style={{ marginTop: 6 }}>
+                          <button
+                            type="button"
+                            aria-expanded={itemExpanded}
+                            onClick={() =>
+                              setExpandedItems((current) => {
+                                const next = new Set(current)
+                                if (next.has(itemExpansionId)) next.delete(itemExpansionId)
+                                else next.add(itemExpansionId)
+                                return next
+                              })
+                            }
                             style={{
-                              color: colors.text.primary,
-                              fontWeight: 600,
-                              textDecoration: 'none',
+                              width: '100%',
+                              display: 'grid',
+                              gridTemplateColumns: 'minmax(0, 1fr) auto',
+                              gap: 10,
+                              alignItems: 'center',
+                              padding: isMobile ? '9px 10px' : '10px 12px',
+                              border: 0,
+                              borderRadius: borderRadius.md,
+                              background: colors.secondary[100],
+                              color: 'inherit',
+                              cursor: 'pointer',
+                              textAlign: 'left',
                             }}
                           >
-                            {order.orderNo}
-                          </Link>
-                          <div
-                            style={{
-                              marginTop: 2,
-                              color: colors.text.secondary,
-                              fontSize: getFontSize('caption', isMobile),
-                            }}
-                          >
-                            {order.contactName} · {extractDate(order.createdAt)}
-                          </div>
-                          <div
-                            style={{
-                              marginTop: 2,
-                              color: colors.text.disabled,
-                              fontSize: getFontSize('caption', isMobile),
-                            }}
-                          >
-                            等貨 {order.waiting} · 待付款 {order.pending} · 已完成 {order.paid}
-                          </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div
+                                style={{
+                                  color: colors.text.primary,
+                                  fontWeight: 600,
+                                  overflowWrap: 'anywhere',
+                                }}
+                              >
+                                {item.title}
+                              </div>
+                              {item.subtitle && (
+                                <div
+                                  style={{
+                                    marginTop: 2,
+                                    color: colors.text.disabled,
+                                    fontSize: getFontSize('caption', isMobile),
+                                  }}
+                                >
+                                  {item.subtitle}
+                                </div>
+                              )}
+                              <div
+                                style={{
+                                  marginTop: 3,
+                                  color: colors.text.secondary,
+                                  fontSize: getFontSize('caption', isMobile),
+                                }}
+                              >
+                                等貨 {item.waiting} · 待付款 {item.pending} · 已完成 {item.paid}
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                whiteSpace: 'nowrap',
+                                textAlign: 'right',
+                                fontSize: getFontSize('bodySmall', isMobile),
+                              }}
+                            >
+                              <span>
+                                <strong>{item.qty} 件</strong> · {formatCurrency(item.amount, false)}
+                              </span>
+                              <span
+                                aria-hidden="true"
+                                style={{
+                                  color: colors.text.disabled,
+                                  transform: itemExpanded ? 'rotate(180deg)' : 'none',
+                                  transition: 'transform 160ms ease',
+                                }}
+                              >
+                                ▾
+                              </span>
+                            </div>
+                          </button>
+                          {itemExpanded && (
+                            <div style={{ padding: isMobile ? '2px 8px 4px' : '3px 10px 5px' }}>
+                              {item.orders.map((order, orderIndex) => (
+                                <div
+                                  key={order.orderId}
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                                    gap: 10,
+                                    padding: '7px 2px',
+                                    borderTop:
+                                      orderIndex > 0
+                                        ? `1px solid ${colors.border.light}`
+                                        : 'none',
+                                  }}
+                                >
+                                  <div style={{ minWidth: 0 }}>
+                                    <Link
+                                      to={`/products/orders?q=${encodeURIComponent(order.orderNo)}`}
+                                      style={{
+                                        color: colors.text.primary,
+                                        fontWeight: 600,
+                                        textDecoration: 'none',
+                                      }}
+                                    >
+                                      {order.orderNo}
+                                    </Link>
+                                    <div
+                                      style={{
+                                        marginTop: 2,
+                                        color: colors.text.secondary,
+                                        fontSize: getFontSize('caption', isMobile),
+                                      }}
+                                    >
+                                      {order.contactName} · {extractDate(order.createdAt)}
+                                    </div>
+                                  </div>
+                                  <div
+                                    style={{
+                                      textAlign: 'right',
+                                      whiteSpace: 'nowrap',
+                                      color: colors.text.secondary,
+                                      fontSize: getFontSize('caption', isMobile),
+                                    }}
+                                  >
+                                    {order.qty} 件 · {formatCurrency(order.amount, false)}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <div
-                          style={{
-                            textAlign: 'right',
-                            whiteSpace: 'nowrap',
-                            fontSize: getFontSize('bodySmall', isMobile),
-                          }}
-                        >
-                          <strong>{order.qty} 件</strong>
-                          <div style={{ marginTop: 2, color: colors.text.secondary }}>
-                            {formatCurrency(order.amount, false)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>

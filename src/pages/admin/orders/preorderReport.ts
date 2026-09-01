@@ -8,6 +8,18 @@ export interface PreorderBrandSummary {
   pending: number
   paid: number
   amount: number
+  items: PreorderItemSummary[]
+}
+
+export interface PreorderItemSummary {
+  id: string
+  title: string
+  subtitle: string
+  qty: number
+  waiting: number
+  pending: number
+  paid: number
+  amount: number
   orders: PreorderOrderSummary[]
 }
 
@@ -44,9 +56,12 @@ export function summarizePreorderReport(
   const orderIds = new Set<string>()
   const brandRows = new Map<
     string,
-    Omit<PreorderBrandSummary, 'orders'> & {
+    Omit<PreorderBrandSummary, 'items'> & {
       orderIds: Set<string>
-      orders: Map<string, PreorderOrderSummary>
+      items: Map<
+        string,
+        Omit<PreorderItemSummary, 'orders'> & { orders: Map<string, PreorderOrderSummary> }
+      >
     }
   >()
   let qty = 0
@@ -71,9 +86,20 @@ export function summarizePreorderReport(
       paid: 0,
       amount: 0,
       orderIds: new Set<string>(),
+      items: new Map(),
+    }
+    const item = row.items.get(line.variant_id) ?? {
+      id: line.variant_id,
+      title: line.item_title,
+      subtitle: line.item_subtitle,
+      qty: 0,
+      waiting: 0,
+      pending: 0,
+      paid: 0,
+      amount: 0,
       orders: new Map<string, PreorderOrderSummary>(),
     }
-    const order = row.orders.get(line.order_id) ?? {
+    const order = item.orders.get(line.order_id) ?? {
       orderId: line.order_id,
       orderNo: line.order_no,
       contactName: line.contact_name,
@@ -92,12 +118,18 @@ export function summarizePreorderReport(
     row.pending += linePending
     row.paid += linePaid
     row.amount += lineAmount
+    item.qty += lineQty
+    item.waiting += lineWaiting
+    item.pending += linePending
+    item.paid += linePaid
+    item.amount += lineAmount
     order.qty += lineQty
     order.waiting += lineWaiting
     order.pending += linePending
     order.paid += linePaid
     order.amount += lineAmount
-    row.orders.set(line.order_id, order)
+    item.orders.set(line.order_id, order)
+    row.items.set(line.variant_id, item)
     brandRows.set(brand, row)
 
     qty += lineQty
@@ -115,12 +147,18 @@ export function summarizePreorderReport(
     paid,
     amount,
     brands: Array.from(brandRows.values())
-      .map(({ orderIds: brandOrderIds, orders, ...row }) => ({
+      .map(({ orderIds: brandOrderIds, items, ...row }) => ({
         ...row,
         orderCount: brandOrderIds.size,
-        orders: Array.from(orders.values()).sort(
-          (a, b) => b.createdAt.localeCompare(a.createdAt) || a.orderNo.localeCompare(b.orderNo),
-        ),
+        items: Array.from(items.values())
+          .map(({ orders, ...item }) => ({
+            ...item,
+            orders: Array.from(orders.values()).sort(
+              (a, b) =>
+                b.createdAt.localeCompare(a.createdAt) || a.orderNo.localeCompare(b.orderNo),
+            ),
+          }))
+          .sort((a, b) => b.qty - a.qty || b.amount - a.amount || a.title.localeCompare(b.title)),
       }))
       .sort((a, b) => b.qty - a.qty || b.amount - a.amount || a.brand.localeCompare(b.brand)),
   }
