@@ -1248,6 +1248,10 @@ function PreorderReportCard({
   summary: PreorderReportSummary
   isMobile: boolean
 }) {
+  const [expandedBrands, setExpandedBrands] = useState<Set<string>>(() => new Set())
+  const allExpanded =
+    summary.brands.length > 0 && summary.brands.every((row) => expandedBrands.has(row.brand))
+
   return (
     <section
       style={{
@@ -1330,89 +1334,213 @@ function PreorderReportCard({
         <div style={{ padding: 28, textAlign: 'center', color: colors.text.disabled }}>
           此期間沒有預購訂單
         </div>
-      ) : isMobile ? (
-        <div>
-          {summary.brands.map((row, index) => (
+      ) : (
+        <>
+          {summary.brands.length > 1 && (
             <div
-              key={row.brand}
               style={{
-                padding: '13px 16px',
-                borderTop: index > 0 ? `1px solid ${colors.border.light}` : 'none',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                padding: isMobile ? '10px 14px' : '10px 20px',
+                borderBottom: `1px solid ${colors.border.light}`,
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                  gap: 12,
-                }}
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedBrands(
+                    allExpanded ? new Set() : new Set(summary.brands.map((row) => row.brand)),
+                  )
+                }
+                style={{ ...getButtonStyle('secondary', 'small', isMobile), boxShadow: 'none' }}
               >
-                <strong style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{row.brand}</strong>
-                <strong style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                  {formatCurrency(row.amount, false)}
-                </strong>
-              </div>
-              <div
-                style={{
-                  marginTop: 5,
-                  color: colors.text.secondary,
-                  fontSize: getFontSize('bodySmall', true),
-                  lineHeight: 1.5,
-                }}
-              >
-                {row.orderCount} 筆 · 共 {row.qty} 件
-              </div>
-              <div
-                style={{
-                  marginTop: 2,
-                  color: colors.text.disabled,
-                  fontSize: getFontSize('caption', true),
-                }}
-              >
-                等貨 {row.waiting} · 待付款 {row.pending} · 已完成 {row.paid}
-              </div>
+                {allExpanded ? '全部收合' : '全部展開'}
+              </button>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table
-            style={{
-              width: '100%',
-              minWidth: 720,
-              borderCollapse: 'collapse',
-              fontSize: getFontSize('bodySmall', false),
-            }}
-          >
-            <thead>
-              <tr style={{ background: colors.secondary[50] }}>
-                <th style={thStyle()}>品牌</th>
-                <th style={thStyle('center')}>訂單</th>
-                <th style={thStyle('center')}>總件數</th>
-                <th style={thStyle('center')}>等貨</th>
-                <th style={thStyle('center')}>待付款</th>
-                <th style={thStyle('center')}>已完成</th>
-                <th style={thStyle('right')}>訂單金額</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.brands.map((row) => (
-                <tr key={row.brand} style={{ borderTop: `1px solid ${colors.border.light}` }}>
-                  <td style={{ ...tdStyle(), fontWeight: 600 }}>{row.brand}</td>
-                  <td style={tdStyle('center')}>{row.orderCount} 筆</td>
-                  <td style={tdStyle('center')}>{row.qty}</td>
-                  <td style={tdStyle('center')}>{row.waiting}</td>
-                  <td style={tdStyle('center')}>{row.pending}</td>
-                  <td style={tdStyle('center')}>{row.paid}</td>
-                  <td style={{ ...tdStyle('right'), fontWeight: 700 }}>
-                    {formatCurrency(row.amount, false)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          )}
+          {summary.brands.map((row, index) => {
+            const expanded = expandedBrands.has(row.brand)
+            const share = summary.qty > 0 ? Math.round((row.qty / summary.qty) * 100) : 0
+            const rankMark = ['🥇', '🥈', '🥉'][index]
+            const rankBackground = ['#fff8e8', '#f5f7fa', '#fff3eb'][index]
+            return (
+              <div
+                key={row.brand}
+                style={{
+                  borderTop: index > 0 ? `1px solid ${colors.border.main}` : 'none',
+                }}
+              >
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  onClick={() =>
+                    setExpandedBrands((current) => {
+                      const next = new Set(current)
+                      if (next.has(row.brand)) next.delete(row.brand)
+                      else next.add(row.brand)
+                      return next
+                    })
+                  }
+                  style={{
+                    width: '100%',
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                    alignItems: 'center',
+                    gap: spacing.md,
+                    padding: isMobile ? '11px 14px' : '13px 20px',
+                    background: rankBackground || colors.background.card,
+                    border: 0,
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: spacing.sm }}>
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          color: colors.text.disabled,
+                          fontSize: getFontSize('caption', isMobile),
+                        }}
+                      >
+                        {rankMark || String(index + 1).padStart(2, '0')}
+                      </span>
+                      <strong style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{row.brand}</strong>
+                    </div>
+                    {isMobile && (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          paddingLeft: 25,
+                          color: colors.text.secondary,
+                          fontSize: getFontSize('bodySmall', true),
+                        }}
+                      >
+                        {row.qty} 件 · <strong>{formatCurrency(row.amount, false)}</strong> · {share}%
+                      </div>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                      color: colors.text.secondary,
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {!isMobile && (
+                      <span>
+                        {row.qty} 件 · <strong>{formatCurrency(row.amount, false)}</strong> · {share}%
+                      </span>
+                    )}
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        color: colors.text.disabled,
+                        transform: expanded ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 160ms ease',
+                      }}
+                    >
+                      ▼
+                    </span>
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      gridColumn: '1 / -1',
+                      height: isMobile ? 4 : 5,
+                      overflow: 'hidden',
+                      borderRadius: borderRadius.full,
+                      background: colors.secondary[100],
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: 'block',
+                        width: `${share}%`,
+                        height: '100%',
+                        borderRadius: 'inherit',
+                        background: colors.secondary[800],
+                      }}
+                    />
+                  </span>
+                </button>
+                {expanded && (
+                  <div style={{ padding: isMobile ? '4px 14px 10px 39px' : '5px 20px 12px 52px' }}>
+                    <div
+                      style={{
+                        marginBottom: 4,
+                        color: colors.text.disabled,
+                        fontSize: getFontSize('caption', isMobile),
+                      }}
+                    >
+                      等貨 {row.waiting} · 待付款 {row.pending} · 已完成 {row.paid}
+                    </div>
+                    {row.orders.map((order, orderIndex) => (
+                      <div
+                        key={order.orderId}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'minmax(0, 1fr) auto',
+                          gap: 10,
+                          padding: '8px 0',
+                          borderTop:
+                            orderIndex > 0 ? `1px solid ${colors.border.light}` : 'none',
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <Link
+                            to={`/products/orders?q=${encodeURIComponent(order.orderNo)}`}
+                            style={{
+                              color: colors.text.primary,
+                              fontWeight: 600,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            {order.orderNo}
+                          </Link>
+                          <div
+                            style={{
+                              marginTop: 2,
+                              color: colors.text.secondary,
+                              fontSize: getFontSize('caption', isMobile),
+                            }}
+                          >
+                            {order.contactName} · {extractDate(order.createdAt)}
+                          </div>
+                          <div
+                            style={{
+                              marginTop: 2,
+                              color: colors.text.disabled,
+                              fontSize: getFontSize('caption', isMobile),
+                            }}
+                          >
+                            等貨 {order.waiting} · 待付款 {order.pending} · 已完成 {order.paid}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            textAlign: 'right',
+                            whiteSpace: 'nowrap',
+                            fontSize: getFontSize('bodySmall', isMobile),
+                          }}
+                        >
+                          <strong>{order.qty} 件</strong>
+                          <div style={{ marginTop: 2, color: colors.text.secondary }}>
+                            {formatCurrency(order.amount, false)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </>
       )}
     </section>
   )

@@ -46,6 +46,19 @@ describe('summarizePreorderReport', () => {
         pending: 2,
         paid: 1,
         amount: 5000,
+        orders: [
+          {
+            orderId: 'order-a',
+            orderNo: 'SO-1',
+            contactName: 'Member',
+            createdAt: '2026-09-01T10:00:00',
+            qty: 5,
+            waiting: 2,
+            pending: 2,
+            paid: 1,
+            amount: 5000,
+          },
+        ],
       },
       {
         brand: 'Ronix',
@@ -55,6 +68,19 @@ describe('summarizePreorderReport', () => {
         pending: 0,
         paid: 0,
         amount: 8000,
+        orders: [
+          {
+            orderId: 'order-b',
+            orderNo: 'SO-3',
+            contactName: 'Member',
+            createdAt: '2026-09-01T10:00:00',
+            qty: 4,
+            waiting: 4,
+            pending: 0,
+            paid: 0,
+            amount: 8000,
+          },
+        ],
       },
     ])
   })
