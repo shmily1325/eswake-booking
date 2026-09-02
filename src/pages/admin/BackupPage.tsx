@@ -8,7 +8,7 @@ import { useToast, ToastContainer } from '../../components/ui'
 import { useResponsive } from '../../hooks/useResponsive'
 import { isAdmin } from '../../utils/auth'
 import { formatVenueDateTime } from '../../utils/date'
-import { getBackupHealth, getDailyBackupState } from '../../utils/backupHealth'
+import { getBackupHealth, type BackupHealthProfile } from '../../utils/backupHealth'
 import {
   designSystem,
   getButtonStyle,
@@ -203,27 +203,27 @@ export function BackupPage() {
       label: 'Google Drive',
       schedule: '資料庫每天 02:00 · 商品圖片每天 02:30',
       items: [
-        { label: '資料庫', logs: cloudLogs },
-        { label: '商品圖片', logs: cloudStorageLogs },
+        { label: '資料庫', logs: cloudLogs, profile: 'cloud-database' as BackupHealthProfile },
+        { label: '商品圖片', logs: cloudStorageLogs, profile: 'cloud-image' as BackupHealthProfile },
       ],
     },
     {
       label: '桌機備份',
       schedule: '每天 10:00，未登入則略過',
       items: [
-        { label: '資料庫', logs: wdLogs },
-        { label: '商品圖片', logs: wdStorageLogs },
+        { label: '資料庫', logs: wdLogs, profile: 'desktop-database' as BackupHealthProfile },
+        { label: '商品圖片', logs: wdStorageLogs, profile: 'desktop-image' as BackupHealthProfile },
       ],
     },
   ].map((destination) => ({
     ...destination,
     items: destination.items.map((item) => {
-      const health = getBackupHealth(item.logs)
+      const health = getBackupHealth(item.logs, item.profile)
       const unconfigured = destination.label === '桌機備份' && item.logs.length === 0
       return {
         ...item,
         unconfigured,
-        health: unconfigured ? { ...health, message: '未設定' } : health,
+        health,
         lastSuccess: item.logs.find((log) => log.status === 'success'),
       }
     }),
@@ -235,7 +235,6 @@ export function BackupPage() {
         destination: destination.label,
         ...item,
         latestAttempt,
-        dailyHealth: getDailyBackupState(latestAttempt, item.health, item.unconfigured),
       }
     }),
   )
@@ -484,7 +483,7 @@ export function BackupPage() {
             }}
           >
             {backupHealthRows.map(
-              ({ destination, label, dailyHealth, latestAttempt, unconfigured }) => (
+              ({ destination, label, health, latestAttempt, unconfigured }) => (
               <div
                 key={`${destination}-${label}`}
                 style={{
@@ -518,14 +517,14 @@ export function BackupPage() {
                         width: 9,
                         height: 9,
                         borderRadius: '50%',
-                        background: dailyHealth.light,
+                        background: health.light,
                         flexShrink: 0,
                       }}
                     />
                     <strong
-                      style={{ fontSize: getFontSize('bodySmall', isMobile), color: dailyHealth.color }}
+                      style={{ fontSize: getFontSize('bodySmall', isMobile), color: health.color }}
                     >
-                      {dailyHealth.message}
+                      {health.message}
                     </strong>
                   </div>
                 </div>

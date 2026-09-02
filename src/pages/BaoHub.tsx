@@ -14,19 +14,21 @@ import { designSystem, getFontSize } from '../styles/designSystem'
 import { supabase } from '../lib/supabase'
 import {
   getBackupHealth,
-  summarizeBackupHealth,
+  type BackupHealth as BackupHealthResult,
   type BackupHealthStatus,
 } from '../utils/backupHealth'
 
-type BackupHealth = {
-  status: BackupHealthStatus
-  message: string
+type BackupHealthDisplay = {
+  database: BackupHealthResult
+  image: BackupHealthResult
 }
 
 function backupHealthColor(status: BackupHealthStatus): string {
   switch (status) {
     case 'ok':
       return designSystem.colors.success[700]
+    case 'info':
+      return designSystem.colors.info[700]
     case 'warning':
       return designSystem.colors.warning[700]
     case 'error':
@@ -42,7 +44,7 @@ export function BaoHub() {
   const { isMobile } = useResponsive()
   const userIsAdmin = isAdmin(user)
   const { count: pendingSettleCount } = usePendingBillOrderCount(userIsAdmin)
-  const [backupHealth, setBackupHealth] = useState<BackupHealth | null>(null)
+  const [backupHealth, setBackupHealth] = useState<BackupHealthDisplay | null>(null)
 
   // 權限檢查：只有管理員可以進入
   useEffect(() => {
@@ -61,8 +63,6 @@ export function BaoHub() {
         const destinations = [
           'google_drive',
           'google_drive_storage',
-          'wd_local',
-          'wd_local_storage',
         ]
         const results = await Promise.all(
           destinations.map((destination) =>
@@ -79,18 +79,29 @@ export function BaoHub() {
         const failedResult = results.find((result) => result.error)
         if (failedResult?.error) {
           console.error('載入備份狀態失敗:', failedResult.error)
-          setBackupHealth({ status: 'unknown', message: '無法讀取備份狀態' })
+          const unavailable: BackupHealthResult = {
+            status: 'unknown',
+            message: '無法讀取備份狀態',
+            color: designSystem.colors.text.secondary,
+            light: designSystem.colors.border.main,
+          }
+          setBackupHealth({ database: unavailable, image: unavailable })
           return
         }
-        const health = results.map((result) => getBackupHealth(result.data || []))
-        setBackupHealth(summarizeBackupHealth(
-          [health[0], health[1]],
-          [health[2], health[3]],
-        ))
+        setBackupHealth({
+          database: getBackupHealth(results[0].data || [], 'cloud-database'),
+          image: getBackupHealth(results[1].data || [], 'cloud-image'),
+        })
       } catch (err) {
         if (cancelled) return
         console.error('載入備份狀態失敗:', err)
-        setBackupHealth({ status: 'unknown', message: '無法讀取備份狀態' })
+        const unavailable: BackupHealthResult = {
+          status: 'unknown',
+          message: '無法讀取備份狀態',
+          color: designSystem.colors.text.secondary,
+          light: designSystem.colors.border.main,
+        }
+        setBackupHealth({ database: unavailable, image: unavailable })
       }
     }
 
@@ -248,12 +259,12 @@ export function BaoHub() {
                 <Link
                   to="/backup"
                   data-track="bao_backup_status"
-                  aria-label={`查看備份頁面：${backupHealth.message}`}
+                  aria-label={`查看備份頁面：${backupHealth.database.message}`}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    color: backupHealthColor(backupHealth.status),
+                    color: backupHealthColor(backupHealth.database.status),
                     textDecoration: 'none',
                     fontSize: getFontSize('bodySmall', isMobile),
                     fontWeight: 600,
@@ -269,7 +280,7 @@ export function BaoHub() {
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-1px)'
                     e.currentTarget.style.boxShadow = designSystem.shadows.sm
-                    e.currentTarget.style.borderColor = backupHealthColor(backupHealth.status)
+                    e.currentTarget.style.borderColor = backupHealthColor(backupHealth.database.status)
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)'
@@ -283,20 +294,32 @@ export function BaoHub() {
                       width: 8,
                       height: 8,
                       borderRadius: '50%',
-                      background: backupHealthColor(backupHealth.status),
+                      background: backupHealthColor(backupHealth.database.status),
                       flexShrink: 0,
                       boxShadow:
-                        backupHealth.status === 'unknown'
+                        backupHealth.database.status === 'unknown'
                           ? 'none'
-                          : `0 0 0 2px ${backupHealthColor(backupHealth.status)}33`,
+                          : `0 0 0 2px ${backupHealthColor(backupHealth.database.status)}33`,
                     }}
                   />
-                  {backupHealth.message}
+                  {backupHealth.database.message}
                   <span aria-hidden style={{ fontSize: '1.15em', lineHeight: 1 }}>
                     ›
                   </span>
                 </Link>
-                {(backupHealth.status === 'warning' || backupHealth.status === 'error') && (
+                <span
+                  title={backupHealth.image.message}
+                  style={{
+                    fontSize: getFontSize('caption', isMobile),
+                    fontWeight: 500,
+                    color: designSystem.colors.text.secondary,
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {backupHealth.image.message}
+                </span>
+                {(backupHealth.database.status === 'warning'
+                  || backupHealth.database.status === 'error') && (
                   <span
                     style={{
                       fontSize: getFontSize('caption', isMobile),
@@ -305,7 +328,7 @@ export function BaoHub() {
                       letterSpacing: '0.01em',
                     }}
                   >
-                    {backupHealth.status === 'error' ? '請通知工程師' : '請手動備份'}
+                    {backupHealth.database.status === 'error' ? '請通知工程師' : '請確認資料庫備份'}
                   </span>
                 )}
               </div>

@@ -120,6 +120,7 @@ describe('LIFF member access API', () => {
       success: true,
       member: { id: 'member-1' },
       orders: [{ id: 'order-1' }],
+      orders_available: true,
     })
   })
 

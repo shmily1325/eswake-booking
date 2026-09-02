@@ -251,9 +251,11 @@ function Sync-StorageBackup {
     $storageRoot = Join-Path $script:Config.BackupRoot 'Storage-Backups\product-images'
     $filesRoot = Join-Path $storageRoot 'files'
     $statePath = Join-Path $storageRoot 'manifest.json'
-    New-Item -ItemType Directory -Path $filesRoot -Force | Out-Null
+    $downloadStagingRoot = Join-Path $storageRoot ('.sync-' + [Guid]::NewGuid().ToString('N'))
 
     try {
+        New-Item -ItemType Directory -Path $filesRoot -Force | Out-Null
+        New-Item -ItemType Directory -Path $downloadStagingRoot -Force | Out-Null
         Write-BackupLog '開始同步商品圖片備份。'
         $remoteManifest = $null
         $remoteFiles = @()
@@ -302,7 +304,7 @@ function Sync-StorageBackup {
         $activeFiles = @()
         $currentPaths = @{}
         $totalBytes = [long]0
-        $skippedDownloads = 0
+        $pendingDownloads = @()
         foreach ($item in (Get-JsonArray $remoteManifest.files)) {
             $objectPath = [string]$item.path
             $currentPaths[$objectPath] = $true
@@ -321,7 +323,7 @@ function Sync-StorageBackup {
                 $canReuse = $checksum -eq [string]$previousItem.sha256
             }
             if (-not $canReuse) {
-                $temp = "$destination.tmp"
+                $temp = Get-StorageFilePath -Root $downloadStagingRoot -ObjectPath $objectPath
                 try {
                     Invoke-WebRequest `
                         -Uri ([string]$item.publicUrl) `
@@ -334,15 +336,16 @@ function Sync-StorageBackup {
                         throw "$objectPath 圖片大小不一致。"
                     }
                     $checksum = (Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash.ToLowerInvariant()
-                    Move-Item -LiteralPath $temp -Destination $destination -Force
+                    $pendingDownloads += [pscustomobject]@{
+                        Temp        = $temp
+                        Destination = $destination
+                    }
                 }
                 catch {
                     if (Test-Path -LiteralPath $temp) {
                         Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
                     }
-                    $skippedDownloads++
-                    Write-BackupLog "略過無法下載的商品圖片：$objectPath（$($_.Exception.Message)）" 'WARNING'
-                    continue
+                    throw "無法下載商品圖片：$objectPath（$($_.Exception.Message)）"
                 }
             }
 
@@ -354,6 +357,11 @@ function Sync-StorageBackup {
                 contentType = $item.contentType
                 sha256      = $checksum
             }
+        }
+
+        # Do not replace any known-good files until every required download is complete.
+        foreach ($download in $pendingDownloads) {
+            Move-Item -LiteralPath $download.Temp -Destination $download.Destination -Force
         }
 
         $now = Get-Date
@@ -413,6 +421,7 @@ function Sync-StorageBackup {
         $localManifest | ConvertTo-Json -Depth 10 |
             Set-Content -LiteralPath $manifestTemp -Encoding UTF8
         Move-Item -LiteralPath $manifestTemp -Destination $statePath -Force
+        Remove-Item -LiteralPath $downloadStagingRoot -Recurse -Force -ErrorAction SilentlyContinue
 
         $elapsed = [int]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $storageStartedAt)
         Send-BackupReport -Payload @{
@@ -425,14 +434,12 @@ function Sync-StorageBackup {
             recordsCount  = $activeFiles.Count
             executionTime = $elapsed
         }
-        if ($skippedDownloads -gt 0) {
-            Write-BackupLog "商品圖片備份完成：$($activeFiles.Count) 個檔案，略過 $skippedDownloads 個無法下載的檔案。" 'SUCCESS'
-        }
-        else {
-            Write-BackupLog "商品圖片備份成功：$($activeFiles.Count) 個檔案。" 'SUCCESS'
-        }
+        Write-BackupLog "商品圖片備份成功：$($activeFiles.Count) 個檔案。" 'SUCCESS'
     }
     catch {
+        if (Test-Path -LiteralPath $downloadStagingRoot) {
+            Remove-Item -LiteralPath $downloadStagingRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
         $message = $_.Exception.Message
         try {
             $elapsed = [int]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $storageStartedAt)
@@ -512,7 +519,7 @@ try {
         throw 'SHA-256 校驗失敗，下載檔案可能不完整。'
     }
     $manifest = Get-BackupManifest -Path $tempPath
-    if ($null -eq $manifest -or [int]$manifest.formatVersion -ne 3) {
+    if ($null -eq $manifest -or [int]$manifest.formatVersion -ne 4) {
         throw 'SQL 備份 manifest 缺失或版本不支援。'
     }
 

@@ -43,6 +43,7 @@ describe('offline disaster-recovery artifact', () => {
     for (const table of BACKUP_TABLES) {
       expect(html).toContain(`${table}: {`)
     }
+    expect(html.indexOf('credit_lots: {')).toBeLessThan(html.indexOf('transactions: {'))
   })
 
   it('exposes complete read-only recovery navigation without placeholder actions', () => {
@@ -160,6 +161,29 @@ describe('offline disaster-recovery artifact', () => {
     expect(html).toContain('renderOfflineDaySummary(')
     expect(html).toContain('最近 30 天')
     expect(html).toContain('預約規則')
+  })
+
+  it('keeps critical recovery pages navigable, searchable, filterable, and visibly read-only', () => {
+    for (const page of ['home', 'daily-bookings', 'members', 'product-orders', 'boats']) {
+      expect(html).toContain(`data-critical-page="${page}"`)
+    }
+    expect(html).toContain('data-offline-readonly')
+    expect(html).toContain('id="member-search"')
+    expect(html).toContain('id="offline-order-search"')
+    expect(html).toContain('id="offline-boat-search"')
+    expect(html).toContain('data-member-filter="membership-expiry"')
+    expect(html).toContain('data-order-status="${value}"')
+    expect(html).toContain('function setOfflineOrderStatus(status, button)')
+    expect(html).toContain('data-boat-filter="active"')
+    expect(html).toContain("renderHomeButton()")
+  })
+
+  it('exposes per-year voucher balances from credit lots', () => {
+    expect(html).toContain("safeGetAllFromStore('credit_lots')")
+    expect(html).toContain('buildOfflineVoucherYearBalances')
+    expect(html).toContain('data-offline-voucher-years')
+    expect(html).toContain('年度票券餘額')
+    expect(html).toContain("['credit_lots', '年度票券餘額']")
   })
 
   it('validates imports before activating the staged IndexedDB database', () => {

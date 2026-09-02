@@ -10,6 +10,12 @@
 The application-managed Google Drive and Windows backups continue to work after
 the Supabase project is downgraded from Pro.
 
+Database backups use format v4 and include the `credit_lots` yearly voucher
+ledger. Format v3 predates that recovery contract and must not be accepted as a
+complete current backup. Immediately after deploying the v4 code, run the
+Google Drive database backup and Windows task once so the first v4 recovery
+points replace the old health status.
+
 The product-image cloud job is resumable. A `202 running` result is expected
 while it advances through inventory, sync, deletion reconciliation, and
 manifest phases. Repeating the manual action or the next Cron invocation resumes
@@ -35,9 +41,28 @@ then run both jobs manually once.
 
 ## Daily health criteria
 
-A healthy system has successful `google_drive`, `google_drive_storage`,
-`wd_local`, and `wd_local_storage` records less than 26 hours old. Before the
-Windows installer is used, the two Windows statuses correctly show `未設定`.
+The BAO hub's primary status is the Google Drive database (`google_drive`) only.
+It is green when the latest verified success is at most 26 hours old with no
+new failed attempt, yellow from over 26 through 50 hours or after one failed
+daily attempt while the previous success remains recoverable, and red after 50
+hours, when no successful backup exists, when integrity metadata is invalid, or
+after two consecutive failed daily cycles. Multiple retries on the same venue
+date count as one failed cycle. `running` rows are informational: they do not
+count as failures and do not break a failure streak.
+
+Google Drive product images (`google_drive_storage`) appear separately in muted
+text on the BAO hub. A complete verified success at most seven days old is
+normal. One failed or running resumable step is informational. More than seven
+days without a complete success or sustained failures is yellow; more than 30
+days, no complete success, or invalid integrity metadata is red. Image status
+never changes the primary database badge and never triggers the database
+manual-backup prompt.
+
+Windows database and image statuses are secondary. They use the corresponding
+database and image age/integrity rules on the Backup admin page, but never
+change the BAO primary status. Before the Windows installer is used, both
+Windows statuses correctly show `未設定`.
+
 Each successful record must have:
 
 - backup format version;

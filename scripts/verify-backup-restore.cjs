@@ -45,7 +45,7 @@ try {
 } catch {
   fail('backup manifest is invalid JSON');
 }
-if (manifest.formatVersion !== 3) fail(`unsupported format version ${manifest.formatVersion}`);
+if (manifest.formatVersion !== 4) fail(`unsupported format version ${manifest.formatVersion}`);
 
 function psql(args) {
   const result = spawnSync('psql', [databaseUrl, '-v', 'ON_ERROR_STOP=1', ...args], {
@@ -69,4 +69,38 @@ for (const table of manifest.tables) {
 }
 
 if (mismatches.length > 0) fail(`row counts differ: ${mismatches.join(', ')}`);
+
+const hasCreditLotsAudit = psql([
+  '-Atc',
+  "SELECT to_regclass('public.credit_lots_balance_audit') IS NOT NULL;",
+]) === 't';
+if (!hasCreditLotsAudit) {
+  fail('credit_lots_balance_audit is unavailable; apply the required migrations first');
+}
+
+const creditLotMismatchCount = Number(psql([
+  '-Atc',
+  `SELECT COUNT(*)
+   FROM public.credit_lots_balance_audit
+   WHERE lot_count > 0
+     AND delta_members_minus_lots <> 0;`,
+]));
+if (creditLotMismatchCount > 0) {
+  const details = psql([
+    '-Atc',
+    `SELECT CONCAT(
+       member_id, '/', category,
+       ': members=', members_total,
+       ', lots=', lots_total,
+       ', delta=', delta_members_minus_lots
+     )
+     FROM public.credit_lots_balance_audit
+     WHERE lot_count > 0
+       AND delta_members_minus_lots <> 0
+     ORDER BY member_id, category
+     LIMIT 20;`,
+  ]).split(/\r?\n/).filter(Boolean);
+  fail(`credit_lots balances differ from members (${creditLotMismatchCount} mismatches): ${details.join('; ')}`);
+}
+
 console.log(`Restore verified: ${manifest.tables.length} tables, ${manifest.totalRecords} rows.`);

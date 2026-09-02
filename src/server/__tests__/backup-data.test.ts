@@ -56,7 +56,7 @@ describe('generateSqlBackup', () => {
     const manifestLine = sql.split('\n').find((line) => line.startsWith('-- ESWAKE_BACKUP_MANIFEST: '))
     const manifest = JSON.parse(manifestLine!.replace('-- ESWAKE_BACKUP_MANIFEST: ', ''))
     expect(manifest).toMatchObject({
-      formatVersion: 3,
+      formatVersion: 4,
       totalRecords: 3,
       stats: { products: 1, product_variants: 1 },
     })
@@ -70,6 +70,7 @@ describe('generateSqlBackup', () => {
     expect(BACKUP_TABLES).toContain('reservation_restrictions')
     expect(BACKUP_TABLES).toContain('size_charts')
     expect(BACKUP_TABLES).toContain('shop_discount_presets')
+    expect(BACKUP_TABLES).toContain('credit_lots')
     expect(BACKUP_TABLES.indexOf('daily_announcements'))
       .toBeLessThan(BACKUP_TABLES.indexOf('reservation_restrictions'))
     expect(BACKUP_TABLES.indexOf('size_charts'))
@@ -78,6 +79,8 @@ describe('generateSqlBackup', () => {
       .toBeLessThan(BACKUP_TABLES.indexOf('product_variants'))
     expect(BACKUP_TABLES.indexOf('bookings'))
       .toBeLessThan(BACKUP_TABLES.indexOf('booking_members'))
+    expect(BACKUP_TABLES.indexOf('credit_lots'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('transactions'))
     expect(new Set(BACKUP_TABLES).size).toBe(BACKUP_TABLES.length)
     expect(EXCLUDED_BACKUP_TABLES).toEqual(['user_click_events'])
     expect(BACKUP_TABLES).not.toContain('user_click_events')

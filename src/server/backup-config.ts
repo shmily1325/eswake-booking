@@ -28,6 +28,7 @@ export const BACKUP_TABLES = [
   'shop_orders',
   'shop_order_items',
   'shop_order_settlements',
+  'credit_lots',
   'transactions',
   'shop_order_no_seq',
   'daily_announcements',
@@ -43,7 +44,7 @@ export type BackupTable = (typeof BACKUP_TABLES)[number]
 /** Non-operational analytics data intentionally omitted from disaster-recovery backups. */
 export const EXCLUDED_BACKUP_TABLES = ['user_click_events'] as const
 
-export const BACKUP_FORMAT_VERSION = 3
+export const BACKUP_FORMAT_VERSION = 4
 
 export const TABLE_ORDER_COLUMN: Partial<Record<BackupTable, string>> = {
   shop_order_no_seq: 'seq_date',

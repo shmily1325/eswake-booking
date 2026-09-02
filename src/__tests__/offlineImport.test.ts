@@ -14,6 +14,43 @@ import {
 const html = readFileSync(resolve(process.cwd(), 'offline.html'), 'utf8')
 const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1] || ''
 
+type CreditLotFixture = {
+  id: string
+  member_id: string
+  category: string
+  voucher_year: number
+  remaining: number
+}
+
+type OfflineWindow = Window & {
+  loadSQLFile(file: { name: string; size: number; text: () => Promise<string> }): Promise<void>
+  showMemberManagement(): Promise<void>
+}
+
+function asOfflineV4Backup(sql: string, creditLots: CreditLotFixture[] = []): string {
+  const withManifest = sql.replace(
+    /^-- ESWAKE_BACKUP_MANIFEST: (.+)$/m,
+    (_, rawManifest: string) => {
+      const manifest = JSON.parse(rawManifest)
+      manifest.formatVersion = 4
+      if (!manifest.tables.includes('credit_lots')) {
+        const transactionIndex = manifest.tables.indexOf('transactions')
+        manifest.tables.splice(transactionIndex, 0, 'credit_lots')
+      }
+      manifest.stats.credit_lots = creditLots.length
+      manifest.totalRecords += creditLots.length
+      return `-- ESWAKE_BACKUP_MANIFEST: ${JSON.stringify(manifest)}`
+    },
+  )
+  const inserts = creditLots.map((lot) =>
+    `INSERT INTO credit_lots (id, member_id, category, voucher_year, remaining) VALUES ('${lot.id}', '${lot.member_id}', '${lot.category}', ${lot.voucher_year}, ${lot.remaining});`,
+  ).join('\n')
+  return withManifest.replace(
+    'SET LOCAL session_replication_role = origin;',
+    `${inserts}\nSET LOCAL session_replication_role = origin;`,
+  )
+}
+
 function backup(memberCount = 1, memberName = 'Member 1'): string {
   const data = Object.fromEntries(BACKUP_TABLES.map((table) => [table, []])) as BackupData
   const stats = Object.fromEntries(BACKUP_TABLES.map((table) => [table, 0])) as BackupStats
@@ -22,11 +59,18 @@ function backup(memberCount = 1, memberName = 'Member 1'): string {
     name: index === 0 ? memberName : `Member ${index + 1}`,
   }))
   stats.members = memberCount
-  return generateSqlBackup(data, stats, '2026-07-16T10:00:00')
+  return asOfflineV4Backup(generateSqlBackup(data, stats, '2026-07-16T10:00:00'))
 }
 
 function recoveryPageBackup(): string {
   const data = Object.fromEntries(BACKUP_TABLES.map((table) => [table, []])) as BackupData
+  data.members = [{
+    id: 'member-1',
+    name: '測試會員',
+    nickname: '測試暱稱',
+    membership_type: 'general',
+    status: 'active',
+  }] as never
   data.coaches = [{
     id: 'coach-1',
     name: '測試教練',
@@ -100,7 +144,25 @@ function recoveryPageBackup(): string {
   const stats = Object.fromEntries(
     BACKUP_TABLES.map((table) => [table, data[table].length]),
   ) as BackupStats
-  return generateSqlBackup(data, stats, '2026-07-20T12:00:00Z')
+  return asOfflineV4Backup(
+    generateSqlBackup(data, stats, '2026-07-20T12:00:00Z'),
+    [
+      {
+        id: 'lot-2025',
+        member_id: 'member-1',
+        category: 'boat_voucher_g23',
+        voucher_year: 2025,
+        remaining: 60,
+      },
+      {
+        id: 'lot-2026',
+        member_id: 'member-1',
+        category: 'vip_voucher',
+        voucher_year: 2026,
+        remaining: 3000,
+      },
+    ],
+  )
 }
 
 function createOfflineWindow() {
@@ -204,6 +266,27 @@ describe('offline SQL import', () => {
     window.close()
   })
 
+  it('imports v4 credit lots and renders per-year voucher balances', async () => {
+    const window = createOfflineWindow()
+    const offlineWindow = window as OfflineWindow
+    const sql = recoveryPageBackup()
+
+    await offlineWindow.loadSQLFile({
+      name: 'credit-lots-v4.sql',
+      size: sql.length,
+      text: async () => sql,
+    })
+
+    const activeDatabase = window.localStorage.getItem('eswake-offline-active-db')
+    await expect(countStore(window, activeDatabase!, 'credit_lots')).resolves.toBe(2)
+    await offlineWindow.showMemberManagement()
+    expect(window.document.body.textContent).toContain('年度票券餘額')
+    expect(window.document.body.textContent).toContain('2025')
+    expect(window.document.body.textContent).toContain('60分')
+    expect(window.document.body.textContent).toContain('$3,000')
+    window.close()
+  })
+
   it('rejects a manifest that omits an operational backup table', async () => {
     const window = createOfflineWindow()
     const sql = backup(1).replace(
@@ -224,6 +307,23 @@ describe('offline SQL import', () => {
 
     expect(window.localStorage.getItem('eswake-offline-active-db')).toBeNull()
     expect(window.document.getElementById('db-alert')?.textContent).toContain('backup_logs')
+    window.close()
+  })
+
+  it('rejects legacy v3 backups that omit the yearly voucher ledger contract', async () => {
+    const window = createOfflineWindow()
+    const offlineWindow = window as OfflineWindow
+    const sql = backup(1).replace('"formatVersion":4', '"formatVersion":3')
+
+    await offlineWindow.loadSQLFile({
+      name: 'legacy-v3.sql',
+      size: sql.length,
+      text: async () => sql,
+    })
+
+    expect(window.localStorage.getItem('eswake-offline-active-db')).toBeNull()
+    expect(window.document.getElementById('db-alert')?.textContent)
+      .toContain('備份格式版本不相容')
     window.close()
   })
 
