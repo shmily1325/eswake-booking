@@ -1,9 +1,10 @@
 import React from 'react'
 import type { Member } from '../../types/booking'
 import { designSystem, getFontSize, getLabelStyle } from '../../styles/designSystem'
+import { useResponsive } from '../../hooks/useResponsive'
 import {
-    appendActualRiderSeparator,
     formatActualRider,
+    parseActualRiders,
 } from '../../utils/riderDisplay'
 
 interface MemberSelectorProps {
@@ -41,13 +42,42 @@ export function MemberSelector({
     actualRider,
     setActualRider,
 }: MemberSelectorProps) {
+    const { isMobile } = useResponsive()
     const actualRiderInputRef = React.useRef<HTMLInputElement>(null)
     const riderValue = actualRider || ''
-    const canAppendRider = !!riderValue.trim() && !/[+＋,，、/]$/.test(riderValue.trimEnd())
+    const [committedRiders, setCommittedRiders] = React.useState(() => parseActualRiders(riderValue))
+    const [riderDraft, setRiderDraft] = React.useState('')
+    const lastEmittedRiderRef = React.useRef(riderValue)
+
+    React.useEffect(() => {
+        if (riderValue === lastEmittedRiderRef.current) return
+        setCommittedRiders(parseActualRiders(riderValue))
+        setRiderDraft('')
+        lastEmittedRiderRef.current = riderValue
+    }, [riderValue])
+
+    const emitRiderValue = (riders: string[], draft: string) => {
+        const normalized = formatActualRider([...riders, ...parseActualRiders(draft)].join('＋'))
+        lastEmittedRiderRef.current = normalized
+        setActualRider(normalized)
+    }
+
+    const canAppendRider = parseActualRiders(riderDraft).length > 0
     const appendRider = () => {
         if (!canAppendRider) return
-        setActualRider(appendActualRiderSeparator(riderValue))
+        const nextRiders = parseActualRiders(
+            [...committedRiders, ...parseActualRiders(riderDraft)].join('＋')
+        )
+        setCommittedRiders(nextRiders)
+        setRiderDraft('')
+        emitRiderValue(nextRiders, '')
         window.setTimeout(() => actualRiderInputRef.current?.focus(), 0)
+    }
+
+    const removeRider = (index: number) => {
+        const nextRiders = committedRiders.filter((_, riderIndex) => riderIndex !== index)
+        setCommittedRiders(nextRiders)
+        emitRiderValue(nextRiders, riderDraft)
     }
 
     return (
@@ -288,7 +318,9 @@ export function MemberSelector({
             <div style={{
                 marginTop: designSystem.spacing.md,
                 display: 'grid',
-                gridTemplateColumns: 'auto minmax(0, 1fr) 48px',
+                gridTemplateColumns: isMobile
+                    ? 'minmax(0, 1fr) 44px'
+                    : 'auto minmax(0, 1fr) 48px',
                 gap: designSystem.spacing.sm,
                 alignItems: 'center',
             }}>
@@ -299,43 +331,94 @@ export function MemberSelector({
                         marginBottom: 0,
                         whiteSpace: 'nowrap',
                         fontSize: getFontSize('button', true),
+                        gridColumn: isMobile ? '1 / -1' : undefined,
                     }}
                 >
-                    實際 RIDER（選填）
+                    RIDER（選填）
                 </label>
-                <input
-                    ref={actualRiderInputRef}
-                    id="actual-rider"
-                    type="text"
-                    value={riderValue}
-                    onChange={(event) => setActualRider(event.target.value)}
-                    onBlur={() => setActualRider(formatActualRider(riderValue))}
-                    onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                            event.preventDefault()
-                            appendRider()
-                        }
-                    }}
-                    aria-label="實際 RIDER（選填）"
-                    style={{
-                        width: '100%',
-                        minWidth: 0,
-                        padding: '12px',
-                        borderRadius: designSystem.borderRadius.lg,
-                        border: `1px solid ${designSystem.colors.border.main}`,
-                        boxSizing: 'border-box',
-                        fontSize: '16px',
-                        touchAction: 'manipulation',
-                    }}
-                />
+                <div style={{
+                    minWidth: 0,
+                    minHeight: '48px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 10px',
+                    borderRadius: designSystem.borderRadius.lg,
+                    border: `1px solid ${designSystem.colors.border.main}`,
+                    boxSizing: 'border-box',
+                    overflowX: 'auto',
+                    background: '#ffffff',
+                }}>
+                    {committedRiders.map((rider, index) => (
+                        <span key={`${rider}-${index}`} style={{
+                            flexShrink: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '5px 8px',
+                            borderRadius: designSystem.borderRadius.md,
+                            background: designSystem.colors.info[50],
+                            color: designSystem.colors.info[700],
+                            fontSize: getFontSize('button', true),
+                            fontWeight: '600',
+                        }}>
+                            {rider}
+                            <button
+                                type="button"
+                                onClick={() => removeRider(index)}
+                                aria-label={`移除 RIDER ${rider}`}
+                                style={{
+                                    padding: 0,
+                                    border: 0,
+                                    background: 'transparent',
+                                    color: 'inherit',
+                                    fontSize: '18px',
+                                    lineHeight: 1,
+                                    cursor: 'pointer',
+                                    touchAction: 'manipulation',
+                                }}
+                            >
+                                ×
+                            </button>
+                        </span>
+                    ))}
+                    <input
+                        ref={actualRiderInputRef}
+                        id="actual-rider"
+                        type="text"
+                        value={riderDraft}
+                        onChange={(event) => {
+                            const value = event.target.value
+                            setRiderDraft(value)
+                            emitRiderValue(committedRiders, value)
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                                event.preventDefault()
+                                appendRider()
+                            }
+                        }}
+                        aria-label="RIDER（選填）"
+                        style={{
+                            flex: '1 0 72px',
+                            minWidth: '72px',
+                            padding: '6px 2px',
+                            border: 0,
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            fontSize: '16px',
+                            touchAction: 'manipulation',
+                        }}
+                    />
+                </div>
                 <button
                     type="button"
                     onClick={appendRider}
                     disabled={!canAppendRider}
                     aria-label="加入下一位 RIDER"
                     style={{
-                        width: '48px',
-                        minHeight: '48px',
+                        width: isMobile ? '44px' : '48px',
+                        minHeight: isMobile ? '44px' : '48px',
                         padding: 0,
                         background: canAppendRider
                             ? designSystem.colors.info[500]
