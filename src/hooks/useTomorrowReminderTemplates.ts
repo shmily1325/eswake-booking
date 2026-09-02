@@ -10,25 +10,21 @@ const SETTING_KEYS = {
   englishWeatherWarning: 'tomorrow_reminder_english_weather_warning',
 } as const
 
-const DEFAULT_WEATHER_WARNING = `由於近期天氣變化較大，請務必在『啟程前』
-透過官方訊息與我們確認最新天氣狀況
-別忘了在出發前查收最新訊息哦！`
+const DEFAULT_WEATHER_WARNING = '近期天氣變化較大，請務必在出發前透過官方 LINE 與我們確認最新天氣狀況，並留意最新訊息哦！'
 
-const DEFAULT_FOOTER_TEXT = `再麻煩幫我們準時抵達哦！謝謝！
-明天見哦😊
-抵達時 再麻煩幫我按開門鍵提醒教練們幫你開啟停車場鐵閘門
-進來後再麻煩幫我停黃色停車格
-白色的不能停 煩請配合🙏`
+const DEFAULT_FOOTER_TEXT = `再麻煩準時抵達，明天見哦😊
+
+抵達時請按 LINE 官方帳號下方的「開門」鍵，通知教練協助開啟停車場鐵閘門。入場後請停黃色停車格，白色停車格請勿停放，謝謝配合🙏`
 
 const DEFAULT_ENGLISH_MESSAGE_TEMPLATE = `Hi {username}
 
 Just a reminder that we have {appointment}.{weather}
 
-Your punctual arrival would be appreciated!
-Thank you, and see you tomorrow! 😊
-Safe travels!`
+Please arrive on time. See you tomorrow! 😊
 
-const DEFAULT_ENGLISH_WEATHER_WARNING = `Due to the unstable weather conditions in recent days, please make sure to confirm with us through an "official message" prior to departure. Thanks for your cooperation!`
+When you arrive, tap "OPEN SESAME" at the bottom of our official LINE account to notify the coaches to open the parking gate. Please park in a yellow space; do not use the white spaces. Thank you for your cooperation 🙏`
+
+const DEFAULT_ENGLISH_WEATHER_WARNING = 'Weather conditions have been changing recently. Before setting out, please confirm the latest conditions with us via our official LINE account and check for updates.'
 
 export type TemplateSaveStatus = 'loading' | 'saving' | 'saved' | 'error'
 

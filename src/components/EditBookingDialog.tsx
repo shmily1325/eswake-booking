@@ -6,6 +6,7 @@ import { getLocalTimestamp } from '../utils/date'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import { normalizeFilledByForSave } from '../utils/filledByHelper'
+import { normalizeActualRiderForSave } from '../utils/riderDisplay'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { isFacility, isOverlapAllowed } from '../utils/facility'
 import type { Booking } from '../types/booking'
@@ -70,6 +71,7 @@ export function EditBookingDialog({
     startTime,
     durationMin,
     activityTypes,
+    actualRider,
     notes,
     requiresDriver,
     filledBy,
@@ -97,6 +99,7 @@ export function EditBookingDialog({
     setStartDate,
     setStartTime,
     setDurationMin,
+    setActualRider,
     setNotes,
     setRequiresDriver,
     setFilledBy,
@@ -492,6 +495,7 @@ export function EditBookingDialog({
           duration_min: durationMin,
           cleanup_minutes: isSelectedBoatFacility ? 0 : 15,
           activity_types: activityTypes.length > 0 ? activityTypes : null,
+          actual_rider: normalizeActualRiderForSave(actualRider),
           notes: notes || null,
           filled_by: normalizeFilledByForSave(filledBy),
           // 設施一律不需要駕駛（強制覆蓋為 false）
@@ -574,6 +578,12 @@ export function EditBookingDialog({
         const oldName = booking.contact_name || '(無)'
         const newName = finalStudentName || '(無)'
         changes.push(`預約人: ${oldName} → ${newName}`)
+      }
+
+      const oldActualRider = normalizeActualRiderForSave(booking.actual_rider) || ''
+      const newActualRider = normalizeActualRiderForSave(actualRider) || ''
+      if (oldActualRider !== newActualRider) {
+        changes.push(`RIDER: ${oldActualRider || '無'} → ${newActualRider || '無'}`)
       }
 
       // 檢查船變更
@@ -822,6 +832,9 @@ export function EditBookingDialog({
         durationMin: completeBooking?.duration_min || booking.duration_min,
         filledBy: filledBy,  // 使用表單中重新填寫的填表人
         notes: completeBooking?.notes || undefined,  // 保留預約的原始備註
+        actualRider: normalizeActualRiderForSave(
+          completeBooking?.actual_rider ?? booking.actual_rider
+        ) || undefined,
         coachNames: coachesData.data?.map((c: any) => c.coaches?.name).filter(Boolean) || undefined,  // 教練
         driverNames: driversData.data?.map((d: any) => d.coaches?.name).filter(Boolean) || undefined,  // 駕駛
         activityTypes: completeBooking?.activity_types || undefined,  // 活動類型
@@ -950,6 +963,8 @@ export function EditBookingDialog({
             setManualStudentName={setManualStudentName}
             manualNames={manualNames}
             setManualNames={setManualNames}
+            actualRider={actualRider}
+            setActualRider={setActualRider}
           />
 
           {/* 2. 船隻選擇 */}

@@ -27,6 +27,7 @@ interface CreateBookingLogParams {
   coachNames: string[]
   filledBy?: string
   activityTypes?: string[]  // 活動類型
+  actualRider?: string
   notes?: string           // 備註
   isCoachPractice?: boolean // 教練練習
   requiresDriver?: boolean  // 需要駕駛
@@ -48,6 +49,7 @@ interface DeleteBookingLogParams {
   durationMin: number
   filledBy?: string
   notes?: string           // 預約的原始備註
+  actualRider?: string
   coachNames?: string[]    // 教練
   driverNames?: string[]   // 駕駛
   activityTypes?: string[] // 活動類型
@@ -68,6 +70,7 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
     coachNames,
     filledBy,
     activityTypes,
+    actualRider,
     notes,
     isCoachPractice,
     requiresDriver,
@@ -94,6 +97,10 @@ export async function logBookingCreation(params: CreateBookingLogParams) {
 
   if (requiresDriver) {
     details += ' [需要駕駛]'
+  }
+
+  if (actualRider) {
+    details += ` [RIDER: ${actualRider}]`
   }
   
   // 加上備註
@@ -170,6 +177,7 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
     durationMin,
     filledBy,
     notes,
+    actualRider,
     coachNames,
     driverNames,
     activityTypes,
@@ -209,6 +217,10 @@ export async function logBookingDeletion(params: DeleteBookingLogParams) {
 
   if (requiresDriver) {
     details += ' [需要駕駛]'
+  }
+
+  if (actualRider) {
+    details += ` [RIDER: ${actualRider}]`
   }
   
   // 如果有原始備註，加入記錄中

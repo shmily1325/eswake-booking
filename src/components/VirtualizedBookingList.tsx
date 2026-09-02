@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Booking, Boat } from '../types/booking'
-import { getDisplayContactName } from '../utils/bookingFormat'
+import { getDisplayBookingName } from '../utils/bookingFormat'
 import { validateBoats, validateBookings } from '../utils/safetyHelpers'
 import type { BoatUnavailableBlock } from '../utils/boatUnavailableDay'
 import type { RestrictionDayBlock } from '../utils/restrictionDayBlocks'
@@ -38,7 +38,7 @@ export function VirtualizedBookingList({
     const validBoats = React.useMemo(() => {
         return validateBoats(boats)
     }, [boats])
-    
+
     const validBookings = React.useMemo(() => {
         return validateBookings(bookings)
     }, [bookings])
@@ -297,7 +297,7 @@ export function VirtualizedBookingList({
                                                             教練練習
                                                         </div>
                                                     )}
-                                                    
+
                                                     {/* 第一行：預約人 */}
 												<div style={{
 													fontSize: isMobile ? getFontSize('body', true) : getFontSize('bodyLarge', true),
@@ -322,7 +322,7 @@ export function VirtualizedBookingList({
 														whiteSpace: 'nowrap',
 														minWidth: 0
 													}}>
-														{getDisplayContactName(booking) || '未命名'}
+														{getDisplayBookingName(booking) || '未命名'}
 													</span>
 												</div>
 
@@ -368,8 +368,8 @@ export function VirtualizedBookingList({
                                                         {booking.activity_types && booking.activity_types.length > 0 && (
                                                             <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                                                                 {((booking.coaches && booking.coaches.length > 0) || (booking.drivers && booking.drivers.length > 0) || booking.requires_driver) && <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>}
-                                                                <span style={{ 
-                                                                    backgroundColor: designSystem.colors.secondary[100], 
+                                                                <span style={{
+                                                                    backgroundColor: designSystem.colors.secondary[100],
                                                                     color: designSystem.colors.text.primary,
                                                                     padding: '2px 6px',
                                                                     borderRadius: designSystem.borderRadius.full,

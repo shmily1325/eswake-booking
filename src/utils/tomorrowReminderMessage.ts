@@ -4,12 +4,17 @@
  */
 
 import { getFacilityMessageLabel } from './facility'
+import {
+  formatActualRider,
+  getActualRiderGroupKey,
+} from './riderDisplay'
 import { displayCoachNameForTomorrowMessage } from './tomorrowReminderDisplay'
 
 export type ReminderLanguage = 'zh' | 'en'
 
 export type TomorrowReminderBooking = {
   contact_name: string
+  actual_rider?: string | null
   start_at: string
   boats?: { name: string } | null
   coaches?: { name: string }[] | null
@@ -42,6 +47,10 @@ export function formatTimeNoColon(dateString: string): string {
   const [, timeStr] = datetime.split('T')
   const [hours, minutes] = timeStr.split(':')
   return `${hours}${minutes}`
+}
+
+export function formatTimeWithColon(dateString: string): string {
+  return dateString.substring(11, 16)
 }
 
 /** 提前 30 分鐘的抵達時間，HHMM */
@@ -80,6 +89,42 @@ export function getBookingsForStudent<T extends TomorrowReminderBooking>(
   return bookings
     .filter((booking) => splitContactNames(booking.contact_name).includes(studentName))
     .sort((a, b) => a.start_at.localeCompare(b.start_at))
+}
+
+type RiderBookingGroup<T extends TomorrowReminderBooking> = {
+  rider: string
+  bookings: T[]
+}
+
+export function groupTomorrowBookingsByRider<T extends TomorrowReminderBooking>(
+  bookings: T[],
+): RiderBookingGroup<T>[] {
+  const groups = new Map<string, RiderBookingGroup<T>>()
+
+  bookings.forEach((booking) => {
+    const rider = formatActualRider(booking.actual_rider)
+    const boatName = booking.boats?.name || ''
+    const key = rider
+      ? `rider:${getActualRiderGroupKey(rider)}`
+      : boatName.includes('煙火')
+        ? `special-boat:${boatName}`
+        : 'without-rider'
+    const existing = groups.get(key)
+    if (existing) {
+      existing.bookings.push(booking)
+    } else {
+      groups.set(key, { rider, bookings: [booking] })
+    }
+  })
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      bookings: group.bookings.sort((a, b) => a.start_at.localeCompare(b.start_at)),
+    }))
+    .sort((left, right) =>
+      left.bookings[0].start_at.localeCompare(right.bookings[0].start_at)
+    )
 }
 
 export function generateTomorrowReminderMessage(params: {
@@ -130,15 +175,7 @@ export function generateTomorrowReminderMessage(params: {
     ].join('\n')
   }
 
-  const hasPapaCoach = studentBookings.some((booking) =>
-    booking.coaches?.some((coach) => coach.name.toUpperCase() === 'PAPA')
-  )
-
   let message = `${studentName}你好\n提醒你，明天有預約\n`
-
-  if (hasPapaCoach) {
-    message += `請幫我帶現金直接給Papa\n`
-  }
 
   message += '\n'
 
@@ -161,50 +198,77 @@ export function generateTomorrowReminderMessage(params: {
     }
   }
 
-  let previousCoachNames = ''
-  let boatCount = 0 // 只計算真正的船（不含彈簧床等設施）
+  const riderGroups = groupTomorrowBookingsByRider(studentBookings)
 
-  studentBookings.forEach((booking, index) => {
-    const hasCoach = !!booking.coaches && booking.coaches.length > 0
-    const coachNames = hasCoach
-      ? booking.coaches!.map((c) => displayCoachNameForTomorrowMessage(studentName, c.name)).join('/')
-      : ''
-    const startTime = formatTimeNoColon(booking.start_at)
-    const boatName = booking.boats?.name || ''
-    const facilityLabel = getFacilityMessageLabel(boatName)
-    const isFacilityBooking = !!facilityLabel
+  riderGroups.forEach((group, groupIndex) => {
+    if (groupIndex > 0) message += '\n'
 
-    if (!isFacilityBooking) {
-      boatCount++
+    const coachNamesByBooking = group.bookings.map((booking) =>
+      booking.coaches && booking.coaches.length > 0
+        ? booking.coaches
+            .map((coach) => displayCoachNameForTomorrowMessage(studentName, coach.name))
+            .join('/')
+        : ''
+    )
+    const uniqueCoachNames = Array.from(new Set(coachNamesByBooking.filter(Boolean)))
+    const distinctCoachAssignments = new Set(coachNamesByBooking)
+
+    if (group.rider) {
+      const heading = distinctCoachAssignments.size === 1 && uniqueCoachNames.length === 1
+        ? `${uniqueCoachNames[0]}教練－${group.rider}`
+        : group.rider
+      message += `${heading}\n`
+      message += `${getArrivalTimeWithColon(group.bookings[0].start_at)} 抵達\n`
+
+      let previousCoachNames = ''
+      group.bookings.forEach((booking, index) => {
+        const coachNames = coachNamesByBooking[index]
+        if (
+          distinctCoachAssignments.size > 1
+          && coachNames
+          && coachNames !== previousCoachNames
+        ) {
+          message += `${coachNames}教練\n`
+        }
+        const facilityLabel = getFacilityMessageLabel(booking.boats?.name || '')
+        message += `${formatTimeWithColon(booking.start_at)} ${facilityLabel || '下水'}\n`
+        previousCoachNames = coachNames
+      })
+      return
     }
 
-    if (index === 0) {
-      const arrivalTime = getArrivalTimeNoColon(booking.start_at)
-      if (hasCoach) {
+    let previousCoachNames = ''
+    let boatCount = 0
+    group.bookings.forEach((booking, index) => {
+      const coachNames = coachNamesByBooking[index]
+      const hasCoach = !!coachNames
+      const boatName = booking.boats?.name || ''
+      const facilityLabel = getFacilityMessageLabel(boatName)
+      const isFacilityBooking = !!facilityLabel
+      if (!isFacilityBooking) boatCount++
+
+      if (index === 0) {
+        if (hasCoach) {
+          message += `${coachNames}教練\n`
+        } else if (boatName.includes('煙火')) {
+          message += `${boatName}\n`
+        }
+        message += `${getArrivalTimeWithColon(booking.start_at)} 抵達\n`
+        message += `${formatTimeWithColon(booking.start_at)} ${facilityLabel || '下水'}\n`
+        previousCoachNames = coachNames
+        return
+      }
+
+      if (!isFacilityBooking && boatCount >= 2) {
+        const shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : `第${boatCount}船`
+        message += `\n${shipLabel}\n`
+      }
+      if (coachNames !== previousCoachNames && hasCoach) {
         message += `${coachNames}教練\n`
       }
-      message += `${arrivalTime}抵達\n`
-      message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
+      message += `${formatTimeWithColon(booking.start_at)} ${facilityLabel || '下水'}\n`
       previousCoachNames = coachNames
-      return
-    }
-
-    if (!isFacilityBooking && boatCount >= 2) {
-      const shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : `第${boatCount}船`
-      message += `\n${shipLabel}\n`
-    }
-
-    // 空字串也視為相同，避免重複顯示空內容
-    if (coachNames === previousCoachNames) {
-      message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
-      return
-    }
-
-    if (hasCoach) {
-      message += `${coachNames}教練\n`
-    }
-    message += facilityLabel ? `${startTime}${facilityLabel}\n` : `${startTime}下水\n`
-    previousCoachNames = coachNames
+    })
   })
 
   message += '\n'

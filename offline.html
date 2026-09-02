@@ -3037,7 +3037,7 @@
                             const end = addMinutesToTimeStr(start, booking.duration_min);
                             return `<button type="button" onclick="openOfflineBookingDetail('${escapeHtml(String(booking.id))}')" style="width:100%;padding:12px 16px;border:0;border-bottom:1px solid var(--es-border-light);background:white;text-align:left;cursor:pointer;">
                                 <div style="font-weight:600;">${escapeHtml(`${start}–${end} · ${booking.boat?.name || '未指定船隻'}`)}${isDriver && !isCoach ? ' <span class="es-badge warning">駕駛</span>' : ''}</div>
-                                <div style="margin-top:4px;color:var(--es-muted);font-size:13px;">${escapeHtml(getDisplayContactName(booking) || '未命名')}</div>
+                                <div style="margin-top:4px;color:var(--es-muted);font-size:13px;">${escapeHtml(getDisplayBookingName(booking) || '未命名')}</div>
                             </button>`;
                         }).join('') : '<div class="es-empty" style="padding:18px;">尚無安排</div>'}
                     </div>
@@ -3069,7 +3069,7 @@
                             <div class="day-overview-card"><div class="day-overview-label">上班人員</div><div class="day-overview-value">${activeCoaches.length} 位</div></div>
                         </div>` : ''}
                         ${staffStripHtml}
-                        ${needsDriver.length ? `<section class="es-status warning" style="margin-bottom:16px;"><strong>需要駕駛／尚未安排 (${needsDriver.length})</strong><br>${needsDriver.map(booking => escapeHtml(`${String(booking.start_at || '').slice(11, 16)} ${getDisplayContactName(booking)}`)).join('<br>')}</section>` : ''}
+                        ${needsDriver.length ? `<section class="es-status warning" style="margin-bottom:16px;"><strong>需要駕駛／尚未安排 (${needsDriver.length})</strong><br>${needsDriver.map(booking => escapeHtml(`${String(booking.start_at || '').slice(11, 16)} ${getDisplayBookingName(booking)}`)).join('<br>')}</section>` : ''}
                         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;">${groupedCards || '<div class="es-empty">沒有上班人員資料</div>'}</div>
                         <div class="es-footer">© ${new Date().getFullYear()} ES Wake. All Rights Reserved.<div class="es-footer-subtitle">滑水預約管理系統 · 離線唯讀</div></div>
                     </main>
@@ -3778,6 +3778,7 @@
             error_message: '錯誤',
             execution_time: '執行毫秒',
             contact_name: '預約人',
+            actual_rider: '實際 RIDER',
             contact_phone: '電話',
             schedule_notes: '行程備註',
             activity_types: '活動'
@@ -4185,7 +4186,7 @@
                                         <div class="day-booking-content">
                                             ${conflictReason ? `<div class="es-badge danger" style="margin-bottom:6px;">⚠️ ${escapeHtml(conflictReason)}</div>` : ''}
                                             ${booking.is_coach_practice ? '<div class="es-badge warning" style="margin-bottom:6px;">教練練習</div>' : ''}
-                                            <div class="day-booking-name">${escapeHtml(getDisplayContactName(booking) || '未命名')}</div>
+                                            <div class="day-booking-name">${escapeHtml(getDisplayBookingName(booking) || '未命名')}</div>
                                             <div class="day-booking-meta">
                                                 ${meta.map((item, index) => `${index ? '<span style="margin:0 4px;opacity:.5;">•</span>' : ''}<span>${escapeHtml(item)}</span>`).join('')}
                                                 ${activities.length ? `${meta.length ? '<span style="margin:0 4px;opacity:.5;">•</span>' : ''}<span class="day-booking-chip">${escapeHtml(activities.join('+'))}</span>` : ''}
@@ -4847,6 +4848,23 @@
             });
             return displayed.length ? displayed.join(', ') : booking.contact_name;
         }
+
+        function formatActualRider(value) {
+            const seen = new Set();
+            return String(value || '').split(/[+＋,，、/]+/).map(function(name) {
+                return name.trim();
+            }).filter(function(name) {
+                if (!name || seen.has(name)) return false;
+                seen.add(name);
+                return true;
+            }).join('＋');
+        }
+
+        function getDisplayBookingName(booking) {
+            const contactName = getDisplayContactName(booking);
+            const rider = formatActualRider(booking.actual_rider);
+            return rider ? `${contactName}（${rider}）` : contactName;
+        }
         
         // 從 IndexedDB 獲取所有資料
         function getAllFromStore(storeName) {
@@ -5125,7 +5143,7 @@
                     const isDriver = booking.drivers?.some(driver => driver.id === selectedCoachId);
                     const conflictReason = conflictReasons.get(String(booking.id));
                     return `<article class="es-record${conflictReason ? ' has-conflict' : ''}"${conflictReason ? ` title="${escapeHtml(conflictReason)}"` : ''} style="border-left:4px solid ${conflictReason ? 'var(--es-danger)' : safeCssColor(booking.boats?.color, '#1d1d1f')};${conflictReason ? 'background:#fff5f5;' : ''}">
-                        <div style="display:flex;justify-content:space-between;gap:12px;"><strong>${escapeHtml(getDisplayContactName(booking))}</strong><span>${start}–${end}</span></div>
+                        <div style="display:flex;justify-content:space-between;gap:12px;"><strong>${escapeHtml(getDisplayBookingName(booking))}</strong><span>${start}–${end}</span></div>
                         ${conflictReason ? `<div class="es-badge danger" style="margin-top:6px;">⚠️ ${escapeHtml(conflictReason)}</div>` : ''}
                         <div class="es-record-meta" style="margin-top:6px;">${escapeHtml(booking.boats?.name || '')} · ${isDriver ? '🚤 駕駛' : '🎓 教練'} ${escapeHtml(selectedCoach?.name || '')}</div>
                         ${(booking.notes || booking.schedule_notes) ? `<div style="margin-top:9px;font-size:13px;">${escapeHtml([booking.notes, booking.schedule_notes].filter(Boolean).join(' · '))}</div>` : ''}
@@ -5194,7 +5212,7 @@
                         const conflictReason = conflictReasons.get(String(booking.id));
                         
                         // 獲取顯示名稱（與網頁版一致）
-                        const displayContactName = escapeHtml(getDisplayContactName(booking));
+                        const displayContactName = escapeHtml(getDisplayBookingName(booking));
                         
                         // 構建卡片 HTML（與網頁版樣式一致）
                         const cardStyle = 'padding: 14px 12px; background: ' + (conflictReason ? '#fff5f5' : boatColor + '0d') + '; border: 2px solid ' + (conflictReason ? 'var(--es-danger)' : boatColor) + '; vertical-align: top; position: relative; border-radius: 10px; box-shadow: 0 1px 2px rgba(31,27,23,0.03);';
@@ -5363,7 +5381,7 @@
                             <form id="search-form-member" onsubmit="handleMemberBookingSearch(event)">
                                 <div style="margin-bottom: 16px; position: relative;">
                                     <label style="display: block; margin-bottom: 8px; font-size: 13px; color: #868e96; font-weight: 500;">預約人</label>
-                                    <input id="search-member-name" type="text" placeholder="搜尋會員或直接輸入姓名" required
+                                    <input id="search-member-name" type="text" placeholder="搜尋會員、預約人或 RIDER" required
                                         oninput="onMemberSearchInputChange()"
                                         onfocus="onMemberSearchInputFocus()"
                                         onblur="onMemberSearchInputBlur()"
@@ -5503,7 +5521,7 @@
             const boat = booking.boats?.name || '?';
             const timeLabel = boat === '彈簧床' || boat === '陸上課程' ? '開始' : '下水';
             const coaches = (booking.coaches || []).filter(c => c && c.name).map(c => c.name + '教練').join('/');
-            return `${dateParts[1] || '--'}/${dateParts[2] || '--'} ${getDisplayContactName(booking)}, ${arrival}抵達, ${time}${timeLabel}, ${booking.duration_min || 0}分鐘, ${boat}${coaches ? ', ' + coaches : ''}`;
+            return `${dateParts[1] || '--'}/${dateParts[2] || '--'} ${getDisplayBookingName(booking)}, ${arrival}抵達, ${time}${timeLabel}, ${booking.duration_min || 0}分鐘, ${boat}${coaches ? ', ' + coaches : ''}`;
         }
 
         function copyBookingForLine(index) {
@@ -5710,7 +5728,7 @@
                 const endDate = endInput && endInput.value ? endInput.value : '';
 
                 if (!searchTerm) {
-                    alert('請輸入預約人關鍵字（姓名或電話）');
+                    alert('請輸入預約人或 RIDER 關鍵字');
                     return;
                 }
 
@@ -5736,7 +5754,7 @@
                         }
                     });
                 } else {
-                    // 關鍵字模式：會員（姓名／暱稱／電話）+ contact_name（含訪客）
+                    // 關鍵字模式：會員（姓名／暱稱／電話）+ 預約人 + 實際 RIDER
                     var matchedMemberIds = memberIdsMatchingKeywordOffline(activeMembers, searchTerm);
                     var matchedMemberIdSet = {};
                     matchedMemberIds.forEach(function (id) { matchedMemberIdSet[id] = true; });
@@ -5750,7 +5768,11 @@
                     var termLower = searchTerm.toLowerCase();
                     allBookings.forEach(function (b) {
                         var contact = (b.contact_name || '').toLowerCase();
-                        if (contact && contact.indexOf(termLower) !== -1) {
+                        var rider = (b.actual_rider || '').toLowerCase();
+                        if (
+                            (contact && contact.indexOf(termLower) !== -1)
+                            || (rider && rider.indexOf(termLower) !== -1)
+                        ) {
                             matchedIdsSet.add(b.id);
                         }
                     });
@@ -5821,7 +5843,7 @@
             container.innerHTML = sorted.map(function (booking) {
                 const isPast = isPastBooking(booking.start_at);
                 const dateTimeText = formatBookingDateTime(booking.start_at);
-                const displayName = getDisplayContactName(booking);
+                const displayName = getDisplayBookingName(booking);
                 const boatName = booking.boats && booking.boats.name ? booking.boats.name : '未指定';
                 const coachNames = booking.coaches && booking.coaches.length > 0
                     ? booking.coaches.map(function (c) { return c.name; }).join(' / ')
@@ -5941,6 +5963,7 @@
                     id: booking.id,
                     boat_id: booking.boat_id,
                     contact_name: contactName,
+                    actual_rider: booking.actual_rider || null,
                     start_at: booking.start_at,
                     duration_min: booking.duration_min,
                     activity_types: booking.activity_types,
@@ -5981,21 +6004,13 @@
         var SPECIAL_MEMBERS_FOR_BOAT_INFO = ['Mandy', '火腿', '火小', '火隆', '火龍'];
         var SAFIN_TOMORROW_STUDENT_NAMES = { 'Safin': 1 };
 
-        var QIQI_TOMORROW_STUDENT_NAME = 'EHA綺';
-        /** 僅名單為 EHA綺 + 教練 ED 時替換；其餘原樣回傳 */
-        function _isQiqiEd(studentName, coachName) {
-            return studentName === QIQI_TOMORROW_STUDENT_NAME
-                && (coachName || '').trim().toUpperCase() === 'ED';
+        /** UI 用：顯示資料庫中的真實教練名稱 */
+        function displayCoachNameForTomorrowReminder(_studentName, coachName) {
+            return coachName;
         }
-        /** UI 用（單行） */
-        function displayCoachNameForTomorrowReminder(studentName, coachName) {
-            if (!_isQiqiEd(studentName, coachName)) return coachName;
-            return 'Ebdooooooooooooooooooooooooooooooopq';
-        }
-        /** 純文字 LINE 訊息用（多行 ASCII，結尾 \n 讓「教練」獨立一行） */
-        function displayCoachNameForTomorrowMessage(studentName, coachName) {
-            if (!_isQiqiEd(studentName, coachName)) return coachName;
-            return '　　　　Ｅ\n　　ｂ　　　ｄ\n　　　ｏｏｏ　\n　　ｏｏｏｏｏ\n　ｏｏｏｏｏｏｏ\n　ｏｏｏｏｏｏｏ\n　　ｏｏｏｏｏ\n　　　ｏｏｏ　\n　　ｐ　　　ｑ\n';
+        /** 純文字 LINE 訊息用：顯示資料庫中的真實教練名稱 */
+        function displayCoachNameForTomorrowMessage(_studentName, coachName) {
+            return coachName;
         }
 
         function getFacilityMessageLabelOffline(boatName) {
@@ -6046,12 +6061,7 @@
                 return safinLines.join('\n');
             }
             
-            var hasPapaCoach = studentBookings.some(function(b) {
-                return (b.coaches || []).some(function(c) { return (c.name || '').toUpperCase() === 'PAPA'; });
-            });
-            
             var message = studentName + '你好\n提醒你，明天有預約\n';
-            if (hasPapaCoach) message += '請幫我帶現金直接給Papa\n';
             message += '\n';
             
             if (SPECIAL_MEMBERS_FOR_BOAT_INFO.indexOf(studentName) !== -1 && studentBookings.length > 0) {
@@ -6066,37 +6076,75 @@
                 }
             }
             
-            var previousCoachNames = '';
-            var boatCount = 0;
-            studentBookings.forEach(function(booking, index) {
-                var hasCoach = booking.coaches && booking.coaches.length > 0;
-                var coachNames = hasCoach
-                    ? booking.coaches.map(function(c) { return displayCoachNameForTomorrowMessage(studentName, c.name); }).join('/')
-                    : '';
-                var startTime = formatTimeNoColon(booking.start_at);
+            var riderGroups = new Map();
+            studentBookings.forEach(function(booking) {
+                var rider = formatActualRider(booking.actual_rider);
                 var boatName = (booking.boats && booking.boats.name) || '';
-                var facilityLabel = getFacilityMessageLabelOffline(boatName);
-                var isFacility = !!facilityLabel;
-                if (!isFacility) boatCount++;
-                
-                if (index === 0) {
-                    if (hasCoach) message += coachNames + '教練\n';
-                    message += getArrivalTimeNoColon(booking.start_at) + '抵達\n';
-                    message += isFacility ? (startTime + facilityLabel + '\n') : (startTime + '下水\n');
-                    previousCoachNames = coachNames;
-                } else {
+                var key = rider
+                    ? 'rider:' + rider.split('＋').sort(function(a, b) { return a.localeCompare(b, 'zh-Hant'); }).join('\u0000')
+                    : boatName.indexOf('煙火') !== -1
+                        ? 'special-boat:' + boatName
+                        : 'without-rider';
+                if (!riderGroups.has(key)) riderGroups.set(key, { rider: rider, bookings: [] });
+                riderGroups.get(key).bookings.push(booking);
+            });
+            var groups = Array.from(riderGroups.values()).sort(function(a, b) {
+                return a.bookings[0].start_at.localeCompare(b.bookings[0].start_at);
+            });
+
+            groups.forEach(function(group, groupIndex) {
+                if (groupIndex > 0) message += '\n';
+                var coachNamesByBooking = group.bookings.map(function(booking) {
+                    return booking.coaches && booking.coaches.length
+                        ? booking.coaches.map(function(c) { return displayCoachNameForTomorrowMessage(studentName, c.name); }).join('/')
+                        : '';
+                });
+                var uniqueCoachNames = Array.from(new Set(coachNamesByBooking.filter(Boolean)));
+                var distinctCoachAssignments = new Set(coachNamesByBooking);
+
+                if (group.rider) {
+                    message += (distinctCoachAssignments.size === 1 && uniqueCoachNames.length === 1
+                        ? uniqueCoachNames[0] + '教練－' + group.rider
+                        : group.rider) + '\n';
+                    message += getArrivalTimeWithColon(group.bookings[0].start_at) + ' 抵達\n';
+                    var previousRiderCoachNames = '';
+                    group.bookings.forEach(function(booking, index) {
+                        var coachNames = coachNamesByBooking[index];
+                        if (distinctCoachAssignments.size > 1 && coachNames && coachNames !== previousRiderCoachNames) {
+                            message += coachNames + '教練\n';
+                        }
+                        var facilityLabel = getFacilityMessageLabelOffline((booking.boats && booking.boats.name) || '');
+                        message += String(booking.start_at || '').slice(11, 16) + ' ' + (facilityLabel || '下水') + '\n';
+                        previousRiderCoachNames = coachNames;
+                    });
+                    return;
+                }
+
+                var previousCoachNames = '';
+                var boatCount = 0;
+                group.bookings.forEach(function(booking, index) {
+                    var coachNames = coachNamesByBooking[index];
+                    var boatName = (booking.boats && booking.boats.name) || '';
+                    var facilityLabel = getFacilityMessageLabelOffline(boatName);
+                    var isFacility = !!facilityLabel;
+                    if (!isFacility) boatCount++;
+
+                    if (index === 0) {
+                        if (coachNames) message += coachNames + '教練\n';
+                        else if (boatName.indexOf('煙火') !== -1) message += boatName + '\n';
+                        message += getArrivalTimeWithColon(booking.start_at) + ' 抵達\n';
+                        message += String(booking.start_at || '').slice(11, 16) + ' ' + (facilityLabel || '下水') + '\n';
+                        previousCoachNames = coachNames;
+                        return;
+                    }
                     if (!isFacility && boatCount >= 2) {
                         var shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : '第' + boatCount + '船';
                         message += '\n' + shipLabel + '\n';
                     }
-                    if (coachNames === previousCoachNames) {
-                        message += isFacility ? (startTime + facilityLabel + '\n') : (startTime + '下水\n');
-                    } else {
-                        if (hasCoach) message += coachNames + '教練\n';
-                        message += isFacility ? (startTime + facilityLabel + '\n') : (startTime + '下水\n');
-                        previousCoachNames = coachNames;
-                    }
-                }
+                    if (coachNames !== previousCoachNames && coachNames) message += coachNames + '教練\n';
+                    message += String(booking.start_at || '').slice(11, 16) + ' ' + (facilityLabel || '下水') + '\n';
+                    previousCoachNames = coachNames;
+                });
             });
             message += '\n';
             if (includeWeatherWarning) message += weatherWarning + '\n\n';
@@ -6144,10 +6192,10 @@
             setOfflinePageLayout();
             
             var defaultDate = getTomorrowDefaultDate();
-            var weatherWarning = '由於近期天氣變化較大，請務必在『啟程前』\n透過官方訊息與我們確認最新天氣狀況\n別忘了在出發前查收最新訊息哦！';
-            var footerText = '再麻煩幫我們準時抵達哦！謝謝！\n明天見哦😊\n抵達時 再麻煩幫我按開門鍵提醒教練們幫你開啟停車場鐵閘門 \n進來後再麻煩幫我停黃色停車格 \n白色的不能停 煩請配合🙏';
-            var englishMessageTemplate = 'Hi {username}\\n\\nJust a reminder that we have {appointment}.{weather}\\n\\nYour punctual arrival would be appreciated!\\nThank you, and see you tomorrow! 😊\\nSafe travels!';
-            var englishWeatherWarning = 'Due to the unstable weather conditions in recent days, please make sure to confirm with us through an "official message" prior to departure. Thanks for your cooperation!';
+            var weatherWarning = '近期天氣變化較大，請務必在出發前透過官方 LINE 與我們確認最新天氣狀況，並留意最新訊息哦！';
+            var footerText = '再麻煩準時抵達，明天見哦😊\n\n抵達時請按 LINE 官方帳號下方的「開門」鍵，通知教練協助開啟停車場鐵閘門。入場後請停黃色停車格，白色停車格請勿停放，謝謝配合🙏';
+            var englishMessageTemplate = 'Hi {username}\\n\\nJust a reminder that we have {appointment}.{weather}\\n\\nPlease arrive on time. See you tomorrow! 😊\\n\\nWhen you arrive, tap "OPEN SESAME" at the bottom of our official LINE account to notify the coaches to open the parking gate. Please park in a yellow space; do not use the white spaces. Thank you for your cooperation 🙏';
+            var englishWeatherWarning = 'Weather conditions have been changing recently. Before setting out, please confirm the latest conditions with us via our official LINE account and check for updates.';
             var includeWeatherWarning = true;
             var settings = await safeGetAllFromStore('system_settings');
             var settingMap = new Map(settings.map(function(item) { return [item.setting_key, item.setting_value ?? '']; }));
@@ -7767,7 +7815,7 @@
                 <div style="padding:20px;display:grid;gap:14px;">
                     <div class="es-status info">離線唯讀：可查看完整內容，但不能修改預約。</div>
                     <div class="es-record-grid">
-                        <div class="es-record-value"><span>預約人</span>${escapeHtml(getDisplayContactName(booking) || '未命名')}</div>
+                        <div class="es-record-value"><span>預約人</span>${escapeHtml(getDisplayBookingName(booking) || '未命名')}</div>
                         <div class="es-record-value"><span>時間</span>${escapeHtml(startTime)} · ${Number(booking.duration_min || 0)} 分</div>
                         <div class="es-record-value"><span>船隻</span>${escapeHtml(booking.boat?.name || booking.boats?.name || booking.boatName || '未指定')}</div>
                         <div class="es-record-value"><span>活動</span>${escapeHtml(activities)}</div>

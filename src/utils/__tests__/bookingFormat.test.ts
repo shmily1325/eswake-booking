@@ -3,6 +3,7 @@ import {
   formatBookingForLine,
   formatSingleBookingWithName,
   formatBookingsForLine,
+  getDisplayBookingName,
   getDisplayContactName
 } from '../bookingFormat'
 
@@ -419,6 +420,22 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
 
       const result = getDisplayContactName(booking)
       expect(result).toBe('非會員客人')
+    })
+  })
+
+  describe('getDisplayBookingName', () => {
+    it('有實際 RIDER 時顯示在預約人後方', () => {
+      expect(getDisplayBookingName({
+        contact_name: 'Fish',
+        actual_rider: '澤+甯',
+      })).toBe('Fish（澤＋甯）')
+    })
+
+    it('沒有實際 RIDER 時維持原本名稱', () => {
+      expect(getDisplayBookingName({
+        contact_name: 'Fish',
+        actual_rider: null,
+      })).toBe('Fish')
     })
   })
 })

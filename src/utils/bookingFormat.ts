@@ -2,11 +2,13 @@
 
 import { deduplicateNames } from './memberUtils'
 import { isFacility } from './facility'
+import { formatBookingDisplayName } from './riderDisplay'
 
 interface BookingFormatData {
   start_at: string
   duration_min: number
   contact_name?: string
+  actual_rider?: string | null
   boats?: { name: string } | null
   coaches?: { name: string }[]
   activity_types?: string[] | null
@@ -147,6 +149,13 @@ export function getDisplayContactName(booking: any): string {
   return displayNames.length > 0 ? displayNames.join(', ') : booking.contact_name || '未命名'
 }
 
+export function getDisplayBookingName(booking: any): string {
+  return formatBookingDisplayName(
+    getDisplayContactName(booking),
+    booking.actual_rider,
+  )
+}
+
 
 /**
  * 格式化時間範圍
@@ -167,6 +176,7 @@ interface BookingCopyData {
   start_at: string
   duration_min: number
   contact_name?: string | null
+  actual_rider?: string | null
   boats?: { name: string } | null
   coaches?: { name: string }[]
   activity_types?: string[] | null
@@ -196,7 +206,7 @@ export function formatBookingForCopy(booking: BookingCopyData): string {
   const arrivalTimeStr = `${String(arrivalHour).padStart(2, '0')}:${String(arrivalMin).padStart(2, '0')}`
   
   // 取得顯示名稱
-  const displayName = getDisplayContactName(booking)
+  const displayName = getDisplayBookingName(booking)
   
   // 船名
   const boatName = booking.boats?.name || '?'

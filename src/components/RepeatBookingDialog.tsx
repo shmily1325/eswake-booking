@@ -5,6 +5,7 @@ import { logAction } from '../utils/auditLog'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import { normalizeFilledByForSave } from '../utils/filledByHelper'
+import { normalizeActualRiderForSave } from '../utils/riderDisplay'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { isFacility } from '../utils/facility'
 import { checkGlobalRestriction } from '../utils/restriction'
@@ -87,6 +88,7 @@ export function RepeatBookingDialog({
     startTime,
     durationMin,
     activityTypes,
+    actualRider,
     notes,
     requiresDriver,
     filledBy,
@@ -113,6 +115,7 @@ export function RepeatBookingDialog({
     setManualNames,
     setStartTime,
     setDurationMin,
+    setActualRider,
     setNotes,
     setRequiresDriver,
     setFilledBy,
@@ -361,6 +364,7 @@ export function RepeatBookingDialog({
           duration_min: durationMin,
           cleanup_minutes: cleanupMinutes,
           activity_types: activityTypes.length > 0 ? activityTypes : null,
+          actual_rider: normalizeActualRiderForSave(actualRider),
           notes: notes || null,
           requires_driver: requiresDriver,
           filled_by: normalizeFilledByForSave(filledBy),
@@ -471,6 +475,11 @@ export function RepeatBookingDialog({
 
         if (requiresDriver) {
           details += ' [需要駕駛]'
+        }
+
+        const savedActualRider = normalizeActualRiderForSave(actualRider)
+        if (savedActualRider) {
+          details += ` [RIDER: ${savedActualRider}]`
         }
         
         // 加上備註
@@ -642,7 +651,23 @@ export function RepeatBookingDialog({
             setManualStudentName={setManualStudentName}
             setManualNames={setManualNames}
             handleMemberSearch={handleMemberSearch}
+            actualRider={actualRider}
+            setActualRider={setActualRider}
           />
+          {normalizeActualRiderForSave(actualRider) && (
+            <div style={{
+              marginTop: `-${designSystem.spacing.md}`,
+              marginBottom: designSystem.spacing.lg,
+              padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+              borderRadius: designSystem.borderRadius.md,
+              background: designSystem.colors.info[50],
+              color: designSystem.colors.info[700],
+              fontSize: '13px',
+              lineHeight: 1.5,
+            }}>
+              此 RIDER 將套用到本次選擇的所有日期。
+            </div>
+          )}
 
           {/* 船隻選擇 */}
           <BoatSelector

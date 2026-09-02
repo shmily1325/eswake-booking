@@ -5,6 +5,7 @@ import { logBookingCreation } from '../utils/auditLog'
 import { useResponsive } from '../hooks/useResponsive'
 import { useBookingForm } from '../hooks/useBookingForm'
 import { normalizeFilledByForSave } from '../utils/filledByHelper'
+import { normalizeActualRiderForSave } from '../utils/riderDisplay'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { isFacility, isOverlapAllowed } from '../utils/facility'
 import { BoatSelector } from './booking/BoatSelector'
@@ -65,6 +66,7 @@ export function NewBookingDialog({
     startTime,
     durationMin,
     activityTypes,
+    actualRider,
     notes,
     requiresDriver,
     filledBy,
@@ -92,6 +94,7 @@ export function NewBookingDialog({
     setStartDate,
     setStartTime,
     setDurationMin,
+    setActualRider,
     setNotes,
     setRequiresDriver,
     setFilledBy,
@@ -236,6 +239,7 @@ export function NewBookingDialog({
           duration_min: durationMin,
           cleanup_minutes: isSelectedBoatFacility ? 0 : 15,     // 設施不需清理時間，船隻需要15分鐘
           activity_types: activityTypes.length > 0 ? activityTypes : null,
+          actual_rider: normalizeActualRiderForSave(actualRider),
           notes: notes || null,
         requires_driver: requiresDriver,
         filled_by: normalizeFilledByForSave(filledBy),  // 新增填表人欄位（B/b 統一為 B）
@@ -326,6 +330,7 @@ export function NewBookingDialog({
           coachNames,
           filledBy,
           activityTypes: activityTypes.length > 0 ? activityTypes : undefined,  // 活動類型
+          actualRider: normalizeActualRiderForSave(actualRider) || undefined,
           notes: notes || undefined,  // 備註
           isCoachPractice,
           requiresDriver,
@@ -452,6 +457,8 @@ export function NewBookingDialog({
             setManualStudentName={setManualStudentName}
             manualNames={manualNames}
             setManualNames={setManualNames}
+            actualRider={actualRider}
+            setActualRider={setActualRider}
           />
 
           {/* 2. 船隻選擇 */}

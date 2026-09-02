@@ -1,6 +1,10 @@
 import React from 'react'
 import type { Member } from '../../types/booking'
 import { designSystem, getFontSize, getLabelStyle } from '../../styles/designSystem'
+import {
+    appendActualRiderSeparator,
+    formatActualRider,
+} from '../../utils/riderDisplay'
 
 interface MemberSelectorProps {
     members: Pick<Member, 'id' | 'name' | 'nickname' | 'phone'>[]
@@ -16,6 +20,8 @@ interface MemberSelectorProps {
     setManualStudentName: (name: string) => void
     manualNames: string[]
     setManualNames: React.Dispatch<React.SetStateAction<string[]>>
+    actualRider: string
+    setActualRider: (value: string) => void
 }
 
 export function MemberSelector({
@@ -32,7 +38,18 @@ export function MemberSelector({
     setManualStudentName,
     manualNames,
     setManualNames,
+    actualRider,
+    setActualRider,
 }: MemberSelectorProps) {
+    const actualRiderInputRef = React.useRef<HTMLInputElement>(null)
+    const riderValue = actualRider || ''
+    const canAppendRider = !!riderValue.trim() && !/[+＋,，、/]$/.test(riderValue.trimEnd())
+    const appendRider = () => {
+        if (!canAppendRider) return
+        setActualRider(appendActualRiderSeparator(riderValue))
+        window.setTimeout(() => actualRiderInputRef.current?.focus(), 0)
+    }
+
     return (
         <div style={{ marginBottom: designSystem.spacing.lg, position: 'relative' }}>
             <label style={getLabelStyle(true)}>
@@ -261,6 +278,74 @@ export function MemberSelector({
                         cursor: manualStudentName.trim() ? 'pointer' : 'not-allowed',
                         minWidth: '52px',
                         minHeight: '48px',
+                        touchAction: 'manipulation',
+                    }}
+                >
+                    +
+                </button>
+            </div>
+
+            <div style={{
+                marginTop: designSystem.spacing.md,
+                display: 'grid',
+                gridTemplateColumns: 'auto minmax(0, 1fr) 48px',
+                gap: designSystem.spacing.sm,
+                alignItems: 'center',
+            }}>
+                <label
+                    htmlFor="actual-rider"
+                    style={{
+                        ...getLabelStyle(true),
+                        marginBottom: 0,
+                        whiteSpace: 'nowrap',
+                        fontSize: getFontSize('button', true),
+                    }}
+                >
+                    實際 RIDER（選填）
+                </label>
+                <input
+                    ref={actualRiderInputRef}
+                    id="actual-rider"
+                    type="text"
+                    value={riderValue}
+                    onChange={(event) => setActualRider(event.target.value)}
+                    onBlur={() => setActualRider(formatActualRider(riderValue))}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                            event.preventDefault()
+                            appendRider()
+                        }
+                    }}
+                    aria-label="實際 RIDER（選填）"
+                    style={{
+                        width: '100%',
+                        minWidth: 0,
+                        padding: '12px',
+                        borderRadius: designSystem.borderRadius.lg,
+                        border: `1px solid ${designSystem.colors.border.main}`,
+                        boxSizing: 'border-box',
+                        fontSize: '16px',
+                        touchAction: 'manipulation',
+                    }}
+                />
+                <button
+                    type="button"
+                    onClick={appendRider}
+                    disabled={!canAppendRider}
+                    aria-label="加入下一位 RIDER"
+                    style={{
+                        width: '48px',
+                        minHeight: '48px',
+                        padding: 0,
+                        background: canAppendRider
+                            ? designSystem.colors.info[500]
+                            : designSystem.colors.text.disabled,
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: designSystem.borderRadius.lg,
+                        fontSize: getFontSize('h2', true),
+                        fontWeight: 'bold',
+                        cursor: canAppendRider ? 'pointer' : 'not-allowed',
                         touchAction: 'manipulation',
                     }}
                 >

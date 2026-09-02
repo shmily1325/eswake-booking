@@ -63,6 +63,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const [startTime, setStartTime] = useState('00:00')
     const [durationMin, setDurationMin] = useState(initialBooking?.duration_min || 60)
     const [activityTypes, setActivityTypes] = useState<string[]>(initialBooking?.activity_types || [])
+    const [actualRider, setActualRider] = useState(initialBooking?.actual_rider || '')
     const [notes, setNotes] = useState(initialBooking?.notes || '')
     const [requiresDriver, setRequiresDriver] = useState(initialBooking?.requires_driver || false)
     // 填表人：優先使用 email 對應的姓名（如有），否則為空（用戶自行輸入）
@@ -115,6 +116,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             // Edit Mode Initialization
             setSelectedBoatId(initialBooking.boat_id)
             setDurationMin(initialBooking.duration_min)
+            setActualRider(initialBooking.actual_rider || '')
             setNotes(initialBooking.notes || '')
             setRequiresDriver(initialBooking.requires_driver || false)
             setActivityTypes(initialBooking.activity_types || [])
@@ -465,6 +467,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         setManualNames([])
         setShowMemberDropdown(false)
         setActivityTypes([])
+        setActualRider('')
         setNotes('')
         setRequiresDriver(false)
         setFilledBy(getFilledByName(userEmail))  // 重置時也使用自動填入
@@ -494,6 +497,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         startTime,
         durationMin,
         activityTypes,
+        actualRider,
         notes,
         requiresDriver,
         filledBy,
@@ -523,6 +527,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         setStartTime,
         setDurationMin,
         setActivityTypes,
+        setActualRider,
         setNotes,
         setRequiresDriver,
         setFilledBy,

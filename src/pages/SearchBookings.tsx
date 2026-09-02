@@ -15,7 +15,7 @@ import {
   getInputStyle,
   getLabelStyle,
 } from '../styles/designSystem'
-import { formatBookingsForLine, getDisplayContactName } from '../utils/bookingFormat'
+import { formatBookingsForLine, getDisplayBookingName } from '../utils/bookingFormat'
 import { useToast, ToastContainer } from '../components/ui'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
@@ -33,6 +33,7 @@ interface Booking {
   start_at: string
   duration_min: number
   contact_name: string
+  actual_rider: string | null
   notes: string | null
   activity_types: string[] | null
   status: string
@@ -99,6 +100,29 @@ function truncateCanvasText(
     truncated = truncated.slice(0, -1)
   }
   return `${truncated}…`
+}
+
+function drawFittedCanvasText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  initialFontSize: number,
+  minimumFontSize: number,
+) {
+  let fontSize = initialFontSize
+  do {
+    context.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif`
+    if (context.measureText(text).width <= maxWidth) {
+      context.fillText(text, x, y)
+      return
+    }
+    fontSize -= 2
+  } while (fontSize >= minimumFontSize)
+
+  context.font = `500 ${minimumFontSize}px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif`
+  context.fillText(truncateCanvasText(context, text, maxWidth), x, y)
 }
 
 function drawRoundedRect(
@@ -215,11 +239,14 @@ async function createBookingShareImages(bookings: Booking[], title: string): Pro
       const dateText = `${year}/${month}/${day}（${weekdays[dateValue.getDay()]}） ${time}`
 
       context.fillStyle = '#172033'
-      context.font = '500 54px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-      context.fillText(
-        truncateCanvasText(context, getDisplayContactName(booking), cardWidth - 132),
+      drawFittedCanvasText(
+        context,
+        getDisplayBookingName(booking),
         cardX + 60,
         cardY + 76,
+        cardWidth - 132,
+        54,
+        38,
       )
 
       context.fillStyle = '#52606d'
@@ -404,7 +431,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
           .eq('member_id', selectedMemberId)
         memberLinks?.forEach(item => bookingIds.add(item.booking_id))
       } else {
-        // 關鍵字模式：會員（姓名／暱稱／電話）+ contact_name（含訪客）
+        // 關鍵字模式：會員（姓名／暱稱／電話）+ 預約人 + 實際 RIDER
         const matchedMemberIds = memberIdsMatchingKeyword(members, searchTerm)
         const memberBookingPromise = matchedMemberIds.length > 0
           ? supabase
@@ -413,16 +440,22 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
               .in('member_id', matchedMemberIds)
           : Promise.resolve({ data: [] as { booking_id: number }[], error: null })
 
-        const [memberResult, bookingResult] = await Promise.all([
+        const escapedSearchTerm = escapeIlikePattern(searchTerm)
+        const [memberResult, bookingResult, riderResult] = await Promise.all([
           memberBookingPromise,
           supabase
             .from('bookings')
             .select('id')
-            .ilike('contact_name', `%${escapeIlikePattern(searchTerm)}%`),
+            .ilike('contact_name', `%${escapedSearchTerm}%`),
+          supabase
+            .from('bookings')
+            .select('id')
+            .ilike('actual_rider', `%${escapedSearchTerm}%`),
         ])
 
         memberResult.data?.forEach(item => bookingIds.add(item.booking_id))
         bookingResult.data?.forEach(item => bookingIds.add(item.id))
+        riderResult.data?.forEach(item => bookingIds.add(item.id))
       }
 
       if (bookingIds.size === 0) {
@@ -434,7 +467,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       // 步驟 2: 建構詳細查詢（帶日期篩選）
       let detailQuery = supabase
         .from('bookings')
-        .select('id, start_at, duration_min, contact_name, notes, activity_types, status, boats:boat_id(name, color)')
+        .select('id, start_at, duration_min, contact_name, actual_rider, notes, activity_types, status, boats:boat_id(name, color)')
         .in('id', Array.from(bookingIds))
 
       // 日期區間篩選
@@ -737,7 +770,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   setTimeout(() => setShowMemberDropdown(false), 200)
                   e.target.style.borderColor = designSystem.colors.border.main
                 }}
-                placeholder="搜尋會員或直接輸入姓名"
+                placeholder="搜尋會員、預約人或 RIDER"
                 required
                 style={{
                   ...getInputStyle(isMobile),
@@ -1303,7 +1336,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                             color: designSystem.colors.text.primary,
                             marginBottom: '4px',
                           }}>
-                            {getDisplayContactName(booking)}
+                            {getDisplayBookingName(booking)}
                           </div>
                           <div style={{
                             fontSize: getFontSize('body', isMobile),

@@ -546,6 +546,7 @@ export type Database = {
       bookings: {
         Row: {
           activity_types: string[] | null
+          actual_rider: string | null
           boat_id: number
           cleanup_minutes: number
           contact_name: string
@@ -566,6 +567,7 @@ export type Database = {
         }
         Insert: {
           activity_types?: string[] | null
+          actual_rider?: string | null
           boat_id: number
           cleanup_minutes?: number
           contact_name: string
@@ -586,6 +588,7 @@ export type Database = {
         }
         Update: {
           activity_types?: string[] | null
+          actual_rider?: string | null
           boat_id?: number
           cleanup_minutes?: number
           contact_name?: string

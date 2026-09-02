@@ -255,6 +255,7 @@ describe('auditLog 審計日誌工具', () => {
         coachNames: ['PAPA', 'Ivan'],
         driverNames: ['Sky'],
         activityTypes: ['WS', 'Wakeboard'],
+        actualRider: '澤＋甯',
         notes: '新手體驗',
         filledBy: '許書潔'
       })
@@ -264,7 +265,7 @@ describe('auditLog 審計日誌工具', () => {
           user_email: 'test@example.com',
           action: 'delete',
           table_name: 'bookings',
-          details: '刪除預約：2026/02/06 14:30 60分 G23 Fish | PAPA教練、Ivan教練 | 🚤Sky [WS+Wakeboard] [新手體驗] (填表人: 許書潔)',
+          details: '刪除預約：2026/02/06 14:30 60分 G23 Fish | PAPA教練、Ivan教練 | 🚤Sky [WS+Wakeboard] [RIDER: 澤＋甯] [新手體驗] (填表人: 許書潔)',
           created_at: getVenueTimestamp()
         })
       })

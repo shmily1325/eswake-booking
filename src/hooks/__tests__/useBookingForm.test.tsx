@@ -129,6 +129,7 @@ describe('useBookingForm', () => {
       const initial: any = {
         boat_id: 2,
         duration_min: 90,
+        actual_rider: '澤＋甯',
         notes: '備註',
         requires_driver: true,
         activity_types: ['WB', 'WS'],
@@ -147,6 +148,7 @@ describe('useBookingForm', () => {
       })
 
       expect(result.current.durationMin).toBe(90)
+      expect(result.current.actualRider).toBe('澤＋甯')
       expect(result.current.notes).toBe('備註')
       expect(result.current.requiresDriver).toBe(true)
       expect(result.current.activityTypes).toEqual(['WB', 'WS'])
@@ -668,6 +670,7 @@ describe('useBookingForm', () => {
       act(() => {
         result.current.setSelectedCoaches(['c1'])
         result.current.setActivityTypes(['WB'])
+        result.current.setActualRider('澤')
         result.current.setNotes('備註')
         result.current.setError('錯誤')
       })
@@ -682,6 +685,7 @@ describe('useBookingForm', () => {
       expect(result.current.manualNames).toEqual([])
       expect(result.current.showMemberDropdown).toBe(false)
       expect(result.current.activityTypes).toEqual([])
+      expect(result.current.actualRider).toBe('')
       expect(result.current.notes).toBe('')
       expect(result.current.requiresDriver).toBe(false)
       expect(result.current.filledBy).toBe('管理員')

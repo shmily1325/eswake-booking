@@ -222,6 +222,8 @@ describe('offline disaster-recovery artifact', () => {
       "TOMORROW_COACH_REMINDER_TARGET_COACHES = ['火隆', '侑曄']",
     )
     expect(html).toContain("if (boatName === '陸上課程') return '陸上課程'")
+    expect(html).toContain('OPEN SESAME')
+    expect(html).not.toContain('請幫我帶現金直接給Papa')
     expect(html).not.toContain("localStorage.getItem('includeWeatherWarning')")
   })
 
@@ -281,6 +283,16 @@ describe('offline disaster-recovery artifact', () => {
       })
     `)
     expect(result).toBe('小明, 訪客')
+  })
+
+  it('shows normalized actual riders with the booking contact', () => {
+    const result = evaluateOffline<string>(`
+      getDisplayBookingName({
+        contact_name: 'Fish',
+        actual_rider: '澤+甯'
+      })
+    `)
+    expect(result).toBe('Fish（澤＋甯）')
   })
 
   it('keeps product and order statuses aligned with the online helpers', () => {
