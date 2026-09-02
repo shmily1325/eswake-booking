@@ -12,17 +12,17 @@ const SETTING_KEYS = {
 
 const DEFAULT_WEATHER_WARNING = '近期天氣變化較大，請務必在出發前透過官方 LINE 與我們確認最新天氣狀況，並留意最新訊息哦！'
 
-const DEFAULT_FOOTER_TEXT = `再麻煩準時抵達，明天見哦😊
+const DEFAULT_FOOTER_TEXT = `抵達時請按 LINE 官方帳號下方的「開門」鍵，通知教練協助開啟停車場鐵閘門。入場後請停黃色停車格，白色停車格請勿停放，謝謝配合🙏
 
-抵達時請按 LINE 官方帳號下方的「開門」鍵，通知教練協助開啟停車場鐵閘門。入場後請停黃色停車格，白色停車格請勿停放，謝謝配合🙏`
+再麻煩準時抵達，明天見哦😊`
 
 const DEFAULT_ENGLISH_MESSAGE_TEMPLATE = `Hi {username}
 
 Just a reminder that we have {appointment}.{weather}
 
-Please arrive on time. See you tomorrow! 😊
+When you arrive, tap "OPEN SESAME" at the bottom of our official LINE account to notify the coaches to open the parking gate. Please park in a yellow space; do not use the white spaces. Thank you for your cooperation 🙏
 
-When you arrive, tap "OPEN SESAME" at the bottom of our official LINE account to notify the coaches to open the parking gate. Please park in a yellow space; do not use the white spaces. Thank you for your cooperation 🙏`
+Please arrive on time. See you tomorrow! 😊`
 
 const DEFAULT_ENGLISH_WEATHER_WARNING = 'Weather conditions have been changing recently. Before setting out, please confirm the latest conditions with us via our official LINE account and check for updates.'
 
