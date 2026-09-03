@@ -186,7 +186,7 @@ describe('manual LINE reminder send API', () => {
 
     expect(response.status).toHaveBeenCalledWith(200)
     expect(response.json).toHaveBeenCalledWith({
-      contacts: [{ line_user_id: 'U1', display_name: 'Guest' }],
+      contacts: [{ line_user_id: 'U1', display_name: 'Guest', formal_binding: null }],
       mappings: [{ id: 'map-1', line_user_id: 'U1', contact_name: 'Guest' }],
     })
     expect(lineFetch).not.toHaveBeenCalled()

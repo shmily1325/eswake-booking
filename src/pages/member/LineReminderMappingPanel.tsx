@@ -25,6 +25,10 @@ type LineContact = {
   friend_status: 'friend' | 'blocked' | 'unknown'
   last_seen_at: string
   last_action: string
+  formal_binding: {
+    member_id: string | null
+    can_push: boolean
+  } | null
 }
 
 type ReminderMapping = {
@@ -64,6 +68,7 @@ export function LineReminderMappingPanel({ members }: Props) {
   const [mappings, setMappings] = useState<ReminderMapping[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<'unmatched' | 'matched' | 'all'>('unmatched')
   const [selectedContact, setSelectedContact] = useState<LineContact | null>(null)
   const [targetType, setTargetType] = useState<'member' | 'guest'>('member')
   const [memberId, setMemberId] = useState('')
@@ -101,8 +106,12 @@ export function LineReminderMappingPanel({ members }: Props) {
 
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('zh-TW')
-    if (!term) return contacts
     return contacts.filter((contact) => {
+      const hasReminderMapping = (mappingsByLineUser.get(contact.line_user_id) ?? []).length > 0
+      const isMatched = hasReminderMapping || contact.formal_binding?.can_push === true
+      if (filter === 'unmatched' && isMatched) return false
+      if (filter === 'matched' && !isMatched) return false
+      if (!term) return true
       const mappingText = (mappingsByLineUser.get(contact.line_user_id) ?? [])
         .map((mapping) => [
           mapping.contact_name,
@@ -113,7 +122,16 @@ export function LineReminderMappingPanel({ members }: Props) {
         .join(' ')
       return `${contact.display_name} ${mappingText}`.toLocaleLowerCase('zh-TW').includes(term)
     })
-  }, [contacts, mappingsByLineUser, search])
+  }, [contacts, filter, mappingsByLineUser, search])
+
+  const matchedCount = useMemo(
+    () => contacts.filter((contact) =>
+      (mappingsByLineUser.get(contact.line_user_id) ?? []).length > 0 ||
+      contact.formal_binding?.can_push === true,
+    ).length,
+    [contacts, mappingsByLineUser],
+  )
+  const unmatchedCount = contacts.length - matchedCount
 
   const beginPairing = (contact: LineContact) => {
     setSelectedContact(contact)
@@ -184,6 +202,36 @@ export function LineReminderMappingPanel({ members }: Props) {
         placeholder="搜尋 LINE 名稱、會員、預約名稱或電話"
         style={{ ...getInputStyle(isMobile), width: '100%', boxSizing: 'border-box', marginBottom: 12 }}
       />
+      <div
+        role="group"
+        aria-label="LINE 聯絡人篩選"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: 8,
+          marginBottom: 12,
+        }}
+      >
+        {([
+          { value: 'unmatched', label: `待配對 ${unmatchedCount}` },
+          { value: 'matched', label: `已配對 ${matchedCount}` },
+          { value: 'all', label: `全部 ${contacts.length}` },
+        ] as const).map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={filter === option.value}
+            onClick={() => setFilter(option.value)}
+            style={{
+              ...getButtonStyle(filter === option.value ? 'primary' : 'outline', 'medium', isMobile),
+              minHeight: isMobile ? 48 : 42,
+              padding: isMobile ? '10px 6px' : undefined,
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
 
       {loading ? (
         <div style={getEmptyStateStyle(isMobile)}>載入 LINE 聯絡人中…</div>
@@ -193,6 +241,7 @@ export function LineReminderMappingPanel({ members }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filteredContacts.map((contact) => {
             const contactMappings = mappingsByLineUser.get(contact.line_user_id) ?? []
+            const hasFormalPushBinding = contact.formal_binding?.can_push === true
             return (
               <div
                 key={contact.line_user_id}
@@ -245,14 +294,31 @@ export function LineReminderMappingPanel({ members }: Props) {
                   <button
                     type="button"
                     onClick={() => beginPairing(contact)}
-                    style={getButtonStyle('outline', 'small', isMobile)}
+                    disabled={hasFormalPushBinding}
+                    style={{
+                      ...getButtonStyle('outline', isMobile ? 'medium' : 'small', isMobile),
+                      minHeight: isMobile ? 46 : undefined,
+                      opacity: hasFormalPushBinding ? 0.5 : 1,
+                    }}
                   >
-                    新增配對
+                    {hasFormalPushBinding ? '已正式綁定' : '配對'}
                   </button>
                 </div>
 
-                {contactMappings.length > 0 && (
+                {(hasFormalPushBinding || contactMappings.length > 0) && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {hasFormalPushBinding && (
+                      <div
+                        style={{
+                          padding: '9px 10px',
+                          borderRadius: designSystem.borderRadius.sm,
+                          background: designSystem.colors.success[50],
+                          fontSize: 14,
+                        }}
+                      >
+                        已完成正式會員綁定，不需要提醒專用配對
+                      </div>
+                    )}
                     {contactMappings.map((mapping) => (
                       <div
                         key={mapping.id}

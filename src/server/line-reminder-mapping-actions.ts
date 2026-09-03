@@ -26,7 +26,7 @@ export async function handleLineReminderMappingAction(
   const action = text(body.action)
   try {
     if (action === 'list') {
-      const [contactsResult, mappingsResult] = await Promise.all([
+      const [contactsResult, mappingsResult, bindingsResult] = await Promise.all([
         supabase
           .from('line_webhook_contacts')
           .select('line_user_id, display_name, picture_url, profile_complete, friend_status, first_seen_at, last_seen_at, last_action')
@@ -35,11 +35,22 @@ export async function handleLineReminderMappingAction(
           .from('line_reminder_mappings')
           .select('id, line_user_id, member_id, contact_name, normalized_name, contact_phone, created_at, updated_at, members:member_id(id, name, nickname, phone), line_contact:line_user_id(display_name, picture_url, friend_status)')
           .order('updated_at', { ascending: false }),
+        supabase
+          .from('line_bindings')
+          .select('line_user_id, member_id, can_push')
+          .eq('status', 'active'),
       ])
       if (contactsResult.error) throw contactsResult.error
       if (mappingsResult.error) throw mappingsResult.error
+      if (bindingsResult.error) throw bindingsResult.error
+      const bindingByLineUser = new Map(
+        (bindingsResult.data ?? []).map((binding) => [binding.line_user_id, binding]),
+      )
       return res.status(200).json({
-        contacts: contactsResult.data ?? [],
+        contacts: (contactsResult.data ?? []).map((contact) => ({
+          ...contact,
+          formal_binding: bindingByLineUser.get(contact.line_user_id) ?? null,
+        })),
         mappings: mappingsResult.data ?? [],
       })
     }
