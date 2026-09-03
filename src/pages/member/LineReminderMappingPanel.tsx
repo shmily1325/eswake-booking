@@ -505,7 +505,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                       )}
                       {hasFormalPushBinding && (
                         <span style={getBadgeStyle('info', 'small')}>
-                          已綁定
+                          正式綁定
                         </span>
                       )}
                       {contact.friend_status !== 'friend' && (
@@ -560,7 +560,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                       >
                         <span style={{ flex: 1, fontSize: 14 }}>
                           {mapping.member_id
-                            ? `會員：${mapping.members?.nickname || mapping.members?.name || mapping.member_id}`
+                            ? `手動配對：${mapping.members?.nickname || mapping.members?.name || mapping.member_id}`
                             : `預約：${mapping.contact_name || '—'}${
                               mapping.booking?.start_at
                                 ? ` · ${formatBookingDateTime(mapping.booking.start_at)}`
