@@ -15,7 +15,12 @@ import {
   getInputStyle,
   getLabelStyle,
 } from '../styles/designSystem'
-import { formatBookingsForLine, getDisplayBookingName } from '../utils/bookingFormat'
+import {
+  formatBookingsForLine,
+  getDisplayBookingName,
+  getDisplayContactName,
+} from '../utils/bookingFormat'
+import { formatActualRider } from '../utils/riderDisplay'
 import { useToast, ToastContainer } from '../components/ui'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
@@ -1336,7 +1341,24 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                             color: designSystem.colors.text.primary,
                             marginBottom: '4px',
                           }}>
-                            {getDisplayBookingName(booking)}
+                            {getDisplayContactName(booking)}
+                            {formatActualRider(booking.actual_rider) && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                marginLeft: '8px',
+                                padding: '2px 8px',
+                                borderRadius: designSystem.borderRadius.full,
+                                border: `1px solid ${designSystem.colors.secondary[100]}`,
+                                background: designSystem.colors.secondary[50],
+                                color: designSystem.colors.secondary[500],
+                                fontSize: '0.82em',
+                                fontWeight: '500',
+                                verticalAlign: 'middle',
+                              }}>
+                                {formatActualRider(booking.actual_rider)}
+                              </span>
+                            )}
                           </div>
                           <div style={{
                             fontSize: getFontSize('body', isMobile),
