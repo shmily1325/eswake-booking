@@ -72,6 +72,19 @@ function splitBookingNames(value: string): string[] {
   ))
 }
 
+function formatBookingDateTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
 async function callMappingApi(body: Record<string, unknown>, signal?: AbortSignal) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
@@ -305,11 +318,15 @@ export function LineReminderMappingPanel({ members }: Props) {
           const conflicts = Array.isArray(result.conflicts)
             ? result.conflicts as Array<Record<string, unknown>>
             : []
-          const details = conflicts.map((conflict) =>
-            `${String(conflict.contactName || '預約人')}（目前：${
+          const details = conflicts.map((conflict) => {
+            const booking = selectedBookings.find(
+              (item) => item.id === Number(conflict.bookingId),
+            )
+            const time = booking ? ` · ${formatBookingDateTime(booking.start_at)}` : ''
+            return `${String(conflict.contactName || '預約人')}${time}（目前：${
               String(conflict.existingDisplayName || '其他 LINE')
             }）`
-          ).join('\n')
+          }).join('\n')
           if (!window.confirm(
             `以下預約人已有其他 LINE 配對：\n${details}\n\n確定改成 ${selectedContact.display_name}？`,
           )) {
@@ -419,7 +436,7 @@ export function LineReminderMappingPanel({ members }: Props) {
       >
         {([
           { value: 'unmatched', label: `待配對 ${unmatchedCount}` },
-          { value: 'matched', label: `已配對 ${matchedCount}` },
+          { value: 'matched', label: `已處理 ${matchedCount}` },
           { value: 'all', label: `全部 ${contacts.length}` },
         ] as const).map((option) => (
           <button
@@ -483,7 +500,12 @@ export function LineReminderMappingPanel({ members }: Props) {
                           savedGuest.is_active ? 'success' : 'default',
                           'small',
                         )}>
-                          {savedGuest.name}
+                          建檔：{savedGuest.name}
+                        </span>
+                      )}
+                      {hasFormalPushBinding && (
+                        <span style={getBadgeStyle('info', 'small')}>
+                          已綁定
                         </span>
                       )}
                       {contact.friend_status !== 'friend' && (
@@ -538,8 +560,12 @@ export function LineReminderMappingPanel({ members }: Props) {
                       >
                         <span style={{ flex: 1, fontSize: 14 }}>
                           {mapping.member_id
-                            ? `已建檔：${mapping.members?.nickname || mapping.members?.name || mapping.member_id}`
-                            : `預約：${mapping.booking?.contact_name || mapping.contact_name || mapping.booking_id || '—'}`}
+                            ? `會員：${mapping.members?.nickname || mapping.members?.name || mapping.member_id}`
+                            : `預約：${mapping.contact_name || '—'}${
+                              mapping.booking?.start_at
+                                ? ` · ${formatBookingDateTime(mapping.booking.start_at)}`
+                                : ''
+                            }`}
                         </span>
                         {!mapping.member_id && !savedGuest && (
                           <button
@@ -606,7 +632,7 @@ export function LineReminderMappingPanel({ members }: Props) {
             }}
           >
             <h2 style={{ marginTop: 0, fontSize: 20 }}>
-              {editingMappingId ? '修改' : '配對'} {selectedContact.display_name}
+              {editingMappingId ? '修改' : '設定'} {selectedContact.display_name}
             </h2>
             <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
               {(['member', 'guest'] as const).map((type) => (
@@ -690,7 +716,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                   value={bookingSearch}
                   onChange={(event) => setBookingSearch(event.target.value)}
                   autoFocus
-                  placeholder="選擇預約（選填，可多選）"
+                  placeholder="搜尋預約人（選填，可多選）"
                   style={{
                     ...getInputStyle(isMobile),
                     width: '100%',
@@ -759,11 +785,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                             color: designSystem.colors.text.secondary,
                             fontSize: 12,
                           }}>
-                            {new Date(booking.start_at).toLocaleDateString('zh-TW', {
-                              year: 'numeric',
-                              month: 'numeric',
-                              day: 'numeric',
-                            })}
+                            {formatBookingDateTime(booking.start_at)}
                             {booking.contact_phone ? ` · ${booking.contact_phone}` : ''}
                           </div>
                         </button>
@@ -798,7 +820,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                                 color: designSystem.colors.text.secondary,
                                 fontSize: 12,
                               }}>
-                                {new Date(booking.start_at).toLocaleDateString('zh-TW')}
+                                {formatBookingDateTime(booking.start_at)}
                               </div>
                             </div>
                             <button
@@ -879,14 +901,18 @@ export function LineReminderMappingPanel({ members }: Props) {
                     disabled={Boolean(selectedContactSavedGuest)}
                     onChange={(event) => setSaveAsGuest(event.target.checked)}
                   />
-                  {selectedContactSavedGuest ? '已建檔' : '同時建檔'}
+                  {selectedContactSavedGuest
+                    ? '已建檔'
+                    : selectedBookings.length > 0
+                      ? '同時建檔'
+                      : '建檔此 LINE'}
                 </label>
                 {saveAsGuest && (
                   <input
                     value={savedGuestName}
                     disabled={Boolean(selectedContactSavedGuest)}
                     onChange={(event) => setSavedGuestName(event.target.value)}
-                    placeholder="建檔姓名"
+                    placeholder="建檔名稱（供下次搜尋）"
                     style={{
                       ...getInputStyle(isMobile),
                       width: '100%',
