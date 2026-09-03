@@ -142,8 +142,8 @@ export function LineReminderMappingPanel({ members }: Props) {
       return
     }
     const controller = new AbortController()
+    setBookingSearchLoading(true)
     const timer = window.setTimeout(async () => {
-      setBookingSearchLoading(true)
       try {
         const result = await callMappingApi(
           { action: 'search_bookings', query },
@@ -156,7 +156,7 @@ export function LineReminderMappingPanel({ members }: Props) {
       } finally {
         if (!controller.signal.aborted) setBookingSearchLoading(false)
       }
-    }, 300)
+    }, 150)
     return () => {
       window.clearTimeout(timer)
       controller.abort()

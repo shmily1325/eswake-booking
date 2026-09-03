@@ -27,6 +27,8 @@ function queryBuilder(result: QueryResult) {
     limit: vi.fn(),
     in: vi.fn(),
     eq: vi.fn(),
+    gte: vi.fn(),
+    lte: vi.fn(),
     is: vi.fn(),
     not: vi.fn(),
     order: vi.fn(),
@@ -46,6 +48,8 @@ function queryBuilder(result: QueryResult) {
   builder.limit.mockReturnValue(builder)
   builder.in.mockReturnValue(builder)
   builder.eq.mockReturnValue(builder)
+  builder.gte.mockReturnValue(builder)
+  builder.lte.mockReturnValue(builder)
   builder.is.mockReturnValue(builder)
   builder.not.mockReturnValue(builder)
   builder.order.mockReturnValue(builder)
@@ -289,6 +293,34 @@ describe('manual LINE reminder send API', () => {
     })
   })
 
+  it('searches only upcoming confirmed bookings in chronological order', async () => {
+    queryResults.bookings = {
+      data: [{
+        id: 101,
+        contact_name: '火腿',
+        contact_phone: null,
+        start_at: '2026-09-05T10:30:00',
+      }],
+      error: null,
+    }
+    const response = responseMock()
+
+    await handler(
+      request({ action: 'search_bookings', query: '火腿' }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(queryBuilders.bookings.eq).toHaveBeenCalledWith('status', 'confirmed')
+    expect(queryBuilders.bookings.gte).toHaveBeenCalledWith('start_at', expect.any(String))
+    expect(queryBuilders.bookings.order).toHaveBeenCalledWith(
+      'start_at',
+      { ascending: true },
+    )
+    expect(response.json).toHaveBeenCalledWith({
+      bookings: [expect.objectContaining({ id: 101 })],
+    })
+  })
+
   it('creates an optional reusable non-member record', async () => {
     queryResults.line_webhook_contacts = {
       data: { line_user_id: 'U1', friend_status: 'friend' },
@@ -321,6 +353,24 @@ describe('manual LINE reminder send API', () => {
       { onConflict: 'line_user_id' },
     )
     expect(response.status).toHaveBeenCalledWith(200)
+  })
+
+  it('permanently deletes a saved guest through the atomic database function', async () => {
+    const guestId = '00000000-0000-4000-8000-000000000001'
+    rpcMock.mockResolvedValueOnce({ data: true, error: null })
+    const response = responseMock()
+
+    await handler(
+      request({ action: 'delete_guest', guestId }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'delete_line_reminder_guest',
+      { p_guest_id: guestId },
+    )
+    expect(response.status).toHaveBeenCalledWith(200)
+    expect(response.json).toHaveBeenCalledWith({ ok: true })
   })
 
   it('moves existing saved-guest booking mappings when its LINE account changes', async () => {

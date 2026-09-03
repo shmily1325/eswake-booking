@@ -68,23 +68,21 @@ export async function handleLineReminderMappingAction(
     if (action === 'search_guests') {
       const query = text(body.query).replace(/[%_]/g, '')
       if (!query) return res.status(200).json({ guests: [] })
-      const { data, error } = await supabase
-        .from('line_reminder_guests')
-        .select('id, line_user_id, name, line_contact:line_user_id(display_name, picture_url, friend_status)')
-        .eq('is_active', true)
-        .ilike('name', `%${query}%`)
-        .order('name')
-        .limit(10)
-      if (error) throw error
-      const lineUserIds = (data ?? []).map((guest) => guest.line_user_id)
-      const { data: bindings, error: bindingsError } = lineUserIds.length > 0
-        ? await supabase
+      const [{ data, error }, { data: bindings, error: bindingsError }] = await Promise.all([
+        supabase
+          .from('line_reminder_guests')
+          .select('id, line_user_id, name, line_contact:line_user_id(display_name, picture_url, friend_status)')
+          .eq('is_active', true)
+          .ilike('name', `%${query}%`)
+          .order('name')
+          .limit(10),
+        supabase
             .from('line_bindings')
             .select('line_user_id')
-            .in('line_user_id', lineUserIds)
             .eq('status', 'active')
-            .eq('can_push', true)
-        : { data: [], error: null }
+            .eq('can_push', true),
+      ])
+      if (error) throw error
       if (bindingsError) throw bindingsError
       const formallyBound = new Set((bindings ?? []).map((binding) => binding.line_user_id))
       return res.status(200).json({
@@ -200,6 +198,23 @@ export async function handleLineReminderMappingAction(
       return res.status(200).json({ ok: true })
     }
 
+    if (action === 'delete_guest') {
+      const guestId = text(body.guestId)
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+          .test(guestId)
+      ) {
+        return res.status(400).json({ error: 'Valid guestId is required' })
+      }
+      const { data: deleted, error } = await supabase.rpc(
+        'delete_line_reminder_guest',
+        { p_guest_id: guestId },
+      )
+      if (error) throw error
+      if (!deleted) return res.status(404).json({ error: 'Saved guest not found' })
+      return res.status(200).json({ ok: true })
+    }
+
     if (action === 'sync_booking_guests') {
       const bookingId = Number(body.bookingId)
       if (!Number.isInteger(bookingId) || bookingId <= 0) {
@@ -250,8 +265,6 @@ export async function handleLineReminderMappingAction(
         return res.status(200).json({ bookings: [] })
       }
       const now = new Date()
-      const from = new Date(now)
-      from.setDate(from.getDate() - 90)
       const to = new Date(now)
       to.setFullYear(to.getFullYear() + 1)
       const select = 'id, contact_name, contact_phone, start_at'
@@ -260,18 +273,22 @@ export async function handleLineReminderMappingAction(
           ? supabase
               .from('bookings')
               .select(select)
-              .gte('start_at', from.toISOString())
+              .eq('status', 'confirmed')
+              .gte('start_at', now.toISOString())
               .lte('start_at', to.toISOString())
               .ilike('contact_name', `%${query}%`)
+              .order('start_at', { ascending: true })
               .limit(20)
           : Promise.resolve({ data: [], error: null }),
         digits.length >= 3
           ? supabase
               .from('bookings')
               .select(select)
-              .gte('start_at', from.toISOString())
+              .eq('status', 'confirmed')
+              .gte('start_at', now.toISOString())
               .lte('start_at', to.toISOString())
               .ilike('contact_phone', `%${digits}%`)
+              .order('start_at', { ascending: true })
               .limit(20)
           : Promise.resolve({ data: [], error: null }),
       ]
@@ -287,16 +304,8 @@ export async function handleLineReminderMappingAction(
       results.flatMap((result) => result.data ?? []).forEach((booking) => {
         unique.set(booking.id, booking)
       })
-      const nowMs = now.getTime()
       const bookings = Array.from(unique.values())
-        .sort((a, b) => {
-          const aTime = new Date(a.start_at).getTime()
-          const bTime = new Date(b.start_at).getTime()
-          const aUpcoming = aTime >= nowMs
-          const bUpcoming = bTime >= nowMs
-          if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1
-          return aUpcoming ? aTime - bTime : bTime - aTime
-        })
+        .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
         .slice(0, 20)
       return res.status(200).json({ bookings })
     }

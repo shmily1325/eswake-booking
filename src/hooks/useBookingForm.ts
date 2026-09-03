@@ -19,6 +19,7 @@ import {
 } from '../utils/lineReminderGuests'
 
 type BookingFormMember = Pick<Member, 'id' | 'name' | 'nickname' | 'phone'>
+const SAVED_GUEST_SEARCH_DEBOUNCE_MS = 120
 
 function mergeMembersById(
     existing: BookingFormMember[],
@@ -521,7 +522,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
                 setSavedGuestSearchResults([])
                 setShowSavedGuestDropdown(false)
             }
-        }, MEMBER_SEARCH_DEBOUNCE_MS)
+        }, SAVED_GUEST_SEARCH_DEBOUNCE_MS)
     }
 
     const performConflictCheck = useCallback(async (excludeBookingId?: number) => {

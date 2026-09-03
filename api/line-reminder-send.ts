@@ -176,6 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const managerOnlyActions = new Set([
         'save_guest',
         'set_guest_active',
+        'delete_guest',
         'delete_mapping',
         'delete_contact',
         'upsert_mapping',

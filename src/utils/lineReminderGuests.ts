@@ -51,6 +51,10 @@ export async function setLineReminderGuestActive(
   await callReminderGuestApi({ action: 'set_guest_active', guestId, isActive })
 }
 
+export async function deleteLineReminderGuest(guestId: string): Promise<void> {
+  await callReminderGuestApi({ action: 'delete_guest', guestId })
+}
+
 export async function searchSavedLineReminderGuests(
   query: string,
 ): Promise<SavedLineReminderGuest[]> {

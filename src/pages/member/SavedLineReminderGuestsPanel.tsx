@@ -4,8 +4,8 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { useToast } from '../../components/ui'
 import {
   callReminderGuestApi,
+  deleteLineReminderGuest,
   saveLineReminderGuest,
-  setLineReminderGuestActive,
   type SavedLineReminderGuest,
 } from '../../utils/lineReminderGuests'
 import {
@@ -104,16 +104,19 @@ export function SavedLineReminderGuestsPanel() {
     }
   }
 
-  const toggleActive = async () => {
+  const deleteGuest = async () => {
     if (!editing) return
+    if (!window.confirm(
+      `確定永久刪除「${editing.name}」？相關預約的 LINE 提醒配對也會一併刪除，且無法復原。`,
+    )) return
     setSaving(true)
     try {
-      await setLineReminderGuestActive(editing.id, !editing.is_active)
-      toast.success(editing.is_active ? '已停用' : '已啟用')
+      await deleteLineReminderGuest(editing.id)
+      toast.success('已永久刪除')
       setEditing(null)
       await load()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '更新失敗')
+      toast.error(error instanceof Error ? error.message : '刪除失敗')
     } finally {
       setSaving(false)
     }
@@ -215,14 +218,6 @@ export function SavedLineReminderGuestsPanel() {
         size="small"
         footer={(
           <>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void toggleActive()}
-              style={getButtonStyle('ghost', 'medium', isMobile)}
-            >
-              {editing?.is_active ? '停用' : '啟用'}
-            </button>
             <div style={{ flex: 1 }} />
             <button
               type="button"
@@ -274,6 +269,18 @@ export function SavedLineReminderGuestsPanel() {
               ))}
             </select>
           </label>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void deleteGuest()}
+            style={{
+              ...getButtonStyle('danger', 'medium', isMobile),
+              width: '100%',
+              minHeight: isMobile ? 46 : undefined,
+            }}
+          >
+            刪除建檔
+          </button>
         </div>
       </Modal>
     </div>
