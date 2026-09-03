@@ -124,6 +124,9 @@ export function LineReminderMappingPanel({ members }: Props) {
   const [saveAsGuest, setSaveAsGuest] = useState(false)
   const [savedGuestName, setSavedGuestName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [expandedContactIds, setExpandedContactIds] = useState<Set<string>>(
+    () => new Set(),
+  )
 
   const load = async () => {
     setLoading(true)
@@ -362,6 +365,15 @@ export function LineReminderMappingPanel({ members }: Props) {
     }
   }
 
+  const toggleContactDetails = (lineUserId: string) => {
+    setExpandedContactIds((current) => {
+      const next = new Set(current)
+      if (next.has(lineUserId)) next.delete(lineUserId)
+      else next.add(lineUserId)
+      return next
+    })
+  }
+
   const promoteMapping = async (mapping: ReminderMapping) => {
     if (!mapping.booking_id) return
     const name = (mapping.contact_name || '').trim()
@@ -465,6 +477,22 @@ export function LineReminderMappingPanel({ members }: Props) {
             const contactMappings = mappingsByLineUser.get(contact.line_user_id) ?? []
             const hasFormalPushBinding = contact.formal_binding?.can_push === true
             const savedGuest = guestByLineUser.get(contact.line_user_id)
+            const memberMappings = contactMappings.filter((mapping) => mapping.member_id)
+            const bookingMappings = contactMappings.filter((mapping) => !mapping.member_id)
+            const isExpanded = expandedContactIds.has(contact.line_user_id)
+            const mappingSummary = memberMappings.length > 0 && bookingMappings.length > 0
+              ? `配對 ${contactMappings.length}筆`
+              : memberMappings.length > 0
+                ? memberMappings.length === 1
+                  ? `手動：${
+                    memberMappings[0].members?.nickname ||
+                    memberMappings[0].members?.name ||
+                    '會員'
+                  }`
+                  : `手動 ${memberMappings.length}筆`
+                : bookingMappings.length === 1
+                  ? `預約：${bookingMappings[0].contact_name || '1筆'}`
+                  : `預約 ${bookingMappings.length}筆`
             return (
               <div
                 key={contact.line_user_id}
@@ -493,20 +521,63 @@ export function LineReminderMappingPanel({ members }: Props) {
                     }}>LINE</div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <strong>{contact.display_name}</strong>
+                    <div style={{
+                      display: 'flex',
+                      gap: 6,
+                      alignItems: 'center',
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      <strong style={{
+                        minWidth: 28,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {contact.display_name}
+                      </strong>
                       {savedGuest && (
-                        <span style={getBadgeStyle(
-                          savedGuest.is_active ? 'success' : 'default',
-                          'small',
-                        )}>
+                        <span style={{
+                          ...getBadgeStyle(
+                            savedGuest.is_active ? 'success' : 'default',
+                            'small',
+                          ),
+                          flexShrink: 0,
+                          maxWidth: isMobile ? 104 : 150,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}>
                           建檔：{savedGuest.name}
                         </span>
                       )}
                       {hasFormalPushBinding && (
-                        <span style={getBadgeStyle('info', 'small')}>
+                        <span style={{
+                          ...getBadgeStyle('info', 'small'),
+                          flexShrink: 0,
+                        }}>
                           正式綁定
                         </span>
+                      )}
+                      {contactMappings.length > 0 && (
+                        <button
+                          type="button"
+                          aria-expanded={isExpanded}
+                          onClick={() => toggleContactDetails(contact.line_user_id)}
+                          style={{
+                            ...getBadgeStyle('info', 'small'),
+                            minHeight: isMobile ? 34 : 28,
+                            maxWidth: isMobile ? 116 : 180,
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {mappingSummary} {isExpanded ? '▴' : '▾'}
+                        </button>
                       )}
                       {contact.friend_status !== 'friend' && (
                         <span style={getBadgeStyle(
@@ -544,7 +615,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                   </button>
                 </div>
 
-                {contactMappings.length > 0 && (
+                {contactMappings.length > 0 && isExpanded && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {contactMappings.map((mapping) => (
                       <div
