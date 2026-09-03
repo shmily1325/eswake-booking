@@ -292,7 +292,7 @@ describe('offline disaster-recovery artifact', () => {
         actual_rider: '澤+甯'
       })
     `)
-    expect(result).toBe('Fish（澤＋甯）')
+    expect(result).toBe('Fish · 澤＋甯')
   })
 
   it('keeps product and order statuses aligned with the online helpers', () => {

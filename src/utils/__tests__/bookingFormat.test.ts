@@ -428,7 +428,7 @@ describe('bookingFormat.ts - 預約格式化工具', () => {
       expect(getDisplayBookingName({
         contact_name: 'Fish',
         actual_rider: '澤+甯',
-      })).toBe('Fish（澤＋甯）')
+      })).toBe('Fish · 澤＋甯')
     })
 
     it('沒有實際 RIDER 時維持原本名稱', () => {

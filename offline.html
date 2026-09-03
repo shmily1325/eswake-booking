@@ -4863,7 +4863,7 @@
         function getDisplayBookingName(booking) {
             const contactName = getDisplayContactName(booking);
             const rider = formatActualRider(booking.actual_rider);
-            return rider ? `${contactName}（${rider}）` : contactName;
+            return rider ? `${contactName} · ${rider}` : contactName;
         }
         
         // 從 IndexedDB 獲取所有資料

@@ -39,5 +39,5 @@ export function formatBookingDisplayName(
   actualRider: string | null | undefined,
 ): string {
   const rider = formatActualRider(actualRider)
-  return rider ? `${contactName}（${rider}）` : contactName
+  return rider ? `${contactName} · ${rider}` : contactName
 }

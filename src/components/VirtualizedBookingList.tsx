@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Booking, Boat } from '../types/booking'
-import { getDisplayBookingName } from '../utils/bookingFormat'
+import { formatActualRider } from '../utils/riderDisplay'
 import { validateBoats, validateBookings } from '../utils/safetyHelpers'
 import type { BoatUnavailableBlock } from '../utils/boatUnavailableDay'
 import type { RestrictionDayBlock } from '../utils/restrictionDayBlocks'
@@ -322,7 +322,16 @@ export function VirtualizedBookingList({
 														whiteSpace: 'nowrap',
 														minWidth: 0
 													}}>
-														{getDisplayBookingName(booking) || '未命名'}
+														{booking.contact_name || '未命名'}
+														{formatActualRider(booking.actual_rider) && (
+															<span style={{
+																fontSize: '0.9em',
+																fontWeight: '600',
+																color: designSystem.colors.text.secondary,
+															}}>
+																{' · '}{formatActualRider(booking.actual_rider)}
+															</span>
+														)}
 													</span>
 												</div>
 
