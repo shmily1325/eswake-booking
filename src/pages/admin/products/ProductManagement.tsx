@@ -132,24 +132,30 @@ function ChipRow({
 function FilterGroup({
   label,
   children,
+  isMobile,
 }: {
   label: string
   children: ReactNode
+  isMobile: boolean
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 4,
+      minWidth: 0,
+    }}>
       <div
         style={{
           display: 'flex',
           alignItems: 'baseline',
           gap: 6,
-          minWidth: 0,
-          fontSize: getFontSize('caption', false),
+          fontSize: getFontSize('caption', isMobile),
         }}
       >
         <span style={{ color: colors.text.primary, fontWeight: 650 }}>{label}</span>
       </div>
-      {children}
+      <div style={{ minWidth: 0 }}>{children}</div>
     </div>
   )
 }
@@ -831,10 +837,10 @@ export function ProductManagement({
         <div
           style={{
             display: 'flex',
-            flexDirection: isMobile && canEdit ? 'column' : 'row',
+            flexDirection: isMobile ? 'column' : 'row',
             gap: 10,
             marginBottom: 14,
-            alignItems: isMobile && canEdit ? 'stretch' : 'center',
+            alignItems: isMobile ? 'stretch' : 'center',
           }}
         >
           <div style={{ flex: 1, minWidth: isMobile ? 0 : 200, position: 'relative' }}>
@@ -877,13 +883,13 @@ export function ProductManagement({
               gap: 8,
               alignItems: 'center',
               flexShrink: 0,
-              width: isMobile && canEdit ? '100%' : undefined,
+              width: isMobile ? '100%' : undefined,
             }}
           >
             <Button
               variant="outline"
               data-track="product_stock_scan_open"
-              style={isMobile && canEdit ? { flex: 1 } : undefined}
+              style={isMobile ? { flex: 1 } : undefined}
               onClick={() => {
                 setStockScannerStatus(null)
                 setStockScannerOpen(true)
@@ -906,11 +912,11 @@ export function ProductManagement({
           </div>
         </div>
 
-        {/* 手機先呈現主要操作，再以精簡摘要補充庫存狀態。 */}
-        {canEdit && (
-          <InventoryDashboard
+        {/* 商品查詢保留供貨篩選；資料問題與檔期只在可編輯的管理頁顯示。 */}
+        <InventoryDashboard
             base={baseForCounts}
             isFiltered={hasAnyFilter}
+            showDataFilters={canEdit}
             resultProductCount={filteredProductCount}
             resultSkuCount={filteredItems.length}
             resultStockTotal={filteredStockTotal}
@@ -944,7 +950,6 @@ export function ProductManagement({
             onClearAll={clearAllFilters}
             isMobile={isMobile}
           />
-        )}
 
         {scannedItem && (
           <StockCheckResult
@@ -992,14 +997,18 @@ export function ProductManagement({
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 8,
+            gap: isMobile ? 7 : 10,
             flex: 1,
             minWidth: 0,
             marginBottom: spacing.md,
+            padding: isMobile ? '9px 10px' : '12px 14px',
+            border: `1px solid ${colors.border.light}`,
+            borderRadius: borderRadius.lg,
+            background: colors.background.card,
           }}
         >
             {/* Row 1：上層分組 */}
-            <FilterGroup label="系列">
+            <FilterGroup label="系列" isMobile={isMobile}>
               <ChipRow ariaLabel="商品系列">
                 <CategoryTab
                   label="全部"
@@ -1023,7 +1032,7 @@ export function ProductManagement({
 
             {/* Row 2：子分類（依當前 group 動態切，'all' group 時不顯示） */}
             {activeGroup !== 'all' && activeGroup !== 'ES' && (
-              <FilterGroup label="分類">
+              <FilterGroup label="分類" isMobile={isMobile}>
                 <ChipRow ariaLabel="子分類">
                   <CategoryTab
                     label="全部"
@@ -1050,7 +1059,7 @@ export function ProductManagement({
 
             {/* Row 3：品牌由目前商品資料自動產生 */}
             {brandOptions.length > 0 && (
-              <FilterGroup label="品牌">
+              <FilterGroup label="品牌" isMobile={isMobile}>
                 <ChipRow ariaLabel="品牌">
                   <CategoryTab
                     label="全部品牌"
@@ -1435,7 +1444,6 @@ function CategoryTab({ label, active, onClick, trackId, isMobile }: CategoryTabP
       aria-pressed={active}
       style={productChipStyle(active, isMobile)}
     >
-      {active && <span aria-hidden="true">✓</span>}
       {label}
     </button>
   )
@@ -1559,6 +1567,7 @@ interface InventoryDashboardProps {
   /** tab + 搜尋後的全部 SKU（含已售完），用來算庫存狀態與待補連動數字 */
   base: VariantListItem[]
   isFiltered: boolean
+  showDataFilters: boolean
   resultProductCount: number
   resultSkuCount: number
   resultStockTotal: number
@@ -1589,6 +1598,7 @@ interface InventoryDashboardProps {
 function InventoryDashboard({
   base,
   isFiltered,
+  showDataFilters,
   resultProductCount,
   resultSkuCount,
   resultStockTotal,
@@ -1735,7 +1745,16 @@ function InventoryDashboard({
   )
 
   const filterStack = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: spacing.md }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: isMobile ? 7 : 10,
+      marginBottom: spacing.md,
+      padding: isMobile ? '9px 10px' : '12px 14px',
+      border: `1px solid ${colors.border.light}`,
+      borderRadius: borderRadius.lg,
+      background: colors.background.card,
+    }}>
       <div
         style={{
           display: 'flex',
@@ -1778,16 +1797,20 @@ function InventoryDashboard({
           </button>
         )}
       </div>
-      <FilterGroup label="供貨">
+      <FilterGroup label="供貨" isMobile={isMobile}>
         <ChipRow ariaLabel="供貨狀態">{stockStatusChips}</ChipRow>
       </FilterGroup>
-      <FilterGroup label="資料問題">
-        <ChipRow wrap ariaLabel="資料問題">{dataIssueChips}</ChipRow>
-      </FilterGroup>
-      {tagPresets.length > 0 && (
-        <FilterGroup label="檔期">
-          <ChipRow wrap ariaLabel="促銷檔期">{discountChips}</ChipRow>
-        </FilterGroup>
+      {showDataFilters && (
+        <>
+          <FilterGroup label="資料" isMobile={isMobile}>
+            <ChipRow wrap ariaLabel="資料問題">{dataIssueChips}</ChipRow>
+          </FilterGroup>
+          {tagPresets.length > 0 && (
+            <FilterGroup label="檔期" isMobile={isMobile}>
+              <ChipRow wrap ariaLabel="促銷檔期">{discountChips}</ChipRow>
+            </FilterGroup>
+          )}
+        </>
       )}
     </div>
   )
@@ -1822,7 +1845,6 @@ function DashboardStatChip({
       title={isZero ? `沒有${label}` : label}
       style={productChipStyle(active, isMobile, isZero && !active)}
     >
-      {active && <span aria-hidden="true">✓</span>}
       <span>{count}</span>
       <span>{label}</span>
     </button>
