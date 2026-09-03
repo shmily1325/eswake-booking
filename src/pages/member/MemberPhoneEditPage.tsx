@@ -802,7 +802,10 @@ export function MemberPhoneEditPage() {
       )}
         </>
       ) : activeTab === 'line-reminders' ? (
-        <LineReminderMappingPanel members={members} />
+        <LineReminderMappingPanel
+          members={members}
+          onOpenSavedGuests={() => setActiveTab('saved-guests')}
+        />
       ) : (
         <SavedLineReminderGuestsPanel />
       )}
