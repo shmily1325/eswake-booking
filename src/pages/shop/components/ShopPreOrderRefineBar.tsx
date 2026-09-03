@@ -25,15 +25,25 @@ export function ShopPreOrderRefineBar({
   if (brands.length === 0) return null
 
   const selectedBrand = filters.brands[0] ?? null
+  const brandTotal = [...brandCounts.values()].reduce((sum, count) => sum + count, 0)
   const categories = getAllCategories()
     .filter((cat) => (categoryCounts.get(cat.id) ?? 0) > 0)
-    .map((cat) => ({ ...cat, count: categoryCounts.get(cat.id) ?? 0 }))
+    .map((cat) => ({
+      ...cat,
+      count: categoryCounts.get(cat.id) ?? 0,
+      label: `${getGroupPrefix(cat.shopGroup)} ${getCategoryShopName(cat)}`,
+    }))
+  const categoryTotal = categories.reduce((sum, category) => sum + category.count, 0)
   const showTypeRow = selectedBrand != null && categories.length > 0
 
   return (
     <div className="relative">
       <ChipRow label={SHOP_LABEL.brand}>
-        <RefineChip active={selectedBrand == null} onClick={() => onSelectBrand(null)}>
+        <RefineChip
+          active={selectedBrand == null}
+          count={brandTotal}
+          onClick={() => onSelectBrand(null)}
+        >
           {SHOP_LABEL.all}
         </RefineChip>
         {brands.map(([brand, count]) => (
@@ -49,9 +59,10 @@ export function ShopPreOrderRefineBar({
       </ChipRow>
 
       {showTypeRow && (
-        <ChipRow label={SHOP_LABEL.type}>
+        <ChipRow label={SHOP_LABEL.category}>
           <RefineChip
             active={filters.subCat === ALL_SUBCATS}
+            count={categoryTotal}
             onClick={() => onSelectCategory(ALL_SUBCATS)}
             subdued
           >
@@ -65,13 +76,21 @@ export function ShopPreOrderRefineBar({
               onClick={() => onSelectCategory(cat.id)}
               subdued
             >
-              {getCategoryShopName(cat)}
+              {cat.label}
             </RefineChip>
           ))}
         </ChipRow>
       )}
     </div>
   )
+}
+
+function getGroupPrefix(group: string | undefined): string {
+  if (group === 'Wakeboarding') return 'WB'
+  if (group === 'Wakesurfing') return 'WS'
+  if (group === 'Essentials') return 'Essentials'
+  if (group === 'ES') return 'ES'
+  return ''
 }
 
 function ChipRow({
@@ -88,6 +107,12 @@ function ChipRow({
         role="tablist"
         aria-label={label}
       >
+        <span
+          aria-hidden="true"
+          className="shrink-0 w-16 text-[11px] font-semibold tracking-wider text-white/50 uppercase"
+        >
+          {label}
+        </span>
         {children}
       </div>
     </div>

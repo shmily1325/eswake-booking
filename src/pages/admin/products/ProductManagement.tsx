@@ -59,6 +59,7 @@ import {
   selectedVariantIds,
   uniqueProductIdsFromSelection,
 } from './productBatch'
+import { matchesSelectedDataIssues } from './productFilterLogic'
 
 const pageBg = designSystem.colors.background.main
 const { colors, borderRadius, spacing } = designSystem
@@ -99,13 +100,17 @@ function ChipRow({
   children,
   wrap = false,
   style,
+  ariaLabel,
 }: {
   children: ReactNode
   wrap?: boolean
   style?: CSSProperties
+  ariaLabel: string
 }) {
   return (
     <div
+      role="group"
+      aria-label={ariaLabel}
       style={{
         display: 'flex',
         gap: 6,
@@ -113,10 +118,37 @@ function ChipRow({
         flexWrap: wrap ? 'wrap' : 'nowrap',
         overflowX: wrap ? undefined : 'auto',
         WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'thin',
+        paddingBottom: wrap ? 0 : 3,
         minWidth: 0,
         ...style,
       }}
     >
+      {children}
+    </div>
+  )
+}
+
+function FilterGroup({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 6,
+          minWidth: 0,
+          fontSize: getFontSize('caption', false),
+        }}
+      >
+        <span style={{ color: colors.text.primary, fontWeight: 650 }}>{label}</span>
+      </div>
       {children}
     </div>
   )
@@ -171,7 +203,7 @@ export function ProductManagement({
   const [imagePreview, setImagePreview] = useState<{ url: string; alt: string } | null>(null)
   const [discountPresets, setDiscountPresets] = useState<DiscountPreset[]>([])
 
-  // 篩選：庫存狀態（現貨／預購／已售完，互斥）+ 未上架／待補（可複選、可疊加）
+  // 篩選：庫存狀態互斥；資料問題可複選，組內 OR、跨組 AND。
   const [onlyUnlisted, setOnlyUnlisted] = useState(false)
   const [onlyMissingPrice, setOnlyMissingPrice] = useState(false)
   const [onlyMissingImage, setOnlyMissingImage] = useState(false)
@@ -200,6 +232,8 @@ export function ProductManagement({
     setOnlyPreOrder(false)
     setOnlySoldOut(false)
     setDiscountPresetFilter(null)
+    setActiveGroup('all')
+    setActiveSubCat('all')
     setActiveBrand('all')
     setSearch('')
     const next = new URLSearchParams(searchParams)
@@ -219,6 +253,8 @@ export function ProductManagement({
     onlyPreOrder ||
     onlySoldOut ||
     discountPresetFilter != null ||
+    activeGroup !== 'all' ||
+    activeSubCat !== 'all' ||
     activeBrand !== 'all' ||
     search.trim() !== ''
 
@@ -424,22 +460,25 @@ export function ProductManagement({
       items = items.filter((it) => !isVariantSoldOut(it))
     }
 
-    // 未上架／待補：可與任一庫存狀態疊加
-    if (onlyUnlisted) {
-      items = items.filter(isVariantUnlisted)
-    }
-    if (onlyMissingPrice) {
-      items = items.filter((it) => it.variant.price == null)
-    }
-    if (onlyMissingImage) {
-      items = items.filter((it) => !it.variant.image_url)
-    }
-    if (onlyMissingCover) {
-      items = items.filter((it) => !hasCoverImage(it.variant, it.product))
-    }
-    if (onlyMissingLabel) {
-      items = items.filter(isVariantMissingLabel)
-    }
+    // 資料問題同組採 OR；與分類、品牌、庫存、檔期、搜尋等其他組採 AND。
+    items = items.filter((it) =>
+      matchesSelectedDataIssues(
+        {
+          unlisted: isVariantUnlisted(it),
+          missingPrice: it.variant.price == null,
+          missingImage: !it.variant.image_url,
+          missingCover: !hasCoverImage(it.variant, it.product),
+          missingLabel: isVariantMissingLabel(it),
+        },
+        {
+          unlisted: onlyUnlisted,
+          missingPrice: onlyMissingPrice,
+          missingImage: onlyMissingImage,
+          missingCover: onlyMissingCover,
+          missingLabel: onlyMissingLabel,
+        },
+      ),
+    )
     if (discountPresetFilter) {
       items = items.filter((it) => it.variant.discount_preset_id === discountPresetFilter)
     }
@@ -468,6 +507,10 @@ export function ProductManagement({
     () => new Set(filteredItems.map((item) => item.product.id)).size,
     [filteredItems],
   )
+  const filteredStockTotal = useMemo(
+    () => filteredItems.reduce((sum, item) => sum + getVariantSellableStock(item.variant), 0),
+    [filteredItems],
+  )
 
   /** tab + 搜尋，用來算儀表板數字與 chip 計數（含已售完） */
   const baseForCounts: VariantListItem[] = useMemo(() => {
@@ -481,6 +524,57 @@ export function ProductManagement({
   )
 
   const categories = useMemo(() => getAllCategories(), [])
+  const activeFilterItems: ActiveFilterItem[] = [
+    ...(activeGroup !== 'all'
+      ? [{
+          id: 'group',
+          label: getShopGroupLabel(activeGroup),
+          onRemove: () => setActiveGroup('all'),
+        }]
+      : []),
+    ...(activeSubCat !== 'all'
+      ? [{
+          id: 'subcategory',
+          label: getCategoryShopName(getCategory(activeSubCat)!),
+          onRemove: () => setActiveSubCat('all'),
+        }]
+      : []),
+    ...(activeBrand !== 'all'
+      ? [{ id: 'brand', label: activeBrand, onRemove: () => setActiveBrand('all') }]
+      : []),
+    ...(onlyInStock
+      ? [{ id: 'stock', label: '現貨', onRemove: () => setOnlyInStock(false) }]
+      : onlyPreOrder
+        ? [{ id: 'stock', label: '預購', onRemove: () => setOnlyPreOrder(false) }]
+        : onlySoldOut
+          ? [{ id: 'stock', label: '已售完', onRemove: () => setOnlySoldOut(false) }]
+          : []),
+    ...(onlyUnlisted
+      ? [{ id: 'unlisted', label: '未上架', onRemove: () => setOnlyUnlisted(false) }]
+      : []),
+    ...(onlyMissingPrice
+      ? [{ id: 'missing-price', label: '缺價', onRemove: () => setOnlyMissingPrice(false) }]
+      : []),
+    ...(onlyMissingImage
+      ? [{ id: 'missing-image', label: '沒實拍', onRemove: () => setOnlyMissingImage(false) }]
+      : []),
+    ...(onlyMissingCover
+      ? [{ id: 'missing-cover', label: '沒封面', onRemove: () => setOnlyMissingCover(false) }]
+      : []),
+    ...(onlyMissingLabel
+      ? [{ id: 'missing-label', label: '缺標籤', onRemove: () => setOnlyMissingLabel(false) }]
+      : []),
+    ...(discountPresetFilter
+      ? [{
+          id: 'discount',
+          label: discountPresets.find((preset) => preset.id === discountPresetFilter)?.name ?? '促銷檔期',
+          onRemove: () => setDiscountPresetFilter(null),
+        }]
+      : []),
+    ...(searchQuery
+      ? [{ id: 'search', label: `搜尋：${searchQuery}`, onRemove: () => setSearch('') }]
+      : []),
+  ]
 
   /**
    * 「新增商品」按鈕點下去時，新建商品要預填的 category：
@@ -817,6 +911,9 @@ export function ProductManagement({
           <InventoryDashboard
             base={baseForCounts}
             isFiltered={hasAnyFilter}
+            resultProductCount={filteredProductCount}
+            resultSkuCount={filteredItems.length}
+            resultStockTotal={filteredStockTotal}
             onlyUnlisted={onlyUnlisted}
             onlyMissingPrice={onlyMissingPrice}
             onlyMissingImage={onlyMissingImage}
@@ -833,6 +930,11 @@ export function ProductManagement({
             onToggleMissingImage={toggleMissingImage}
             onToggleMissingCover={toggleMissingCover}
             onToggleMissingLabel={toggleMissingLabel}
+            onShowActive={() => {
+              setOnlyInStock(false)
+              setOnlyPreOrder(false)
+              setOnlySoldOut(false)
+            }}
             onToggleInStock={toggleInStock}
             onTogglePreOrder={togglePreOrder}
             onToggleSoldOut={toggleSoldOut}
@@ -897,75 +999,89 @@ export function ProductManagement({
           }}
         >
             {/* Row 1：上層分組 */}
-            <ChipRow>
-              <CategoryTab
-                label="全部"
-                active={activeGroup === 'all'}
-                onClick={() => setActiveGroup('all')}
-                trackId="product_tab_all"
-                isMobile={isMobile}
-              />
-              {SHOP_GROUPS.map((g) => (
-                <CategoryTab
-                  key={g}
-                  label={getShopGroupLabel(g)}
-                  active={activeGroup === g}
-                  onClick={() => setActiveGroup(g)}
-                  trackId={`product_group_${g}`}
-                  isMobile={isMobile}
-                />
-              ))}
-            </ChipRow>
-
-            {/* Row 2：子分類（依當前 group 動態切，'all' group 時不顯示） */}
-            {activeGroup !== 'all' && activeGroup !== 'ES' && (
-              <ChipRow>
+            <FilterGroup label="系列">
+              <ChipRow ariaLabel="商品系列">
                 <CategoryTab
                   label="全部"
-                  active={activeSubCat === 'all'}
-                  onClick={() => setActiveSubCat('all')}
-                  trackId={`product_subcat_${activeGroup}_all`}
+                  active={activeGroup === 'all'}
+                  onClick={() => setActiveGroup('all')}
+                  trackId="product_tab_all"
                   isMobile={isMobile}
                 />
-                {categories
-                  .filter((cat) => cat.shopGroup === activeGroup)
-                  .map((cat) => (
-                    <CategoryTab
-                      key={cat.id}
-                      label={getCategoryShopName(cat)}
-                      active={activeSubCat === cat.id}
-                      onClick={() => setActiveSubCat(cat.id)}
-                      trackId={`product_tab_${cat.id}`}
-                      isMobile={isMobile}
-                    />
-                  ))}
-              </ChipRow>
-            )}
-
-            {/* Row 3：品牌由目前商品資料自動產生 */}
-            {brandOptions.length > 0 && (
-              <ChipRow>
-                <CategoryTab
-                  label="全部品牌"
-                  active={activeBrand === 'all'}
-                  onClick={() => setActiveBrand('all')}
-                  trackId="product_brand_all"
-                  isMobile={isMobile}
-                />
-                {brandOptions.map((brand) => (
+                {SHOP_GROUPS.map((g) => (
                   <CategoryTab
-                    key={brand.toLocaleLowerCase()}
-                    label={brand}
-                    active={activeBrand.toLocaleLowerCase() === brand.toLocaleLowerCase()}
-                    onClick={() => setActiveBrand(brand)}
-                    trackId={`product_brand_${brand.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '_')}`}
+                    key={g}
+                    label={getShopGroupLabel(g)}
+                    active={activeGroup === g}
+                    onClick={() => setActiveGroup(g)}
+                    trackId={`product_group_${g}`}
                     isMobile={isMobile}
                   />
                 ))}
               </ChipRow>
+            </FilterGroup>
+
+            {/* Row 2：子分類（依當前 group 動態切，'all' group 時不顯示） */}
+            {activeGroup !== 'all' && activeGroup !== 'ES' && (
+              <FilterGroup label="分類">
+                <ChipRow ariaLabel="子分類">
+                  <CategoryTab
+                    label="全部"
+                    active={activeSubCat === 'all'}
+                    onClick={() => setActiveSubCat('all')}
+                    trackId={`product_subcat_${activeGroup}_all`}
+                    isMobile={isMobile}
+                  />
+                  {categories
+                    .filter((cat) => cat.shopGroup === activeGroup)
+                    .map((cat) => (
+                      <CategoryTab
+                        key={cat.id}
+                        label={getCategoryShopName(cat)}
+                        active={activeSubCat === cat.id}
+                        onClick={() => setActiveSubCat(cat.id)}
+                        trackId={`product_tab_${cat.id}`}
+                        isMobile={isMobile}
+                      />
+                    ))}
+                </ChipRow>
+              </FilterGroup>
+            )}
+
+            {/* Row 3：品牌由目前商品資料自動產生 */}
+            {brandOptions.length > 0 && (
+              <FilterGroup label="品牌">
+                <ChipRow ariaLabel="品牌">
+                  <CategoryTab
+                    label="全部品牌"
+                    active={activeBrand === 'all'}
+                    onClick={() => setActiveBrand('all')}
+                    trackId="product_brand_all"
+                    isMobile={isMobile}
+                  />
+                  {brandOptions.map((brand) => (
+                    <CategoryTab
+                      key={brand.toLocaleLowerCase()}
+                      label={brand}
+                      active={activeBrand.toLocaleLowerCase() === brand.toLocaleLowerCase()}
+                      onClick={() => setActiveBrand(brand)}
+                      trackId={`product_brand_${brand.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '_')}`}
+                      isMobile={isMobile}
+                    />
+                  ))}
+                </ChipRow>
+              </FilterGroup>
             )}
           </div>
         </div>
+
+        {activeFilterItems.length > 0 && (
+          <ActiveFilterSummary
+            items={activeFilterItems}
+            onClearAll={clearAllFilters}
+            isMobile={isMobile}
+          />
+        )}
 
         <div
           style={{
@@ -1316,10 +1432,89 @@ function CategoryTab({ label, active, onClick, trackId, isMobile }: CategoryTabP
       type="button"
       onClick={onClick}
       data-track={trackId}
+      aria-pressed={active}
       style={productChipStyle(active, isMobile)}
     >
+      {active && <span aria-hidden="true">✓</span>}
       {label}
     </button>
+  )
+}
+
+interface ActiveFilterItem {
+  id: string
+  label: string
+  onRemove: () => void
+}
+
+function ActiveFilterSummary({
+  items,
+  onClearAll,
+  isMobile,
+}: {
+  items: ActiveFilterItem[]
+  onClearAll: () => void
+  isMobile: boolean
+}) {
+  return (
+    <div
+      aria-label="目前套用的篩選條件"
+      style={{
+        display: 'flex',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: 7,
+        padding: isMobile ? '10px' : '8px 10px',
+        marginBottom: spacing.md,
+        border: `1px solid ${colors.border.light}`,
+        borderRadius: borderRadius.lg,
+        background: colors.background.card,
+      }}
+    >
+      <span
+        style={{
+          flexShrink: 0,
+          color: colors.text.secondary,
+          fontSize: getFontSize('caption', isMobile),
+        }}
+      >
+        已選
+      </span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1, minWidth: 0 }}>
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-label={`移除篩選：${item.label}`}
+            onClick={item.onRemove}
+            style={{
+              ...productChipStyle(true, isMobile),
+              height: isMobile ? 32 : 28,
+              padding: '0 9px',
+              fontSize: getFontSize('caption', isMobile),
+            }}
+          >
+            <span>{item.label}</span>
+            <span aria-hidden="true">×</span>
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onClearAll}
+        style={{
+          flexShrink: 0,
+          border: 'none',
+          background: 'transparent',
+          color: colors.text.secondary,
+          fontSize: getFontSize('caption', isMobile),
+          cursor: 'pointer',
+          padding: '5px 2px',
+        }}
+      >
+        清除全部
+      </button>
+    </div>
   )
 }
 
@@ -1336,7 +1531,7 @@ function sortItemsByUpdated(items: VariantListItem[]): VariantListItem[] {
 
 // ============================================================
 //  庫存儀表板：種數／件數 + 庫存狀態（現貨／預購／已售完）+ 未上架／待補
-//  - 庫存狀態互斥；未上架與待補可複選並與狀態疊加
+//  - 庫存狀態互斥；資料問題組內 OR，與其他篩選組 AND
 //  - 未上架／待補數字跟目前庫存狀態連動（選現貨 → 只算現貨裡的未上架等）
 //  - 手機：狀態與待補都常開，不收合
 // ============================================================
@@ -1364,6 +1559,9 @@ interface InventoryDashboardProps {
   /** tab + 搜尋後的全部 SKU（含已售完），用來算庫存狀態與待補連動數字 */
   base: VariantListItem[]
   isFiltered: boolean
+  resultProductCount: number
+  resultSkuCount: number
+  resultStockTotal: number
   onlyUnlisted: boolean
   onlyMissingPrice: boolean
   onlyMissingImage: boolean
@@ -1380,6 +1578,7 @@ interface InventoryDashboardProps {
   onToggleMissingImage: () => void
   onToggleMissingCover: () => void
   onToggleMissingLabel: () => void
+  onShowActive: () => void
   onToggleInStock: () => void
   onTogglePreOrder: () => void
   onToggleSoldOut: () => void
@@ -1390,6 +1589,9 @@ interface InventoryDashboardProps {
 function InventoryDashboard({
   base,
   isFiltered,
+  resultProductCount,
+  resultSkuCount,
+  resultStockTotal,
   onlyUnlisted,
   onlyMissingPrice,
   onlyMissingImage,
@@ -1406,6 +1608,7 @@ function InventoryDashboard({
   onToggleMissingImage,
   onToggleMissingCover,
   onToggleMissingLabel,
+  onShowActive,
   onToggleInStock,
   onTogglePreOrder,
   onToggleSoldOut,
@@ -1423,9 +1626,6 @@ function InventoryDashboard({
     return activeBase
   }, [base, activeBase, onlyInStock, onlyPreOrder, onlySoldOut])
 
-  const baseSkuCount = activeBase.length
-  const baseStockTotal = activeBase.reduce((s, it) => s + getVariantSellableStock(it.variant), 0)
-  const baseReservedTotal = activeBase.reduce((s, it) => s + (it.variant.reserved_qty || 0), 0)
   const missingPriceCount = qualityBase.filter((it) => it.variant.price == null).length
   const missingImageCount = qualityBase.filter((it) => !it.variant.image_url).length
   const missingCoverCount = qualityBase.filter(
@@ -1436,12 +1636,16 @@ function InventoryDashboard({
   const inStockCount = activeBase.filter(isVariantInStock).length
   const preOrderCount = activeBase.filter(isVariantPreOrder).length
 
-  const mainSku = baseSkuCount
-  const mainStock = baseStockTotal
-  const mainReserved = baseReservedTotal
-
   const stockStatusChips = (
     <>
+      <DashboardStatChip
+        label="販售中"
+        count={activeBase.length}
+        active={!onlyInStock && !onlyPreOrder && !onlySoldOut}
+        onClick={onShowActive}
+        trackId="product_filter_active"
+        isMobile={isMobile}
+      />
       <DashboardStatChip
         label="現貨"
         count={inStockCount}
@@ -1469,7 +1673,7 @@ function InventoryDashboard({
     </>
   )
 
-  const qualityChips = (
+  const dataIssueChips = (
     <>
       <DashboardStatChip
         label="未上架"
@@ -1511,6 +1715,11 @@ function InventoryDashboard({
         trackId="product_filter_missing_label"
         isMobile={isMobile}
       />
+    </>
+  )
+
+  const discountChips = (
+    <>
       {tagPresets.map((p) => (
         <DashboardStatChip
           key={p.id}
@@ -1543,15 +1752,11 @@ function InventoryDashboard({
             minWidth: 0,
           }}
         >
-          {mainSku} 種
+          {resultProductCount} 商品
           <span style={{ color: colors.text.disabled }}> · </span>
-          {mainStock} 件
-          {mainReserved > 0 && (
-            <>
-              <span style={{ color: colors.text.disabled }}> · </span>
-              保留 {mainReserved}
-            </>
-          )}
+          {resultSkuCount} SKU
+          <span style={{ color: colors.text.disabled }}> · </span>
+          {resultStockTotal} 件
         </span>
         {isFiltered && (
           <button
@@ -1573,8 +1778,17 @@ function InventoryDashboard({
           </button>
         )}
       </div>
-      <ChipRow>{stockStatusChips}</ChipRow>
-      <ChipRow wrap>{qualityChips}</ChipRow>
+      <FilterGroup label="供貨">
+        <ChipRow ariaLabel="供貨狀態">{stockStatusChips}</ChipRow>
+      </FilterGroup>
+      <FilterGroup label="資料問題">
+        <ChipRow wrap ariaLabel="資料問題">{dataIssueChips}</ChipRow>
+      </FilterGroup>
+      {tagPresets.length > 0 && (
+        <FilterGroup label="檔期">
+          <ChipRow wrap ariaLabel="促銷檔期">{discountChips}</ChipRow>
+        </FilterGroup>
+      )}
     </div>
   )
 
@@ -1604,9 +1818,11 @@ function DashboardStatChip({
       onClick={onClick}
       data-track={trackId}
       disabled={isZero && !active}
+      aria-pressed={active}
       title={isZero ? `沒有${label}` : label}
       style={productChipStyle(active, isMobile, isZero && !active)}
     >
+      {active && <span aria-hidden="true">✓</span>}
       <span>{count}</span>
       <span>{label}</span>
     </button>
