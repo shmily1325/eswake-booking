@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useToast } from '../../components/ui'
+import { Modal } from '../../components/ui/Modal'
 import {
   designSystem,
   getBadgeStyle,
   getButtonStyle,
   getEmptyStateStyle,
   getInputStyle,
+  getLabelStyle,
 } from '../../styles/designSystem'
 
 type MemberOption = {
@@ -64,7 +66,6 @@ type SelectedBooking = BookingSearchResult & {
 
 type Props = {
   members: MemberOption[]
-  onOpenSavedGuests: () => void
 }
 
 function splitBookingNames(value: string): string[] {
@@ -104,7 +105,7 @@ async function callMappingApi(body: Record<string, unknown>, signal?: AbortSigna
   return result
 }
 
-export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) {
+export function LineReminderMappingPanel({ members }: Props) {
   const { isMobile } = useResponsive()
   const toast = useToast()
   const [contacts, setContacts] = useState<LineContact[]>([])
@@ -113,6 +114,9 @@ export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) 
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'unmatched' | 'matched' | 'all'>('unmatched')
+  const [processedFilter, setProcessedFilter] = useState<
+    'all' | 'saved' | 'member' | 'booking' | 'bound'
+  >('all')
   const [selectedContact, setSelectedContact] = useState<LineContact | null>(null)
   const [editingMappingId, setEditingMappingId] = useState('')
   const [targetType, setTargetType] = useState<'member' | 'guest'>('member')
@@ -128,6 +132,10 @@ export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) 
   const [expandedContactIds, setExpandedContactIds] = useState<Set<string>>(
     () => new Set(),
   )
+  const [editingGuest, setEditingGuest] = useState<SavedGuest | null>(null)
+  const [guestNameDraft, setGuestNameDraft] = useState('')
+  const [guestLineDraft, setGuestLineDraft] = useState('')
+  const [guestSaving, setGuestSaving] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -197,6 +205,14 @@ export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) 
     () => new Map(guests.map((guest) => [guest.line_user_id, guest])),
     [guests],
   )
+  const availableGuestContacts = useMemo(
+    () => contacts.filter((contact) => {
+      if (contact.friend_status !== 'friend' || contact.formal_binding?.can_push) return false
+      const assignedGuest = guestByLineUser.get(contact.line_user_id)
+      return !assignedGuest || assignedGuest.id === editingGuest?.id
+    }),
+    [contacts, editingGuest?.id, guestByLineUser],
+  )
 
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('zh-TW')
@@ -207,6 +223,17 @@ export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) 
       const isEligible = contact.friend_status === 'friend'
       if (filter === 'unmatched' && (isMatched || !isEligible)) return false
       if (filter === 'matched' && !isMatched) return false
+      if (filter === 'matched' && processedFilter !== 'all') {
+        const contactMappings = mappingsByLineUser.get(contact.line_user_id) ?? []
+        const matchesProcessedFilter =
+          (processedFilter === 'saved' && Boolean(savedGuest)) ||
+          (processedFilter === 'member' &&
+            contactMappings.some((mapping) => Boolean(mapping.member_id))) ||
+          (processedFilter === 'booking' &&
+            contactMappings.some((mapping) => !mapping.member_id)) ||
+          (processedFilter === 'bound' && contact.formal_binding?.can_push === true)
+        if (!matchesProcessedFilter) return false
+      }
       if (!term) return true
       const mappingText = (mappingsByLineUser.get(contact.line_user_id) ?? [])
         .map((mapping) => [
@@ -220,7 +247,14 @@ export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) 
         .toLocaleLowerCase('zh-TW')
         .includes(term)
     })
-  }, [contacts, filter, guestByLineUser, mappingsByLineUser, search])
+  }, [
+    contacts,
+    filter,
+    guestByLineUser,
+    mappingsByLineUser,
+    processedFilter,
+    search,
+  ])
 
   const matchedCount = useMemo(
     () => contacts.filter((contact) =>
@@ -397,6 +431,49 @@ export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) 
     })
   }
 
+  const openGuestEditor = (guest: SavedGuest) => {
+    setEditingGuest(guest)
+    setGuestNameDraft(guest.name)
+    setGuestLineDraft(guest.line_user_id)
+  }
+
+  const saveGuest = async () => {
+    if (!editingGuest || !guestNameDraft.trim() || !guestLineDraft) return
+    setGuestSaving(true)
+    try {
+      await callMappingApi({
+        action: 'save_guest',
+        guestId: editingGuest.id,
+        lineUserId: guestLineDraft,
+        name: guestNameDraft.trim(),
+      })
+      toast.success('建檔已更新')
+      setEditingGuest(null)
+      await load()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '更新建檔失敗')
+    } finally {
+      setGuestSaving(false)
+    }
+  }
+
+  const deleteGuest = async (guest: SavedGuest) => {
+    if (!window.confirm(
+      `確定永久刪除「${guest.name}」？相關預約的 LINE 提醒配對也會一併刪除，且無法復原。`,
+    )) return
+    setGuestSaving(true)
+    try {
+      await callMappingApi({ action: 'delete_guest', guestId: guest.id })
+      toast.success('建檔已刪除')
+      if (editingGuest?.id === guest.id) setEditingGuest(null)
+      await load()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '刪除建檔失敗')
+    } finally {
+      setGuestSaving(false)
+    }
+  }
+
   const promoteMapping = async (mapping: ReminderMapping) => {
     if (!mapping.booking_id) return
     const name = (mapping.contact_name || '').trim()
@@ -490,6 +567,26 @@ export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) 
         ))}
       </div>
 
+      {filter === 'matched' && (
+        <select
+          aria-label="已處理類型"
+          value={processedFilter}
+          onChange={(event) => setProcessedFilter(event.target.value as typeof processedFilter)}
+          style={{
+            ...getInputStyle(isMobile),
+            width: isMobile ? '100%' : 220,
+            minHeight: isMobile ? 46 : 40,
+            marginBottom: 12,
+          }}
+        >
+          <option value="all">全部類型</option>
+          <option value="saved">建檔</option>
+          <option value="member">手動配對</option>
+          <option value="booking">預約配對</option>
+          <option value="bound">正式綁定</option>
+        </select>
+      )}
+
       {loading ? (
         <div style={getEmptyStateStyle(isMobile)}>載入 LINE 聯絡人中…</div>
       ) : filteredContacts.length === 0 ? (
@@ -573,8 +670,13 @@ export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) 
                       {savedGuest && (
                         <button
                           type="button"
-                          onClick={onOpenSavedGuests}
-                          aria-label={`管理建檔 ${savedGuest.name}`}
+                          disabled={guestSaving}
+                          onClick={() => hasFormalPushBinding
+                            ? void deleteGuest(savedGuest)
+                            : openGuestEditor(savedGuest)}
+                          aria-label={hasFormalPushBinding
+                            ? `刪除建檔 ${savedGuest.name}`
+                            : `管理建檔 ${savedGuest.name}`}
                           style={{
                             ...getBadgeStyle(
                               savedGuest.is_active ? 'success' : 'default',
@@ -1101,6 +1203,83 @@ export function LineReminderMappingPanel({ members, onOpenSavedGuests }: Props) 
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={Boolean(editingGuest)}
+        onClose={() => !guestSaving && setEditingGuest(null)}
+        title="編輯建檔"
+        size="small"
+        footer={(
+          <>
+            <div style={{ flex: 1 }} />
+            <button
+              type="button"
+              disabled={guestSaving}
+              onClick={() => setEditingGuest(null)}
+              style={getButtonStyle('outline', 'medium', isMobile)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              disabled={guestSaving || !guestNameDraft.trim() || !guestLineDraft}
+              onClick={() => void saveGuest()}
+              style={getButtonStyle('primary', 'medium', isMobile)}
+            >
+              {guestSaving ? '儲存中…' : '儲存'}
+            </button>
+          </>
+        )}
+      >
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: designSystem.spacing.lg,
+        }}>
+          <label>
+            <span style={getLabelStyle(isMobile)}>名稱</span>
+            <input
+              value={guestNameDraft}
+              onChange={(event) => setGuestNameDraft(event.target.value)}
+              style={{
+                ...getInputStyle(isMobile),
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            />
+          </label>
+          <label>
+            <span style={getLabelStyle(isMobile)}>LINE</span>
+            <select
+              value={guestLineDraft}
+              onChange={(event) => setGuestLineDraft(event.target.value)}
+              style={{
+                ...getInputStyle(isMobile),
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
+              {availableGuestContacts.map((contact) => (
+                <option key={contact.line_user_id} value={contact.line_user_id}>
+                  {contact.display_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={guestSaving}
+            onClick={() => editingGuest && void deleteGuest(editingGuest)}
+            style={{
+              ...getButtonStyle('danger', 'medium', isMobile),
+              width: '100%',
+              minHeight: isMobile ? 46 : undefined,
+            }}
+          >
+            刪除建檔
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

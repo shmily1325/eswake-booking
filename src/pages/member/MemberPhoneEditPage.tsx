@@ -11,7 +11,6 @@ import { useToast, ToastContainer } from '../../components/ui'
 import { isMemberPhoneOnlyEditor } from '../../utils/auth'
 import { normalizeDate } from '../../utils/date'
 import { LineReminderMappingPanel } from './LineReminderMappingPanel'
-import { SavedLineReminderGuestsPanel } from './SavedLineReminderGuestsPanel'
 import {
   designSystem,
   getBadgeStyle,
@@ -85,7 +84,7 @@ export function MemberPhoneEditPage() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState<'phones' | 'line-reminders' | 'saved-guests'>('phones')
+  const [activeTab, setActiveTab] = useState<'phones' | 'line-reminders'>('phones')
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'rebind' | 'unbound'>('all')
   /** 正在編輯手機的會員 id（按「編輯」或點電話欄才會解鎖輸入） */
   const [editingMemberIds, setEditingMemberIds] = useState<Set<string>>(() => new Set())
@@ -283,7 +282,7 @@ export function MemberPhoneEditPage() {
         aria-label="LINE 配對功能"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
           gap: 8,
           marginBottom: 14,
         }}
@@ -309,17 +308,6 @@ export function MemberPhoneEditPage() {
           style={getButtonStyle(activeTab === 'line-reminders' ? 'primary' : 'outline', 'medium', isMobile)}
         >
           配對
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-label="非會員建檔"
-          title="非會員建檔"
-          aria-selected={activeTab === 'saved-guests'}
-          onClick={() => setActiveTab('saved-guests')}
-          style={getButtonStyle(activeTab === 'saved-guests' ? 'primary' : 'outline', 'medium', isMobile)}
-        >
-          建檔
         </button>
       </div>
 
@@ -801,13 +789,8 @@ export function MemberPhoneEditPage() {
         <div style={getEmptyStateStyle(isMobile)}>沒有符合的會員</div>
       )}
         </>
-      ) : activeTab === 'line-reminders' ? (
-        <LineReminderMappingPanel
-          members={members}
-          onOpenSavedGuests={() => setActiveTab('saved-guests')}
-        />
       ) : (
-        <SavedLineReminderGuestsPanel />
+        <LineReminderMappingPanel members={members} />
       )}
 
       <Footer />
