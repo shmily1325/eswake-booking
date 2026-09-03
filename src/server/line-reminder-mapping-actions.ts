@@ -247,6 +247,29 @@ export async function handleLineReminderMappingAction(
       })
     }
 
+    if (action === 'get_guest_booking_ids') {
+      const guestId = text(body.guestId)
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+          .test(guestId)
+      ) {
+        return res.status(400).json({ error: 'Valid guestId is required' })
+      }
+      const { data, error } = await supabase
+        .from('line_reminder_mappings')
+        .select('booking_id')
+        .eq('guest_id', guestId)
+        .not('booking_id', 'is', null)
+        .limit(500)
+      if (error) throw error
+      const bookingIds = Array.from(new Set(
+        (data ?? []).flatMap((mapping) =>
+          Number.isInteger(mapping.booking_id) ? [mapping.booking_id] : []
+        ),
+      ))
+      return res.status(200).json({ bookingIds })
+    }
+
     if (action === 'batch_upsert_guest_mappings') {
       const lineUserId = text(body.lineUserId)
       const saveGuestName = text(body.saveGuestName) || null

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAuthUser } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PageHeader } from '../components/PageHeader'
@@ -31,6 +31,11 @@ import {
   formatSelectedMemberHint,
   escapeIlikePattern,
 } from '../utils/searchBookingMemberQuery'
+import {
+  callReminderGuestApi,
+  searchSavedLineReminderGuests,
+  type SavedLineReminderGuest,
+} from '../utils/lineReminderGuests'
 
 interface Booking {
   id: number
@@ -397,8 +402,11 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
   const [members, setMembers] = useState<Member[]>([])
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
+  const [filteredLineGuests, setFilteredLineGuests] = useState<SavedLineReminderGuest[]>([])
   const [showMemberDropdown, setShowMemberDropdown] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [selectedLineGuest, setSelectedLineGuest] = useState<SavedLineReminderGuest | null>(null)
+  const lineGuestSearchRequestRef = useRef(0)
 
   // 編輯對話框狀態
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -443,19 +451,39 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   }
 
   useEffect(() => {
-    if (searchName.trim()) {
-      const filtered = members.filter(m =>
-        m.name.toLowerCase().includes(searchName.toLowerCase()) ||
-        m.nickname?.toLowerCase().includes(searchName.toLowerCase()) ||
-        m.phone?.includes(searchName)
-      )
-      setFilteredMembers(filtered)
-      setShowMemberDropdown(filtered.length > 0 && !selectedMemberId)
-    } else {
+    const query = searchName.trim()
+    const requestId = ++lineGuestSearchRequestRef.current
+    if (!query || selectedMemberId || selectedLineGuest) {
       setFilteredMembers([])
+      setFilteredLineGuests([])
       setShowMemberDropdown(false)
+      return
     }
-  }, [searchName, members, selectedMemberId])
+
+    const normalizedQuery = query.toLocaleLowerCase('zh-TW')
+    const filtered = members.filter(m =>
+      m.name.toLocaleLowerCase('zh-TW').includes(normalizedQuery) ||
+      m.nickname?.toLocaleLowerCase('zh-TW').includes(normalizedQuery) ||
+      m.phone?.includes(query)
+    )
+    setFilteredMembers(filtered)
+    setShowMemberDropdown(filtered.length > 0)
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const guests = await searchSavedLineReminderGuests(query)
+        if (requestId !== lineGuestSearchRequestRef.current) return
+        setFilteredLineGuests(guests)
+        setShowMemberDropdown(filtered.length > 0 || guests.length > 0)
+      } catch (error) {
+        if (requestId !== lineGuestSearchRequestRef.current) return
+        console.error('Error searching saved LINE guests:', error)
+        setFilteredLineGuests([])
+      }
+    }, 120)
+
+    return () => window.clearTimeout(timer)
+  }, [searchName, members, selectedLineGuest, selectedMemberId])
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -479,7 +507,18 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       // 步驟 1: 查詢匹配的預約 ID
       const bookingIds = new Set<number>()
 
-      if (selectedMemberId) {
+      if (selectedLineGuest) {
+        const result = await callReminderGuestApi({
+          action: 'get_guest_booking_ids',
+          guestId: selectedLineGuest.id,
+        })
+        const lineGuestBookingIds = Array.isArray(result?.bookingIds)
+          ? result.bookingIds
+          : []
+        lineGuestBookingIds.forEach((bookingId) => {
+          if (Number.isInteger(bookingId)) bookingIds.add(Number(bookingId))
+        })
+      } else if (selectedMemberId) {
         // 已從下拉選定會員：僅查此 member_id
         const { data: memberLinks } = await supabase
           .from('booking_members')
@@ -641,6 +680,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const handleClearSearch = () => {
     setSearchName('')
     setSelectedMemberId(null)
+    setSelectedLineGuest(null)
     setBookings([])
     setHasSearched(false)
   }
@@ -815,9 +855,10 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 onChange={(e) => {
                   setSearchName(e.target.value)
                   setSelectedMemberId(null)
+                  setSelectedLineGuest(null)
                 }}
                 onFocus={(e) => {
-                  if (filteredMembers.length > 0) {
+                  if (filteredMembers.length > 0 || filteredLineGuests.length > 0) {
                     setShowMemberDropdown(true)
                   }
                   e.target.style.borderColor = designSystem.colors.primary[500]
@@ -871,8 +912,14 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 已選：{formatSelectedMemberHint(selectedMember)} · 僅顯示此會員預約
               </div>
             )}
+            {selectedLineGuest && (
+              <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: '6px' }}>
+                已選：LINE｜{selectedLineGuest.name} · 僅顯示此 LINE 關聯預約
+              </div>
+            )}
 
-            {showMemberDropdown && filteredMembers.length > 0 && (
+            {showMemberDropdown &&
+              (filteredMembers.length > 0 || filteredLineGuests.length > 0) && (
               <div style={{
                 position: 'absolute',
                 top: '100%',
@@ -890,6 +937,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 {filteredMembers.map(member => (
                   <div
                     key={member.id}
+                    data-testid={`member-suggestion-${member.id}`}
                     onClick={() => {
                       setSearchName(member.nickname || member.name)
                       setSelectedMemberId(member.id)
@@ -908,12 +956,69 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     onTouchCancel={(e) => e.currentTarget.style.backgroundColor = designSystem.colors.background.card}
                   >
                     <div style={{ fontWeight: '500', color: designSystem.colors.text.primary }}>
+                      <span style={{ color: designSystem.colors.info[700], marginRight: 6 }}>
+                        會員｜
+                      </span>
                       {member.nickname || member.name}
                       {member.nickname && <span style={{ color: designSystem.colors.text.disabled, fontWeight: 'normal', marginLeft: '6px' }}>({member.name})</span>}
                     </div>
                     {member.phone && (
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: '2px' }}>
                         {member.phone}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {filteredLineGuests.map(guest => (
+                  <div
+                    key={`line:${guest.id}`}
+                    data-testid={`line-suggestion-${guest.id}`}
+                    onClick={() => {
+                      setSearchName(guest.name)
+                      setSelectedLineGuest(guest)
+                      setSelectedMemberId(null)
+                      setShowMemberDropdown(false)
+                    }}
+                    style={{
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        designSystem.colors.background.hover
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        designSystem.colors.background.card
+                    }}
+                    onTouchStart={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        designSystem.colors.background.hover
+                    }}
+                    onTouchEnd={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        designSystem.colors.background.card
+                    }}
+                    onTouchCancel={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        designSystem.colors.background.card
+                    }}
+                  >
+                    <div style={{ fontWeight: 500, color: designSystem.colors.text.primary }}>
+                      <span style={{ color: designSystem.colors.success[700], marginRight: 6 }}>
+                        LINE｜
+                      </span>
+                      {guest.name}
+                    </div>
+                    {guest.line_contact?.display_name && (
+                      <div style={{
+                        fontSize: getFontSize('bodySmall', isMobile),
+                        color: designSystem.colors.text.secondary,
+                        marginTop: 2,
+                      }}>
+                        {guest.line_contact.display_name}
                       </div>
                     )}
                   </div>
@@ -1012,7 +1117,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             type="submit"
             data-track={selectedMember
               ? `search_submit_member:${selectedMember.nickname || selectedMember.name}`
-              : 'search_submit_keyword'}
+              : selectedLineGuest
+                ? `search_submit_line:${selectedLineGuest.name}`
+                : 'search_submit_keyword'}
             disabled={loading || !searchName.trim()}
             style={{
               ...getButtonStyle('primary', 'medium', isMobile),

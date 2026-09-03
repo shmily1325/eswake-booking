@@ -631,6 +631,33 @@ describe('manual LINE reminder send API', () => {
     })
   })
 
+  it('returns bookings associated with a saved LINE guest', async () => {
+    setUser('viewer@example.com')
+    queryResults.view_users = { data: [{ email: 'viewer@example.com' }], error: null }
+    queryResults.line_reminder_mappings = {
+      data: [
+        { booking_id: 101 },
+        { booking_id: 102 },
+        { booking_id: 101 },
+        { booking_id: null },
+      ],
+      error: null,
+    }
+    const response = responseMock()
+    const guestId = '11111111-1111-4111-8111-111111111111'
+
+    await handler(
+      request({ action: 'get_guest_booking_ids', guestId }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(queryBuilders.line_reminder_mappings.eq)
+      .toHaveBeenCalledWith('guest_id', guestId)
+    expect(response.json).toHaveBeenCalledWith({
+      bookingIds: [101, 102],
+    })
+  })
+
   it('syncs multiple saved guests to the same booking', async () => {
     queryResults.bookings = {
       data: { id: 101, contact_name: '吳穎, 小安' },

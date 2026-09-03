@@ -3,7 +3,7 @@ import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { MemberSelector } from '../MemberSelector'
 
-describe('MemberSelector RIDER input', () => {
+describe('MemberSelector', () => {
   it('turns the draft into a removable item without showing a trailing plus', () => {
     const setActualRider = vi.fn()
 
@@ -127,5 +127,45 @@ describe('MemberSelector RIDER input', () => {
     fireEvent.click(screen.getByRole('button', { name: '移除已建檔非會員 吳穎' }))
     const removeGuest = setSelectedSavedGuests.mock.calls[1][0]
     expect(removeGuest([firstGuest, secondGuest])).toEqual([secondGuest])
+  })
+
+  it('anchors member and LINE suggestions directly below their own inputs', () => {
+    const member = {
+      id: 'member-1',
+      name: 'Stan',
+      nickname: null,
+      phone: '0919767077',
+    }
+    const guest = { id: 'guest-1', line_user_id: 'U1', name: '小安' }
+
+    render(
+      <MemberSelector
+        members={[member]}
+        selectedMemberIds={[]}
+        setSelectedMemberIds={vi.fn()}
+        memberSearchTerm="st"
+        setMemberSearchTerm={vi.fn()}
+        showMemberDropdown
+        setShowMemberDropdown={vi.fn()}
+        filteredMembers={[member]}
+        handleMemberSearch={vi.fn()}
+        manualStudentName="小"
+        setManualStudentName={vi.fn()}
+        manualNames={[]}
+        setManualNames={vi.fn()}
+        savedGuestSearchResults={[guest]}
+        selectedSavedGuests={[]}
+        setSelectedSavedGuests={vi.fn()}
+        showSavedGuestDropdown
+        setShowSavedGuestDropdown={vi.fn()}
+        actualRider=""
+        setActualRider={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('member-search-dropdown').parentElement)
+      .toBe(screen.getByTestId('member-search-anchor'))
+    expect(screen.getByTestId('saved-guest-search-dropdown').parentElement)
+      .toBe(screen.getByTestId('saved-guest-search-anchor'))
   })
 })

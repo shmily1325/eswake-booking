@@ -218,48 +218,49 @@ export function MemberSelector({
                 </div>
             )}
 
-            <input
-                type="text"
-                value={memberSearchTerm}
-                onChange={(e) => {
-                    const value = e.target.value
-                    setMemberSearchTerm(value)
-                    handleMemberSearch(value)
-                }}
-                onFocus={() => {
-                    if (memberSearchTerm.trim()) {
-                        setShowMemberDropdown(true)
-                    }
-                }}
-                placeholder="搜尋會員暱稱/姓名/電話...（可多選）"
-                style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: designSystem.borderRadius.lg,
-                    border: selectedMemberIds.length > 0
-                        ? `1.5px solid ${designSystem.colors.success[500]}`
-                        : `1px solid ${designSystem.colors.border.main}`,
-                    boxSizing: 'border-box',
-                    fontSize: '16px',
-                    touchAction: 'manipulation',
-                }}
-            />
+            <div data-testid="member-search-anchor" style={{ position: 'relative' }}>
+                <input
+                    type="text"
+                    value={memberSearchTerm}
+                    onChange={(e) => {
+                        const value = e.target.value
+                        setMemberSearchTerm(value)
+                        handleMemberSearch(value)
+                    }}
+                    onFocus={() => {
+                        if (memberSearchTerm.trim()) {
+                            setShowMemberDropdown(true)
+                        }
+                    }}
+                    placeholder="搜尋會員暱稱/姓名/電話...（可多選）"
+                    style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: designSystem.borderRadius.lg,
+                        border: selectedMemberIds.length > 0
+                            ? `1.5px solid ${designSystem.colors.success[500]}`
+                            : `1px solid ${designSystem.colors.border.main}`,
+                        boxSizing: 'border-box',
+                        fontSize: '16px',
+                        touchAction: 'manipulation',
+                    }}
+                />
 
-            {showMemberDropdown && filteredMembers.length > 0 && (
-                <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    background: '#ffffff',
-                    border: `1px solid ${designSystem.colors.border.main}`,
-                    borderRadius: designSystem.borderRadius.lg,
-                    marginTop: '4px',
-                    boxShadow: designSystem.shadows.md,
-                    zIndex: designSystem.zIndex.dropdown,
-                }}>
+                {showMemberDropdown && filteredMembers.length > 0 && (
+                    <div data-testid="member-search-dropdown" style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        background: '#ffffff',
+                        border: `1px solid ${designSystem.colors.border.main}`,
+                        borderRadius: designSystem.borderRadius.lg,
+                        marginTop: '4px',
+                        boxShadow: designSystem.shadows.md,
+                        zIndex: designSystem.zIndex.dropdown,
+                    }}>
                     {filteredMembers.map((member) => {
                         const isSelected = selectedMemberIds.includes(member.id)
                         return (
@@ -314,8 +315,9 @@ export function MemberSelector({
                             </div>
                         )
                     })}
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
 
             <div style={{
                 marginTop: designSystem.spacing.sm,
@@ -323,7 +325,10 @@ export function MemberSelector({
                 gap: designSystem.spacing.sm,
                 alignItems: 'stretch',
             }}>
-                <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                <div
+                    data-testid="saved-guest-search-anchor"
+                    style={{ flex: 1, minWidth: 0, position: 'relative' }}
+                >
                     <input
                         type="text"
                         value={manualStudentName}
@@ -354,7 +359,7 @@ export function MemberSelector({
                         }}
                     />
                     {showSavedGuestDropdown && savedGuestSearchResults.length > 0 && (
-                        <div style={{
+                        <div data-testid="saved-guest-search-dropdown" style={{
                             position: 'absolute',
                             top: '100%',
                             left: 0,

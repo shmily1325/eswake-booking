@@ -568,23 +568,47 @@ export function LineReminderMappingPanel({ members }: Props) {
       </div>
 
       {filter === 'matched' && (
-        <select
+        <div
+          role="group"
           aria-label="已處理類型"
-          value={processedFilter}
-          onChange={(event) => setProcessedFilter(event.target.value as typeof processedFilter)}
           style={{
-            ...getInputStyle(isMobile),
-            width: isMobile ? '100%' : 220,
-            minHeight: isMobile ? 46 : 40,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, minmax(52px, 1fr))',
+            gap: 6,
+            width: '100%',
+            maxWidth: isMobile ? '100%' : 520,
+            overflowX: 'auto',
             marginBottom: 12,
           }}
         >
-          <option value="all">全部類型</option>
-          <option value="saved">建檔</option>
-          <option value="member">手動配對</option>
-          <option value="booking">預約配對</option>
-          <option value="bound">正式綁定</option>
-        </select>
+          {([
+            ['all', '全部'],
+            ['saved', '建檔'],
+            ['member', '手動'],
+            ['booking', '預約'],
+            ['bound', '綁定'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={processedFilter === value}
+              onClick={() => setProcessedFilter(value)}
+              style={{
+                ...getButtonStyle(
+                  processedFilter === value ? 'primary' : 'outline',
+                  'small',
+                  isMobile,
+                ),
+                minWidth: 0,
+                minHeight: isMobile ? 44 : 40,
+                padding: '8px 4px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       )}
 
       {loading ? (
@@ -678,21 +702,38 @@ export function LineReminderMappingPanel({ members }: Props) {
                             ? `刪除建檔 ${savedGuest.name}`
                             : `管理建檔 ${savedGuest.name}`}
                           style={{
-                            ...getBadgeStyle(
-                              savedGuest.is_active ? 'success' : 'default',
-                              'small',
-                            ),
+                            display: 'inline-flex',
+                            alignItems: 'center',
                             flexShrink: 0,
-                            maxWidth: isMobile ? 104 : 150,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            minHeight: isMobile ? 44 : 32,
+                            maxWidth: isMobile ? 116 : 162,
+                            padding: 0,
                             border: 'none',
+                            background: 'transparent',
                             cursor: 'pointer',
                             fontFamily: 'inherit',
                           }}
                         >
-                          建檔：{savedGuest.name}
+                          <span style={{
+                            ...getBadgeStyle(
+                              savedGuest.is_active ? 'success' : 'default',
+                              'small',
+                            ),
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            minWidth: 0,
+                            maxWidth: '100%',
+                          }}>
+                            <span style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              建檔：{savedGuest.name}
+                            </span>
+                            <span aria-hidden="true" style={{ flexShrink: 0 }}>›</span>
+                          </span>
                         </button>
                       )}
                       {hasFormalPushBinding && (
@@ -711,19 +752,37 @@ export function LineReminderMappingPanel({ members }: Props) {
                           aria-expanded={isExpanded}
                           onClick={() => toggleContactDetails(contact.line_user_id)}
                           style={{
-                            ...getBadgeStyle(mappingSummaryVariant, 'small'),
-                            minHeight: isMobile ? 34 : 28,
-                            maxWidth: isMobile ? 116 : 180,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            minHeight: isMobile ? 44 : 32,
+                            maxWidth: isMobile ? 128 : 192,
                             flexShrink: 0,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            padding: 0,
                             border: 'none',
+                            background: 'transparent',
                             cursor: 'pointer',
                             fontFamily: 'inherit',
                           }}
                         >
-                          {mappingSummary} {isExpanded ? '▴' : '▾'}
+                          <span style={{
+                            ...getBadgeStyle(mappingSummaryVariant, 'small'),
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            minWidth: 0,
+                            maxWidth: '100%',
+                          }}>
+                            <span style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {mappingSummary}
+                            </span>
+                            <span aria-hidden="true" style={{ flexShrink: 0 }}>
+                              {isExpanded ? '▴' : '▾'}
+                            </span>
+                          </span>
                         </button>
                       )}
                       {contact.friend_status !== 'friend' && (
