@@ -436,29 +436,6 @@ export function MemberSelector({
                 </button>
             </div>
 
-            {selectedMemberIds.length > 0 && (
-                <button
-                    type="button"
-                    onClick={() => {
-                        setSelectedMemberIds([])
-                        setMemberSearchTerm('')
-                    }}
-                    style={{
-                        marginTop: designSystem.spacing.sm,
-                        padding: '6px 12px',
-                        background: 'transparent',
-                        color: designSystem.colors.danger[700],
-                        border: `1px solid ${designSystem.colors.danger[500]}66`,
-                        borderRadius: designSystem.borderRadius.md,
-                        fontSize: getFontSize('button', true),
-                        cursor: 'pointer',
-                        minHeight: '36px',
-                        touchAction: 'manipulation',
-                    }}
-                >
-                    清除所有會員
-                </button>
-            )}
         </div>
     )
 }
