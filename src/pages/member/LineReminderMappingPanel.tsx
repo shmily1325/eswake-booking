@@ -526,7 +526,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                     setSelectedBookingId(null)
                   }}
                   autoFocus
-                  placeholder="搜尋預約姓名或電話"
+                  placeholder="搜尋預約人"
                   style={{
                     ...getInputStyle(isMobile),
                     width: '100%',
@@ -581,7 +581,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                               month: 'numeric',
                               day: 'numeric',
                             })}
-                            {booking.contact_phone ? ` · ${booking.contact_phone}` : ' · 無電話'}
+                            {booking.contact_phone ? ` · ${booking.contact_phone}` : ''}
                           </div>
                         </button>
                       )

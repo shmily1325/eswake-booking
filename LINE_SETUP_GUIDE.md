@@ -52,6 +52,7 @@ Messaging API 設定：
 ```text
 migrations/203_restore_line_reminder_contacts.sql
 migrations/204_bind_line_reminders_to_bookings.sql
+migrations/205_clear_guest_line_mapping_on_booking_identity_change.sql
 ```
 
 建立。三張資料表皆強制 RLS，只有 server-side `service_role` 可讀寫：
@@ -84,6 +85,9 @@ migrations/204_bind_line_reminders_to_bookings.sql
    - 會員提醒配對
    - 新客預約配對
 4. 找不到候選者維持複製訊息人工傳送。
+
+若編輯預約並更換預約人姓名或主要會員，該預約的新客提醒配對會自動解除，
+避免將提醒傳送給原本的預約人。只修改時間、船隻或教練不會解除配對。
 
 ## 故障排除
 
