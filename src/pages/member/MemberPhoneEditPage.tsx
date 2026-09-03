@@ -10,6 +10,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
 import { isMemberPhoneOnlyEditor } from '../../utils/auth'
 import { normalizeDate } from '../../utils/date'
+import { LineReminderMappingPanel } from './LineReminderMappingPanel'
 import {
   designSystem,
   getBadgeStyle,
@@ -83,6 +84,7 @@ export function MemberPhoneEditPage() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [activeTab, setActiveTab] = useState<'phones' | 'line-reminders'>('phones')
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'rebind' | 'unbound'>('all')
   /** 正在編輯手機的會員 id（按「編輯」或點電話欄才會解鎖輸入） */
   const [editingMemberIds, setEditingMemberIds] = useState<Set<string>>(() => new Set())
@@ -273,7 +275,40 @@ export function MemberPhoneEditPage() {
       desktopPadding="20px 20px max(20px, env(safe-area-inset-bottom))"
       outerStyle={{ minHeight: '100dvh' }}
     >
-      <PageHeader title="會員電話" user={user} showBaoLink={false} />
+      <PageHeader title="聯絡資料" user={user} showBaoLink={false} />
+
+      <div
+        role="tablist"
+        aria-label="聯絡資料功能"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 8,
+          marginBottom: 14,
+        }}
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'phones'}
+          onClick={() => setActiveTab('phones')}
+          style={getButtonStyle(activeTab === 'phones' ? 'primary' : 'outline', 'medium', isMobile)}
+        >
+          會員電話
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'line-reminders'}
+          onClick={() => setActiveTab('line-reminders')}
+          style={getButtonStyle(activeTab === 'line-reminders' ? 'primary' : 'outline', 'medium', isMobile)}
+        >
+          LINE 提醒配對
+        </button>
+      </div>
+
+      {activeTab === 'phones' ? (
+        <>
 
       <div
         style={{
@@ -748,6 +783,10 @@ export function MemberPhoneEditPage() {
 
       {!loading && filtered.length === 0 && (
         <div style={getEmptyStateStyle(isMobile)}>沒有符合的會員</div>
+      )}
+        </>
+      ) : (
+        <LineReminderMappingPanel members={members} />
       )}
 
       <Footer />

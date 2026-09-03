@@ -96,8 +96,8 @@ describe('buildTomorrowReminderRecipients', () => {
     expect(
       getSelectedPushRecipients(
         recipients,
-        new Set(['m1', 'm3', 'm4']),
-        new Set(['m3']),
+        new Set(['member:m1', 'member:m3', 'member:m4']),
+        new Set(['member:m3']),
       ).map((recipient) => recipient.name),
     ).toEqual(['Selected'])
   })
@@ -110,8 +110,85 @@ describe('buildTomorrowReminderRecipients', () => {
     const messages = { A: 'A 的修改內容', B: 'B 的修改內容' }
 
     expect(buildReminderSendPayload(recipients, (recipient) => messages[recipient.name as 'A' | 'B'])).toEqual([
-      { memberId: 'm1', message: 'A 的修改內容' },
-      { memberId: 'm2', message: 'B 的修改內容' },
+      {
+        recipientKey: 'member:m1',
+        memberId: 'm1',
+        contactName: 'A',
+        bookingIds: [],
+        message: 'A 的修改內容',
+      },
+      {
+        recipientKey: 'member:m2',
+        memberId: 'm2',
+        contactName: 'B',
+        bookingIds: [],
+        message: 'B 的修改內容',
+      },
     ])
+  })
+
+  it('uses a unique phone mapping automatically but requires confirmation for name-only matches', () => {
+    const mappings = [
+      {
+        id: 'phone-map',
+        line_user_id: 'line-1',
+        member_id: null,
+        contact_name: 'Phone Guest',
+        normalized_name: 'phone guest',
+        contact_phone: '0912345678',
+        line_contact: { display_name: 'LINE Phone', friend_status: 'friend' as const },
+      },
+      {
+        id: 'name-map',
+        line_user_id: 'line-2',
+        member_id: null,
+        contact_name: 'Name Guest',
+        normalized_name: 'name guest',
+        contact_phone: null,
+        line_contact: { display_name: 'LINE Name', friend_status: 'friend' as const },
+      },
+    ]
+    const recipients = buildTomorrowReminderRecipients({
+      studentNames: ['Phone Guest', 'Name Guest'],
+      memberIdsByName: {},
+      bindings: [],
+      bookingCountByName: { 'Phone Guest': 1, 'Name Guest': 1 },
+      bookingPhonesByName: { 'Phone Guest': ['0912345678'] },
+      reminderMappings: mappings,
+    })
+
+    expect(recipients[0]).toMatchObject({
+      status: 'mapped',
+      mappingId: 'phone-map',
+      contactPhone: '0912345678',
+    })
+    expect(recipients[1]).toMatchObject({
+      status: 'suggested',
+      mappingCandidates: [{ id: 'name-map', displayName: 'LINE Name' }],
+    })
+  })
+
+  it('uses a reminder-only member mapping when formal push binding is unavailable', () => {
+    const [recipient] = buildTomorrowReminderRecipients({
+      studentNames: ['Member'],
+      memberIdsByName: { Member: ['member-1'] },
+      bindings: [{ member_id: 'member-1', can_push: false }],
+      bookingCountByName: { Member: 1 },
+      reminderMappings: [{
+        id: 'member-map',
+        line_user_id: 'line-1',
+        member_id: 'member-1',
+        contact_name: null,
+        normalized_name: null,
+        contact_phone: null,
+        line_contact: { display_name: 'Mapped Member', friend_status: 'friend' },
+      }],
+    })
+
+    expect(recipient).toMatchObject({
+      status: 'mapped',
+      mappingId: 'member-map',
+      mappingDisplayName: 'Mapped Member',
+    })
   })
 })

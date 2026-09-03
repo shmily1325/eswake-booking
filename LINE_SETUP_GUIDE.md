@@ -1,273 +1,93 @@
-# LINE Bot & LIFF 設置指南
+# LINE 與 LIFF 設定指南
 
-## 📋 功能概述
+## 現行功能
 
-1. **LIFF 查詢預約**：會員可透過 LINE 查看自己的預約
-2. **LINE Webhook 綁定**：會員透過 LINE 聊天綁定帳號
-3. **每日自動提醒**：每天 19:00 自動發送明日預約提醒
+- `/liff`：會員專區。必須以電話與生日完成正式會員綁定。
+- `/liff/book`：LINE 內的線上預約。
+- `/api/line-webhook`：被動收集加好友、訊息與 Rich Menu 互動者，供員工手動建立「提醒專用配對」。
+- `/tomorrow`：員工人工檢查並傳送明日提醒；目前沒有自動提醒 Cron。
 
----
+提醒專用配對不會寫入 `line_bindings`，也不會讓非會員取得會員專區權限。
 
-## 🚀 第一步：創建 LINE Bot
+## LINE Developers
 
-### 1. 前往 LINE Developers Console
-https://developers.line.biz/console/
+Messaging API Channel 與 LIFF 所在的 LINE Login Channel 應位於同一個 Provider。LINE user ID 在不同 Provider 之間不相同。
 
-### 2. 創建 Provider（如果還沒有）
-- 點擊 "Create a new provider"
-- 輸入名稱（例如：ES Wake）
+Messaging API 設定：
 
-### 3. 創建 Messaging API Channel
-- 點擊 "Create a Messaging API channel"
-- 填寫資料：
-  - **Channel name**: ES Wake 預約系統
-  - **Channel description**: 查詢預約與自動提醒
-  - **Category**: 選擇適合的類別（如：Sports & Recreation）
-  - **Subcategory**: 選擇子類別
-- 同意條款後點擊 "Create"
+1. 發行長效 Channel access token。
+2. 複製 Basic settings 內的 Channel secret。
+3. Webhook URL 設為：
 
-### 4. 設定 Channel
-進入創建好的 Channel，進行以下設定：
-
-#### Messaging API 設定
-1. 滾動到 **Messaging API** 區塊
-2. 點擊 **Channel access token** 的 "Issue" 按鈕
-3. **複製這個 Token**（稍後要用）
-4. 設定 **Webhook URL**:
+   ```text
+   https://<正式網域>/api/line-webhook
    ```
-   https://your-domain.vercel.app/api/line-webhook
-   ```
-5. 啟用 **Use webhook**: 打開開關
-6. 關閉 **Auto-reply messages**: 關閉開關
-7. 關閉 **Greeting messages**: 關閉開關
 
----
+4. 開啟 Use webhook，按 Verify 確認回應成功。
+5. Rich Menu「芝麻開門」動作必須是 `message` 或 `postback`；一般網址不會產生可收集 user ID 的 webhook。
 
-## 🔐 第二步：創建 LINE Login Channel 與 LIFF App
+未認證官方帳號無法批次取得既有好友 user ID。只有啟用 webhook 後的新 `follow`、`message` 或 `postback` 事件會被收集。
 
-### 1. 在同一個 Provider 建立 LINE Login Channel
-- LINE Login Channel 必須與 Messaging API Channel 位於同一個 Provider。
-- 同一個 LINE 使用者在相同 Provider 的兩種 Channel 會取得相同 user ID，才能直接推播。
-- 不要建立在另一個 Provider；Channel 建立後無法搬移。
-- 在 LINE Login Channel 的 **Basic settings** 將 **Linked OA** 設為 ES WAKE SCHOOL 官方帳號。
+## Vercel 環境變數
 
-若只有 Messaging API Channel Admin、沒有 Provider Admin，無法新增 Channel。ES WAKE SCHOOL
-目前可改用該 Messaging API Channel 內既有的 LIFF `1656777386-ezW1BJ5Q`；
-LINE 仍允許既有 Messaging API LIFF 繼續使用，而且它與 Bot 的 user ID 相容。
+以下機密只可存入 Vercel，不可提交到 Git、聊天或截圖：
 
-### 2. 在 LINE Login Channel 的 LIFF 分頁新增 App
-- **LIFF app name**: ES Wake 會員專區
-- **Size**: Full
-- **Endpoint URL**: 
-  ```
-  https://your-domain.vercel.app/liff
-  ```
-- **Scope**: 選擇 `profile`, `openid`
-- **Bot link feature**: 選擇 "On (Normal)"
+| 變數 | 用途 |
+|---|---|
+| `LINE_CHANNEL_SECRET` | 驗證 `/api/line-webhook` 的 `x-line-signature` |
+| `LINE_CHANNEL_ACCESS_TOKEN` | 讀取 LINE Profile 及傳送提醒 |
+| `SUPABASE_SERVICE_ROLE_KEY` | Webhook 與員工 API 的 server-only 資料庫權限 |
+| `SUPABASE_URL` 或 `VITE_SUPABASE_URL` | Supabase 專案 URL |
+| `LINE_LIFF_ALLOWED_CHANNEL_IDS` | 允許會員 API 的 Channel ID，逗號分隔 |
+| `LINE_PUSH_LIFF_CHANNEL_IDS` | 與 Messaging API 同 Provider、可推播的 LIFF Channel ID |
+| `VITE_LIFF_ID` | 會員專區 LIFF ID |
+| `VITE_LIFF_BOOK_ID` | 線上預約 LIFF ID |
 
-### 3. 複製 LIFF ID
-創建完成後，會顯示 **LIFF ID**（格式：`1234567890-abcdefgh`）
-**複製這個 LIFF ID**（稍後要用）
+新增或修改後必須重新部署。
 
----
+## 資料庫
 
-## ⚙️ 第三步：Vercel 環境變數設定
-
-前往 Vercel 專案設定 → Environment Variables，添加以下變數：
-
-### 必要變數
-
-| 變數名稱 | 說明 | 範例 |
-|---------|------|------|
-| `LINE_CHANNEL_ACCESS_TOKEN` | LINE Channel Access Token | `eyJhbGc...` |
-| `VITE_LIFF_ID` | LIFF App ID | `1234567890-abcdefgh` |
-| `VITE_LIFF_MIGRATION_ID` | 搬移測試期間的新 LIFF App ID；切換完成後可移除 | `2345678901-abcdefgh` |
-| `LINE_LIFF_ALLOWED_CHANNEL_IDS` | 允許存取會員 API 的 LINE Login Channel ID，逗號分隔 | `1234567890,2345678901` |
-| `LINE_PUSH_LIFF_CHANNEL_IDS` | 與 Messaging API 同 Provider、可推播的 LINE Login Channel ID | `2345678901` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role Key（已有） | `eyJhbGc...` |
-| `VITE_SUPABASE_URL` | Supabase URL（已有） | `https://xxx.supabase.co` |
-
-### 設定步驟
-1. 在 Vercel Dashboard 打開你的專案
-2. 前往 **Settings** → **Environment Variables**
-3. 依次添加上述變數
-4. **重新部署**專案使變數生效
-
-Channel access token 與 Channel secret 都是機密，只能直接填入 Vercel；不要貼到聊天、文件或截圖。
-
-### ES WAKE SCHOOL 搬移期間設定
-
-在切換 Rich Menu 之前先並行設定：
+依 migration 順序執行。LINE 提醒聯絡人功能由：
 
 ```text
-VITE_LIFF_MIGRATION_ID=1656777386-ezW1BJ5Q
-LINE_LIFF_ALLOWED_CHANNEL_IDS=2008652154,1656777386
-LINE_PUSH_LIFF_CHANNEL_IDS=1656777386
+migrations/203_restore_line_reminder_contacts.sql
 ```
 
-先部署雙 LIFF 版本並完成本人測試，再將既有 LIFF 的 Endpoint URL 從舊廠商網址改為
-`https://eswake-booking.vercel.app/liff`。正式切換完成後，才把 `VITE_LIFF_ID`
-改成 `1656777386-ezW1BJ5Q`。
+建立。三張資料表皆強制 RLS，只有 server-side `service_role` 可讀寫：
 
----
+- `line_webhook_contacts`
+- `line_webhook_events`
+- `line_reminder_mappings`
 
-## 💾 第四步：資料庫初始化
+請勿將 service role key 放到 `VITE_*` 變數。
 
-在 Supabase SQL Editor 執行以下 SQL：
+## 上線驗證
 
-```sql
--- 確保 line_bindings 表存在
-CREATE TABLE IF NOT EXISTS line_bindings (
-  id SERIAL PRIMARY KEY,
-  line_user_id TEXT NOT NULL UNIQUE,
-  member_id UUID REFERENCES members(id),
-  phone TEXT,
-  status TEXT DEFAULT 'pending',
-  verification_code TEXT,
-  created_at TEXT,
-  expires_at TEXT,
-  completed_at TEXT
-);
+1. 部署 migration 與程式碼。
+2. 在 LINE Developers 設定並 Verify webhook。
+3. 用測試帳號加好友或按「芝麻開門」。
+4. 到「會員電話 → LINE 提醒配對」，確認出現 LINE 名稱、頭像與互動時間。
+5. 分別測試：
+   - 配對未正式綁定會員。
+   - 配對有電話的非會員。
+   - 配對沒有電話的非會員；明日提醒頁必須再次確認姓名候選。
+   - 同一 LINE 帳號對應多人時只收到一則整合訊息。
+   - 封鎖官方帳號後不再列為可推播。
 
-CREATE INDEX IF NOT EXISTS idx_line_bindings_member ON line_bindings(member_id);
-CREATE INDEX IF NOT EXISTS idx_line_bindings_phone ON line_bindings(phone);
+## 日常操作
 
--- 啟用 RLS
-ALTER TABLE line_bindings ENABLE ROW LEVEL SECURITY;
+1. 客人加好友、傳訊息或按 Rich Menu；系統背景收集 user ID，不要求客人綁定。
+2. 員工在「LINE 提醒配對」選擇會員或建立非會員別名／電話。
+3. 明日提醒依序使用：
+   - 正式會員綁定
+   - 會員提醒配對
+   - 非會員電話配對
+   - 姓名候選（必須當次人工確認）
+4. 找不到候選者維持複製訊息人工傳送。
 
--- 允許認證用戶完全訪問
-DROP POLICY IF EXISTS "Allow authenticated users full access to line_bindings" ON line_bindings;
-CREATE POLICY "Allow authenticated users full access to line_bindings" 
-  ON line_bindings FOR ALL 
-  USING (auth.role() = 'authenticated');
+## 故障排除
 
--- 初始化系統設定
-INSERT INTO system_settings (setting_key, setting_value, description)
-VALUES 
-  ('line_reminder_enabled', 'false', 'LINE 提醒功能開關'),
-  ('line_webhook_enabled', 'false', 'LINE Webhook 開關（綁定功能）'),
-  ('line_channel_access_token', '', 'LINE Channel Access Token'),
-  ('line_reminder_time', '19:00', 'LINE 提醒發送時間')
-ON CONFLICT (setting_key) DO NOTHING;
-```
-
----
-
-## 📱 第五步：設定 LIFF 路由
-
-在 `src/App.tsx` 中添加 LIFF 路由：
-
-```typescript
-import { LiffMyBookings } from './pages/LiffMyBookings'
-
-// 在 Routes 中添加
-<Route path="/liff" element={<LiffMyBookings />} />
-```
-
----
-
-## 🧪 第六步：測試
-
-### 測試 1：LIFF 會員專區
-1. 在 LINE Developers Console 找到你的 LIFF App
-2. 複製 LIFF URL
-3. 用手機 LINE 打開這個 URL
-4. 應該會看到綁定畫面
-5. 輸入已註冊的手機號碼進行綁定
-6. 綁定成功後應該能看到自己的預約
-
-### 測試 2：LINE Webhook 綁定
-1. 掃描 LINE Bot 的 QR Code 加為好友
-2. 在後台（BaoHub → LINE 提醒設置）啟用 "LINE Webhook"
-3. 發送訊息：`綁定 0912345678`（你的手機號碼）
-4. 應該會收到綁定成功的回覆
-
-### 測試 3：測試提醒發送
-1. 在後台啟用 "LINE 預約提醒"
-2. 設定 Channel Access Token
-3. 創建一個明天的預約
-4. 手動觸發 API：
-   ```bash
-   curl https://your-domain.vercel.app/api/line-reminder
-   ```
-5. 已綁定的會員應該會收到提醒訊息
-
----
-
-## 📊 第七步：在後台啟用功能
-
-1. 登入系統
-2. 前往 **BaoHub** → **📱 LINE 提醒設置**
-3. 填寫 **LINE Channel Access Token**
-4. 啟用 **LINE 預約提醒**
-5. 設定提醒時間（預設 19:00）
-6. 點擊 **💾 儲存設置**
-
----
-
-## 🔄 Cron Job 說明
-
-Vercel 會自動執行以下 Cron Jobs：
-
-| 路徑 | 時間 | 說明 |
-|-----|------|------|
-| `/api/backup-to-cloud-drive` | 每天 02:00 | Google Drive SQL 備份 |
-| `/api/backup-storage?mode=cloud` | 每天 02:30 | Google Drive 商品圖片增量備份 |
-| `/api/line-reminder` | 每天 19:00 | 發送明日預約提醒 |
-
----
-
-## 📝 使用說明（給會員）
-
-### 方式一：透過 LIFF 會員專區
-1. 打開 LINE Bot 聊天室
-2. 點擊下方選單的「ES Wake 會員專區」按鈕（需在 LINE Bot 設定 Rich Menu）
-3. 首次使用需要綁定手機號碼
-4. 綁定後即可查看所有預約
-
-### 方式二：透過聊天綁定
-1. 加 LINE Bot 為好友
-2. 發送：`綁定 0912345678`（你的手機號碼）
-3. 綁定成功後會自動收到每日提醒
-
----
-
-## 🎨 Rich Menu 設定（選用）
-
-在 LINE Developers Console 可以設定 Rich Menu：
-
-**建議設定**：
-- **按鈕 1**: ES Wake 會員專區（連結到 LIFF URL）
-- **按鈕 2**: 查詢綁定狀態（發送文字：`說明`）
-- **按鈕 3**: 取消綁定（發送文字：`取消綁定`）
-
----
-
-## 🔍 故障排除
-
-### LIFF 無法載入
-- 確認 `VITE_LIFF_ID` 環境變數正確
-- 確認 LIFF Endpoint URL 設定正確
-- 檢查瀏覽器 Console 是否有錯誤
-
-### Webhook 沒有回應
-- 確認 Webhook URL 設定正確
-- 確認已啟用 "Use webhook"
-- 檢查 Vercel Logs 是否有錯誤
-
-### 提醒沒有發送
-- 確認後台已啟用 LINE 提醒
-- 確認 Channel Access Token 正確
-- 檢查會員是否已綁定
-- 檢查預約的 `booking_members` 是否正確
-
----
-
-## 📞 支援
-
-如有問題，請檢查：
-1. Vercel Deployment Logs
-2. Supabase Logs
-3. LINE Developers Console Logs
-
-
+- Webhook Verify 失敗：確認 URL、`LINE_CHANNEL_SECRET` 及 Vercel logs。簽章必須使用未解析的原始 request body。
+- 有互動但後台沒有聯絡人：確認 Use webhook 已開啟、事件來源是個人聊天室，且 migration 203 已執行。
+- 聯絡人顯示「資格待確認」：重新加好友或互動；長期 push 應以好友狀態為準。
+- 推播失敗：確認 Channel access token、好友／封鎖狀態與 Vercel logs。

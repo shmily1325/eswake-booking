@@ -26,6 +26,7 @@ function queryBuilder(result: QueryResult) {
     limit: vi.fn(),
     in: vi.fn(),
     eq: vi.fn(),
+    order: vi.fn(),
     then: (
       resolve: (value: QueryResult) => unknown,
       reject?: (reason: unknown) => unknown,
@@ -36,6 +37,7 @@ function queryBuilder(result: QueryResult) {
   builder.limit.mockReturnValue(builder)
   builder.in.mockReturnValue(builder)
   builder.eq.mockReturnValue(builder)
+  builder.order.mockReturnValue(builder)
   return builder
 }
 
@@ -57,10 +59,26 @@ function request(
   },
   authorization = 'Bearer valid-jwt',
 ) {
+  const normalizedBody = body && typeof body === 'object' && Array.isArray((body as { recipients?: unknown }).recipients)
+    ? {
+        ...(body as Record<string, unknown>),
+        recipients: ((body as { recipients: unknown[] }).recipients).map((value) => {
+          if (!value || typeof value !== 'object') return value
+          const recipient = value as Record<string, unknown>
+          if (typeof recipient.memberId !== 'string' || recipient.recipientKey) return recipient
+          return {
+            ...recipient,
+            recipientKey: `member:${recipient.memberId}`,
+            contactName: recipient.memberId,
+            bookingIds: [],
+          }
+        }),
+      }
+    : body
   return {
     method: 'POST',
     headers: authorization ? { authorization } : {},
-    body,
+    body: normalizedBody,
   } as VercelRequest
 }
 
@@ -152,6 +170,28 @@ describe('manual LINE reminder send API', () => {
     expect(globalThis.fetch).not.toHaveBeenCalled()
   })
 
+  it('serves staff-only reminder contact lists through the existing API route', async () => {
+    queryResults.line_webhook_contacts = {
+      data: [{ line_user_id: 'U1', display_name: 'Guest' }],
+      error: null,
+    }
+    queryResults.line_reminder_mappings = {
+      data: [{ id: 'map-1', line_user_id: 'U1', contact_name: 'Guest' }],
+      error: null,
+    }
+    const lineFetch = vi.spyOn(globalThis, 'fetch')
+    const response = responseMock()
+
+    await handler(request({ action: 'list' }), response as unknown as VercelResponse)
+
+    expect(response.status).toHaveBeenCalledWith(200)
+    expect(response.json).toHaveBeenCalledWith({
+      contacts: [{ line_user_id: 'U1', display_name: 'Guest' }],
+      mappings: [{ id: 'map-1', line_user_id: 'U1', contact_name: 'Guest' }],
+    })
+    expect(lineFetch).not.toHaveBeenCalled()
+  })
+
   it.each([
     [
       'duplicate member IDs',
@@ -240,11 +280,12 @@ describe('manual LINE reminder send API', () => {
     })
     expect(response.json).toHaveBeenCalledWith({
       results: [
-        { memberId: 'member-1', ok: true },
+        { recipientKey: 'member:member-1', memberId: 'member-1', ok: true },
         {
+          recipientKey: 'member:member-without-push',
           memberId: 'member-without-push',
           ok: false,
-          error: 'No active push-capable LINE binding',
+          error: 'No verified push-capable LINE recipient',
         },
       ],
     })
@@ -277,8 +318,82 @@ describe('manual LINE reminder send API', () => {
     expect(response.status).toHaveBeenCalledWith(200)
     expect(response.json).toHaveBeenCalledWith({
       results: [
-        { memberId: 'member-1', ok: true },
-        { memberId: 'member-2', ok: false, error: 'LINE API returned HTTP 429' },
+        { recipientKey: 'member:member-1', memberId: 'member-1', ok: true },
+        {
+          recipientKey: 'member:member-2',
+          memberId: 'member-2',
+          ok: false,
+          error: 'LINE API returned HTTP 429',
+        },
+      ],
+    })
+  })
+
+  it('validates reminder-only mappings and merges recipients sharing one LINE account', async () => {
+    queryResults.line_bindings = { data: [], error: null }
+    queryResults.line_reminder_mappings = {
+      data: [
+        {
+          id: 'mapping-1',
+          line_user_id: 'shared-line-user',
+          member_id: null,
+          normalized_name: 'guest one',
+          contact_phone: '0912345678',
+          line_contact: { friend_status: 'friend' },
+        },
+        {
+          id: 'mapping-2',
+          line_user_id: 'shared-line-user',
+          member_id: null,
+          normalized_name: 'guest two',
+          contact_phone: null,
+          line_contact: { friend_status: 'friend' },
+        },
+      ],
+      error: null,
+    }
+    const lineFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+    const response = responseMock()
+
+    await handler(request({
+      date: '2026-08-28',
+      recipients: [
+        {
+          recipientKey: 'guest:Guest One',
+          memberId: null,
+          mappingId: 'mapping-1',
+          contactName: 'Guest One',
+          contactPhone: '0912345678',
+          bookingIds: [1],
+          message: 'First',
+        },
+        {
+          recipientKey: 'guest:Guest Two',
+          memberId: null,
+          mappingId: 'mapping-2',
+          contactName: 'Guest Two',
+          bookingIds: [2],
+          message: 'Second',
+        },
+      ],
+    }), response as unknown as VercelResponse)
+
+    expect(queryBuilders.line_reminder_mappings.in).toHaveBeenCalledWith(
+      'id',
+      ['mapping-1', 'mapping-2'],
+    )
+    expect(lineFetch).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(String(lineFetch.mock.calls[0][1]?.body))).toEqual({
+      to: 'shared-line-user',
+      messages: [{ type: 'text', text: 'First\n\n──────────\n\nSecond' }],
+    })
+    expect(response.json).toHaveBeenCalledWith({
+      results: [
+        { recipientKey: 'guest:Guest One', memberId: null, ok: true },
+        { recipientKey: 'guest:Guest Two', memberId: null, ok: true },
       ],
     })
   })

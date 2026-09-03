@@ -1,40 +1,31 @@
 import { createClient } from '@supabase/supabase-js'
-import type { User } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { authenticateStaff } from '../src/server/staff-api-auth.js'
+import { handleLineReminderMappingAction } from '../src/server/line-reminder-mapping-actions.js'
 
 const LINE_PUSH_URL = 'https://api.line.me/v2/bot/message/push'
 const MAX_RECIPIENTS = 100
 const MAX_MESSAGE_LENGTH = 5_000
 
-const SUPER_ADMINS = new Set([
-  'callumbao1122@gmail.com',
-  'pjpan0511@gmail.com',
-  'minlin1325@gmail.com',
-])
-const HIDDEN_ALLOWED_USERS = new Set(['yylai0@gmail.com'])
-
 type Recipient = {
-  memberId: string
+  recipientKey: string
+  memberId: string | null
+  mappingId?: string
+  contactName: string
+  contactPhone?: string
+  bookingIds: number[]
   message: string
 }
 
 type SendResult = {
-  memberId: string
+  recipientKey: string
+  memberId: string | null
   ok: boolean
   error?: string
 }
 
-type SupabaseAdmin = ReturnType<typeof createClient<Record<string, never>>>
-
 function sendError(res: VercelResponse, status: number, error: string) {
   return res.status(status).json({ error })
-}
-
-function bearerToken(req: VercelRequest): string | null {
-  const header = req.headers.authorization
-  if (typeof header !== 'string') return null
-  const match = header.match(/^Bearer\s+(\S+)$/i)
-  return match?.[1] ?? null
 }
 
 function isValidDate(date: string): boolean {
@@ -67,14 +58,38 @@ function parseBody(body: unknown):
   }
 
   const parsed: Recipient[] = []
-  const memberIds = new Set<string>()
+  const recipientKeys = new Set<string>()
   for (const value of recipients) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return { ok: false, error: 'Each recipient must be an object' }
     }
     const recipient = value as Record<string, unknown>
-    if (typeof recipient.memberId !== 'string' || recipient.memberId.trim() === '') {
-      return { ok: false, error: 'Each recipient requires a memberId' }
+    if (typeof recipient.recipientKey !== 'string' || recipient.recipientKey.trim() === '') {
+      return { ok: false, error: 'Each recipient requires a recipientKey' }
+    }
+    if (recipient.memberId !== null && typeof recipient.memberId !== 'string') {
+      return { ok: false, error: 'memberId must be a string or null' }
+    }
+    if (typeof recipient.contactName !== 'string' || recipient.contactName.trim() === '') {
+      return { ok: false, error: 'Each recipient requires a contactName' }
+    }
+    if (
+      recipient.mappingId !== undefined &&
+      (typeof recipient.mappingId !== 'string' || recipient.mappingId.trim() === '')
+    ) {
+      return { ok: false, error: 'mappingId must be a nonempty string' }
+    }
+    if (
+      recipient.contactPhone !== undefined &&
+      (typeof recipient.contactPhone !== 'string' || !/^09\d{8}$/.test(recipient.contactPhone))
+    ) {
+      return { ok: false, error: 'contactPhone must be a Taiwan mobile number' }
+    }
+    if (
+      !Array.isArray(recipient.bookingIds) ||
+      recipient.bookingIds.some((id) => !Number.isInteger(id) || (id as number) <= 0)
+    ) {
+      return { ok: false, error: 'bookingIds must contain positive integers' }
     }
     if (
       typeof recipient.message !== 'string' ||
@@ -87,61 +102,25 @@ function parseBody(body: unknown):
       }
     }
 
-    const memberId = recipient.memberId.trim()
-    if (memberIds.has(memberId)) {
-      return { ok: false, error: 'memberId values must be unique' }
+    const recipientKey = recipient.recipientKey.trim()
+    if (recipientKeys.has(recipientKey)) {
+      return { ok: false, error: 'recipientKey values must be unique' }
     }
-    memberIds.add(memberId)
-    parsed.push({ memberId, message: recipient.message })
+    recipientKeys.add(recipientKey)
+    parsed.push({
+      recipientKey,
+      memberId: typeof recipient.memberId === 'string' ? recipient.memberId.trim() : null,
+      ...(typeof recipient.mappingId === 'string' ? { mappingId: recipient.mappingId.trim() } : {}),
+      contactName: recipient.contactName.trim(),
+      ...(typeof recipient.contactPhone === 'string'
+        ? { contactPhone: recipient.contactPhone }
+        : {}),
+      bookingIds: Array.from(new Set(recipient.bookingIds as number[])),
+      message: recipient.message,
+    })
   }
 
   return { ok: true, date, recipients: parsed }
-}
-
-async function hasViewPermission(
-  supabase: SupabaseAdmin,
-  email: string,
-): Promise<{ allowed: boolean; error: boolean }> {
-  const normalizedEmail = email.trim().toLowerCase()
-  if (SUPER_ADMINS.has(normalizedEmail) || HIDDEN_ALLOWED_USERS.has(normalizedEmail)) {
-    return { allowed: true, error: false }
-  }
-
-  for (const table of ['editor_users', 'view_users'] as const) {
-    const { data, error } = await supabase
-      .from(table)
-      .select('email')
-      .eq('email', normalizedEmail)
-      .limit(1)
-    if (error) {
-      console.error(`LINE reminder permission lookup failed for ${table}:`, error.message)
-      return { allowed: false, error: true }
-    }
-    if (data && data.length > 0) return { allowed: true, error: false }
-  }
-
-  return { allowed: false, error: false }
-}
-
-async function authenticate(
-  req: VercelRequest,
-  supabase: SupabaseAdmin,
-): Promise<
-  | { ok: true; user: User & { email: string } }
-  | { ok: false; status: number; error: string }
-> {
-  const token = bearerToken(req)
-  if (!token) return { ok: false, status: 401, error: 'Authentication required' }
-
-  const { data: { user }, error } = await supabase.auth.getUser(token)
-  if (error || !user?.email) {
-    return { ok: false, status: 401, error: 'Invalid or expired authentication' }
-  }
-
-  const permission = await hasViewPermission(supabase, user.email)
-  if (permission.error) return { ok: false, status: 500, error: 'Permission check failed' }
-  if (!permission.allowed) return { ok: false, status: 403, error: 'Insufficient permission' }
-  return { ok: true, user: user as User & { email: string } }
 }
 
 async function pushMessage(lineUserId: string, message: string, token: string): Promise<string | null> {
@@ -183,8 +162,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   })
 
   try {
-    const auth = await authenticate(req, supabase)
+    const auth = await authenticateStaff(req, supabase)
     if (auth.ok === false) return sendError(res, auth.status, auth.error)
+
+    const requestBody = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? req.body as Record<string, unknown>
+      : null
+    if (typeof requestBody?.action === 'string') {
+      return handleLineReminderMappingAction(requestBody, res, supabase, auth.user.email)
+    }
 
     const parsed = parseBody(req.body)
     if (parsed.ok === false) return sendError(res, 400, parsed.error)
@@ -195,21 +181,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendError(res, 500, 'Server configuration error')
     }
 
-    const memberIds = parsed.recipients.map(recipient => recipient.memberId)
-    const { data: bindings, error: bindingsError } = await supabase
-      .from('line_bindings')
-      .select('member_id, line_user_id')
-      .in('member_id', memberIds)
-      .eq('status', 'active')
-      .eq('can_push', true)
+    const memberIds = parsed.recipients
+      .map(recipient => recipient.memberId)
+      .filter((memberId): memberId is string => !!memberId)
+    const mappingIds = parsed.recipients
+      .map(recipient => recipient.mappingId)
+      .filter((mappingId): mappingId is string => !!mappingId)
+    const [bindingsResult, mappingsResult] = await Promise.all([
+      memberIds.length > 0
+        ? supabase
+            .from('line_bindings')
+            .select('member_id, line_user_id')
+            .in('member_id', memberIds)
+            .eq('status', 'active')
+            .eq('can_push', true)
+        : Promise.resolve({ data: [], error: null }),
+      mappingIds.length > 0
+        ? supabase
+            .from('line_reminder_mappings')
+            .select('id, line_user_id, member_id, normalized_name, contact_phone, line_contact:line_user_id(friend_status)')
+            .in('id', mappingIds)
+        : Promise.resolve({ data: [], error: null }),
+    ])
 
-    if (bindingsError) {
-      console.error('LINE reminder binding lookup failed:', bindingsError.message)
+    if (bindingsResult.error || mappingsResult.error) {
+      console.error(
+        'LINE reminder recipient lookup failed:',
+        bindingsResult.error?.message || mappingsResult.error?.message,
+      )
       return sendError(res, 500, 'Unable to load LINE recipients')
     }
 
     const lineUserIdByMember = new Map<string, string>()
-    for (const binding of bindings ?? []) {
+    for (const binding of bindingsResult.data ?? []) {
       if (
         typeof binding.member_id === 'string' &&
         typeof binding.line_user_id === 'string' &&
@@ -219,24 +223,97 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const results: SendResult[] = []
+    const mappingById = new Map<string, {
+      id: string
+      line_user_id: string
+      member_id: string | null
+      normalized_name: string | null
+      contact_phone: string | null
+      line_contact?: { friend_status?: string } | Array<{ friend_status?: string }> | null
+    }>()
+    for (const value of mappingsResult.data ?? []) {
+      const mapping = value as unknown as {
+        id: string
+        line_user_id: string
+        member_id: string | null
+        normalized_name: string | null
+        contact_phone: string | null
+        line_contact?: { friend_status?: string } | Array<{ friend_status?: string }> | null
+      }
+      mappingById.set(mapping.id, mapping)
+    }
+
+    const resultByRecipientKey = new Map<string, SendResult>()
+    const resolved: Array<{
+      recipient: Recipient
+      lineUserId: string
+    }> = []
     for (const recipient of parsed.recipients) {
-      const lineUserId = lineUserIdByMember.get(recipient.memberId)
+      let lineUserId = recipient.memberId
+        ? lineUserIdByMember.get(recipient.memberId)
+        : undefined
+      if (!lineUserId && recipient.mappingId) {
+        const mapping = mappingById.get(recipient.mappingId)
+        const contact = Array.isArray(mapping?.line_contact)
+          ? mapping?.line_contact[0]
+          : mapping?.line_contact
+        const identityMatches = recipient.memberId
+          ? mapping?.member_id === recipient.memberId
+          : mapping?.member_id === null && (
+              (!!recipient.contactPhone && mapping.contact_phone === recipient.contactPhone) ||
+              (!recipient.contactPhone &&
+                mapping.normalized_name === recipient.contactName
+                  .trim()
+                  .replace(/\s+/g, ' ')
+                  .toLocaleLowerCase('zh-TW'))
+            )
+        if (mapping && contact?.friend_status === 'friend' && identityMatches) {
+          lineUserId = mapping.line_user_id
+        }
+      }
       if (!lineUserId) {
-        results.push({
+        resultByRecipientKey.set(recipient.recipientKey, {
+          recipientKey: recipient.recipientKey,
           memberId: recipient.memberId,
           ok: false,
-          error: 'No active push-capable LINE binding',
+          error: 'No verified push-capable LINE recipient',
         })
         continue
       }
-
-      const pushError = await pushMessage(lineUserId, recipient.message, lineToken)
-      results.push(pushError
-        ? { memberId: recipient.memberId, ok: false, error: pushError }
-        : { memberId: recipient.memberId, ok: true })
+      resolved.push({ recipient, lineUserId })
     }
 
+    const groups = new Map<string, Recipient[]>()
+    for (const item of resolved) {
+      const group = groups.get(item.lineUserId) ?? []
+      group.push(item.recipient)
+      groups.set(item.lineUserId, group)
+    }
+    for (const [lineUserId, group] of groups) {
+      const messages = Array.from(new Set(group.map(recipient => recipient.message.trim())))
+      const combinedMessage = messages.join('\n\n──────────\n\n')
+      const pushError = combinedMessage.length > MAX_MESSAGE_LENGTH
+        ? 'Combined LINE message exceeds 5000 characters'
+        : await pushMessage(lineUserId, combinedMessage, lineToken)
+      group.forEach((recipient) => {
+        resultByRecipientKey.set(recipient.recipientKey, pushError
+          ? {
+              recipientKey: recipient.recipientKey,
+              memberId: recipient.memberId,
+              ok: false,
+              error: pushError,
+            }
+          : {
+              recipientKey: recipient.recipientKey,
+              memberId: recipient.memberId,
+              ok: true,
+            })
+      })
+    }
+
+    const results = parsed.recipients
+      .map((recipient) => resultByRecipientKey.get(recipient.recipientKey))
+      .filter((result): result is SendResult => !!result)
     return res.status(200).json({ results })
   } catch (error) {
     console.error(

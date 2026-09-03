@@ -32,6 +32,7 @@ import {
   buildReminderSendPayload,
   getSelectedPushRecipients,
   type TomorrowReminderBindingRow,
+  type TomorrowReminderMappingRow,
   type TomorrowReminderRecipient,
 } from '../utils/tomorrowReminderRecipients'
 import {
@@ -45,6 +46,7 @@ interface Booking {
   id: number
   boat_id: number
   contact_name: string
+  contact_phone: string | null
   start_at: string
   duration_min: number
   activity_types: string[] | null
@@ -57,12 +59,19 @@ interface Booking {
 type ReminderLanguage = 'zh' | 'en'
 
 type PushResult = {
-  memberId: string
+  recipientKey: string
+  memberId: string | null
   ok: boolean
   error?: string
 }
 
 const FISH_REMINDER_COPY_RECIPIENT = '澤澤'
+
+function normalizeReminderPhone(value: string | null | undefined): string | null {
+  const digits = (value || '').replace(/\D/g, '')
+  if (digits.startsWith('8869') && digits.length === 12) return `0${digits.slice(3)}`
+  return /^09\d{8}$/.test(digits) ? digits : null
+}
 
 export function TomorrowReminder() {
   const user = useAuthUser()
@@ -118,6 +127,11 @@ export function TomorrowReminder() {
   const [bookingStudentNamesByName, setBookingStudentNamesByName] =
     useState<Record<string, string[]>>({})
   const [lineBindings, setLineBindings] = useState<TomorrowReminderBindingRow[]>([])
+  const [reminderMappings, setReminderMappings] = useState<TomorrowReminderMappingRow[]>([])
+  const [bookingIdsByName, setBookingIdsByName] = useState<Record<string, number[]>>({})
+  const [bookingPhonesByName, setBookingPhonesByName] = useState<Record<string, string[]>>({})
+  const [confirmedMappingByRecipient, setConfirmedMappingByRecipient] =
+    useState<Record<string, string>>({})
   const [selectedPushMemberIds, setSelectedPushMemberIds] = useState<Set<string>>(new Set())
   const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({})
   const [pushStatusByMemberId, setPushStatusByMemberId] = useState<
@@ -169,6 +183,10 @@ export function TomorrowReminder() {
     setBookingStudentNamesByMemberId({})
     setBookingStudentNamesByName({})
     setLineBindings([])
+    setReminderMappings([])
+    setBookingIdsByName({})
+    setBookingPhonesByName({})
+    setConfirmedMappingByRecipient({})
     setSelectedPushMemberIds(new Set())
     setMessageDrafts({})
     setPushStatusByMemberId({})
@@ -184,6 +202,26 @@ export function TomorrowReminder() {
       requestId === fetchRequestIdRef.current && requestedDate === selectedDateRef.current
     setLoading(true)
     try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (!token) throw new Error('登入已失效，請重新登入')
+      const mappingsResponse = await fetch('/api/line-reminder-send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'list' }),
+      })
+      const mappingsBody = await mappingsResponse.json().catch(() => null) as
+        | { mappings?: TomorrowReminderMappingRow[]; error?: string }
+        | null
+      if (!mappingsResponse.ok) {
+        throw new Error(mappingsBody?.error || '無法載入 LINE 提醒配對')
+      }
+      if (!isLatestRequest()) return
+      setReminderMappings(mappingsBody?.mappings ?? [])
+
       const startOfDay = `${selectedDate}T00:00:00`
       const endOfDay = `${selectedDate}T23:59:59`
 
@@ -259,6 +297,8 @@ export function TomorrowReminder() {
         const nextAdditionalReminderNames: string[] = []
         const nextBookingStudentNamesByMemberId: Record<string, string[]> = {}
         const nextBookingStudentNamesByName: Record<string, string[]> = {}
+        const nextBookingIdsByName: Record<string, number[]> = {}
+        const nextBookingPhonesByName: Record<string, string[]> = {}
 
         // ✅ 組合教練、駕駛和會員資料，並更新 contact_name 為最新暱稱
         bookingsData.forEach((booking: any) => {
@@ -269,6 +309,18 @@ export function TomorrowReminder() {
           const members = membersByBooking[booking.id] || []
           const resolved = resolveContactNamesWithMembers(booking.contact_name, members)
           booking.contact_name = resolved.contactName
+          const normalizedPhone = normalizeReminderPhone(booking.contact_phone)
+          booking.contact_name.split(',').map((value: string) => value.trim()).filter(Boolean)
+            .forEach((displayName: string) => {
+              const ids = nextBookingIdsByName[displayName] || []
+              if (!ids.includes(booking.id)) ids.push(booking.id)
+              nextBookingIdsByName[displayName] = ids
+              if (normalizedPhone) {
+                const phones = nextBookingPhonesByName[displayName] || []
+                if (!phones.includes(normalizedPhone)) phones.push(normalizedPhone)
+                nextBookingPhonesByName[displayName] = phones
+              }
+            })
           members.forEach((member: { id: string; name?: string | null; nickname?: string | null }) => {
             const displayName = member.nickname || member.name || ''
             if (!displayName) return
@@ -345,6 +397,8 @@ export function TomorrowReminder() {
         setAdditionalReminderNames(nextAdditionalReminderNames)
         setBookingStudentNamesByMemberId(nextBookingStudentNamesByMemberId)
         setBookingStudentNamesByName(nextBookingStudentNamesByName)
+        setBookingIdsByName(nextBookingIdsByName)
+        setBookingPhonesByName(nextBookingPhonesByName)
       }
 
       if (!isLatestRequest()) return
@@ -405,7 +459,7 @@ export function TomorrowReminder() {
       bookingCountByName[studentName] = uniqueBookingKeys.size
     })
 
-    return buildTomorrowReminderRecipients({
+    const built = buildTomorrowReminderRecipients({
       studentNames,
       memberIdsByName,
       bindings: lineBindings,
@@ -413,23 +467,48 @@ export function TomorrowReminder() {
       bookingIdsByMemberId,
       bookingStudentNamesByMemberId,
       bookingStudentNamesByName,
+      bookingIdsByName,
+      bookingPhonesByName,
+      reminderMappings,
+    })
+    return built.map((recipient) => {
+      const confirmedMappingId = confirmedMappingByRecipient[recipient.key]
+      const candidate = recipient.mappingCandidates?.find(
+        (mapping) => mapping.id === confirmedMappingId,
+      )
+      return candidate
+        ? {
+            ...recipient,
+            status: 'mapped' as const,
+            mappingId: candidate.id,
+            mappingDisplayName: candidate.displayName,
+          }
+        : recipient
     })
   }, [
     bookingIdsByMemberId,
+    bookingIdsByName,
+    bookingPhonesByName,
     bookingStudentNamesByMemberId,
     bookingStudentNamesByName,
     bookings,
+    confirmedMappingByRecipient,
     lineBindings,
     memberIdsByName,
+    reminderMappings,
     studentNames,
   ])
 
   const pushableRecipients = useMemo(
-    () => recipients.filter((recipient) => recipient.status === 'pushable'),
+    () => recipients.filter(
+      (recipient) => recipient.status === 'pushable' || recipient.status === 'mapped',
+    ),
     [recipients],
   )
   const manualRecipients = useMemo(
-    () => recipients.filter((recipient) => recipient.status !== 'pushable'),
+    () => recipients.filter(
+      (recipient) => recipient.status !== 'pushable' && recipient.status !== 'mapped',
+    ),
     [recipients],
   )
 
@@ -437,8 +516,7 @@ export function TomorrowReminder() {
     setSelectedPushMemberIds(
       new Set(
         pushableRecipients
-          .map((recipient) => recipient.memberId)
-          .filter((memberId): memberId is string => !!memberId),
+          .map((recipient) => recipient.key),
       ),
     )
   }, [pushableRecipients])
@@ -448,7 +526,7 @@ export function TomorrowReminder() {
     if (draft !== undefined) return draft
 
     const bookingIds = new Set(recipient.bookingIds)
-    const recipientBookings = recipient.memberId && bookingIds.size > 0
+    const recipientBookings = bookingIds.size > 0
       ? bookings.filter((booking) => bookingIds.has(booking.id))
       : bookings
     const messageStudentName = recipient.bookingStudentNames?.includes('Fish')
@@ -480,12 +558,12 @@ export function TomorrowReminder() {
     setCopiedStudent(null)
   }
 
-  const togglePushRecipient = (memberId: string) => {
-    if (pushStatusByMemberId[memberId]?.status === 'sent') return
+  const togglePushRecipient = (recipientKey: string) => {
+    if (pushStatusByMemberId[recipientKey]?.status === 'sent') return
     setSelectedPushMemberIds((current) => {
       const next = new Set(current)
-      if (next.has(memberId)) next.delete(memberId)
-      else next.add(memberId)
+      if (next.has(recipientKey)) next.delete(recipientKey)
+      else next.add(recipientKey)
       return next
     })
   }
@@ -496,7 +574,7 @@ export function TomorrowReminder() {
     new Set(
       Object.entries(pushStatusByMemberId)
         .filter(([, status]) => status.status === 'sent')
-        .map(([memberId]) => memberId),
+        .map(([recipientKey]) => recipientKey),
     ),
   )
 
@@ -547,15 +625,15 @@ export function TomorrowReminder() {
       const nextStatuses: Record<string, { status: 'sent' | 'error'; error?: string }> = {}
       const successfulIds = new Set<string>()
       results.forEach((result) => {
-        nextStatuses[result.memberId] = result.ok
+        nextStatuses[result.recipientKey] = result.ok
           ? { status: 'sent' }
           : { status: 'error', error: result.error || '傳送失敗' }
-        if (result.ok) successfulIds.add(result.memberId)
+        if (result.ok) successfulIds.add(result.recipientKey)
       })
       setPushStatusByMemberId((current) => ({ ...current, ...nextStatuses }))
       setSelectedPushMemberIds((current) => {
         const next = new Set(current)
-        successfulIds.forEach((memberId) => next.delete(memberId))
+        successfulIds.forEach((recipientKey) => next.delete(recipientKey))
         return next
       })
 
@@ -566,7 +644,7 @@ export function TomorrowReminder() {
       } else if (failedCount > 0) {
         toast.warning(`已傳送 ${successCount} 位，${failedCount} 位失敗，可再次重試`)
       } else {
-        toast.success(`已傳送 ${successCount} 位會員`)
+        toast.success(`已傳送 ${successCount} 位聯絡人`)
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'LINE 傳送失敗'
@@ -579,7 +657,7 @@ export function TomorrowReminder() {
   const handleSendSelected = () =>
     sendRecipients(
       selectedPushRecipients,
-      `確定要傳送 ${selectedDate} 的提醒給 ${selectedPushRecipients.length} 位會員嗎？`,
+      `確定要傳送 ${selectedDate} 的提醒給 ${selectedPushRecipients.length} 位聯絡人嗎？`,
     )
 
   const handleSendRecipient = (recipient: TomorrowReminderRecipient) =>
@@ -645,15 +723,18 @@ export function TomorrowReminder() {
     const isExpanded = selectedStudent === recipient.key
     const isCopied = copiedStudent === recipient.key
     const language = studentLanguages[recipient.key] || 'zh'
-    const memberId = recipient.memberId
-    const pushState = memberId ? pushStatusByMemberId[memberId] : undefined
-    const isPushable = recipient.status === 'pushable' && !!memberId
-    const isSelected = isPushable && selectedPushMemberIds.has(memberId)
+    const pushState = pushStatusByMemberId[recipient.key]
+    const isPushable = recipient.status === 'pushable' || recipient.status === 'mapped'
+    const isSelected = isPushable && selectedPushMemberIds.has(recipient.key)
     const statusLabel =
       pushState?.status === 'sent'
         ? '已傳送'
         : recipient.status === 'pushable'
           ? 'LINE 已綁定'
+          : recipient.status === 'mapped'
+            ? `提醒配對${recipient.mappingDisplayName ? `：${recipient.mappingDisplayName}` : ''}`
+            : recipient.status === 'suggested'
+              ? '找到候選，請確認'
           : recipient.status === 'rebind'
             ? '需重新綁定'
             : recipient.status === 'unbound'
@@ -662,9 +743,9 @@ export function TomorrowReminder() {
     const statusTone: 'success' | 'warning' | 'default' =
       pushState?.status === 'sent'
         ? 'success'
-        : recipient.status === 'pushable'
+        : recipient.status === 'pushable' || recipient.status === 'mapped'
           ? 'success'
-          : recipient.status === 'rebind'
+          : recipient.status === 'rebind' || recipient.status === 'suggested'
             ? 'warning'
             : 'default'
 
@@ -707,7 +788,7 @@ export function TomorrowReminder() {
               checked={isSelected}
               disabled={pushState?.status === 'sent'}
               onClick={(event) => event.stopPropagation()}
-              onChange={() => togglePushRecipient(memberId)}
+              onChange={() => togglePushRecipient(recipient.key)}
               style={{
                 width: 20,
                 height: 20,
@@ -812,6 +893,31 @@ export function TomorrowReminder() {
             padding: isMobile ? '10px 12px 12px' : '12px 14px 14px',
             borderTop: `1px solid ${designSystem.colors.border.light}`,
           }}>
+            {recipient.status === 'suggested' && recipient.mappingCandidates?.length ? (
+              <div style={{ marginBottom: designSystem.spacing.sm }}>
+                <label style={{ ...getLabelStyle(isMobile), display: 'block', marginBottom: 6 }}>
+                  確認這次要傳給哪位 LINE 聯絡人
+                </label>
+                <select
+                  value={confirmedMappingByRecipient[recipient.key] || ''}
+                  onChange={(event) => {
+                    const mappingId = event.target.value
+                    setConfirmedMappingByRecipient((current) => ({
+                      ...current,
+                      [recipient.key]: mappingId,
+                    }))
+                  }}
+                  style={{ ...getInputStyle(isMobile), width: '100%', boxSizing: 'border-box' }}
+                >
+                  <option value="">請選擇，不會自動傳送</option>
+                  {recipient.mappingCandidates.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <textarea
               aria-label={`${recipient.name} 的提醒訊息`}
               value={messageForRecipient(recipient)}
@@ -1177,7 +1283,7 @@ export function TomorrowReminder() {
               fontSize: getFontSize('caption', isMobile),
               lineHeight: 1.4,
             }}>
-              預設全選；點選會員可修改這次傳送的文字
+              預設全選；正式綁定與已確認的提醒配對都可直接傳送
             </div>
             {pushableRecipients.length > 0 ? (
               <div style={memberListStyle}>
@@ -1220,7 +1326,7 @@ export function TomorrowReminder() {
                 fontSize: getFontSize('caption', isMobile),
                 lineHeight: 1.4,
               }}>
-                未完成新 LINE 綁定或非會員，請複製後人工傳送
+                有候選者可展開確認；沒有候選時請先到「聯絡資料 → LINE 提醒配對」
               </div>
               <div style={memberListStyle}>
                 {manualRecipients.map(renderRecipientCard)}
