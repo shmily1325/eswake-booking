@@ -104,7 +104,7 @@ function ChipRow({
     <div className="max-w-7xl mx-auto flex items-center px-4 sm:px-6 py-1.5 sm:py-2">
       <span
         aria-hidden="true"
-        className="shrink-0 w-16 pr-2 text-[11px] font-semibold tracking-wider text-white/50 uppercase"
+        className="hidden lg:block shrink-0 w-16 pr-2 text-[11px] font-semibold tracking-wider text-white/50 uppercase"
       >
         {label}
       </span>

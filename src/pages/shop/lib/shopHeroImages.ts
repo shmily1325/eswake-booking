@@ -1,4 +1,4 @@
-import type { ShopGroup } from '../../admin/products/schema'
+import { getCategory, type ShopGroup } from '../../admin/products/schema'
 import { ALL_GROUPS, ALL_SUBCATS, type ShopFilterState, type TopLevel } from './shopFilters'
 
 export type ShopHeroKey = 'catalog' | ShopGroup
@@ -221,6 +221,9 @@ export function getShopHeroConfigForCategory(
   if (subCat !== ALL_SUBCATS) {
     const sub = SHOP_SUBCATEGORY_HERO_IMAGES[subCat]
     if (sub) return sub
+
+    const group = getCategory(subCat)?.shopGroup
+    if (group) return SHOP_HERO_IMAGES[group]
   }
 
   if (topLevel !== ALL_GROUPS) {
