@@ -25,6 +25,7 @@ import {
 } from '../../styles/designSystem'
 import { BookingDateNav } from '../../components/BookingDateNav'
 import { getDisplayContactName } from '../../utils/bookingFormat'
+import { formatActualRider } from '../../utils/riderDisplay'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import {
   mapBoatUnavailableRowsToBlocks,
@@ -63,6 +64,7 @@ interface Booking {
   id: number
   boat_id: number
   contact_name: string
+  actual_rider?: string | null
   start_at: string
   duration_min: number
   status: string
@@ -271,6 +273,7 @@ export function CoachDailyView() {
           id,
           boat_id,
           contact_name,
+          actual_rider,
           start_at,
           duration_min,
           status,
@@ -859,9 +862,27 @@ export function CoachDailyView() {
           gap: '6px'
         }}>
           {isConflict && <span aria-hidden="true" style={{ lineHeight: 1 }}>💣</span>}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
             {getDisplayContactName(booking)}
           </span>
+          {formatActualRider(booking.actual_rider) && (
+            <span style={{
+              flex: '0 1 auto',
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              padding: '2px 7px',
+              borderRadius: designSystem.borderRadius.full,
+              border: `1px solid ${designSystem.colors.secondary[100]}`,
+              background: designSystem.colors.secondary[50],
+              color: designSystem.colors.secondary[500],
+              fontSize: '0.82em',
+              fontWeight: '500',
+            }}>
+              {formatActualRider(booking.actual_rider)}
+            </span>
+          )}
         </div>
 
         {/* 註解 */}

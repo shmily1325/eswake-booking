@@ -17,7 +17,6 @@ import {
 } from '../styles/designSystem'
 import {
   formatBookingsForLine,
-  getDisplayBookingName,
   getDisplayContactName,
 } from '../utils/bookingFormat'
 import { formatActualRider } from '../utils/riderDisplay'
@@ -115,19 +114,21 @@ function drawFittedCanvasText(
   maxWidth: number,
   initialFontSize: number,
   minimumFontSize: number,
-) {
+): number {
   let fontSize = initialFontSize
   do {
     context.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif`
     if (context.measureText(text).width <= maxWidth) {
       context.fillText(text, x, y)
-      return
+      return context.measureText(text).width
     }
     fontSize -= 2
   } while (fontSize >= minimumFontSize)
 
   context.font = `500 ${minimumFontSize}px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif`
-  context.fillText(truncateCanvasText(context, text, maxWidth), x, y)
+  const fittedText = truncateCanvasText(context, text, maxWidth)
+  context.fillText(fittedText, x, y)
+  return context.measureText(fittedText).width
 }
 
 function drawRoundedRect(
@@ -149,6 +150,59 @@ function drawRoundedRect(
   context.lineTo(x, y + radius)
   context.quadraticCurveTo(x, y, x + radius, y)
   context.closePath()
+}
+
+function drawCanvasBookingName(
+  context: CanvasRenderingContext2D,
+  booking: Booking,
+  x: number,
+  y: number,
+  maxWidth: number,
+) {
+  const contactName = getDisplayContactName(booking)
+  const rider = formatActualRider(booking.actual_rider)
+
+  context.fillStyle = '#172033'
+  if (!rider) {
+    drawFittedCanvasText(context, contactName, x, y, maxWidth, 54, 38)
+    return
+  }
+
+  const gap = 18
+  const badgeHeight = 52
+  const badgePaddingX = 18
+  const badgeFontSize = 34
+  context.font = `500 ${badgeFontSize}px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif`
+  const badgeWidth = Math.min(
+    context.measureText(rider).width + badgePaddingX * 2,
+    maxWidth * 0.45,
+  )
+  const contactWidth = drawFittedCanvasText(
+    context,
+    contactName,
+    x,
+    y,
+    maxWidth - badgeWidth - gap,
+    54,
+    38,
+  )
+  const badgeX = x + contactWidth + gap
+  const badgeY = y - 43
+
+  drawRoundedRect(context, badgeX, badgeY, badgeWidth, badgeHeight, badgeHeight / 2)
+  context.fillStyle = '#f7f8fa'
+  context.fill()
+  context.strokeStyle = '#eef0f3'
+  context.lineWidth = 2
+  context.stroke()
+
+  context.fillStyle = '#6b6f7a'
+  context.font = `500 ${badgeFontSize}px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif`
+  context.fillText(
+    truncateCanvasText(context, rider, badgeWidth - badgePaddingX * 2),
+    badgeX + badgePaddingX,
+    badgeY + 38,
+  )
 }
 
 function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -243,15 +297,12 @@ async function createBookingShareImages(bookings: Booking[], title: string): Pro
       const weekdays = ['日', '一', '二', '三', '四', '五', '六']
       const dateText = `${year}/${month}/${day}（${weekdays[dateValue.getDay()]}） ${time}`
 
-      context.fillStyle = '#172033'
-      drawFittedCanvasText(
+      drawCanvasBookingName(
         context,
-        getDisplayBookingName(booking),
+        booking,
         cardX + 60,
         cardY + 76,
         cardWidth - 132,
-        54,
-        38,
       )
 
       context.fillStyle = '#52606d'
