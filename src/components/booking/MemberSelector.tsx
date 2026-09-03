@@ -145,7 +145,7 @@ export function MemberSelector({
                     })}
 
                     {selectedSavedGuests.map((guest) => (
-                        <span key={guest.id} style={{
+                        <span key={`${guest.id}:${guest.booking_name || guest.name}`} style={{
                             padding: '6px 12px',
                             background: designSystem.colors.success[50],
                             color: designSystem.colors.success[700],
@@ -157,14 +157,18 @@ export function MemberSelector({
                             gap: '6px',
                             fontWeight: '600',
                         }}>
-                            {guest.name}
+                            {guest.booking_name || guest.name}
                             <small>LINE</small>
                             <button
                                 type="button"
                                 onClick={() => setSelectedSavedGuests?.((current) =>
-                                    current.filter((item) => item.id !== guest.id)
+                                    current.filter((item) =>
+                                        item.id !== guest.id ||
+                                        (item.booking_name || item.name) !==
+                                            (guest.booking_name || guest.name)
+                                    )
                                 )}
-                                aria-label={`移除已建檔非會員 ${guest.name}`}
+                                aria-label={`移除已建檔非會員 ${guest.booking_name || guest.name}`}
                                 style={{
                                     background: 'transparent',
                                     border: 'none',

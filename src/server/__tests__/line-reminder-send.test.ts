@@ -436,6 +436,115 @@ describe('manual LINE reminder send API', () => {
     expect(response.status).toHaveBeenCalledWith(200)
   })
 
+  it('atomically pairs one LINE account to multiple booking names', async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        requiresConfirmation: false,
+        mappingCount: 3,
+        guest: null,
+      },
+      error: null,
+    })
+    const targets = [
+      { bookingId: 101, contactName: '吳穎' },
+      { bookingId: 101, contactName: '小安' },
+      { bookingId: 202, contactName: '吳穎' },
+    ]
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'batch_upsert_guest_mappings',
+        lineUserId: 'U1',
+        targets,
+        saveGuestName: null,
+        overwrite: false,
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'batch_upsert_line_reminder_guest_mappings',
+      {
+        p_line_user_id: 'U1',
+        p_guest_name: null,
+        p_targets: targets,
+        p_overwrite: false,
+        p_operator_email: 'callumbao1122@gmail.com',
+      },
+    )
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      ok: true,
+      mappingCount: 3,
+    }))
+  })
+
+  it('supports saving a reusable non-member without a booking', async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        requiresConfirmation: false,
+        mappingCount: 0,
+        guest: { id: 'guest-1', name: '吳穎' },
+      },
+      error: null,
+    })
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'batch_upsert_guest_mappings',
+        lineUserId: 'U1',
+        targets: [],
+        saveGuestName: '吳穎',
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'batch_upsert_line_reminder_guest_mappings',
+      expect.objectContaining({
+        p_line_user_id: 'U1',
+        p_guest_name: '吳穎',
+        p_targets: [],
+      }),
+    )
+    expect(response.status).toHaveBeenCalledWith(200)
+  })
+
+  it('returns booking-name conflicts for an explicit overwrite confirmation', async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        requiresConfirmation: true,
+        conflicts: [{
+          bookingId: 101,
+          contactName: '吳穎',
+          existingDisplayName: '另一個 LINE',
+        }],
+      },
+      error: null,
+    })
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'batch_upsert_guest_mappings',
+        lineUserId: 'U1',
+        targets: [{ bookingId: 101, contactName: '吳穎' }],
+        overwrite: false,
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      requiresConfirmation: true,
+      conflicts: [expect.objectContaining({ contactName: '吳穎' })],
+    }))
+    expect(queryBuilders.line_reminder_mappings?.update).toBeUndefined()
+  })
+
   it('permanently deletes a saved guest through the atomic database function', async () => {
     const guestId = '00000000-0000-4000-8000-000000000001'
     rpcMock.mockResolvedValueOnce({ data: true, error: null })
@@ -572,6 +681,31 @@ describe('manual LINE reminder send API', () => {
       ],
       p_operator_email: 'callumbao1122@gmail.com',
     })
+  })
+
+  it('allows one saved LINE guest to represent multiple booking names', async () => {
+    const guestId = '00000000-0000-4000-8000-000000000001'
+    const guests = [
+      { guestId, contactName: '哥哥' },
+      { guestId, contactName: '弟弟' },
+    ]
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'sync_booking_guests',
+        bookingId: 101,
+        guests,
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(rpcMock).toHaveBeenCalledWith('sync_line_reminder_booking_guests', {
+      p_booking_id: 101,
+      p_guests: guests,
+      p_operator_email: 'callumbao1122@gmail.com',
+    })
+    expect(response.status).toHaveBeenCalledWith(200)
   })
 
   it('updates one named person without replacing another mapping on the booking', async () => {

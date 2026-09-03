@@ -247,6 +247,54 @@ export async function handleLineReminderMappingAction(
       })
     }
 
+    if (action === 'batch_upsert_guest_mappings') {
+      const lineUserId = text(body.lineUserId)
+      const saveGuestName = text(body.saveGuestName) || null
+      if (!lineUserId || !Array.isArray(body.targets)) {
+        return res.status(400).json({ error: 'LINE contact and targets are required' })
+      }
+      const targets = body.targets.flatMap((value) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return []
+        const row = value as Record<string, unknown>
+        const bookingId = Number(row.bookingId)
+        const contactName = text(row.contactName)
+        return Number.isInteger(bookingId) && bookingId > 0 && contactName
+          ? [{ bookingId, contactName }]
+          : []
+      })
+      const uniqueTargets = new Set(
+        targets.map((target) => `${target.bookingId}:${normalizeName(target.contactName)}`),
+      )
+      if (
+        targets.length !== body.targets.length ||
+        targets.length > 50 ||
+        uniqueTargets.size !== targets.length ||
+        (targets.length === 0 && !saveGuestName)
+      ) {
+        return res.status(400).json({
+          error: 'Choose unique booking names or save this guest',
+        })
+      }
+
+      const { data, error } = await supabase.rpc(
+        'batch_upsert_line_reminder_guest_mappings',
+        {
+          p_line_user_id: lineUserId,
+          p_guest_name: saveGuestName,
+          p_targets: targets,
+          p_overwrite: body.overwrite === true,
+          p_operator_email: operatorEmail.toLowerCase(),
+        },
+      )
+      if (error) {
+        if (/booking|guest|LINE|name|target/i.test(error.message)) {
+          return res.status(409).json({ error: error.message })
+        }
+        throw error
+      }
+      return res.status(200).json(data ?? { ok: true })
+    }
+
     if (action === 'save_guest') {
       const guestId = text(body.guestId)
       const lineUserId = text(body.lineUserId)
@@ -362,7 +410,6 @@ export async function handleLineReminderMappingAction(
         const contactName = text(row.contactName)
         return guestId && contactName ? [{ guestId, contactName }] : []
       })
-      const guestIds = new Set(guests.map((guest) => guest.guestId))
       const guestNames = new Set(guests.map((guest) => normalizeName(guest.contactName)))
       if (
         guests.length !== body.guests.length ||
@@ -371,10 +418,9 @@ export async function handleLineReminderMappingAction(
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
             .test(guest.guestId)
         ) ||
-        guestIds.size !== guests.length ||
         guestNames.size !== guests.length
       ) {
-        return res.status(400).json({ error: 'guests must contain unique IDs and names' })
+        return res.status(400).json({ error: 'guests must contain unique names' })
       }
       const { error } = await supabase.rpc('sync_line_reminder_booking_guests', {
         p_booking_id: bookingId,

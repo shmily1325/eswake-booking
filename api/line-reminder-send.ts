@@ -175,6 +175,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (typeof requestBody?.action === 'string') {
       const managerOnlyActions = new Set([
         'list',
+        'batch_upsert_guest_mappings',
         'save_guest',
         'set_guest_active',
         'delete_guest',

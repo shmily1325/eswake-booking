@@ -58,6 +58,10 @@ type BookingSearchResult = {
   start_at: string
 }
 
+type SelectedBooking = BookingSearchResult & {
+  selectedNames: string[]
+}
+
 type Props = {
   members: MemberOption[]
 }
@@ -103,8 +107,7 @@ export function LineReminderMappingPanel({ members }: Props) {
   const [bookingSearch, setBookingSearch] = useState('')
   const [bookingResults, setBookingResults] = useState<BookingSearchResult[]>([])
   const [bookingSearchLoading, setBookingSearchLoading] = useState(false)
-  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
-  const [selectedBookingName, setSelectedBookingName] = useState('')
+  const [selectedBookings, setSelectedBookings] = useState<SelectedBooking[]>([])
   const [saveAsGuest, setSaveAsGuest] = useState(false)
   const [savedGuestName, setSavedGuestName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -247,8 +250,7 @@ export function LineReminderMappingPanel({ members }: Props) {
     )
     setBookingSearch('')
     setBookingResults([])
-    setSelectedBookingId(null)
-    setSelectedBookingName('')
+    setSelectedBookings([])
     setSaveAsGuest(Boolean(savedGuest))
     setSavedGuestName(savedGuest?.name ?? '')
   }
@@ -259,26 +261,70 @@ export function LineReminderMappingPanel({ members }: Props) {
       toast.warning('請選擇會員')
       return
     }
-    if (targetType === 'guest' && !selectedBookingId) {
-      toast.warning('請選擇預約')
+    const targets = selectedBookings.flatMap((booking) =>
+      booking.selectedNames.map((contactName) => ({
+        bookingId: booking.id,
+        contactName,
+      })),
+    )
+    if (
+      targetType === 'guest' &&
+      selectedBookings.some((booking) => booking.selectedNames.length === 0)
+    ) {
+      toast.warning('每筆預約至少選擇一位預約人')
       return
     }
-    if (targetType === 'guest' && !selectedBookingName) {
-      toast.warning('請選擇這個 LINE 對應的預約人')
+    if (targetType === 'guest' && targets.length === 0 && !saveAsGuest) {
+      toast.warning('請選擇預約或勾選同時建檔')
+      return
+    }
+    if (targetType === 'guest' && saveAsGuest && !savedGuestName.trim()) {
+      toast.warning('請輸入建檔姓名')
       return
     }
     setSaving(true)
     try {
-      await callMappingApi({
-        action: 'upsert_mapping',
-        mappingId: editingMappingId || null,
-        lineUserId: selectedContact.line_user_id,
-        memberId: targetType === 'member' ? memberId : null,
-        bookingId: targetType === 'guest' ? selectedBookingId : null,
-        contactName: targetType === 'guest' ? selectedBookingName : null,
-        saveGuestName: targetType === 'guest' && saveAsGuest ? savedGuestName : null,
-      })
-      toast.success('LINE 提醒配對已儲存')
+      if (targetType === 'member') {
+        await callMappingApi({
+          action: 'upsert_mapping',
+          mappingId: editingMappingId || null,
+          lineUserId: selectedContact.line_user_id,
+          memberId,
+        })
+        toast.success('LINE 提醒配對已儲存')
+      } else {
+        const saveBatch = (overwrite: boolean) => callMappingApi({
+          action: 'batch_upsert_guest_mappings',
+          lineUserId: selectedContact.line_user_id,
+          targets,
+          saveGuestName: saveAsGuest ? savedGuestName.trim() : null,
+          overwrite,
+        })
+        let result = await saveBatch(false)
+        if (result?.requiresConfirmation === true) {
+          const conflicts = Array.isArray(result.conflicts)
+            ? result.conflicts as Array<Record<string, unknown>>
+            : []
+          const details = conflicts.map((conflict) =>
+            `${String(conflict.contactName || '預約人')}（目前：${
+              String(conflict.existingDisplayName || '其他 LINE')
+            }）`
+          ).join('\n')
+          if (!window.confirm(
+            `以下預約人已有其他 LINE 配對：\n${details}\n\n確定改成 ${selectedContact.display_name}？`,
+          )) {
+            setSaving(false)
+            return
+          }
+          result = await saveBatch(true)
+        }
+        const mappingCount = Number(result?.mappingCount ?? targets.length)
+        toast.success(mappingCount > 0
+          ? saveAsGuest
+            ? `已儲存 ${mappingCount} 筆配對並建檔`
+            : `已儲存 ${mappingCount} 筆配對`
+          : '已建檔')
+      }
       setSelectedContact(null)
       await load()
     } catch (error) {
@@ -335,6 +381,10 @@ export function LineReminderMappingPanel({ members }: Props) {
       toast.error(error instanceof Error ? error.message : '建檔失敗')
     }
   }
+
+  const selectedContactSavedGuest = selectedContact
+    ? guestByLineUser.get(selectedContact.line_user_id)
+    : undefined
 
   return (
     <div>
@@ -547,6 +597,9 @@ export function LineReminderMappingPanel({ members }: Props) {
             style={{
               width: 'min(520px, 100%)',
               padding: 20,
+              maxHeight: isMobile ? '88dvh' : '90vh',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
               borderRadius: designSystem.borderRadius.lg,
               background: designSystem.colors.background.card,
               boxShadow: designSystem.shadows.elevation[3],
@@ -563,7 +616,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                   onClick={() => setTargetType(type)}
                   style={getButtonStyle(targetType === type ? 'primary' : 'outline', 'small', isMobile)}
                 >
-                  {type === 'member' ? '已建檔' : '新客'}
+                  {type === 'member' ? '會員' : '非會員'}
                 </button>
               ))}
             </div>
@@ -635,13 +688,9 @@ export function LineReminderMappingPanel({ members }: Props) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input
                   value={bookingSearch}
-                  onChange={(event) => {
-                    setBookingSearch(event.target.value)
-                    setSelectedBookingId(null)
-                    setSelectedBookingName('')
-                  }}
+                  onChange={(event) => setBookingSearch(event.target.value)}
                   autoFocus
-                  placeholder="搜尋預約人"
+                  placeholder="選擇預約（選填，可多選）"
                   style={{
                     ...getInputStyle(isMobile),
                     width: '100%',
@@ -663,22 +712,30 @@ export function LineReminderMappingPanel({ members }: Props) {
                         搜尋中…
                       </div>
                     ) : bookingResults.map((booking) => {
-                      const selected = booking.id === selectedBookingId
+                      const selected = selectedBookings.some((item) => item.id === booking.id)
                       return (
                         <button
                           key={booking.id}
                           type="button"
                           onClick={() => {
-                            setSelectedBookingId(booking.id)
+                            if (selected) return
                             const names = splitBookingNames(booking.contact_name)
-                            const onlyName = names.length === 1 ? names[0] : ''
-                            setSelectedBookingName(onlyName)
+                            setSelectedBookings((current) => [
+                              ...current,
+                              {
+                                ...booking,
+                                selectedNames: names.length === 1 ? [names[0]] : [],
+                              },
+                            ])
                             if (
-                              onlyName &&
-                              !guestByLineUser.has(selectedContact.line_user_id)
+                              names.length === 1 &&
+                              !selectedContactSavedGuest &&
+                              !savedGuestName.trim()
                             ) {
-                              setSavedGuestName(onlyName)
+                              setSavedGuestName(names[0])
                             }
+                            setBookingSearch('')
+                            setBookingResults([])
                           }}
                           style={{
                             width: '100%',
@@ -691,10 +748,12 @@ export function LineReminderMappingPanel({ members }: Props) {
                               : designSystem.colors.background.card,
                             color: designSystem.colors.text.primary,
                             textAlign: 'left',
-                            cursor: 'pointer',
+                            cursor: selected ? 'default' : 'pointer',
                           }}
                         >
-                          <div style={{ fontWeight: 650 }}>{booking.contact_name}</div>
+                          <div style={{ fontWeight: 650 }}>
+                            {selected ? '✓ ' : ''}{booking.contact_name}
+                          </div>
                           <div style={{
                             marginTop: 3,
                             color: designSystem.colors.text.secondary,
@@ -712,48 +771,101 @@ export function LineReminderMappingPanel({ members }: Props) {
                     })}
                   </div>
                 )}
-                {selectedBookingId && (() => {
-                  const selectedBooking = bookingResults.find(
-                    (booking) => booking.id === selectedBookingId,
-                  )
-                  const names = splitBookingNames(selectedBooking?.contact_name ?? '')
-                  return names.length > 0 ? (
-                    <div>
-                      <div style={{
-                        marginBottom: 6,
-                        color: designSystem.colors.text.secondary,
-                        fontSize: 13,
-                      }}>
-                        選擇這個 LINE 對應的人
-                      </div>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-                        gap: 8,
-                      }}>
-                        {names.map((name) => (
-                          <button
-                            key={name}
-                            type="button"
-                            onClick={() => {
-                              setSelectedBookingName(name)
-                              if (!guestByLineUser.has(selectedContact.line_user_id)) {
-                                setSavedGuestName(name)
-                              }
-                            }}
-                            style={getButtonStyle(
-                              selectedBookingName === name ? 'primary' : 'outline',
-                              'medium',
-                              isMobile,
-                            )}
-                          >
-                            {name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null
-                })()}
+                {selectedBookings.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {selectedBookings.map((booking) => {
+                      const names = splitBookingNames(booking.contact_name)
+                      return (
+                        <div
+                          key={booking.id}
+                          style={{
+                            padding: 12,
+                            border: `1px solid ${designSystem.colors.border.light}`,
+                            borderRadius: designSystem.borderRadius.md,
+                            background: designSystem.colors.background.card,
+                          }}
+                        >
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 8,
+                            marginBottom: 9,
+                          }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 650 }}>{booking.contact_name}</div>
+                              <div style={{
+                                marginTop: 2,
+                                color: designSystem.colors.text.secondary,
+                                fontSize: 12,
+                              }}>
+                                {new Date(booking.start_at).toLocaleDateString('zh-TW')}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              aria-label={`移除預約 ${booking.contact_name}`}
+                              onClick={() => setSelectedBookings((current) =>
+                                current.filter((item) => item.id !== booking.id)
+                              )}
+                              style={getButtonStyle('ghost', 'small', isMobile)}
+                            >
+                              移除
+                            </button>
+                          </div>
+                          <div style={{
+                            marginBottom: 6,
+                            color: designSystem.colors.text.secondary,
+                            fontSize: 13,
+                          }}>
+                            選擇這個 LINE 對應的人（可多選）
+                          </div>
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: isMobile
+                              ? '1fr'
+                              : 'repeat(2, minmax(0, 1fr))',
+                            gap: 8,
+                          }}>
+                            {names.map((name) => {
+                              const selected = booking.selectedNames.includes(name)
+                              return (
+                                <button
+                                  key={name}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedBookings((current) => current.map((item) => {
+                                      if (item.id !== booking.id) return item
+                                      return {
+                                        ...item,
+                                        selectedNames: selected
+                                          ? item.selectedNames.filter((value) => value !== name)
+                                          : [...item.selectedNames, name],
+                                      }
+                                    }))
+                                    if (
+                                      !selected &&
+                                      !selectedContactSavedGuest &&
+                                      !savedGuestName.trim()
+                                    ) {
+                                      setSavedGuestName(name)
+                                    }
+                                  }}
+                                  style={getButtonStyle(
+                                    selected ? 'primary' : 'outline',
+                                    'medium',
+                                    isMobile,
+                                  )}
+                                >
+                                  {selected ? '✓ ' : ''}{name}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
                 <label style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -764,13 +876,15 @@ export function LineReminderMappingPanel({ members }: Props) {
                   <input
                     type="checkbox"
                     checked={saveAsGuest}
+                    disabled={Boolean(selectedContactSavedGuest)}
                     onChange={(event) => setSaveAsGuest(event.target.checked)}
                   />
-                  建檔
+                  {selectedContactSavedGuest ? '已建檔' : '同時建檔'}
                 </label>
                 {saveAsGuest && (
                   <input
                     value={savedGuestName}
+                    disabled={Boolean(selectedContactSavedGuest)}
                     onChange={(event) => setSavedGuestName(event.target.value)}
                     placeholder="建檔姓名"
                     style={{
@@ -778,6 +892,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                       width: '100%',
                       minHeight: isMobile ? 50 : 44,
                       boxSizing: 'border-box',
+                      opacity: selectedContactSavedGuest ? 0.7 : 1,
                     }}
                   />
                 )}
@@ -798,14 +913,22 @@ export function LineReminderMappingPanel({ members }: Props) {
                   saving ||
                   (targetType === 'member'
                     ? !memberId
-                    : !selectedBookingId ||
-                      !selectedBookingName ||
+                    : selectedBookings.some((booking) => booking.selectedNames.length === 0) ||
+                      (selectedBookings.length === 0 && !saveAsGuest) ||
                       (saveAsGuest && !savedGuestName.trim()))
                 }
                 onClick={() => void saveMapping()}
                 style={getButtonStyle('primary', 'medium', isMobile)}
               >
-                {saving ? '儲存中…' : editingMappingId ? '儲存修改' : '儲存配對'}
+                {saving
+                  ? '儲存中…'
+                  : targetType === 'member' && editingMappingId
+                    ? '儲存修改'
+                    : targetType === 'guest' && selectedBookings.length === 0
+                      ? '儲存建檔'
+                      : targetType === 'guest' && saveAsGuest
+                        ? '儲存配對並建檔'
+                        : '儲存配對'}
               </button>
             </div>
           </div>
