@@ -101,19 +101,21 @@ function ChipRow({
   children: ReactNode
 }) {
   return (
-    <div className="relative max-lg:before:pointer-events-none max-lg:before:absolute max-lg:before:right-0 max-lg:before:top-0 max-lg:before:z-10 max-lg:before:h-full max-lg:before:w-10 max-lg:before:bg-linear-to-l max-lg:before:from-black max-lg:before:to-transparent">
-      <div
-        className="relative z-21 max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 py-1.5 sm:py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="tablist"
-        aria-label={label}
+    <div className="max-w-7xl mx-auto flex items-center px-4 sm:px-6 py-1.5 sm:py-2">
+      <span
+        aria-hidden="true"
+        className="shrink-0 w-16 pr-2 text-[11px] font-semibold tracking-wider text-white/50 uppercase"
       >
-        <span
-          aria-hidden="true"
-          className="shrink-0 w-16 text-[11px] font-semibold tracking-wider text-white/50 uppercase"
+        {label}
+      </span>
+      <div className="relative min-w-0 flex-1 max-lg:after:pointer-events-none max-lg:after:absolute max-lg:after:right-0 max-lg:after:top-0 max-lg:after:z-10 max-lg:after:h-full max-lg:after:w-8 max-lg:after:bg-linear-to-l max-lg:after:from-black max-lg:after:to-transparent">
+        <div
+          className="flex items-center gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+          aria-label={label}
         >
-          {label}
-        </span>
-        {children}
+          {children}
+        </div>
       </div>
     </div>
   )
@@ -133,7 +135,7 @@ function RefineChip({
   children: ReactNode
 }) {
   let className =
-    'snap-start shrink-0 max-lg:h-10 max-lg:px-4 max-lg:text-[15px] h-9 px-3.5 rounded-full text-sm font-medium leading-none whitespace-nowrap transition-colors '
+    'snap-start shrink-0 h-9 px-3 sm:px-3.5 rounded-full text-sm font-medium leading-none whitespace-nowrap transition-colors '
 
   if (active) {
     className += 'bg-white text-zinc-900 shadow-sm max-lg:font-semibold'
