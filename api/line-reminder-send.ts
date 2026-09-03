@@ -199,7 +199,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       mappingIds.length > 0
         ? supabase
             .from('line_reminder_mappings')
-            .select('id, line_user_id, member_id, normalized_name, contact_phone, line_contact:line_user_id(friend_status)')
+            .select('id, line_user_id, member_id, booking_id, normalized_name, contact_phone, line_contact:line_user_id(friend_status)')
             .in('id', mappingIds)
         : Promise.resolve({ data: [], error: null }),
     ])
@@ -227,6 +227,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       id: string
       line_user_id: string
       member_id: string | null
+      booking_id: number | null
       normalized_name: string | null
       contact_phone: string | null
       line_contact?: { friend_status?: string } | Array<{ friend_status?: string }> | null
@@ -236,6 +237,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         id: string
         line_user_id: string
         member_id: string | null
+        booking_id: number | null
         normalized_name: string | null
         contact_phone: string | null
         line_contact?: { friend_status?: string } | Array<{ friend_status?: string }> | null
@@ -259,14 +261,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : mapping?.line_contact
         const identityMatches = recipient.memberId
           ? mapping?.member_id === recipient.memberId
-          : mapping?.member_id === null && (
-              (!!recipient.contactPhone && mapping.contact_phone === recipient.contactPhone) ||
-              (!recipient.contactPhone &&
-                mapping.normalized_name === recipient.contactName
-                  .trim()
-                  .replace(/\s+/g, ' ')
-                  .toLocaleLowerCase('zh-TW'))
-            )
+          : mapping?.member_id === null &&
+            typeof mapping.booking_id === 'number' &&
+            recipient.bookingIds.includes(mapping.booking_id)
         if (mapping && contact?.friend_status === 'friend' && identityMatches) {
           lineUserId = mapping.line_user_id
         }

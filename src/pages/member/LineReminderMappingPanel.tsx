@@ -35,16 +35,25 @@ type ReminderMapping = {
   id: string
   line_user_id: string
   member_id: string | null
+  booking_id: number | null
   contact_name: string | null
   contact_phone: string | null
   members?: MemberOption | null
+  booking?: BookingSearchResult | null
+}
+
+type BookingSearchResult = {
+  id: number
+  contact_name: string
+  contact_phone: string | null
+  start_at: string
 }
 
 type Props = {
   members: MemberOption[]
 }
 
-async function callMappingApi(body: Record<string, unknown>) {
+async function callMappingApi(body: Record<string, unknown>, signal?: AbortSignal) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) throw new Error('登入已失效，請重新登入')
@@ -55,6 +64,7 @@ async function callMappingApi(body: Record<string, unknown>) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
+    signal,
   })
   const result = await response.json().catch(() => null) as Record<string, unknown> | null
   if (!response.ok) throw new Error(typeof result?.error === 'string' ? result.error : '操作失敗')
@@ -72,8 +82,11 @@ export function LineReminderMappingPanel({ members }: Props) {
   const [selectedContact, setSelectedContact] = useState<LineContact | null>(null)
   const [targetType, setTargetType] = useState<'member' | 'guest'>('member')
   const [memberId, setMemberId] = useState('')
-  const [contactName, setContactName] = useState('')
-  const [contactPhone, setContactPhone] = useState('')
+  const [memberSearch, setMemberSearch] = useState('')
+  const [bookingSearch, setBookingSearch] = useState('')
+  const [bookingResults, setBookingResults] = useState<BookingSearchResult[]>([])
+  const [bookingSearchLoading, setBookingSearchLoading] = useState(false)
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
@@ -94,6 +107,41 @@ export function LineReminderMappingPanel({ members }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (targetType !== 'guest' || !selectedContact) {
+      setBookingResults([])
+      setBookingSearchLoading(false)
+      return
+    }
+    const query = bookingSearch.trim()
+    const digits = query.replace(/\D/g, '')
+    if (query.length < 2 && digits.length < 3) {
+      setBookingResults([])
+      setBookingSearchLoading(false)
+      return
+    }
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setBookingSearchLoading(true)
+      try {
+        const result = await callMappingApi(
+          { action: 'search_bookings', query },
+          controller.signal,
+        )
+        setBookingResults((result?.bookings ?? []) as BookingSearchResult[])
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        toast.error(error instanceof Error ? error.message : '搜尋預約失敗')
+      } finally {
+        if (!controller.signal.aborted) setBookingSearchLoading(false)
+      }
+    }, 300)
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [bookingSearch, selectedContact, targetType, toast])
+
   const mappingsByLineUser = useMemo(() => {
     const map = new Map<string, ReminderMapping[]>()
     mappings.forEach((mapping) => {
@@ -109,7 +157,8 @@ export function LineReminderMappingPanel({ members }: Props) {
     return contacts.filter((contact) => {
       const hasReminderMapping = (mappingsByLineUser.get(contact.line_user_id) ?? []).length > 0
       const isMatched = hasReminderMapping || contact.formal_binding?.can_push === true
-      if (filter === 'unmatched' && isMatched) return false
+      const isEligible = contact.friend_status === 'friend'
+      if (filter === 'unmatched' && (isMatched || !isEligible)) return false
       if (filter === 'matched' && !isMatched) return false
       if (!term) return true
       const mappingText = (mappingsByLineUser.get(contact.line_user_id) ?? [])
@@ -131,14 +180,37 @@ export function LineReminderMappingPanel({ members }: Props) {
     ).length,
     [contacts, mappingsByLineUser],
   )
-  const unmatchedCount = contacts.length - matchedCount
+  const unmatchedCount = useMemo(
+    () => contacts.filter((contact) =>
+      contact.friend_status === 'friend' &&
+      (mappingsByLineUser.get(contact.line_user_id) ?? []).length === 0 &&
+      contact.formal_binding?.can_push !== true,
+    ).length,
+    [contacts, mappingsByLineUser],
+  )
+  const memberCandidates = useMemo(() => {
+    const term = memberSearch.trim().toLocaleLowerCase('zh-TW')
+    const digits = memberSearch.replace(/\D/g, '')
+    return members
+      .filter((member) => !member.line_binding_can_push)
+      .filter((member) => {
+        if (!term) return true
+        const searchable = `${member.name} ${member.nickname || ''} ${member.phone || ''}`
+          .toLocaleLowerCase('zh-TW')
+        return searchable.includes(term) ||
+          (digits.length >= 3 && (member.phone || '').replace(/\D/g, '').includes(digits))
+      })
+      .slice(0, 30)
+  }, [memberSearch, members])
 
   const beginPairing = (contact: LineContact) => {
     setSelectedContact(contact)
     setTargetType('member')
     setMemberId('')
-    setContactName('')
-    setContactPhone('')
+    setMemberSearch('')
+    setBookingSearch('')
+    setBookingResults([])
+    setSelectedBookingId(null)
   }
 
   const saveMapping = async () => {
@@ -147,8 +219,8 @@ export function LineReminderMappingPanel({ members }: Props) {
       toast.warning('請選擇會員')
       return
     }
-    if (targetType === 'guest' && !contactName.trim() && !contactPhone.trim()) {
-      toast.warning('非會員至少需要預約名稱或電話')
+    if (targetType === 'guest' && !selectedBookingId) {
+      toast.warning('請選擇預約')
       return
     }
     setSaving(true)
@@ -157,8 +229,7 @@ export function LineReminderMappingPanel({ members }: Props) {
         action: 'upsert_mapping',
         lineUserId: selectedContact.line_user_id,
         memberId: targetType === 'member' ? memberId : null,
-        contactName: targetType === 'guest' ? contactName : null,
-        contactPhone: targetType === 'guest' ? contactPhone : null,
+        bookingId: targetType === 'guest' ? selectedBookingId : null,
       })
       toast.success('LINE 提醒配對已儲存')
       setSelectedContact(null)
@@ -194,12 +265,12 @@ export function LineReminderMappingPanel({ members }: Props) {
           lineHeight: 1.55,
         }}
       >
-        客人加好友、傳訊息或按 Rich Menu 後會出現在這裡。此配對只用於預約提醒，不會開通會員專區。
+        配對後可傳送預約提醒，不影響會員專區。
       </div>
       <input
         value={search}
         onChange={(event) => setSearch(event.target.value)}
-        placeholder="搜尋 LINE 名稱、會員、預約名稱或電話"
+        placeholder="搜尋 LINE、會員、姓名或電話"
         style={{ ...getInputStyle(isMobile), width: '100%', boxSizing: 'border-box', marginBottom: 12 }}
       />
       <div
@@ -272,53 +343,44 @@ export function LineReminderMappingPanel({ members }: Props) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       <strong>{contact.display_name}</strong>
-                      <span style={getBadgeStyle(
-                        contact.friend_status === 'friend'
-                          ? 'success'
-                          : contact.friend_status === 'blocked'
-                            ? 'warning'
-                            : 'default',
-                        'small',
-                      )}>
-                        {contact.friend_status === 'friend'
-                          ? '可推播'
-                          : contact.friend_status === 'blocked'
-                            ? '已封鎖'
-                            : '資格待確認'}
-                      </span>
+                      {contact.friend_status !== 'friend' && (
+                        <span style={getBadgeStyle(
+                          contact.friend_status === 'blocked' ? 'warning' : 'default',
+                          'small',
+                        )}>
+                          {contact.friend_status === 'blocked' ? '已封鎖' : '待確認'}
+                        </span>
+                      )}
                     </div>
                     <div style={{ color: designSystem.colors.text.secondary, fontSize: 12, marginTop: 3 }}>
-                      最近互動：{new Date(contact.last_seen_at).toLocaleString('zh-TW')}
+                      最近 {new Date(contact.last_seen_at).toLocaleString('zh-TW', {
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => beginPairing(contact)}
-                    disabled={hasFormalPushBinding}
+                    disabled={hasFormalPushBinding || contact.friend_status !== 'friend'}
                     style={{
                       ...getButtonStyle('outline', isMobile ? 'medium' : 'small', isMobile),
                       minHeight: isMobile ? 46 : undefined,
-                      opacity: hasFormalPushBinding ? 0.5 : 1,
+                      opacity: hasFormalPushBinding || contact.friend_status !== 'friend' ? 0.5 : 1,
                     }}
                   >
-                    {hasFormalPushBinding ? '已正式綁定' : '配對'}
+                    {hasFormalPushBinding
+                      ? '已綁定'
+                      : contact.friend_status === 'friend'
+                        ? '配對'
+                        : '不可用'}
                   </button>
                 </div>
 
-                {(hasFormalPushBinding || contactMappings.length > 0) && (
+                {contactMappings.length > 0 && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {hasFormalPushBinding && (
-                      <div
-                        style={{
-                          padding: '9px 10px',
-                          borderRadius: designSystem.borderRadius.sm,
-                          background: designSystem.colors.success[50],
-                          fontSize: 14,
-                        }}
-                      >
-                        已完成正式會員綁定，不需要提醒專用配對
-                      </div>
-                    )}
                     {contactMappings.map((mapping) => (
                       <div
                         key={mapping.id}
@@ -333,8 +395,8 @@ export function LineReminderMappingPanel({ members }: Props) {
                       >
                         <span style={{ flex: 1, fontSize: 14 }}>
                           {mapping.member_id
-                            ? `會員：${mapping.members?.nickname || mapping.members?.name || mapping.member_id}`
-                            : `非會員：${mapping.contact_name || '未命名'}${mapping.contact_phone ? ` · ${mapping.contact_phone}` : ' · 無電話，傳送前確認'}`}
+                            ? `已建檔：${mapping.members?.nickname || mapping.members?.name || mapping.member_id}`
+                            : `預約：${mapping.booking?.contact_name || mapping.contact_name || mapping.booking_id || '—'}`}
                         </span>
                         <button
                           type="button"
@@ -387,38 +449,145 @@ export function LineReminderMappingPanel({ members }: Props) {
                   onClick={() => setTargetType(type)}
                   style={getButtonStyle(targetType === type ? 'primary' : 'outline', 'small', isMobile)}
                 >
-                  {type === 'member' ? '會員' : '非會員'}
+                  {type === 'member' ? '已建檔' : '新客'}
                 </button>
               ))}
             </div>
             {targetType === 'member' ? (
-              <select
-                value={memberId}
-                onChange={(event) => setMemberId(event.target.value)}
-                style={{ ...getInputStyle(isMobile), width: '100%', boxSizing: 'border-box' }}
-              >
-                <option value="">選擇未正式綁定會員</option>
-                {members.filter((member) => !member.line_binding_can_push).map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.nickname || member.name}{member.phone ? ` · ${member.phone}` : ''}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <input
+                  value={memberSearch}
+                  onChange={(event) => {
+                    setMemberSearch(event.target.value)
+                    setMemberId('')
+                  }}
+                  autoFocus
+                  placeholder="搜尋姓名、暱稱或電話"
+                  style={{
+                    ...getInputStyle(isMobile),
+                    width: '100%',
+                    minHeight: isMobile ? 50 : 44,
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <div
+                  style={{
+                    maxHeight: isMobile ? 240 : 220,
+                    overflowY: 'auto',
+                    marginTop: 8,
+                    border: `1px solid ${designSystem.colors.border.light}`,
+                    borderRadius: designSystem.borderRadius.md,
+                  }}
+                >
+                  {memberCandidates.length === 0 ? (
+                    <div style={{ padding: 14, color: designSystem.colors.text.secondary }}>
+                      找不到符合的會員
+                    </div>
+                  ) : memberCandidates.map((member) => {
+                    const selected = member.id === memberId
+                    return (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => {
+                          setMemberId(member.id)
+                          setMemberSearch(member.nickname || member.name)
+                        }}
+                        style={{
+                          width: '100%',
+                          minHeight: isMobile ? 50 : 44,
+                          padding: '10px 12px',
+                          border: 'none',
+                          borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                          background: selected
+                            ? designSystem.colors.secondary[100]
+                            : designSystem.colors.background.card,
+                          color: designSystem.colors.text.primary,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <strong>{member.nickname || member.name}</strong>
+                        {member.nickname && member.nickname !== member.name
+                          ? `（${member.name}）`
+                          : ''}
+                        {member.phone ? ` · ${member.phone}` : ''}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input
-                  value={contactName}
-                  onChange={(event) => setContactName(event.target.value)}
-                  placeholder="預約使用的姓名或暱稱"
-                  style={{ ...getInputStyle(isMobile), width: '100%', boxSizing: 'border-box' }}
+                  value={bookingSearch}
+                  onChange={(event) => {
+                    setBookingSearch(event.target.value)
+                    setSelectedBookingId(null)
+                  }}
+                  autoFocus
+                  placeholder="搜尋預約姓名或電話"
+                  style={{
+                    ...getInputStyle(isMobile),
+                    width: '100%',
+                    minHeight: isMobile ? 50 : 44,
+                    boxSizing: 'border-box',
+                  }}
                 />
-                <input
-                  value={contactPhone}
-                  onChange={(event) => setContactPhone(event.target.value)}
-                  placeholder="電話（選填，有電話可自動配對）"
-                  inputMode="tel"
-                  style={{ ...getInputStyle(isMobile), width: '100%', boxSizing: 'border-box' }}
-                />
+                {(bookingSearchLoading || bookingResults.length > 0) && (
+                  <div
+                    style={{
+                      maxHeight: isMobile ? 220 : 200,
+                      overflowY: 'auto',
+                      border: `1px solid ${designSystem.colors.border.light}`,
+                      borderRadius: designSystem.borderRadius.md,
+                    }}
+                  >
+                    {bookingSearchLoading ? (
+                      <div style={{ padding: 14, color: designSystem.colors.text.secondary }}>
+                        搜尋中…
+                      </div>
+                    ) : bookingResults.map((booking) => {
+                      const selected = booking.id === selectedBookingId
+                      return (
+                        <button
+                          key={booking.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedBookingId(booking.id)
+                          }}
+                          style={{
+                            width: '100%',
+                            minHeight: isMobile ? 56 : 48,
+                            padding: '9px 12px',
+                            border: 'none',
+                            borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                            background: selected
+                              ? designSystem.colors.secondary[100]
+                              : designSystem.colors.background.card,
+                            color: designSystem.colors.text.primary,
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ fontWeight: 650 }}>{booking.contact_name}</div>
+                          <div style={{
+                            marginTop: 3,
+                            color: designSystem.colors.text.secondary,
+                            fontSize: 12,
+                          }}>
+                            {new Date(booking.start_at).toLocaleDateString('zh-TW', {
+                              year: 'numeric',
+                              month: 'numeric',
+                              day: 'numeric',
+                            })}
+                            {booking.contact_phone ? ` · ${booking.contact_phone}` : ' · 無電話'}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
@@ -432,7 +601,7 @@ export function LineReminderMappingPanel({ members }: Props) {
               </button>
               <button
                 type="button"
-                disabled={saving}
+                disabled={saving || (targetType === 'member' ? !memberId : !selectedBookingId)}
                 onClick={() => void saveMapping()}
                 style={getButtonStyle('primary', 'medium', isMobile)}
               >

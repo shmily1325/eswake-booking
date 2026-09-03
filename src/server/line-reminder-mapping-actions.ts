@@ -33,7 +33,7 @@ export async function handleLineReminderMappingAction(
           .order('last_seen_at', { ascending: false }),
         supabase
           .from('line_reminder_mappings')
-          .select('id, line_user_id, member_id, contact_name, normalized_name, contact_phone, created_at, updated_at, members:member_id(id, name, nickname, phone), line_contact:line_user_id(display_name, picture_url, friend_status)')
+          .select('id, line_user_id, member_id, booking_id, contact_name, normalized_name, contact_phone, created_at, updated_at, members:member_id(id, name, nickname, phone), booking:booking_id(id, contact_name, contact_phone, start_at), line_contact:line_user_id(display_name, picture_url, friend_status)')
           .order('updated_at', { ascending: false }),
         supabase
           .from('line_bindings')
@@ -53,6 +53,64 @@ export async function handleLineReminderMappingAction(
         })),
         mappings: mappingsResult.data ?? [],
       })
+    }
+
+    if (action === 'search_bookings') {
+      const query = text(body.query).replace(/[%_]/g, '')
+      const digits = query.replace(/\D/g, '')
+      if (query.length < 2 && digits.length < 3) {
+        return res.status(200).json({ bookings: [] })
+      }
+      const now = new Date()
+      const from = new Date(now)
+      from.setDate(from.getDate() - 90)
+      const to = new Date(now)
+      to.setFullYear(to.getFullYear() + 1)
+      const select = 'id, contact_name, contact_phone, start_at'
+      const searches = [
+        query.length >= 2
+          ? supabase
+              .from('bookings')
+              .select(select)
+              .gte('start_at', from.toISOString())
+              .lte('start_at', to.toISOString())
+              .ilike('contact_name', `%${query}%`)
+              .limit(20)
+          : Promise.resolve({ data: [], error: null }),
+        digits.length >= 3
+          ? supabase
+              .from('bookings')
+              .select(select)
+              .gte('start_at', from.toISOString())
+              .lte('start_at', to.toISOString())
+              .ilike('contact_phone', `%${digits}%`)
+              .limit(20)
+          : Promise.resolve({ data: [], error: null }),
+      ]
+      const results = await Promise.all(searches)
+      const failed = results.find((result) => result.error)
+      if (failed?.error) throw failed.error
+      const unique = new Map<number, {
+        id: number
+        contact_name: string
+        contact_phone: string | null
+        start_at: string
+      }>()
+      results.flatMap((result) => result.data ?? []).forEach((booking) => {
+        unique.set(booking.id, booking)
+      })
+      const nowMs = now.getTime()
+      const bookings = Array.from(unique.values())
+        .sort((a, b) => {
+          const aTime = new Date(a.start_at).getTime()
+          const bTime = new Date(b.start_at).getTime()
+          const aUpcoming = aTime >= nowMs
+          const bUpcoming = bTime >= nowMs
+          if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1
+          return aUpcoming ? aTime - bTime : bTime - aTime
+        })
+        .slice(0, 20)
+      return res.status(200).json({ bookings })
     }
 
     if (action === 'delete_mapping') {
@@ -81,15 +139,10 @@ export async function handleLineReminderMappingAction(
     const mappingId = text(body.mappingId)
     const lineUserId = text(body.lineUserId)
     const memberId = text(body.memberId) || null
-    const contactName = text(body.contactName) || null
-    const suppliedPhone = text(body.contactPhone)
-    const contactPhone = suppliedPhone ? normalizePhone(suppliedPhone) : null
+    const bookingId = Number(body.bookingId)
     if (!lineUserId) return res.status(400).json({ error: 'lineUserId is required' })
-    if (suppliedPhone && !contactPhone) {
-      return res.status(400).json({ error: 'contactPhone must be a Taiwan mobile number' })
-    }
-    if (!memberId && !contactPhone && !contactName) {
-      return res.status(400).json({ error: 'A member, phone, or contact name is required' })
+    if (!memberId && (!Number.isInteger(bookingId) || bookingId <= 0)) {
+      return res.status(400).json({ error: 'A booking is required for a new guest' })
     }
 
     const { data: contact, error: contactError } = await supabase
@@ -100,6 +153,11 @@ export async function handleLineReminderMappingAction(
     if (contactError) throw contactError
     if (!contact) return res.status(404).json({ error: 'LINE contact not found' })
 
+    let booking: {
+      id: number
+      contact_name: string
+      contact_phone: string | null
+    } | null = null
     if (memberId) {
       const { data: formalBinding, error: bindingError } = await supabase
         .from('line_bindings')
@@ -112,6 +170,15 @@ export async function handleLineReminderMappingAction(
       if (formalBinding) {
         return res.status(409).json({ error: 'Member already has a push-capable LINE binding' })
       }
+    } else {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, contact_name, contact_phone')
+        .eq('id', bookingId)
+        .maybeSingle()
+      if (error) throw error
+      if (!data) return res.status(404).json({ error: 'Booking not found' })
+      booking = data
     }
 
     let existingId = mappingId
@@ -122,19 +189,22 @@ export async function handleLineReminderMappingAction(
         .eq('member_id', memberId)
         .maybeSingle()
       existingId = text(data?.id)
-    } else if (!existingId && !memberId && contactPhone) {
+    } else if (!existingId && !memberId) {
       const { data } = await supabase
         .from('line_reminder_mappings')
         .select('id')
         .is('member_id', null)
-        .eq('contact_phone', contactPhone)
+        .eq('booking_id', bookingId)
         .maybeSingle()
       existingId = text(data?.id)
     }
 
+    const contactName = memberId ? null : booking?.contact_name ?? null
+    const contactPhone = memberId ? null : normalizePhone(booking?.contact_phone ?? '')
     const values = {
       line_user_id: lineUserId,
       member_id: memberId,
+      booking_id: memberId ? null : bookingId,
       contact_name: contactName,
       normalized_name: contactName ? normalizeName(contactName) : null,
       contact_phone: contactPhone,

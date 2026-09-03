@@ -127,44 +127,33 @@ describe('buildTomorrowReminderRecipients', () => {
     ])
   })
 
-  it('uses a unique phone mapping automatically but requires confirmation for name-only matches', () => {
-    const mappings = [
-      {
-        id: 'phone-map',
-        line_user_id: 'line-1',
-        member_id: null,
-        contact_name: 'Phone Guest',
-        normalized_name: 'phone guest',
-        contact_phone: '0912345678',
-        line_contact: { display_name: 'LINE Phone', friend_status: 'friend' as const },
-      },
-      {
-        id: 'name-map',
-        line_user_id: 'line-2',
-        member_id: null,
-        contact_name: 'Name Guest',
-        normalized_name: 'name guest',
-        contact_phone: null,
-        line_contact: { display_name: 'LINE Name', friend_status: 'friend' as const },
-      },
-    ]
+  it('links new guests to concrete bookings and keeps same-name bookings separate', () => {
     const recipients = buildTomorrowReminderRecipients({
-      studentNames: ['Phone Guest', 'Name Guest'],
+      studentNames: ['Guest'],
       memberIdsByName: {},
       bindings: [],
-      bookingCountByName: { 'Phone Guest': 1, 'Name Guest': 1 },
-      bookingPhonesByName: { 'Phone Guest': ['0912345678'] },
-      reminderMappings: mappings,
+      bookingCountByName: { Guest: 2 },
+      bookingIdsByName: { Guest: [101, 202] },
+      reminderMappings: [{
+        id: 'booking-map',
+        line_user_id: 'line-1',
+        member_id: null,
+        booking_id: 101,
+        contact_name: 'Guest',
+        normalized_name: 'guest',
+        contact_phone: null,
+        line_contact: { display_name: 'LINE Guest', friend_status: 'friend' },
+      }],
     })
 
     expect(recipients[0]).toMatchObject({
       status: 'mapped',
-      mappingId: 'phone-map',
-      contactPhone: '0912345678',
+      mappingId: 'booking-map',
+      bookingIds: [101],
     })
     expect(recipients[1]).toMatchObject({
-      status: 'suggested',
-      mappingCandidates: [{ id: 'name-map', displayName: 'LINE Name' }],
+      status: 'guest',
+      bookingIds: [202],
     })
   })
 
@@ -178,6 +167,7 @@ describe('buildTomorrowReminderRecipients', () => {
         id: 'member-map',
         line_user_id: 'line-1',
         member_id: 'member-1',
+        booking_id: null,
         contact_name: null,
         normalized_name: null,
         contact_phone: null,

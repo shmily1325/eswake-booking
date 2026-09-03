@@ -122,7 +122,7 @@ export function MemberManagement() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, userIsAdmin])
 
-  /** 會員管理僅限超級管理員（SUPER_ADMINS）；小編與其他帳號請用首頁「聯絡資料」等對應功能 */
+  /** 會員管理僅限超級管理員（SUPER_ADMINS）；小編與其他帳號請用首頁「LINE 配對」等對應功能 */
   useEffect(() => {
     if (!user) return
     if (!userIsAdmin) {

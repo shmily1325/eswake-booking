@@ -67,12 +67,6 @@ type PushResult = {
 
 const FISH_REMINDER_COPY_RECIPIENT = '澤澤'
 
-function normalizeReminderPhone(value: string | null | undefined): string | null {
-  const digits = (value || '').replace(/\D/g, '')
-  if (digits.startsWith('8869') && digits.length === 12) return `0${digits.slice(3)}`
-  return /^09\d{8}$/.test(digits) ? digits : null
-}
-
 export function TomorrowReminder() {
   const user = useAuthUser()
   const navigate = useNavigate()
@@ -129,7 +123,6 @@ export function TomorrowReminder() {
   const [lineBindings, setLineBindings] = useState<TomorrowReminderBindingRow[]>([])
   const [reminderMappings, setReminderMappings] = useState<TomorrowReminderMappingRow[]>([])
   const [bookingIdsByName, setBookingIdsByName] = useState<Record<string, number[]>>({})
-  const [bookingPhonesByName, setBookingPhonesByName] = useState<Record<string, string[]>>({})
   const [confirmedMappingByRecipient, setConfirmedMappingByRecipient] =
     useState<Record<string, string>>({})
   const [selectedPushMemberIds, setSelectedPushMemberIds] = useState<Set<string>>(new Set())
@@ -185,7 +178,6 @@ export function TomorrowReminder() {
     setLineBindings([])
     setReminderMappings([])
     setBookingIdsByName({})
-    setBookingPhonesByName({})
     setConfirmedMappingByRecipient({})
     setSelectedPushMemberIds(new Set())
     setMessageDrafts({})
@@ -298,7 +290,6 @@ export function TomorrowReminder() {
         const nextBookingStudentNamesByMemberId: Record<string, string[]> = {}
         const nextBookingStudentNamesByName: Record<string, string[]> = {}
         const nextBookingIdsByName: Record<string, number[]> = {}
-        const nextBookingPhonesByName: Record<string, string[]> = {}
 
         // ✅ 組合教練、駕駛和會員資料，並更新 contact_name 為最新暱稱
         bookingsData.forEach((booking: any) => {
@@ -309,17 +300,11 @@ export function TomorrowReminder() {
           const members = membersByBooking[booking.id] || []
           const resolved = resolveContactNamesWithMembers(booking.contact_name, members)
           booking.contact_name = resolved.contactName
-          const normalizedPhone = normalizeReminderPhone(booking.contact_phone)
           booking.contact_name.split(',').map((value: string) => value.trim()).filter(Boolean)
             .forEach((displayName: string) => {
               const ids = nextBookingIdsByName[displayName] || []
               if (!ids.includes(booking.id)) ids.push(booking.id)
               nextBookingIdsByName[displayName] = ids
-              if (normalizedPhone) {
-                const phones = nextBookingPhonesByName[displayName] || []
-                if (!phones.includes(normalizedPhone)) phones.push(normalizedPhone)
-                nextBookingPhonesByName[displayName] = phones
-              }
             })
           members.forEach((member: { id: string; name?: string | null; nickname?: string | null }) => {
             const displayName = member.nickname || member.name || ''
@@ -398,7 +383,6 @@ export function TomorrowReminder() {
         setBookingStudentNamesByMemberId(nextBookingStudentNamesByMemberId)
         setBookingStudentNamesByName(nextBookingStudentNamesByName)
         setBookingIdsByName(nextBookingIdsByName)
-        setBookingPhonesByName(nextBookingPhonesByName)
       }
 
       if (!isLatestRequest()) return
@@ -468,7 +452,6 @@ export function TomorrowReminder() {
       bookingStudentNamesByMemberId,
       bookingStudentNamesByName,
       bookingIdsByName,
-      bookingPhonesByName,
       reminderMappings,
     })
     return built.map((recipient) => {
@@ -488,7 +471,6 @@ export function TomorrowReminder() {
   }, [
     bookingIdsByMemberId,
     bookingIdsByName,
-    bookingPhonesByName,
     bookingStudentNamesByMemberId,
     bookingStudentNamesByName,
     bookings,
@@ -1326,7 +1308,7 @@ export function TomorrowReminder() {
                 fontSize: getFontSize('caption', isMobile),
                 lineHeight: 1.4,
               }}>
-                有候選者可展開確認；沒有候選時請先到「聯絡資料 → LINE 提醒配對」
+                有候選者可展開確認；沒有候選時請先到「LINE 配對 → 提醒配對」
               </div>
               <div style={memberListStyle}>
                 {manualRecipients.map(renderRecipientCard)}

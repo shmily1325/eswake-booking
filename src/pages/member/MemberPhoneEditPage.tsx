@@ -275,11 +275,11 @@ export function MemberPhoneEditPage() {
       desktopPadding="20px 20px max(20px, env(safe-area-inset-bottom))"
       outerStyle={{ minHeight: '100dvh' }}
     >
-      <PageHeader title="聯絡資料" user={user} showBaoLink={false} />
+      <PageHeader title="LINE 配對" user={user} showBaoLink={false} />
 
       <div
         role="tablist"
-        aria-label="聯絡資料功能"
+        aria-label="LINE 配對功能"
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -294,7 +294,7 @@ export function MemberPhoneEditPage() {
           onClick={() => setActiveTab('phones')}
           style={getButtonStyle(activeTab === 'phones' ? 'primary' : 'outline', 'medium', isMobile)}
         >
-          會員電話
+          會員綁定
         </button>
         <button
           type="button"
@@ -303,7 +303,7 @@ export function MemberPhoneEditPage() {
           onClick={() => setActiveTab('line-reminders')}
           style={getButtonStyle(activeTab === 'line-reminders' ? 'primary' : 'outline', 'medium', isMobile)}
         >
-          LINE 提醒配對
+          提醒配對
         </button>
       </div>
 

@@ -51,6 +51,7 @@ Messaging API 設定：
 
 ```text
 migrations/203_restore_line_reminder_contacts.sql
+migrations/204_bind_line_reminders_to_bookings.sql
 ```
 
 建立。三張資料表皆強制 RLS，只有 server-side `service_role` 可讀寫：
@@ -66,7 +67,7 @@ migrations/203_restore_line_reminder_contacts.sql
 1. 部署 migration 與程式碼。
 2. 在 LINE Developers 設定並 Verify webhook。
 3. 用測試帳號加好友或按「芝麻開門」。
-4. 到「會員電話 → LINE 提醒配對」，確認出現 LINE 名稱、頭像與互動時間。
+4. 到「LINE 配對 → 提醒配對」，確認出現 LINE 名稱、頭像與互動時間。
 5. 分別測試：
    - 配對未正式綁定會員。
    - 配對有電話的非會員。
@@ -77,12 +78,11 @@ migrations/203_restore_line_reminder_contacts.sql
 ## 日常操作
 
 1. 客人加好友、傳訊息或按 Rich Menu；系統背景收集 user ID，不要求客人綁定。
-2. 員工在「LINE 提醒配對」選擇會員或建立非會員別名／電話。
+2. 員工在「LINE 配對 → 提醒配對」選擇已建檔會員，或替新客選擇一筆預約。
 3. 明日提醒依序使用：
    - 正式會員綁定
    - 會員提醒配對
-   - 非會員電話配對
-   - 姓名候選（必須當次人工確認）
+   - 新客預約配對
 4. 找不到候選者維持複製訊息人工傳送。
 
 ## 故障排除

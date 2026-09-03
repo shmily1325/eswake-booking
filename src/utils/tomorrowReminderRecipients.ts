@@ -7,6 +7,7 @@ export type TomorrowReminderMappingRow = {
   id: string
   line_user_id: string
   member_id: string | null
+  booking_id: number | null
   contact_name: string | null
   normalized_name: string | null
   contact_phone: string | null
@@ -42,10 +43,6 @@ export type TomorrowReminderRecipient = {
   }>
 }
 
-function normalizeName(value: string): string {
-  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('zh-TW')
-}
-
 export function buildTomorrowReminderRecipients(params: {
   studentNames: string[]
   memberIdsByName: Record<string, string[]>
@@ -55,7 +52,6 @@ export function buildTomorrowReminderRecipients(params: {
   bookingStudentNamesByMemberId?: Record<string, string[]>
   bookingStudentNamesByName?: Record<string, string[]>
   bookingIdsByName?: Record<string, number[]>
-  bookingPhonesByName?: Record<string, string[]>
   reminderMappings?: TomorrowReminderMappingRow[]
 }): TomorrowReminderRecipient[] {
   const bindingByMember = new Map<string, boolean>()
@@ -71,49 +67,32 @@ export function buildTomorrowReminderRecipients(params: {
     if (memberIds.length === 0) {
       const bookingStudentNames = params.bookingStudentNamesByName?.[name]
       const bookingIds = Array.from(new Set(params.bookingIdsByName?.[name] ?? []))
-      const phones = Array.from(new Set((params.bookingPhonesByName?.[name] ?? []).filter(Boolean)))
-      const phoneMappings = activeMappings.filter(
-        (mapping) => !mapping.member_id && !!mapping.contact_phone && phones.includes(mapping.contact_phone),
-      )
-      const nameMappings = activeMappings.filter(
-        (mapping) => !mapping.member_id && mapping.normalized_name === normalizeName(name),
-      )
-      const candidates = phoneMappings.length > 0 ? phoneMappings : nameMappings
-      const uniqueByLineUser = Array.from(
-        new Map(candidates.map((mapping) => [mapping.line_user_id, mapping])).values(),
-      )
-      const exactPhoneMapping = phones.length === 1 && uniqueByLineUser.length === 1
-        ? uniqueByLineUser[0]
-        : null
-      return [{
-        key: `guest:${name}`,
-        name,
-        memberId: null,
-        status: exactPhoneMapping
-          ? 'mapped' as const
-          : uniqueByLineUser.length > 0
-            ? 'suggested' as const
-            : 'guest' as const,
-        bookingCount: params.bookingCountByName[name] || 0,
-        bookingIds,
-        ...(phones.length === 1 ? { contactPhone: phones[0] } : {}),
-        ...(exactPhoneMapping
-          ? {
-              mappingId: exactPhoneMapping.id,
-              mappingDisplayName: exactPhoneMapping.line_contact?.display_name,
-            }
-          : {}),
-        ...(uniqueByLineUser.length > 0
-          ? {
-              mappingCandidates: uniqueByLineUser.map((mapping) => ({
-                id: mapping.id,
-                displayName: mapping.line_contact?.display_name || 'LINE 使用者',
-                friendStatus: mapping.line_contact?.friend_status || 'unknown',
-              })),
-            }
-          : {}),
-        ...(bookingStudentNames?.length ? { bookingStudentNames } : {}),
-      }]
+      const bookingGroups = bookingIds.length > 0 ? bookingIds.map((id) => [id]) : [[]]
+      return bookingGroups.map((groupBookingIds) => {
+        const bookingMapping = activeMappings.find(
+          (mapping) =>
+            !mapping.member_id &&
+            !!mapping.booking_id &&
+            groupBookingIds.includes(mapping.booking_id),
+        )
+        return {
+          key: groupBookingIds.length > 0
+            ? `guest:${name}:booking:${groupBookingIds[0]}`
+            : `guest:${name}`,
+          name,
+          memberId: null,
+          status: bookingMapping ? 'mapped' as const : 'guest' as const,
+          bookingCount: groupBookingIds.length || params.bookingCountByName[name] || 0,
+          bookingIds: groupBookingIds,
+          ...(bookingMapping
+            ? {
+                mappingId: bookingMapping.id,
+                mappingDisplayName: bookingMapping.line_contact?.display_name,
+              }
+            : {}),
+          ...(bookingStudentNames?.length ? { bookingStudentNames } : {}),
+        }
+      })
     }
 
     return memberIds.map((memberId) => {
