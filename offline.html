@@ -6168,7 +6168,7 @@
         var tomorrowReminderCopiedStudent = null;
         var tomorrowReminderLanguages = {};
 
-        function generateEnglishTomorrowMessage(studentName, bookings, includeWeatherWarning, template, englishWeatherWarning) {
+        function generateEnglishTomorrowMessage(studentName, bookings, includeWeatherWarning, englishFooterText, englishWeatherWarning) {
             var studentBookings = bookings
                 .filter(function(booking) {
                     return String(booking.contact_name || '').split(',').map(function(name) { return name.trim(); }).includes(studentName);
@@ -6180,11 +6180,12 @@
             var appointment = times.length === 1
                 ? 'an appointment tomorrow at ' + times[0]
                 : 'appointments tomorrow at ' + times.join(' and ');
-            var weather = includeWeatherWarning ? '\n\n' + englishWeatherWarning : '';
-            return template
-                .split('{username}').join(studentName)
-                .split('{appointment}').join(appointment)
-                .split('{weather}').join(weather);
+            var sections = [
+                'Hi ' + studentName + '\n\nJust a reminder that you have ' + appointment + '.',
+                includeWeatherWarning ? englishWeatherWarning : '',
+                englishFooterText
+            ].filter(Boolean);
+            return sections.join('\n\n');
         }
         
         async function showTomorrowReminder() {
@@ -6192,17 +6193,17 @@
             setOfflinePageLayout();
             
             var defaultDate = getTomorrowDefaultDate();
-            var weatherWarning = '近期天氣變化較大，請務必在出發前透過官方 LINE 與我們確認最新天氣狀況，並留意最新訊息哦！';
-            var footerText = '抵達時請按 LINE 官方帳號下方的「開門」鍵，通知教練協助開啟停車場鐵閘門。入場後請停黃色停車格，白色停車格請勿停放，謝謝配合🙏\n\n再麻煩準時抵達，明天見哦😊';
-            var englishMessageTemplate = 'Hi {username}\\n\\nJust a reminder that we have {appointment}.{weather}\\n\\nWhen you arrive, tap "OPEN SESAME" at the bottom of our official LINE account to notify the coaches to open the parking gate. Please park in a yellow space; do not use the white spaces. Thank you for your cooperation 🙏\\n\\nPlease arrive on time. See you tomorrow! 😊';
-            var englishWeatherWarning = 'Weather conditions have been changing recently. Before setting out, please confirm the latest conditions with us via our official LINE account and check for updates.';
+            var weatherWarning = '近期天氣變化較大，請在出發前透過官方 LINE 與我們確認最新天氣，並留意最新訊息哦！';
+            var footerText = '抵達時請按官方 LINE 下方的「芝麻開門」，通知教練協助開啟停車場鐵閘門。\n入場後請停黃色停車格，白色停車格請勿停放，謝謝配合🙏\n\n再麻煩準時抵達，明天見哦😊';
+            var englishFooterText = 'When you arrive, tap "OPEN SESAME" at the bottom of our official LINE account to notify the coaches to open the parking gate.\nPlease park in a yellow space. Do not park in the white spaces. Thank you for your cooperation. 🙏\n\nPlease arrive on time. See you tomorrow! 😊';
+            var englishWeatherWarning = 'Weather conditions have been changing recently. Before you leave, please check the latest weather with us through our official LINE account and watch for updates.';
             var includeWeatherWarning = true;
             var settings = await safeGetAllFromStore('system_settings');
             var settingMap = new Map(settings.map(function(item) { return [item.setting_key, item.setting_value ?? '']; }));
             includeWeatherWarning = settingMap.get('tomorrow_reminder_include_weather_warning') !== 'false';
             weatherWarning = settingMap.get('tomorrow_reminder_weather_warning') || weatherWarning;
             footerText = settingMap.get('tomorrow_reminder_footer_text') || footerText;
-            englishMessageTemplate = settingMap.get('tomorrow_reminder_english_message_template') || englishMessageTemplate;
+            englishFooterText = settingMap.get('tomorrow_reminder_english_footer_text') || englishFooterText;
             englishWeatherWarning = settingMap.get('tomorrow_reminder_english_weather_warning') || englishWeatherWarning;
             window._tomorrowIncludeWeatherWarning = includeWeatherWarning;
             
@@ -6232,7 +6233,7 @@
                     '<details style="margin-top:14px;"><summary style="cursor:pointer;font-weight:650;">編輯文字模板</summary>' +
                     '<div style="display:grid;gap:12px;margin-top:14px;"><label style="font-size:13px;font-weight:600;">中文結尾<textarea readonly style="width:100%;min-height:130px;margin-top:6px;padding:12px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;">' + escapeHtml(footerT) + '</textarea></label>' +
                     '<label style="font-size:13px;font-weight:600;">中文天氣<textarea readonly style="width:100%;min-height:100px;margin-top:6px;padding:12px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;">' + escapeHtml(weatherW) + '</textarea></label>' +
-                    '<label style="font-size:13px;font-weight:600;">英文模板<textarea readonly style="width:100%;min-height:130px;margin-top:6px;padding:12px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;">' + escapeHtml(englishMessageTemplate) + '</textarea></label>' +
+                    '<label style="font-size:13px;font-weight:600;">英文結尾<textarea readonly style="width:100%;min-height:130px;margin-top:6px;padding:12px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;">' + escapeHtml(englishFooterText) + '</textarea></label>' +
                     '<label style="font-size:13px;font-weight:600;">英文天氣<textarea readonly style="width:100%;min-height:100px;margin-top:6px;padding:12px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;">' + escapeHtml(englishWeatherWarning) + '</textarea></label></div></details></div>';
                 var studentSection = '';
                 if (bookings.length === 0) {
@@ -6255,7 +6256,7 @@
                             var copied = tomorrowReminderCopiedStudent === studentName;
                             var language = tomorrowReminderLanguages[studentName] || 'zh';
                             var msg = language === 'en'
-                                ? generateEnglishTomorrowMessage(studentName, bookings, includeW, englishMessageTemplate, englishWeatherWarning)
+                                ? generateEnglishTomorrowMessage(studentName, bookings, includeW, englishFooterText, englishWeatherWarning)
                                 : generateTomorrowMessageForStudent(studentName, bookings, includeW, weatherW, footerT);
                             var nameAttr = (studentName || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                             var nameJs = JSON.stringify(studentName || '');
@@ -6366,7 +6367,7 @@
             };
             window.copyTomorrowMessage = function(name) {
                 var msg = (tomorrowReminderLanguages[name] || 'zh') === 'en'
-                    ? generateEnglishTomorrowMessage(name, window._tomorrowBookings || [], includeWeatherWarning, englishMessageTemplate, englishWeatherWarning)
+                    ? generateEnglishTomorrowMessage(name, window._tomorrowBookings || [], includeWeatherWarning, englishFooterText, englishWeatherWarning)
                     : generateTomorrowMessageForStudent(name, window._tomorrowBookings || [], includeWeatherWarning, weatherWarning, footerText);
                 navigator.clipboard.writeText(msg).then(function() {
                     tomorrowReminderCopiedStudent = name;

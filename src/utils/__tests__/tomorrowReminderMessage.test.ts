@@ -10,7 +10,7 @@ const templates: TomorrowReminderTemplates = {
   includeWeatherWarning: false,
   weatherWarning: '天氣提醒',
   footerText: '謝謝',
-  englishMessageTemplate: 'Hi {username}\n\nWe have {appointment}.{weather}',
+  englishFooterText: 'English footer',
   englishWeatherWarning: 'Weather notice',
 }
 
@@ -82,7 +82,7 @@ describe('generateTomorrowReminderMessage', () => {
     expect(message).toContain('天氣提醒')
   })
 
-  it('英文模板替換 username／appointment／weather', () => {
+  it('英文姓名與預約時間由程式產生，固定文字由模板附加', () => {
     const message = generateTomorrowReminderMessage({
       studentName: 'Dexter',
       bookings: [booking('Dexter', '2026-05-15T10:00:00')],
@@ -90,7 +90,7 @@ describe('generateTomorrowReminderMessage', () => {
       templates: { ...templates, includeWeatherWarning: true },
     })
     expect(message).toBe(
-      'Hi Dexter\n\nWe have an appointment tomorrow at 09:30.\n\nWeather notice'
+      'Hi Dexter\n\nJust a reminder that you have an appointment tomorrow at 09:30.\n\nWeather notice\n\nEnglish footer'
     )
   })
 

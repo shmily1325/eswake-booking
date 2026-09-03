@@ -71,7 +71,7 @@ export function TomorrowReminder() {
   const toast = useToast()
   const weatherWarningRef = useRef<HTMLTextAreaElement>(null)
   const footerTextRef = useRef<HTMLTextAreaElement>(null)
-  const englishMessageTemplateRef = useRef<HTMLTextAreaElement>(null)
+  const englishFooterTextRef = useRef<HTMLTextAreaElement>(null)
   const englishWeatherWarningRef = useRef<HTMLTextAreaElement>(null)
   const fetchRequestIdRef = useRef(0)
 
@@ -132,8 +132,8 @@ export function TomorrowReminder() {
     setWeatherWarning,
     footerText,
     setFooterText,
-    englishMessageTemplate,
-    setEnglishMessageTemplate,
+    englishFooterText,
+    setEnglishFooterText,
     englishWeatherWarning,
     setEnglishWeatherWarning,
     saveStatus: templateSaveStatus,
@@ -148,12 +148,12 @@ export function TomorrowReminder() {
 
     fitTextareaToContent(weatherWarningRef.current)
     fitTextareaToContent(footerTextRef.current)
-    fitTextareaToContent(englishMessageTemplateRef.current)
+    fitTextareaToContent(englishFooterTextRef.current)
     fitTextareaToContent(englishWeatherWarningRef.current)
   }, [
     weatherWarning,
     footerText,
-    englishMessageTemplate,
+    englishFooterText,
     englishWeatherWarning,
     isMobile,
     showTemplateEditor,
@@ -388,7 +388,7 @@ export function TomorrowReminder() {
         includeWeatherWarning,
         weatherWarning,
         footerText,
-        englishMessageTemplate,
+        englishFooterText,
         englishWeatherWarning,
       },
     })
@@ -1083,12 +1083,12 @@ export function TomorrowReminder() {
                 borderTop: `1px solid ${designSystem.colors.border.light}`,
               }}>
             <label style={templateLabelStyle}>
-              英文提醒模板
+              英文結尾文字
             </label>
             <textarea
-              ref={englishMessageTemplateRef}
-              value={englishMessageTemplate}
-              onChange={(e) => setEnglishMessageTemplate(e.target.value)}
+              ref={englishFooterTextRef}
+              value={englishFooterText}
+              onChange={(e) => setEnglishFooterText(e.target.value)}
               style={{
                 ...getInputStyle(isMobile),
                 fontSize: isMobile ? '16px' : getFontSize('body', false),

@@ -25,7 +25,7 @@ export type TomorrowReminderTemplates = {
   includeWeatherWarning: boolean
   weatherWarning: string
   footerText: string
-  englishMessageTemplate: string
+  englishFooterText: string
   englishWeatherWarning: string
 }
 
@@ -139,7 +139,7 @@ export function generateTomorrowReminderMessage(params: {
     includeWeatherWarning,
     weatherWarning,
     footerText,
-    englishMessageTemplate,
+    englishFooterText,
     englishWeatherWarning,
   } = templates
 
@@ -158,12 +158,13 @@ export function generateTomorrowReminderMessage(params: {
     const appointment = appointmentTimes.length === 1
       ? `an appointment tomorrow at ${appointmentTimes[0]}`
       : `appointments tomorrow at ${appointmentTimes.join(' and ')}`
-    const weather = includeWeatherWarning ? `\n\n${englishWeatherWarning}` : ''
+    const sections = [
+      `Hi ${studentName}\n\nJust a reminder that you have ${appointment}.`,
+      includeWeatherWarning ? englishWeatherWarning : '',
+      englishFooterText,
+    ].filter(Boolean)
 
-    return englishMessageTemplate
-      .split('{username}').join(studentName)
-      .split('{appointment}').join(appointment)
-      .split('{weather}').join(weather)
+    return sections.join('\n\n')
   }
 
   if (SAFIN_TOMORROW_STUDENT_NAMES.has(studentName) && studentBookings.length > 0) {

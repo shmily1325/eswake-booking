@@ -6,25 +6,23 @@ const SETTING_KEYS = {
   includeWeatherWarning: 'tomorrow_reminder_include_weather_warning',
   weatherWarning: 'tomorrow_reminder_weather_warning',
   footerText: 'tomorrow_reminder_footer_text',
-  englishMessageTemplate: 'tomorrow_reminder_english_message_template',
+  englishFooterText: 'tomorrow_reminder_english_footer_text',
   englishWeatherWarning: 'tomorrow_reminder_english_weather_warning',
 } as const
 
-const DEFAULT_WEATHER_WARNING = '近期天氣變化較大，請務必在出發前透過官方 LINE 與我們確認最新天氣狀況，並留意最新訊息哦！'
+const DEFAULT_WEATHER_WARNING = '近期天氣變化較大，請在出發前透過官方 LINE 與我們確認最新天氣，並留意最新訊息哦！'
 
-const DEFAULT_FOOTER_TEXT = `抵達時請按 LINE 官方帳號下方的「開門」鍵，通知教練協助開啟停車場鐵閘門。入場後請停黃色停車格，白色停車格請勿停放，謝謝配合🙏
+const DEFAULT_FOOTER_TEXT = `抵達時請按官方 LINE 下方的「芝麻開門」，通知教練協助開啟停車場鐵閘門。
+入場後請停黃色停車格，白色停車格請勿停放，謝謝配合🙏
 
 再麻煩準時抵達，明天見哦😊`
 
-const DEFAULT_ENGLISH_MESSAGE_TEMPLATE = `Hi {username}
-
-Just a reminder that we have {appointment}.{weather}
-
-When you arrive, tap "OPEN SESAME" at the bottom of our official LINE account to notify the coaches to open the parking gate. Please park in a yellow space; do not use the white spaces. Thank you for your cooperation 🙏
+const DEFAULT_ENGLISH_FOOTER_TEXT = `When you arrive, tap "OPEN SESAME" at the bottom of our official LINE account to notify the coaches to open the parking gate.
+Please park in a yellow space. Do not park in the white spaces. Thank you for your cooperation. 🙏
 
 Please arrive on time. See you tomorrow! 😊`
 
-const DEFAULT_ENGLISH_WEATHER_WARNING = 'Weather conditions have been changing recently. Before setting out, please confirm the latest conditions with us via our official LINE account and check for updates.'
+const DEFAULT_ENGLISH_WEATHER_WARNING = 'Weather conditions have been changing recently. Before you leave, please check the latest weather with us through our official LINE account and watch for updates.'
 
 export type TemplateSaveStatus = 'loading' | 'saving' | 'saved' | 'error'
 
@@ -32,7 +30,7 @@ export function useTomorrowReminderTemplates(userId?: string) {
   const [includeWeatherWarning, setIncludeWeatherWarning] = useState(true)
   const [weatherWarning, setWeatherWarning] = useState(DEFAULT_WEATHER_WARNING)
   const [footerText, setFooterText] = useState(DEFAULT_FOOTER_TEXT)
-  const [englishMessageTemplate, setEnglishMessageTemplate] = useState(DEFAULT_ENGLISH_MESSAGE_TEMPLATE)
+  const [englishFooterText, setEnglishFooterText] = useState(DEFAULT_ENGLISH_FOOTER_TEXT)
   const [englishWeatherWarning, setEnglishWeatherWarning] = useState(DEFAULT_ENGLISH_WEATHER_WARNING)
   const [saveStatus, setSaveStatus] = useState<TemplateSaveStatus>('loading')
   const loaded = useRef(false)
@@ -66,8 +64,8 @@ export function useTomorrowReminderTemplates(userId?: string) {
         settings.get(SETTING_KEYS.weatherWarning) || DEFAULT_WEATHER_WARNING
       const nextFooterText =
         settings.get(SETTING_KEYS.footerText) || DEFAULT_FOOTER_TEXT
-      const nextEnglishMessageTemplate =
-        settings.get(SETTING_KEYS.englishMessageTemplate) || DEFAULT_ENGLISH_MESSAGE_TEMPLATE
+      const nextEnglishFooterText =
+        settings.get(SETTING_KEYS.englishFooterText) || DEFAULT_ENGLISH_FOOTER_TEXT
       const nextEnglishWeatherWarning =
         settings.get(SETTING_KEYS.englishWeatherWarning) || DEFAULT_ENGLISH_WEATHER_WARNING
 
@@ -75,13 +73,13 @@ export function useTomorrowReminderTemplates(userId?: string) {
         nextIncludeWeatherWarning,
         nextWeatherWarning,
         nextFooterText,
-        nextEnglishMessageTemplate,
+        nextEnglishFooterText,
         nextEnglishWeatherWarning,
       ])
       setIncludeWeatherWarning(nextIncludeWeatherWarning)
       setWeatherWarning(nextWeatherWarning)
       setFooterText(nextFooterText)
-      setEnglishMessageTemplate(nextEnglishMessageTemplate)
+      setEnglishFooterText(nextEnglishFooterText)
       setEnglishWeatherWarning(nextEnglishWeatherWarning)
       loaded.current = true
       setSaveStatus('saved')
@@ -100,7 +98,7 @@ export function useTomorrowReminderTemplates(userId?: string) {
       includeWeatherWarning,
       weatherWarning,
       footerText,
-      englishMessageTemplate,
+      englishFooterText,
       englishWeatherWarning,
     ])
     if (serialized === lastSaved.current) return
@@ -133,9 +131,9 @@ export function useTomorrowReminderTemplates(userId?: string) {
               updated_by: userId ?? null,
             },
             {
-              setting_key: SETTING_KEYS.englishMessageTemplate,
-              setting_value: englishMessageTemplate,
-              description: '明日提醒英文訊息模板',
+              setting_key: SETTING_KEYS.englishFooterText,
+              setting_value: englishFooterText,
+              description: '明日提醒英文結尾文字',
               updated_at: getLocalTimestamp(),
               updated_by: userId ?? null,
             },
@@ -162,7 +160,7 @@ export function useTomorrowReminderTemplates(userId?: string) {
 
     return () => window.clearTimeout(timeoutId)
   }, [
-    englishMessageTemplate,
+    englishFooterText,
     englishWeatherWarning,
     footerText,
     includeWeatherWarning,
@@ -177,8 +175,8 @@ export function useTomorrowReminderTemplates(userId?: string) {
     setWeatherWarning,
     footerText,
     setFooterText,
-    englishMessageTemplate,
-    setEnglishMessageTemplate,
+    englishFooterText,
+    setEnglishFooterText,
     englishWeatherWarning,
     setEnglishWeatherWarning,
     saveStatus,
