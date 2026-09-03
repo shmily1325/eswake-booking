@@ -576,7 +576,7 @@ export function LineReminderMappingPanel({ members }: Props) {
             gridTemplateColumns: 'repeat(5, minmax(52px, 1fr))',
             gap: 6,
             width: '100%',
-            maxWidth: isMobile ? '100%' : 520,
+            maxWidth: '100%',
             overflowX: 'auto',
             marginBottom: 12,
           }}
