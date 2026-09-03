@@ -16,9 +16,9 @@ import {
   getBadgeStyle,
   getButtonStyle,
   getEmptyStateStyle,
-  getFilterChipStyle,
   getFontSize,
   getInputStyle,
+  getSingleSelectFilterChipStyle,
 } from '../../styles/designSystem'
 
 interface MemberRow {
@@ -352,7 +352,7 @@ export function MemberPhoneEditPage() {
             onClick={() => setLineBindingFilter('all')}
             style={{
               ...getButtonStyle('outline', 'small', isMobile),
-              ...getFilterChipStyle(lineBindingFilter === 'all', 'info'),
+              ...getSingleSelectFilterChipStyle(lineBindingFilter === 'all'),
               minHeight: 44,
               padding: '8px 10px',
             }}
@@ -365,7 +365,7 @@ export function MemberPhoneEditPage() {
             onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
             style={{
               ...getButtonStyle('outline', 'small', isMobile),
-              ...getFilterChipStyle(lineBindingFilter === 'bound', 'info'),
+              ...getSingleSelectFilterChipStyle(lineBindingFilter === 'bound'),
               minHeight: 44,
               padding: '8px 10px',
             }}
@@ -378,7 +378,7 @@ export function MemberPhoneEditPage() {
             onClick={() => setLineBindingFilter(lineBindingFilter === 'rebind' ? 'all' : 'rebind')}
             style={{
               ...getButtonStyle('outline', 'small', isMobile),
-              ...getFilterChipStyle(lineBindingFilter === 'rebind', 'warning'),
+              ...getSingleSelectFilterChipStyle(lineBindingFilter === 'rebind', true),
               minHeight: 44,
               padding: '8px 10px',
             }}
@@ -391,7 +391,7 @@ export function MemberPhoneEditPage() {
             onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
             style={{
               ...getButtonStyle('outline', 'small', isMobile),
-              ...getFilterChipStyle(lineBindingFilter === 'unbound', 'info'),
+              ...getSingleSelectFilterChipStyle(lineBindingFilter === 'unbound'),
               minHeight: 44,
               padding: '8px 10px',
             }}

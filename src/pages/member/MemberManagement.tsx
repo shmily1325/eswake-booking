@@ -30,6 +30,7 @@ import {
   getFontSize,
   getInputStyle,
   getPageContentShellStyle,
+  getSingleSelectFilterChipStyle,
 } from '../../styles/designSystem'
 
 const pageBg = designSystem.colors.background.main
@@ -669,10 +670,7 @@ export function MemberManagement() {
                 disabled={expiringMemberships.length === 0}
                 style={{
                   ...getButtonStyle('outline', 'small', false),
-                  ...getFilterChipStyle(expiringFilter === 'membership', 'warning'),
-                  background: expiringFilter === 'membership'
-                    ? designSystem.colors.warning[500]
-                    : designSystem.colors.background.card,
+                  ...getSingleSelectFilterChipStyle(expiringFilter === 'membership', true),
                   opacity: expiringMemberships.length === 0 ? 0.5 : 1,
                   cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
                 }}
@@ -689,7 +687,7 @@ export function MemberManagement() {
                 disabled={expiringBoards.length === 0}
                 style={{
                   ...getButtonStyle('outline', 'small', false),
-                  ...getFilterChipStyle(expiringFilter === 'board', 'warning'),
+                  ...getSingleSelectFilterChipStyle(expiringFilter === 'board', true),
                   opacity: expiringBoards.length === 0 ? 0.5 : 1,
                   cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
                 }}
@@ -705,7 +703,7 @@ export function MemberManagement() {
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
                 style={{
                   ...getButtonStyle('outline', 'small', false),
-                  ...getFilterChipStyle(lineBindingFilter === 'bound', 'info'),
+                  ...getSingleSelectFilterChipStyle(lineBindingFilter === 'bound'),
                 }}
               >
                 LINE 已綁定 ({members.filter(m => m.is_line_bound && m.line_binding_can_push).length})
@@ -717,7 +715,7 @@ export function MemberManagement() {
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'rebind' ? 'all' : 'rebind')}
                 style={{
                   ...getButtonStyle('outline', 'small', false),
-                  ...getFilterChipStyle(lineBindingFilter === 'rebind', 'warning'),
+                  ...getSingleSelectFilterChipStyle(lineBindingFilter === 'rebind', true),
                 }}
               >
                 需重新綁定 ({members.filter(m => m.is_line_bound && !m.line_binding_can_push).length})
@@ -729,7 +727,7 @@ export function MemberManagement() {
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
                 style={{
                   ...getButtonStyle('outline', 'small', false),
-                  ...getFilterChipStyle(lineBindingFilter === 'unbound', 'info'),
+                  ...getSingleSelectFilterChipStyle(lineBindingFilter === 'unbound'),
                 }}
               >
                 LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})

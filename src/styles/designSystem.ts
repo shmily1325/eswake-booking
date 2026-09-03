@@ -442,6 +442,29 @@ export const getFilterChipStyle = (
   }
 }
 
+/**
+ * 單選狀態篩選：
+ * - 所有選項共用同一個深色選取態，避免狀態色看起來像第二個選取項目
+ * - 警示色只用於未選取的提示文字
+ */
+export const getSingleSelectFilterChipStyle = (
+  selected: boolean,
+  warning = false
+): React.CSSProperties => ({
+  border: `1px solid ${
+    selected ? designSystem.colors.primary[500] : designSystem.colors.border.main
+  }`,
+  borderRadius: designSystem.borderRadius.lg,
+  background: selected ? designSystem.colors.primary[500] : '#ffffff',
+  color: selected
+    ? '#ffffff'
+    : warning
+      ? designSystem.colors.warning[700]
+      : designSystem.colors.text.primary,
+  fontWeight: 600,
+  cursor: 'pointer',
+})
+
 /** 教練／駕駛回報 pill（綠＝教練、藍灰＝駕駛；兩邊都有框） */
 export const getReportRolePillStyle = (
   reported: boolean,
