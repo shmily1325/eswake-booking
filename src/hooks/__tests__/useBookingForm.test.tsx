@@ -20,6 +20,11 @@ vi.mock('../../lib/supabase', () => ({
   }
 }))
 
+vi.mock('../../utils/lineReminderGuests', () => ({
+  getBookingSavedLineReminderGuests: vi.fn().mockResolvedValue([]),
+  searchSavedLineReminderGuests: vi.fn().mockResolvedValue([]),
+}))
+
 // Mock memberUtils
 vi.mock('../../utils/memberUtils', () => ({
   filterMembers: vi.fn((members: any[], searchTerm: string) => {
@@ -85,6 +90,7 @@ import { supabase } from '../../lib/supabase'
 import { isFacility } from '../../utils/facility'
 import { getFilledByName } from '../../utils/filledByHelper'
 import * as memberUtils from '../../utils/memberUtils'
+import { getBookingSavedLineReminderGuests } from '../../utils/lineReminderGuests'
 
 describe('useBookingForm', () => {
   beforeEach(() => {
@@ -157,6 +163,32 @@ describe('useBookingForm', () => {
       expect(result.current.startTime).toBe('14:00')
       expect(result.current.selectedCoaches).toEqual(['c1'])
       expect(result.current.selectedMemberIds).toEqual(['m1'])
+    })
+
+    it('應載入同一預約的多位已建檔非會員', async () => {
+      vi.mocked(getBookingSavedLineReminderGuests).mockResolvedValueOnce([
+        { id: 'g1', line_user_id: 'U1', name: '吳穎本人', booking_name: '吳穎' },
+        { id: 'g2', line_user_id: 'U2', name: '小安', booking_name: '小安' },
+      ])
+      const initial: any = {
+        id: 101,
+        boat_id: 1,
+        duration_min: 60,
+        start_at: '2026-02-10T14:00:00',
+        coaches: [],
+        booking_members: [],
+        contact_name: '吳穎, 小安',
+      }
+
+      const { result } = renderHook(() => useBookingForm({ initialBooking: initial }))
+
+      await waitFor(() => {
+        expect(result.current.selectedSavedGuests.map((guest) => guest.id))
+          .toEqual(['g1', 'g2'])
+      })
+      expect(result.current.initialSavedGuestIds).toEqual(['g1', 'g2'])
+      expect(result.current.manualNames).toEqual([])
+      expect(result.current.finalStudentName).toBe('吳穎、小安')
     })
 
     it('載入 members 後應移除與已選會員顯示名重複的手動姓名', async () => {

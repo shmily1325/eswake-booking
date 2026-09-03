@@ -6,6 +6,7 @@ import {
     formatActualRider,
     parseActualRiders,
 } from '../../utils/riderDisplay'
+import type { SavedLineReminderGuest } from '../../utils/lineReminderGuests'
 
 interface MemberSelectorProps {
     members: Pick<Member, 'id' | 'name' | 'nickname' | 'phone'>[]
@@ -21,6 +22,12 @@ interface MemberSelectorProps {
     setManualStudentName: (name: string) => void
     manualNames: string[]
     setManualNames: React.Dispatch<React.SetStateAction<string[]>>
+    savedGuestSearchResults?: SavedLineReminderGuest[]
+    selectedSavedGuests?: SavedLineReminderGuest[]
+    setSelectedSavedGuests?: React.Dispatch<React.SetStateAction<SavedLineReminderGuest[]>>
+    showSavedGuestDropdown?: boolean
+    setShowSavedGuestDropdown?: (show: boolean) => void
+    handleSavedGuestSearch?: (term: string) => void
     actualRider: string
     setActualRider: (value: string) => void
 }
@@ -39,6 +46,12 @@ export function MemberSelector({
     setManualStudentName,
     manualNames,
     setManualNames,
+    savedGuestSearchResults = [],
+    selectedSavedGuests = [],
+    setSelectedSavedGuests,
+    showSavedGuestDropdown = false,
+    setShowSavedGuestDropdown,
+    handleSavedGuestSearch,
     actualRider,
     setActualRider,
 }: MemberSelectorProps) {
@@ -63,6 +76,11 @@ export function MemberSelector({
     }
 
     const canAppendRider = parseActualRiders(riderDraft).length > 0
+    const clearSavedGuestSearch = () => {
+        if (handleSavedGuestSearch) handleSavedGuestSearch('')
+        else setManualStudentName('')
+        setShowSavedGuestDropdown?.(false)
+    }
     const appendRider = () => {
         if (!canAppendRider) return
         const nextRiders = parseActualRiders(
@@ -90,7 +108,7 @@ export function MemberSelector({
                 )}
             </label>
 
-            {(selectedMemberIds.length > 0 || manualNames.length > 0) && (
+            {(selectedMemberIds.length > 0 || manualNames.length > 0 || selectedSavedGuests.length > 0) && (
                 <div style={{ marginBottom: designSystem.spacing.sm, display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {selectedMemberIds.map(memberId => {
                         const member = members.find(m => m.id === memberId)
@@ -125,6 +143,43 @@ export function MemberSelector({
                             </span>
                         ) : null
                     })}
+
+                    {selectedSavedGuests.map((guest) => (
+                        <span key={guest.id} style={{
+                            padding: '6px 12px',
+                            background: designSystem.colors.success[50],
+                            color: designSystem.colors.success[700],
+                            border: `1px solid ${designSystem.colors.success[500]}`,
+                            borderRadius: designSystem.borderRadius.md,
+                            fontSize: getFontSize('body', true),
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontWeight: '600',
+                        }}>
+                            {guest.name}
+                            <small>LINE</small>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedSavedGuests?.((current) =>
+                                    current.filter((item) => item.id !== guest.id)
+                                )}
+                                aria-label={`移除已建檔非會員 ${guest.name}`}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: designSystem.colors.success[700],
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    fontSize: getFontSize('h3', false),
+                                    lineHeight: 1,
+                                    touchAction: 'manipulation',
+                                }}
+                            >
+                                ×
+                            </button>
+                        </span>
+                    ))}
 
                     {manualNames.map((name, index) => (
                         <span key={index} style={{
@@ -264,34 +319,106 @@ export function MemberSelector({
                 gap: designSystem.spacing.sm,
                 alignItems: 'stretch',
             }}>
-                <input
-                    type="text"
-                    value={manualStudentName}
-                    onChange={(e) => setManualStudentName(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.nativeEvent.isComposing && manualStudentName.trim()) {
-                            e.preventDefault()
-                            setManualNames(prev => [...prev, manualStudentName.trim()])
-                            setManualStudentName('')
-                        }
-                    }}
-                    placeholder="或直接輸入姓名（非會員/首次體驗）"
-                    style={{
-                        flex: 1,
-                        padding: '12px',
-                        borderRadius: designSystem.borderRadius.lg,
-                        border: `1px solid ${designSystem.colors.warning[500]}`,
-                        boxSizing: 'border-box',
-                        fontSize: '16px',
-                        touchAction: 'manipulation',
-                    }}
-                />
+                <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                    <input
+                        type="text"
+                        value={manualStudentName}
+                        onChange={(e) => {
+                            const value = e.target.value
+                            if (handleSavedGuestSearch) handleSavedGuestSearch(value)
+                            else setManualStudentName(value)
+                        }}
+                        onFocus={() => {
+                            if (savedGuestSearchResults.length > 0) setShowSavedGuestDropdown?.(true)
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.nativeEvent.isComposing && manualStudentName.trim()) {
+                                e.preventDefault()
+                                setManualNames(prev => [...prev, manualStudentName.trim()])
+                                clearSavedGuestSearch()
+                            }
+                        }}
+                        placeholder="或直接輸入姓名（非會員/首次體驗）"
+                        style={{
+                            width: '100%',
+                            padding: '12px',
+                            borderRadius: designSystem.borderRadius.lg,
+                            border: `1px solid ${designSystem.colors.warning[500]}`,
+                            boxSizing: 'border-box',
+                            fontSize: '16px',
+                            touchAction: 'manipulation',
+                        }}
+                    />
+                    {showSavedGuestDropdown && savedGuestSearchResults.length > 0 && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            background: '#ffffff',
+                            border: `1px solid ${designSystem.colors.border.main}`,
+                            borderRadius: designSystem.borderRadius.lg,
+                            marginTop: '4px',
+                            boxShadow: designSystem.shadows.md,
+                            zIndex: designSystem.zIndex.dropdown,
+                        }}>
+                            {savedGuestSearchResults.map((guest) => {
+                                const isSelected = selectedSavedGuests.some((item) => item.id === guest.id)
+                                return (
+                                <button
+                                    key={guest.id}
+                                    type="button"
+                                    onClick={() => {
+                                        if (!isSelected) {
+                                            setSelectedSavedGuests?.((current) => [...current, guest])
+                                        }
+                                        clearSavedGuestSearch()
+                                    }}
+                                    disabled={isSelected}
+                                    style={{
+                                        width: '100%',
+                                        padding: designSystem.spacing.md,
+                                        border: 0,
+                                        borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                                        background: isSelected
+                                            ? designSystem.colors.success[50]
+                                            : '#ffffff',
+                                        color: designSystem.colors.text.primary,
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <strong>{isSelected ? '✓ ' : ''}{guest.name}</strong>
+                                    <span style={{
+                                        marginLeft: 8,
+                                        color: designSystem.colors.success[700],
+                                        fontSize: getFontSize('button', true),
+                                    }}>
+                                        LINE
+                                    </span>
+                                    {guest.line_contact?.display_name && (
+                                        <div style={{
+                                            marginTop: 3,
+                                            color: designSystem.colors.text.secondary,
+                                            fontSize: getFontSize('button', true),
+                                        }}>
+                                            {guest.line_contact.display_name}
+                                        </div>
+                                    )}
+                                </button>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
                 <button
                     type="button"
                     onClick={() => {
                         if (manualStudentName.trim()) {
                             setManualNames(prev => [...prev, manualStudentName.trim()])
-                            setManualStudentName('')
+                            clearSavedGuestSearch()
                         }
                     }}
                     disabled={!manualStudentName.trim()}

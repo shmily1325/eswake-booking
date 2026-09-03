@@ -21,6 +21,7 @@ import { BookingAlternativeSuggestions } from './booking/BookingAlternativeSugge
 import { scheduleCoachTimeOffReminderToast } from '../utils/coachTimeOffWarning'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
 import { useBookingAlternatives } from '../hooks/useBookingAlternatives'
+import { syncBookingSavedLineReminderGuests } from '../utils/lineReminderGuests'
 
 interface EditBookingDialogProps {
   isOpen: boolean
@@ -67,6 +68,10 @@ export function EditBookingDialog({
     showMemberDropdown,
     manualStudentName,
     manualNames,
+    savedGuestSearchResults,
+    selectedSavedGuests,
+    initialSavedGuestIds,
+    showSavedGuestDropdown,
     startDate,
     startTime,
     durationMin,
@@ -96,6 +101,8 @@ export function EditBookingDialog({
     setShowMemberDropdown,
     setManualStudentName,
     setManualNames,
+    setSelectedSavedGuests,
+    setShowSavedGuestDropdown,
     setStartDate,
     setStartTime,
     setDurationMin,
@@ -112,6 +119,7 @@ export function EditBookingDialog({
     toggleCoach,
     toggleActivityType,
     handleMemberSearch,
+    handleSavedGuestSearch,
     performConflictCheck,
     resetForm,
     refreshCoachTimeOff
@@ -570,6 +578,21 @@ export function EditBookingDialog({
         }
       }
 
+      const currentSavedGuestIds = selectedSavedGuests.map((guest) => guest.id).sort()
+      const originalSavedGuestIds = [...initialSavedGuestIds].sort()
+      const savedGuestSelectionChanged =
+        currentSavedGuestIds.length !== originalSavedGuestIds.length ||
+        currentSavedGuestIds.some((id, index) => id !== originalSavedGuestIds[index])
+      if (savedGuestSelectionChanged) {
+        await syncBookingSavedLineReminderGuests(
+          booking.id,
+          selectedSavedGuests.map((guest) => ({
+            guestId: guest.id,
+            contactName: guest.booking_name || guest.name,
+          })),
+        )
+      }
+
       // 計算變更內容
       const changes: string[] = []
 
@@ -963,6 +986,12 @@ export function EditBookingDialog({
             setManualStudentName={setManualStudentName}
             manualNames={manualNames}
             setManualNames={setManualNames}
+            savedGuestSearchResults={savedGuestSearchResults}
+            selectedSavedGuests={selectedSavedGuests}
+            setSelectedSavedGuests={setSelectedSavedGuests}
+            showSavedGuestDropdown={showSavedGuestDropdown}
+            setShowSavedGuestDropdown={setShowSavedGuestDropdown}
+            handleSavedGuestSearch={handleSavedGuestSearch}
             actualRider={actualRider}
             setActualRider={setActualRider}
           />

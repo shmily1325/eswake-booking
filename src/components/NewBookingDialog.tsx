@@ -18,6 +18,7 @@ import { scheduleCoachTimeOffReminderToast } from '../utils/coachTimeOffWarning'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
 import { getVenueTimestamp } from '../utils/date'
 import { useBookingAlternatives } from '../hooks/useBookingAlternatives'
+import { syncBookingSavedLineReminderGuests } from '../utils/lineReminderGuests'
 
 interface NewBookingDialogProps {
   isOpen: boolean
@@ -62,6 +63,9 @@ export function NewBookingDialog({
     showMemberDropdown,
     manualStudentName,
     manualNames,
+    savedGuestSearchResults,
+    selectedSavedGuests,
+    showSavedGuestDropdown,
     startDate,
     startTime,
     durationMin,
@@ -91,6 +95,8 @@ export function NewBookingDialog({
     setShowMemberDropdown,
     setManualStudentName,
     setManualNames,
+    setSelectedSavedGuests,
+    setShowSavedGuestDropdown,
     setStartDate,
     setStartTime,
     setDurationMin,
@@ -107,6 +113,7 @@ export function NewBookingDialog({
     toggleCoach,
     toggleActivityType,
     handleMemberSearch,
+    handleSavedGuestSearch,
     performConflictCheck,
     resetForm,
     refreshCoachTimeOff
@@ -316,6 +323,23 @@ export function NewBookingDialog({
           }
         }
 
+        if (selectedSavedGuests.length > 0 && insertedBooking) {
+          try {
+            await syncBookingSavedLineReminderGuests(
+              insertedBooking.id,
+              selectedSavedGuests.map((guest) => ({
+                guestId: guest.id,
+                contactName: guest.booking_name || guest.name,
+              })),
+            )
+          } catch (error) {
+            await supabase.from('bookings').delete().eq('id', insertedBooking.id)
+            throw new Error(
+              error instanceof Error ? error.message : 'LINE 提醒客人關聯失敗'
+            )
+          }
+        }
+
       // 記錄到審計日誌
         const coachNames = selectedCoaches.length > 0
           ? coaches.filter(c => selectedCoaches.includes(c.id)).map(c => c.name)
@@ -457,6 +481,12 @@ export function NewBookingDialog({
             setManualStudentName={setManualStudentName}
             manualNames={manualNames}
             setManualNames={setManualNames}
+            savedGuestSearchResults={savedGuestSearchResults}
+            selectedSavedGuests={selectedSavedGuests}
+            setSelectedSavedGuests={setSelectedSavedGuests}
+            showSavedGuestDropdown={showSavedGuestDropdown}
+            setShowSavedGuestDropdown={setShowSavedGuestDropdown}
+            handleSavedGuestSearch={handleSavedGuestSearch}
             actualRider={actualRider}
             setActualRider={setActualRider}
           />

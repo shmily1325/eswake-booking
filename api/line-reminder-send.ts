@@ -1,6 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { authenticateStaff } from '../src/server/staff-api-auth.js'
+import {
+  authenticateStaff,
+  canManageLineReminderMappings,
+  hasStaffEditPermission,
+} from '../src/server/staff-api-auth.js'
 import { handleLineReminderMappingAction } from '../src/server/line-reminder-mapping-actions.js'
 
 const LINE_PUSH_URL = 'https://api.line.me/v2/bot/message/push'
@@ -169,6 +173,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? req.body as Record<string, unknown>
       : null
     if (typeof requestBody?.action === 'string') {
+      const managerOnlyActions = new Set([
+        'save_guest',
+        'set_guest_active',
+        'delete_mapping',
+        'delete_contact',
+        'upsert_mapping',
+      ])
+      if (
+        managerOnlyActions.has(requestBody.action) &&
+        !canManageLineReminderMappings(auth.user.email)
+      ) {
+        return sendError(res, 403, 'LINE reminder manager permission required')
+      }
+      if (
+        requestBody.action === 'sync_booking_guests' &&
+        !(await hasStaffEditPermission(supabase, auth.user.email))
+      ) {
+        return sendError(res, 403, 'Booking editor permission required')
+      }
       return handleLineReminderMappingAction(requestBody, res, supabase, auth.user.email)
     }
 
@@ -187,7 +210,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const mappingIds = parsed.recipients
       .map(recipient => recipient.mappingId)
       .filter((mappingId): mappingId is string => !!mappingId)
-    const [bindingsResult, mappingsResult] = await Promise.all([
+    const [bindingsResult, mappingsResult, formalLineBindingsResult] = await Promise.all([
       memberIds.length > 0
         ? supabase
             .from('line_bindings')
@@ -199,15 +222,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       mappingIds.length > 0
         ? supabase
             .from('line_reminder_mappings')
-            .select('id, line_user_id, member_id, booking_id, normalized_name, contact_phone, line_contact:line_user_id(friend_status)')
+            .select('id, line_user_id, member_id, booking_id, guest_id, normalized_name, contact_phone, guest:guest_id(is_active), line_contact:line_user_id(friend_status)')
             .in('id', mappingIds)
+        : Promise.resolve({ data: [], error: null }),
+      mappingIds.length > 0
+        ? supabase
+            .from('line_bindings')
+            .select('line_user_id')
+            .eq('status', 'active')
+            .eq('can_push', true)
         : Promise.resolve({ data: [], error: null }),
     ])
 
-    if (bindingsResult.error || mappingsResult.error) {
+    if (bindingsResult.error || mappingsResult.error || formalLineBindingsResult.error) {
       console.error(
         'LINE reminder recipient lookup failed:',
-        bindingsResult.error?.message || mappingsResult.error?.message,
+        bindingsResult.error?.message ||
+          mappingsResult.error?.message ||
+          formalLineBindingsResult.error?.message,
       )
       return sendError(res, 500, 'Unable to load LINE recipients')
     }
@@ -222,14 +254,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         lineUserIdByMember.set(binding.member_id, binding.line_user_id)
       }
     }
+    const formallyBoundLineUserIds = new Set(
+      (formalLineBindingsResult.data ?? [])
+        .map((binding) => binding.line_user_id)
+        .filter((lineUserId): lineUserId is string => typeof lineUserId === 'string'),
+    )
 
     const mappingById = new Map<string, {
       id: string
       line_user_id: string
       member_id: string | null
       booking_id: number | null
+      guest_id: string | null
       normalized_name: string | null
       contact_phone: string | null
+      guest?: { is_active?: boolean } | Array<{ is_active?: boolean }> | null
       line_contact?: { friend_status?: string } | Array<{ friend_status?: string }> | null
     }>()
     for (const value of mappingsResult.data ?? []) {
@@ -238,8 +277,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         line_user_id: string
         member_id: string | null
         booking_id: number | null
+        guest_id: string | null
         normalized_name: string | null
         contact_phone: string | null
+        guest?: { is_active?: boolean } | Array<{ is_active?: boolean }> | null
         line_contact?: { friend_status?: string } | Array<{ friend_status?: string }> | null
       }
       mappingById.set(mapping.id, mapping)
@@ -259,12 +300,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const contact = Array.isArray(mapping?.line_contact)
           ? mapping?.line_contact[0]
           : mapping?.line_contact
+        const guest = Array.isArray(mapping?.guest)
+          ? mapping?.guest[0]
+          : mapping?.guest
         const identityMatches = recipient.memberId
           ? mapping?.member_id === recipient.memberId
           : mapping?.member_id === null &&
             typeof mapping.booking_id === 'number' &&
-            recipient.bookingIds.includes(mapping.booking_id)
-        if (mapping && contact?.friend_status === 'friend' && identityMatches) {
+            recipient.bookingIds.includes(mapping.booking_id) &&
+            mapping.normalized_name === recipient.contactName
+              .trim()
+              .replace(/\s+/g, ' ')
+              .toLocaleLowerCase('zh-TW')
+        const savedGuestIsActive = !mapping?.guest_id || guest?.is_active === true
+        if (
+          mapping &&
+          contact?.friend_status === 'friend' &&
+          !formallyBoundLineUserIds.has(mapping.line_user_id) &&
+          savedGuestIsActive &&
+          identityMatches
+        ) {
           lineUserId = mapping.line_user_id
         }
       }

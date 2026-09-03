@@ -16,6 +16,7 @@ type QueryResult = {
 
 const getUserMock = vi.fn()
 const fromMock = vi.fn()
+const rpcMock = vi.fn()
 let queryResults: Record<string, QueryResult>
 let queryBuilders: Record<string, ReturnType<typeof queryBuilder>>
 
@@ -26,7 +27,15 @@ function queryBuilder(result: QueryResult) {
     limit: vi.fn(),
     in: vi.fn(),
     eq: vi.fn(),
+    is: vi.fn(),
+    not: vi.fn(),
     order: vi.fn(),
+    maybeSingle: vi.fn(),
+    single: vi.fn(),
+    insert: vi.fn(),
+    update: vi.fn(),
+    upsert: vi.fn(),
+    delete: vi.fn(),
     then: (
       resolve: (value: QueryResult) => unknown,
       reject?: (reason: unknown) => unknown,
@@ -37,7 +46,15 @@ function queryBuilder(result: QueryResult) {
   builder.limit.mockReturnValue(builder)
   builder.in.mockReturnValue(builder)
   builder.eq.mockReturnValue(builder)
+  builder.is.mockReturnValue(builder)
+  builder.not.mockReturnValue(builder)
   builder.order.mockReturnValue(builder)
+  builder.maybeSingle.mockReturnValue(builder)
+  builder.single.mockReturnValue(builder)
+  builder.insert.mockReturnValue(builder)
+  builder.update.mockReturnValue(builder)
+  builder.upsert.mockReturnValue(builder)
+  builder.delete.mockReturnValue(builder)
   return builder
 }
 
@@ -114,7 +131,9 @@ describe('manual LINE reminder send API', () => {
     createClientMock.mockReturnValue({
       auth: { getUser: getUserMock },
       from: fromMock,
+      rpc: rpcMock,
     })
+    rpcMock.mockResolvedValue({ data: null, error: null })
     setUser()
   })
 
@@ -188,8 +207,311 @@ describe('manual LINE reminder send API', () => {
     expect(response.json).toHaveBeenCalledWith({
       contacts: [{ line_user_id: 'U1', display_name: 'Guest', formal_binding: null }],
       mappings: [{ id: 'map-1', line_user_id: 'U1', contact_name: 'Guest' }],
+      guests: [],
     })
     expect(lineFetch).not.toHaveBeenCalled()
+  })
+
+  it('restricts reminder mapping mutations to configured managers', async () => {
+    setUser('viewer@example.com')
+    queryResults.view_users = { data: [{ email: 'viewer@example.com' }], error: null }
+    const response = responseMock()
+
+    await handler(
+      request({ action: 'set_guest_active', guestId: 'guest-1', isActive: false }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(response.status).toHaveBeenCalledWith(403)
+    expect(response.json).toHaveBeenCalledWith({
+      error: 'LINE reminder manager permission required',
+    })
+    expect(fromMock).not.toHaveBeenCalledWith('line_reminder_guests')
+  })
+
+  it('does not let view-only staff change booking guest mappings', async () => {
+    setUser('viewer@example.com')
+    queryResults.view_users = { data: [{ email: 'viewer@example.com' }], error: null }
+    queryResults.editor_users = { data: [], error: null }
+    const response = responseMock()
+
+    await handler(
+      request({ action: 'sync_booking_guests', bookingId: 101, guests: [] }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(response.status).toHaveBeenCalledWith(403)
+    expect(response.json).toHaveBeenCalledWith({
+      error: 'Booking editor permission required',
+    })
+    expect(queryBuilders.editor_users.eq).toHaveBeenCalledWith('can_schedule', true)
+    expect(rpcMock).not.toHaveBeenCalled()
+  })
+
+  it('searches reusable non-members without exposing formally bound LINE accounts', async () => {
+    queryResults.line_reminder_guests = {
+      data: [
+        {
+          id: 'guest-1',
+          line_user_id: 'U1',
+          name: '吳穎',
+          line_contact: { display_name: 'LINE 吳迪', friend_status: 'friend' },
+        },
+        {
+          id: 'guest-2',
+          line_user_id: 'U2',
+          name: '吳小明',
+          line_contact: { display_name: 'LINE 小明', friend_status: 'friend' },
+        },
+      ],
+      error: null,
+    }
+    queryResults.line_bindings = {
+      data: [{ line_user_id: 'U2' }],
+      error: null,
+    }
+    const response = responseMock()
+
+    await handler(
+      request({ action: 'search_guests', query: '吳' }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(response.json).toHaveBeenCalledWith({
+      guests: [
+        {
+          id: 'guest-1',
+          line_user_id: 'U1',
+          name: '吳穎',
+          line_contact: { display_name: 'LINE 吳迪', friend_status: 'friend' },
+        },
+      ],
+    })
+  })
+
+  it('creates an optional reusable non-member record', async () => {
+    queryResults.line_webhook_contacts = {
+      data: { line_user_id: 'U1', friend_status: 'friend' },
+      error: null,
+    }
+    queryResults.line_bindings = { data: null, error: null }
+    queryResults.line_reminder_guests = {
+      data: {
+        id: 'guest-1',
+        line_user_id: 'U1',
+        name: '吳穎',
+        normalized_name: '吳穎',
+        is_active: true,
+      },
+      error: null,
+    }
+    const response = responseMock()
+
+    await handler(
+      request({ action: 'save_guest', lineUserId: 'U1', name: '吳穎' }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(queryBuilders.line_reminder_guests.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_user_id: 'U1',
+        name: '吳穎',
+        normalized_name: '吳穎',
+      }),
+      { onConflict: 'line_user_id' },
+    )
+    expect(response.status).toHaveBeenCalledWith(200)
+  })
+
+  it('moves existing saved-guest booking mappings when its LINE account changes', async () => {
+    queryResults.line_webhook_contacts = {
+      data: { line_user_id: 'U2', friend_status: 'friend' },
+      error: null,
+    }
+    queryResults.line_bindings = { data: null, error: null }
+    queryResults.line_reminder_guests = {
+      data: {
+        id: 'guest-1',
+        line_user_id: 'U2',
+        name: '吳穎',
+        normalized_name: '吳穎',
+        is_active: true,
+      },
+      error: null,
+    }
+    queryResults.line_reminder_mappings = { data: null, error: null }
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'save_guest',
+        guestId: 'guest-1',
+        lineUserId: 'U2',
+        name: '吳穎',
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(queryBuilders.line_reminder_mappings.update).toHaveBeenCalledWith(
+      expect.objectContaining({ line_user_id: 'U2' }),
+    )
+    expect(queryBuilders.line_reminder_mappings.eq).toHaveBeenCalledWith(
+      'guest_id',
+      'guest-1',
+    )
+    expect(response.status).toHaveBeenCalledWith(200)
+  })
+
+  it('loads multiple saved guests for one booking', async () => {
+    queryResults.line_reminder_mappings = {
+      data: [
+        {
+          contact_name: '吳穎',
+          guest: { id: 'guest-1', line_user_id: 'U1', name: '吳穎', is_active: true },
+        },
+        {
+          contact_name: '小安',
+          guest: { id: 'guest-2', line_user_id: 'U2', name: '小安', is_active: true },
+        },
+      ],
+      error: null,
+    }
+    const response = responseMock()
+
+    await handler(
+      request({ action: 'get_booking_guests', bookingId: 101 }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(response.json).toHaveBeenCalledWith({
+      guests: [
+        expect.objectContaining({ id: 'guest-1', booking_name: '吳穎' }),
+        expect.objectContaining({ id: 'guest-2', booking_name: '小安' }),
+      ],
+    })
+  })
+
+  it('syncs multiple saved guests to the same booking', async () => {
+    queryResults.bookings = {
+      data: { id: 101, contact_name: '吳穎, 小安' },
+      error: null,
+    }
+    queryResults.line_reminder_guests = {
+      data: [
+        {
+          id: 'guest-1',
+          line_user_id: 'U1',
+          name: '吳穎',
+          is_active: true,
+          line_contact: { friend_status: 'friend' },
+        },
+        {
+          id: 'guest-2',
+          line_user_id: 'U2',
+          name: '小安',
+          is_active: true,
+          line_contact: { friend_status: 'friend' },
+        },
+      ],
+      error: null,
+    }
+    queryResults.line_reminder_mappings = { data: [], error: null }
+    queryResults.line_bindings = { data: [], error: null }
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'sync_booking_guests',
+        bookingId: 101,
+        guests: [
+          { guestId: '00000000-0000-4000-8000-000000000001', contactName: '吳穎' },
+          { guestId: '00000000-0000-4000-8000-000000000002', contactName: '小安' },
+        ],
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(response.status).toHaveBeenCalledWith(200)
+    expect(response.json).toHaveBeenCalledWith({ ok: true })
+    expect(rpcMock).toHaveBeenCalledWith('sync_line_reminder_booking_guests', {
+      p_booking_id: 101,
+      p_guests: [
+        { guestId: '00000000-0000-4000-8000-000000000001', contactName: '吳穎' },
+        { guestId: '00000000-0000-4000-8000-000000000002', contactName: '小安' },
+      ],
+      p_operator_email: 'callumbao1122@gmail.com',
+    })
+  })
+
+  it('updates one named person without replacing another mapping on the booking', async () => {
+    queryResults.line_webhook_contacts = {
+      data: { line_user_id: 'U2', friend_status: 'friend' },
+      error: null,
+    }
+    queryResults.line_bindings = { data: null, error: null }
+    queryResults.bookings = {
+      data: { id: 101, contact_name: '吳穎, 小安', contact_phone: null },
+      error: null,
+    }
+    queryResults.line_reminder_mappings = {
+      data: { id: 'mapping-for-small-an' },
+      error: null,
+    }
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'upsert_mapping',
+        lineUserId: 'U2',
+        bookingId: 101,
+        contactName: '小安',
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(queryBuilders.line_reminder_mappings.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        booking_id: 101,
+        contact_name: '小安',
+        normalized_name: '小安',
+        guest_id: null,
+      }),
+    )
+    expect(response.status).toHaveBeenCalledWith(200)
+  })
+
+  it('updates an existing manual member mapping by mapping ID', async () => {
+    queryResults.line_webhook_contacts = {
+      data: { line_user_id: 'U1', friend_status: 'friend' },
+      error: null,
+    }
+    queryResults.line_bindings = { data: null, error: null }
+    queryResults.line_reminder_mappings = {
+      data: { id: 'mapping-1' },
+      error: null,
+    }
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'upsert_mapping',
+        mappingId: 'mapping-1',
+        lineUserId: 'U1',
+        memberId: 'member-2',
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(queryBuilders.line_reminder_mappings.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_user_id: 'U1',
+        member_id: 'member-2',
+        booking_id: null,
+        guest_id: null,
+      }),
+    )
+    expect(queryBuilders.line_reminder_mappings.eq).toHaveBeenCalledWith('id', 'mapping-1')
+    expect(response.status).toHaveBeenCalledWith(200)
   })
 
   it.each([
@@ -397,6 +719,89 @@ describe('manual LINE reminder send API', () => {
         { recipientKey: 'guest:Guest One', memberId: null, ok: true },
         { recipientKey: 'guest:Guest Two', memberId: null, ok: true },
       ],
+    })
+  })
+
+  it('rejects a reminder mapping for a different name on the same booking', async () => {
+    queryResults.line_bindings = { data: [], error: null }
+    queryResults.line_reminder_mappings = {
+      data: [{
+        id: 'mapping-1',
+        line_user_id: 'line-user-1',
+        member_id: null,
+        booking_id: 101,
+        normalized_name: '吳穎',
+        contact_phone: null,
+        line_contact: { friend_status: 'friend' },
+      }],
+      error: null,
+    }
+    const lineFetch = vi.spyOn(globalThis, 'fetch')
+    const response = responseMock()
+
+    await handler(request({
+      date: '2026-08-28',
+      recipients: [{
+        recipientKey: 'guest:小安:101',
+        memberId: null,
+        mappingId: 'mapping-1',
+        contactName: '小安',
+        bookingIds: [101],
+        message: 'Reminder',
+      }],
+    }), response as unknown as VercelResponse)
+
+    expect(lineFetch).not.toHaveBeenCalled()
+    expect(response.json).toHaveBeenCalledWith({
+      results: [{
+        recipientKey: 'guest:小安:101',
+        memberId: null,
+        ok: false,
+        error: 'No verified push-capable LINE recipient',
+      }],
+    })
+  })
+
+  it('rejects reminder-only mappings after the LINE account formally binds', async () => {
+    queryResults.line_bindings = {
+      data: [{ line_user_id: 'line-user-1' }],
+      error: null,
+    }
+    queryResults.line_reminder_mappings = {
+      data: [{
+        id: 'mapping-1',
+        line_user_id: 'line-user-1',
+        member_id: null,
+        booking_id: 101,
+        normalized_name: '吳穎',
+        contact_phone: null,
+        line_contact: { friend_status: 'friend' },
+      }],
+      error: null,
+    }
+    const lineFetch = vi.spyOn(globalThis, 'fetch')
+    const response = responseMock()
+
+    await handler(request({
+      date: '2026-08-28',
+      recipients: [{
+        recipientKey: 'guest:吳穎:101',
+        memberId: null,
+        mappingId: 'mapping-1',
+        contactName: '吳穎',
+        bookingIds: [101],
+        message: 'Reminder',
+      }],
+    }), response as unknown as VercelResponse)
+
+    expect(lineFetch).not.toHaveBeenCalled()
+    expect(response.json).toHaveBeenCalledWith({
+      results: [{
+        recipientKey: 'guest:吳穎:101',
+        memberId: null,
+        ok: false,
+        error: 'No verified push-capable LINE recipient',
+      }],
     })
   })
 })

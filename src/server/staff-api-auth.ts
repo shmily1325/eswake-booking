@@ -7,8 +7,44 @@ const SUPER_ADMINS = new Set([
   'minlin1325@gmail.com',
 ])
 const HIDDEN_ALLOWED_USERS = new Set(['yylai0@gmail.com'])
+const DEFAULT_LINE_REMINDER_MANAGERS = new Set([
+  'callumbao1122@gmail.com',
+  'pjpan0511@gmail.com',
+  'minlin1325@gmail.com',
+  'stt884142000@gmail.com',
+  'lynn8046356@gmail.com',
+])
 
 export type SupabaseAdmin = SupabaseClient
+
+export function canManageLineReminderMappings(email: string): boolean {
+  const configured = [
+    process.env.LINE_REMINDER_MANAGERS,
+    process.env.VITE_MEMBER_PHONE_ONLY_EDITORS,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean)
+  return new Set([...DEFAULT_LINE_REMINDER_MANAGERS, ...configured])
+    .has(email.trim().toLowerCase())
+}
+
+export async function hasStaffEditPermission(
+  supabase: SupabaseAdmin,
+  email: string,
+): Promise<boolean> {
+  const normalized = email.trim().toLowerCase()
+  if (canManageLineReminderMappings(normalized) || SUPER_ADMINS.has(normalized)) return true
+  const { data, error } = await supabase
+    .from('editor_users')
+    .select('email, can_schedule')
+    .eq('email', normalized)
+    .eq('can_schedule', true)
+    .limit(1)
+  if (error) throw error
+  return Boolean(data?.length)
+}
 
 function bearerToken(req: VercelRequest): string | null {
   const header = req.headers.authorization

@@ -65,6 +65,7 @@ function parseCommaSeparatedEmails(raw: string | undefined): string[] {
  * 若另設 VITE_MEMBER_PHONE_ONLY_EDITORS（逗號分隔），會與此清單合併（多出的人也能看到圖示）。
  */
 export const MEMBER_PHONE_ONLY_EDITORS: string[] = [
+  'callumbao1122@gmail.com',
   'pjpan0511@gmail.com',
   'minlin1325@gmail.com',
   'stt884142000@gmail.com',

@@ -53,13 +53,15 @@ Messaging API 設定：
 migrations/203_restore_line_reminder_contacts.sql
 migrations/204_bind_line_reminders_to_bookings.sql
 migrations/205_clear_guest_line_mapping_on_booking_identity_change.sql
+migrations/206_add_saved_line_reminder_guests.sql
 ```
 
-建立。三張資料表皆強制 RLS，只有 server-side `service_role` 可讀寫：
+建立。四張資料表皆強制 RLS，只有 server-side `service_role` 可讀寫：
 
 - `line_webhook_contacts`
 - `line_webhook_events`
 - `line_reminder_mappings`
+- `line_reminder_guests`
 
 請勿將 service role key 放到 `VITE_*` 變數。
 
@@ -68,7 +70,7 @@ migrations/205_clear_guest_line_mapping_on_booking_identity_change.sql
 1. 部署 migration 與程式碼。
 2. 在 LINE Developers 設定並 Verify webhook。
 3. 用測試帳號加好友或按「芝麻開門」。
-4. 到「LINE 配對 → 提醒配對」，確認出現 LINE 名稱、頭像與互動時間。
+4. 到「LINE 配對 → 配對」，確認出現 LINE 名稱、頭像與互動時間。
 5. 分別測試：
    - 配對未正式綁定會員。
    - 配對有電話的非會員。
@@ -79,15 +81,17 @@ migrations/205_clear_guest_line_mapping_on_booking_identity_change.sql
 ## 日常操作
 
 1. 客人加好友、傳訊息或按 Rich Menu；系統背景收集 user ID，不要求客人綁定。
-2. 員工在「LINE 配對 → 提醒配對」選擇已建檔會員，或替新客選擇一筆預約。
+2. 員工在「LINE 配對 → 配對」選擇已建檔會員，或替新客選擇一筆預約及其中一位預約人。
+   固定來訪但不入會的客人可勾選「建檔」，之後能直接從預約表的非會員欄選取。
+   同一筆預約可以選取多位已建檔非會員，每位使用各自的 LINE 提醒配對。
 3. 明日提醒依序使用：
    - 正式會員綁定
    - 會員提醒配對
    - 新客預約配對
 4. 找不到候選者維持複製訊息人工傳送。
 
-若編輯預約並更換預約人姓名或主要會員，該預約的新客提醒配對會自動解除，
-避免將提醒傳送給原本的預約人。只修改時間、船隻或教練不會解除配對。
+若編輯預約並移除某位預約人，系統只解除該姓名的新客提醒配對；
+仍留在預約中的其他人不受影響。只修改時間、船隻或教練不會解除配對。
 
 ## 故障排除
 

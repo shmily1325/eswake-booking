@@ -40,6 +40,15 @@ type ReminderMapping = {
   contact_phone: string | null
   members?: MemberOption | null
   booking?: BookingSearchResult | null
+  guest?: SavedGuest | null
+}
+
+type SavedGuest = {
+  id: string
+  line_user_id: string
+  name: string
+  normalized_name?: string
+  is_active: boolean
 }
 
 type BookingSearchResult = {
@@ -51,6 +60,12 @@ type BookingSearchResult = {
 
 type Props = {
   members: MemberOption[]
+}
+
+function splitBookingNames(value: string): string[] {
+  return Array.from(new Set(
+    value.split(/[,，]/).map((name) => name.trim()).filter(Boolean),
+  ))
 }
 
 async function callMappingApi(body: Record<string, unknown>, signal?: AbortSignal) {
@@ -76,10 +91,12 @@ export function LineReminderMappingPanel({ members }: Props) {
   const toast = useToast()
   const [contacts, setContacts] = useState<LineContact[]>([])
   const [mappings, setMappings] = useState<ReminderMapping[]>([])
+  const [guests, setGuests] = useState<SavedGuest[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'unmatched' | 'matched' | 'all'>('unmatched')
   const [selectedContact, setSelectedContact] = useState<LineContact | null>(null)
+  const [editingMappingId, setEditingMappingId] = useState('')
   const [targetType, setTargetType] = useState<'member' | 'guest'>('member')
   const [memberId, setMemberId] = useState('')
   const [memberSearch, setMemberSearch] = useState('')
@@ -87,6 +104,9 @@ export function LineReminderMappingPanel({ members }: Props) {
   const [bookingResults, setBookingResults] = useState<BookingSearchResult[]>([])
   const [bookingSearchLoading, setBookingSearchLoading] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
+  const [selectedBookingName, setSelectedBookingName] = useState('')
+  const [saveAsGuest, setSaveAsGuest] = useState(false)
+  const [savedGuestName, setSavedGuestName] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
@@ -95,6 +115,7 @@ export function LineReminderMappingPanel({ members }: Props) {
       const result = await callMappingApi({ action: 'list' })
       setContacts((result?.contacts ?? []) as LineContact[])
       setMappings((result?.mappings ?? []) as ReminderMapping[])
+      setGuests((result?.guests ?? []) as SavedGuest[])
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '載入失敗')
     } finally {
@@ -152,11 +173,17 @@ export function LineReminderMappingPanel({ members }: Props) {
     return map
   }, [mappings])
 
+  const guestByLineUser = useMemo(
+    () => new Map(guests.map((guest) => [guest.line_user_id, guest])),
+    [guests],
+  )
+
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('zh-TW')
     return contacts.filter((contact) => {
       const hasReminderMapping = (mappingsByLineUser.get(contact.line_user_id) ?? []).length > 0
-      const isMatched = hasReminderMapping || contact.formal_binding?.can_push === true
+      const savedGuest = guestByLineUser.get(contact.line_user_id)
+      const isMatched = hasReminderMapping || Boolean(savedGuest) || contact.formal_binding?.can_push === true
       const isEligible = contact.friend_status === 'friend'
       if (filter === 'unmatched' && (isMatched || !isEligible)) return false
       if (filter === 'matched' && !isMatched) return false
@@ -169,24 +196,28 @@ export function LineReminderMappingPanel({ members }: Props) {
           mapping.members?.nickname,
         ].filter(Boolean).join(' '))
         .join(' ')
-      return `${contact.display_name} ${mappingText}`.toLocaleLowerCase('zh-TW').includes(term)
+      return `${contact.display_name} ${savedGuest?.name ?? ''} ${mappingText}`
+        .toLocaleLowerCase('zh-TW')
+        .includes(term)
     })
-  }, [contacts, filter, mappingsByLineUser, search])
+  }, [contacts, filter, guestByLineUser, mappingsByLineUser, search])
 
   const matchedCount = useMemo(
     () => contacts.filter((contact) =>
       (mappingsByLineUser.get(contact.line_user_id) ?? []).length > 0 ||
+      guestByLineUser.has(contact.line_user_id) ||
       contact.formal_binding?.can_push === true,
     ).length,
-    [contacts, mappingsByLineUser],
+    [contacts, guestByLineUser, mappingsByLineUser],
   )
   const unmatchedCount = useMemo(
     () => contacts.filter((contact) =>
       contact.friend_status === 'friend' &&
       (mappingsByLineUser.get(contact.line_user_id) ?? []).length === 0 &&
+      !guestByLineUser.has(contact.line_user_id) &&
       contact.formal_binding?.can_push !== true,
     ).length,
-    [contacts, mappingsByLineUser],
+    [contacts, guestByLineUser, mappingsByLineUser],
   )
   const memberCandidates = useMemo(() => {
     const term = memberSearch.trim().toLocaleLowerCase('zh-TW')
@@ -203,14 +234,23 @@ export function LineReminderMappingPanel({ members }: Props) {
       .slice(0, 30)
   }, [memberSearch, members])
 
-  const beginPairing = (contact: LineContact) => {
+  const beginPairing = (contact: LineContact, mapping?: ReminderMapping) => {
+    const savedGuest = guestByLineUser.get(contact.line_user_id)
     setSelectedContact(contact)
+    setEditingMappingId(mapping?.id ?? '')
     setTargetType('member')
-    setMemberId('')
-    setMemberSearch('')
+    setMemberId(mapping?.member_id ?? '')
+    setMemberSearch(
+      mapping?.members?.nickname ||
+      mapping?.members?.name ||
+      '',
+    )
     setBookingSearch('')
     setBookingResults([])
     setSelectedBookingId(null)
+    setSelectedBookingName('')
+    setSaveAsGuest(Boolean(savedGuest))
+    setSavedGuestName(savedGuest?.name ?? '')
   }
 
   const saveMapping = async () => {
@@ -223,13 +263,20 @@ export function LineReminderMappingPanel({ members }: Props) {
       toast.warning('請選擇預約')
       return
     }
+    if (targetType === 'guest' && !selectedBookingName) {
+      toast.warning('請選擇這個 LINE 對應的預約人')
+      return
+    }
     setSaving(true)
     try {
       await callMappingApi({
         action: 'upsert_mapping',
+        mappingId: editingMappingId || null,
         lineUserId: selectedContact.line_user_id,
         memberId: targetType === 'member' ? memberId : null,
         bookingId: targetType === 'guest' ? selectedBookingId : null,
+        contactName: targetType === 'guest' ? selectedBookingName : null,
+        saveGuestName: targetType === 'guest' && saveAsGuest ? savedGuestName : null,
       })
       toast.success('LINE 提醒配對已儲存')
       setSelectedContact(null)
@@ -249,6 +296,43 @@ export function LineReminderMappingPanel({ members }: Props) {
       toast.success('已解除配對')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '解除失敗')
+    }
+  }
+
+  const promoteMapping = async (mapping: ReminderMapping) => {
+    if (!mapping.booking_id) return
+    const name = (mapping.contact_name || '').trim()
+    if (!name) return
+    try {
+      const result = await callMappingApi({
+        action: 'save_guest',
+        lineUserId: mapping.line_user_id,
+        name,
+      })
+      const guest = result?.guest as SavedGuest | undefined
+      if (!guest) throw new Error('建檔失敗')
+      const existingGuests = mappings
+        .filter((row) =>
+          row.booking_id === mapping.booking_id &&
+          row.guest?.id &&
+          row.contact_name,
+        )
+        .map((row) => ({
+          guestId: row.guest!.id,
+          contactName: row.contact_name!,
+        }))
+      await callMappingApi({
+        action: 'sync_booking_guests',
+        bookingId: mapping.booking_id,
+        guests: [
+          ...existingGuests.filter((item) => item.guestId !== guest.id),
+          { guestId: guest.id, contactName: name },
+        ],
+      })
+      toast.success('已建檔')
+      await load()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '建檔失敗')
     }
   }
 
@@ -313,6 +397,7 @@ export function LineReminderMappingPanel({ members }: Props) {
           {filteredContacts.map((contact) => {
             const contactMappings = mappingsByLineUser.get(contact.line_user_id) ?? []
             const hasFormalPushBinding = contact.formal_binding?.can_push === true
+            const savedGuest = guestByLineUser.get(contact.line_user_id)
             return (
               <div
                 key={contact.line_user_id}
@@ -343,6 +428,14 @@ export function LineReminderMappingPanel({ members }: Props) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       <strong>{contact.display_name}</strong>
+                      {savedGuest && (
+                        <span style={getBadgeStyle(
+                          savedGuest.is_active ? 'success' : 'default',
+                          'small',
+                        )}>
+                          {savedGuest.name}
+                        </span>
+                      )}
                       {contact.friend_status !== 'friend' && (
                         <span style={getBadgeStyle(
                           contact.friend_status === 'blocked' ? 'warning' : 'default',
@@ -398,9 +491,28 @@ export function LineReminderMappingPanel({ members }: Props) {
                             ? `已建檔：${mapping.members?.nickname || mapping.members?.name || mapping.member_id}`
                             : `預約：${mapping.booking?.contact_name || mapping.contact_name || mapping.booking_id || '—'}`}
                         </span>
+                        {!mapping.member_id && !savedGuest && (
+                          <button
+                            type="button"
+                            onClick={() => void promoteMapping(mapping)}
+                            style={getButtonStyle('ghost', 'small', isMobile)}
+                          >
+                            建檔
+                          </button>
+                        )}
+                        {mapping.member_id && !hasFormalPushBinding && (
+                          <button
+                            type="button"
+                            onClick={() => beginPairing(contact, mapping)}
+                            style={getButtonStyle('ghost', 'small', isMobile)}
+                          >
+                            修改
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => void deleteMapping(mapping)}
+                          disabled={hasFormalPushBinding}
                           style={getButtonStyle('ghost', 'small', isMobile)}
                         >
                           解除
@@ -440,7 +552,9 @@ export function LineReminderMappingPanel({ members }: Props) {
               boxShadow: designSystem.shadows.elevation[3],
             }}
           >
-            <h2 style={{ marginTop: 0, fontSize: 20 }}>配對 {selectedContact.display_name}</h2>
+            <h2 style={{ marginTop: 0, fontSize: 20 }}>
+              {editingMappingId ? '修改' : '配對'} {selectedContact.display_name}
+            </h2>
             <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
               {(['member', 'guest'] as const).map((type) => (
                 <button
@@ -524,6 +638,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                   onChange={(event) => {
                     setBookingSearch(event.target.value)
                     setSelectedBookingId(null)
+                    setSelectedBookingName('')
                   }}
                   autoFocus
                   placeholder="搜尋預約人"
@@ -555,6 +670,15 @@ export function LineReminderMappingPanel({ members }: Props) {
                           type="button"
                           onClick={() => {
                             setSelectedBookingId(booking.id)
+                            const names = splitBookingNames(booking.contact_name)
+                            const onlyName = names.length === 1 ? names[0] : ''
+                            setSelectedBookingName(onlyName)
+                            if (
+                              onlyName &&
+                              !guestByLineUser.has(selectedContact.line_user_id)
+                            ) {
+                              setSavedGuestName(onlyName)
+                            }
                           }}
                           style={{
                             width: '100%',
@@ -588,6 +712,75 @@ export function LineReminderMappingPanel({ members }: Props) {
                     })}
                   </div>
                 )}
+                {selectedBookingId && (() => {
+                  const selectedBooking = bookingResults.find(
+                    (booking) => booking.id === selectedBookingId,
+                  )
+                  const names = splitBookingNames(selectedBooking?.contact_name ?? '')
+                  return names.length > 0 ? (
+                    <div>
+                      <div style={{
+                        marginBottom: 6,
+                        color: designSystem.colors.text.secondary,
+                        fontSize: 13,
+                      }}>
+                        選擇這個 LINE 對應的人
+                      </div>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                        gap: 8,
+                      }}>
+                        {names.map((name) => (
+                          <button
+                            key={name}
+                            type="button"
+                            onClick={() => {
+                              setSelectedBookingName(name)
+                              if (!guestByLineUser.has(selectedContact.line_user_id)) {
+                                setSavedGuestName(name)
+                              }
+                            }}
+                            style={getButtonStyle(
+                              selectedBookingName === name ? 'primary' : 'outline',
+                              'medium',
+                              isMobile,
+                            )}
+                          >
+                            {name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null
+                })()}
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  minHeight: 44,
+                  fontSize: 14,
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={saveAsGuest}
+                    onChange={(event) => setSaveAsGuest(event.target.checked)}
+                  />
+                  建檔
+                </label>
+                {saveAsGuest && (
+                  <input
+                    value={savedGuestName}
+                    onChange={(event) => setSavedGuestName(event.target.value)}
+                    placeholder="建檔姓名"
+                    style={{
+                      ...getInputStyle(isMobile),
+                      width: '100%',
+                      minHeight: isMobile ? 50 : 44,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                )}
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
@@ -601,11 +794,18 @@ export function LineReminderMappingPanel({ members }: Props) {
               </button>
               <button
                 type="button"
-                disabled={saving || (targetType === 'member' ? !memberId : !selectedBookingId)}
+                disabled={
+                  saving ||
+                  (targetType === 'member'
+                    ? !memberId
+                    : !selectedBookingId ||
+                      !selectedBookingName ||
+                      (saveAsGuest && !savedGuestName.trim()))
+                }
                 onClick={() => void saveMapping()}
                 style={getButtonStyle('primary', 'medium', isMobile)}
               >
-                {saving ? '儲存中…' : '儲存配對'}
+                {saving ? '儲存中…' : editingMappingId ? '儲存修改' : '儲存配對'}
               </button>
             </div>
           </div>

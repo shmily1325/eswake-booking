@@ -30,6 +30,7 @@ import {
   formatCoachTimeOffReminderMessage,
   scheduleCoachTimeOffLinesToast,
 } from '../utils/coachTimeOffWarning'
+import { syncBookingSavedLineReminderGuests } from '../utils/lineReminderGuests'
 
 
 interface RepeatBookingDialogProps {
@@ -84,6 +85,9 @@ export function RepeatBookingDialog({
     showMemberDropdown,
     manualStudentName,
     manualNames,
+    savedGuestSearchResults,
+    selectedSavedGuests,
+    showSavedGuestDropdown,
     startDate,
     startTime,
     durationMin,
@@ -113,6 +117,8 @@ export function RepeatBookingDialog({
     setShowMemberDropdown,
     setManualStudentName,
     setManualNames,
+    setSelectedSavedGuests,
+    setShowSavedGuestDropdown,
     setStartTime,
     setDurationMin,
     setActualRider,
@@ -128,6 +134,7 @@ export function RepeatBookingDialog({
     toggleCoach,
     toggleActivityType,
     handleMemberSearch,
+    handleSavedGuestSearch,
     resetForm,
     refreshCoachTimeOff
   } = useBookingForm({
@@ -443,6 +450,31 @@ export function RepeatBookingDialog({
 
         await Promise.all(insertPromises)
 
+        if (selectedSavedGuests.length > 0) {
+          try {
+            await syncBookingSavedLineReminderGuests(
+              newBooking.id,
+              selectedSavedGuests.map((guest) => ({
+                guestId: guest.id,
+                contactName: guest.booking_name || guest.name,
+              })),
+            )
+          } catch (error) {
+            await supabase.from('bookings').delete().eq('id', newBooking.id)
+            conflictData.boatBookings = conflictData.boatBookings.filter(
+              (item) => item.id !== newBooking.id,
+            )
+            conflictData.coachBookings = conflictData.coachBookings.filter(
+              (item) => item.bookings.id !== newBooking.id,
+            )
+            results.skipped.push({
+              date: displayDate,
+              reason: error instanceof Error ? error.message : 'LINE 提醒客人關聯失敗',
+            })
+            continue
+          }
+        }
+
         // 記錄成功的時間（用於審計日誌）
         const shortDate = `${month}/${day}`
         successTimes.push(`${shortDate} ${timeStr}`)
@@ -651,6 +683,12 @@ export function RepeatBookingDialog({
             setManualStudentName={setManualStudentName}
             setManualNames={setManualNames}
             handleMemberSearch={handleMemberSearch}
+            savedGuestSearchResults={savedGuestSearchResults}
+            selectedSavedGuests={selectedSavedGuests}
+            setSelectedSavedGuests={setSelectedSavedGuests}
+            showSavedGuestDropdown={showSavedGuestDropdown}
+            setShowSavedGuestDropdown={setShowSavedGuestDropdown}
+            handleSavedGuestSearch={handleSavedGuestSearch}
             actualRider={actualRider}
             setActualRider={setActualRider}
           />

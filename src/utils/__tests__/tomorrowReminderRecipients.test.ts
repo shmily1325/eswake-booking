@@ -157,6 +157,98 @@ describe('buildTomorrowReminderRecipients', () => {
     })
   })
 
+  it('maps multiple saved guests independently on the same booking', () => {
+    const recipients = buildTomorrowReminderRecipients({
+      studentNames: ['吳穎', '同行朋友'],
+      memberIdsByName: {},
+      bindings: [],
+      bookingCountByName: { 吳穎: 1, 同行朋友: 1 },
+      bookingIdsByName: { 吳穎: [101], 同行朋友: [101] },
+      reminderMappings: [
+        {
+          id: 'saved-map-1',
+          line_user_id: 'line-1',
+          member_id: null,
+          booking_id: 101,
+          guest_id: 'guest-1',
+          contact_name: '吳穎',
+          normalized_name: '吳穎',
+          contact_phone: null,
+          guest: { is_active: true },
+          line_contact: { display_name: 'LINE 吳迪', friend_status: 'friend' },
+        },
+        {
+          id: 'saved-map-2',
+          line_user_id: 'line-2',
+          member_id: null,
+          booking_id: 101,
+          guest_id: 'guest-2',
+          contact_name: '同行朋友',
+          normalized_name: '同行朋友',
+          contact_phone: null,
+          guest: { is_active: true },
+          line_contact: { display_name: 'LINE 朋友', friend_status: 'friend' },
+        },
+      ],
+    })
+
+    expect(recipients.find((recipient) => recipient.name === '吳穎')?.status).toBe('mapped')
+    expect(recipients.find((recipient) => recipient.name === '同行朋友')?.status).toBe('mapped')
+  })
+
+  it('keeps a same-name guest when another booking links that name to a member', () => {
+    const recipients = buildTomorrowReminderRecipients({
+      studentNames: ['Alex'],
+      memberIdsByName: { Alex: ['member-1'] },
+      bindings: [{ member_id: 'member-1', can_push: true }],
+      bookingCountByName: { Alex: 2 },
+      bookingIdsByMemberId: { 'member-1': [101] },
+      bookingIdsByName: { Alex: [101, 202] },
+      reminderMappings: [{
+        id: 'guest-map',
+        line_user_id: 'line-guest',
+        member_id: null,
+        booking_id: 202,
+        guest_id: 'guest-1',
+        contact_name: 'Alex',
+        normalized_name: 'alex',
+        contact_phone: null,
+        guest: { is_active: true },
+        line_contact: { display_name: 'Guest Alex', friend_status: 'friend' },
+      }],
+    })
+
+    expect(recipients).toHaveLength(2)
+    expect(recipients.find((recipient) => recipient.memberId === 'member-1'))
+      .toMatchObject({ status: 'pushable', bookingIds: [101] })
+    expect(recipients.find((recipient) => recipient.memberId === null))
+      .toMatchObject({ status: 'mapped', bookingIds: [202], mappingId: 'guest-map' })
+  })
+
+  it('does not use a disabled saved guest', () => {
+    const [recipient] = buildTomorrowReminderRecipients({
+      studentNames: ['吳穎'],
+      memberIdsByName: {},
+      bindings: [],
+      bookingCountByName: { 吳穎: 1 },
+      bookingIdsByName: { 吳穎: [101] },
+      reminderMappings: [{
+        id: 'saved-map',
+        line_user_id: 'line-1',
+        member_id: null,
+        booking_id: 101,
+        guest_id: 'guest-1',
+        contact_name: '吳穎',
+        normalized_name: '吳穎',
+        contact_phone: null,
+        guest: { is_active: false },
+        line_contact: { display_name: 'LINE 吳迪', friend_status: 'friend' },
+      }],
+    })
+
+    expect(recipient.status).toBe('guest')
+  })
+
   it('uses a reminder-only member mapping when formal push binding is unavailable', () => {
     const [recipient] = buildTomorrowReminderRecipients({
       studentNames: ['Member'],

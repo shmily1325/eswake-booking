@@ -8,12 +8,16 @@ export type TomorrowReminderMappingRow = {
   line_user_id: string
   member_id: string | null
   booking_id: number | null
+  guest_id?: string | null
   contact_name: string | null
   normalized_name: string | null
   contact_phone: string | null
   line_contact?: {
     display_name: string
     friend_status: 'friend' | 'blocked' | 'unknown'
+  } | null
+  guest?: {
+    is_active: boolean
   } | null
 }
 
@@ -43,6 +47,10 @@ export type TomorrowReminderRecipient = {
   }>
 }
 
+function normalizeName(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('zh-TW')
+}
+
 export function buildTomorrowReminderRecipients(params: {
   studentNames: string[]
   memberIdsByName: Record<string, string[]>
@@ -59,21 +67,31 @@ export function buildTomorrowReminderRecipients(params: {
     if (binding.member_id) bindingByMember.set(binding.member_id, binding.can_push === true)
   })
   const activeMappings = (params.reminderMappings ?? []).filter(
-    (mapping) => mapping.line_contact?.friend_status === 'friend',
+    (mapping) =>
+      mapping.line_contact?.friend_status === 'friend' &&
+      (!mapping.guest_id || mapping.guest?.is_active === true),
   )
 
   return params.studentNames.flatMap<TomorrowReminderRecipient>((name) => {
     const memberIds = Array.from(new Set(params.memberIdsByName[name] || []))
-    if (memberIds.length === 0) {
+    const allBookingIds = Array.from(new Set(params.bookingIdsByName?.[name] ?? []))
+    const memberBookingIds = new Set(
+      memberIds.flatMap((memberId) => params.bookingIdsByMemberId?.[memberId] ?? []),
+    )
+    const guestBookingIds = memberIds.length === 0
+      ? allBookingIds
+      : allBookingIds.filter((bookingId) => !memberBookingIds.has(bookingId))
+    const guestRecipients: TomorrowReminderRecipient[] = []
+    if (guestBookingIds.length > 0 || (memberIds.length === 0 && allBookingIds.length === 0)) {
       const bookingStudentNames = params.bookingStudentNamesByName?.[name]
-      const bookingIds = Array.from(new Set(params.bookingIdsByName?.[name] ?? []))
-      const bookingGroups = bookingIds.length > 0 ? bookingIds.map((id) => [id]) : [[]]
-      return bookingGroups.map((groupBookingIds) => {
+      const bookingGroups = guestBookingIds.length > 0 ? guestBookingIds.map((id) => [id]) : [[]]
+      guestRecipients.push(...bookingGroups.map((groupBookingIds) => {
         const bookingMapping = activeMappings.find(
           (mapping) =>
             !mapping.member_id &&
             !!mapping.booking_id &&
-            groupBookingIds.includes(mapping.booking_id),
+            groupBookingIds.includes(mapping.booking_id) &&
+            mapping.normalized_name === normalizeName(name),
         )
         return {
           key: groupBookingIds.length > 0
@@ -92,10 +110,10 @@ export function buildTomorrowReminderRecipients(params: {
             : {}),
           ...(bookingStudentNames?.length ? { bookingStudentNames } : {}),
         }
-      })
+      }))
     }
 
-    return memberIds.map((memberId) => {
+    const memberRecipients = memberIds.map((memberId) => {
       const bookingIds = Array.from(new Set(params.bookingIdsByMemberId?.[memberId] || []))
       const bookingStudentNames = params.bookingStudentNamesByMemberId?.[memberId]
       const reminderMapping = activeMappings.find((mapping) => mapping.member_id === memberId)
@@ -123,6 +141,7 @@ export function buildTomorrowReminderRecipients(params: {
         ...(bookingStudentNames?.length ? { bookingStudentNames } : {}),
       }
     })
+    return [...memberRecipients, ...guestRecipients]
   })
 }
 

@@ -13,7 +13,8 @@ import {
   hasProductsAccessAsync,
   hasEditorFeatureAsync,
   canPreviewProductsReadOnly,
-  getEditorFeatureFlags
+  getEditorFeatureFlags,
+  isMemberPhoneOnlyEditor,
 } from '../auth'
 import { supabase } from '../../lib/supabase'
 
@@ -87,6 +88,12 @@ describe('auth.ts - 權限驗證', () => {
       expect(SUPER_ADMINS).toContain('callumbao1122@gmail.com')
       expect(SUPER_ADMINS).toContain('pjpan0511@gmail.com')
       expect(SUPER_ADMINS).toContain('minlin1325@gmail.com')
+    })
+  })
+
+  describe('LINE 配對權限', () => {
+    it('允許 Callum 開啟 LINE 配對頁', () => {
+      expect(isMemberPhoneOnlyEditor(createMockUser('callumbao1122@gmail.com'))).toBe(true)
     })
   })
 

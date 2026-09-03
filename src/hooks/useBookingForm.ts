@@ -12,6 +12,11 @@ import type { Booking, Boat, Coach, Member } from '../types/booking'
 import { isFacility } from '../utils/facility'
 import { getFilledByName } from '../utils/filledByHelper'
 import { getLocalDateString } from '../utils/date'
+import {
+    getBookingSavedLineReminderGuests,
+    searchSavedLineReminderGuests,
+    type SavedLineReminderGuest,
+} from '../utils/lineReminderGuests'
 
 type BookingFormMember = Pick<Member, 'id' | 'name' | 'nickname' | 'phone'>
 
@@ -57,6 +62,10 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const [showMemberDropdown, setShowMemberDropdown] = useState(false)
     const [manualStudentName, setManualStudentName] = useState('')
     const [manualNames, setManualNames] = useState<string[]>([])
+    const [savedGuestSearchResults, setSavedGuestSearchResults] = useState<SavedLineReminderGuest[]>([])
+    const [selectedSavedGuests, setSelectedSavedGuests] = useState<SavedLineReminderGuest[]>([])
+    const [initialSavedGuestIds, setInitialSavedGuestIds] = useState<string[]>([])
+    const [showSavedGuestDropdown, setShowSavedGuestDropdown] = useState(false)
 
     // Time & Details
     const [startDate, setStartDate] = useState('')
@@ -83,6 +92,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
     // Search Debounce
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const guestSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const guestSearchRequestRef = useRef(0)
 
     // --- Derived State ---
     const selectedCoachesSet = useMemo(() => new Set(selectedCoaches), [selectedCoaches])
@@ -98,9 +109,16 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
     const filteredMembers = memberSearchResults
 
-    const finalStudentName = useMemo(() => 
-        composeFinalStudentName(members, selectedMemberIds, manualNames),
-        [members, selectedMemberIds, manualNames]
+    const finalStudentName = useMemo(() =>
+        composeFinalStudentName(
+            members,
+            selectedMemberIds,
+            [
+                ...manualNames,
+                ...selectedSavedGuests.map((guest) => guest.booking_name || guest.name),
+            ]
+        ),
+        [members, selectedMemberIds, manualNames, selectedSavedGuests]
     )
 
     // --- Effects ---
@@ -111,6 +129,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             if (prevEditBookingIdRef.current !== initialBooking.id) {
                 contactManualParsedKeyRef.current = null
                 prevEditBookingIdRef.current = initialBooking.id
+                setSelectedSavedGuests([])
+                setInitialSavedGuestIds([])
             }
 
             // Edit Mode Initialization
@@ -185,6 +205,10 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             if (defaultBoatId) setSelectedBoatId(defaultBoatId)
             setMembers([])
             setMemberSearchResults([])
+            setSelectedSavedGuests([])
+            setInitialSavedGuestIds([])
+            setSavedGuestSearchResults([])
+            setShowSavedGuestDropdown(false)
 
             if (defaultDate) {
                 const datetime = defaultDate.substring(0, 16)
@@ -208,6 +232,31 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             isInitializedRef.current = true
         })
     }, [initialBooking, defaultDate, defaultBoatId])
+
+    useEffect(() => {
+        if (!initialBooking?.id) return
+        let cancelled = false
+        void getBookingSavedLineReminderGuests(initialBooking.id)
+            .then((guests) => {
+                if (cancelled) return
+                setSelectedSavedGuests(guests)
+                setInitialSavedGuestIds(guests.map((guest) => guest.id))
+                const linkedNames = new Set(
+                    guests.flatMap((guest) => [guest.name, guest.booking_name])
+                        .filter((name): name is string => Boolean(name?.trim()))
+                        .map((name) => name.trim())
+                )
+                setManualNames((current) =>
+                    current.filter((name) => !linkedNames.has(name.trim()))
+                )
+            })
+            .catch((error) => {
+                if (!cancelled) console.error('Error loading saved LINE reminder guests:', error)
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [initialBooking?.id])
 
     // 編輯模式：會員名冊載入後一次從 contact_name 還原手動名（與預約上的 member 比對），避免先畫錯誤橘標
     useEffect(() => {
@@ -245,10 +294,16 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         }
 
         const contactNames = splitAndDeduplicateNames(initialBooking.contact_name)
+        const savedGuestNames = new Set(
+            selectedSavedGuests.flatMap((guest) => [guest.name, guest.booking_name])
+                .filter((name): name is string => Boolean(name?.trim()))
+                .map((name) => name.trim())
+        )
         const nonMemberNames = contactNames.filter((name) => {
             const t = name.trim()
             if (!t) return false
             if (memberLabels.has(t)) return false
+            if (savedGuestNames.has(t)) return false
             return ![...memberLabels].some(
                 (ml) => ml && (t.includes(ml) || ml.includes(t))
             )
@@ -256,7 +311,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
         setManualNames(nonMemberNames)
         contactManualParsedKeyRef.current = parseKey
-    }, [initialBooking, members])
+    }, [initialBooking, members, selectedSavedGuests])
 
     // 會員名冊載入後：contact_name 拆出的手動名若與已選會員本名／暱稱相同則移除，避免同一人出現藍標＋橘標
     useEffect(() => {
@@ -284,6 +339,9 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         return () => {
             if (searchTimeoutRef.current) {
                 clearTimeout(searchTimeoutRef.current)
+            }
+            if (guestSearchTimeoutRef.current) {
+                clearTimeout(guestSearchTimeoutRef.current)
             }
         }
     }, [])
@@ -441,6 +499,31 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         }, MEMBER_SEARCH_DEBOUNCE_MS)
     }
 
+    const handleSavedGuestSearch = (term: string) => {
+        setManualStudentName(term)
+        if (guestSearchTimeoutRef.current) clearTimeout(guestSearchTimeoutRef.current)
+        const requestId = ++guestSearchRequestRef.current
+        const trimmed = term.trim()
+        if (!trimmed) {
+            setSavedGuestSearchResults([])
+            setShowSavedGuestDropdown(false)
+            return
+        }
+        guestSearchTimeoutRef.current = setTimeout(async () => {
+            try {
+                const guests = await searchSavedLineReminderGuests(trimmed)
+                if (requestId !== guestSearchRequestRef.current) return
+                setSavedGuestSearchResults(guests)
+                setShowSavedGuestDropdown(guests.length > 0)
+            } catch (error) {
+                if (requestId !== guestSearchRequestRef.current) return
+                console.error('Error searching saved LINE reminder guests:', error)
+                setSavedGuestSearchResults([])
+                setShowSavedGuestDropdown(false)
+            }
+        }, MEMBER_SEARCH_DEBOUNCE_MS)
+    }
+
     const performConflictCheck = useCallback(async (excludeBookingId?: number) => {
         const boat = boats.find(b => b.id === selectedBoatId)
         const boatName = boat?.name || '未知船隻'
@@ -465,6 +548,10 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         setMemberSearchResults([])
         setManualStudentName('')
         setManualNames([])
+        setSavedGuestSearchResults([])
+        setSelectedSavedGuests([])
+        setInitialSavedGuestIds([])
+        setShowSavedGuestDropdown(false)
         setShowMemberDropdown(false)
         setActivityTypes([])
         setActualRider('')
@@ -493,6 +580,10 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         showMemberDropdown,
         manualStudentName,
         manualNames,
+        savedGuestSearchResults,
+        selectedSavedGuests,
+        initialSavedGuestIds,
+        showSavedGuestDropdown,
         startDate,
         startTime,
         durationMin,
@@ -523,6 +614,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         setShowMemberDropdown,
         setManualStudentName,
         setManualNames,
+        setSelectedSavedGuests,
+        setShowSavedGuestDropdown,
         setStartDate,
         setStartTime,
         setDurationMin,
@@ -540,6 +633,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         toggleCoach,
         toggleActivityType,
         handleMemberSearch,
+        handleSavedGuestSearch,
         performConflictCheck,
         resetForm,
         refreshCoachTimeOff
