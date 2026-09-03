@@ -66,6 +66,7 @@ export function EditBookingDialog({
     memberSearchTerm,
     selectedMemberIds,
     showMemberDropdown,
+    memberSearchLoading,
     manualStudentName,
     manualNames,
     savedGuestSearchResults,
@@ -73,6 +74,7 @@ export function EditBookingDialog({
     initialSavedGuestIds,
     initialSavedGuestAssignments,
     showSavedGuestDropdown,
+    savedGuestSearchLoading,
     startDate,
     startTime,
     durationMin,
@@ -988,6 +990,7 @@ export function EditBookingDialog({
             memberSearchTerm={memberSearchTerm}
             setMemberSearchTerm={setMemberSearchTerm}
             showMemberDropdown={showMemberDropdown}
+            memberSearchLoading={memberSearchLoading}
             setShowMemberDropdown={setShowMemberDropdown}
             filteredMembers={filteredMembers}
             handleMemberSearch={handleMemberSearch}
@@ -999,6 +1002,7 @@ export function EditBookingDialog({
             selectedSavedGuests={selectedSavedGuests}
             setSelectedSavedGuests={setSelectedSavedGuests}
             showSavedGuestDropdown={showSavedGuestDropdown}
+            savedGuestSearchLoading={savedGuestSearchLoading}
             setShowSavedGuestDropdown={setShowSavedGuestDropdown}
             handleSavedGuestSearch={handleSavedGuestSearch}
             actualRider={actualRider}

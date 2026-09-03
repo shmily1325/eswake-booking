@@ -83,11 +83,13 @@ export function RepeatBookingDialog({
     memberSearchTerm,
     selectedMemberIds,
     showMemberDropdown,
+    memberSearchLoading,
     manualStudentName,
     manualNames,
     savedGuestSearchResults,
     selectedSavedGuests,
     showSavedGuestDropdown,
+    savedGuestSearchLoading,
     startDate,
     startTime,
     durationMin,
@@ -674,6 +676,7 @@ export function RepeatBookingDialog({
             selectedMemberIds={selectedMemberIds}
             memberSearchTerm={memberSearchTerm}
             showMemberDropdown={showMemberDropdown}
+            memberSearchLoading={memberSearchLoading}
             filteredMembers={filteredMembers}
             manualStudentName={manualStudentName}
             manualNames={manualNames}
@@ -687,6 +690,7 @@ export function RepeatBookingDialog({
             selectedSavedGuests={selectedSavedGuests}
             setSelectedSavedGuests={setSelectedSavedGuests}
             showSavedGuestDropdown={showSavedGuestDropdown}
+            savedGuestSearchLoading={savedGuestSearchLoading}
             setShowSavedGuestDropdown={setShowSavedGuestDropdown}
             handleSavedGuestSearch={handleSavedGuestSearch}
             actualRider={actualRider}

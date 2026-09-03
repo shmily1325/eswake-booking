@@ -168,4 +168,58 @@ describe('MemberSelector', () => {
     expect(screen.getByTestId('saved-guest-search-dropdown').parentElement)
       .toBe(screen.getByTestId('saved-guest-search-anchor'))
   })
+
+  it('prevents adding a manual non-member while existing records are being checked', () => {
+    render(
+      <MemberSelector
+        members={[]}
+        selectedMemberIds={[]}
+        setSelectedMemberIds={vi.fn()}
+        memberSearchTerm="王"
+        setMemberSearchTerm={vi.fn()}
+        showMemberDropdown={false}
+        setShowMemberDropdown={vi.fn()}
+        filteredMembers={[]}
+        handleMemberSearch={vi.fn()}
+        memberSearchLoading
+        manualStudentName="王小明"
+        setManualStudentName={vi.fn()}
+        manualNames={[]}
+        setManualNames={vi.fn()}
+        savedGuestSearchLoading
+        actualRider=""
+        setActualRider={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('搜尋中…')).toBeInTheDocument()
+    expect(screen.getByText('比對中…')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '正在比對已建檔非會員' })).toBeDisabled()
+  })
+
+  it('prevents adding an exact saved non-member duplicate', () => {
+    render(
+      <MemberSelector
+        members={[]}
+        selectedMemberIds={[]}
+        setSelectedMemberIds={vi.fn()}
+        memberSearchTerm=""
+        setMemberSearchTerm={vi.fn()}
+        showMemberDropdown={false}
+        setShowMemberDropdown={vi.fn()}
+        filteredMembers={[]}
+        handleMemberSearch={vi.fn()}
+        manualStudentName="王小明"
+        setManualStudentName={vi.fn()}
+        manualNames={[]}
+        setManualNames={vi.fn()}
+        savedGuestSearchResults={[{ id: 'guest-1', line_user_id: 'U1', name: '王小明' }]}
+        showSavedGuestDropdown
+        actualRider=""
+        setActualRider={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: '請選擇已建檔非會員' })).toBeDisabled()
+  })
 })

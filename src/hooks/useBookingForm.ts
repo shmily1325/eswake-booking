@@ -61,6 +61,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const [memberSearchTerm, setMemberSearchTerm] = useState('')
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
     const [showMemberDropdown, setShowMemberDropdown] = useState(false)
+    const [memberSearchLoading, setMemberSearchLoading] = useState(false)
     const [manualStudentName, setManualStudentName] = useState('')
     const [manualNames, setManualNames] = useState<string[]>([])
     const [savedGuestSearchResults, setSavedGuestSearchResults] = useState<SavedLineReminderGuest[]>([])
@@ -68,6 +69,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const [initialSavedGuestIds, setInitialSavedGuestIds] = useState<string[]>([])
     const [initialSavedGuestAssignments, setInitialSavedGuestAssignments] = useState<string[]>([])
     const [showSavedGuestDropdown, setShowSavedGuestDropdown] = useState(false)
+    const [savedGuestSearchLoading, setSavedGuestSearchLoading] = useState(false)
 
     // Time & Details
     const [startDate, setStartDate] = useState('')
@@ -94,6 +96,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
     // Search Debounce
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const memberSearchRequestRef = useRef(0)
     const guestSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const guestSearchRequestRef = useRef(0)
 
@@ -476,14 +479,17 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const handleMemberSearch = (term: string) => {
         setMemberSearchTerm(term)
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+        const requestId = ++memberSearchRequestRef.current
 
         const trimmed = term.trim()
         if (!trimmed) {
             setMemberSearchResults([])
             setShowMemberDropdown(false)
+            setMemberSearchLoading(false)
             return
         }
 
+        setMemberSearchLoading(true)
         searchTimeoutRef.current = setTimeout(async () => {
             const q = escapeIlikePattern(trimmed)
             try {
@@ -496,14 +502,20 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
                     .limit(10)
 
                 if (error) throw error
+                if (requestId !== memberSearchRequestRef.current) return
                 const rows = (data || []) as BookingFormMember[]
                 setMemberSearchResults(rows)
                 setMembers(prev => mergeMembersById(prev, rows))
                 setShowMemberDropdown(true)
             } catch (error) {
+                if (requestId !== memberSearchRequestRef.current) return
                 console.error('Error searching members:', error)
                 setMemberSearchResults([])
                 setShowMemberDropdown(trimmed.length > 0)
+            } finally {
+                if (requestId === memberSearchRequestRef.current) {
+                    setMemberSearchLoading(false)
+                }
             }
         }, MEMBER_SEARCH_DEBOUNCE_MS)
     }
@@ -516,8 +528,10 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         if (!trimmed) {
             setSavedGuestSearchResults([])
             setShowSavedGuestDropdown(false)
+            setSavedGuestSearchLoading(false)
             return
         }
+        setSavedGuestSearchLoading(true)
         guestSearchTimeoutRef.current = setTimeout(async () => {
             try {
                 const guests = await searchSavedLineReminderGuests(trimmed)
@@ -529,6 +543,10 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
                 console.error('Error searching saved LINE reminder guests:', error)
                 setSavedGuestSearchResults([])
                 setShowSavedGuestDropdown(false)
+            } finally {
+                if (requestId === guestSearchRequestRef.current) {
+                    setSavedGuestSearchLoading(false)
+                }
             }
         }, SAVED_GUEST_SEARCH_DEBOUNCE_MS)
     }
@@ -563,6 +581,8 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         setInitialSavedGuestAssignments([])
         setShowSavedGuestDropdown(false)
         setShowMemberDropdown(false)
+        setMemberSearchLoading(false)
+        setSavedGuestSearchLoading(false)
         setActivityTypes([])
         setActualRider('')
         setNotes('')
@@ -588,6 +608,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         memberSearchTerm,
         selectedMemberIds,
         showMemberDropdown,
+        memberSearchLoading,
         manualStudentName,
         manualNames,
         savedGuestSearchResults,
@@ -595,6 +616,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         initialSavedGuestIds,
         initialSavedGuestAssignments,
         showSavedGuestDropdown,
+        savedGuestSearchLoading,
         startDate,
         startTime,
         durationMin,

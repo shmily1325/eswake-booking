@@ -18,6 +18,7 @@ interface MemberSelectorProps {
     setShowMemberDropdown: (show: boolean) => void
     filteredMembers: Pick<Member, 'id' | 'name' | 'nickname' | 'phone'>[]
     handleMemberSearch: (term: string) => void
+    memberSearchLoading?: boolean
     manualStudentName: string
     setManualStudentName: (name: string) => void
     manualNames: string[]
@@ -28,6 +29,7 @@ interface MemberSelectorProps {
     showSavedGuestDropdown?: boolean
     setShowSavedGuestDropdown?: (show: boolean) => void
     handleSavedGuestSearch?: (term: string) => void
+    savedGuestSearchLoading?: boolean
     actualRider: string
     setActualRider: (value: string) => void
 }
@@ -42,6 +44,7 @@ export function MemberSelector({
     setShowMemberDropdown,
     filteredMembers,
     handleMemberSearch,
+    memberSearchLoading = false,
     manualStudentName,
     setManualStudentName,
     manualNames,
@@ -52,6 +55,7 @@ export function MemberSelector({
     showSavedGuestDropdown = false,
     setShowSavedGuestDropdown,
     handleSavedGuestSearch,
+    savedGuestSearchLoading = false,
     actualRider,
     setActualRider,
 }: MemberSelectorProps) {
@@ -76,6 +80,15 @@ export function MemberSelector({
     }
 
     const canAppendRider = parseActualRiders(riderDraft).length > 0
+    const normalizedManualName = manualStudentName.trim().toLocaleLowerCase()
+    const hasExactSavedGuestMatch = normalizedManualName !== '' && savedGuestSearchResults.some(
+        (guest) => [guest.name, guest.booking_name, guest.line_contact?.display_name]
+            .some((name) => name?.trim().toLocaleLowerCase() === normalizedManualName)
+    )
+    const canAddManualName =
+        normalizedManualName !== '' &&
+        !savedGuestSearchLoading &&
+        !hasExactSavedGuestMatch
     const clearSavedGuestSearch = () => {
         if (handleSavedGuestSearch) handleSavedGuestSearch('')
         else setManualStudentName('')
@@ -222,6 +235,7 @@ export function MemberSelector({
                 <input
                     type="text"
                     value={memberSearchTerm}
+                    aria-busy={memberSearchLoading}
                     onChange={(e) => {
                         const value = e.target.value
                         setMemberSearchTerm(value)
@@ -246,7 +260,7 @@ export function MemberSelector({
                     }}
                 />
 
-                {showMemberDropdown && filteredMembers.length > 0 && (
+                {(memberSearchLoading || (showMemberDropdown && filteredMembers.length > 0)) && (
                     <div data-testid="member-search-dropdown" style={{
                         position: 'absolute',
                         top: '100%',
@@ -261,7 +275,18 @@ export function MemberSelector({
                         boxShadow: designSystem.shadows.md,
                         zIndex: designSystem.zIndex.dropdown,
                     }}>
-                    {filteredMembers.map((member) => {
+                    {memberSearchLoading && (
+                        <div
+                            role="status"
+                            style={{
+                                padding: designSystem.spacing.md,
+                                color: designSystem.colors.text.secondary,
+                            }}
+                        >
+                            搜尋中…
+                        </div>
+                    )}
+                    {!memberSearchLoading && filteredMembers.map((member) => {
                         const isSelected = selectedMemberIds.includes(member.id)
                         return (
                             <div
@@ -332,6 +357,7 @@ export function MemberSelector({
                     <input
                         type="text"
                         value={manualStudentName}
+                        aria-busy={savedGuestSearchLoading}
                         onChange={(e) => {
                             const value = e.target.value
                             if (handleSavedGuestSearch) handleSavedGuestSearch(value)
@@ -341,7 +367,7 @@ export function MemberSelector({
                             if (savedGuestSearchResults.length > 0) setShowSavedGuestDropdown?.(true)
                         }}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.nativeEvent.isComposing && manualStudentName.trim()) {
+                            if (e.key === 'Enter' && !e.nativeEvent.isComposing && canAddManualName) {
                                 e.preventDefault()
                                 setManualNames(prev => [...prev, manualStudentName.trim()])
                                 clearSavedGuestSearch()
@@ -358,7 +384,8 @@ export function MemberSelector({
                             touchAction: 'manipulation',
                         }}
                     />
-                    {showSavedGuestDropdown && savedGuestSearchResults.length > 0 && (
+                    {(savedGuestSearchLoading ||
+                        (showSavedGuestDropdown && savedGuestSearchResults.length > 0)) && (
                         <div data-testid="saved-guest-search-dropdown" style={{
                             position: 'absolute',
                             top: '100%',
@@ -373,7 +400,18 @@ export function MemberSelector({
                             boxShadow: designSystem.shadows.md,
                             zIndex: designSystem.zIndex.dropdown,
                         }}>
-                            {savedGuestSearchResults.map((guest) => {
+                            {savedGuestSearchLoading && (
+                                <div
+                                    role="status"
+                                    style={{
+                                        padding: designSystem.spacing.md,
+                                        color: designSystem.colors.text.secondary,
+                                    }}
+                                >
+                                    比對中…
+                                </div>
+                            )}
+                            {!savedGuestSearchLoading && savedGuestSearchResults.map((guest) => {
                                 const isSelected = selectedSavedGuests.some((item) => item.id === guest.id)
                                 return (
                                 <button
@@ -425,15 +463,22 @@ export function MemberSelector({
                 <button
                     type="button"
                     onClick={() => {
-                        if (manualStudentName.trim()) {
+                        if (canAddManualName) {
                             setManualNames(prev => [...prev, manualStudentName.trim()])
                             clearSavedGuestSearch()
                         }
                     }}
-                    disabled={!manualStudentName.trim()}
+                    disabled={!canAddManualName}
+                    aria-label={
+                        savedGuestSearchLoading
+                            ? '正在比對已建檔非會員'
+                            : hasExactSavedGuestMatch
+                                ? '請選擇已建檔非會員'
+                                : '加入非會員'
+                    }
                     style={{
                         padding: '0 20px',
-                        background: manualStudentName.trim()
+                        background: canAddManualName
                             ? designSystem.colors.warning[500]
                             : designSystem.colors.text.disabled,
                         color: 'white',
@@ -441,13 +486,13 @@ export function MemberSelector({
                         borderRadius: designSystem.borderRadius.lg,
                         fontSize: getFontSize('h2', true),
                         fontWeight: 'bold',
-                        cursor: manualStudentName.trim() ? 'pointer' : 'not-allowed',
+                        cursor: canAddManualName ? 'pointer' : 'not-allowed',
                         minWidth: '52px',
                         minHeight: '48px',
                         touchAction: 'manipulation',
                     }}
                 >
-                    +
+                    {savedGuestSearchLoading ? '…' : '+'}
                 </button>
             </div>
 

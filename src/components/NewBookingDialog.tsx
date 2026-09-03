@@ -61,11 +61,13 @@ export function NewBookingDialog({
     memberSearchTerm,
     selectedMemberIds,
     showMemberDropdown,
+    memberSearchLoading,
     manualStudentName,
     manualNames,
     savedGuestSearchResults,
     selectedSavedGuests,
     showSavedGuestDropdown,
+    savedGuestSearchLoading,
     startDate,
     startTime,
     durationMin,
@@ -474,6 +476,7 @@ export function NewBookingDialog({
             memberSearchTerm={memberSearchTerm}
             setMemberSearchTerm={setMemberSearchTerm}
             showMemberDropdown={showMemberDropdown}
+            memberSearchLoading={memberSearchLoading}
             setShowMemberDropdown={setShowMemberDropdown}
             filteredMembers={filteredMembers}
             handleMemberSearch={handleMemberSearch}
@@ -485,6 +488,7 @@ export function NewBookingDialog({
             selectedSavedGuests={selectedSavedGuests}
             setSelectedSavedGuests={setSelectedSavedGuests}
             showSavedGuestDropdown={showSavedGuestDropdown}
+            savedGuestSearchLoading={savedGuestSearchLoading}
             setShowSavedGuestDropdown={setShowSavedGuestDropdown}
             handleSavedGuestSearch={handleSavedGuestSearch}
             actualRider={actualRider}
