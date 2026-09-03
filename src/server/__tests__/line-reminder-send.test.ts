@@ -243,6 +243,50 @@ describe('manual LINE reminder send API', () => {
     })
   })
 
+  it('loads booking members, bindings, and mappings in one reminder context action', async () => {
+    const memberId = '00000000-0000-4000-8000-000000000001'
+    queryResults.booking_members = {
+      data: [{
+        booking_id: 101,
+        members: { id: memberId, name: 'Member', nickname: null },
+      }],
+      error: null,
+    }
+    queryResults.line_bindings = {
+      data: [{ member_id: memberId, can_push: true }],
+      error: null,
+    }
+    queryResults.line_reminder_mappings = {
+      data: [{ id: 'map-1', booking_id: 101, line_user_id: 'U1' }],
+      error: null,
+    }
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'load_reminder_context',
+        bookingIds: [101],
+        legacyMemberIds: [],
+        additionalMemberNames: [],
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(queryBuilders.booking_members.in)
+      .toHaveBeenCalledWith('booking_id', [101])
+    expect(queryBuilders.line_bindings.in)
+      .toHaveBeenCalledWith('member_id', [memberId])
+    expect(response.json).toHaveBeenCalledWith({
+      bookingMembers: [{
+        booking_id: 101,
+        members: { id: memberId, name: 'Member', nickname: null },
+      }],
+      additionalMembers: [],
+      bindings: [{ member_id: memberId, can_push: true }],
+      mappings: [{ id: 'map-1', booking_id: 101, line_user_id: 'U1' }],
+    })
+  })
+
   it('does not expose the complete LINE contact list to view-only users', async () => {
     setUser('viewer@example.com')
     queryResults.view_users = { data: [{ email: 'viewer@example.com' }], error: null }

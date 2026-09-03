@@ -211,9 +211,20 @@ export function TomorrowReminder() {
 
       if (bookingsData && bookingsData.length > 0) {
         const bookingIds = bookingsData.map((b: any) => b.id)
+        const needsFishCopy = bookingsData.some((booking: Booking) =>
+          booking.contact_name
+            .split(',')
+            .map((name) => name.trim())
+            .includes('Fish')
+        )
+        const legacyMemberIds = Array.from(new Set(
+          bookingsData
+            .map((booking: Booking & { member_id?: string | null }) => booking.member_id)
+            .filter((id: unknown): id is string => typeof id === 'string' && Boolean(id)),
+        ))
 
-        // 三個關聯查詢都只依賴 bookingIds，並行送出可節省兩輪 RTT
-        const [coachesResult, driversResult, membersResult] = await Promise.all([
+        // 教練、駕駛及 LINE 提醒所需資料並行載入，避免逐輪等待。
+        const [coachesResult, driversResult, reminderContextResponse] = await Promise.all([
           supabase
             .from('booking_coaches')
             .select('booking_id, coaches:coach_id(id, name)')
@@ -222,15 +233,45 @@ export function TomorrowReminder() {
             .from('booking_drivers')
             .select('booking_id, coaches:driver_id(id, name)')
             .in('booking_id', bookingIds),
-          supabase
-            .from('booking_members')
-            .select('booking_id, members:member_id(id, name, nickname)')
-            .in('booking_id', bookingIds)
+          fetch('/api/line-reminder-send', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'load_reminder_context',
+              bookingIds,
+              legacyMemberIds,
+              additionalMemberNames: needsFishCopy
+                ? [FISH_REMINDER_COPY_RECIPIENT]
+                : [],
+            }),
+          }),
         ])
+        const reminderContext = await reminderContextResponse.json().catch(() => null) as
+          | {
+              bookingMembers?: Array<{
+                booking_id: number
+                members: { id: string; name: string; nickname: string | null } | null
+              }>
+              additionalMembers?: Array<{
+                id: string
+                name: string
+                nickname: string | null
+              }>
+              bindings?: TomorrowReminderBindingRow[]
+              mappings?: TomorrowReminderMappingRow[]
+              error?: string
+            }
+          | null
+        if (!reminderContextResponse.ok) {
+          throw new Error(reminderContext?.error || '無法載入 LINE 提醒配對')
+        }
 
         const { data: bookingCoachesData } = coachesResult
         const { data: bookingDriversData } = driversResult
-        const { data: bookingMembersData } = membersResult
+        const bookingMembersData = reminderContext?.bookingMembers ?? []
 
         const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}
         for (const item of bookingCoachesData || []) {
@@ -315,13 +356,7 @@ export function TomorrowReminder() {
               .map((name) => name.trim())
               .includes(FISH_REMINDER_COPY_RECIPIENT)
           )
-          const { data: additionalMembers, error: additionalMembersError } = await supabase
-            .from('members')
-            .select('id, name, nickname')
-            .or(
-              `name.eq.${FISH_REMINDER_COPY_RECIPIENT},nickname.eq.${FISH_REMINDER_COPY_RECIPIENT}`,
-            )
-          if (additionalMembersError) throw additionalMembersError
+          const additionalMembers = reminderContext?.additionalMembers ?? []
 
           if (additionalMembers && additionalMembers.length > 1) {
             console.error('Multiple members matched the 澤澤 reminder rule')
@@ -347,40 +382,9 @@ export function TomorrowReminder() {
           }
         }
 
-        const memberIds = Array.from(new Set(Object.values(nextMemberIdsByName).flat()))
-        const mappingsRequest = fetch('/api/line-reminder-send', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'list_reminder_mappings',
-            bookingIds,
-            memberIds,
-          }),
-        })
-        const bindingsRequest = memberIds.length > 0
-          ? supabase
-            .from('line_bindings')
-            .select('member_id, can_push')
-            .eq('status', 'active')
-            .in('member_id', memberIds)
-          : Promise.resolve({ data: [], error: null })
-        const [mappingsResponse, bindingsResult] = await Promise.all([
-          mappingsRequest,
-          bindingsRequest,
-        ])
-        const mappingsBody = await mappingsResponse.json().catch(() => null) as
-          | { mappings?: TomorrowReminderMappingRow[]; error?: string }
-          | null
-        if (!mappingsResponse.ok) {
-          throw new Error(mappingsBody?.error || '無法載入 LINE 提醒配對')
-        }
-        if (bindingsResult.error) throw bindingsResult.error
         if (!isLatestRequest()) return
-        setReminderMappings(mappingsBody?.mappings ?? [])
-        setLineBindings((bindingsResult.data || []) as TomorrowReminderBindingRow[])
+        setReminderMappings(reminderContext?.mappings ?? [])
+        setLineBindings(reminderContext?.bindings ?? [])
         setMemberIdsByName(nextMemberIdsByName)
         setBookingIdsByMemberId(nextBookingIdsByMemberId)
         setAdditionalReminderNames(nextAdditionalReminderNames)

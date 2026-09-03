@@ -57,19 +57,29 @@ async function hasViewPermission(
   email: string,
 ): Promise<{ allowed: boolean; error: boolean }> {
   const normalized = email.trim().toLowerCase()
-  if (SUPER_ADMINS.has(normalized) || HIDDEN_ALLOWED_USERS.has(normalized)) {
+  if (
+    SUPER_ADMINS.has(normalized) ||
+    HIDDEN_ALLOWED_USERS.has(normalized) ||
+    canManageLineReminderMappings(normalized)
+  ) {
     return { allowed: true, error: false }
   }
-  for (const table of ['editor_users', 'view_users'] as const) {
-    const { data, error } = await supabase
+  const results = await Promise.all(
+    (['editor_users', 'view_users'] as const).map((table) =>
+      supabase
       .from(table)
       .select('email')
       .eq('email', normalized)
-      .limit(1)
-    if (error) return { allowed: false, error: true }
-    if (data && data.length > 0) return { allowed: true, error: false }
+      .limit(1),
+    ),
+  )
+  if (results.some(({ error }) => Boolean(error))) {
+    return { allowed: false, error: true }
   }
-  return { allowed: false, error: false }
+  return {
+    allowed: results.some(({ data }) => Boolean(data?.length)),
+    error: false,
+  }
 }
 
 export async function authenticateStaff(

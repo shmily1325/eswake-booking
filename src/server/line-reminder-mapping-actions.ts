@@ -29,6 +29,108 @@ export async function handleLineReminderMappingAction(
 ) {
   const action = text(body.action)
   try {
+    if (action === 'load_reminder_context') {
+      const bookingIds = Array.isArray(body.bookingIds) ? body.bookingIds : []
+      const legacyMemberIds = Array.isArray(body.legacyMemberIds) ? body.legacyMemberIds : []
+      const additionalMemberNames = Array.isArray(body.additionalMemberNames)
+        ? body.additionalMemberNames
+        : []
+      const uuidPattern =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      if (
+        bookingIds.length === 0 ||
+        bookingIds.length > 200 ||
+        !bookingIds.every((id) => Number.isInteger(id) && Number(id) > 0) ||
+        legacyMemberIds.length > 200 ||
+        !legacyMemberIds.every((id) => typeof id === 'string' && uuidPattern.test(id)) ||
+        additionalMemberNames.length > 10 ||
+        !additionalMemberNames.every(
+          (name) => typeof name === 'string' && name.trim().length > 0 && name.length <= 100,
+        )
+      ) {
+        return res.status(400).json({ error: 'Invalid reminder context scope' })
+      }
+
+      const [bookingMembersResult, additionalByNameResult, additionalByNicknameResult] =
+        await Promise.all([
+          supabase
+            .from('booking_members')
+            .select('booking_id, members:member_id(id, name, nickname)')
+            .in('booking_id', bookingIds),
+          additionalMemberNames.length > 0
+            ? supabase
+                .from('members')
+                .select('id, name, nickname')
+                .in('name', additionalMemberNames)
+            : Promise.resolve({ data: [], error: null }),
+          additionalMemberNames.length > 0
+            ? supabase
+                .from('members')
+                .select('id, name, nickname')
+                .in('nickname', additionalMemberNames)
+            : Promise.resolve({ data: [], error: null }),
+        ])
+      if (bookingMembersResult.error) throw bookingMembersResult.error
+      if (additionalByNameResult.error) throw additionalByNameResult.error
+      if (additionalByNicknameResult.error) throw additionalByNicknameResult.error
+
+      const additionalMembers = new Map<string, {
+        id: string
+        name: string | null
+        nickname: string | null
+      }>()
+      for (const member of [
+        ...(additionalByNameResult.data ?? []),
+        ...(additionalByNicknameResult.data ?? []),
+      ]) {
+        additionalMembers.set(member.id, member)
+      }
+      const memberIds = new Set(
+        legacyMemberIds.filter((id): id is string => typeof id === 'string'),
+      )
+      for (const row of bookingMembersResult.data ?? []) {
+        const member = Array.isArray(row.members) ? row.members[0] : row.members
+        if (member?.id) memberIds.add(member.id)
+      }
+      additionalMembers.forEach((member) => memberIds.add(member.id))
+      const scopedMemberIds = Array.from(memberIds)
+      const mappingSelect =
+        'id, line_user_id, member_id, booking_id, guest_id, contact_name, normalized_name, line_contact:line_user_id(display_name, friend_status), guest:guest_id(is_active)'
+      const [bookingMappings, memberMappings, bindingsResult] = await Promise.all([
+        supabase
+          .from('line_reminder_mappings')
+          .select(mappingSelect)
+          .in('booking_id', bookingIds),
+        scopedMemberIds.length > 0
+          ? supabase
+              .from('line_reminder_mappings')
+              .select(mappingSelect)
+              .in('member_id', scopedMemberIds)
+          : Promise.resolve({ data: [], error: null }),
+        scopedMemberIds.length > 0
+          ? supabase
+              .from('line_bindings')
+              .select('member_id, can_push')
+              .eq('status', 'active')
+              .in('member_id', scopedMemberIds)
+          : Promise.resolve({ data: [], error: null }),
+      ])
+      if (bookingMappings.error) throw bookingMappings.error
+      if (memberMappings.error) throw memberMappings.error
+      if (bindingsResult.error) throw bindingsResult.error
+
+      const mappings = new Map<string, unknown>()
+      for (const mapping of [...(bookingMappings.data ?? []), ...(memberMappings.data ?? [])]) {
+        mappings.set(mapping.id, mapping)
+      }
+      return res.status(200).json({
+        bookingMembers: bookingMembersResult.data ?? [],
+        additionalMembers: Array.from(additionalMembers.values()),
+        bindings: bindingsResult.data ?? [],
+        mappings: Array.from(mappings.values()),
+      })
+    }
+
     if (action === 'list_reminder_mappings') {
       const bookingIds = Array.isArray(body.bookingIds) ? body.bookingIds : []
       const memberIds = Array.isArray(body.memberIds) ? body.memberIds : []
