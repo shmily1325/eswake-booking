@@ -216,6 +216,50 @@ describe('manual LINE reminder send API', () => {
     expect(lineFetch).not.toHaveBeenCalled()
   })
 
+  it('returns only scoped mappings to view-only reminder users', async () => {
+    setUser('viewer@example.com')
+    queryResults.view_users = { data: [{ email: 'viewer@example.com' }], error: null }
+    queryResults.line_reminder_mappings = {
+      data: [{ id: 'map-1', booking_id: 101, line_user_id: 'U1' }],
+      error: null,
+    }
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'list_reminder_mappings',
+        bookingIds: [101],
+        memberIds: [],
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(queryBuilders.line_reminder_mappings.in)
+      .toHaveBeenCalledWith('booking_id', [101])
+    expect(fromMock).not.toHaveBeenCalledWith('line_webhook_contacts')
+    expect(fromMock).not.toHaveBeenCalledWith('line_reminder_guests')
+    expect(response.json).toHaveBeenCalledWith({
+      mappings: [{ id: 'map-1', booking_id: 101, line_user_id: 'U1' }],
+    })
+  })
+
+  it('does not expose the complete LINE contact list to view-only users', async () => {
+    setUser('viewer@example.com')
+    queryResults.view_users = { data: [{ email: 'viewer@example.com' }], error: null }
+    const response = responseMock()
+
+    await handler(
+      request({ action: 'list' }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(response.status).toHaveBeenCalledWith(403)
+    expect(response.json).toHaveBeenCalledWith({
+      error: 'LINE reminder manager permission required',
+    })
+    expect(fromMock).not.toHaveBeenCalledWith('line_webhook_contacts')
+  })
+
   it('restricts reminder mapping mutations to configured managers', async () => {
     setUser('viewer@example.com')
     queryResults.view_users = { data: [{ email: 'viewer@example.com' }], error: null }
@@ -253,27 +297,15 @@ describe('manual LINE reminder send API', () => {
   })
 
   it('searches reusable non-members without exposing formally bound LINE accounts', async () => {
-    queryResults.line_reminder_guests = {
-      data: [
-        {
-          id: 'guest-1',
-          line_user_id: 'U1',
-          name: '吳穎',
-          line_contact: { display_name: 'LINE 吳迪', friend_status: 'friend' },
-        },
-        {
-          id: 'guest-2',
-          line_user_id: 'U2',
-          name: '吳小明',
-          line_contact: { display_name: 'LINE 小明', friend_status: 'friend' },
-        },
-      ],
+    rpcMock.mockResolvedValueOnce({
+      data: [{
+        id: 'guest-1',
+        line_user_id: 'U1',
+        name: '吳穎',
+        line_contact: { display_name: 'LINE 吳迪', friend_status: 'friend' },
+      }],
       error: null,
-    }
-    queryResults.line_bindings = {
-      data: [{ line_user_id: 'U2' }],
-      error: null,
-    }
+    })
     const response = responseMock()
 
     await handler(
@@ -281,6 +313,11 @@ describe('manual LINE reminder send API', () => {
       response as unknown as VercelResponse,
     )
 
+    expect(rpcMock).toHaveBeenCalledWith(
+      'search_available_line_reminder_guests',
+      { p_query: '吳', p_limit: 10 },
+    )
+    expect(fromMock).not.toHaveBeenCalledWith('line_bindings')
     expect(response.json).toHaveBeenCalledWith({
       guests: [
         {

@@ -61,6 +61,14 @@ export function SavedLineReminderGuestsPanel() {
     () => new Map(guests.map((guest) => [guest.line_user_id, guest.id])),
     [guests],
   )
+  const formallyBoundLineIds = useMemo(
+    () => new Set(
+      contacts
+        .filter((contact) => contact.formal_binding?.can_push)
+        .map((contact) => contact.line_user_id),
+    ),
+    [contacts],
+  )
   const availableContacts = useMemo(
     () => contacts.filter((contact) => {
       if (contact.friend_status !== 'friend' || contact.formal_binding?.can_push) return false
@@ -104,16 +112,15 @@ export function SavedLineReminderGuestsPanel() {
     }
   }
 
-  const deleteGuest = async () => {
-    if (!editing) return
+  const deleteGuest = async (guest: SavedLineReminderGuest) => {
     if (!window.confirm(
-      `確定永久刪除「${editing.name}」？相關預約的 LINE 提醒配對也會一併刪除，且無法復原。`,
+      `確定永久刪除「${guest.name}」？相關預約的 LINE 提醒配對也會一併刪除，且無法復原。`,
     )) return
     setSaving(true)
     try {
-      await deleteLineReminderGuest(editing.id)
+      await deleteLineReminderGuest(guest.id)
       toast.success('已永久刪除')
-      setEditing(null)
+      if (editing?.id === guest.id) setEditing(null)
       await load()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '刪除失敗')
@@ -147,21 +154,23 @@ export function SavedLineReminderGuestsPanel() {
           background: designSystem.colors.background.card,
           boxShadow: designSystem.shadows.sm,
         }}>
-          {filteredGuests.map((guest, index) => (
-            <div
-              key={guest.id}
-              style={{
-                minHeight: isMobile ? 64 : 58,
-                padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
-                display: 'flex',
-                alignItems: 'center',
-                gap: designSystem.spacing.md,
-                borderBottom: index < filteredGuests.length - 1
-                  ? `1px solid ${designSystem.colors.border.light}`
-                  : 'none',
-                opacity: guest.is_active ? 1 : 0.58,
-              }}
-            >
+          {filteredGuests.map((guest, index) => {
+            const hasFormalBinding = formallyBoundLineIds.has(guest.line_user_id)
+            return (
+              <div
+                key={guest.id}
+                style={{
+                  minHeight: isMobile ? 64 : 58,
+                  padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: designSystem.spacing.md,
+                  borderBottom: index < filteredGuests.length - 1
+                    ? `1px solid ${designSystem.colors.border.light}`
+                    : 'none',
+                  opacity: guest.is_active ? 1 : 0.58,
+                }}
+              >
               {guest.line_contact?.picture_url ? (
                 <img
                   src={guest.line_contact.picture_url}
@@ -192,22 +201,26 @@ export function SavedLineReminderGuestsPanel() {
                   textOverflow: 'ellipsis',
                 }}>
                   {guest.line_contact?.display_name || 'LINE 使用者'}
+                  {hasFormalBinding ? ' · 已轉會員' : ''}
                   {!guest.is_active ? ' · 已停用' : ''}
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => openEdit(guest)}
+                onClick={() => hasFormalBinding
+                  ? void deleteGuest(guest)
+                  : openEdit(guest)}
                 style={{
-                  ...getButtonStyle('outline', 'small', isMobile),
+                  ...getButtonStyle(hasFormalBinding ? 'danger' : 'outline', 'small', isMobile),
                   minHeight: isMobile ? 44 : undefined,
                   flexShrink: 0,
                 }}
               >
-                編輯
+                {hasFormalBinding ? '刪除建檔' : '編輯'}
               </button>
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -272,7 +285,7 @@ export function SavedLineReminderGuestsPanel() {
           <button
             type="button"
             disabled={saving}
-            onClick={() => void deleteGuest()}
+            onClick={() => editing && void deleteGuest(editing)}
             style={{
               ...getButtonStyle('danger', 'medium', isMobile),
               width: '100%',

@@ -29,6 +29,53 @@ export async function handleLineReminderMappingAction(
 ) {
   const action = text(body.action)
   try {
+    if (action === 'list_reminder_mappings') {
+      const bookingIds = Array.isArray(body.bookingIds) ? body.bookingIds : []
+      const memberIds = Array.isArray(body.memberIds) ? body.memberIds : []
+      const validBookingIds = bookingIds.every(
+        (id) => Number.isInteger(id) && Number(id) > 0,
+      )
+      const validMemberIds = memberIds.every(
+        (id) =>
+          typeof id === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+            .test(id),
+      )
+      if (
+        !validBookingIds ||
+        !validMemberIds ||
+        bookingIds.length > 200 ||
+        memberIds.length > 200
+      ) {
+        return res.status(400).json({ error: 'Invalid reminder mapping scope' })
+      }
+
+      const select =
+        'id, line_user_id, member_id, booking_id, guest_id, contact_name, normalized_name, line_contact:line_user_id(display_name, friend_status), guest:guest_id(is_active)'
+      const [bookingMappings, memberMappings] = await Promise.all([
+        bookingIds.length > 0
+          ? supabase
+              .from('line_reminder_mappings')
+              .select(select)
+              .in('booking_id', bookingIds)
+          : Promise.resolve({ data: [], error: null }),
+        memberIds.length > 0
+          ? supabase
+              .from('line_reminder_mappings')
+              .select(select)
+              .in('member_id', memberIds)
+          : Promise.resolve({ data: [], error: null }),
+      ])
+      if (bookingMappings.error) throw bookingMappings.error
+      if (memberMappings.error) throw memberMappings.error
+
+      const mappings = new Map<string, unknown>()
+      for (const mapping of [...(bookingMappings.data ?? []), ...(memberMappings.data ?? [])]) {
+        mappings.set(mapping.id, mapping)
+      }
+      return res.status(200).json({ mappings: Array.from(mappings.values()) })
+    }
+
     if (action === 'list') {
       const [contactsResult, mappingsResult, bindingsResult, guestsResult] = await Promise.all([
         supabase
@@ -68,30 +115,13 @@ export async function handleLineReminderMappingAction(
     if (action === 'search_guests') {
       const query = text(body.query).replace(/[%_]/g, '')
       if (!query) return res.status(200).json({ guests: [] })
-      const [{ data, error }, { data: bindings, error: bindingsError }] = await Promise.all([
-        supabase
-          .from('line_reminder_guests')
-          .select('id, line_user_id, name, line_contact:line_user_id(display_name, picture_url, friend_status)')
-          .eq('is_active', true)
-          .ilike('name', `%${query}%`)
-          .order('name')
-          .limit(10),
-        supabase
-            .from('line_bindings')
-            .select('line_user_id')
-            .eq('status', 'active')
-            .eq('can_push', true),
-      ])
+      const { data, error } = await supabase.rpc(
+        'search_available_line_reminder_guests',
+        { p_query: query, p_limit: 10 },
+      )
       if (error) throw error
-      if (bindingsError) throw bindingsError
-      const formallyBound = new Set((bindings ?? []).map((binding) => binding.line_user_id))
       return res.status(200).json({
-        guests: (data ?? []).filter((guest) => {
-          const contact = Array.isArray(guest.line_contact)
-            ? guest.line_contact[0]
-            : guest.line_contact
-          return contact?.friend_status === 'friend' && !formallyBound.has(guest.line_user_id)
-        }),
+        guests: Array.isArray(data) ? data : [],
       })
     }
 

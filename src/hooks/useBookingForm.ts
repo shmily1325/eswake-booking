@@ -66,6 +66,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const [savedGuestSearchResults, setSavedGuestSearchResults] = useState<SavedLineReminderGuest[]>([])
     const [selectedSavedGuests, setSelectedSavedGuests] = useState<SavedLineReminderGuest[]>([])
     const [initialSavedGuestIds, setInitialSavedGuestIds] = useState<string[]>([])
+    const [initialSavedGuestAssignments, setInitialSavedGuestAssignments] = useState<string[]>([])
     const [showSavedGuestDropdown, setShowSavedGuestDropdown] = useState(false)
 
     // Time & Details
@@ -132,6 +133,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
                 prevEditBookingIdRef.current = initialBooking.id
                 setSelectedSavedGuests([])
                 setInitialSavedGuestIds([])
+                setInitialSavedGuestAssignments([])
             }
 
             // Edit Mode Initialization
@@ -208,6 +210,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             setMemberSearchResults([])
             setSelectedSavedGuests([])
             setInitialSavedGuestIds([])
+            setInitialSavedGuestAssignments([])
             setSavedGuestSearchResults([])
             setShowSavedGuestDropdown(false)
 
@@ -242,6 +245,11 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
                 if (cancelled) return
                 setSelectedSavedGuests(guests)
                 setInitialSavedGuestIds(guests.map((guest) => guest.id))
+                setInitialSavedGuestAssignments(
+                    guests.map((guest) =>
+                        JSON.stringify([guest.id, guest.booking_name || guest.name])
+                    )
+                )
                 const linkedNames = new Set(
                     guests.flatMap((guest) => [guest.name, guest.booking_name])
                         .filter((name): name is string => Boolean(name?.trim()))
@@ -552,6 +560,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         setSavedGuestSearchResults([])
         setSelectedSavedGuests([])
         setInitialSavedGuestIds([])
+        setInitialSavedGuestAssignments([])
         setShowSavedGuestDropdown(false)
         setShowMemberDropdown(false)
         setActivityTypes([])
@@ -584,6 +593,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         savedGuestSearchResults,
         selectedSavedGuests,
         initialSavedGuestIds,
+        initialSavedGuestAssignments,
         showSavedGuestDropdown,
         startDate,
         startTime,

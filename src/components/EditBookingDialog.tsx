@@ -71,6 +71,7 @@ export function EditBookingDialog({
     savedGuestSearchResults,
     selectedSavedGuests,
     initialSavedGuestIds,
+    initialSavedGuestAssignments,
     showSavedGuestDropdown,
     startDate,
     startTime,
@@ -580,9 +581,17 @@ export function EditBookingDialog({
 
       const currentSavedGuestIds = selectedSavedGuests.map((guest) => guest.id).sort()
       const originalSavedGuestIds = [...initialSavedGuestIds].sort()
+      const currentSavedGuestAssignments = selectedSavedGuests
+        .map((guest) => JSON.stringify([guest.id, guest.booking_name || guest.name]))
+        .sort()
+      const originalSavedGuestAssignments = [...initialSavedGuestAssignments].sort()
       const savedGuestSelectionChanged =
         currentSavedGuestIds.length !== originalSavedGuestIds.length ||
-        currentSavedGuestIds.some((id, index) => id !== originalSavedGuestIds[index])
+        currentSavedGuestIds.some((id, index) => id !== originalSavedGuestIds[index]) ||
+        currentSavedGuestAssignments.length !== originalSavedGuestAssignments.length ||
+        currentSavedGuestAssignments.some(
+          (assignment, index) => assignment !== originalSavedGuestAssignments[index],
+        )
       if (savedGuestSelectionChanged) {
         await syncBookingSavedLineReminderGuests(
           booking.id,

@@ -197,22 +197,6 @@ export function TomorrowReminder() {
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
       if (!token) throw new Error('登入已失效，請重新登入')
-      const mappingsResponse = await fetch('/api/line-reminder-send', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'list' }),
-      })
-      const mappingsBody = await mappingsResponse.json().catch(() => null) as
-        | { mappings?: TomorrowReminderMappingRow[]; error?: string }
-        | null
-      if (!mappingsResponse.ok) {
-        throw new Error(mappingsBody?.error || '無法載入 LINE 提醒配對')
-      }
-      if (!isLatestRequest()) return
-      setReminderMappings(mappingsBody?.mappings ?? [])
 
       const startOfDay = `${selectedDate}T00:00:00`
       const endOfDay = `${selectedDate}T23:59:59`
@@ -364,19 +348,39 @@ export function TomorrowReminder() {
         }
 
         const memberIds = Array.from(new Set(Object.values(nextMemberIdsByName).flat()))
-        if (memberIds.length > 0) {
-          const { data: bindingsData, error: bindingsError } = await supabase
+        const mappingsRequest = fetch('/api/line-reminder-send', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'list_reminder_mappings',
+            bookingIds,
+            memberIds,
+          }),
+        })
+        const bindingsRequest = memberIds.length > 0
+          ? supabase
             .from('line_bindings')
             .select('member_id, can_push')
             .eq('status', 'active')
             .in('member_id', memberIds)
-          if (bindingsError) throw bindingsError
-          if (!isLatestRequest()) return
-          setLineBindings((bindingsData || []) as TomorrowReminderBindingRow[])
-        } else {
-          if (!isLatestRequest()) return
-          setLineBindings([])
+          : Promise.resolve({ data: [], error: null })
+        const [mappingsResponse, bindingsResult] = await Promise.all([
+          mappingsRequest,
+          bindingsRequest,
+        ])
+        const mappingsBody = await mappingsResponse.json().catch(() => null) as
+          | { mappings?: TomorrowReminderMappingRow[]; error?: string }
+          | null
+        if (!mappingsResponse.ok) {
+          throw new Error(mappingsBody?.error || '無法載入 LINE 提醒配對')
         }
+        if (bindingsResult.error) throw bindingsResult.error
+        if (!isLatestRequest()) return
+        setReminderMappings(mappingsBody?.mappings ?? [])
+        setLineBindings((bindingsResult.data || []) as TomorrowReminderBindingRow[])
         setMemberIdsByName(nextMemberIdsByName)
         setBookingIdsByMemberId(nextBookingIdsByMemberId)
         setAdditionalReminderNames(nextAdditionalReminderNames)
