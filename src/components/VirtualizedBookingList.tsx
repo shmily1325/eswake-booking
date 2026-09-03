@@ -327,9 +327,13 @@ export function VirtualizedBookingList({
 															<span style={{
 																fontSize: '0.9em',
 																fontWeight: '600',
-																color: designSystem.colors.text.secondary,
+																color: designSystem.colors.primary[700],
+																background: designSystem.colors.primary[50],
+																borderRadius: designSystem.borderRadius.full,
+																padding: '2px 7px',
+																marginLeft: '6px',
 															}}>
-																{' · '}{formatActualRider(booking.actual_rider)}
+																{formatActualRider(booking.actual_rider)}
 															</span>
 														)}
 													</span>
