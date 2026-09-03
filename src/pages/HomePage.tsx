@@ -195,7 +195,7 @@ export function HomePage() {
     }
   ]
 
-  /** 分隔線下方：排班 / 船隻管理 / 商品查詢或管理 / 會員電話 / BAO */
+  /** 分隔線下方：排班 / 船隻管理 / 商品查詢或管理 / 聯絡資料 / BAO */
   const menuItemsTools: HomeMenuItem[] = [
     {
       title: '排班',
@@ -226,7 +226,7 @@ export function HomePage() {
       hideFromHomeForSuperAdmin: true
     },
     {
-      title: '會員電話',
+      title: '聯絡資料',
       icon: '📱',
       link: '/member-phone-edit',
       phoneEditorOnly: true
