@@ -10,6 +10,7 @@ import { useResponsive } from '../../hooks/useResponsive'
 import { useToast, ToastContainer } from '../../components/ui'
 import { isMemberPhoneOnlyEditor } from '../../utils/auth'
 import { normalizeDate } from '../../utils/date'
+import { trackClickDedupedWithin } from '../../utils/trackClick'
 import { LineReminderMappingPanel } from './LineReminderMappingPanel'
 import {
   designSystem,
@@ -171,6 +172,7 @@ export function MemberPhoneEditPage() {
 
   useEffect(() => {
     if (user && isMemberPhoneOnlyEditor(user)) {
+      trackClickDedupedWithin('member_phone_view', user.email)
       loadMembers()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -290,6 +292,7 @@ export function MemberPhoneEditPage() {
         <button
           type="button"
           role="tab"
+          data-track="member_phone_tab_members"
           aria-label="會員綁定"
           title="會員綁定"
           aria-selected={activeTab === 'phones'}
@@ -301,6 +304,7 @@ export function MemberPhoneEditPage() {
         <button
           type="button"
           role="tab"
+          data-track="member_phone_tab_pairing"
           aria-label="提醒配對"
           title="提醒配對"
           aria-selected={activeTab === 'line-reminders'}

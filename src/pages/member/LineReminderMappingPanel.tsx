@@ -531,6 +531,7 @@ export function LineReminderMappingPanel({ members }: Props) {
         配對後可傳送預約提醒，不影響會員專區。
       </div>
       <input
+        data-track="line_reminder_search"
         value={search}
         onChange={(event) => setSearch(event.target.value)}
         placeholder="搜尋 LINE、會員、姓名或電話"
@@ -554,6 +555,7 @@ export function LineReminderMappingPanel({ members }: Props) {
           <button
             key={option.value}
             type="button"
+            data-track={`line_reminder_filter:${option.value}`}
             aria-pressed={filter === option.value}
             onClick={() => setFilter(option.value)}
             style={{
@@ -591,6 +593,7 @@ export function LineReminderMappingPanel({ members }: Props) {
             <button
               key={value}
               type="button"
+              data-track={`line_reminder_processed_filter:${value}`}
               aria-pressed={processedFilter === value}
               onClick={() => setProcessedFilter(value)}
               style={{
@@ -694,6 +697,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                       {savedGuest && (
                         <button
                           type="button"
+                          data-track="line_reminder_guest_manage"
                           disabled={guestSaving}
                           onClick={() => hasFormalPushBinding
                             ? void deleteGuest(savedGuest)
@@ -749,6 +753,9 @@ export function LineReminderMappingPanel({ members }: Props) {
                       {contactMappings.length > 0 && (
                         <button
                           type="button"
+                          data-track={isExpanded
+                            ? 'line_reminder_mapping_details_close'
+                            : 'line_reminder_mapping_details_open'}
                           aria-expanded={isExpanded}
                           onClick={() => toggleContactDetails(contact.line_user_id)}
                           style={{
@@ -808,6 +815,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                     contact.friend_status !== 'friend') && (
                     <button
                       type="button"
+                      data-track="line_reminder_pair_open"
                       onClick={() => canAddPairing && beginPairing(contact)}
                       disabled={!canAddPairing}
                       style={{
@@ -867,6 +875,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                           {!mapping.member_id && !savedGuest && (
                             <button
                               type="button"
+                              data-track="line_reminder_mapping_promote_guest"
                               onClick={() => void promoteMapping(mapping)}
                               style={getButtonStyle('ghost', 'small', isMobile)}
                             >
@@ -876,6 +885,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                           {!hasFormalPushBinding && (
                             <button
                               type="button"
+                              data-track="line_reminder_mapping_edit"
                               onClick={() => beginPairing(contact, mapping)}
                               style={getButtonStyle('ghost', 'small', isMobile)}
                             >
@@ -884,6 +894,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                           )}
                           <button
                             type="button"
+                            data-track="line_reminder_mapping_delete"
                             onClick={() => void deleteMapping(mapping)}
                             disabled={hasFormalPushBinding}
                             style={getButtonStyle('ghost', 'small', isMobile)}
@@ -937,6 +948,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                 <button
                   key={type}
                   type="button"
+                  data-track={`line_reminder_target:${type}`}
                   onClick={() => setTargetType(type)}
                   style={getButtonStyle(targetType === type ? 'primary' : 'outline', 'small', isMobile)}
                 >
@@ -947,6 +959,7 @@ export function LineReminderMappingPanel({ members }: Props) {
             {targetType === 'member' ? (
               <div>
                 <input
+                  data-track="line_reminder_member_search"
                   value={memberSearch}
                   onChange={(event) => {
                     setMemberSearch(event.target.value)
@@ -980,6 +993,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                       <button
                         key={member.id}
                         type="button"
+                        data-track="line_reminder_member_select"
                         onClick={() => {
                           setMemberId(member.id)
                           setMemberSearch(member.nickname || member.name)
@@ -1011,6 +1025,7 @@ export function LineReminderMappingPanel({ members }: Props) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input
+                  data-track="line_reminder_booking_search"
                   value={bookingSearch}
                   onChange={(event) => setBookingSearch(event.target.value)}
                   autoFocus
@@ -1041,6 +1056,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                         <button
                           key={booking.id}
                           type="button"
+                          data-track="line_reminder_booking_select"
                           onClick={() => {
                             if (selected) return
                             const names = splitBookingNames(booking.contact_name)
@@ -1123,6 +1139,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                             </div>
                             <button
                               type="button"
+                              data-track="line_reminder_booking_remove"
                               aria-label={`移除預約 ${booking.contact_name}`}
                               onClick={() => setSelectedBookings((current) =>
                                 current.filter((item) => item.id !== booking.id)
@@ -1152,6 +1169,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                                 <button
                                   key={name}
                                   type="button"
+                                  data-track="line_reminder_booking_person_toggle"
                                   onClick={() => {
                                     setSelectedBookings((current) => current.map((item) => {
                                       if (item.id !== booking.id) return item
@@ -1197,6 +1215,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                 }}>
                   <input
                     type="checkbox"
+                    data-track="line_reminder_save_guest_toggle"
                     checked={saveAsGuest}
                     disabled={Boolean(selectedContactSavedGuest)}
                     onChange={(event) => setSaveAsGuest(event.target.checked)}
@@ -1227,6 +1246,7 @@ export function LineReminderMappingPanel({ members }: Props) {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
               <button
                 type="button"
+                data-track="line_reminder_pair_cancel"
                 disabled={saving}
                 onClick={() => setSelectedContact(null)}
                 style={getButtonStyle('outline', 'medium', isMobile)}
@@ -1235,6 +1255,9 @@ export function LineReminderMappingPanel({ members }: Props) {
               </button>
               <button
                 type="button"
+                data-track={editingMappingId
+                  ? 'line_reminder_pair_save_edit'
+                  : 'line_reminder_pair_save'}
                 disabled={
                   saving ||
                   (targetType === 'member'
@@ -1273,6 +1296,7 @@ export function LineReminderMappingPanel({ members }: Props) {
             <div style={{ flex: 1 }} />
             <button
               type="button"
+              data-track="line_reminder_guest_edit_cancel"
               disabled={guestSaving}
               onClick={() => setEditingGuest(null)}
               style={getButtonStyle('outline', 'medium', isMobile)}
@@ -1281,6 +1305,7 @@ export function LineReminderMappingPanel({ members }: Props) {
             </button>
             <button
               type="button"
+              data-track="line_reminder_guest_edit_save"
               disabled={guestSaving || !guestNameDraft.trim() || !guestLineDraft}
               onClick={() => void saveGuest()}
               style={getButtonStyle('primary', 'medium', isMobile)}
@@ -1327,6 +1352,7 @@ export function LineReminderMappingPanel({ members }: Props) {
           </label>
           <button
             type="button"
+            data-track="line_reminder_guest_delete"
             disabled={guestSaving}
             onClick={() => editingGuest && void deleteGuest(editingGuest)}
             style={{
