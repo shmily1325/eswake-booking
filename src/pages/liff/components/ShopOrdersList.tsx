@@ -6,6 +6,7 @@ import type { LiffShopOrder } from '../liffShopOrders'
 import {
   LIFF_ORDER_STATUS,
   formatLiffOrderItemLine,
+  getLiffOrderItemImageUrl,
   liffDeliveryLabel,
   liffOrderProgressSummary,
   liffOrderQuotedTotal,
@@ -29,6 +30,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
   const status = LIFF_ORDER_STATUS[statusKey]
   const collapsible = order.items.length > 1
   const [expanded, setExpanded] = useState(false)
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const visibleItems = collapsible && !expanded ? order.items.slice(0, 1) : order.items
   const hiddenCount = collapsible && !expanded ? order.items.length - 1 : 0
   const showMeta = !collapsible || expanded
@@ -158,45 +160,79 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {visibleItems.map((item) => {
           const { title, subtitle, progress } = formatLiffOrderItemLine(item)
+          const imageSrc = getLiffOrderItemImageUrl(item)
           return (
-            <div key={item.id}>
-              <div
-                style={{
-                  fontSize: getFontSizePx('body', false),
-                  fontWeight: 600,
-                  color: LIFF_THEME.inkSoft,
-                }}
-              >
-                {title}
-              </div>
-              {subtitle && (
+            <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              {imageSrc && (
+                <button
+                  type="button"
+                  aria-label={`放大查看 ${title} 圖片`}
+                  onClick={() => setPreviewSrc(imageSrc)}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    flex: '0 0 48px',
+                    padding: 0,
+                    border: `1px solid ${LIFF_THEME.rowDivider}`,
+                    borderRadius: 8,
+                    background: LIFF_THEME.surfaceInset,
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <img
+                    src={imageSrc}
+                    alt=""
+                    loading="lazy"
+                    onError={(event) => {
+                      if (event.currentTarget.parentElement) {
+                        event.currentTarget.parentElement.style.display = 'none'
+                      }
+                    }}
+                    style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </button>
+              )}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: getFontSizePx('body', false),
+                    fontWeight: 600,
+                    color: LIFF_THEME.inkSoft,
+                  }}
+                >
+                  {title}
+                </div>
+                {subtitle && (
+                  <div
+                    style={{
+                      fontSize: getFontSizePx('bodySmall', true),
+                      color: LIFF_THEME.muted,
+                      marginTop: 2,
+                    }}
+                  >
+                    {subtitle}
+                  </div>
+                )}
                 <div
                   style={{
                     fontSize: getFontSizePx('bodySmall', true),
                     color: LIFF_THEME.muted,
-                    marginTop: 2,
+                    marginTop: 3,
                   }}
                 >
-                  {subtitle}
+                  單價 ${item.unit_price.toLocaleString()} × {item.qty} 件
                 </div>
-              )}
-              <div
-                style={{
-                  fontSize: getFontSizePx('bodySmall', true),
-                  color: LIFF_THEME.muted,
-                  marginTop: 3,
-                }}
-              >
-                單價 ${item.unit_price.toLocaleString()} × {item.qty} 件
-              </div>
-              <div
-                style={{
-                  fontSize: getFontSizePx('bodySmall', true),
-                  color: LIFF_THEME.mutedLight,
-                  marginTop: 4,
-                }}
-              >
-                {progress}
+                <div
+                  style={{
+                    fontSize: getFontSizePx('bodySmall', true),
+                    color: LIFF_THEME.mutedLight,
+                    marginTop: 4,
+                  }}
+                >
+                  {progress}
+                </div>
               </div>
             </div>
           )
@@ -221,6 +257,54 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
           ${displayTotal.toLocaleString()}
         </strong>
       </div>
+      {previewSrc && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="商品圖片預覽"
+          onClick={() => setPreviewSrc(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            background: 'rgba(0, 0, 0, 0.88)',
+            cursor: 'pointer',
+            boxSizing: 'border-box',
+          }}
+        >
+          <button
+            type="button"
+            aria-label="關閉圖片"
+            onClick={() => setPreviewSrc(null)}
+            style={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              width: 40,
+              height: 40,
+              border: 'none',
+              borderRadius: 20,
+              background: 'rgba(255, 255, 255, 0.16)',
+              color: '#fff',
+              fontSize: 26,
+              lineHeight: '40px',
+              cursor: 'pointer',
+            }}
+          >
+            ×
+          </button>
+          <img
+            src={previewSrc}
+            alt="商品圖片"
+            onClick={(event) => event.stopPropagation()}
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'default' }}
+          />
+        </div>
+      )}
     </div>
   )
 }

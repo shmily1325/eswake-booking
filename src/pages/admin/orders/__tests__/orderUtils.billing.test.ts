@@ -5,6 +5,7 @@ import {
   buildCancelBillingPayload,
   buildSubmitBillingConfirmMessage,
   buildSubmitBillingPayload,
+  getOrderItemImageUrl,
   itemQtyChipsForCard,
   itemStockInBillableHint,
   orderCanSubmitBilling,
@@ -140,6 +141,33 @@ function assertNoDuplicateSubmit(order: ShopOrderWithItems) {
     expect(line.qty + item.qty_pending_bill + item.qty_paid).toBeLessThanOrEqual(item.qty)
   }
 }
+
+describe('getOrderItemImageUrl', () => {
+  it('falls back to the product-level cover used by one-color product cards', () => {
+    const item = mockItem({ id: 'image-product-cover', qty: 1 })
+    item.variant.product = {
+      ...item.variant.product!,
+      cover_image_url: 'https://example.com/product.jpg',
+      cover_image_path: 'covers/product.jpg',
+      cover_images: [],
+    }
+
+    expect(getOrderItemImageUrl(item)).toBe('https://example.com/product.jpg')
+  })
+
+  it('keeps the variant photo as the first choice', () => {
+    const item = mockItem({ id: 'image-photo', qty: 1 })
+    item.variant.image_url = 'https://example.com/photo.jpg'
+    item.variant.product = {
+      ...item.variant.product!,
+      cover_image_url: 'https://example.com/product.jpg',
+      cover_image_path: 'covers/product.jpg',
+      cover_images: [],
+    }
+
+    expect(getOrderItemImageUrl(item)).toBe('https://example.com/photo.jpg')
+  })
+})
 
 describe('qtyOpen / qtyBillable boundaries', () => {
   it('open excludes pending and paid', () => {

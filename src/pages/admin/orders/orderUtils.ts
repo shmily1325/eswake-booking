@@ -5,11 +5,35 @@
  * Primary task: scan order/item state without rainbow chrome competing with actions.
  */
 import type { ShopOrderItemWithVariant, ShopOrderWithItems } from './types'
+import { normalizeVariantCoverImages } from '../products/coverImages'
 import { formatAttributes, formatProductTitle } from '../products/schema'
 import { getLocalDateString } from '../../../utils/date'
 import { designSystem } from '../../../styles/designSystem'
 
 const c = designSystem.colors
+
+/** 訂單品項圖：實拍優先，再依序使用商品卡封面及 SKU 封面。 */
+export function getOrderItemImageUrl(item: ShopOrderItemWithVariant): string | null {
+  const variant = item.variant
+  if (variant.image_url) return variant.image_url
+
+  const product = variant.product
+  if (product) {
+    const productCovers = normalizeVariantCoverImages(
+      product.cover_images,
+      product.cover_image_url,
+      product.cover_image_path,
+    )
+    if (productCovers[0]?.url) return productCovers[0].url
+  }
+
+  const variantCovers = normalizeVariantCoverImages(
+    variant.cover_images,
+    variant.cover_image_url,
+    variant.cover_image_path,
+  )
+  return variantCovers[0]?.url ?? null
+}
 
 /** 結帳紀錄實收加總；舊資料沒有紀錄時回傳 null，異常金額不讓畫面崩潰。 */
 export function settlementAmountTotal(

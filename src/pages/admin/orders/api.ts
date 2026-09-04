@@ -31,8 +31,12 @@ const ORDER_SELECT = `
   items:shop_order_items(
     *,
     variant:product_variants(
-      id, product_id, vendor_code, attributes, price, stock, reserved_qty, is_active, last_stock_in_at, cover_image_url, image_url,
-      product:products(id, brand, model, model_year, color, category)
+      id, product_id, vendor_code, attributes, price, stock, reserved_qty, is_active, last_stock_in_at,
+      cover_image_url, cover_image_path, cover_images, image_url,
+      product:products(
+        id, brand, model, model_year, color, category,
+        cover_image_url, cover_image_path, cover_images
+      )
     )
   )
 `

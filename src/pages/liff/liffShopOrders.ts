@@ -1,4 +1,5 @@
 import { designSystem } from '../../styles/designSystem'
+import { normalizeVariantCoverImages } from '../admin/products/coverImages'
 import { formatAttributes } from '../admin/products/schema'
 import {
   orderHasPendingBill,
@@ -99,6 +100,31 @@ export function liffOrderQuotedTotal(order: LiffShopOrder): number {
     if (!Number.isFinite(unitPrice) || !Number.isFinite(qty)) return total
     return total + unitPrice * qty
   }, 0)
+}
+
+/** 會員訂單圖：商品封面優先，其次 SKU 封面，最後才顯示實品照。 */
+export function getLiffOrderItemImageUrl(
+  item: LiffShopOrder['items'][number],
+): string | null {
+  const variant = item.variant
+  if (!variant) return null
+
+  const product = variant.product
+  if (product) {
+    const productCovers = normalizeVariantCoverImages(
+      product.cover_images,
+      product.cover_image_url,
+      product.cover_image_path,
+    )
+    if (productCovers[0]?.url) return productCovers[0].url
+  }
+
+  const variantCovers = normalizeVariantCoverImages(
+    variant.cover_images,
+    variant.cover_image_url,
+    variant.cover_image_path,
+  )
+  return variantCovers[0]?.url ?? variant.image_url ?? null
 }
 
 export function liffDeliveryLabel(method: string): string {

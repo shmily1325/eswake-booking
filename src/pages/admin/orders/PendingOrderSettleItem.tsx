@@ -20,7 +20,7 @@ import {
   listSubtotal,
   tryParseDiscountFactor,
 } from './settleUtils'
-import { deliveryMethodLabel } from './orderUtils'
+import { deliveryMethodLabel, getOrderItemImageUrl } from './orderUtils'
 import type { OrderPaymentMethod, ShopOrderWithItems } from './types'
 
 const { colors, borderRadius, shadows, spacing } = designSystem
@@ -64,7 +64,7 @@ function buildLineStates(order: ShopOrderWithItems): SettleLineState[] {
         unit_price,
         line_total: listSubtotal(qty, unit_price),
         label,
-        thumb_src: it.variant.image_url || it.variant.cover_image_url || null,
+        thumb_src: getOrderItemImageUrl(it),
         description: buildDefaultSettleDescription(label, order.order_no),
         discountInput: '',
       }

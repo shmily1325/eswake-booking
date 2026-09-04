@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ShopOrderItemWithVariant, ShopOrderWithItems } from '../../admin/orders/types'
 import {
+  getLiffOrderItemImageUrl,
   liffHiddenItemsProgressHint,
   liffOrderIsMixed,
   liffOrderProgressSummary,
@@ -74,6 +75,30 @@ function mockOrder(items: ShopOrderItemWithVariant[]): ShopOrderWithItems {
     items,
   }
 }
+
+describe('getLiffOrderItemImageUrl', () => {
+  it('uses the product cover before the real product photo', () => {
+    const item = mockItem({ id: 'image', qty: 1 })
+    item.variant.image_url = 'https://example.com/photo.jpg'
+    item.variant.product = {
+      ...item.variant.product!,
+      cover_image_url: 'https://example.com/cover.jpg',
+      cover_image_path: 'covers/cover.jpg',
+      cover_images: [],
+    }
+
+    expect(getLiffOrderItemImageUrl(item)).toBe('https://example.com/cover.jpg')
+  })
+
+  it('falls back to the real product photo and otherwise returns null', () => {
+    const item = mockItem({ id: 'photo', qty: 1 })
+    item.variant.image_url = 'https://example.com/photo.jpg'
+    expect(getLiffOrderItemImageUrl(item)).toBe('https://example.com/photo.jpg')
+
+    item.variant.image_url = null
+    expect(getLiffOrderItemImageUrl(item)).toBeNull()
+  })
+})
 
 describe('liffOrderStatus', () => {
   it('shows partial when some items waiting and some pending', () => {

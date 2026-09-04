@@ -44,6 +44,7 @@ import {
   filterOrdersBySearch,
   sortOrdersForInbox,
   formatOrderItemParts,
+  getOrderItemImageUrl,
   itemQtyChipsForCard,
   orderHasPendingBill,
   orderCanSubmitBilling,
@@ -575,7 +576,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             onCancelBilling={() => void handleCancelBilling(order)}
             onVoidOrder={() => void handleVoidOrder(order)}
             onOpenImagePreview={(item) => {
-              const src = item.variant.image_url || item.variant.cover_image_url
+              const src = getOrderItemImageUrl(item)
               if (src) setPreviewSrc(src)
             }}
           />
@@ -1037,7 +1038,7 @@ function OrderItemThumb({
   onOpen: () => void
 }) {
   // 內部作業優先看實拍，再退回封面圖
-  const src = item.variant.image_url || item.variant.cover_image_url
+  const src = getOrderItemImageUrl(item)
   if (!src) {
     return (
       <div
