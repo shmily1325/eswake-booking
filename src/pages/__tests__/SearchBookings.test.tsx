@@ -33,7 +33,13 @@ function tableMock(table: string) {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockResolvedValue({
-        data: [{ id: 'm1', name: '王小明', nickname: null, phone: null }],
+        data: [{
+          id: 'm1',
+          name: '王小明',
+          nickname: null,
+          phone: null,
+          membership_type: 'general',
+        }],
         error: null,
       }),
     }
@@ -98,5 +104,8 @@ describe('SearchBookings', () => {
       .toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(screen.getByText('會員｜')).toBeInTheDocument()
     expect(screen.getByText('LINE｜')).toBeInTheDocument()
+
+    fireEvent.click(memberSuggestion)
+    expect(screen.getByText(/僅顯示此人的預約/)).toBeInTheDocument()
   })
 })

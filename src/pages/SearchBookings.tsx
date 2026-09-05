@@ -36,6 +36,7 @@ import {
   searchSavedLineReminderGuests,
   type SavedLineReminderGuest,
 } from '../utils/lineReminderGuests'
+import { getSimplifiedMembershipTypeLabel } from '../utils/membership'
 
 interface Booking {
   id: number
@@ -59,6 +60,7 @@ interface Member {
   name: string
   nickname: string | null
   phone: string | null
+  membership_type: string | null
 }
 
 interface SearchBookingsProps {
@@ -441,7 +443,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const loadMembers = async () => {
     const { data } = await supabase
       .from('members')
-      .select('id, name, nickname, phone')
+      .select('id, name, nickname, phone, membership_type')
       .eq('status', 'active')
       .order('name')
 
@@ -909,7 +911,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
 
             {selectedMember && (
               <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: '6px' }}>
-                已選：{formatSelectedMemberHint(selectedMember)} · 僅顯示此會員預約
+                已選：{selectedMember.membership_type && `${getSimplifiedMembershipTypeLabel(selectedMember.membership_type)}｜`}
+                {formatSelectedMemberHint(selectedMember)} · 僅顯示此人的預約
               </div>
             )}
             {selectedLineGuest && (
@@ -957,7 +960,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                   >
                     <div style={{ fontWeight: '500', color: designSystem.colors.text.primary }}>
                       <span style={{ color: designSystem.colors.info[700], marginRight: 6 }}>
-                        會員｜
+                        {getSimplifiedMembershipTypeLabel(member.membership_type)}｜
                       </span>
                       {member.nickname || member.name}
                       {member.nickname && <span style={{ color: designSystem.colors.text.disabled, fontWeight: 'normal', marginLeft: '6px' }}>({member.name})</span>}
