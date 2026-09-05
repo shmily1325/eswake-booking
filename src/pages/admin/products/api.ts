@@ -6,7 +6,7 @@
  */
 
 import { supabase } from '../../../lib/supabase'
-import type { Database } from '../../../types/supabase'
+import type { Database, Json } from '../../../types/supabase'
 import type {
   AttributeValue,
   ProductRow,
@@ -33,6 +33,72 @@ export interface FetchProductsOptions {
    * 不設或 false 則回所有 is_active 商品（後台用）。
    */
   publicOnly?: boolean
+}
+
+export interface SaveProductWithVariantsInput {
+  product_id: string | null
+  skip_identity_check: boolean
+  apply_size_chart_to_model: boolean
+  product: {
+    category: string
+    brand: string
+    model: string
+    model_year: number | null
+    color: string | null
+    description: string | null
+    size_chart_id: string | null
+    cover_images: Array<{ url: string; path: string }>
+    cover_image_url: string | null
+    cover_image_path: string | null
+    is_public: boolean
+  }
+  variants: Array<{
+    draft_index: number
+    id: string | null
+    pending_delete: boolean
+    label_code: string | null
+    vendor_code: string | null
+    attributes: Record<string, AttributeValue>
+    price: number | null
+    member_price: number | null
+    stock: number
+    accept_pre_order: boolean
+    pre_order_until: string | null
+    cover_image_url: string | null
+    cover_image_path: string | null
+    cover_images: Array<{ url: string; path: string }>
+    image_url: string | null
+    image_path: string | null
+    discount_preset_id: string | null
+  }>
+}
+
+export interface SaveProductWithVariantsResult {
+  success: boolean
+  error?: string
+  error_code?: string
+  conflict_product_id?: string
+  product_id?: string
+  variants?: Array<{
+    draft_index: number
+    id: string
+    label_code: string | null
+  }>
+}
+
+/** 商品主檔、全部 SKU 與可選的同型號尺寸表同步，在 DB 內一次完成或全部回復。 */
+export async function saveProductWithVariants(
+  payload: SaveProductWithVariantsInput,
+): Promise<SaveProductWithVariantsResult> {
+  const { data, error } = await supabase.rpc('save_product_with_variants', {
+    p_payload: payload as unknown as Json,
+  })
+  if (error) throw error
+  const result = data as unknown as SaveProductWithVariantsResult
+  if (!result?.success) {
+    throw new Error(result?.error || '商品儲存失敗')
+  }
+  return result
 }
 
 /**

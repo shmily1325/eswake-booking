@@ -63,9 +63,23 @@ type PushResult = {
   memberId: string | null
   ok: boolean
   error?: string
+  alreadySent?: boolean
+  sentAt?: string
 }
 
 const FISH_REMINDER_COPY_RECIPIENT = '澤澤'
+
+function formatSentTime(value?: string): string | null {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(date)
+}
 
 export function TomorrowReminder() {
   const user = useAuthUser()
@@ -128,7 +142,7 @@ export function TomorrowReminder() {
   const [selectedPushMemberIds, setSelectedPushMemberIds] = useState<Set<string>>(new Set())
   const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({})
   const [pushStatusByMemberId, setPushStatusByMemberId] = useState<
-    Record<string, { status: 'sent' | 'error'; error?: string }>
+    Record<string, { status: 'sent' | 'error'; error?: string; sentAt?: string }>
   >({})
   const [sending, setSending] = useState(false)
 
@@ -241,6 +255,7 @@ export function TomorrowReminder() {
             },
             body: JSON.stringify({
               action: 'load_reminder_context',
+              reminderDate: selectedDate,
               bookingIds,
               legacyMemberIds,
               additionalMemberNames: needsFishCopy
@@ -262,6 +277,11 @@ export function TomorrowReminder() {
               }>
               bindings?: TomorrowReminderBindingRow[]
               mappings?: TomorrowReminderMappingRow[]
+              sendHistory?: Array<{
+                recipient_key: string
+                created_at: string
+                sent_by_email: string
+              }>
               error?: string
             }
           | null
@@ -391,6 +411,14 @@ export function TomorrowReminder() {
         setBookingStudentNamesByMemberId(nextBookingStudentNamesByMemberId)
         setBookingStudentNamesByName(nextBookingStudentNamesByName)
         setBookingIdsByName(nextBookingIdsByName)
+        setPushStatusByMemberId(
+          Object.fromEntries(
+            (reminderContext?.sendHistory ?? []).map((send) => [
+              send.recipient_key,
+              { status: 'sent' as const, sentAt: send.created_at },
+            ]),
+          ),
+        )
       }
 
       if (!isLatestRequest()) return
@@ -571,6 +599,7 @@ export function TomorrowReminder() {
   const sendRecipients = async (
     targetRecipients: TomorrowReminderRecipient[],
     confirmation: string,
+    forceResend = false,
   ) => {
     if (sending || targetRecipients.length === 0) return
     const invalidRecipient = targetRecipients.find((recipient) => {
@@ -600,6 +629,7 @@ export function TomorrowReminder() {
         },
         body: JSON.stringify({
           date: selectedDate,
+          forceResend,
           recipients: buildReminderSendPayload(targetRecipients, messageForRecipient),
         }),
       })
@@ -612,13 +642,19 @@ export function TomorrowReminder() {
       if (!body?.results) throw new Error('LINE 傳送結果格式錯誤')
 
       const results = body.results
-      const nextStatuses: Record<string, { status: 'sent' | 'error'; error?: string }> = {}
+      const nextStatuses: Record<
+        string,
+        { status: 'sent' | 'error'; error?: string; sentAt?: string }
+      > = {}
       const successfulIds = new Set<string>()
       results.forEach((result) => {
-        nextStatuses[result.recipientKey] = result.ok
-          ? { status: 'sent' }
+        nextStatuses[result.recipientKey] = result.ok || result.alreadySent
+          ? {
+              status: 'sent',
+              sentAt: result.sentAt ?? (result.ok ? new Date().toISOString() : undefined),
+            }
           : { status: 'error', error: result.error || '傳送失敗' }
-        if (result.ok) successfulIds.add(result.recipientKey)
+        if (result.ok || result.alreadySent) successfulIds.add(result.recipientKey)
       })
       setPushStatusByMemberId((current) => ({ ...current, ...nextStatuses }))
       setSelectedPushMemberIds((current) => {
@@ -627,10 +663,13 @@ export function TomorrowReminder() {
         return next
       })
 
-      const failedCount = results.filter((result) => !result.ok).length
-      const successCount = results.length - failedCount
+      const alreadySentCount = results.filter((result) => result.alreadySent).length
+      const failedCount = results.filter((result) => !result.ok && !result.alreadySent).length
+      const successCount = results.filter((result) => result.ok).length
       if (!response.ok) {
         toast.warning(`訊息已處理，但操作紀錄寫入失敗；請勿重送已成功的 ${successCount} 位`)
+      } else if (alreadySentCount > 0) {
+        toast.warning(`${alreadySentCount} 位先前已傳送，本次未重送`)
       } else if (failedCount > 0) {
         toast.warning(`已傳送 ${successCount} 位，${failedCount} 位失敗，可再次重試`)
       } else {
@@ -651,10 +690,16 @@ export function TomorrowReminder() {
     )
 
   const handleSendRecipient = (recipient: TomorrowReminderRecipient) =>
-    sendRecipients(
-      [recipient],
-      `確定要傳送 ${selectedDate} 的提醒給 ${recipient.name} 嗎？`,
-    )
+    pushStatusByMemberId[recipient.key]?.status === 'sent'
+      ? sendRecipients(
+          [recipient],
+          `${recipient.name} 在 ${selectedDate} 已傳送過提醒，確定仍要再次傳送嗎？`,
+          true,
+        )
+      : sendRecipients(
+          [recipient],
+          `確定要傳送 ${selectedDate} 的提醒給 ${recipient.name} 嗎？`,
+        )
 
   const coachReminderBlocks =
     !loading && bookings.length > 0
@@ -714,6 +759,7 @@ export function TomorrowReminder() {
     const isCopied = copiedStudent === recipient.key
     const language = studentLanguages[recipient.key] || 'zh'
     const pushState = pushStatusByMemberId[recipient.key]
+    const sentTime = formatSentTime(pushState?.sentAt)
     const isPushable = recipient.status === 'pushable' || recipient.status === 'mapped'
     const isSelected = isPushable && selectedPushMemberIds.has(recipient.key)
     const statusLabel =
@@ -813,6 +859,7 @@ export function TomorrowReminder() {
               color: designSystem.colors.text.secondary,
             }}>
               {recipient.bookingCount} 個預約
+              {pushState?.status === 'sent' && sentTime ? ` · ${sentTime} 已傳送` : ''}
             </div>
           </div>
 
@@ -961,10 +1008,10 @@ export function TomorrowReminder() {
                   type="button"
                   data-track="tomorrow_line_send_one"
                   onClick={() => void handleSendRecipient(recipient)}
-                  disabled={sending || pushState?.status === 'sent'}
+                  disabled={sending}
                   style={{
                     ...getButtonStyle(
-                      pushState?.status === 'sent' ? 'success' : 'primary',
+                      pushState?.status === 'sent' ? 'outline' : 'primary',
                       'medium',
                       isMobile,
                     ),
@@ -974,7 +1021,7 @@ export function TomorrowReminder() {
                   }}
                 >
                   {pushState?.status === 'sent'
-                    ? '已傳送'
+                    ? '再次傳送'
                     : sending
                       ? '傳送中…'
                       : '傳送此人'}

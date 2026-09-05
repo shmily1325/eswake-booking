@@ -74,6 +74,7 @@ export function ShopDetail() {
   const { addItem } = useShopCart()
   const catalog = useShopCatalog()
   const getCatalogProduct = catalog.getProduct
+  const isProductDetailFresh = catalog.isProductDetailFresh
   const mergeCatalogProduct = catalog.mergeProduct
   const promo = useShopPromo()
 
@@ -121,6 +122,20 @@ export function ShopDetail() {
       setLoading(false)
       return
     }
+    const freshDetail = isProductDetailFresh(productId)
+      ? getCatalogProduct(productId)
+      : null
+    if (freshDetail) {
+      resolvedProductIdRef.current = productId
+      setProduct(freshDetail)
+      setError(null)
+      setSelectedVariantId((prev) => {
+        if (prev && freshDetail.variants.some((variant) => variant.id === prev)) return prev
+        return pickDefaultVariantId(freshDetail.variants)
+      })
+      setLoading(false)
+      return
+    }
     if (productRef.current?.id !== productId) setLoading(true)
     void (async () => {
       try {
@@ -135,7 +150,7 @@ export function ShopDetail() {
         }
         resolvedProductIdRef.current = productId
         setProduct(p)
-        mergeCatalogProduct(p)
+        mergeCatalogProduct(p, { detail: true })
         setError(null)
         setSelectedVariantId((prev) => {
           if (prev && p.variants.some((v) => v.id === prev)) return prev
@@ -151,7 +166,13 @@ export function ShopDetail() {
     return () => {
       cancelled = true
     }
-  }, [productId, preview, mergeCatalogProduct])
+  }, [
+    productId,
+    preview,
+    getCatalogProduct,
+    isProductDetailFresh,
+    mergeCatalogProduct,
+  ])
 
   useEffect(() => {
     if (!productId || !UUID_REGEX.test(productId)) return

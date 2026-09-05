@@ -17,6 +17,17 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function isCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return false
+  const parsed = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+  return (
+    parsed.getUTCFullYear() === Number(match[1]) &&
+    parsed.getUTCMonth() === Number(match[2]) - 1 &&
+    parsed.getUTCDate() === Number(match[3])
+  )
+}
+
 function bookingNames(value: string): string[] {
   return value.split(/[,，]/).map((name) => name.trim()).filter(Boolean)
 }
@@ -32,6 +43,7 @@ export async function handleLineReminderMappingAction(
     if (action === 'load_reminder_context') {
       const bookingIds = Array.isArray(body.bookingIds) ? body.bookingIds : []
       const legacyMemberIds = Array.isArray(body.legacyMemberIds) ? body.legacyMemberIds : []
+      const reminderDate = text(body.reminderDate)
       const additionalMemberNames = Array.isArray(body.additionalMemberNames)
         ? body.additionalMemberNames
         : []
@@ -41,6 +53,7 @@ export async function handleLineReminderMappingAction(
         bookingIds.length === 0 ||
         bookingIds.length > 200 ||
         !bookingIds.every((id) => Number.isInteger(id) && Number(id) > 0) ||
+        !isCalendarDate(reminderDate) ||
         legacyMemberIds.length > 200 ||
         !legacyMemberIds.every((id) => typeof id === 'string' && uuidPattern.test(id)) ||
         additionalMemberNames.length > 10 ||
@@ -96,7 +109,7 @@ export async function handleLineReminderMappingAction(
       const scopedMemberIds = Array.from(memberIds)
       const mappingSelect =
         'id, line_user_id, member_id, booking_id, guest_id, contact_name, normalized_name, line_contact:line_user_id(display_name, friend_status), guest:guest_id(is_active)'
-      const [bookingMappings, memberMappings, bindingsResult] = await Promise.all([
+      const [bookingMappings, memberMappings, bindingsResult, sendHistoryResult] = await Promise.all([
         supabase
           .from('line_reminder_mappings')
           .select(mappingSelect)
@@ -114,20 +127,35 @@ export async function handleLineReminderMappingAction(
               .eq('status', 'active')
               .in('member_id', scopedMemberIds)
           : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from('line_reminder_send_logs')
+          .select('recipient_key, created_at, sent_by_email')
+          .eq('reminder_date', reminderDate)
+          .eq('status', 'sent')
+          .order('created_at', { ascending: false })
+          .limit(500),
       ])
       if (bookingMappings.error) throw bookingMappings.error
       if (memberMappings.error) throw memberMappings.error
       if (bindingsResult.error) throw bindingsResult.error
+      if (sendHistoryResult.error) throw sendHistoryResult.error
 
       const mappings = new Map<string, unknown>()
       for (const mapping of [...(bookingMappings.data ?? []), ...(memberMappings.data ?? [])]) {
         mappings.set(mapping.id, mapping)
+      }
+      const latestSendByRecipient = new Map<string, unknown>()
+      for (const send of sendHistoryResult.data ?? []) {
+        if (!latestSendByRecipient.has(send.recipient_key)) {
+          latestSendByRecipient.set(send.recipient_key, send)
+        }
       }
       return res.status(200).json({
         bookingMembers: bookingMembersResult.data ?? [],
         additionalMembers: Array.from(additionalMembers.values()),
         bindings: bindingsResult.data ?? [],
         mappings: Array.from(mappings.values()),
+        sendHistory: Array.from(latestSendByRecipient.values()),
       })
     }
 

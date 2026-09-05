@@ -1818,6 +1818,12 @@ export type Database = {
           updated_by: string | null
         }
       }
+      save_product_with_variants: {
+        Args: {
+          p_payload: Json
+        }
+        Returns: Json
+      }
       get_liff_shop_orders: {
         Args: {
           p_line_user_id: string

@@ -26,6 +26,8 @@ type SendResult = {
   memberId: string | null
   ok: boolean
   error?: string
+  alreadySent?: boolean
+  sentAt?: string
 }
 
 function sendError(res: VercelResponse, status: number, error: string) {
@@ -47,18 +49,21 @@ function isValidDate(date: string): boolean {
 }
 
 function parseBody(body: unknown):
-  | { ok: true; date: string; recipients: Recipient[] }
+  | { ok: true; date: string; recipients: Recipient[]; forceResend: boolean }
   | { ok: false; error: string } {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { ok: false, error: 'Invalid request body' }
   }
 
-  const { date, recipients } = body as Record<string, unknown>
+  const { date, recipients, forceResend } = body as Record<string, unknown>
   if (typeof date !== 'string' || !isValidDate(date)) {
     return { ok: false, error: 'date must use YYYY-MM-DD format' }
   }
   if (!Array.isArray(recipients) || recipients.length === 0 || recipients.length > MAX_RECIPIENTS) {
     return { ok: false, error: `recipients must contain between 1 and ${MAX_RECIPIENTS} items` }
+  }
+  if (forceResend !== undefined && typeof forceResend !== 'boolean') {
+    return { ok: false, error: 'forceResend must be a boolean' }
   }
 
   const parsed: Recipient[] = []
@@ -124,7 +129,7 @@ function parseBody(body: unknown):
     })
   }
 
-  return { ok: true, date, recipients: parsed }
+  return { ok: true, date, recipients: parsed, forceResend: forceResend === true }
 }
 
 async function pushMessage(lineUserId: string, message: string, token: string): Promise<string | null> {
@@ -213,7 +218,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const mappingIds = parsed.recipients
       .map(recipient => recipient.mappingId)
       .filter((mappingId): mappingId is string => !!mappingId)
-    const [bindingsResult, mappingsResult, formalLineBindingsResult] = await Promise.all([
+    const [bindingsResult, mappingsResult, formalLineBindingsResult, previousSendsResult] =
+      await Promise.all([
       memberIds.length > 0
         ? supabase
             .from('line_bindings')
@@ -235,14 +241,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .eq('status', 'active')
             .eq('can_push', true)
         : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from('line_reminder_send_logs')
+        .select('recipient_key, created_at')
+        .eq('reminder_date', parsed.date)
+        .eq('status', 'sent')
+        .in('recipient_key', parsed.recipients.map((recipient) => recipient.recipientKey))
+        .order('created_at', { ascending: false }),
     ])
 
-    if (bindingsResult.error || mappingsResult.error || formalLineBindingsResult.error) {
+    if (
+      bindingsResult.error ||
+      mappingsResult.error ||
+      formalLineBindingsResult.error ||
+      previousSendsResult.error
+    ) {
       console.error(
         'LINE reminder recipient lookup failed:',
         bindingsResult.error?.message ||
           mappingsResult.error?.message ||
-          formalLineBindingsResult.error?.message,
+          formalLineBindingsResult.error?.message ||
+          previousSendsResult.error?.message,
       )
       return sendError(res, 500, 'Unable to load LINE recipients')
     }
@@ -290,11 +309,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const resultByRecipientKey = new Map<string, SendResult>()
+    const previousSendByRecipientKey = new Map<string, string>()
+    for (const send of previousSendsResult.data ?? []) {
+      if (
+        typeof send.recipient_key === 'string' &&
+        typeof send.created_at === 'string' &&
+        !previousSendByRecipientKey.has(send.recipient_key)
+      ) {
+        previousSendByRecipientKey.set(send.recipient_key, send.created_at)
+      }
+    }
     const resolved: Array<{
       recipient: Recipient
       lineUserId: string
     }> = []
     for (const recipient of parsed.recipients) {
+      const previousSentAt = previousSendByRecipientKey.get(recipient.recipientKey)
+      if (previousSentAt && !parsed.forceResend) {
+        resultByRecipientKey.set(recipient.recipientKey, {
+          recipientKey: recipient.recipientKey,
+          memberId: recipient.memberId,
+          ok: false,
+          error: 'Reminder was already sent',
+          alreadySent: true,
+          sentAt: previousSentAt,
+        })
+        continue
+      }
       let lineUserId = recipient.memberId
         ? lineUserIdByMember.get(recipient.memberId)
         : undefined
@@ -369,6 +410,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const results = parsed.recipients
       .map((recipient) => resultByRecipientKey.get(recipient.recipientKey))
       .filter((result): result is SendResult => !!result)
+
+    const resolvedLineUserIdByRecipientKey = new Map(
+      resolved.map((item) => [item.recipient.recipientKey, item.lineUserId]),
+    )
+    const logRows = results.flatMap((result) => {
+      const lineUserId = resolvedLineUserIdByRecipientKey.get(result.recipientKey)
+      if (!lineUserId || result.alreadySent) return []
+      const recipient = parsed.recipients.find(
+        (item) => item.recipientKey === result.recipientKey,
+      )
+      if (!recipient) return []
+      return [{
+        reminder_date: parsed.date,
+        recipient_key: result.recipientKey,
+        line_user_id: lineUserId,
+        member_id: result.memberId,
+        booking_ids: recipient.bookingIds,
+        status: result.ok ? 'sent' : 'failed',
+        error_message: result.ok ? null : result.error ?? 'Unknown error',
+        sent_by_email: auth.user.email.toLowerCase(),
+      }]
+    })
+    if (logRows.length > 0) {
+      const { error: logError } = await supabase
+        .from('line_reminder_send_logs')
+        .insert(logRows)
+      if (logError) {
+        console.error('LINE reminder send log failed:', logError.message)
+        return res.status(500).json({
+          results,
+          error: 'Messages were processed but the send history could not be saved',
+        })
+      }
+    }
     return res.status(200).json({ results })
   } catch (error) {
     console.error(

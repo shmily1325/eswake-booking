@@ -23,7 +23,8 @@ interface ShopCatalogValue {
   ensureLoaded: () => Promise<void>
   refresh: () => Promise<void>
   getProduct: (productId: string) => ProductWithVariants | null
-  mergeProduct: (product: ProductWithVariants) => void
+  isProductDetailFresh: (productId: string) => boolean
+  mergeProduct: (product: ProductWithVariants, options?: { detail?: boolean }) => void
 }
 
 const ShopCatalogContext = createContext<ShopCatalogValue | null>(null)
@@ -34,6 +35,7 @@ export function ShopCatalogProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const readyRef = useRef(false)
   const fetchedAtRef = useRef(0)
+  const detailFetchedAtByIdRef = useRef(new Map<string, number>())
   const inflightRef = useRef<Promise<void> | null>(null)
 
   const refresh = useCallback((): Promise<void> => {
@@ -44,6 +46,7 @@ export function ShopCatalogProvider({ children }: { children: ReactNode }) {
         const list = await fetchAllProductsWithVariants({ publicOnly: true })
         setProducts(prepareShopCatalog(list))
         fetchedAtRef.current = Date.now()
+        detailFetchedAtByIdRef.current.clear()
         setError(null)
       } catch (loadError) {
         console.error('[shop] catalog', loadError)
@@ -84,7 +87,18 @@ export function ShopCatalogProvider({ children }: { children: ReactNode }) {
     (productId: string) => products.find((product) => product.id === productId) ?? null,
     [products],
   )
-  const mergeProduct = useCallback((product: ProductWithVariants) => {
+  const isProductDetailFresh = useCallback(
+    (productId: string) =>
+      isShopCatalogFresh(detailFetchedAtByIdRef.current.get(productId) ?? 0),
+    [],
+  )
+  const mergeProduct = useCallback((
+    product: ProductWithVariants,
+    options?: { detail?: boolean },
+  ) => {
+    if (options?.detail) {
+      detailFetchedAtByIdRef.current.set(product.id, Date.now())
+    }
     setProducts((current) => mergeShopCatalogProduct(current, product))
   }, [])
 
@@ -96,9 +110,19 @@ export function ShopCatalogProvider({ children }: { children: ReactNode }) {
       ensureLoaded,
       refresh,
       getProduct,
+      isProductDetailFresh,
       mergeProduct,
     }),
-    [products, ready, error, ensureLoaded, refresh, getProduct, mergeProduct],
+    [
+      products,
+      ready,
+      error,
+      ensureLoaded,
+      refresh,
+      getProduct,
+      isProductDetailFresh,
+      mergeProduct,
+    ],
   )
 
   return (

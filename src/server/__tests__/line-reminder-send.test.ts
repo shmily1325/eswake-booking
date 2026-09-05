@@ -265,6 +265,7 @@ describe('manual LINE reminder send API', () => {
     await handler(
       request({
         action: 'load_reminder_context',
+        reminderDate: '2026-08-28',
         bookingIds: [101],
         legacyMemberIds: [],
         additionalMemberNames: [],
@@ -284,6 +285,7 @@ describe('manual LINE reminder send API', () => {
       additionalMembers: [],
       bindings: [{ member_id: memberId, can_push: true }],
       mappings: [{ id: 'map-1', booking_id: 101, line_user_id: 'U1' }],
+      sendHistory: [],
     })
   })
 
@@ -1095,5 +1097,67 @@ describe('manual LINE reminder send API', () => {
         error: 'No verified push-capable LINE recipient',
       }],
     })
+  })
+
+  it('does not resend a reminder already recorded for the same date', async () => {
+    queryResults.line_reminder_send_logs = {
+      data: [{
+        recipient_key: 'member:member-1',
+        created_at: '2026-08-27T10:30:00.000Z',
+      }],
+      error: null,
+    }
+    const lineFetch = vi.spyOn(globalThis, 'fetch')
+    const response = responseMock()
+
+    await handler(request(), response as unknown as VercelResponse)
+
+    expect(lineFetch).not.toHaveBeenCalled()
+    expect(response.json).toHaveBeenCalledWith({
+      results: [{
+        recipientKey: 'member:member-1',
+        memberId: 'member-1',
+        ok: false,
+        error: 'Reminder was already sent',
+        alreadySent: true,
+        sentAt: '2026-08-27T10:30:00.000Z',
+      }],
+    })
+  })
+
+  it('allows an explicit resend and records the successful attempt', async () => {
+    queryResults.line_reminder_send_logs = {
+      data: [{
+        recipient_key: 'member:member-1',
+        created_at: '2026-08-27T10:30:00.000Z',
+      }],
+      error: null,
+    }
+    const lineFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+    const response = responseMock()
+
+    await handler(
+      request({
+        date: '2026-08-28',
+        forceResend: true,
+        recipients: [{ memberId: 'member-1', message: 'Reminder' }],
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(lineFetch).toHaveBeenCalledTimes(1)
+    expect(queryBuilders.line_reminder_send_logs.insert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        reminder_date: '2026-08-28',
+        recipient_key: 'member:member-1',
+        line_user_id: 'server-line-user-1',
+        status: 'sent',
+        sent_by_email: 'callumbao1122@gmail.com',
+      }),
+    ])
+    expect(response.status).toHaveBeenCalledWith(200)
   })
 })

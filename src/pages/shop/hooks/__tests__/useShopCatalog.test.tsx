@@ -70,7 +70,9 @@ describe('useShopCatalog', () => {
     nowSpy.mockRestore()
   })
 
-  it('merges a freshly loaded detail into the catalog', async () => {
+  it('merges and tracks a freshly loaded product detail', async () => {
+    let now = 1_000_000
+    const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => now)
     fetchProducts.mockResolvedValue([product('one', 'old')])
     const { result } = renderHook(() => useShopCatalog(), { wrapper })
     await act(async () => {
@@ -78,9 +80,14 @@ describe('useShopCatalog', () => {
     })
 
     act(() => {
-      result.current.mergeProduct(product('one', 'fresh'))
+      result.current.mergeProduct(product('one', 'fresh'), { detail: true })
     })
 
     expect(result.current.getProduct('one')).toEqual(product('one', 'fresh'))
+    expect(result.current.isProductDetailFresh('one')).toBe(true)
+
+    now += SHOP_CATALOG_FRESH_MS
+    expect(result.current.isProductDetailFresh('one')).toBe(false)
+    nowSpy.mockRestore()
   })
 })

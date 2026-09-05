@@ -27,17 +27,11 @@ import {
   type FieldDef,
 } from './schema'
 import {
-  createProduct,
-  createVariant,
   deleteProduct,
-  deleteVariant,
-  applySizeChartToSameModel,
   fetchProductWithVariants,
   findExistingProductIdentity,
-  findLabelCodeConflict,
   generateLabelCode,
-  updateProduct,
-  updateVariant,
+  saveProductWithVariants,
 } from './api'
 import { fetchDiscountPresets } from './discountApi'
 import type { ProductVariantRow, ProductWithVariants } from './types'
@@ -746,63 +740,58 @@ export function ProductEditView({
     setSaving(true)
     try {
       let pid = productId ?? createdProductId
-      if (isNew) {
-        if (!pid) {
-          if (!confirmedSeparateProduct) {
-            const duplicate = await findExistingProductIdentity(
-              category,
-              brand,
-              model,
-              parsedModelYear,
-              normalizedProductColor,
-            )
-            if (duplicate) {
-              setServerIdentityMatch(duplicate)
-              throw new Error('找到相同型號、年份與顏色的商品，請先確認要加入既有商品或另建商品')
-            }
-          }
-          const productCovers = coverImagesForDb(productCoverImages)
-          const productPrimary = primaryCoverFromGallery(productCovers)
-          const created = await createProduct({
-            category,
-            brand,
-            model,
-            model_year: parsedModelYear,
-            color: normalizedProductColor,
-            description: description.trim() || null,
-            size_chart_id: sizeChartId,
-            cover_images: productCovers,
-            cover_image_url: productPrimary.url,
-            cover_image_path: productPrimary.path,
-            is_public: isPublic,
-            created_by: currentUserEmail ?? null,
-          })
-          pid = created.id
-          setCreatedProductId(created.id)
-          setOriginalProductCoverPaths(productCovers.map((img) => img.path).filter(Boolean))
-        } else {
-          const productCovers = coverImagesForDb(productCoverImages)
-          const productPrimary = primaryCoverFromGallery(productCovers)
-          await updateProduct(pid, {
-            category,
-            brand,
-            model,
-            model_year: parsedModelYear,
-            color: normalizedProductColor,
-            description: description.trim() || null,
-            size_chart_id: sizeChartId,
-            cover_images: productCovers,
-            cover_image_url: productPrimary.url,
-            cover_image_path: productPrimary.path,
-            is_public: isPublic,
-            updated_by: currentUserEmail ?? null,
-          })
-          setOriginalProductCoverPaths(productCovers.map((img) => img.path).filter(Boolean))
+      if (isNew && !pid && !confirmedSeparateProduct) {
+        const duplicate = await findExistingProductIdentity(
+          category,
+          brand,
+          model,
+          parsedModelYear,
+          normalizedProductColor,
+        )
+        if (duplicate) {
+          setServerIdentityMatch(duplicate)
+          throw new Error('找到相同型號、年份與顏色的商品，請先確認要加入既有商品或另建商品')
         }
-      } else {
-        const productCovers = coverImagesForDb(productCoverImages)
-        const productPrimary = primaryCoverFromGallery(productCovers)
-        await updateProduct(productId!, {
+      }
+
+      const productCovers = coverImagesForDb(productCoverImages)
+      const productPrimary = primaryCoverFromGallery(productCovers)
+      const variantPayloads = drafts.map((d, draftIndex) => {
+        const stockNum = Number(d.stock)
+        // 一色一卡：封面只掛商品層，SKU 封面刻意清空，避免再複製出重複 storage 檔
+        const cover_images = useProductLevelCovers
+          ? []
+          : coverImagesForDb(d.cover_images)
+        const primary = primaryCoverFromGallery(cover_images)
+        return {
+          draft_index: draftIndex,
+          id: d.id,
+          pending_delete: Boolean(d.pendingDelete),
+          label_code: normalizeLabelCode(d.label_code) || null,
+          vendor_code: d.vendor_code.trim() || null,
+          attributes: normalizeVariantAttributes(d.attributes),
+          price: d.price.trim() === '' ? null : Number(d.price),
+          member_price: d.member_price.trim() === '' ? null : Number(d.member_price),
+          stock: stockNum,
+          accept_pre_order: d.acceptPreOrder,
+          pre_order_until:
+            d.acceptPreOrder && stockNum <= 0
+              ? normalizePreOrderUntil(d.pre_order_until)
+              : null,
+          cover_image_url: primary.url,
+          cover_image_path: primary.path,
+          cover_images,
+          image_url: d.image_url,
+          image_path: d.image_path,
+          discount_preset_id: d.discount_preset_id,
+        }
+      })
+
+      const saveResult = await saveProductWithVariants({
+        product_id: pid,
+        skip_identity_check: confirmedSeparateProduct,
+        apply_size_chart_to_model: applySizeChartToModel,
+        product: {
           category,
           brand,
           model,
@@ -814,89 +803,29 @@ export function ProductEditView({
           cover_image_url: productPrimary.url,
           cover_image_path: productPrimary.path,
           is_public: isPublic,
-          updated_by: currentUserEmail ?? null,
-        })
-        setOriginalProductCoverPaths(productCovers.map((img) => img.path).filter(Boolean))
-      }
+        },
+        variants: variantPayloads,
+      })
+      if (!saveResult.product_id) throw new Error('商品儲存結果缺少商品編號')
+      pid = saveResult.product_id
+      setCreatedProductId(pid)
+      setOriginalProductCoverPaths(productCovers.map((img) => img.path).filter(Boolean))
 
-      if (applySizeChartToModel) {
-        await applySizeChartToSameModel({
-          category,
-          brand,
-          model,
-          model_year: parsedModelYear,
-          size_chart_id: sizeChartId,
-          updated_by: currentUserEmail ?? null,
-        })
-      }
-
-      // 標籤代碼：跨商品唯一（DB index + 存檔前查詢）
-      for (const d of drafts) {
-        if (d.pendingDelete) continue
-        const normalized = normalizeLabelCode(d.label_code)
-        if (!normalized) continue
-        const conflict = await findLabelCodeConflict(normalized, d.id)
-        if (conflict) {
-          const who = [conflict.brand, conflict.model].filter(Boolean).join(' ')
-          throw new Error(
-            who
-              ? `標籤代碼「${normalized}」已被「${who}」使用`
-              : `標籤代碼「${normalized}」已被其他商品使用`,
-          )
+      const savedVariants = new Map(
+        (saveResult.variants ?? []).map((saved) => [saved.draft_index, saved]),
+      )
+      setDrafts((current) => current.map((row, index) => {
+        const saved = savedVariants.get(index)
+        if (!saved) return row
+        const payload = variantPayloads[index]
+        return {
+          ...row,
+          id: saved.id,
+          savedLabelCode: saved.label_code ?? '',
+          originalCoverImagePaths: payload.cover_images.map((img) => img.path).filter(Boolean),
+          originalImagePath: payload.image_path,
         }
-      }
-
-      // SKU：依狀態 dispatch
-      for (const [draftIndex, d] of drafts.entries()) {
-        if (d.pendingDelete) {
-          if (d.id) {
-            await deleteVariant(d.id)
-            // 軟刪不清圖（保留以防誤刪復原），如要清圖：if (d.image_path) await removeProductImage(d.image_path)
-          }
-          continue
-        }
-        const stockNum = Number(d.stock)
-        const availability = deriveVariantAvailability(stockNum, d.acceptPreOrder)
-        // 一色一卡：封面只掛商品層，SKU 封面刻意清空，避免再複製出重複 storage 檔
-        const cover_images = useProductLevelCovers
-          ? []
-          : coverImagesForDb(d.cover_images)
-        const primary = primaryCoverFromGallery(cover_images)
-        const payload = {
-          label_code: normalizeLabelCode(d.label_code),
-          vendor_code: d.vendor_code,
-          attributes: normalizeVariantAttributes(d.attributes),
-          price: d.price.trim() === '' ? null : Number(d.price),
-          member_price: d.member_price.trim() === '' ? null : Number(d.member_price),
-          stock: stockNum,
-          availability,
-          pre_order_eta: null,
-          pre_order_until:
-            availability === 'pre_order'
-              ? normalizePreOrderUntil(d.pre_order_until)
-              : null,
-          cover_image_url: primary.url,
-          cover_image_path: primary.path,
-          cover_images,
-          image_url: d.image_url,
-          image_path: d.image_path,
-          discount_preset_id: d.discount_preset_id,
-        }
-        if (d.id) {
-          await updateVariant(d.id, payload)
-        } else {
-          const createdVariant = await createVariant({ product_id: pid!, ...payload })
-          setDrafts(prev => prev.map((row, index) => index === draftIndex
-            ? {
-                ...row,
-                id: createdVariant.id,
-                savedLabelCode: createdVariant.label_code ?? '',
-                originalCoverImagePaths: cover_images.map((img) => img.path).filter(Boolean),
-                originalImagePath: createdVariant.image_path,
-              }
-            : row))
-        }
-      }
+      }))
 
       // ===== Storage 清理：刪掉這個 session 內不再被引用的舊圖 =====
       // 1) 收集所有「最終會被 DB 引用」的 path
@@ -946,10 +875,8 @@ export function ProductEditView({
     } catch (e) {
       console.error('[ProductEditView] save failed', e)
       toast.error(e instanceof Error ? e.message : '儲存失敗')
-      // 寫 DB 過程中失敗，可能已有部分 SKU 已寫入新 image_path。
-      // 為了避免後續取消時誤刪已被 DB 引用的圖（造成 broken reference），
-      // 直接清掉 session 追蹤；殘留的孤兒檔由清理腳本處理即可（孤兒可接受、破洞不可）。
-      sessionUploadsRef.current.clear()
+      // DB RPC 失敗會整批 rollback；保留上傳追蹤，讓使用者可重試，
+      // 或在取消時安全清掉仍未被 DB 引用的圖片。
     } finally {
       setSaving(false)
     }
