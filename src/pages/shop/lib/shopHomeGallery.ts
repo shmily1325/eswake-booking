@@ -81,14 +81,12 @@ export function collectHomeGalleryPool(
     const matches =
       kind === 'es-series'
         ? es
-        : es
-          ? false
-          : kind === 'pre-order'
-            ? isProductInPreOrderSection(product.variants)
-            : kind === 'in-stock'
-              ? isProductInStockSection(product.variants) &&
-                !productHasTagSale(product, presets)
-              : productHasTagSale(product, presets)
+        : kind === 'pre-order'
+          ? !es && isProductInPreOrderSection(product.variants)
+          : kind === 'in-stock'
+            ? isProductInStockSection(product.variants) &&
+              !productHasTagSale(product, presets)
+            : productHasTagSale(product, presets)
     if (!matches) continue
     const focused = focusedVariants(product, kind, presets)
     const imageUrl = getProductImageUrl(product, focused)

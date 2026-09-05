@@ -311,6 +311,42 @@ describe('filterAndSortProducts', () => {
     const filtered = filterAndSortProducts([vest, wetsuit], filters)
     expect(filtered.map((p) => p.category)).toEqual(['lifejacket'])
   })
+
+  it('always puts higher-priced pre-order products first', () => {
+    const preOrder = (id: string, price: number) =>
+      product('lifejacket', {
+        id,
+        variants: [
+          {
+            id: `variant-${id}`,
+            product_id: id,
+            stock: 0,
+            reserved_qty: 0,
+            availability: 'pre_order',
+            price,
+            sku: `sku-${id}`,
+            color: null,
+            size: null,
+            attributes: {},
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+      })
+    const filters = {
+      ...defaultFilterState(),
+      preOrderOnly: true,
+      // Even a stale/default URL sort must not change the Pre-Order order.
+      sortBy: 'newest' as const,
+    }
+
+    expect(
+      filterAndSortProducts(
+        [preOrder('low', 2_000), preOrder('high', 8_000), preOrder('mid', 5_000)],
+        filters,
+      ).map((p) => p.id),
+    ).toEqual(['high', 'mid', 'low'])
+  })
 })
 
 describe('brand facets', () => {
@@ -424,7 +460,7 @@ describe('ES SERIES group', () => {
     expect(filtered.map((p) => p.category)).toEqual(['es_series'])
   })
 
-  it('keeps ES SERIES out of Pre-Order, In-Stock, and Sale lists', () => {
+  it('allows ES SERIES into In-Stock and tagged Sale, but not Pre-Order', () => {
     const esItem = product('es_series')
     const vest = product('lifejacket')
     expect(
@@ -438,13 +474,37 @@ describe('ES SERIES group', () => {
         ...defaultFilterState(),
         inStockOnly: true,
       }).map((p) => p.category),
-    ).toEqual(['lifejacket'])
+    ).toEqual(['es_series', 'lifejacket'])
     expect(
       filterAndSortProducts([esItem, vest], {
         ...defaultFilterState(),
         saleOnly: true,
       }).map((p) => p.category),
     ).toEqual([])
+
+    const taggedEs = product('es_series', {
+      variants: [
+        {
+          ...esItem.variants[0],
+          discount_preset_id: 'red',
+        },
+      ],
+    })
+    expect(
+      filterAndSortProducts(
+        [taggedEs, vest],
+        { ...defaultFilterState(), saleOnly: true },
+        [{
+          id: 'red',
+          kind: 'tag',
+          name: '紅標',
+          label: '紅標',
+          percent: 60,
+          is_active: true,
+          sort_order: 1,
+        }],
+      ).map((p) => p.category),
+    ).toEqual(['es_series'])
   })
 
   it('keeps ES SERIES products out of Essentials', () => {

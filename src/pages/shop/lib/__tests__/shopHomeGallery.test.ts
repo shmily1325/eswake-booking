@@ -56,8 +56,9 @@ describe('collectHomeGalleryPool', () => {
     ])
   })
 
-  it('keeps ES SERIES out of In-Stock, Pre-Order, and Sale', () => {
+  it('puts in-stock ES SERIES in In-Stock but keeps it out of Pre-Order', () => {
     expect(collectHomeGalleryPool(products, 'in-stock').map((p) => p.productId)).toEqual([
+      'es-photo',
       'stock-photo',
     ])
     expect(collectHomeGalleryPool(products, 'pre-order').map((p) => p.productId)).toEqual([
@@ -115,13 +116,13 @@ describe('collectHomeGalleryPool', () => {
     ])
     expect(
       collectHomeGalleryPool(withTagged, 'in-stock', [red]).map((p) => p.productId),
-    ).toEqual(['stock-photo'])
+    ).toEqual(['es-photo', 'stock-photo'])
     expect(
       collectHomeGalleryPool(withTagged, 'es-series', [red]).map((p) => p.productId),
     ).toEqual(['es-photo', 'es-pre'])
   })
 
-  it('keeps tagged ES SERIES leftovers in ES Series, not Sale', () => {
+  it('keeps tagged ES SERIES in both ES Series and Sale', () => {
     const red = {
       id: 'red',
       kind: 'tag' as const,
@@ -141,7 +142,7 @@ describe('collectHomeGalleryPool', () => {
     )
     expect(
       collectHomeGalleryPool([taggedEs], 'sale', [red]).map((p) => p.productId),
-    ).toEqual([])
+    ).toEqual(['es-sale'])
     expect(
       collectHomeGalleryPool([taggedEs], 'es-series', [red]).map((p) => p.productId),
     ).toEqual(['es-sale'])

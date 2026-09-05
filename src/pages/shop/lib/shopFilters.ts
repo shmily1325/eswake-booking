@@ -220,10 +220,7 @@ export function getFacetProductPool(
     )
   }
   if (inStockOnly) {
-    return baseProducts.filter(
-      (p) =>
-        !isEsSeriesCategory(p.category) && isProductInStockSection(p.variants),
-    )
+    return baseProducts.filter((p) => isProductInStockSection(p.variants))
   }
   return baseProducts
 }
@@ -372,9 +369,7 @@ function productSizeValues(p: ProductWithVariants): string[] {
 
 function productMatchesCategory(p: ProductWithVariants, filters: ShopFilterState): boolean {
   if (isEsSeriesCategory(p.category)) {
-    if (filters.preOrderOnly || filters.inStockOnly || filters.saleOnly) {
-      return false
-    }
+    if (filters.preOrderOnly) return false
     if (filters.topLevel === ALL_GROUPS) {
       return filters.subCat === ALL_SUBCATS
     }
@@ -418,7 +413,6 @@ function productMatchesInStock(
   inStockOnly: boolean,
 ): boolean {
   if (!inStockOnly) return true
-  if (isEsSeriesCategory(p.category)) return false
   return isProductInStockSection(p.variants)
 }
 
@@ -428,7 +422,6 @@ function productMatchesSale(
   presets: readonly DiscountPreset[],
 ): boolean {
   if (!saleOnly) return true
-  if (isEsSeriesCategory(p.category)) return false
   return productHasTagSale(p, presets)
 }
 
@@ -448,14 +441,18 @@ export function filterAndSortProducts(
       productMatchesSearch(p, filters.search),
   )
 
-  if (filters.sortBy === 'newest') {
+  // Pre-Order 各層（全部／品牌／分類）都固定高價在前；
+  // 該模式沒有顯示排序控制，避免 URL 殘留的 sort 造成頁面順序不一致。
+  const effectiveSortBy = filters.preOrderOnly ? 'price-desc' : filters.sortBy
+
+  if (effectiveSortBy === 'newest') {
     list = [...list].sort((a, b) => {
       const at = a.created_at ?? ''
       const bt = b.created_at ?? ''
       return bt.localeCompare(at)
     })
   } else {
-    const dir = filters.sortBy === 'price-asc' ? 1 : -1
+    const dir = effectiveSortBy === 'price-asc' ? 1 : -1
     list = [...list].sort((a, b) => {
       const ap = getMinSalePrice(getShopVisibleVariants(a.variants), presets)
       const bp = getMinSalePrice(getShopVisibleVariants(b.variants), presets)
