@@ -246,7 +246,7 @@ export function MemberSelector({
                             setShowMemberDropdown(true)
                         }
                     }}
-                    placeholder="搜尋會員暱稱/姓名/電話...（可多選）"
+                    placeholder="搜尋暱稱/姓名/電話...（可多選）"
                     style={{
                         width: '100%',
                         padding: '12px',

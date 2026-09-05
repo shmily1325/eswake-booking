@@ -6,6 +6,7 @@ import { Footer } from '../../components/Footer'
 import { CoachReportFormDialog } from '../../components/CoachReportFormDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useMemberSearch } from '../../hooks/useMemberSearch'
+import type { MemberSearchResult } from '../../hooks/useMemberSearch'
 import { getCardStyle, getFilterChipStyle, getFontSize, getReportRolePillStyle, designSystem, PAGE_MAX_WIDTHS } from '../../styles/designSystem'
 import { useToast, ToastContainer } from '../../components/ui'
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
@@ -37,13 +38,6 @@ import type {
   Participant
 } from '../../types/booking'
 import type { Database } from '../../types/supabase'
-
-interface MemberSearchResult {
-  id: string
-  name: string
-  nickname: string | null
-  phone: string | null
-}
 
 const PAYMENT_METHODS = [
   { value: 'cash', label: '現金' },
@@ -109,6 +103,7 @@ export function CoachReport({
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
   const [activeSearchIndex, setActiveSearchIndex] = useState<number | null>(null)  // 追蹤正在搜尋的參與者索引
   const { 
+    members,
     filteredMembers,
     handleSearchChange 
   } = useMemberSearch()
@@ -1287,7 +1282,8 @@ export function CoachReport({
         participants={participants}
         isMobile={isMobile}
         memberSearchTerm={memberSearchTerm}
-        filteredMembers={filteredMembers as any}
+        members={members}
+        filteredMembers={filteredMembers}
         lessonTypes={LESSON_TYPES}
         paymentMethods={PAYMENT_METHODS}
         isSubmitting={isSubmitting}

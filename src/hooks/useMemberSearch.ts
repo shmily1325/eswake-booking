@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 
-interface Member {
+export interface MemberSearchResult {
   id: string
   name: string
   nickname: string | null
   phone: string | null
+  membership_type?: string | null
 }
 
 /**
@@ -13,7 +14,7 @@ interface Member {
  * 處理會員列表載入、搜索過濾、選擇邏輯
  */
 export function useMemberSearch() {
-  const [members, setMembers] = useState<Member[]>([])
+  const [members, setMembers] = useState<MemberSearchResult[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [showDropdown, setShowDropdown] = useState(false)
@@ -27,7 +28,7 @@ export function useMemberSearch() {
   const loadMembers = async () => {
     const { data } = await supabase
       .from('members')
-      .select('id, name, nickname, phone')
+      .select('id, name, nickname, phone, membership_type')
       .eq('status', 'active')
       .order('name')
     
@@ -49,7 +50,7 @@ export function useMemberSearch() {
   }, [members, searchTerm])
 
   // 處理會員選擇
-  const selectMember = (member: Member) => {
+  const selectMember = (member: MemberSearchResult) => {
     setSearchTerm(member.nickname || member.name)
     setSelectedMemberId(member.id)
     setManualName('')

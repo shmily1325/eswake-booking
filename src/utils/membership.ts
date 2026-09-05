@@ -26,6 +26,13 @@ export function getMembershipTypeLabel(type: string | null | undefined): string 
   }
 }
 
+export function getSimplifiedMembershipTypeLabel(
+  type: string | null | undefined
+): string {
+  if (type === 'general' || type === 'dual') return '會員'
+  return getMembershipTypeLabel(type)
+}
+
 export function getMembershipTypeBadgeVariant(
   type: string | null | undefined
 ): MembershipTypeBadgeVariant {

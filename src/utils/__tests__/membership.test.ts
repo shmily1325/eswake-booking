@@ -4,6 +4,7 @@ import {
   getMembershipExpiryAlertStatus,
   getMembershipTypeBadgeVariant,
   getMembershipTypeLabel,
+  getSimplifiedMembershipTypeLabel,
   isMembershipType,
   membershipAllowsDates,
   membershipCountsAsActive,
@@ -37,6 +38,13 @@ describe('membership rules', () => {
     expect(getMembershipTypeBadgeVariant('guest')).toBe('warning')
     expect(getMembershipTypeBadgeVariant('es')).toBe('default')
     expect(getMembershipTypeBadgeVariant('dual')).toBe('info')
+  })
+
+  it('uses simplified membership labels in booking-related flows', () => {
+    expect(getSimplifiedMembershipTypeLabel('general')).toBe('會員')
+    expect(getSimplifiedMembershipTypeLabel('dual')).toBe('會員')
+    expect(getSimplifiedMembershipTypeLabel('guest')).toBe('非會員')
+    expect(getSimplifiedMembershipTypeLabel('es')).toBe('ES')
   })
 
   it('flags membership and board expiry only inside the reminder window', () => {

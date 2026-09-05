@@ -11,7 +11,9 @@ import {
   getInputStyle,
   getLabelStyle,
 } from '../styles/designSystem'
-import type { Member, Participant } from '../types/booking'
+import { getSimplifiedMembershipTypeLabel } from '../utils/membership'
+import type { Participant } from '../types/booking'
+import type { MemberSearchResult } from '../hooks/useMemberSearch'
 
 interface ParticipantFormItemProps {
   participant: Participant
@@ -19,7 +21,8 @@ interface ParticipantFormItemProps {
   isMobile: boolean
   showRemoveButton: boolean
   memberSearchTerm: string
-  filteredMembers: Member[]
+  selectedMember: MemberSearchResult | null
+  filteredMembers: MemberSearchResult[]
   lessonTypes: Array<{ value: string; label: string }>
   paymentMethods: Array<{ value: string; label: string }>
   isSearchActive?: boolean  // 是否顯示搜尋結果（避免所有參與者同時顯示下拉選單）
@@ -27,7 +30,7 @@ interface ParticipantFormItemProps {
   onRemove: (index: number) => void
   onClearMember: (index: number) => void
   onSearchChange: (value: string, index: number) => void
-  onSelectMember: (index: number, member: Member) => void
+  onSelectMember: (index: number, member: MemberSearchResult) => void
   onSearchFocus?: (index: number) => void  // 輸入框獲得焦點時通知父組件
   onSearchBlur?: (index: number) => void   // 輸入框失去焦點時通知父組件
 }
@@ -51,6 +54,7 @@ export function ParticipantFormItem({
   isMobile,
   showRemoveButton,
   memberSearchTerm,
+  selectedMember,
   filteredMembers,
   lessonTypes,
   paymentMethods,
@@ -63,6 +67,10 @@ export function ParticipantFormItem({
   onSearchFocus,
   onSearchBlur
 }: ParticipantFormItemProps) {
+  const membershipLabel = selectedMember?.membership_type
+    ? getSimplifiedMembershipTypeLabel(selectedMember.membership_type)
+    : null
+
   return (
     <div
       style={{
@@ -113,20 +121,22 @@ export function ParticipantFormItem({
       <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
         {participant.member_id ? (
           <>
-            <span
-              style={{
-                display: 'inline-block',
-                padding: '4px 12px',
-                background: designSystem.colors.success[50],
-                color: designSystem.colors.success[700],
-                border: `1px solid ${designSystem.colors.success[500]}`,
-                borderRadius: designSystem.borderRadius.full,
-                fontSize: getFontSize('caption', isMobile),
-                fontWeight: '600'
-              }}
-            >
-              👤 會員
-            </span>
+            {membershipLabel && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '4px 12px',
+                  background: designSystem.colors.success[50],
+                  color: designSystem.colors.success[700],
+                  border: `1px solid ${designSystem.colors.success[500]}`,
+                  borderRadius: designSystem.borderRadius.full,
+                  fontSize: getFontSize('caption', isMobile),
+                  fontWeight: '600'
+                }}
+              >
+                👤 {membershipLabel}
+              </span>
+            )}
             <button
               onClick={() => onClearMember(index)}
               style={{

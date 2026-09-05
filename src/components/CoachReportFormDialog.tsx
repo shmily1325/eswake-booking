@@ -12,7 +12,8 @@ import {
   getLabelStyle,
 } from '../styles/designSystem'
 import { extractDate, extractTime } from '../utils/formatters'
-import type { Member, Participant, Booking } from '../types/booking'
+import type { Participant, Booking } from '../types/booking'
+import type { MemberSearchResult } from '../hooks/useMemberSearch'
 
 interface CoachReportFormDialogProps {
   booking: Booking | undefined
@@ -22,7 +23,8 @@ interface CoachReportFormDialogProps {
   participants: Participant[]
   isMobile: boolean
   memberSearchTerm: string
-  filteredMembers: Member[]
+  members: MemberSearchResult[]
+  filteredMembers: MemberSearchResult[]
   lessonTypes: Array<{ value: string; label: string }>
   paymentMethods: Array<{ value: string; label: string }>
   isSubmitting?: boolean  // 新增：提交中狀態
@@ -33,7 +35,7 @@ interface CoachReportFormDialogProps {
   onParticipantRemove: (index: number) => void
   onClearMember: (index: number) => void
   onMemberSearch: (value: string, index: number) => void
-  onMemberSelect: (index: number, member: Member) => void
+  onMemberSelect: (index: number, member: MemberSearchResult) => void
   onSubmit: () => void
   onCancel: () => void
   onSearchFocus?: (index: number) => void
@@ -48,6 +50,7 @@ export function CoachReportFormDialog({
   participants,
   isMobile,
   memberSearchTerm,
+  members,
   filteredMembers,
   lessonTypes,
   paymentMethods,
@@ -248,6 +251,7 @@ export function CoachReportFormDialog({
                         isMobile={isMobile}
                         showRemoveButton={true}
                         memberSearchTerm={memberSearchTerm}
+                        selectedMember={members.find(member => member.id === participant.member_id) ?? null}
                         filteredMembers={filteredMembers}
                         lessonTypes={lessonTypes}
                         paymentMethods={paymentMethods}

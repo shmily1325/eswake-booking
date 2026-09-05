@@ -66,7 +66,7 @@ describe('useMemberSearch', () => {
 
       expect(result.current.members).toEqual(mockMembersData)
       expect(supabase.from).toHaveBeenCalledWith('members')
-      expect(supabase.select).toHaveBeenCalledWith('id, name, nickname, phone')
+      expect(supabase.select).toHaveBeenCalledWith('id, name, nickname, phone, membership_type')
       expect(supabase.eq).toHaveBeenCalledWith('status', 'active')
       expect(supabase.order).toHaveBeenCalledWith('name')
     })

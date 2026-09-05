@@ -15,6 +15,7 @@ import { AdminPageShell, AdminPillRow, AdminPillButton } from '../../components/
 import { getLocalDateString, getLocalTimestamp, getWeekdayText } from '../../utils/date'
 import { fetchAllInBatches, fetchAllPaginated } from '../../utils/supabasePaginate'
 import { extractDate, extractTime } from '../../utils/formatters'
+import { getMembershipTypeLabel } from '../../utils/membership'
 import { useToast } from '../../components/ui'
 
 // ============ Types ============
@@ -452,7 +453,7 @@ export function CoachAdmin() {
               booking_coaches(coach_id)
             ),
             coaches:coach_id(id, name),
-            members:member_id(id, name, nickname)
+            members:member_id(id, name, nickname, membership_type)
           `)
             .eq('status', 'processed')
             .eq('is_deleted', false)
@@ -1270,7 +1271,11 @@ export function CoachAdmin() {
                                         </div>
                                         <div style={{ color: designSystem.colors.text.secondary }}>
                                           學員：{record.members?.nickname || record.members?.name || record.participant_name}
-                                          {!record.member_id && <span style={{ color: designSystem.colors.warning[700] }}> (非會員)</span>}
+                                          {record.members?.membership_type && (
+                                            <span style={{ color: designSystem.colors.warning[700] }}>
+                                              {' '}({getMembershipTypeLabel(record.members.membership_type)})
+                                            </span>
+                                          )}
                                           {' • '}{record.duration_min}分
                                           {' • '}{LESSON_TYPES.find(lt => lt.value === record.lesson_type)?.label || '不指定'}
                                           {' • '}{PAYMENT_METHODS.find(m => m.value === record.payment_method)?.label}
@@ -1333,7 +1338,11 @@ export function CoachAdmin() {
                                                 <div key={p.id} style={{ marginBottom: '8px' }}>
                                                   <div style={{ color: designSystem.colors.text.secondary }}>
                                                     學員：{p.members?.nickname || p.members?.name || p.participant_name}
-                                                    {!p.member_id && <span style={{ color: designSystem.colors.warning[700] }}> (非會員)</span>}
+                                                    {p.members?.membership_type && (
+                                                      <span style={{ color: designSystem.colors.warning[700] }}>
+                                                        {' '}({getMembershipTypeLabel(p.members.membership_type)})
+                                                      </span>
+                                                    )}
                                                     {' • '}{p.duration_min}分
                                                     {' • '}{LESSON_TYPES.find(lt => lt.value === p.lesson_type)?.label || '不指定'}
                                                     {' • '}{PAYMENT_METHODS.find(m => m.value === p.payment_method)?.label}
