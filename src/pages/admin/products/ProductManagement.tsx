@@ -29,6 +29,7 @@ import {
 } from './schema'
 import {
   fetchAllProductsWithVariants,
+  fetchProductWithVariants,
   fetchVariantItemByLabelCode,
   flattenToVariantItems,
   batchSetProductsPublic,
@@ -335,15 +336,18 @@ export function ProductManagement({
     const check = async () => {
       if (!user) return
       // 一般權限可唯讀瀏覽；can_products 才能修改與開單
-      const allowed = await hasProductsAccessAsync(user)
+      const [allowed, editable] = await Promise.all([
+        hasProductsAccessAsync(user),
+        readOnly
+          ? Promise.resolve(false)
+          : hasEditorFeatureAsync(user, 'can_products'),
+      ])
       if (cancelled) return
       if (!allowed) {
         toast.error('您沒有權限訪問此頁面')
         navigate('/')
         return
       }
-      const editable = !readOnly && await hasEditorFeatureAsync(user, 'can_products')
-      if (cancelled) return
       setCanEdit(editable)
       setHasAccess(true)
       setAccessChecked(true)
@@ -371,6 +375,31 @@ export function ProductManagement({
       toast.error('載入商品失敗')
     } finally {
       if (!opts?.quiet) setLoading(false)
+    }
+  }
+
+  const refreshOneProduct = async (productId: string, deleted = false) => {
+    if (deleted) {
+      setProducts((current) => current.filter((product) => product.id !== productId))
+      return
+    }
+    try {
+      const updated = await fetchProductWithVariants(productId)
+      if (!updated) {
+        setProducts((current) => current.filter((product) => product.id !== productId))
+        return
+      }
+      setProducts((current) => {
+        const next = current.some((product) => product.id === productId)
+          ? current.map((product) => product.id === productId ? updated : product)
+          : [...current, updated]
+        return next.sort((a, b) =>
+          a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model),
+        )
+      })
+    } catch (error) {
+      console.error('[ProductManagement] refresh product failed', error)
+      await loadData({ quiet: true })
     }
   }
 
@@ -796,9 +825,13 @@ export function ProductManagement({
               setView({ kind: 'edit', productId, addNewVariant: true })
             }}
             currentUserEmail={user?.email ?? null}
-            onClose={(changed) => {
+            onClose={(changed, changedProductId, deleted) => {
               setView({ kind: 'list' })
-              if (changed) void loadData()
+              if (changed && changedProductId) {
+                void refreshOneProduct(changedProductId, deleted)
+              } else if (changed) {
+                void loadData({ quiet: true })
+              }
             }}
           />
         </div>

@@ -108,61 +108,32 @@ export async function saveProductWithVariants(
 export async function fetchAllProductsWithVariants(
   options: FetchProductsOptions = {},
 ): Promise<ProductWithVariants[]> {
-  // 商城只讀公開商品時用 embedded relation 一次取回商品與 SKU，
-  // 避免首屏必須等待兩次循序 Supabase round trip。
-  if (options.publicOnly) {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*, product_variants(*)')
-      .eq('is_active', true)
-      .eq('is_public', true)
-      .eq('product_variants.is_active', true)
-      .order('brand', { ascending: true })
-      .order('model', { ascending: true })
-      .order('updated_at', {
-        referencedTable: 'product_variants',
-        ascending: false,
-      })
-    if (error) throw error
-
-    const rows = (data ?? []) as unknown as Array<
-      ProductRow & { product_variants?: ProductVariantRow[] | null }
-    >
-    return rows.map(({ product_variants, ...product }) => ({
-      ...(product as ProductRow),
-      variants: product_variants ?? [],
-    }))
-  }
-
-  const query = supabase
+  // 管理頁與商城都以 embedded relation 一次取回商品及 SKU，
+  // 避免先等 products、再用 ids 查 variants 的兩次循序網路往返。
+  let query = supabase
     .from('products')
-    .select('*')
+    .select('*, product_variants(*)')
     .eq('is_active', true)
-  const { data: products, error: pe } = await query
+    .eq('product_variants.is_active', true)
+  if (options.publicOnly) {
+    query = query.eq('is_public', true)
+  }
+  const { data, error } = await query
     .order('brand', { ascending: true })
     .order('model', { ascending: true })
-  if (pe) throw pe
+    .order('updated_at', {
+      referencedTable: 'product_variants',
+      ascending: false,
+    })
+  if (error) throw error
 
-  const productList = (products ?? []) as unknown as ProductRow[]
-  if (productList.length === 0) return []
-
-  const ids = productList.map((p) => p.id)
-  const { data: variants, error: ve } = await supabase
-    .from('product_variants')
-    .select('*')
-    .in('product_id', ids)
-    .eq('is_active', true)
-    .order('updated_at', { ascending: false })
-  if (ve) throw ve
-
-  const variantList = (variants ?? []) as unknown as ProductVariantRow[]
-  const byProduct = new Map<string, ProductVariantRow[]>()
-  for (const v of variantList) {
-    const arr = byProduct.get(v.product_id)
-    if (arr) arr.push(v)
-    else byProduct.set(v.product_id, [v])
-  }
-  return productList.map((p) => ({ ...p, variants: byProduct.get(p.id) ?? [] }))
+  const rows = (data ?? []) as unknown as Array<
+    ProductRow & { product_variants?: ProductVariantRow[] | null }
+  >
+  return rows.map(({ product_variants, ...product }) => ({
+    ...(product as ProductRow),
+    variants: (product_variants ?? []).filter((variant) => variant.is_active),
+  }))
 }
 
 /**

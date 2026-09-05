@@ -29,6 +29,7 @@ function queryBuilder(result: QueryResult) {
     eq: vi.fn(),
     gte: vi.fn(),
     lte: vi.fn(),
+    or: vi.fn(),
     is: vi.fn(),
     not: vi.fn(),
     order: vi.fn(),
@@ -50,6 +51,7 @@ function queryBuilder(result: QueryResult) {
   builder.eq.mockReturnValue(builder)
   builder.gte.mockReturnValue(builder)
   builder.lte.mockReturnValue(builder)
+  builder.or.mockReturnValue(builder)
   builder.is.mockReturnValue(builder)
   builder.not.mockReturnValue(builder)
   builder.order.mockReturnValue(builder)
@@ -287,6 +289,74 @@ describe('manual LINE reminder send API', () => {
       mappings: [{ id: 'map-1', booking_id: 101, line_user_id: 'U1' }],
       sendHistory: [],
     })
+  })
+
+  it('loads the complete reminder page through one browser API request', async () => {
+    const memberId = '2f9462b3-0d57-4f6b-b80d-d09d5c4238a8'
+    queryResults.bookings = {
+      data: [{
+        id: 101,
+        boat_id: 1,
+        member_id: memberId,
+        contact_name: 'Member',
+        contact_phone: '0912345678',
+        start_at: '2026-08-28T09:00:00',
+        duration_min: 60,
+        activity_types: ['wakeboard'],
+        notes: null,
+        boats: { id: 1, name: 'Boat', color: '#fff' },
+      }],
+      error: null,
+    }
+    queryResults.booking_members = {
+      data: [{
+        booking_id: 101,
+        members: { id: memberId, name: 'Member', nickname: null },
+      }],
+      error: null,
+    }
+    queryResults.booking_coaches = {
+      data: [{ booking_id: 101, coaches: { id: 'coach-1', name: 'Coach' } }],
+      error: null,
+    }
+    queryResults.booking_drivers = {
+      data: [{ booking_id: 101, coaches: { id: 'driver-1', name: 'Driver' } }],
+      error: null,
+    }
+    queryResults.line_bindings = {
+      data: [{ member_id: memberId, can_push: true }],
+      error: null,
+    }
+    queryResults.line_reminder_mappings = {
+      data: [{ id: 'map-1', booking_id: 101, line_user_id: 'U1' }],
+      error: null,
+    }
+    queryResults.line_reminder_send_logs = { data: [], error: null }
+    const response = responseMock()
+
+    await handler(
+      request({
+        action: 'load_reminder_page',
+        reminderDate: '2026-08-28',
+      }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(queryBuilders.bookings.gte)
+      .toHaveBeenCalledWith('start_at', '2026-08-28T00:00:00')
+    expect(queryBuilders.booking_coaches.in)
+      .toHaveBeenCalledWith('booking_id', [101])
+    expect(queryBuilders.booking_drivers.in)
+      .toHaveBeenCalledWith('booking_id', [101])
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      bookings: [expect.objectContaining({ id: 101 })],
+      bookingCoaches: [{ booking_id: 101, coaches: { id: 'coach-1', name: 'Coach' } }],
+      bookingDrivers: [{ booking_id: 101, coaches: { id: 'driver-1', name: 'Driver' } }],
+      bookingMembers: [{
+        booking_id: 101,
+        members: { id: memberId, name: 'Member', nickname: null },
+      }],
+    }))
   })
 
   it('does not expose the complete LINE contact list to view-only users', async () => {

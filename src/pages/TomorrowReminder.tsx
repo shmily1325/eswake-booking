@@ -212,85 +212,57 @@ export function TomorrowReminder() {
       const token = sessionData.session?.access_token
       if (!token) throw new Error('登入已失效，請重新登入')
 
-      const startOfDay = `${selectedDate}T00:00:00`
-      const endOfDay = `${selectedDate}T23:59:59`
-
-      const { data: bookingsData } = await supabase
-        .from('bookings')
-        .select('*, boats:boat_id(id, name, color)')
-        .gte('start_at', startOfDay)
-        .lte('start_at', endOfDay)
-        .or('is_coach_practice.is.null,is_coach_practice.eq.false')
-        .order('start_at', { ascending: true })
+      // 預約、教練、駕駛、會員與 LINE 狀態由同一個 API 回傳，
+      // 將瀏覽器端原本兩輪相依請求縮成一次網路往返。
+      const reminderContextResponse = await fetch('/api/line-reminder-send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'load_reminder_page',
+          reminderDate: selectedDate,
+        }),
+      })
+      const reminderContext = await reminderContextResponse.json().catch(() => null) as
+        | {
+            bookings?: Booking[]
+            bookingCoaches?: Array<{
+              booking_id: number
+              coaches: { id: string; name: string } | null
+            }>
+            bookingDrivers?: Array<{
+              booking_id: number
+              coaches: { id: string; name: string } | null
+            }>
+            bookingMembers?: Array<{
+              booking_id: number
+              members: { id: string; name: string; nickname: string | null } | null
+            }>
+            additionalMembers?: Array<{
+              id: string
+              name: string
+              nickname: string | null
+            }>
+            bindings?: TomorrowReminderBindingRow[]
+            mappings?: TomorrowReminderMappingRow[]
+            sendHistory?: Array<{
+              recipient_key: string
+              created_at: string
+              sent_by_email: string
+            }>
+            error?: string
+          }
+        | null
+      if (!reminderContextResponse.ok) {
+        throw new Error(reminderContext?.error || '無法載入明日提醒')
+      }
+      const bookingsData = reminderContext?.bookings ?? []
 
       if (bookingsData && bookingsData.length > 0) {
-        const bookingIds = bookingsData.map((b: any) => b.id)
-        const needsFishCopy = bookingsData.some((booking: Booking) =>
-          booking.contact_name
-            .split(',')
-            .map((name) => name.trim())
-            .includes('Fish')
-        )
-        const legacyMemberIds = Array.from(new Set(
-          bookingsData
-            .map((booking: Booking & { member_id?: string | null }) => booking.member_id)
-            .filter((id: unknown): id is string => typeof id === 'string' && Boolean(id)),
-        ))
-
-        // 教練、駕駛及 LINE 提醒所需資料並行載入，避免逐輪等待。
-        const [coachesResult, driversResult, reminderContextResponse] = await Promise.all([
-          supabase
-            .from('booking_coaches')
-            .select('booking_id, coaches:coach_id(id, name)')
-            .in('booking_id', bookingIds),
-          supabase
-            .from('booking_drivers')
-            .select('booking_id, coaches:driver_id(id, name)')
-            .in('booking_id', bookingIds),
-          fetch('/api/line-reminder-send', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: 'load_reminder_context',
-              reminderDate: selectedDate,
-              bookingIds,
-              legacyMemberIds,
-              additionalMemberNames: needsFishCopy
-                ? [FISH_REMINDER_COPY_RECIPIENT]
-                : [],
-            }),
-          }),
-        ])
-        const reminderContext = await reminderContextResponse.json().catch(() => null) as
-          | {
-              bookingMembers?: Array<{
-                booking_id: number
-                members: { id: string; name: string; nickname: string | null } | null
-              }>
-              additionalMembers?: Array<{
-                id: string
-                name: string
-                nickname: string | null
-              }>
-              bindings?: TomorrowReminderBindingRow[]
-              mappings?: TomorrowReminderMappingRow[]
-              sendHistory?: Array<{
-                recipient_key: string
-                created_at: string
-                sent_by_email: string
-              }>
-              error?: string
-            }
-          | null
-        if (!reminderContextResponse.ok) {
-          throw new Error(reminderContext?.error || '無法載入 LINE 提醒配對')
-        }
-
-        const { data: bookingCoachesData } = coachesResult
-        const { data: bookingDriversData } = driversResult
+        const bookingCoachesData = reminderContext?.bookingCoaches ?? []
+        const bookingDriversData = reminderContext?.bookingDrivers ?? []
         const bookingMembersData = reminderContext?.bookingMembers ?? []
 
         const coachesByBooking: { [key: number]: { id: string; name: string }[] } = {}

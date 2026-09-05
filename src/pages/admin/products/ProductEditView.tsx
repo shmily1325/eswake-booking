@@ -91,7 +91,7 @@ interface ProductEditViewProps {
   onOpenExistingProduct?: (productId: string) => void
   /** 可選的唯讀呈現（目前商品入口不使用） */
   readOnly?: boolean
-  onClose: (changed: boolean) => void
+  onClose: (changed: boolean, productId?: string, deleted?: boolean) => void
   currentUserEmail?: string | null
 }
 
@@ -871,7 +871,7 @@ export function ProductEditView({
       sessionUploadsRef.current.clear()
 
       toast.success(isNew ? '商品已新增' : '已儲存變更')
-      onClose(true)
+      onClose(true, pid)
     } catch (e) {
       console.error('[ProductEditView] save failed', e)
       toast.error(e instanceof Error ? e.message : '儲存失敗')
@@ -960,7 +960,7 @@ export function ProductEditView({
         void Promise.all(paths.map((p) => removeProductImage(p)))
       }
       toast.success('商品已刪除')
-      onClose(true)
+      onClose(true, productId, true)
     } catch (e) {
       console.error('[ProductEditView] delete failed', e)
       toast.error('刪除失敗')

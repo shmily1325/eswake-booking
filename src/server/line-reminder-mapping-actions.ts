@@ -40,15 +40,63 @@ export async function handleLineReminderMappingAction(
 ) {
   const action = text(body.action)
   try {
-    if (action === 'load_reminder_context') {
-      const bookingIds = Array.isArray(body.bookingIds) ? body.bookingIds : []
-      const legacyMemberIds = Array.isArray(body.legacyMemberIds) ? body.legacyMemberIds : []
+    if (action === 'load_reminder_context' || action === 'load_reminder_page') {
+      const loadFullPage = action === 'load_reminder_page'
+      let bookingIds = Array.isArray(body.bookingIds) ? body.bookingIds : []
+      let legacyMemberIds = Array.isArray(body.legacyMemberIds) ? body.legacyMemberIds : []
       const reminderDate = text(body.reminderDate)
-      const additionalMemberNames = Array.isArray(body.additionalMemberNames)
+      let additionalMemberNames = Array.isArray(body.additionalMemberNames)
         ? body.additionalMemberNames
         : []
+      let pageBookings: unknown[] = []
       const uuidPattern =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+      if (loadFullPage) {
+        if (!isCalendarDate(reminderDate)) {
+          return res.status(400).json({ error: 'Invalid reminder date' })
+        }
+        const { data, error } = await supabase
+          .from('bookings')
+          .select(
+            'id, boat_id, member_id, contact_name, contact_phone, start_at, duration_min, activity_types, notes, boats:boat_id(id, name, color)',
+          )
+          .gte('start_at', `${reminderDate}T00:00:00`)
+          .lte('start_at', `${reminderDate}T23:59:59`)
+          .or('is_coach_practice.is.null,is_coach_practice.eq.false')
+          .order('start_at', { ascending: true })
+        if (error) throw error
+        pageBookings = data ?? []
+        bookingIds = pageBookings.flatMap((booking) => {
+          const id = (booking as { id?: unknown }).id
+          return Number.isInteger(id) && Number(id) > 0 ? [id] : []
+        })
+        legacyMemberIds = Array.from(new Set(pageBookings.flatMap((booking) => {
+          const memberId = (booking as { member_id?: unknown }).member_id
+          return typeof memberId === 'string' && uuidPattern.test(memberId) ? [memberId] : []
+        })))
+        const needsFishCopy = pageBookings.some((booking) =>
+          String((booking as { contact_name?: unknown }).contact_name ?? '')
+            .split(',')
+            .map((name) => name.trim())
+            .includes('Fish'),
+        )
+        additionalMemberNames = needsFishCopy ? ['澤澤'] : []
+
+        if (bookingIds.length === 0) {
+          return res.status(200).json({
+            bookings: [],
+            bookingCoaches: [],
+            bookingDrivers: [],
+            bookingMembers: [],
+            additionalMembers: [],
+            bindings: [],
+            mappings: [],
+            sendHistory: [],
+          })
+        }
+      }
+
       if (
         bookingIds.length === 0 ||
         bookingIds.length > 200 ||
@@ -64,7 +112,13 @@ export async function handleLineReminderMappingAction(
         return res.status(400).json({ error: 'Invalid reminder context scope' })
       }
 
-      const [bookingMembersResult, additionalByNameResult, additionalByNicknameResult] =
+      const [
+        bookingMembersResult,
+        additionalByNameResult,
+        additionalByNicknameResult,
+        bookingCoachesResult,
+        bookingDriversResult,
+      ] =
         await Promise.all([
           supabase
             .from('booking_members')
@@ -82,10 +136,24 @@ export async function handleLineReminderMappingAction(
                 .select('id, name, nickname')
                 .in('nickname', additionalMemberNames)
             : Promise.resolve({ data: [], error: null }),
+          loadFullPage
+            ? supabase
+                .from('booking_coaches')
+                .select('booking_id, coaches:coach_id(id, name)')
+                .in('booking_id', bookingIds)
+            : Promise.resolve({ data: [], error: null }),
+          loadFullPage
+            ? supabase
+                .from('booking_drivers')
+                .select('booking_id, coaches:driver_id(id, name)')
+                .in('booking_id', bookingIds)
+            : Promise.resolve({ data: [], error: null }),
         ])
       if (bookingMembersResult.error) throw bookingMembersResult.error
       if (additionalByNameResult.error) throw additionalByNameResult.error
       if (additionalByNicknameResult.error) throw additionalByNicknameResult.error
+      if (bookingCoachesResult.error) throw bookingCoachesResult.error
+      if (bookingDriversResult.error) throw bookingDriversResult.error
 
       const additionalMembers = new Map<string, {
         id: string
@@ -151,6 +219,11 @@ export async function handleLineReminderMappingAction(
         }
       }
       return res.status(200).json({
+        ...(loadFullPage ? {
+          bookings: pageBookings,
+          bookingCoaches: bookingCoachesResult.data ?? [],
+          bookingDrivers: bookingDriversResult.data ?? [],
+        } : {}),
         bookingMembers: bookingMembersResult.data ?? [],
         additionalMembers: Array.from(additionalMembers.values()),
         bindings: bindingsResult.data ?? [],
