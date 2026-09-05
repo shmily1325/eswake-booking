@@ -73,6 +73,7 @@ import {
   findSameModelCandidates,
   type ProductIdentityCandidate,
 } from './productIdentity'
+import { ProductBrandSelector } from './ProductBrandSelector'
 import {
   coverImagesForDb,
   createCoverImageClientKey,
@@ -271,15 +272,6 @@ export function ProductEditView({
   const trackUpload = (path: string) => {
     sessionUploadsRef.current.add(path)
   }
-
-  /** 同類別下已出現過的品牌（autocomplete 用） */
-  const brandSuggestions = useMemo(() => {
-    const set = new Set<string>()
-    for (const p of existingProducts) {
-      if (p.category === category && p.brand.trim()) set.add(p.brand.trim())
-    }
-    return Array.from(set).sort()
-  }, [existingProducts, category])
 
   /** 同品牌下已出現過的型號（依目前選擇的 brand 動態提示） */
   const modelSuggestions = useMemo(() => {
@@ -1319,20 +1311,13 @@ export function ProductEditView({
           </div>
           <div>
             <label style={labelStyle}>品牌 *</label>
-            <input
-              style={inputStyle}
+            <ProductBrandSelector
               value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="例如：Follow"
+              onChange={setBrand}
+              currentUserEmail={currentUserEmail}
               disabled={saving || readOnly}
-              list="product-brand-suggestions"
-              autoComplete="off"
+              isMobile={isMobile}
             />
-            <datalist id="product-brand-suggestions">
-              {brandSuggestions.map((b) => (
-                <option key={b} value={b} />
-              ))}
-            </datalist>
           </div>
           <div>
             <label style={labelStyle}>型號 *</label>

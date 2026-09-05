@@ -1088,6 +1088,36 @@ export type Database = {
           },
         ]
       }
+      product_brands: {
+        Row: {
+          id: string
+          name: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           id: string
@@ -1771,6 +1801,22 @@ export type Database = {
           p_record_login?: boolean
         }
         Returns: Json
+      }
+      rename_product_brand: {
+        Args: {
+          p_brand_id: string
+          p_new_name: string
+          p_updated_by?: string | null
+        }
+        Returns: {
+          id: string
+          name: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
       }
       get_liff_shop_orders: {
         Args: {
