@@ -529,11 +529,38 @@ function ProductDetailBody({
         {customFields.length > 0 ? (
           <div className="mt-4 space-y-3">
             {customFields.map((field) => (
-              <label key={field.key} className="block">
+              <div key={field.key} className="block">
                 <span className="text-sm font-medium text-gray-700">
                   {field.label}{field.required ? ' *' : ''}
                 </span>
-                {field.inputType === 'select' ? (
+                {field.inputType === 'select' && field.displayStyle === 'swatches' ? (
+                  <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label={field.label}>
+                    {(field.values ?? []).map((value) => {
+                      const selected = customValues[field.key] === value
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          className={`flex min-h-11 items-center gap-2 rounded-full border px-2.5 py-1.5 text-sm transition ${
+                            selected
+                              ? 'border-gray-900 bg-gray-50 ring-2 ring-gray-900 ring-offset-1'
+                              : 'border-gray-300 bg-white hover:border-gray-500'
+                          }`}
+                          onClick={() => onCustomValueChange(field.key, value)}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="h-7 w-7 shrink-0 rounded-full border border-black/15 shadow-inner"
+                            style={{ backgroundColor: field.swatches?.[value] ?? '#d1d5db' }}
+                          />
+                          <span>{value}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : field.inputType === 'select' ? (
                   <select
                     className="mt-1 block w-full min-h-11 rounded-md border border-gray-300 bg-white px-3 text-base"
                     value={customValues[field.key] ?? (field.readOnly ? field.defaultDisplay ?? '' : '')}
@@ -559,7 +586,7 @@ function ProductDetailBody({
                     {field.help || field.defaultDisplay}
                   </span>
                 ) : null}
-              </label>
+              </div>
             ))}
           </div>
         ) : null}

@@ -47,7 +47,7 @@ describe('summarizePreorderReport', () => {
       paid: 1,
       amount: 13000,
     })
-    expect(summary.brands).toEqual([
+    expect(summary.brands).toEqual(expect.arrayContaining([
       {
         brand: 'Follow',
         orderCount: 1,
@@ -116,7 +116,8 @@ describe('summarizePreorderReport', () => {
           },
         ],
       },
-    ])
+    ]))
+    expect(summary.brands.map((brand) => brand.brand)).toEqual(['Ronix', 'Follow'])
   })
 
   it('does not produce negative progress from malformed values', () => {

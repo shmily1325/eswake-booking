@@ -158,8 +158,8 @@ export function summarizePreorderReport(
                 b.createdAt.localeCompare(a.createdAt) || a.orderNo.localeCompare(b.orderNo),
             ),
           }))
-          .sort((a, b) => b.qty - a.qty || b.amount - a.amount || a.title.localeCompare(b.title)),
+          .sort((a, b) => b.amount - a.amount || b.qty - a.qty || a.title.localeCompare(b.title)),
       }))
-      .sort((a, b) => b.qty - a.qty || b.amount - a.amount || a.brand.localeCompare(b.brand)),
+      .sort((a, b) => b.amount - a.amount || b.qty - a.qty || a.brand.localeCompare(b.brand)),
   }
 }

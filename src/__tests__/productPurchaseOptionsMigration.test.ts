@@ -14,6 +14,10 @@ const confirmedVibesPublish = readFileSync(
   resolve(process.cwd(), 'migrations/218_publish_confirmed_vibes_2027.sql'),
   'utf8',
 )
+const vibesColorSwatches = readFileSync(
+  resolve(process.cwd(), 'migrations/219_vibes_color_swatches.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -63,5 +67,14 @@ describe('product purchase option migrations', () => {
     expect(confirmedVibesPublish).toContain("('Full Carbon'::TEXT, 75000::INTEGER)")
     expect(confirmedVibesPublish).toContain("UPPER(BTRIM(model)) IN ('DRAKE', 'ENIGMA')")
     expect(confirmedVibesPublish).not.toContain("'PROTOTYPE'")
+  })
+
+  it('adds shop swatches without turning colors into SKUs', () => {
+    expect(vibesColorSwatches).toContain("'{customFields,0,displayStyle}'")
+    expect(vibesColorSwatches).toContain('\'"swatches"\'::JSONB')
+    expect(vibesColorSwatches).toContain("'HOT PINK', '#ff4fa3'")
+    expect(vibesColorSwatches).toContain("'PLATINUM GRAY', '#a7a9ac'")
+    expect(vibesColorSwatches).toContain("option_config #>> '{customFields,0,key}' = 'spray_color'")
+    expect(vibesColorSwatches).not.toContain('INSERT INTO public.product_variants')
   })
 })

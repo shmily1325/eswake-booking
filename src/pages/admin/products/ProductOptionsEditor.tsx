@@ -39,6 +39,8 @@ function parseCsv(value: string): string[] | undefined {
   return values.length > 0 ? values : undefined
 }
 
+const DEFAULT_SWATCH_COLOR = '#d1d5db'
+
 export function ProductOptionsEditor({
   value,
   onChange,
@@ -311,7 +313,7 @@ export function ProductOptionsEditor({
                 borderRadius: designSystem.borderRadius.sm,
               }}
             >
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 130px 1.5fr', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 130px 1.5fr 130px', gap: 8 }}>
                 <label>
                   <span style={labelStyle}>顯示名稱</span>
                   <input style={inputStyle} value={field.label} disabled={disabled}
@@ -331,9 +333,81 @@ export function ProductOptionsEditor({
                   <span style={labelStyle}>可選內容（逗號分隔）</span>
                   <input style={inputStyle} value={csv(field.values)}
                     disabled={disabled}
-                    onChange={(event) => updateCustomField(index, { values: parseCsv(event.target.value) })} />
+                    onChange={(event) => {
+                      const values = parseCsv(event.target.value)
+                      updateCustomField(index, {
+                        values,
+                        swatches: field.displayStyle === 'swatches'
+                          ? Object.fromEntries(
+                            (values ?? []).map((option) => [
+                              option,
+                              field.swatches?.[option] ?? DEFAULT_SWATCH_COLOR,
+                            ]),
+                          )
+                          : field.swatches,
+                      })
+                    }} />
+                </label> : <div />}
+                {field.inputType === 'select' ? <label>
+                  <span style={labelStyle}>商城顯示方式</span>
+                  <select
+                    style={inputStyle}
+                    value={field.displayStyle ?? 'select'}
+                    disabled={disabled}
+                    onChange={(event) => {
+                      const displayStyle = event.target.value as ProductCustomField['displayStyle']
+                      updateCustomField(index, {
+                        displayStyle: displayStyle === 'swatches' ? 'swatches' : undefined,
+                        swatches: displayStyle === 'swatches'
+                          ? Object.fromEntries(
+                            (field.values ?? []).map((option) => [
+                              option,
+                              field.swatches?.[option] ?? DEFAULT_SWATCH_COLOR,
+                            ]),
+                          )
+                          : undefined,
+                      })
+                    }}
+                  >
+                    <option value="select">下拉選單</option>
+                    <option value="swatches">色票圈圈</option>
+                  </select>
                 </label> : <div />}
               </div>
+              {field.inputType === 'select' && field.displayStyle === 'swatches' ? (
+                <div style={{ marginTop: 10 }}>
+                  <span style={labelStyle}>色票顏色</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {(field.values ?? []).map((option) => (
+                      <label
+                        key={option}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '6px 8px',
+                          border: `1px solid ${designSystem.colors.border.light}`,
+                          borderRadius: designSystem.borderRadius.sm,
+                          fontSize: 12,
+                        }}
+                      >
+                        <input
+                          type="color"
+                          value={field.swatches?.[option] ?? DEFAULT_SWATCH_COLOR}
+                          disabled={disabled}
+                          onChange={(event) => updateCustomField(index, {
+                            swatches: {
+                              ...field.swatches,
+                              [option]: event.target.value,
+                            },
+                          })}
+                        />
+                        {option}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr auto', gap: 8, marginTop: 8, alignItems: 'end' }}>
                 <label>
                   <span style={labelStyle}>輸入提示</span>

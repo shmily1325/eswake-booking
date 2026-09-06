@@ -106,4 +106,30 @@ describe('product options core', () => {
     expect(validateCustomSelection(config, { color: '白' }, {})).toBe('姓名為必填')
     expect(validateCustomSelection(config, { color: '白' }, { name: 'Ming' })).toBeNull()
   })
+
+  it('normalizes and validates editable color swatches', () => {
+    const swatchConfig: ProductOptionConfig = {
+      ...config,
+      customFields: [{
+        key: 'spray_color',
+        label: '噴色',
+        inputType: 'select',
+        values: ['HOT PINK', 'YELLOW'],
+        displayStyle: 'swatches',
+        swatches: {
+          'HOT PINK': '#ff4fa3',
+          YELLOW: '#ffd928',
+        },
+      }],
+    }
+    expect(normalizeProductOptionConfig(swatchConfig)).toEqual(swatchConfig)
+    expect(validateProductOptionConfig(swatchConfig)).toEqual([])
+    expect(validateProductOptionConfig({
+      ...swatchConfig,
+      customFields: [{
+        ...swatchConfig.customFields[0],
+        swatches: { 'HOT PINK': '#ff4fa3' },
+      }],
+    }).map((issue) => issue.message)).toContain('YELLOW 尚未設定顯示顏色')
+  })
 })

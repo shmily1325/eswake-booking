@@ -17,6 +17,8 @@ export interface ProductOptionField {
 export interface ProductCustomField extends ProductOptionField {
   required?: boolean
   readOnly?: boolean
+  displayStyle?: 'select' | 'swatches'
+  swatches?: Record<string, string>
   placeholder?: string
   help?: string
   defaultDisplay?: string
@@ -96,6 +98,15 @@ function normalizeCustomField(value: unknown): ProductCustomField | null {
   const field: ProductCustomField = { ...base }
   if (source.required === true) field.required = true
   if (source.readOnly === true) field.readOnly = true
+  if (source.displayStyle === 'swatches') field.displayStyle = 'swatches'
+  if (source.swatches && typeof source.swatches === 'object' && !Array.isArray(source.swatches)) {
+    const swatches = Object.fromEntries(
+      Object.entries(source.swatches as Record<string, unknown>)
+        .map(([key, color]) => [cleanText(key), cleanText(color)] as const)
+        .filter(([key, color]) => key && /^#[0-9a-f]{6}$/i.test(color)),
+    )
+    if (Object.keys(swatches).length > 0) field.swatches = swatches
+  }
   const placeholder = cleanText(source.placeholder)
   if (placeholder) field.placeholder = placeholder
   const defaultDisplay = cleanText(source.defaultDisplay)
@@ -166,6 +177,17 @@ export function validateProductOptionConfig(
     keys.add(field.key)
     if (field.inputType === 'select' && (!field.values || field.values.length === 0)) {
       issues.push({ path: `${path}.values`, message: '下拉欄位至少需要一個選項' })
+    }
+    const customField = field as ProductCustomField
+    if (customField.displayStyle === 'swatches') {
+      if (customField.inputType !== 'select') {
+        issues.push({ path: `${path}.displayStyle`, message: '色票只能用於固定選項' })
+      }
+      for (const value of customField.values ?? []) {
+        if (!customField.swatches?.[value]) {
+          issues.push({ path: `${path}.swatches`, message: `${value} 尚未設定顯示顏色` })
+        }
+      }
     }
   }
   const axisByKey = new Map(config.variantFields.axis.map((field) => [field.key, field]))
