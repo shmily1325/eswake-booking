@@ -1,5 +1,5 @@
 import type { ProductVariantRow } from '../../admin/products/types'
-import { formatVariantAttributes } from '../lib/shopFormat'
+import { formatPrice, formatVariantAttributes } from '../lib/shopFormat'
 import { collectSpecAxes, findVariantForAxisValue, specAttrValue } from '../lib/variantSpecAxes'
 import { getShopVisibleVariants, getVariantAvailability, isVariantPurchasable } from '../lib/productAvailability'
 import { SHOP_DETAIL } from '../lib/shopCopy'
@@ -29,13 +29,18 @@ export function VariantPicker({ variants, selectedVariantId, categoryId, optionC
         {axes.map((axis) => (
           <div key={axis.key}>
             <div className="text-sm font-medium text-gray-700">{axis.label}</div>
-            <div className={axis.key === 'finish' ? 'mt-2 grid grid-cols-3 gap-2' : 'mt-2 flex flex-wrap gap-2'}>
+            <div className={axis.key === 'finish' ? 'mt-2 grid gap-2' : 'mt-2 flex flex-wrap gap-2'}>
               {axis.values.map((value) => {
                 const targetId = findVariantForAxisValue(visible, selected.id, axis.key, value, axisKeys)
                 const isSelected = specAttrValue(selected, axis.key) === value
                 const target = visible.find((v) => v.id === targetId)
                 const purchasable = target ? isVariantPurchasable(target) : false
-                const priceLabel = target?.price != null ? `${Math.round(target.price / 1000)}K` : 'Ask'
+                const priceLabel = target?.price != null ? formatPrice(target.price) : '價格洽詢'
+                const finishNote = value === 'Full Color'
+                  ? '可選顏色'
+                  : value === 'Full Carbon'
+                    ? '固定黑色'
+                    : '標準製作'
                 return (
                   <button
                     key={value}
@@ -44,9 +49,9 @@ export function VariantPicker({ variants, selectedVariantId, categoryId, optionC
                     disabled={!targetId}
                     className={
                       axis.key === 'finish'
-                        ? `min-h-20 rounded-xl border px-2 py-3 text-center transition ${
+                        ? `flex min-h-16 w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
                             isSelected
-                              ? 'border-zinc-900 bg-zinc-900 text-white ring-2 ring-zinc-900 ring-offset-2'
+                              ? 'border-zinc-900 bg-zinc-50 ring-1 ring-zinc-900'
                               : purchasable
                                 ? 'border-gray-200 bg-white text-zinc-800 hover:border-gray-500'
                                 : 'border-gray-200 bg-gray-50 text-gray-300 line-through'
@@ -63,12 +68,19 @@ export function VariantPicker({ variants, selectedVariantId, categoryId, optionC
                   >
                     {axis.key === 'finish' ? (
                       <>
-                        <span className="block text-xs sm:text-sm font-semibold">{value}</span>
                         <span
-                          className={`mt-1 block text-sm sm:text-base font-black ${
-                            isSelected ? 'text-white' : 'text-zinc-900'
+                          aria-hidden="true"
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                            isSelected ? 'border-zinc-900' : 'border-gray-300'
                           }`}
                         >
+                          {isSelected ? <span className="h-2.5 w-2.5 rounded-full bg-zinc-900" /> : null}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-zinc-900">{value}</span>
+                          <span className="mt-0.5 block text-xs text-gray-500">{finishNote}</span>
+                        </span>
+                        <span className="shrink-0 text-sm font-bold text-zinc-900">
                           {priceLabel}
                         </span>
                       </>
