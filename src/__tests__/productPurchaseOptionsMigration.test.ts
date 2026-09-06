@@ -10,6 +10,10 @@ const vibesSeed = readFileSync(
   resolve(process.cwd(), 'migrations/217_seed_vibes_2027_drafts.sql'),
   'utf8',
 )
+const confirmedVibesPublish = readFileSync(
+  resolve(process.cwd(), 'migrations/218_publish_confirmed_vibes_2027.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -40,5 +44,24 @@ describe('product purchase option migrations', () => {
     expect(vibesSeed).toContain('        is_public,')
     expect(vibesSeed).toContain("'carbon_color'")
     expect(vibesSeed).toContain("'固定黑色'")
+  })
+
+  it('publishes only confirmed List models with conditional color and carbon choices', () => {
+    for (const model of [
+      'AVIATOR',
+      'DIAMOND STOCK',
+      'DIAMOND TEAM',
+      'XO STOCK',
+      'XO TEAM',
+    ]) {
+      expect(confirmedVibesPublish).toContain(`'${model}'`)
+    }
+    expect(confirmedVibesPublish).toContain("'spray_color'")
+    expect(confirmedVibesPublish).toContain("'HOT PINK'")
+    expect(confirmedVibesPublish).toContain("'PLATINUM GRAY'")
+    expect(confirmedVibesPublish).toContain("('Full Color'::TEXT, 70000::INTEGER)")
+    expect(confirmedVibesPublish).toContain("('Full Carbon'::TEXT, 75000::INTEGER)")
+    expect(confirmedVibesPublish).toContain("UPPER(BTRIM(model)) IN ('DRAKE', 'ENIGMA')")
+    expect(confirmedVibesPublish).not.toContain("'PROTOTYPE'")
   })
 })

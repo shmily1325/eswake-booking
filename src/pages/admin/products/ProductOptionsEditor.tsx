@@ -57,7 +57,7 @@ export function ProductOptionsEditor({
     return (
       <div>
         <p style={{ margin: '0 0 10px', color: designSystem.colors.text.secondary, fontSize: 13 }}>
-          目前沿用商品類別的既有規格欄位。
+          一般商品不需要設定。只有客製商品或多種組合售價時才需要啟用。
         </p>
         <Button
           variant="outline"
@@ -78,7 +78,7 @@ export function ProductOptionsEditor({
             customFields: [],
           })}
         >
-          啟用自訂商品選項
+          設定客製商品
         </Button>
       </div>
     )
@@ -139,23 +139,17 @@ export function ProductOptionsEditor({
       key={`${group}-${index}`}
       style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1.2fr 110px 1.4fr 90px 1.2fr auto',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : '1.2fr 130px 1.5fr 100px 1.2fr auto',
         gap: 8,
         alignItems: 'end',
         marginBottom: 8,
+        padding: 10,
+        border: `1px solid ${designSystem.colors.border.light}`,
+        borderRadius: designSystem.borderRadius.sm,
       }}
     >
       <label>
-        <span style={labelStyle}>key</span>
-        <input
-          style={inputStyle}
-          value={field.key}
-          disabled={disabled}
-          onChange={(event) => updateVariantField(group, index, { key: event.target.value })}
-        />
-      </label>
-      <label>
-        <span style={labelStyle}>名稱</span>
+        <span style={labelStyle}>{group === 'axis' ? '顯示名稱' : '資料名稱'}</span>
         <input
           style={inputStyle}
           value={field.label}
@@ -164,7 +158,7 @@ export function ProductOptionsEditor({
         />
       </label>
       <label>
-        <span style={labelStyle}>輸入方式</span>
+        <span style={labelStyle}>填寫方式</span>
         <select
           style={inputStyle}
           value={field.inputType}
@@ -173,24 +167,24 @@ export function ProductOptionsEditor({
             inputType: event.target.value as ProductOptionField['inputType'],
           })}
         >
-          <option value="text">文字</option>
-          <option value="select">下拉</option>
+          <option value="text">自由輸入</option>
+          <option value="select">固定選項</option>
         </select>
       </label>
-      <label>
-        <span style={labelStyle}>選項（逗號分隔）</span>
+      {field.inputType === 'select' ? <label>
+        <span style={labelStyle}>可選內容（逗號分隔）</span>
         <input
           style={inputStyle}
           value={csv(field.values)}
-          disabled={disabled || field.inputType !== 'select'}
-          placeholder="S, M, L"
+          disabled={disabled}
+          placeholder="例如：空板, 客製色, Full Carbon"
           onChange={(event) => updateVariantField(group, index, {
             values: parseCsv(event.target.value),
           })}
         />
-      </label>
+      </label> : <div />}
       <label>
-        <span style={labelStyle}>單位後綴</span>
+        <span style={labelStyle}>單位（選填）</span>
         <input
           style={inputStyle}
           value={field.suffix ?? ''}
@@ -202,7 +196,7 @@ export function ProductOptionsEditor({
         />
       </label>
       <label>
-        <span style={labelStyle}>說明</span>
+        <span style={labelStyle}>給店員的說明</span>
         <input
           style={inputStyle}
           value={field.help ?? ''}
@@ -220,14 +214,38 @@ export function ProductOptionsEditor({
       >
         移除
       </Button>
+      <details style={{ gridColumn: '1 / -1', fontSize: 12, color: designSystem.colors.text.secondary }}>
+        <summary style={{ cursor: 'pointer' }}>進階設定</summary>
+        <label style={{ display: 'block', maxWidth: 280, marginTop: 8 }}>
+          <span style={labelStyle}>系統代碼（建立後請勿修改）</span>
+          <input
+            style={inputStyle}
+            value={field.key}
+            disabled={disabled}
+            onChange={(event) => updateVariantField(group, index, { key: event.target.value })}
+          />
+        </label>
+      </details>
     </div>
   )
 
   return (
     <div style={{ display: 'grid', gap: 18 }}>
+      <div
+        style={{
+          padding: 12,
+          borderRadius: designSystem.borderRadius.sm,
+          background: designSystem.colors.secondary[50],
+          color: designSystem.colors.text.secondary,
+          fontSize: 13,
+          lineHeight: 1.55,
+        }}
+      >
+        客人先選商品規格，系統會切換到對應的 SKU 與價格。需要客人另外填寫的資料，請放在「客製需求」。
+      </div>
       {([
-        ['axis', '規格軸（每種組合各一筆 SKU）'],
-        ['detail', 'SKU 詳細欄位'],
+        ['axis', '客人可選的規格'],
+        ['detail', '選定後顯示的商品資料'],
       ] as const).map(([group, title]) => (
         <div key={group}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
@@ -238,9 +256,14 @@ export function ProductOptionsEditor({
               disabled={disabled}
               onClick={() => addVariantField(group)}
             >
-              + 新增
+              + 新增{group === 'axis' ? '規格' : '資料'}
             </Button>
           </div>
+          <p style={{ margin: '0 0 8px', color: designSystem.colors.text.secondary, fontSize: 12 }}>
+            {group === 'axis'
+              ? '例如：尺寸、板面材質。不同組合可以設定不同價格。'
+              : '例如：寬度、厚度、容量。這些資料不會變成選擇按鈕。'}
+          </p>
           {value.variantFields[group].map((field, index) => renderField(field, index, group))}
           {value.variantFields[group].length === 0 && (
             <div style={{ color: designSystem.colors.text.disabled, fontSize: 13 }}>尚無欄位</div>
@@ -250,7 +273,7 @@ export function ProductOptionsEditor({
 
       <div>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-          <strong style={{ flex: 1, fontSize: 14 }}>顧客填寫欄位</strong>
+          <strong style={{ flex: 1, fontSize: 14 }}>客製需求</strong>
           <Button
             variant="outline"
             size="small"
@@ -270,9 +293,12 @@ export function ProductOptionsEditor({
               ],
             })}
           >
-            + 新增
+            + 新增需求
           </Button>
         </div>
+        <p style={{ margin: '0 0 8px', color: designSystem.colors.text.secondary, fontSize: 12 }}>
+          例如：選擇客製色後，讓客人填寫 Pantone 色號。
+        </p>
         {value.customFields.map((field, index) => {
           const visibility = field.visibility?.axis
           return (
@@ -285,42 +311,37 @@ export function ProductOptionsEditor({
                 borderRadius: designSystem.borderRadius.sm,
               }}
             >
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1.2fr 120px 1.5fr', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 130px 1.5fr', gap: 8 }}>
                 <label>
-                  <span style={labelStyle}>key</span>
-                  <input style={inputStyle} value={field.key} disabled={disabled}
-                    onChange={(event) => updateCustomField(index, { key: event.target.value })} />
-                </label>
-                <label>
-                  <span style={labelStyle}>名稱</span>
+                  <span style={labelStyle}>顯示名稱</span>
                   <input style={inputStyle} value={field.label} disabled={disabled}
                     onChange={(event) => updateCustomField(index, { label: event.target.value })} />
                 </label>
                 <label>
-                  <span style={labelStyle}>輸入方式</span>
+                  <span style={labelStyle}>填寫方式</span>
                   <select style={inputStyle} value={field.inputType} disabled={disabled}
                     onChange={(event) => updateCustomField(index, {
                       inputType: event.target.value as ProductCustomField['inputType'],
                     })}>
-                    <option value="text">文字</option>
-                    <option value="select">下拉</option>
+                    <option value="text">自由輸入</option>
+                    <option value="select">固定選項</option>
                   </select>
                 </label>
-                <label>
-                  <span style={labelStyle}>選項（逗號分隔）</span>
+                {field.inputType === 'select' ? <label>
+                  <span style={labelStyle}>可選內容（逗號分隔）</span>
                   <input style={inputStyle} value={csv(field.values)}
-                    disabled={disabled || field.inputType !== 'select'}
+                    disabled={disabled}
                     onChange={(event) => updateCustomField(index, { values: parseCsv(event.target.value) })} />
-                </label>
+                </label> : <div />}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr auto', gap: 8, marginTop: 8, alignItems: 'end' }}>
                 <label>
-                  <span style={labelStyle}>placeholder / 提示</span>
+                  <span style={labelStyle}>輸入提示</span>
                   <input style={inputStyle} value={field.placeholder ?? ''} disabled={disabled}
                     onChange={(event) => updateCustomField(index, { placeholder: event.target.value || undefined })} />
                 </label>
                 <label>
-                  <span style={labelStyle}>顯示條件（規格軸）</span>
+                  <span style={labelStyle}>選了哪個規格才顯示</span>
                   <select style={inputStyle} value={visibility?.key ?? ''} disabled={disabled}
                     onChange={(event) => updateCustomField(index, {
                       visibility: event.target.value
@@ -334,7 +355,7 @@ export function ProductOptionsEditor({
                   </select>
                 </label>
                 <label>
-                  <span style={labelStyle}>條件值</span>
+                  <span style={labelStyle}>選到哪個內容</span>
                   <input style={inputStyle} value={visibility?.value ?? ''} disabled={disabled || !visibility}
                     onChange={(event) => visibility && updateCustomField(index, {
                       visibility: { axis: { ...visibility, value: event.target.value } },
@@ -362,16 +383,24 @@ export function ProductOptionsEditor({
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8, marginTop: 8 }}>
                 <label>
-                  <span style={labelStyle}>說明</span>
+                  <span style={labelStyle}>給客人的說明</span>
                   <input style={inputStyle} value={field.help ?? ''} disabled={disabled}
                     onChange={(event) => updateCustomField(index, { help: event.target.value || undefined })} />
                 </label>
                 <label>
-                  <span style={labelStyle}>未填時顯示文字</span>
+                  <span style={labelStyle}>未填時帶入文字</span>
                   <input style={inputStyle} value={field.defaultDisplay ?? ''} disabled={disabled}
                     onChange={(event) => updateCustomField(index, { defaultDisplay: event.target.value || undefined })} />
                 </label>
               </div>
+              <details style={{ marginTop: 8, fontSize: 12, color: designSystem.colors.text.secondary }}>
+                <summary style={{ cursor: 'pointer' }}>進階設定</summary>
+                <label style={{ display: 'block', maxWidth: 280, marginTop: 8 }}>
+                  <span style={labelStyle}>系統代碼（建立後請勿修改）</span>
+                  <input style={inputStyle} value={field.key} disabled={disabled}
+                    onChange={(event) => updateCustomField(index, { key: event.target.value })} />
+                </label>
+              </details>
             </div>
           )
         })}
@@ -390,7 +419,7 @@ export function ProductOptionsEditor({
           cursor: disabled ? 'not-allowed' : 'pointer',
         }}
       >
-        停用自訂選項並改回類別預設
+        改回一般商品模式
       </button>
     </div>
   )
