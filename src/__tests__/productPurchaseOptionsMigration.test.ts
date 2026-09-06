@@ -26,6 +26,14 @@ const preorderDiscountEligibility = readFileSync(
   resolve(process.cwd(), 'migrations/221_variant_preorder_discount_eligibility.sql'),
   'utf8',
 )
+const removeUnsupportedSize = readFileSync(
+  resolve(process.cwd(), 'migrations/222_remove_unconfirmed_vibes_311_size.sql'),
+  'utf8',
+)
+const vibesShopOptionUi = readFileSync(
+  resolve(process.cwd(), 'migrations/223_vibes_shop_option_ui.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -50,7 +58,7 @@ describe('product purchase option migrations', () => {
     expect(vibesSeed).not.toContain("'ENIGMA'")
     expect(vibesSeed).not.toContain("'PROTOTYPE'::TEXT")
     expect(vibesSeed).toContain('WHERE NOT EXISTS')
-    expect(vibesSeed).toContain("('空板'::TEXT, 65000::INTEGER)")
+    expect(vibesSeed).toContain("('Standard'::TEXT, 65000::INTEGER)")
     expect(vibesSeed).toContain("('客製色'::TEXT, 70000::INTEGER)")
     expect(vibesSeed).toContain("('Full Carbon'::TEXT, 75000::INTEGER)")
     expect(vibesSeed).toContain('        is_public,')
@@ -101,5 +109,26 @@ describe('product purchase option migrations', () => {
     expect(preorderDiscountEligibility).toContain("'false'::JSONB")
     expect(preorderDiscountEligibility).toContain("'DIAMOND STOCK'")
     expect(preorderDiscountEligibility).toContain("'XO TEAM'")
+  })
+
+  it('keeps confirmed models at the eleven sizes with complete dimensions', () => {
+    expect(confirmedVibesPublish).not.toContain(
+      'v_sizes JSONB := \'["3\'\'11"',
+    )
+    expect(removeUnsupportedSize).toContain(
+      "variant.attributes ->> 'size' = '3''11'",
+    )
+    expect(removeUnsupportedSize).toContain('DELETE FROM public.product_variants')
+    expect(removeUnsupportedSize).toContain(
+      '\'{variantFields,axis,0,values}\'',
+    )
+  })
+
+  it('renames the base finish and uses English specification labels', () => {
+    expect(vibesShopOptionUi).toContain("variant.attributes ->> 'finish' = '空板'")
+    expect(vibesShopOptionUi).toContain('"Standard"')
+    expect(vibesShopOptionUi).toContain('"Width"')
+    expect(vibesShopOptionUi).toContain('"Thickness"')
+    expect(vibesShopOptionUi).toContain('"Volume"')
   })
 })

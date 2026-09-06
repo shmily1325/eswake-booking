@@ -52,7 +52,7 @@ BEGIN
               'key', 'finish',
               'label', '板面',
               'inputType', 'select',
-              'values', jsonb_build_array('空板', '客製色', 'Full Carbon')
+              'values', jsonb_build_array('Standard', '客製色', 'Full Carbon')
             )
           ),
           'detail', jsonb_build_array(
@@ -203,7 +203,7 @@ BEGIN
       SELECT *
       FROM (
         VALUES
-          ('空板'::TEXT, 65000::INTEGER),
+          ('Standard'::TEXT, 65000::INTEGER),
           ('客製色'::TEXT, 70000::INTEGER),
           ('Full Carbon'::TEXT, 75000::INTEGER)
       ) finishes(finish, price)

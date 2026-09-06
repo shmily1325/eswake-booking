@@ -262,6 +262,7 @@ export function ProductEditView({
   const [isPublic, setIsPublic] = useState<boolean>(isNew)
   /** null 代表完整沿用 category schema；不可自動轉成空 config。 */
   const [optionConfig, setOptionConfig] = useState<ProductOptionConfig | null>(null)
+  const [originalOptionImagePaths, setOriginalOptionImagePaths] = useState<string[]>([])
   /** 商品卡層封面（一色一卡共用）；多色舊卡可留空改用 SKU 封面 */
   const [productCoverImages, setProductCoverImages] = useState<DraftCoverImage[]>([])
   const [originalProductCoverPaths, setOriginalProductCoverPaths] = useState<string[]>([])
@@ -389,6 +390,13 @@ export function ProductEditView({
         const loadedOptionConfig = normalizeProductOptionConfig(p.option_config)
         setOptionConfig(
           isEmptyProductOptionConfig(loadedOptionConfig) ? null : loadedOptionConfig,
+        )
+        setOriginalOptionImagePaths(
+          loadedOptionConfig?.customFields.flatMap((field) =>
+            Object.values(field.swatchImages ?? {})
+              .map((image) => image.path)
+              .filter((path): path is string => Boolean(path)),
+          ) ?? [],
         )
         const loadedProductCovers = draftCoverImagesFromVariant(
           p.cover_images,
@@ -921,6 +929,11 @@ export function ProductEditView({
       for (const img of productCoverImages) {
         if (img.path) finalPaths.add(img.path)
       }
+      for (const field of optionConfig?.customFields ?? []) {
+        for (const image of Object.values(field.swatchImages ?? {})) {
+          if (image.path) finalPaths.add(image.path)
+        }
+      }
       for (const d of drafts) {
         if (d.pendingDelete) {
           // 軟刪不清圖：原始 path 保留，以防誤刪復原
@@ -940,6 +953,9 @@ export function ProductEditView({
       //    - 這個 session 上傳但最終沒被任何 variant 採用的（中途又換掉的中間檔）
       const toRemove = new Set<string>()
       for (const originalPath of originalProductCoverPaths) {
+        if (!finalPaths.has(originalPath)) toRemove.add(originalPath)
+      }
+      for (const originalPath of originalOptionImagePaths) {
         if (!finalPaths.has(originalPath)) toRemove.add(originalPath)
       }
       for (const d of drafts) {
@@ -1679,6 +1695,8 @@ export function ProductEditView({
               disabled={saving || readOnly}
               isMobile={isMobile}
               defaultVariantFields={getSkuFields(category)}
+              productId={productId}
+              onImageUpload={trackUpload}
             />
           </div>
         )}

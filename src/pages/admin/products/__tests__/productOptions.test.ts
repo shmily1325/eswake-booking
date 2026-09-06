@@ -120,10 +120,18 @@ describe('product options core', () => {
           'HOT PINK': '#ff4fa3',
           YELLOW: '#ffd928',
         },
+        swatchImages: {
+          'HOT PINK': {
+            url: 'https://example.com/hot-pink.jpg',
+            path: 'covers/vibes/hot-pink.jpg',
+          },
+        },
       }],
     }
     expect(normalizeProductOptionConfig(swatchConfig)).toEqual(swatchConfig)
     expect(validateProductOptionConfig(swatchConfig)).toEqual([])
+    expect(normalizeProductOptionConfig(swatchConfig)?.customFields[0].swatchImages)
+      .toEqual(swatchConfig.customFields[0].swatchImages)
     expect(validateProductOptionConfig({
       ...swatchConfig,
       customFields: [{

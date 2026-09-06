@@ -24,6 +24,8 @@ interface ImageUploaderProps {
   onUpload?: (newPath: string) => void
   /** 顯示尺寸（px），預設 96 */
   size?: number
+  /** 色票等小圖可使用正方形；一般商品照維持直式 */
+  square?: boolean
   /** 空白時的提示文字 */
   emptyLabel?: string
   /** 唯讀（不可上傳/刪除） */
@@ -43,6 +45,7 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
     onChange,
     onUpload,
     size = 96,
+    square = false,
     emptyLabel = '上傳圖片',
     disabled,
   },
@@ -98,11 +101,9 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
   // portrait 直式：寬度 = size、高度 = size * 16/9（手機直拍比例）
   const containerStyle: React.CSSProperties = {
     width: size,
-    height: Math.round((size * 16) / 9),
+    height: square ? size : Math.round((size * 16) / 9),
     borderRadius: designSystem.borderRadius.md,
-    border: value
-      ? `1px solid ${designSystem.colors.border.light}`
-      : `1px dashed ${designSystem.colors.border.main}`,
+    border: value ? `1px solid ${designSystem.colors.border.light}` : `1px dashed ${designSystem.colors.border.main}`,
     background: value ? designSystem.colors.background.card : 'transparent',
     cursor: disabled || uploading ? 'not-allowed' : 'pointer',
     overflow: 'hidden',
@@ -129,7 +130,13 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
           <img
             src={value}
             alt="商品圖"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+              pointerEvents: 'none',
+            }}
           />
           {!disabled && !uploading && (
             <button
@@ -162,9 +169,7 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
         </>
       ) : (
         <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
-          <div>
-            {uploading ? '上傳中…' : disabled ? '無圖片' : emptyLabel}
-          </div>
+          <div>{uploading ? '上傳中…' : disabled ? '無圖片' : emptyLabel}</div>
         </div>
       )}
       {uploading && value && (
@@ -187,13 +192,7 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
         accept="image/*"：限定圖片檔
         不設 capture：手機會跳出原生選單（相簿 / 拍照 / 檔案），不會直接強制開相機
       */}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleChange}
-        style={{ display: 'none' }}
-      />
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleChange} style={{ display: 'none' }} />
     </div>
   )
 })

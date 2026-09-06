@@ -9,6 +9,7 @@ import {
   type ProductVariantFieldGroup,
 } from './productOptions'
 import type { FieldDef } from './schema'
+import { ImageUploader } from './ImageUploader'
 
 interface ProductOptionsEditorProps {
   value: ProductOptionConfig | null
@@ -16,6 +17,8 @@ interface ProductOptionsEditorProps {
   disabled?: boolean
   isMobile?: boolean
   defaultVariantFields?: readonly FieldDef[]
+  productId?: string | null
+  onImageUpload?: (path: string) => void
 }
 
 function newField(index: number): ProductOptionField {
@@ -108,6 +111,8 @@ export function ProductOptionsEditor({
   disabled = false,
   isMobile = false,
   defaultVariantFields = [],
+  productId,
+  onImageUpload,
 }: ProductOptionsEditorProps) {
   const inputStyle: CSSProperties = {
     ...getInputStyle(isMobile),
@@ -417,6 +422,13 @@ export function ProductOptionsEditor({
                           ]),
                         )
                         : field.swatches,
+                      swatchImages: field.swatchImages
+                        ? Object.fromEntries(
+                          (values ?? [])
+                            .filter((option) => field.swatchImages?.[option])
+                            .map((option) => [option, field.swatchImages![option]]),
+                        )
+                        : undefined,
                     })}
                   />
                 </div> : <div />}
@@ -448,34 +460,86 @@ export function ProductOptionsEditor({
               </div>
               {field.inputType === 'select' && field.displayStyle === 'swatches' ? (
                 <div style={{ marginTop: 10 }}>
-                  <span style={labelStyle}>色票顏色</span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <span style={labelStyle}>色票設定</span>
+                  <div style={{ display: 'grid', gap: 8 }}>
                     {(field.values ?? []).map((option) => (
-                      <label
+                      <div
                         key={option}
                         style={{
-                          display: 'flex',
+                          display: 'grid',
+                          gridTemplateColumns: isMobile ? '1fr auto' : 'minmax(150px, 1fr) 110px 72px',
                           alignItems: 'center',
-                          gap: 6,
-                          padding: '6px 8px',
+                          gap: 10,
+                          padding: 8,
                           border: `1px solid ${designSystem.colors.border.light}`,
                           borderRadius: designSystem.borderRadius.sm,
                           fontSize: 12,
                         }}
                       >
-                        <input
-                          type="color"
-                          value={field.swatches?.[option] ?? DEFAULT_SWATCH_COLOR}
-                          disabled={disabled}
-                          onChange={(event) => updateCustomField(index, {
-                            swatches: {
-                              ...field.swatches,
-                              [option]: event.target.value,
-                            },
-                          })}
-                        />
-                        {option}
-                      </label>
+                        <label>
+                          <span style={labelStyle}>顏色名稱</span>
+                          <input
+                            style={inputStyle}
+                            value={option}
+                            disabled={disabled}
+                            onChange={(event) => {
+                              const nextName = event.target.value
+                              const values = (field.values ?? []).map((value) =>
+                                value === option ? nextName : value
+                              )
+                              const swatches = { ...field.swatches }
+                              const swatchImages = { ...field.swatchImages }
+                              swatches[nextName] = swatches[option] ?? DEFAULT_SWATCH_COLOR
+                              if (swatchImages[option]) swatchImages[nextName] = swatchImages[option]
+                              if (nextName !== option) {
+                                delete swatches[option]
+                                delete swatchImages[option]
+                              }
+                              updateCustomField(index, { values, swatches, swatchImages })
+                            }}
+                          />
+                        </label>
+                        <label>
+                          <span style={labelStyle}>色碼</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <input
+                              type="color"
+                              value={field.swatches?.[option] ?? DEFAULT_SWATCH_COLOR}
+                              disabled={disabled}
+                              onChange={(event) => updateCustomField(index, {
+                                swatches: { ...field.swatches, [option]: event.target.value },
+                              })}
+                            />
+                            <span>{field.swatches?.[option] ?? DEFAULT_SWATCH_COLOR}</span>
+                          </div>
+                        </label>
+                        <div style={{ gridColumn: isMobile ? '1 / -1' : undefined }}>
+                          <span style={labelStyle}>參考圖片</span>
+                          <ImageUploader
+                            value={field.swatchImages?.[option]?.url}
+                            path={field.swatchImages?.[option]?.path}
+                            storageFolder="covers"
+                            entityId={`${productId ?? 'new'}-swatches`}
+                            disabled={disabled}
+                            size={56}
+                            square
+                            emptyLabel="上傳"
+                            onUpload={onImageUpload}
+                            onChange={(image) => {
+                              const swatchImages = { ...field.swatchImages }
+                              if (image.url) {
+                                swatchImages[option] = {
+                                  url: image.url,
+                                  ...(image.path ? { path: image.path } : {}),
+                                }
+                              } else {
+                                delete swatchImages[option]
+                              }
+                              updateCustomField(index, { swatchImages })
+                            }}
+                          />
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>

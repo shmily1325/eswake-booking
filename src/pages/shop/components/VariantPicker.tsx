@@ -1,15 +1,7 @@
 import type { ProductVariantRow } from '../../admin/products/types'
 import { formatVariantAttributes } from '../lib/shopFormat'
-import {
-  collectSpecAxes,
-  findVariantForAxisValue,
-  specAttrValue,
-} from '../lib/variantSpecAxes'
-import {
-  getShopVisibleVariants,
-  getVariantAvailability,
-  isVariantPurchasable,
-} from '../lib/productAvailability'
+import { collectSpecAxes, findVariantForAxisValue, specAttrValue } from '../lib/variantSpecAxes'
+import { getShopVisibleVariants, getVariantAvailability, isVariantPurchasable } from '../lib/productAvailability'
 import { SHOP_DETAIL } from '../lib/shopCopy'
 
 interface VariantPickerProps {
@@ -20,13 +12,7 @@ interface VariantPickerProps {
   onSelect: (variantId: string) => void
 }
 
-export function VariantPicker({
-  variants,
-  selectedVariantId,
-  categoryId,
-  optionConfig,
-  onSelect,
-}: VariantPickerProps) {
+export function VariantPicker({ variants, selectedVariantId, categoryId, optionConfig, onSelect }: VariantPickerProps) {
   const visible = getShopVisibleVariants(variants)
 
   if (visible.length === 0) {
@@ -42,19 +28,14 @@ export function VariantPicker({
       <div className="space-y-3">
         {axes.map((axis) => (
           <div key={axis.key}>
-            <div className="text-xs text-gray-400">{axis.label}</div>
-            <div className="mt-0.5 flex flex-wrap gap-x-1">
+            <div className="text-sm font-medium text-gray-700">{axis.label}</div>
+            <div className={axis.key === 'finish' ? 'mt-2 grid grid-cols-3 gap-2' : 'mt-2 flex flex-wrap gap-2'}>
               {axis.values.map((value) => {
-                const targetId = findVariantForAxisValue(
-                  visible,
-                  selected.id,
-                  axis.key,
-                  value,
-                  axisKeys,
-                )
+                const targetId = findVariantForAxisValue(visible, selected.id, axis.key, value, axisKeys)
                 const isSelected = specAttrValue(selected, axis.key) === value
                 const target = visible.find((v) => v.id === targetId)
                 const purchasable = target ? isVariantPurchasable(target) : false
+                const priceLabel = target?.price != null ? `${Math.round(target.price / 1000)}K` : 'Ask'
                 return (
                   <button
                     key={value}
@@ -62,16 +43,38 @@ export function VariantPicker({
                     onClick={() => targetId && onSelect(targetId)}
                     disabled={!targetId}
                     className={
-                      'min-h-11 min-w-11 px-1.5 text-sm transition-colors ' +
-                      (isSelected
-                        ? 'font-semibold text-zinc-900'
-                        : purchasable
-                          ? 'text-gray-400 hover:text-zinc-700'
-                          : 'text-gray-300 line-through')
+                      axis.key === 'finish'
+                        ? `min-h-20 rounded-xl border px-2 py-3 text-center transition ${
+                            isSelected
+                              ? 'border-zinc-900 bg-zinc-900 text-white ring-2 ring-zinc-900 ring-offset-2'
+                              : purchasable
+                                ? 'border-gray-200 bg-white text-zinc-800 hover:border-gray-500'
+                                : 'border-gray-200 bg-gray-50 text-gray-300 line-through'
+                          }`
+                        : `min-h-11 min-w-14 rounded-lg border px-3 text-sm transition ${
+                            isSelected
+                              ? 'border-zinc-900 bg-zinc-900 font-semibold text-white'
+                              : purchasable
+                                ? 'border-gray-300 bg-white text-zinc-700 hover:border-zinc-700'
+                                : 'border-gray-200 bg-gray-50 text-gray-300 line-through'
+                          }`
                     }
                     aria-pressed={isSelected}
                   >
-                    {value}
+                    {axis.key === 'finish' ? (
+                      <>
+                        <span className="block text-xs sm:text-sm font-semibold">{value}</span>
+                        <span
+                          className={`mt-1 block text-sm sm:text-base font-black ${
+                            isSelected ? 'text-white' : 'text-zinc-900'
+                          }`}
+                        >
+                          {priceLabel}
+                        </span>
+                      </>
+                    ) : (
+                      value
+                    )}
                   </button>
                 )
               })}
@@ -90,9 +93,7 @@ export function VariantPicker({
       <div className="text-sm text-gray-400">
         {attrsText ? (
           <>
-            <span>{SHOP_DETAIL.variant}</span>
-            {' '}
-            {attrsText}
+            <span>{SHOP_DETAIL.variant}</span> {attrsText}
           </>
         ) : null}
       </div>
@@ -106,8 +107,7 @@ export function VariantPicker({
         {visible.map((v) => {
           const isSelected = v.id === selectedVariantId
           const purchasable = isVariantPurchasable(v)
-          const label =
-            formatVariantAttributes(categoryId, v.attributes) || '(No spec data)'
+          const label = formatVariantAttributes(categoryId, v.attributes) || '(No spec data)'
           return (
             <button
               key={v.id}

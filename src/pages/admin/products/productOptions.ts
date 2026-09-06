@@ -19,6 +19,7 @@ export interface ProductCustomField extends ProductOptionField {
   readOnly?: boolean
   displayStyle?: 'select' | 'swatches'
   swatches?: Record<string, string>
+  swatchImages?: Record<string, { url: string; path?: string }>
   placeholder?: string
   help?: string
   defaultDisplay?: string
@@ -106,6 +107,21 @@ function normalizeCustomField(value: unknown): ProductCustomField | null {
         .filter(([key, color]) => key && /^#[0-9a-f]{6}$/i.test(color)),
     )
     if (Object.keys(swatches).length > 0) field.swatches = swatches
+  }
+  if (source.swatchImages && typeof source.swatchImages === 'object' && !Array.isArray(source.swatchImages)) {
+    const swatchImages = Object.fromEntries(
+      Object.entries(source.swatchImages as Record<string, unknown>)
+        .map(([key, image]) => {
+          if (!image || typeof image !== 'object' || Array.isArray(image)) return null
+          const url = cleanText((image as Record<string, unknown>).url)
+          const path = cleanText((image as Record<string, unknown>).path)
+          return key.trim() && url
+            ? [key.trim(), { url, ...(path ? { path } : {}) }] as const
+            : null
+        })
+        .filter((entry): entry is readonly [string, { url: string; path?: string }] => entry !== null),
+    )
+    if (Object.keys(swatchImages).length > 0) field.swatchImages = swatchImages
   }
   const placeholder = cleanText(source.placeholder)
   if (placeholder) field.placeholder = placeholder

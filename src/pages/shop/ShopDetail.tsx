@@ -47,7 +47,6 @@ import { ShopFooter } from './components/ShopFooter'
 import { ProductSizeChart } from './components/ProductSizeChart'
 import {
   buildSelectedOptionSnapshot,
-  formatOptionSelection,
   isEmptyProductOptionConfig,
   normalizeProductOptionConfig,
   validateCustomSelection,
@@ -384,7 +383,15 @@ function ProductDetailBody({
   const secondaryLine = formatProductSecondaryLine(product)
   const configured = optionConfig && !isEmptyProductOptionConfig(optionConfig)
   const detailText = configured && selectedVariant
-    ? formatOptionSelection(optionConfig.variantFields.detail, selectedVariant.attributes, ' · ')
+    ? optionConfig.variantFields.detail
+        .map((field) => {
+          const value = selectedVariant.attributes[field.key]
+          return value == null || String(value).trim() === ''
+            ? ''
+            : `${field.label} ${String(value).trim()}${field.suffix ?? ''}`
+        })
+        .filter(Boolean)
+        .join(' · ')
     : ''
   const customFields = selectedVariant
     ? visibleCustomFields(optionConfig, selectedVariant.attributes)
@@ -392,6 +399,9 @@ function ProductDetailBody({
   const customSelectionError = selectedVariant
     ? validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
     : null
+  const selectedSwatchImage = customFields
+    .map((field) => field.swatchImages?.[customValues[field.key] ?? ''])
+    .find((image) => Boolean(image?.url))
 
   /**
    * gallery：商品卡封面（一色共用）優先；沒有才用 SKU 封面。
@@ -406,6 +416,9 @@ function ProductDetailBody({
       options.push({ url, label })
     }
     const productCovers = getProductCoverImages(product)
+    if (selectedSwatchImage?.url) {
+      add(selectedSwatchImage.url, 'Selected color reference')
+    }
     if (productCovers.length > 0) {
       productCovers.forEach((img, i) => {
         add(img.url, i === 0 ? SHOP_DETAIL.imageCover : `${SHOP_DETAIL.imageCover} ${i + 1}`)
@@ -423,7 +436,7 @@ function ProductDetailBody({
     if (selectedVariant) add(selectedVariant.image_url, SHOP_DETAIL.imagePhoto)
     if (options.length === 0) add(imageUrl, SHOP_DETAIL.imageCover)
     return options
-  }, [product, selectedVariant, imageUrl])
+  }, [product, selectedVariant, imageUrl, selectedSwatchImage?.url])
 
   const priceBlock = (
     <div>
@@ -466,7 +479,7 @@ function ProductDetailBody({
         <ShopDetailGallery
           images={imageOptions}
           alt={formatProductTitle(product)}
-          resetKey={`${product.id}:${selectedVariantId ?? ''}`}
+          resetKey={`${product.id}:${selectedVariantId ?? ''}:${selectedSwatchImage?.url ?? ''}`}
         />
       </div>
 
@@ -534,31 +547,45 @@ function ProductDetailBody({
                   {field.label}{field.required ? ' *' : ''}
                 </span>
                 {field.inputType === 'select' && field.displayStyle === 'swatches' ? (
-                  <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label={field.label}>
-                    {(field.values ?? []).map((value) => {
-                      const selected = customValues[field.key] === value
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          role="radio"
-                          aria-checked={selected}
-                          className={`flex min-h-11 items-center gap-2 rounded-full border px-2.5 py-1.5 text-sm transition ${
-                            selected
-                              ? 'border-gray-900 bg-gray-50 ring-2 ring-gray-900 ring-offset-1'
-                              : 'border-gray-300 bg-white hover:border-gray-500'
-                          }`}
-                          onClick={() => onCustomValueChange(field.key, value)}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="h-7 w-7 shrink-0 rounded-full border border-black/15 shadow-inner"
-                            style={{ backgroundColor: field.swatches?.[value] ?? '#d1d5db' }}
-                          />
-                          <span>{value}</span>
-                        </button>
-                      )
-                    })}
+                  <div className="mt-2">
+                    <div
+                      className="flex flex-nowrap gap-2 overflow-x-auto py-1"
+                      role="radiogroup"
+                      aria-label={field.label}
+                    >
+                      {(field.values ?? []).map((value) => {
+                        const selected = customValues[field.key] === value
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            role="radio"
+                            aria-label={value}
+                            aria-checked={selected}
+                            title={value}
+                            className={`h-10 w-10 shrink-0 rounded-full border-2 p-1 transition ${
+                              selected
+                                ? 'border-zinc-900 ring-2 ring-zinc-900 ring-offset-2'
+                                : 'border-gray-200 hover:border-gray-500'
+                            }`}
+                            onClick={() => onCustomValueChange(field.key, value)}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="block h-full w-full rounded-full border border-black/10 shadow-inner"
+                              style={{ backgroundColor: field.swatches?.[value] ?? '#d1d5db' }}
+                            />
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div className="mt-2 min-h-5 text-sm text-gray-600">
+                      {customValues[field.key] ? `已選：${customValues[field.key]}` : '請選擇顏色'}
+                    </div>
+                  </div>
+                ) : field.readOnly ? (
+                  <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-zinc-800">
+                    {field.defaultDisplay || '—'}
                   </div>
                 ) : field.inputType === 'select' ? (
                   <select
@@ -581,7 +608,7 @@ function ProductDetailBody({
                     onChange={(event) => onCustomValueChange(field.key, event.target.value)}
                   />
                 )}
-                {field.help || field.defaultDisplay ? (
+                {!field.readOnly && (field.help || field.defaultDisplay) ? (
                   <span className="mt-1 block text-xs text-gray-500">
                     {field.help || field.defaultDisplay}
                   </span>

@@ -10,7 +10,7 @@ DO $$
 DECLARE
   v_model TEXT;
   v_product_id UUID;
-  v_sizes JSONB := '["3''11","4''0","4''1","4''2","4''3","4''4","4''5","4''6","4''7","4''8","4''9","4''10"]'::JSONB;
+  v_sizes JSONB := '["4''0","4''1","4''2","4''3","4''4","4''5","4''6","4''7","4''8","4''9","4''10"]'::JSONB;
   v_option_config JSONB;
 BEGIN
   v_option_config := jsonb_build_object(
@@ -19,34 +19,34 @@ BEGIN
       'axis', jsonb_build_array(
         jsonb_build_object(
           'key', 'size',
-          'label', '尺寸',
+          'label', 'Size',
           'inputType', 'select',
           'values', v_sizes
         ),
         jsonb_build_object(
           'key', 'finish',
-          'label', '製作方式',
+          'label', 'Production',
           'inputType', 'select',
-          'values', jsonb_build_array('空板', 'Full Color', 'Full Carbon'),
+          'values', jsonb_build_array('Standard', 'Full Color', 'Full Carbon'),
           'helpText', 'Full Color 可選噴色；Full Carbon 為碳纖維材質並固定黑色'
         )
       ),
       'detail', jsonb_build_array(
         jsonb_build_object(
           'key', 'width',
-          'label', '寬度',
+          'label', 'Width',
           'inputType', 'text',
           'suffix', ' in'
         ),
         jsonb_build_object(
           'key', 'thickness',
-          'label', '厚度',
+          'label', 'Thickness',
           'inputType', 'text',
           'suffix', ' in'
         ),
         jsonb_build_object(
           'key', 'volume',
-          'label', '容量',
+          'label', 'Volume',
           'inputType', 'text',
           'suffix', ' L'
         )
@@ -55,7 +55,7 @@ BEGIN
     'customFields', jsonb_build_array(
       jsonb_build_object(
         'key', 'spray_color',
-        'label', '噴色',
+        'label', 'Color',
         'inputType', 'select',
         'values', jsonb_build_array(
           'HOT PINK',
@@ -123,6 +123,11 @@ BEGIN
     WHERE product_id = v_product_id
       AND attributes ->> 'finish' = '客製色';
 
+    UPDATE public.product_variants
+    SET attributes = jsonb_set(attributes, '{finish}', to_jsonb('Standard'::TEXT))
+    WHERE product_id = v_product_id
+      AND attributes ->> 'finish' = '空板';
+
     INSERT INTO public.product_variants (
       product_id,
       label_code,
@@ -154,7 +159,7 @@ BEGIN
     FROM jsonb_array_elements_text(v_sizes) AS size_entry(size)
     CROSS JOIN (
       VALUES
-        ('空板'::TEXT, 65000::INTEGER),
+        ('Standard'::TEXT, 65000::INTEGER),
         ('Full Color'::TEXT, 70000::INTEGER),
         ('Full Carbon'::TEXT, 75000::INTEGER)
     ) AS finish_entry(finish, price)
@@ -176,7 +181,7 @@ BEGIN
 
     UPDATE public.product_variants
     SET price = CASE attributes ->> 'finish'
-          WHEN '空板' THEN 65000
+          WHEN 'Standard' THEN 65000
           WHEN 'Full Color' THEN 70000
           WHEN 'Full Carbon' THEN 75000
           ELSE price
@@ -184,7 +189,7 @@ BEGIN
         availability = 'pre_order',
         is_active = TRUE
     WHERE product_id = v_product_id
-      AND attributes ->> 'finish' IN ('空板', 'Full Color', 'Full Carbon');
+      AND attributes ->> 'finish' IN ('Standard', 'Full Color', 'Full Carbon');
   END LOOP;
 
   UPDATE public.products
