@@ -156,7 +156,11 @@ export function formatLiffOrderItemLine(
   const title = p
     ? `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''}`
     : '商品'
-  const subtitle = p ? formatAttributes(p.category, item.variant!.attributes) : null
+  const spec = p ? formatAttributes(p.category, item.variant!.attributes) : ''
+  const customization = Object.values(item.selected_options ?? {})
+    .map((option) => `${option.label}：${option.value}`)
+    .join(' · ')
+  const subtitle = [spec, customization].filter(Boolean).join(' · ') || null
   const chips = liffOrderItemProgressChips(item)
   const progress =
     chips.length > 0

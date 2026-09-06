@@ -26,6 +26,7 @@ function payload(): SaveProductWithVariantsInput {
       cover_image_url: null,
       cover_image_path: null,
       is_public: true,
+      option_config: null,
     },
     variants: [{
       draft_index: 0,

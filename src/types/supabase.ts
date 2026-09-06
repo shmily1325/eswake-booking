@@ -1128,6 +1128,7 @@ export type Database = {
           size_chart_id: string | null
           color: string | null
           description: string | null
+          option_config: Json
           cover_image_url: string | null
           cover_image_path: string | null
           cover_images: Json
@@ -1147,6 +1148,7 @@ export type Database = {
           size_chart_id?: string | null
           color?: string | null
           description?: string | null
+          option_config?: Json
           cover_image_url?: string | null
           cover_image_path?: string | null
           cover_images?: Json
@@ -1166,6 +1168,7 @@ export type Database = {
           size_chart_id?: string | null
           color?: string | null
           description?: string | null
+          option_config?: Json
           cover_image_url?: string | null
           cover_image_path?: string | null
           cover_images?: Json
@@ -1598,6 +1601,7 @@ export type Database = {
           qty_paid: number
           was_preorder: boolean
           brand_snapshot: string | null
+          selected_options: Json
           created_at: string
           updated_at: string
         }
@@ -1611,6 +1615,7 @@ export type Database = {
           qty_paid?: number
           was_preorder?: boolean
           brand_snapshot?: string | null
+          selected_options?: Json
           created_at?: string
           updated_at?: string
         }
@@ -1624,6 +1629,7 @@ export type Database = {
           qty_paid?: number
           was_preorder?: boolean
           brand_snapshot?: string | null
+          selected_options?: Json
           created_at?: string
           updated_at?: string
         }

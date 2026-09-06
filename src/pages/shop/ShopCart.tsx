@@ -102,10 +102,10 @@ export function ShopCart() {
             <ul className="space-y-3 mb-6">
               {items.map((item) => (
                 <CartLine
-                  key={item.variantId}
+                  key={item.cartItemId}
                   item={item}
-                  onChangeQuantity={(q) => updateQuantity(item.variantId, q)}
-                  onRemove={() => removeItem(item.variantId)}
+                  onChangeQuantity={(q) => updateQuantity(item.cartItemId, q)}
+                  onRemove={() => removeItem(item.cartItemId)}
                 />
               ))}
             </ul>
@@ -176,6 +176,11 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
             {attrsText}
           </div>
         )}
+        {Object.entries(item.selectedOptions ?? {}).map(([key, option]) => (
+          <div key={key} className="mt-0.5 text-xs sm:text-sm text-gray-500">
+            {option.label}：{option.value}
+          </div>
+        ))}
         {item.availability === 'pre_order' && (
           <span className="mt-1 inline-block text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
             預購

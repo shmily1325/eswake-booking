@@ -20,7 +20,7 @@ import {
   listSubtotal,
   tryParseDiscountFactor,
 } from './settleUtils'
-import { deliveryMethodLabel, getOrderItemImageUrl } from './orderUtils'
+import { deliveryMethodLabel, formatSelectedOptions, getOrderItemImageUrl } from './orderUtils'
 import type { OrderPaymentMethod, ShopOrderWithItems } from './types'
 
 const { colors, borderRadius, shadows, spacing } = designSystem
@@ -54,7 +54,11 @@ function buildLineStates(order: ShopOrderWithItems): SettleLineState[] {
     .map((it): SettleLineState => {
       const p = it.variant?.product
       const label = p
-        ? `${formatProductTitle(p)} · ${formatAttributes(p.category, it.variant!.attributes)}`
+        ? [
+            formatProductTitle(p),
+            formatAttributes(p.category, it.variant!.attributes),
+            formatSelectedOptions(it.selected_options),
+          ].filter(Boolean).join(' · ')
         : '商品'
       const qty = it.qty_pending_bill
       const unit_price = it.unit_price

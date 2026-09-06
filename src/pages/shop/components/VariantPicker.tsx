@@ -16,6 +16,7 @@ interface VariantPickerProps {
   variants: ProductVariantRow[]
   selectedVariantId: string | null
   categoryId: string | null | undefined
+  optionConfig?: unknown
   onSelect: (variantId: string) => void
 }
 
@@ -23,6 +24,7 @@ export function VariantPicker({
   variants,
   selectedVariantId,
   categoryId,
+  optionConfig,
   onSelect,
 }: VariantPickerProps) {
   const visible = getShopVisibleVariants(variants)
@@ -31,7 +33,8 @@ export function VariantPicker({
     return <p className="text-sm text-gray-500">{SHOP_DETAIL.noVariants}</p>
   }
 
-  const axes = collectSpecAxes(categoryId, visible)
+  const axes = collectSpecAxes(categoryId, visible, optionConfig)
+  const axisKeys = axes.map((axis) => axis.key)
   const selected = visible.find((v) => v.id === selectedVariantId) ?? visible[0]!
 
   if (axes.length > 0) {
@@ -47,6 +50,7 @@ export function VariantPicker({
                   selected.id,
                   axis.key,
                   value,
+                  axisKeys,
                 )
                 const isSelected = specAttrValue(selected, axis.key) === value
                 const target = visible.find((v) => v.id === targetId)

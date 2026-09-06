@@ -1,7 +1,7 @@
 import { supabase } from '../../../lib/supabase'
 import { getLocalDateString } from '../../../utils/date'
 import { formatAttributes } from '../products/schema'
-import { sortPendingBillOrders } from './orderUtils'
+import { formatSelectedOptions, sortPendingBillOrders } from './orderUtils'
 import { formatShopOrderRpcError } from './shopOrderRpcErrors'
 
 /** 訂單開單列表預設只載入近 N 個月（待結帳 inbox 不受限） */
@@ -34,7 +34,7 @@ const ORDER_SELECT = `
       id, product_id, vendor_code, attributes, price, stock, reserved_qty, is_active, last_stock_in_at,
       cover_image_url, cover_image_path, cover_images, image_url,
       product:products(
-        id, brand, model, model_year, color, category,
+        id, brand, model, model_year, color, category, option_config,
         cover_image_url, cover_image_path, cover_images
       )
     )
@@ -157,6 +157,7 @@ export async function createShopOrder(input: CreateOrderInput): Promise<string> 
         qty: line.qty,
         was_preorder: line.was_preorder,
         brand_snapshot: line.brand_snapshot,
+        selected_options: line.selected_options ?? {},
       })),
     )
     if (ie) throw new Error(ie.message)
@@ -191,6 +192,7 @@ export async function updateShopOrder(orderId: string, input: UpdateOrderInput):
           qty: line.qty,
           was_preorder: line.was_preorder,
           brand_snapshot: line.brand_snapshot,
+          selected_options: line.selected_options ?? {},
         })),
       )
       if (ie) throw new Error(ie.message)
@@ -366,7 +368,7 @@ export async function fetchPreorderReportInRange(
     .from('shop_order_items')
     .select(
       `
-      id, order_id, unit_price, qty, qty_pending_bill, qty_paid, brand_snapshot,
+      id, order_id, unit_price, qty, qty_pending_bill, qty_paid, brand_snapshot, selected_options,
       shop_orders!inner(order_no, contact_name, created_at, cancelled_at),
       variant:product_variants(
         id, vendor_code, attributes,
@@ -388,6 +390,7 @@ export async function fetchPreorderReportInRange(
     qty_pending_bill: number
     qty_paid: number
     brand_snapshot: string | null
+    selected_options: Record<string, { label: string; value: string }> | null
     variant: {
       id: string
       vendor_code: string | null
@@ -422,7 +425,11 @@ export async function fetchPreorderReportInRange(
       brand: row.brand_snapshot?.trim() || product?.brand.trim() || '其他品牌',
       variant_id: row.variant?.id || row.id,
       item_title: itemTitle,
-      item_subtitle: [specification, row.variant?.vendor_code].filter(Boolean).join(' · '),
+      item_subtitle: [
+        specification,
+        formatSelectedOptions(row.selected_options),
+        row.variant?.vendor_code,
+      ].filter(Boolean).join(' · '),
       unit_price: Number(row.unit_price),
       qty: Number(row.qty),
       qty_pending_bill: Number(row.qty_pending_bill),

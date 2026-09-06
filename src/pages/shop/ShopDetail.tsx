@@ -22,6 +22,7 @@ import {
   formatProductModelName,
   formatProductSecondaryLine,
   formatProductTitle,
+  getSkuFields,
 } from '../admin/products/schema'
 import { normalizeVariantCoverImages } from '../admin/products/coverImages'
 import {
@@ -44,6 +45,15 @@ import {
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { ShopFooter } from './components/ShopFooter'
 import { ProductSizeChart } from './components/ProductSizeChart'
+import {
+  buildSelectedOptionSnapshot,
+  formatOptionSelection,
+  isEmptyProductOptionConfig,
+  normalizeProductOptionConfig,
+  validateCustomSelection,
+  visibleCustomFields,
+  type ProductOptionConfig,
+} from '../admin/products/productOptions'
 
 /** Supabase 的 `id` 是 uuid，亂打字串會炸出 22P02 錯誤，先在 client 擋掉 */
 const UUID_REGEX =
@@ -99,8 +109,13 @@ export function ShopDetail() {
   const resolvedProductIdRef = useRef<string | null>(null)
   productRef.current = product
   const [quantity, setQuantity] = useState(1)
+  const [customValues, setCustomValues] = useState<Record<string, string>>({})
   /** 桌機 fallback modal 要顯示的訊息；null = 不顯示 */
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    setCustomValues({})
+  }, [productId])
 
   useEffect(() => {
     if (!product) {
@@ -193,6 +208,10 @@ export function ShopDetail() {
     if (!product || !selectedVariantId) return null
     return product.variants.find((v) => v.id === selectedVariantId) ?? null
   }, [product, selectedVariantId])
+  const optionConfig = useMemo(
+    () => normalizeProductOptionConfig(product?.option_config),
+    [product?.option_config],
+  )
   const quantityLimit = selectedVariant
     ? Math.max(1, getVariantPurchaseLimit(selectedVariant))
     : 99
@@ -207,6 +226,11 @@ export function ShopDetail() {
 
   const handleAddToCart = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
+    const selectionError = validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
+    if (selectionError) {
+      alert(selectionError)
+      return
+    }
     const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
     const shopPrice = promo.resolve(selectedVariant)
@@ -224,12 +248,23 @@ export function ShopDetail() {
       maxQuantity: quantityLimit,
       availability: avail === 'pre_order' ? 'pre_order' : 'in_stock',
       preOrderEta: selectedVariant.pre_order_eta,
+      selectedOptions: buildSelectedOptionSnapshot(
+        optionConfig,
+        selectedVariant.attributes,
+        customValues,
+        getSkuFields(product.category).map((field) => field.key),
+      ),
     })
     setQuantity(1)
   }
 
   const handleDirectInquiry = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
+    const selectionError = validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
+    if (selectionError) {
+      alert(selectionError)
+      return
+    }
     const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
     const shopPrice = promo.resolve(selectedVariant)
@@ -244,6 +279,12 @@ export function ShopDetail() {
       discountCaption: shopPrice.caption,
       isPreOrder: avail === 'pre_order',
       preOrderEta: selectedVariant.pre_order_eta,
+      selectedOptions: buildSelectedOptionSnapshot(
+        optionConfig,
+        selectedVariant.attributes,
+        customValues,
+        getSkuFields(product.category).map((field) => field.key),
+      ),
     })
     if (payload.stillTooLong) {
       alert('詢問內容過長，建議減少數量或備註資訊')
@@ -278,6 +319,11 @@ export function ShopDetail() {
             onChangeQuantity={setQuantity}
             onAddToCart={handleAddToCart}
             onDirectInquiry={handleDirectInquiry}
+            optionConfig={optionConfig}
+            customValues={customValues}
+            onCustomValueChange={(key, value) =>
+              setCustomValues((current) => ({ ...current, [key]: value }))
+            }
           />
         )}
       </main>
@@ -303,6 +349,9 @@ interface ProductDetailBodyProps {
   onChangeQuantity: (n: number) => void
   onAddToCart: () => void
   onDirectInquiry: () => void
+  optionConfig: ProductOptionConfig | null
+  customValues: Record<string, string>
+  onCustomValueChange: (key: string, value: string) => void
 }
 
 function ProductDetailBody({
@@ -316,6 +365,9 @@ function ProductDetailBody({
   onChangeQuantity,
   onAddToCart,
   onDirectInquiry,
+  optionConfig,
+  customValues,
+  onCustomValueChange,
 }: ProductDetailBodyProps) {
   const promo = useShopPromo()
   const categoryName = getCategoryShopName(product.category)
@@ -330,6 +382,16 @@ function ProductDetailBody({
       ? formatPrice(selectedVariant.member_price)
       : null
   const secondaryLine = formatProductSecondaryLine(product)
+  const configured = optionConfig && !isEmptyProductOptionConfig(optionConfig)
+  const detailText = configured && selectedVariant
+    ? formatOptionSelection(optionConfig.variantFields.detail, selectedVariant.attributes, ' · ')
+    : ''
+  const customFields = selectedVariant
+    ? visibleCustomFields(optionConfig, selectedVariant.attributes)
+    : []
+  const customSelectionError = selectedVariant
+    ? validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
+    : null
 
   /**
    * gallery：商品卡封面（一色共用）優先；沒有才用 SKU 封面。
@@ -455,9 +517,55 @@ function ProductDetailBody({
             variants={product.variants}
             selectedVariantId={selectedVariantId}
             categoryId={product.category}
+            optionConfig={product.option_config}
             onSelect={onSelectVariant}
           />
         </div>
+
+        {detailText ? (
+          <div className="mt-3 text-sm text-gray-500">{detailText}</div>
+        ) : null}
+
+        {customFields.length > 0 ? (
+          <div className="mt-4 space-y-3">
+            {customFields.map((field) => (
+              <label key={field.key} className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {field.label}{field.required ? ' *' : ''}
+                </span>
+                {field.inputType === 'select' ? (
+                  <select
+                    className="mt-1 block w-full min-h-11 rounded-md border border-gray-300 bg-white px-3 text-base"
+                    value={customValues[field.key] ?? (field.readOnly ? field.defaultDisplay ?? '' : '')}
+                    disabled={field.readOnly}
+                    onChange={(event) => onCustomValueChange(field.key, event.target.value)}
+                  >
+                    <option value="">{field.defaultDisplay || '--'}</option>
+                    {(field.values ?? []).map((value) => (
+                      <option key={value} value={value}>{value}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    className="mt-1 block w-full min-h-11 rounded-md border border-gray-300 bg-white px-3 text-base"
+                    value={customValues[field.key] ?? (field.readOnly ? field.defaultDisplay ?? '' : '')}
+                    placeholder={field.placeholder || field.defaultDisplay}
+                    disabled={field.readOnly}
+                    onChange={(event) => onCustomValueChange(field.key, event.target.value)}
+                  />
+                )}
+                {field.help || field.defaultDisplay ? (
+                  <span className="mt-1 block text-xs text-gray-500">
+                    {field.help || field.defaultDisplay}
+                  </span>
+                ) : null}
+              </label>
+            ))}
+          </div>
+        ) : null}
+        {customSelectionError ? (
+          <div className="mt-2 text-xs text-amber-700">{customSelectionError}</div>
+        ) : null}
 
         {product.size_chart ? <ProductSizeChart chart={product.size_chart} /> : null}
 
@@ -478,7 +586,7 @@ function ProductDetailBody({
         <div className="mt-6 hidden lg:block">
           <DetailPurchaseActions
             layout="stacked"
-            canPurchase={!!selectedVariant && canPurchase}
+            canPurchase={!!selectedVariant && canPurchase && !customSelectionError}
             onAddToCart={onAddToCart}
             onDirectInquiry={onDirectInquiry}
           />
@@ -498,7 +606,7 @@ function ProductDetailBody({
       <div className="max-w-7xl mx-auto px-4 pt-3">
         <DetailPurchaseActions
           layout="sticky"
-          canPurchase={!!selectedVariant && canPurchase}
+          canPurchase={!!selectedVariant && canPurchase && !customSelectionError}
           onAddToCart={onAddToCart}
           onDirectInquiry={onDirectInquiry}
         />

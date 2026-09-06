@@ -16,6 +16,8 @@ import type { ProductRow, ProductVariantRow } from '../admin/products/types'
  * 下單瞬間商品名 / 規格 / 單價會凍結在 localStorage。
  */
 export interface CartItem {
+  /** 購物車列識別；同 SKU 的不同客製內容會是不同列。舊資料 fallback 為 variantId。 */
+  cartItemId: string
   /** 變體 ID（資料庫主鍵），同一 SKU 加兩次會合併數量 */
   variantId: string
   /** 商品 ID，方便客人從購物車回到商品頁 */
@@ -47,6 +49,8 @@ export interface CartItem {
   /** 下單時供貨狀態 snapshot（預購 vs 現貨，影響 LINE 訊息用詞） */
   availability?: 'in_stock' | 'pre_order'
   preOrderEta?: string | null
+  /** 客製欄位快照，保留成交當時的顯示名稱，不受日後商品設定改名影響。 */
+  selectedOptions?: Record<string, { label: string; value: string }>
 }
 
 /** product + variants 的簡化型別轉出（給 ShopList / ShopDetail 用） */

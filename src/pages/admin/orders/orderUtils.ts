@@ -120,6 +120,9 @@ function itemSearchHaystack(item: ShopOrderItemWithVariant): string {
       if (val != null && String(val).trim()) parts.push(String(val))
     }
   }
+  for (const option of Object.values(item.selected_options ?? {})) {
+    parts.push(option.label, option.value)
+  }
   return parts.join(' ').toLowerCase()
 }
 
@@ -210,7 +213,18 @@ export function formatOrderItemLabel(item: ShopOrderItemWithVariant): string {
   const p = item.variant?.product
   if (!p || !item.variant) return '商品'
   const title = formatProductTitle(p)
-  return `${title} · ${formatAttributes(p.category, item.variant.attributes)}`
+  return [title, formatAttributes(p.category, item.variant.attributes), formatSelectedOptions(item.selected_options)]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+export function formatSelectedOptions(
+  selected: Record<string, { label: string; value: string }> | null | undefined,
+): string {
+  return Object.values(selected ?? {})
+    .filter((option) => option.value.trim() !== '')
+    .map((option) => `${option.label}：${option.value}`)
+    .join(' · ')
 }
 
 export function formatOrderItemParts(item: ShopOrderItemWithVariant): {
@@ -221,7 +235,10 @@ export function formatOrderItemParts(item: ShopOrderItemWithVariant): {
   if (!p || !item.variant) return { title: '商品', subtitle: '' }
   return {
     title: formatProductTitle(p),
-    subtitle: formatAttributes(p.category, item.variant.attributes),
+    subtitle: [
+      formatAttributes(p.category, item.variant.attributes),
+      formatSelectedOptions(item.selected_options),
+    ].filter(Boolean).join(' · '),
   }
 }
 

@@ -75,6 +75,15 @@ import {
   primaryCoverFromGallery,
   type DraftCoverImage,
 } from './coverImages'
+import { ProductOptionsEditor } from './ProductOptionsEditor'
+import {
+  findMissingAxisCombinations,
+  isEmptyProductOptionConfig,
+  normalizeProductOptionConfig,
+  resolveVariantFields,
+  validateProductOptionConfig,
+  type ProductOptionConfig,
+} from './productOptions'
 
 interface ProductEditViewProps {
   /** 編輯模式：傳入 productId；新增模式：傳 null */
@@ -242,6 +251,8 @@ export function ProductEditView({
    * - 既有商品由 DB 載入
    */
   const [isPublic, setIsPublic] = useState<boolean>(isNew)
+  /** null 代表完整沿用 category schema；不可自動轉成空 config。 */
+  const [optionConfig, setOptionConfig] = useState<ProductOptionConfig | null>(null)
   /** 商品卡層封面（一色一卡共用）；多色舊卡可留空改用 SKU 封面 */
   const [productCoverImages, setProductCoverImages] = useState<DraftCoverImage[]>([])
   const [originalProductCoverPaths, setOriginalProductCoverPaths] = useState<string[]>([])
@@ -254,6 +265,9 @@ export function ProductEditView({
   const [createStep, setCreateStep] = useState<CreateStep>(1)
   const [activeSkuIndex, setActiveSkuIndex] = useState<number | null>(0)
   const [identityOpen, setIdentityOpen] = useState(isNew)
+  const [batchAxisKey, setBatchAxisKey] = useState('')
+  const [batchAxisValue, setBatchAxisValue] = useState('')
+  const [batchPrice, setBatchPrice] = useState('')
 
   /**
    * 這個編輯 session 內所有「上傳到 storage 的新檔路徑」。
@@ -363,6 +377,10 @@ export function ProductEditView({
         setDescription(p.description ?? '')
         setSizeChartId(p.size_chart_id)
         setIsPublic(p.is_public)
+        const loadedOptionConfig = normalizeProductOptionConfig(p.option_config)
+        setOptionConfig(
+          isEmptyProductOptionConfig(loadedOptionConfig) ? null : loadedOptionConfig,
+        )
         const loadedProductCovers = draftCoverImagesFromVariant(
           p.cover_images,
           p.cover_image_url,
@@ -409,6 +427,39 @@ export function ProductEditView({
   const handleAddVariant = () => {
     setActiveSkuIndex(drafts.length)
     setDrafts((prev) => [...prev, emptyDraft()])
+  }
+
+  const handleGenerateMissingAxisCombinations = () => {
+    if (missingAxisCombinations.length === 0) return
+    setDrafts((previous) => [
+      ...previous,
+      ...missingAxisCombinations.map((attributes) => ({
+        ...emptyDraft(),
+        attributes,
+      })),
+    ])
+    toast.success(`已產生 ${missingAxisCombinations.length} 個缺少的規格組合`)
+  }
+
+  const handleBatchApplyPrice = () => {
+    const price = batchPrice.trim()
+    if (!batchAxisKey || !batchAxisValue) {
+      toast.error('請先選擇規格軸與條件值')
+      return
+    }
+    if (price !== '' && (!Number.isFinite(Number(price)) || Number(price) < 0)) {
+      toast.error('售價需為非負整數，或留空表待補')
+      return
+    }
+    const count = drafts.filter(
+      (draft) => !draft.pendingDelete && draft.attributes[batchAxisKey] === batchAxisValue,
+    ).length
+    setDrafts((previous) => previous.map((draft) =>
+      draft.pendingDelete || draft.attributes[batchAxisKey] !== batchAxisValue
+        ? draft
+        : { ...draft, price },
+    ))
+    toast.success(`已套用售價到 ${count} 個規格`)
   }
 
   /**
@@ -624,6 +675,21 @@ export function ProductEditView({
   }
 
   const visibleDrafts = drafts // 顯示全部，含 pendingDelete（給 UI 顯示「已標記刪除」狀態）
+  const resolvedSkuFields = useMemo(
+    () => resolveVariantFields(optionConfig, getSkuFields(category)),
+    [optionConfig, category],
+  )
+  const optionAxes = useMemo(
+    () => optionConfig?.variantFields.axis ?? [],
+    [optionConfig],
+  )
+  const missingAxisCombinations = useMemo(
+    () => findMissingAxisCombinations(
+      optionAxes,
+      drafts.filter((draft) => !draft.pendingDelete).map((draft) => draft.attributes),
+    ),
+    [optionAxes, drafts],
+  )
 
   const originalVariantsById = useMemo(() => {
     const map = new Map<string, ProductVariantRow>()
@@ -670,10 +736,16 @@ export function ProductEditView({
   }
 
   const validateSkuCore = (): string | null => {
+    const configIssues = validateProductOptionConfig(optionConfig)
+    if (configIssues.length > 0) return `商品選項：${configIssues[0].message}`
     const active = drafts.filter((d) => !d.pendingDelete)
     if (active.length === 0) return '至少要有一個規格 (SKU)'
     for (const [i, d] of active.entries()) {
-      const errs = validateAttributes(category, d.attributes)
+      const errs = optionConfig
+        ? resolvedSkuFields
+            .filter((field) => field.required && !String(d.attributes[field.key] ?? '').trim())
+            .map((field) => `${field.label}為必填`)
+        : validateAttributes(category, d.attributes)
       if (errs.length > 0) return `規格 #${i + 1}：${errs.join('、')}`
       // 售價可留空（= NULL，待補）；有填的話必須是非負整數
       if (d.price.trim() !== '') {
@@ -803,6 +875,7 @@ export function ProductEditView({
           cover_image_url: productPrimary.url,
           cover_image_path: productPrimary.path,
           is_public: isPublic,
+          option_config: optionConfig,
         },
         variants: variantPayloads,
       })
@@ -1008,6 +1081,13 @@ export function ProductEditView({
   const showIdentitySection = !mobileCreateWizard || createStep === 1
   const showSkuCoreSection = !mobileCreateWizard || createStep === 2
   const showAdvancedSection = !mobileCreateWizard || createStep === 3
+  const selectedBatchAxis = optionAxes.find((axis) => axis.key === batchAxisKey)
+  const selectedBatchAxisValues = selectedBatchAxis?.values ?? Array.from(new Set(
+    drafts
+      .filter((draft) => !draft.pendingDelete)
+      .map((draft) => draft.attributes[batchAxisKey]?.trim())
+      .filter((value): value is string => Boolean(value)),
+  ))
 
   /** 手機：取消／儲存固定貼在螢幕底，避開 Home 條 */
   const mobileFooterBar =
@@ -1561,6 +1641,115 @@ export function ProductEditView({
           </label>
         )}
 
+        {(!mobileCreateWizard || createStep === 2) && (
+          <div
+            style={{
+              marginBottom: designSystem.spacing.lg,
+              paddingBottom: designSystem.spacing.lg,
+              borderBottom: `1px solid ${designSystem.colors.border.light}`,
+            }}
+          >
+            <h3
+              style={{
+                margin: `0 0 ${designSystem.spacing.sm} 0`,
+                fontSize: getFontSize('h3', isMobile),
+                color: designSystem.colors.text.primary,
+              }}
+            >
+              商品選項
+            </h3>
+            <ProductOptionsEditor
+              value={optionConfig}
+              onChange={setOptionConfig}
+              disabled={saving || readOnly}
+              isMobile={isMobile}
+              defaultVariantFields={getSkuFields(category)}
+            />
+          </div>
+        )}
+
+        {!readOnly && optionAxes.length > 0 && (
+          <div
+            style={{
+              display: 'grid',
+              gap: 8,
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr auto',
+              alignItems: 'end',
+              marginBottom: designSystem.spacing.lg,
+              padding: 12,
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.sm,
+            }}
+          >
+            <label>
+              <span style={labelStyle}>批次條件</span>
+              <select
+                style={inputStyle}
+                value={batchAxisKey}
+                disabled={saving}
+                onChange={(event) => {
+                  setBatchAxisKey(event.target.value)
+                  setBatchAxisValue('')
+                }}
+              >
+                <option value="">選擇規格軸</option>
+                {optionAxes.map((axis) => (
+                  <option key={axis.key} value={axis.key}>{axis.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span style={labelStyle}>等於</span>
+              {selectedBatchAxisValues.length > 0 ? (
+                <select
+                  style={inputStyle}
+                  value={batchAxisValue}
+                  disabled={saving || !selectedBatchAxis}
+                  onChange={(event) => setBatchAxisValue(event.target.value)}
+                >
+                  <option value="">選擇值</option>
+                  {selectedBatchAxisValues.map((axisValue) => (
+                    <option key={axisValue} value={axisValue}>{axisValue}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  style={inputStyle}
+                  value={batchAxisValue}
+                  disabled={saving || !selectedBatchAxis}
+                  placeholder="輸入條件值"
+                  onChange={(event) => setBatchAxisValue(event.target.value)}
+                />
+              )}
+            </label>
+            <label>
+              <span style={labelStyle}>套用售價</span>
+              <NumericTextInput
+                variant="course"
+                value={batchPrice}
+                onChange={setBatchPrice}
+                placeholder="留空表待補"
+                disabled={saving}
+              />
+            </label>
+            <Button variant="outline" size="small" onClick={handleBatchApplyPrice} disabled={saving}>
+              批次套價
+            </Button>
+            {missingAxisCombinations.length > 0 && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <Button
+                  variant="outline"
+                  size="small"
+                  onClick={handleGenerateMissingAxisCombinations}
+                  disabled={saving}
+                >
+                  產生缺少的軸組合（{missingAxisCombinations.length}）
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {visibleDrafts.map((d, idx) => (
           <VariantBlock
             key={d.clientKey}
@@ -1569,7 +1758,7 @@ export function ProductEditView({
             brand={brand}
             model={model}
             categoryId={category}
-            schemaFields={getSkuFields(category)}
+            schemaFields={resolvedSkuFields}
             isMobile={isMobile}
             focused={focusVariantId != null && d.id === focusVariantId}
             disabled={saving || readOnly}

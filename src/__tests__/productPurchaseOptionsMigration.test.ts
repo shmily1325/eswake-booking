@@ -1,0 +1,44 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+const optionsMigration = readFileSync(
+  resolve(process.cwd(), 'migrations/216_product_purchase_options.sql'),
+  'utf8',
+)
+const vibesSeed = readFileSync(
+  resolve(process.cwd(), 'migrations/217_seed_vibes_2027_drafts.sql'),
+  'utf8',
+)
+
+describe('product purchase option migrations', () => {
+  it('adds compatible JSON defaults and validates order snapshots', () => {
+    expect(optionsMigration).toContain('ADD COLUMN IF NOT EXISTS option_config JSONB NOT NULL')
+    expect(optionsMigration).toContain("ADD COLUMN IF NOT EXISTS selected_options JSONB NOT NULL DEFAULT '{}'::JSONB")
+    expect(optionsMigration).toContain('CREATE TRIGGER validate_shop_order_item_selected_options')
+    expect(optionsMigration).toContain("'selected_options', i.selected_options")
+    expect(optionsMigration).toContain('option_config = v_option_config')
+  })
+
+  it('keeps the VIBES seed unpublished, idempotent, and excludes Prototype', () => {
+    for (const model of [
+      'DIAMOND STOCK',
+      'DIAMOND TEAM',
+      'AVIATOR',
+      'XO STOCK',
+      'XO TEAM',
+      'DRAKE',
+      'ENIGMA',
+    ]) {
+      expect(vibesSeed).toContain(`'${model}'`)
+    }
+    expect(vibesSeed).not.toContain("'PROTOTYPE'::TEXT")
+    expect(vibesSeed).toContain('WHERE NOT EXISTS')
+    expect(vibesSeed).toContain("('空板'::TEXT, 65000::INTEGER)")
+    expect(vibesSeed).toContain("('客製色'::TEXT, 70000::INTEGER)")
+    expect(vibesSeed).toContain("('Full Carbon'::TEXT, 75000::INTEGER)")
+    expect(vibesSeed).toContain('        is_public,')
+    expect(vibesSeed).toContain("'carbon_color'")
+    expect(vibesSeed).toContain("'固定黑色'")
+  })
+})

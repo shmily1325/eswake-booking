@@ -23,6 +23,7 @@ import {
   findExactProductIdentityMatch,
   type ProductIdentityCandidate,
 } from './productIdentity'
+import { EMPTY_PRODUCT_OPTION_CONFIG, type ProductOptionConfig } from './productOptions'
 
 type VariantInsert = Database['public']['Tables']['product_variants']['Insert']
 type VariantUpdate = Database['public']['Tables']['product_variants']['Update']
@@ -51,6 +52,7 @@ export interface SaveProductWithVariantsInput {
     cover_image_url: string | null
     cover_image_path: string | null
     is_public: boolean
+    option_config: ProductOptionConfig | null
   }
   variants: Array<{
     draft_index: number
@@ -281,6 +283,7 @@ export interface CreateProductInput {
   cover_images?: Array<{ url: string; path: string }>
   /** 是否對外公開（商城可見），預設 true（上架到商城） */
   is_public?: boolean
+  option_config?: ProductOptionConfig | null
   created_by?: string | null
 }
 
@@ -332,6 +335,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductR
       cover_image_path: input.cover_image_path ?? null,
       cover_images: input.cover_images ?? [],
       is_public: input.is_public ?? true,
+      option_config: (input.option_config ?? EMPTY_PRODUCT_OPTION_CONFIG) as unknown as Json,
       created_by: input.created_by ?? null,
       updated_by: input.created_by ?? null,
     })
@@ -353,6 +357,7 @@ export interface UpdateProductInput {
   cover_image_path?: string | null
   cover_images?: Array<{ url: string; path: string }>
   is_public?: boolean
+  option_config?: ProductOptionConfig | null
   updated_by?: string | null
 }
 
@@ -369,6 +374,9 @@ export async function updateProduct(productId: string, input: UpdateProductInput
   if (input.cover_image_path !== undefined) patch.cover_image_path = input.cover_image_path
   if (input.cover_images !== undefined) patch.cover_images = input.cover_images
   if (input.is_public !== undefined) patch.is_public = input.is_public
+  if (input.option_config !== undefined) {
+    patch.option_config = input.option_config ?? EMPTY_PRODUCT_OPTION_CONFIG
+  }
   if (input.updated_by !== undefined) patch.updated_by = input.updated_by
   if (Object.keys(patch).length === 0) return
 

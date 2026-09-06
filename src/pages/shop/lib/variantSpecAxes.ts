@@ -7,6 +7,11 @@ import {
   formatGenderDisplay,
   getSkuFields,
 } from '../../admin/products/schema'
+import {
+  isEmptyProductOptionConfig,
+  normalizeProductOptionConfig,
+  type ProductOptionField,
+} from '../../admin/products/productOptions'
 
 export interface SpecAxis {
   key: string
@@ -36,9 +41,15 @@ export function specAttrValue(variant: ProductVariantRow, key: string): string {
 export function collectSpecAxes(
   categoryId: string | null | undefined,
   variants: ProductVariantRow[],
+  rawConfig?: unknown,
 ): SpecAxis[] {
   const axes: SpecAxis[] = []
-  for (const field of getSkuFields(categoryId)) {
+  const config = normalizeProductOptionConfig(rawConfig)
+  const fields: Array<ProductOptionField | ReturnType<typeof getSkuFields>[number]> =
+    config && !isEmptyProductOptionConfig(config)
+      ? config.variantFields.axis
+      : getSkuFields(categoryId)
+  for (const field of fields) {
     const seen = new Set<string>()
     const values: string[] = []
     for (const variant of variants) {
@@ -125,13 +136,14 @@ export function findVariantForAxisValue(
   selectedId: string | null,
   key: string,
   value: string,
+  axisKeys?: readonly string[],
 ): string | null {
   const matching = variants.filter((v) => specAttrValue(v, key) === value)
   if (matching.length === 0) return null
   const current = variants.find((v) => v.id === selectedId)
   if (current) {
     const sameOthers = matching.find((v) =>
-      otherAxesMatch(v, current, key, variants),
+      otherAxesMatch(v, current, key, variants, axisKeys),
     )
     if (sameOthers) return sameOthers.id
   }
@@ -143,11 +155,14 @@ function otherAxesMatch(
   current: ProductVariantRow,
   changingKey: string,
   pool: ProductVariantRow[],
+  axisKeys?: readonly string[],
 ): boolean {
-  const keys = new Set<string>()
-  for (const v of pool) {
-    for (const k of Object.keys(v.attributes ?? {})) {
-      if (k !== changingKey) keys.add(k)
+  const keys = new Set<string>((axisKeys ?? []).filter((key) => key !== changingKey))
+  if (!axisKeys) {
+    for (const v of pool) {
+      for (const k of Object.keys(v.attributes ?? {})) {
+        if (k !== changingKey) keys.add(k)
+      }
     }
   }
   for (const key of keys) {

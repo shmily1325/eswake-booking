@@ -32,9 +32,9 @@ interface CartContextValue {
   hasUnknownPrice: boolean
 
   /** 加入購物車；若 variantId 已存在則合併數量 */
-  addItem: (item: Omit<CartItem, 'addedAt' | 'quantity'> & { quantity?: number }) => void
-  updateQuantity: (variantId: string, quantity: number) => void
-  removeItem: (variantId: string) => void
+  addItem: (item: Omit<CartItem, 'cartItemId' | 'addedAt' | 'quantity'> & { quantity?: number }) => void
+  updateQuantity: (cartItemId: string, quantity: number) => void
+  removeItem: (cartItemId: string) => void
   clear: () => void
 
   /** 最近加入的品項摘要，用來觸發 toast */
@@ -53,6 +53,9 @@ function loadFromStorage(): CartItem[] {
     if (!Array.isArray(parsed)) return []
     return parsed.filter(isValidCartItem).map((item) => ({
       ...item,
+      cartItemId: typeof item.cartItemId === 'string' && item.cartItemId
+        ? item.cartItemId
+        : buildCartItemId(item.variantId, item.selectedOptions),
       quantity: clampCartQuantity(item.quantity, item.maxQuantity),
     }))
   } catch {
@@ -85,6 +88,19 @@ function isValidCartItem(v: unknown): v is CartItem {
   )
 }
 
+export function buildCartItemId(
+  variantId: string,
+  selectedOptions?: Record<string, { label: string; value: string }>,
+): string {
+  const normalized = Object.entries(selectedOptions ?? {})
+    .filter(([, option]) => option.value.trim() !== '')
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, option]) => [key, option.value.trim()])
+  return normalized.length === 0
+    ? variantId
+    : `${variantId}:${JSON.stringify(normalized)}`
+}
+
 function saveToStorage(items: CartItem[]) {
   if (typeof window === 'undefined') return
   try {
@@ -112,12 +128,13 @@ export function ShopCartProvider({ children }: { children: ReactNode }) {
     const inputMax = normalizeMaxQuantity(input.maxQuantity)
     const qty = clampCartQuantity(input.quantity ?? 1, inputMax)
     if (qty <= 0) return
+    const cartItemId = buildCartItemId(input.variantId, input.selectedOptions)
     setItems((prev) => {
-      const existing = prev.find((it) => it.variantId === input.variantId)
+      const existing = prev.find((it) => it.cartItemId === cartItemId)
       if (existing) {
         const maxQuantity = inputMax ?? existing.maxQuantity
         return prev.map((it) =>
-          it.variantId === input.variantId
+          it.cartItemId === cartItemId
             ? {
                 ...it,
                 quantity: clampCartQuantity(it.quantity + qty, maxQuantity),
@@ -126,11 +143,13 @@ export function ShopCartProvider({ children }: { children: ReactNode }) {
                 unitPrice: input.unitPrice,
                 originalPrice: input.originalPrice ?? it.originalPrice,
                 discountCaption: input.discountCaption ?? it.discountCaption,
+                selectedOptions: input.selectedOptions ?? it.selectedOptions,
               }
             : it
         )
       }
       const next: CartItem = {
+        cartItemId,
         variantId: input.variantId,
         productId: input.productId,
         productName: input.productName,
@@ -145,28 +164,29 @@ export function ShopCartProvider({ children }: { children: ReactNode }) {
         addedAt: Date.now(),
         availability: input.availability,
         preOrderEta: input.preOrderEta,
+        selectedOptions: input.selectedOptions,
       }
       return [...prev, next]
     })
     setLastAdded({ name: input.productName, quantity: qty, at: Date.now() })
   }, [])
 
-  const updateQuantity = useCallback((variantId: string, quantity: number) => {
+  const updateQuantity = useCallback((cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      setItems((prev) => prev.filter((it) => it.variantId !== variantId))
+      setItems((prev) => prev.filter((it) => it.cartItemId !== cartItemId))
       return
     }
     setItems((prev) =>
       prev.map((it) =>
-        it.variantId === variantId
+        it.cartItemId === cartItemId
           ? { ...it, quantity: clampCartQuantity(quantity, it.maxQuantity) }
           : it
       )
     )
   }, [])
 
-  const removeItem = useCallback((variantId: string) => {
-    setItems((prev) => prev.filter((it) => it.variantId !== variantId))
+  const removeItem = useCallback((cartItemId: string) => {
+    setItems((prev) => prev.filter((it) => it.cartItemId !== cartItemId))
   }, [])
 
   const clear = useCallback(() => {

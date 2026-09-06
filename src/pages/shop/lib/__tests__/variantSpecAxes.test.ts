@@ -42,6 +42,26 @@ describe('collectSpecAxes', () => {
       { key: 'size', label: '尺寸', values: ['S', 'M'] },
     ])
   })
+
+  it('uses configured axes and ignores detail fields', () => {
+    const rows = [
+      v('blank', { size: "4'8", finish: '空板', width: '19.5' }),
+      v('carbon', { size: "4'8", finish: 'Full Carbon', width: '19.5' }),
+    ]
+    expect(collectSpecAxes('ws_board', rows, {
+      version: 1,
+      variantFields: {
+        axis: [
+          { key: 'size', label: '尺寸', inputType: 'select', values: ["4'8"] },
+          { key: 'finish', label: '板面', inputType: 'select', values: ['空板', 'Full Carbon'] },
+        ],
+        detail: [{ key: 'width', label: '寬度', inputType: 'text' }],
+      },
+      customFields: [],
+    })).toEqual([
+      { key: 'finish', label: '板面', values: ['空板', 'Full Carbon'] },
+    ])
+  })
 })
 
 describe('formatCardSpecLine', () => {
@@ -86,5 +106,20 @@ describe('findVariantForAxisValue', () => {
       v('fs', { gender: 'Female', size: 'S' }),
     ]
     expect(findVariantForAxisValue(rows, 'ms', 'size', 'M')).toBe('mm')
+  })
+
+  it('keeps configured finish while allowing detail values to change', () => {
+    const rows = [
+      v('small-carbon', { size: 'S', finish: 'Carbon', width: '18' }),
+      v('large-blank', { size: 'L', finish: 'Blank', width: '20' }),
+      v('large-carbon', { size: 'L', finish: 'Carbon', width: '20' }),
+    ]
+    expect(findVariantForAxisValue(
+      rows,
+      'small-carbon',
+      'size',
+      'L',
+      ['size', 'finish'],
+    )).toBe('large-carbon')
   })
 })

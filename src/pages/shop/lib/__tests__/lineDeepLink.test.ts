@@ -41,6 +41,7 @@ describe('LINE inquiry prices', () => {
   it('uses sale snapshots in cart inquiry totals', () => {
     const items: CartItem[] = [
       {
+        cartItemId: 'v1',
         variantId: 'v1',
         productId: 'p1',
         productName: 'Follow ANTHEM',
@@ -61,5 +62,21 @@ describe('LINE inquiry prices', () => {
       '單價：NT$ 8,100（預購 8折，原價 NT$ 10,125）',
     )
     expect(payload.message).toContain('預估金額：NT$ 16,200')
+  })
+
+  it('includes customization snapshots without depending on current product config', () => {
+    const payload = buildSingleInquiry({
+      productId: 'p1',
+      productName: 'VIBES AVIATOR',
+      categoryId: 'ws_board',
+      attributes: { size: "4'8", finish: '客製色' },
+      selectedOptions: {
+        pantone: { label: 'Pantone 色號', value: '與客服洽詢顏色' },
+      },
+      quantity: 1,
+      unitPrice: 70000,
+      isPreOrder: true,
+    })
+    expect(payload.message).toContain('Pantone 色號：與客服洽詢顏色')
   })
 })

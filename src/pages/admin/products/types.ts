@@ -6,12 +6,20 @@
  * Record<string, AttributeValue>，之後 UI 不需要每次都做型別判斷。
  */
 
-import type { Database } from '../../../types/supabase'
+import type { Database, Json } from '../../../types/supabase'
 
 /** attributes JSONB 內合理的值類型（select/text 用 string，number 用 number） */
 export type AttributeValue = string | number | null
 
-export type ProductRow = Database['public']['Tables']['products']['Row']
+/**
+ * option_config 已由後端 schema 提供；生成型別更新前在應用層補上。
+ * optional 可讓尚未含此欄位的測試 fixture 與舊查詢維持相容。
+ */
+type RawProductRow = Database['public']['Tables']['products']['Row']
+
+export type ProductRow = Omit<RawProductRow, 'option_config'> & {
+  option_config?: Json | null
+}
 export type SizeChartRow = Database['public']['Tables']['size_charts']['Row']
 
 type RawVariantRow = Database['public']['Tables']['product_variants']['Row']

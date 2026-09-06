@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ShopOrderItemWithVariant, ShopOrderWithItems } from '../../admin/orders/types'
 import {
+  formatLiffOrderItemLine,
   getLiffOrderItemImageUrl,
   liffHiddenItemsProgressHint,
   liffOrderIsMixed,
@@ -97,6 +98,21 @@ describe('getLiffOrderItemImageUrl', () => {
 
     item.variant.image_url = null
     expect(getLiffOrderItemImageUrl(item)).toBeNull()
+  })
+})
+
+describe('formatLiffOrderItemLine', () => {
+  it('shows immutable purchase-option snapshots', () => {
+    const item = mockItem({
+      id: 'custom',
+      qty: 1,
+      selected_options: {
+        finish: { label: '板面', value: '客製色' },
+        pantone: { label: 'Pantone 色號', value: 'PINK C' },
+      },
+    })
+    expect(formatLiffOrderItemLine(item).subtitle).toContain('板面：客製色')
+    expect(formatLiffOrderItemLine(item).subtitle).toContain('Pantone 色號：PINK C')
   })
 })
 

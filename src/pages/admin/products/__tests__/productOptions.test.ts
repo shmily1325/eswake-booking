@@ -1,0 +1,109 @@
+import { describe, expect, it } from 'vitest'
+import {
+  buildSelectedOptionSnapshot,
+  findMissingAxisCombinations,
+  formatOptionSelection,
+  normalizeProductOptionConfig,
+  resolveVariantFields,
+  stableOptionIdentity,
+  validateProductOptionConfig,
+  visibleCustomFields,
+  validateCustomSelection,
+  type ProductOptionConfig,
+} from '../productOptions'
+
+const config: ProductOptionConfig = {
+  version: 1,
+  variantFields: {
+    axis: [
+      { key: 'size', label: '尺寸', inputType: 'select', values: ['S', 'M'] },
+      { key: 'color', label: '顏色', inputType: 'select', values: ['黑', '白'] },
+    ],
+    detail: [
+      { key: 'length', label: '長度', inputType: 'text', suffix: 'cm' },
+    ],
+  },
+  customFields: [
+    { key: 'name', label: '姓名', inputType: 'text', required: true },
+    {
+      key: 'black_note',
+      label: '黑色備註',
+      inputType: 'text',
+      visibility: { axis: { key: 'color', value: '黑' } },
+    },
+  ],
+}
+
+describe('product options core', () => {
+  it('normalizes v1 config and rejects unsupported versions', () => {
+    expect(normalizeProductOptionConfig(config)).toEqual(config)
+    expect(normalizeProductOptionConfig({ ...config, version: 2 })).toBeNull()
+  })
+
+  it('validates duplicate keys and select values', () => {
+    const invalid: ProductOptionConfig = {
+      ...config,
+      variantFields: {
+        axis: [{ key: 'size', label: '尺寸', inputType: 'select' }],
+        detail: [{ key: 'size', label: '尺寸細節', inputType: 'text' }],
+      },
+    }
+    const messages = validateProductOptionConfig(invalid).map((issue) => issue.message)
+    expect(messages).toContain('下拉欄位至少需要一個選項')
+    expect(messages).toContain('key 不可重複')
+  })
+
+  it('keeps category fields only when config is null', () => {
+    const legacy = [{ key: 'legacy', label: '舊欄位', type: 'text' as const }]
+    expect(resolveVariantFields(null, legacy)).toEqual(legacy)
+    expect(resolveVariantFields({
+      version: 1,
+      variantFields: { axis: [], detail: [] },
+      customFields: [],
+    }, legacy)).toEqual(legacy)
+    expect(resolveVariantFields(config, legacy).map((field) => field.key))
+      .toEqual(['size', 'color', 'length'])
+  })
+
+  it('resolves visible custom fields from the axis selection', () => {
+    expect(visibleCustomFields(config, { color: '白' }).map((field) => field.key))
+      .toEqual(['name'])
+    expect(visibleCustomFields(config, { color: '黑' }).map((field) => field.key))
+      .toEqual(['name', 'black_note'])
+  })
+
+  it('formats selections and creates stable identities', () => {
+    expect(formatOptionSelection(config, { size: 'M', color: '黑', length: '120' }))
+      .toBe('M / 黑 / 120cm')
+    expect(stableOptionIdentity(config.variantFields.axis, { color: '黑', size: 'M' }))
+      .toBe(stableOptionIdentity(config.variantFields.axis, { size: 'M', color: '黑' }))
+  })
+
+  it('finds only missing cartesian axis combinations', () => {
+    expect(findMissingAxisCombinations(config.variantFields.axis, [
+      { size: 'S', color: '黑' },
+      { size: 'M', color: '白' },
+    ])).toEqual([
+      { size: 'S', color: '白' },
+      { size: 'M', color: '黑' },
+    ])
+  })
+
+  it('snapshots non-legacy axes and visible customer values', () => {
+    expect(buildSelectedOptionSnapshot(
+      config,
+      { size: 'M', color: '黑' },
+      { name: 'Ming', black_note: '霧面' },
+      ['size'],
+    )).toEqual({
+      color: { label: '顏色', value: '黑' },
+      name: { label: '姓名', value: 'Ming' },
+      black_note: { label: '黑色備註', value: '霧面' },
+    })
+  })
+
+  it('validates required visible fields only', () => {
+    expect(validateCustomSelection(config, { color: '白' }, {})).toBe('姓名為必填')
+    expect(validateCustomSelection(config, { color: '白' }, { name: 'Ming' })).toBeNull()
+  })
+})

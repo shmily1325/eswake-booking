@@ -23,9 +23,22 @@ export function formatSettlementLineDisplay(
     const p = variant.product
     const spec = formatAttributes(p.category, variant.attributes ?? {})
     const code = variant.vendor_code?.trim()
-    const subtitle = [spec, code ? `#${code.replace(/^#/, '')}` : null].filter(Boolean).join(' · ')
+    const title = formatProductTitle(p)
+    const baseDescription = [title, spec].filter(Boolean).join(' · ')
+    const description = line.description?.trim() ?? ''
+    const customization = description.startsWith(baseDescription)
+      ? description
+          .slice(baseDescription.length)
+          .replace(/\s*\([^()]*\)\s*$/, '')
+          .replace(/^\s*·\s*/, '')
+      : ''
+    const subtitle = [
+      spec,
+      customization,
+      code ? `#${code.replace(/^#/, '')}` : null,
+    ].filter(Boolean).join(' · ')
     return {
-      title: formatProductTitle(p),
+      title,
       subtitle,
     }
   }

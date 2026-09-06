@@ -113,6 +113,18 @@ interface SingleInquiryInput {
   discountCaption?: string | null
   isPreOrder?: boolean
   preOrderEta?: string | null
+  selectedOptions?: Record<string, { label: string; value: string }>
+}
+
+function appendSelectedOptions(
+  lines: string[],
+  selectedOptions: Record<string, { label: string; value: string }> | undefined,
+  prefix = '',
+): void {
+  for (const option of Object.values(selectedOptions ?? {})) {
+    const value = option.value.trim()
+    if (value) lines.push(`${prefix}${option.label}：${value}`)
+  }
 }
 
 function lineUnitText(input: {
@@ -152,6 +164,7 @@ function renderSingleMessage(
     `品項：${input.productName}`,
   ]
   if (attrsText) lines.push(`規格：${attrsText}`)
+  appendSelectedOptions(lines, input.selectedOptions)
   if (input.isPreOrder) {
     lines.push('類型：預購')
     if (input.preOrderEta?.trim()) lines.push(`預計到貨：${input.preOrderEta.trim()}`)
@@ -186,6 +199,7 @@ function renderCartMessage(items: CartItem[], includeUrls: boolean): string {
     const isPre = it.availability === 'pre_order'
     lines.push(`【${idx + 1}】${it.productName}${isPre ? '（預購）' : ''}`)
     if (attrsText) lines.push(`　規格：${attrsText}`)
+    appendSelectedOptions(lines, it.selectedOptions, '　')
     if (isPre && it.preOrderEta?.trim()) {
       lines.push(`　預計到貨：${it.preOrderEta.trim()}`)
     }

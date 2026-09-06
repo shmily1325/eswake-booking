@@ -22,7 +22,7 @@ import {
   flattenToVariantItems,
 } from '../products/api'
 import { LabelCodeCameraScanner } from '../products/LabelCodeCameraScanner'
-import { formatAttributes, formatProductTitle } from '../products/schema'
+import { formatAttributes, formatProductTitle, getSkuFields } from '../products/schema'
 import { buildVariantSearchHaystack } from '../products/productSearchHaystack'
 import type { VariantListItem } from '../products/types'
 import { fetchDiscountPresets } from '../products/discountApi'
@@ -40,6 +40,13 @@ import { confirmVoidOrder } from './orderUtils'
 import { resolveOrderLinePrice } from './orderLinePricing'
 import { OrderMemberPicker, resolveContactName } from './OrderMemberPicker'
 import type { DeliveryMethod, ShopOrderWithItems } from './types'
+import {
+  buildSelectedOptionSnapshot,
+  normalizeProductOptionConfig,
+  validateCustomSelection,
+  visibleCustomFields,
+  type SelectedOptionSnapshot,
+} from '../products/productOptions'
 
 interface DraftLine {
   key: string
@@ -51,6 +58,22 @@ interface DraftLine {
   brand_snapshot?: string | null
   suggested_original_price?: number | null
   suggested_discount_caption?: string | null
+  selected_options: SelectedOptionSnapshot
+}
+
+function selectedOptionValues(snapshot: SelectedOptionSnapshot): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(snapshot).map(([key, option]) => [key, option.value]),
+  )
+}
+
+function initialSelectedOptions(item: VariantListItem): SelectedOptionSnapshot {
+  return buildSelectedOptionSnapshot(
+    normalizeProductOptionConfig(item.product.option_config),
+    item.variant.attributes,
+    {},
+    getSkuFields(item.product.category).map((field) => field.key),
+  )
 }
 
 interface CreateOrderDraftSnapshot {
@@ -179,6 +202,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           label: lineLabel(it.variant?.product, it.variant),
           was_preorder: it.was_preorder,
           brand_snapshot: it.brand_snapshot,
+          selected_options: it.selected_options ?? {},
         })),
       )
       setGuestNameInput('')
@@ -198,7 +222,10 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         setShippingInfo(restored.shippingInfo)
         setCustomerNote(restored.customerNote)
         setInternalNotes(restored.internalNotes)
-        setLines(restored.lines)
+        setLines(restored.lines.map((line) => ({
+          ...line,
+          selected_options: line.selected_options ?? {},
+        })))
         setVariantSearch(restored.variantSearch)
         setConfirmedGuestName(restored.confirmedGuestName)
         setGuestNameInput(restored.guestNameInput)
@@ -271,6 +298,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           label: lineLabel(item.product, item.variant),
           suggested_original_price: suggestedPrice.originalPrice,
           suggested_discount_caption: suggestedPrice.discountCaption,
+          selected_options: initialSelectedOptions(item),
         },
       ]
     })
@@ -298,9 +326,15 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       if (locked) return false
       const label = lineLabel(item.product, item.variant)
       const suggestedPrice = resolveOrderLinePrice(item, discountPresets)
+      const hasCustomization = visibleCustomFields(
+        normalizeProductOptionConfig(item.product.option_config),
+        item.variant.attributes,
+      ).length > 0
       let incremented = false
       setLines((prev) => {
-        const existing = prev.find((line) => line.variant_id === item.variant.id)
+        const existing = hasCustomization
+          ? undefined
+          : prev.find((line) => line.variant_id === item.variant.id)
         if (existing) {
           incremented = true
           return prev.map((line) =>
@@ -317,6 +351,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             label,
             suggested_original_price: suggestedPrice.originalPrice,
             suggested_discount_caption: suggestedPrice.discountCaption,
+            selected_options: initialSelectedOptions(item),
           },
         ]
       })
@@ -389,6 +424,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         label: lineLabel(item.product, item.variant),
         suggested_original_price: suggestedPrice.originalPrice,
         suggested_discount_caption: suggestedPrice.discountCaption,
+        selected_options: initialSelectedOptions(item),
       },
     ])
     setVariantSearch('')
@@ -448,6 +484,20 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       setSaveError('請至少加入一項商品')
       return
     }
+    const variantById = new Map(variants.map((item) => [item.variant.id, item]))
+    for (const line of payloadLines) {
+      const item = variantById.get(line.variant_id)
+      if (!item) continue
+      const selectionError = validateCustomSelection(
+        normalizeProductOptionConfig(item.product.option_config),
+        item.variant.attributes,
+        selectedOptionValues(line.selected_options),
+      )
+      if (selectionError) {
+        setSaveError(`${line.label}：${selectionError}`)
+        return
+      }
+    }
 
     setSaveError(null)
 
@@ -462,12 +512,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             shipping_info: shippingInfo,
             customer_note: customerNote,
             internal_notes: internalNotes,
-            lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot }) => ({
+            lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, selected_options }) => ({
               variant_id,
               unit_price,
               qty,
               was_preorder,
               brand_snapshot,
+              selected_options,
             })),
             updated_by: userEmail ?? null,
           })
@@ -487,12 +538,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           shipping_info: shippingInfo,
           customer_note: customerNote,
           internal_notes: internalNotes,
-          lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot }) => ({
+          lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, selected_options }) => ({
             variant_id,
             unit_price,
             qty,
             was_preorder,
             brand_snapshot,
+            selected_options,
           })),
           created_by: userEmail ?? null,
         })
@@ -855,6 +907,24 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                   </button>
                 )}
               </div>
+              {locked && Object.values(line.selected_options ?? {}).length > 0 ? (
+                <div style={{ margin: '-6px 0 12px', fontSize: 13, color: designSystem.colors.text.secondary }}>
+                  {Object.values(line.selected_options ?? {}).map((option) => `${option.label}：${option.value}`).join(' · ')}
+                </div>
+              ) : null}
+              <OrderLineCustomFields
+                item={variants.find((item) => item.variant.id === line.variant_id)}
+                selectedOptions={line.selected_options}
+                disabled={locked}
+                isMobile={isMobile}
+                onChange={(selected_options) =>
+                  setLines((current) =>
+                    current.map((candidate, i) =>
+                      i === idx ? { ...candidate, selected_options } : candidate,
+                    ),
+                  )
+                }
+              />
               <div
                 style={{
                   display: 'grid',
@@ -1026,6 +1096,76 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         busy={scanBusy}
         statusMessage={scanStatus}
       />
+    </div>
+  )
+}
+
+function OrderLineCustomFields({
+  item,
+  selectedOptions,
+  disabled,
+  isMobile,
+  onChange,
+}: {
+  item: VariantListItem | undefined
+  selectedOptions: SelectedOptionSnapshot
+  disabled: boolean
+  isMobile: boolean
+  onChange: (value: SelectedOptionSnapshot) => void
+}) {
+  if (!item) return null
+  const config = normalizeProductOptionConfig(item.product.option_config)
+  const fields = visibleCustomFields(config, item.variant.attributes)
+  if (fields.length === 0) return null
+  const values = selectedOptionValues(selectedOptions ?? {})
+  const inputStyle = getInputStyle(isMobile)
+  const update = (key: string, value: string) => {
+    onChange(buildSelectedOptionSnapshot(
+      config,
+      item.variant.attributes,
+      { ...values, [key]: value },
+      getSkuFields(item.product.category).map((field) => field.key),
+    ))
+  }
+  return (
+    <div style={{ display: 'grid', gap: 10, marginBottom: 12 }}>
+      {fields.map((field) => (
+        <label key={field.key}>
+          <span style={{ display: 'block', marginBottom: 4, fontSize: 12, color: designSystem.colors.text.secondary }}>
+            {field.label}{field.required ? ' *' : ''}
+          </span>
+          {field.inputType === 'select' ? (
+            <select
+              style={inputStyle}
+              value={field.readOnly
+                ? field.defaultDisplay ?? ''
+                : values[field.key] === field.defaultDisplay ? '' : (values[field.key] ?? '')}
+              disabled={disabled || field.readOnly}
+              onChange={(event) => update(field.key, event.target.value)}
+            >
+              <option value="">{field.defaultDisplay || '--'}</option>
+              {(field.values ?? []).map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              style={inputStyle}
+              value={field.readOnly
+                ? field.defaultDisplay ?? ''
+                : values[field.key] === field.defaultDisplay ? '' : (values[field.key] ?? '')}
+              placeholder={field.placeholder || field.defaultDisplay}
+              disabled={disabled || field.readOnly}
+              onChange={(event) => update(field.key, event.target.value)}
+            />
+          )}
+          {field.help || field.defaultDisplay ? (
+            <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: designSystem.colors.text.secondary }}>
+              {field.help || field.defaultDisplay}
+            </span>
+          ) : null}
+        </label>
+      ))}
     </div>
   )
 }
