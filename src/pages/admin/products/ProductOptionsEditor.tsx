@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Button } from '../../../components/ui'
 import { designSystem, getInputStyle } from '../../../styles/designSystem'
 import {
@@ -30,16 +30,77 @@ const labelStyle: CSSProperties = {
   fontWeight: 600,
 }
 
-function csv(values: string[] | undefined): string {
-  return values?.join(', ') ?? ''
-}
-
-function parseCsv(value: string): string[] | undefined {
-  const values = Array.from(new Set(value.split(',').map((item) => item.trim()).filter(Boolean)))
-  return values.length > 0 ? values : undefined
-}
-
 const DEFAULT_SWATCH_COLOR = '#d1d5db'
+
+function OptionValuesEditor({
+  values = [],
+  onChange,
+  disabled,
+  inputStyle,
+}: {
+  values?: string[]
+  onChange: (values: string[] | undefined) => void
+  disabled: boolean
+  inputStyle: CSSProperties
+}) {
+  const [draft, setDraft] = useState('')
+  const addValue = () => {
+    const next = draft.trim()
+    if (!next || values.includes(next)) return
+    onChange([...values, next])
+    setDraft('')
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+        {values.map((option) => (
+          <span
+            key={option}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '5px 8px',
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: 999,
+              background: designSystem.colors.background.card,
+              fontSize: 12,
+            }}
+          >
+            {option}
+            <button
+              type="button"
+              disabled={disabled}
+              aria-label={`移除 ${option}`}
+              onClick={() => onChange(values.filter((value) => value !== option))}
+              style={{ border: 0, padding: 0, background: 'transparent', cursor: 'pointer' }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          style={inputStyle}
+          value={draft}
+          disabled={disabled}
+          placeholder="輸入後按 Enter"
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return
+            event.preventDefault()
+            addValue()
+          }}
+        />
+        <Button variant="outline" size="small" disabled={disabled || !draft.trim()} onClick={addValue}>
+          新增
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export function ProductOptionsEditor({
   value,
@@ -137,141 +198,135 @@ export function ProductOptionsEditor({
     index: number,
     group: ProductVariantFieldGroup,
   ) => (
-    <div
+    <details
       key={`${group}-${index}`}
       style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr 1fr' : '1.2fr 130px 1.5fr 100px 1.2fr auto',
-        gap: 8,
-        alignItems: 'end',
         marginBottom: 8,
-        padding: 10,
         border: `1px solid ${designSystem.colors.border.light}`,
         borderRadius: designSystem.borderRadius.sm,
+        background: designSystem.colors.background.card,
       }}
     >
-      <label>
-        <span style={labelStyle}>{group === 'axis' ? '顯示名稱' : '資料名稱'}</span>
-        <input
-          style={inputStyle}
-          value={field.label}
-          disabled={disabled}
-          onChange={(event) => updateVariantField(group, index, { label: event.target.value })}
-        />
-      </label>
-      <label>
-        <span style={labelStyle}>填寫方式</span>
-        <select
-          style={inputStyle}
-          value={field.inputType}
-          disabled={disabled}
-          onChange={(event) => updateVariantField(group, index, {
-            inputType: event.target.value as ProductOptionField['inputType'],
-          })}
-        >
-          <option value="text">自由輸入</option>
-          <option value="select">固定選項</option>
-        </select>
-      </label>
-      {field.inputType === 'select' ? <label>
-        <span style={labelStyle}>可選內容（逗號分隔）</span>
-        <input
-          style={inputStyle}
-          value={csv(field.values)}
-          disabled={disabled}
-          placeholder="例如：空板, 客製色, Full Carbon"
-          onChange={(event) => updateVariantField(group, index, {
-            values: parseCsv(event.target.value),
-          })}
-        />
-      </label> : <div />}
-      <label>
-        <span style={labelStyle}>單位（選填）</span>
-        <input
-          style={inputStyle}
-          value={field.suffix ?? ''}
-          disabled={disabled}
-          placeholder="cm"
-          onChange={(event) => updateVariantField(group, index, {
-            suffix: event.target.value || undefined,
-          })}
-        />
-      </label>
-      <label>
-        <span style={labelStyle}>給店員的說明</span>
-        <input
-          style={inputStyle}
-          value={field.help ?? ''}
-          disabled={disabled}
-          onChange={(event) => updateVariantField(group, index, {
-            help: event.target.value || undefined,
-          })}
-        />
-      </label>
-      <Button
-        variant="danger"
-        size="small"
-        disabled={disabled}
-        onClick={() => removeVariantField(group, index)}
+      <summary
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: 12,
+          cursor: 'pointer',
+          listStyle: 'none',
+        }}
       >
-        移除
-      </Button>
-      <details style={{ gridColumn: '1 / -1', fontSize: 12, color: designSystem.colors.text.secondary }}>
-        <summary style={{ cursor: 'pointer' }}>進階設定</summary>
-        <label style={{ display: 'block', maxWidth: 280, marginTop: 8 }}>
-          <span style={labelStyle}>系統代碼（建立後請勿修改）</span>
+        <strong style={{ minWidth: 90, fontSize: 14 }}>{field.label}</strong>
+        <span style={{ flex: 1, color: designSystem.colors.text.secondary, fontSize: 12 }}>
+          {field.values?.length
+            ? `${field.values.length} 個選項 · ${field.values.slice(0, 4).join('、')}${field.values.length > 4 ? '…' : ''}`
+            : `${field.label}${field.suffix ?? ''}`}
+        </span>
+        <span style={{ color: designSystem.colors.primary[700], fontSize: 12 }}>編輯</span>
+      </summary>
+      <div style={{ padding: '0 12px 12px' }}>
+        <label style={{ display: 'block', marginBottom: 10 }}>
+          <span style={labelStyle}>名稱</span>
           <input
             style={inputStyle}
-            value={field.key}
+            value={field.label}
             disabled={disabled}
-            onChange={(event) => updateVariantField(group, index, { key: event.target.value })}
+            onChange={(event) => updateVariantField(group, index, { label: event.target.value })}
           />
         </label>
-      </details>
-    </div>
+        {field.inputType === 'select' ? (
+          <div style={{ marginBottom: 10 }}>
+            <span style={labelStyle}>選項</span>
+            <OptionValuesEditor
+              values={field.values}
+              disabled={disabled}
+              inputStyle={inputStyle}
+              onChange={(values) => updateVariantField(group, index, { values })}
+            />
+          </div>
+        ) : null}
+        <details style={{ fontSize: 12, color: designSystem.colors.text.secondary }}>
+          <summary style={{ cursor: 'pointer', marginBottom: 8 }}>進階設定</summary>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '130px 130px 1fr', gap: 8 }}>
+            <label>
+              <span style={labelStyle}>欄位類型</span>
+              <select
+                style={inputStyle}
+                value={field.inputType}
+                disabled={disabled}
+                onChange={(event) => updateVariantField(group, index, {
+                  inputType: event.target.value as ProductOptionField['inputType'],
+                })}
+              >
+                <option value="text">文字</option>
+                <option value="select">固定選項</option>
+              </select>
+            </label>
+            {group === 'detail' ? (
+              <label>
+                <span style={labelStyle}>單位</span>
+                <input
+                  style={inputStyle}
+                  value={field.suffix ?? ''}
+                  disabled={disabled}
+                  onChange={(event) => updateVariantField(group, index, {
+                    suffix: event.target.value || undefined,
+                  })}
+                />
+              </label>
+            ) : <div />}
+            <label>
+              <span style={labelStyle}>內部說明</span>
+              <input
+                style={inputStyle}
+                value={field.help ?? ''}
+                disabled={disabled}
+                onChange={(event) => updateVariantField(group, index, {
+                  help: event.target.value || undefined,
+                })}
+              />
+            </label>
+          </div>
+          <label style={{ display: 'block', maxWidth: 280, marginTop: 8 }}>
+            <span style={labelStyle}>系統代碼</span>
+            <input
+              style={inputStyle}
+              value={field.key}
+              disabled={disabled}
+              onChange={(event) => updateVariantField(group, index, { key: event.target.value })}
+            />
+          </label>
+        </details>
+        <Button
+          variant="danger"
+          size="small"
+          disabled={disabled}
+          onClick={() => removeVariantField(group, index)}
+          style={{ marginTop: 10 }}
+        >
+          移除此欄位
+        </Button>
+      </div>
+    </details>
   )
 
   return (
     <div style={{ display: 'grid', gap: 18 }}>
-      <div
-        style={{
-          padding: 12,
-          borderRadius: designSystem.borderRadius.sm,
-          background: designSystem.colors.secondary[50],
-          color: designSystem.colors.text.secondary,
-          fontSize: 13,
-          lineHeight: 1.55,
-        }}
-      >
-        客人先選商品規格，系統會切換到對應的 SKU 與價格。需要客人另外填寫的資料，請放在「客製需求」。
-      </div>
-      {([
-        ['axis', '客人可選的規格'],
-        ['detail', '選定後顯示的商品資料'],
-      ] as const).map(([group, title]) => (
-        <div key={group}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-            <strong style={{ flex: 1, fontSize: 14 }}>{title}</strong>
-            <Button
-              variant="outline"
-              size="small"
-              disabled={disabled}
-              onClick={() => addVariantField(group)}
-            >
-              + 新增{group === 'axis' ? '規格' : '資料'}
-            </Button>
-          </div>
-          <p style={{ margin: '0 0 8px', color: designSystem.colors.text.secondary, fontSize: 12 }}>
-            {group === 'axis'
-              ? '例如：尺寸、板面材質。不同組合可以設定不同價格。'
-              : '例如：寬度、厚度、容量。這些資料不會變成選擇按鈕。'}
-          </p>
-          {value.variantFields[group].map((field, index) => renderField(field, index, group))}
-          {value.variantFields[group].length === 0 && (
-            <div style={{ color: designSystem.colors.text.disabled, fontSize: 13 }}>尚無欄位</div>
-          )}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+          <strong style={{ flex: 1, fontSize: 14 }}>客人選擇</strong>
+          <Button
+            variant="outline"
+            size="small"
+            disabled={disabled}
+            onClick={() => addVariantField('axis')}
+          >
+            + 新增
+          </Button>
         </div>
-      ))}
+        {value.variantFields.axis.map((field, index) => renderField(field, index, 'axis'))}
+      </div>
 
       <div>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
@@ -298,21 +353,38 @@ export function ProductOptionsEditor({
             + 新增需求
           </Button>
         </div>
-        <p style={{ margin: '0 0 8px', color: designSystem.colors.text.secondary, fontSize: 12 }}>
-          例如：選擇客製色後，讓客人填寫 Pantone 色號。
-        </p>
-        {value.customFields.map((field, index) => {
+        {value.customFields.map((field, index) => ({ field, index }))
+          .filter(({ field }) => !field.readOnly)
+          .map(({ field, index }) => {
           const visibility = field.visibility?.axis
           return (
-            <div
+            <details
               key={`custom-${index}`}
               style={{
-                padding: 10,
                 marginBottom: 8,
                 border: `1px solid ${designSystem.colors.border.light}`,
                 borderRadius: designSystem.borderRadius.sm,
+                background: designSystem.colors.background.card,
               }}
             >
+              <summary
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: 12,
+                  cursor: 'pointer',
+                  listStyle: 'none',
+                }}
+              >
+                <strong style={{ minWidth: 90, fontSize: 14 }}>{field.label}</strong>
+                <span style={{ flex: 1, color: designSystem.colors.text.secondary, fontSize: 12 }}>
+                  {field.values?.length ? `${field.values.length} 個選項` : '文字'}
+                  {visibility ? ` · ${value.variantFields.axis.find((axis) => axis.key === visibility.key)?.label ?? visibility.key}為 ${visibility.value} 時顯示` : ''}
+                </span>
+                <span style={{ color: designSystem.colors.primary[700], fontSize: 12 }}>編輯</span>
+              </summary>
+              <div style={{ padding: '0 12px 12px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 130px 1.5fr 130px', gap: 8 }}>
                 <label>
                   <span style={labelStyle}>顯示名稱</span>
@@ -329,25 +401,25 @@ export function ProductOptionsEditor({
                     <option value="select">固定選項</option>
                   </select>
                 </label>
-                {field.inputType === 'select' ? <label>
-                  <span style={labelStyle}>可選內容（逗號分隔）</span>
-                  <input style={inputStyle} value={csv(field.values)}
+                {field.inputType === 'select' ? <div>
+                  <span style={labelStyle}>選項</span>
+                  <OptionValuesEditor
+                    values={field.values}
                     disabled={disabled}
-                    onChange={(event) => {
-                      const values = parseCsv(event.target.value)
-                      updateCustomField(index, {
-                        values,
-                        swatches: field.displayStyle === 'swatches'
-                          ? Object.fromEntries(
-                            (values ?? []).map((option) => [
-                              option,
-                              field.swatches?.[option] ?? DEFAULT_SWATCH_COLOR,
-                            ]),
-                          )
-                          : field.swatches,
-                      })
-                    }} />
-                </label> : <div />}
+                    inputStyle={inputStyle}
+                    onChange={(values) => updateCustomField(index, {
+                      values,
+                      swatches: field.displayStyle === 'swatches'
+                        ? Object.fromEntries(
+                          (values ?? []).map((option) => [
+                            option,
+                            field.swatches?.[option] ?? DEFAULT_SWATCH_COLOR,
+                          ]),
+                        )
+                        : field.swatches,
+                    })}
+                  />
+                </div> : <div />}
                 {field.inputType === 'select' ? <label>
                   <span style={labelStyle}>商城顯示方式</span>
                   <select
@@ -414,27 +486,35 @@ export function ProductOptionsEditor({
                   <input style={inputStyle} value={field.placeholder ?? ''} disabled={disabled}
                     onChange={(event) => updateCustomField(index, { placeholder: event.target.value || undefined })} />
                 </label>
-                <label>
-                  <span style={labelStyle}>選了哪個規格才顯示</span>
-                  <select style={inputStyle} value={visibility?.key ?? ''} disabled={disabled}
+                <div style={{ gridColumn: isMobile ? undefined : 'span 2' }}>
+                  <span style={labelStyle}>顯示條件</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>當</span>
+                  <select style={{ ...inputStyle, width: 'auto', flex: 1 }} value={visibility?.key ?? ''} disabled={disabled}
                     onChange={(event) => updateCustomField(index, {
                       visibility: event.target.value
                         ? { axis: { key: event.target.value, value: '' } }
                         : undefined,
                     })}>
-                    <option value="">永遠顯示</option>
+                    <option value="">任何情況</option>
                     {value.variantFields.axis.map((axis) => (
                       <option key={axis.key} value={axis.key}>{axis.label}</option>
                     ))}
                   </select>
-                </label>
-                <label>
-                  <span style={labelStyle}>選到哪個內容</span>
-                  <input style={inputStyle} value={visibility?.value ?? ''} disabled={disabled || !visibility}
+                  {visibility ? <>
+                  <span>為</span>
+                  <select style={{ ...inputStyle, width: 'auto', flex: 1 }} value={visibility.value} disabled={disabled}
                     onChange={(event) => visibility && updateCustomField(index, {
                       visibility: { axis: { ...visibility, value: event.target.value } },
-                    })} />
-                </label>
+                    })}>
+                    <option value="">請選擇</option>
+                    {(value.variantFields.axis.find((axis) => axis.key === visibility.key)?.values ?? [])
+                      .map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                  <span>時顯示</span>
+                  </> : <span>都顯示</span>}
+                  </div>
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <label style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
                     <input type="checkbox" checked={field.required === true} disabled={disabled}
@@ -475,10 +555,65 @@ export function ProductOptionsEditor({
                     onChange={(event) => updateCustomField(index, { key: event.target.value })} />
                 </label>
               </details>
-            </div>
+              </div>
+            </details>
           )
         })}
       </div>
+
+      <details
+        style={{
+          borderTop: `1px solid ${designSystem.colors.border.light}`,
+          paddingTop: 10,
+          color: designSystem.colors.text.secondary,
+        }}
+      >
+        <summary style={{ cursor: 'pointer', fontSize: 13 }}>
+          更多設定（商品資料 {value.variantFields.detail.length} 項）
+        </summary>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <Button
+              variant="outline"
+              size="small"
+              disabled={disabled}
+              onClick={() => addVariantField('detail')}
+            >
+              + 新增商品資料
+            </Button>
+          </div>
+          {value.variantFields.detail.map((field, index) => renderField(field, index, 'detail'))}
+          {value.customFields.map((field, index) => ({ field, index }))
+            .filter(({ field }) => field.readOnly)
+            .map(({ field, index }) => (
+              <details
+                key={`fixed-${field.key}`}
+                style={{
+                  marginTop: 8,
+                  border: `1px solid ${designSystem.colors.border.light}`,
+                  borderRadius: designSystem.borderRadius.sm,
+                  background: designSystem.colors.background.card,
+                }}
+              >
+                <summary style={{ padding: 12, cursor: 'pointer' }}>
+                  {field.label}：{field.defaultDisplay || '固定文字'}
+                </summary>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8, padding: '0 12px 12px' }}>
+                  <label>
+                    <span style={labelStyle}>名稱</span>
+                    <input style={inputStyle} value={field.label} disabled={disabled}
+                      onChange={(event) => updateCustomField(index, { label: event.target.value })} />
+                  </label>
+                  <label>
+                    <span style={labelStyle}>固定顯示內容</span>
+                    <input style={inputStyle} value={field.defaultDisplay ?? ''} disabled={disabled}
+                      onChange={(event) => updateCustomField(index, { defaultDisplay: event.target.value || undefined })} />
+                  </label>
+                </div>
+              </details>
+            ))}
+        </div>
+      </details>
 
       <button
         type="button"

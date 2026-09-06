@@ -18,6 +18,10 @@ const vibesColorSwatches = readFileSync(
   resolve(process.cwd(), 'migrations/219_vibes_color_swatches.sql'),
   'utf8',
 )
+const removeUnconfirmedVibes = readFileSync(
+  resolve(process.cwd(), 'migrations/220_remove_unconfirmed_vibes_models.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -35,11 +39,11 @@ describe('product purchase option migrations', () => {
       'AVIATOR',
       'XO STOCK',
       'XO TEAM',
-      'DRAKE',
-      'ENIGMA',
     ]) {
       expect(vibesSeed).toContain(`'${model}'`)
     }
+    expect(vibesSeed).not.toContain("'DRAKE'")
+    expect(vibesSeed).not.toContain("'ENIGMA'")
     expect(vibesSeed).not.toContain("'PROTOTYPE'::TEXT")
     expect(vibesSeed).toContain('WHERE NOT EXISTS')
     expect(vibesSeed).toContain("('空板'::TEXT, 65000::INTEGER)")
@@ -76,5 +80,12 @@ describe('product purchase option migrations', () => {
     expect(vibesColorSwatches).toContain("'PLATINUM GRAY', '#a7a9ac'")
     expect(vibesColorSwatches).toContain("option_config #>> '{customFields,0,key}' = 'spray_color'")
     expect(vibesColorSwatches).not.toContain('INSERT INTO public.product_variants')
+  })
+
+  it('safely removes the two unconfirmed models', () => {
+    expect(removeUnconfirmedVibes).toContain("IN ('DRAKE', 'ENIGMA')")
+    expect(removeUnconfirmedVibes).toContain('FROM public.shop_order_items item')
+    expect(removeUnconfirmedVibes).toContain('DELETE FROM public.product_variants')
+    expect(removeUnconfirmedVibes).toContain('DELETE FROM public.products')
   })
 })

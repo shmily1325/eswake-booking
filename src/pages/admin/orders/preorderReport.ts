@@ -1,4 +1,5 @@
 import type { ShopPreorderReportLine } from './types'
+import { normalizeProductBrandName } from '../products/productBrandApi'
 
 export interface PreorderBrandSummary {
   brand: string
@@ -76,7 +77,7 @@ export function summarizePreorderReport(
     const linePaid = Math.min(lineQty - linePending, safeNonNegative(line.qty_paid))
     const lineWaiting = Math.max(0, lineQty - linePending - linePaid)
     const lineAmount = lineQty * safeNonNegative(line.unit_price)
-    const brand = line.brand.trim() || '其他品牌'
+    const brand = normalizeProductBrandName(line.brand) || '其他品牌'
     const row = brandRows.get(brand) ?? {
       brand,
       orderCount: 0,

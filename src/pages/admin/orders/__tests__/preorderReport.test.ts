@@ -49,7 +49,7 @@ describe('summarizePreorderReport', () => {
     })
     expect(summary.brands).toEqual(expect.arrayContaining([
       {
-        brand: 'Follow',
+        brand: 'FOLLOW',
         orderCount: 1,
         qty: 5,
         waiting: 2,
@@ -83,7 +83,7 @@ describe('summarizePreorderReport', () => {
         ],
       },
       {
-        brand: 'Ronix',
+        brand: 'RONIX',
         orderCount: 1,
         qty: 4,
         waiting: 4,
@@ -117,7 +117,16 @@ describe('summarizePreorderReport', () => {
         ],
       },
     ]))
-    expect(summary.brands.map((brand) => brand.brand)).toEqual(['Ronix', 'Follow'])
+    expect(summary.brands.map((brand) => brand.brand)).toEqual(['RONIX', 'FOLLOW'])
+  })
+
+  it('merges historical brand snapshots regardless of casing', () => {
+    const summary = summarizePreorderReport([
+      line('1', { brand: 'Follow' }),
+      line('2', { brand: ' FOLLOW ' }),
+    ])
+    expect(summary.brands).toHaveLength(1)
+    expect(summary.brands[0]).toMatchObject({ brand: 'FOLLOW', qty: 2, amount: 2000 })
   })
 
   it('does not produce negative progress from malformed values', () => {
