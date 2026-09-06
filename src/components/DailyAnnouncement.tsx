@@ -5,6 +5,10 @@ import { getLocalDateString, addDaysToDate } from '../utils/date'
 import { groupAnnouncementsForDisplay, getEventDateLabel, formatDateShort } from '../utils/announcement'
 import { formatTimeOffPeriodLabel, type CoachTimeOffRow } from '../utils/coachTimeOff'
 import { isHiddenFromTimeOffStaffDisplay } from '../utils/dailyStaffDisplay'
+import {
+  mergeOverlappingMaintenanceAnnouncements,
+  type BoatMaintenanceAnnouncement,
+} from '../utils/boatUnavailableDay'
 import { designSystem } from '../styles/designSystem'
 
 interface Announcement {
@@ -20,15 +24,6 @@ interface Birthday {
   nickname: string | null
 }
 
-interface BoatUnavailable {
-  boatName: string
-  reason: string
-  startDate: string
-  startTime: string | null
-  endDate: string
-  endTime: string | null
-}
-
 export function DailyAnnouncement() {
   const { isMobile } = useResponsive()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
@@ -41,11 +36,11 @@ export function DailyAnnouncement() {
   }>>({})
   const [timeOffCoaches, setTimeOffCoaches] = useState<string[]>([])
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
-  const [unavailableBoats, setUnavailableBoats] = useState<BoatUnavailable[]>([])
+  const [unavailableBoats, setUnavailableBoats] = useState<BoatMaintenanceAnnouncement[]>([])
   const [isExpanded, setIsExpanded] = useState(true)
 
   // 格式化維修時間範圍
-  const formatMaintenanceRange = (boat: BoatUnavailable): string => {
+  const formatMaintenanceRange = (boat: BoatMaintenanceAnnouncement): string => {
     const formatDate = (dateStr: string) => {
       // 將 YYYY-MM-DD 格式轉為 MM/DD
       const [, month, day] = dateStr.split('-')
@@ -185,6 +180,7 @@ export function DailyAnnouncement() {
       const boats = boatUnavailableResult.data
         .filter((item: any) => item.boats?.is_active)
         .map((item: any) => ({
+          boatId: item.boat_id,
           boatName: item.boats?.name,
           reason: item.reason,
           startDate: item.start_date,
@@ -192,9 +188,9 @@ export function DailyAnnouncement() {
           endDate: item.end_date,
           endTime: item.end_time
         }))
-        .filter((item: BoatUnavailable) => item.boatName)
+        .filter((item: BoatMaintenanceAnnouncement) => item.boatName)
       
-      setUnavailableBoats(boats)
+      setUnavailableBoats(mergeOverlappingMaintenanceAnnouncements(boats))
     }
   }
 

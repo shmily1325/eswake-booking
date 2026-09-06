@@ -14,6 +14,64 @@ export type BoatUnavailableRow = {
   reason?: string | null
 }
 
+export type BoatMaintenanceAnnouncement = {
+  boatId: number
+  boatName: string
+  reason: string | null
+  startDate: string
+  startTime: string | null
+  endDate: string
+  endTime: string | null
+}
+
+const maintenanceBoundary = (
+  date: string,
+  time: string | null,
+  boundary: 'start' | 'end'
+) => `${date}T${time || (boundary === 'start' ? '00:00:00' : '23:59:59')}`
+
+/**
+ * 同一艘船的重疊維修只在公告顯示一條時間軸。
+ * 相接但沒有重疊的區間仍各自顯示。
+ */
+export function mergeOverlappingMaintenanceAnnouncements(
+  rows: BoatMaintenanceAnnouncement[]
+): BoatMaintenanceAnnouncement[] {
+  const sorted = [...rows].sort((a, b) =>
+    a.boatId - b.boatId
+    || maintenanceBoundary(a.startDate, a.startTime, 'start')
+      .localeCompare(maintenanceBoundary(b.startDate, b.startTime, 'start'))
+  )
+  const merged: BoatMaintenanceAnnouncement[] = []
+
+  for (const row of sorted) {
+    const current = merged[merged.length - 1]
+    const overlaps = current
+      && current.boatId === row.boatId
+      && maintenanceBoundary(row.startDate, row.startTime, 'start')
+        <= maintenanceBoundary(current.endDate, current.endTime, 'end')
+
+    if (!overlaps) {
+      merged.push({ ...row })
+      continue
+    }
+
+    const rowEndsLater = maintenanceBoundary(row.endDate, row.endTime, 'end')
+      > maintenanceBoundary(current.endDate, current.endTime, 'end')
+    if (rowEndsLater) {
+      current.endDate = row.endDate
+      current.endTime = row.endTime
+    }
+
+    const reasons = [current.reason, row.reason]
+      .map((reason) => reason?.trim() || '')
+      .filter((reason, index, all) => reason && all.indexOf(reason) === index)
+    current.reason = reasons.join('、')
+  }
+
+  return merged
+}
+
 export function mapBoatUnavailableRowsToBlocks(
   targetDate: string,
   rows: BoatUnavailableRow[]
