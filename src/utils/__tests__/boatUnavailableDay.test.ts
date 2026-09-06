@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getMaintenanceAnnouncementsForDate,
   mergeOverlappingMaintenanceAnnouncements,
   type BoatMaintenanceAnnouncement,
 } from '../boatUnavailableDay'
@@ -67,5 +68,26 @@ describe('mergeOverlappingMaintenanceAnnouncements', () => {
     ])
 
     expect(result).toHaveLength(2)
+  })
+
+  it('先合併完整區間，再篩選指定日期仍有效的公告', () => {
+    const result = getMaintenanceAnnouncementsForDate([
+      maintenance(),
+      maintenance({
+        startDate: '2026-09-06',
+        endDate: '2026-09-08',
+      }),
+      maintenance({
+        startDate: '2026-08-01',
+        endDate: '2026-08-02',
+      }),
+    ], '2026-09-07')
+
+    expect(result).toEqual([
+      maintenance({
+        startDate: '2026-09-05',
+        endDate: '2026-09-08',
+      }),
+    ])
   })
 })

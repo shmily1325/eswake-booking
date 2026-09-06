@@ -72,6 +72,14 @@ export function mergeOverlappingMaintenanceAnnouncements(
   return merged
 }
 
+export function getMaintenanceAnnouncementsForDate(
+  rows: BoatMaintenanceAnnouncement[],
+  targetDate: string
+): BoatMaintenanceAnnouncement[] {
+  return mergeOverlappingMaintenanceAnnouncements(rows)
+    .filter((row) => row.startDate <= targetDate && row.endDate >= targetDate)
+}
+
 export function mapBoatUnavailableRowsToBlocks(
   targetDate: string,
   rows: BoatUnavailableRow[]

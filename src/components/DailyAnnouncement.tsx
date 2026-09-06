@@ -6,7 +6,7 @@ import { groupAnnouncementsForDisplay, getEventDateLabel, formatDateShort } from
 import { formatTimeOffPeriodLabel, type CoachTimeOffRow } from '../utils/coachTimeOff'
 import { isHiddenFromTimeOffStaffDisplay } from '../utils/dailyStaffDisplay'
 import {
-  mergeOverlappingMaintenanceAnnouncements,
+  getMaintenanceAnnouncementsForDate,
   type BoatMaintenanceAnnouncement,
 } from '../utils/boatUnavailableDay'
 import { designSystem } from '../styles/designSystem'
@@ -131,8 +131,6 @@ export function DailyAnnouncement() {
         .from('boat_unavailable_dates')
         .select('boat_id, reason, start_date, start_time, end_date, end_time, boats(name, is_active)')
         .eq('is_active', true)
-        .lte('start_date', today)
-        .gte('end_date', today)
     ])
 
     // 處理查詢結果
@@ -190,7 +188,7 @@ export function DailyAnnouncement() {
         }))
         .filter((item: BoatMaintenanceAnnouncement) => item.boatName)
       
-      setUnavailableBoats(mergeOverlappingMaintenanceAnnouncements(boats))
+      setUnavailableBoats(getMaintenanceAnnouncementsForDate(boats, today))
     }
   }
 
