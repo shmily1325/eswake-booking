@@ -45,6 +45,8 @@ import { normalizePreOrderUntil } from './productBatch'
 import {
   activeTagPresets,
   foldLabel,
+  isPreorderDiscountEligible,
+  PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE,
   resolveShopPrice,
   TAG_ON_PREORDER_HINT,
   type DiscountPreset,
@@ -138,6 +140,7 @@ interface DraftVariant {
   /** 已存在但需刪除的 SKU 在儲存時批次處理 */
   pendingDelete?: boolean
   discount_preset_id: string | null
+  preorderDiscountEligible: boolean
 }
 
 type CreateStep = 1 | 2 | 3
@@ -152,7 +155,9 @@ function createDraftClientKey(prefix: string): string {
 function variantRowToDraft(v: ProductVariantRow): DraftVariant {
   const attrs: Record<string, string> = {}
   for (const [k, val] of Object.entries(v.attributes ?? {})) {
-    if (k === 'gender') {
+    if (k === PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE) {
+      continue
+    } else if (k === 'gender') {
       const g = normalizeGenderValue(val)
       attrs[k] = g ?? (val == null ? '' : String(val))
     } else {
@@ -186,6 +191,9 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     image_path: v.image_path,
     originalImagePath: v.image_path,
     discount_preset_id: v.discount_preset_id ?? null,
+    preorderDiscountEligible: isPreorderDiscountEligible(
+      v.attributes as Record<string, unknown>,
+    ),
   }
 }
 
@@ -210,6 +218,7 @@ function emptyDraft(): DraftVariant {
     image_path: null,
     originalImagePath: null,
     discount_preset_id: null,
+    preorderDiscountEligible: true,
   }
 }
 
@@ -536,6 +545,7 @@ export function ProductEditView({
           image_path: photo?.path ?? null,
           originalImagePath: null,
           discount_preset_id: lastActive.discount_preset_id,
+          preorderDiscountEligible: lastActive.preorderDiscountEligible,
         },
       ])
       setActiveSkuIndex(drafts.length)
@@ -841,7 +851,12 @@ export function ProductEditView({
           pending_delete: Boolean(d.pendingDelete),
           label_code: normalizeLabelCode(d.label_code) || null,
           vendor_code: d.vendor_code.trim() || null,
-          attributes: normalizeVariantAttributes(d.attributes),
+          attributes: {
+            ...normalizeVariantAttributes(d.attributes),
+            ...(d.preorderDiscountEligible
+              ? {}
+              : { [PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE]: 0 }),
+          },
           price: d.price.trim() === '' ? null : Number(d.price),
           member_price: d.member_price.trim() === '' ? null : Number(d.member_price),
           stock: stockNum,
@@ -2222,6 +2237,9 @@ function VariantBlock({
       stock: Number(draft.stock) || 0,
       availability: deriveVariantAvailability(Number(draft.stock) || 0, draft.acceptPreOrder),
       pre_order_until: draft.pre_order_until,
+      attributes: draft.preorderDiscountEligible
+        ? {}
+        : { [PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE]: 0 },
     },
     discountPresets,
   )
@@ -2241,6 +2259,17 @@ function VariantBlock({
           </option>
         ))}
       </select>
+      {draft.acceptPreOrder ? (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 13 }}>
+          <input
+            type="checkbox"
+            checked={draft.preorderDiscountEligible}
+            disabled={disabled || draft.pendingDelete}
+            onChange={(event) => onChange({ preorderDiscountEligible: event.target.checked })}
+          />
+          參與預購全館折扣
+        </label>
+      ) : null}
       {isPreOrderOpen({
         stock: Number(draft.stock) || 0,
         availability: deriveVariantAvailability(Number(draft.stock) || 0, draft.acceptPreOrder),

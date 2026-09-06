@@ -22,6 +22,10 @@ const removeUnconfirmedVibes = readFileSync(
   resolve(process.cwd(), 'migrations/220_remove_unconfirmed_vibes_models.sql'),
   'utf8',
 )
+const preorderDiscountEligibility = readFileSync(
+  resolve(process.cwd(), 'migrations/221_variant_preorder_discount_eligibility.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -87,5 +91,15 @@ describe('product purchase option migrations', () => {
     expect(removeUnconfirmedVibes).toContain('FROM public.shop_order_items item')
     expect(removeUnconfirmedVibes).toContain('DELETE FROM public.product_variants')
     expect(removeUnconfirmedVibes).toContain('DELETE FROM public.products')
+  })
+
+  it('excludes confirmed VIBES SKUs from the store-wide preorder discount', () => {
+    expect(preorderDiscountEligibility).toContain(
+      'batch_set_variant_preorder_discount_eligible',
+    )
+    expect(preorderDiscountEligibility).toContain("'{_preorder_discount_eligible}'")
+    expect(preorderDiscountEligibility).toContain("'false'::JSONB")
+    expect(preorderDiscountEligibility).toContain("'DIAMOND STOCK'")
+    expect(preorderDiscountEligibility).toContain("'XO TEAM'")
   })
 })

@@ -769,6 +769,18 @@ export async function batchSetVariantsPrice(
   await updateRowsByIds('product_variants', { price }, variantIds)
 }
 
+export async function batchSetVariantsPreorderDiscountEligible(
+  variantIds: string[],
+  eligible: boolean,
+): Promise<void> {
+  if (variantIds.length === 0) return
+  const { error } = await supabase.rpc('batch_set_variant_preorder_discount_eligible', {
+    p_variant_ids: variantIds,
+    p_eligible: eligible,
+  })
+  if (error) throw error
+}
+
 export async function batchSetVariantsPreOrderUntil(
   variantIds: string[],
   until: string | null,

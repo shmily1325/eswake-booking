@@ -1830,6 +1830,13 @@ export type Database = {
         }
         Returns: Json
       }
+      batch_set_variant_preorder_discount_eligible: {
+        Args: {
+          p_variant_ids: string[]
+          p_eligible: boolean
+        }
+        Returns: undefined
+      }
       get_liff_shop_orders: {
         Args: {
           p_line_user_id: string

@@ -34,6 +34,7 @@ import {
   flattenToVariantItems,
   batchSetProductsPublic,
   batchSetVariantsPreOrder,
+  batchSetVariantsPreorderDiscountEligible,
   batchSetVariantsPreOrderUntil,
   batchSetVariantsPrice,
 } from './api'
@@ -757,6 +758,16 @@ export function ProductManagement({
       return `已掛 ${ids.length}`
     })
 
+  const handleBatchPreorderDiscountEligible = (eligible: boolean) =>
+    runBatch(async () => {
+      const ids = selectedVariantIds(filteredItems, selectedIds)
+      if (ids.length === 0) return '請先勾選'
+      await batchSetVariantsPreorderDiscountEligible(ids, eligible)
+      return eligible
+        ? `已設為參與預購折扣 ${ids.length}`
+        : `已排除預購折扣 ${ids.length}`
+    })
+
   // ====== 權限尚未確認/拒絕：先顯示 loading ======
   if (!accessChecked || !hasAccess) {
     return (
@@ -1251,6 +1262,8 @@ export function ProductManagement({
             onDone={exitSelectMode}
             onSetPublic={(isPublic) => void handleBatchPublic(isPublic)}
             onSetPreOrder={(accept) => void handleBatchPreOrder(accept)}
+            onSetPreorderDiscountEligible={(eligible) =>
+              void handleBatchPreorderDiscountEligible(eligible)}
             onSetUntil={(until) => void handleBatchUntil(until)}
             onSetPrice={(price) => void handleBatchPrice(price)}
             onSetDiscount={(presetId) => void handleBatchDiscount(presetId)}

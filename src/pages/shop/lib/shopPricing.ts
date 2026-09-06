@@ -19,6 +19,14 @@ export const DISCOUNT_PERCENT_MAX = 99
 export type DiscountPercent = number
 
 export type DiscountKind = 'preorder' | 'tag'
+export const PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE = '_preorder_discount_eligible'
+
+export function isPreorderDiscountEligible(
+  attributes: Readonly<Record<string, unknown>> | null | undefined,
+): boolean {
+  const value = attributes?.[PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE]
+  return value !== false && value !== 0 && value !== 'false'
+}
 
 export interface DiscountPreset {
   id: string
@@ -147,7 +155,7 @@ export function resolveShopPrice(
   variant: Pick<
     ProductVariantRow,
     'price' | 'discount_preset_id' | 'availability' | 'stock' | 'pre_order_until'
-  >,
+  > & { attributes?: Readonly<Record<string, unknown>> },
   presets: readonly DiscountPreset[],
 ): ShopPrice {
   const original = normalizeShopPrice(variant.price)
@@ -161,7 +169,7 @@ export function resolveShopPrice(
     if (tagged) return fromPreset(original, tagged)
   }
 
-  if (isPreOrderOpen(variant)) {
+  if (isPreorderDiscountEligible(variant.attributes) && isPreOrderOpen(variant)) {
     const preorder = activePreorderPreset(presets)
     if (preorder) return fromPreset(original, preorder)
   }

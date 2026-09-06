@@ -6,6 +6,7 @@ import {
   formatInquiryUnitPrice,
   getMinSalePrice,
   isDiscountPercent,
+  isPreorderDiscountEligible,
   parseFoldInput,
   resolveShopPrice,
   saleFromOriginal,
@@ -107,6 +108,21 @@ describe('resolveShopPrice', () => {
       caption: '預購 8折',
       badge: null,
     })
+  })
+
+  it('keeps full price when a preorder SKU is excluded from the campaign', () => {
+    const price = resolveShopPrice(
+      vest({ attributes: { _preorder_discount_eligible: 0 } }),
+      [PREORDER, RED],
+    )
+    expect(price).toMatchObject({
+      original: 10125,
+      sale: 10125,
+      hasDiscount: false,
+      source: null,
+      caption: null,
+    })
+    expect(isPreorderDiscountEligible({ _preorder_discount_eligible: false })).toBe(false)
   })
 
   it('lets a tag override the preorder campaign', () => {

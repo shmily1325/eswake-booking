@@ -6,7 +6,14 @@ import { parseBatchPrice } from './productBatch'
 
 const { colors, borderRadius } = designSystem
 
-export type BatchSheet = 'public' | 'preorder' | 'until' | 'discount' | 'price' | null
+export type BatchSheet =
+  | 'public'
+  | 'preorder'
+  | 'preorder-discount'
+  | 'until'
+  | 'discount'
+  | 'price'
+  | null
 
 interface ProductBatchBarProps {
   selectedCount: number
@@ -17,6 +24,7 @@ interface ProductBatchBarProps {
   onDone: () => void
   onSetPublic: (isPublic: boolean) => void
   onSetPreOrder: (accept: boolean) => void
+  onSetPreorderDiscountEligible: (eligible: boolean) => void
   onSetUntil: (until: string | null) => void
   onSetPrice: (price: number | null) => void
   onSetDiscount: (presetId: string | null) => void
@@ -43,6 +51,7 @@ export function ProductBatchBar({
   onDone,
   onSetPublic,
   onSetPreOrder,
+  onSetPreorderDiscountEligible,
   onSetUntil,
   onSetPrice,
   onSetDiscount,
@@ -156,6 +165,34 @@ export function ProductBatchBar({
             }}
           >
             清除到期日
+          </Button>
+        </BatchSheet>
+      )}
+
+      {sheet === 'preorder-discount' && (
+        <BatchSheet title="預購折扣" onClose={closeSheet}>
+          <Button
+            fullWidth
+            size="large"
+            disabled={busy}
+            onClick={() => {
+              onSetPreorderDiscountEligible(true)
+              closeSheet()
+            }}
+          >
+            參與全館預購折扣
+          </Button>
+          <Button
+            fullWidth
+            size="large"
+            variant="secondary"
+            disabled={busy}
+            onClick={() => {
+              onSetPreorderDiscountEligible(false)
+              closeSheet()
+            }}
+          >
+            排除折扣（維持原價）
           </Button>
         </BatchSheet>
       )}
@@ -339,6 +376,16 @@ export function ProductBatchBar({
             onClick={() => setSheet('discount')}
           >
             檔期
+          </Button>
+          <Button
+            fullWidth
+            size="large"
+            variant="secondary"
+            disabled={busy || selectedCount === 0}
+            style={actionBtnStyle}
+            onClick={() => setSheet('preorder-discount')}
+          >
+            預購折扣
           </Button>
           <span style={{ gridColumn: '1 / -1', minWidth: 0, display: 'block' }}>
             <Button
