@@ -313,6 +313,19 @@ BEGIN
     RAISE EXCEPTION 'Product cover_images must be an array';
   END IF;
   v_option_config := CASE
+    -- Older cached admin clients do not send this key. Preserve the existing
+    -- configuration instead of silently turning a custom product into a
+    -- regular product. An explicit JSON null still means "clear config".
+    WHEN NOT (v_product ? 'option_config')
+      AND NULLIF(BTRIM(p_payload ->> 'product_id'), '') IS NOT NULL
+      THEN COALESCE(
+        (
+          SELECT existing.option_config
+          FROM public.products existing
+          WHERE existing.id = (p_payload ->> 'product_id')::UUID
+        ),
+        '{"version":1,"variantFields":{"axis":[],"detail":[]},"customFields":[]}'::JSONB
+      )
     WHEN v_product -> 'option_config' IS NULL
       OR jsonb_typeof(v_product -> 'option_config') = 'null'
       THEN '{"version":1,"variantFields":{"axis":[],"detail":[]},"customFields":[]}'::JSONB

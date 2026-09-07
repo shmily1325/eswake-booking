@@ -1,5 +1,5 @@
--- Remove the unconfirmed VIBES 2027 DRAKE and ENIGMA drafts.
--- Abort instead of deleting if either model has already been used by an order.
+-- Remove the unconfirmed VIBES 2027 ENIGMA draft.
+-- DRAKE was subsequently confirmed and must not be removed.
 
 BEGIN;
 
@@ -14,10 +14,10 @@ BEGIN
     JOIN public.products product ON product.id = variant.product_id
     WHERE product.category = 'ws_board'
       AND LOWER(BTRIM(product.brand)) = 'vibes'
-      AND UPPER(BTRIM(product.model)) IN ('DRAKE', 'ENIGMA')
+      AND UPPER(BTRIM(product.model)) = 'ENIGMA'
       AND product.model_year = 2027
   ) THEN
-    RAISE EXCEPTION 'Cannot remove DRAKE or ENIGMA because an order already references it';
+    RAISE EXCEPTION 'Cannot remove ENIGMA because an order already references it';
   END IF;
 
   DELETE FROM public.product_variants variant
@@ -25,13 +25,13 @@ BEGIN
   WHERE variant.product_id = product.id
     AND product.category = 'ws_board'
     AND LOWER(BTRIM(product.brand)) = 'vibes'
-    AND UPPER(BTRIM(product.model)) IN ('DRAKE', 'ENIGMA')
+    AND UPPER(BTRIM(product.model)) = 'ENIGMA'
     AND product.model_year = 2027;
 
   DELETE FROM public.products product
   WHERE product.category = 'ws_board'
     AND LOWER(BTRIM(product.brand)) = 'vibes'
-    AND UPPER(BTRIM(product.model)) IN ('DRAKE', 'ENIGMA')
+    AND UPPER(BTRIM(product.model)) = 'ENIGMA'
     AND product.model_year = 2027;
 END;
 $$;

@@ -196,7 +196,7 @@ BEGIN
   SET is_public = FALSE
   WHERE category = 'ws_board'
     AND LOWER(BTRIM(brand)) = 'vibes'
-    AND UPPER(BTRIM(model)) IN ('DRAKE', 'ENIGMA')
+    AND UPPER(BTRIM(model)) = 'ENIGMA'
     AND model_year = 2027;
 END;
 $$;

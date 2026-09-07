@@ -34,6 +34,14 @@ const vibesShopOptionUi = readFileSync(
   resolve(process.cwd(), 'migrations/223_vibes_shop_option_ui.sql'),
   'utf8',
 )
+const preserveProductOptionConfig = readFileSync(
+  resolve(process.cwd(), 'migrations/224_preserve_product_option_config.sql'),
+  'utf8',
+)
+const publishDrakeAndPrototype = readFileSync(
+  resolve(process.cwd(), 'migrations/225_publish_drake_and_prototype.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -81,7 +89,7 @@ describe('product purchase option migrations', () => {
     expect(confirmedVibesPublish).toContain("'PLATINUM GRAY'")
     expect(confirmedVibesPublish).toContain("('Full Color'::TEXT, 70000::INTEGER)")
     expect(confirmedVibesPublish).toContain("('Full Carbon'::TEXT, 75000::INTEGER)")
-    expect(confirmedVibesPublish).toContain("UPPER(BTRIM(model)) IN ('DRAKE', 'ENIGMA')")
+    expect(confirmedVibesPublish).toContain("UPPER(BTRIM(model)) = 'ENIGMA'")
     expect(confirmedVibesPublish).not.toContain("'PROTOTYPE'")
   })
 
@@ -94,8 +102,9 @@ describe('product purchase option migrations', () => {
     expect(vibesColorSwatches).not.toContain('INSERT INTO public.product_variants')
   })
 
-  it('safely removes the two unconfirmed models', () => {
-    expect(removeUnconfirmedVibes).toContain("IN ('DRAKE', 'ENIGMA')")
+  it('safely removes only the unconfirmed ENIGMA model', () => {
+    expect(removeUnconfirmedVibes).toContain("= 'ENIGMA'")
+    expect(removeUnconfirmedVibes).not.toContain("IN ('DRAKE', 'ENIGMA')")
     expect(removeUnconfirmedVibes).toContain('FROM public.shop_order_items item')
     expect(removeUnconfirmedVibes).toContain('DELETE FROM public.product_variants')
     expect(removeUnconfirmedVibes).toContain('DELETE FROM public.products')
@@ -130,5 +139,36 @@ describe('product purchase option migrations', () => {
     expect(vibesShopOptionUi).toContain('"Width"')
     expect(vibesShopOptionUi).toContain('"Thickness"')
     expect(vibesShopOptionUi).toContain('"Volume"')
+  })
+
+  it('preserves custom options when an older client omits the config key', () => {
+    expect(optionsMigration).toContain(
+      "WHEN NOT (v_product ? 'option_config')",
+    )
+    expect(preserveProductOptionConfig).toContain('pg_get_functiondef')
+    expect(preserveProductOptionConfig).toContain(
+      "SELECT existing.option_config",
+    )
+    expect(preserveProductOptionConfig).toContain(
+      "jsonb_typeof(v_product -> 'option_config') = 'null'",
+    )
+  })
+
+  it('publishes DRAKE 2027 and PROTOTYPE 2026 from workbook dimensions', () => {
+    expect(publishDrakeAndPrototype).toContain(
+      "('DRAKE', 2027, 1, '3''11', 18.74, 1.53, 14.7)",
+    )
+    expect(publishDrakeAndPrototype).toContain(
+      "('PROTOTYPE', 2026, 12, '4''10', 20.13, 1.65, NULL)",
+    )
+    expect(publishDrakeAndPrototype).toContain(
+      "v_model.model = 'DRAKE'",
+    )
+    expect(publishDrakeAndPrototype).toContain(
+      "'_preorder_discount_eligible', FALSE",
+    )
+    expect(publishDrakeAndPrototype).toContain(
+      "UPPER(BTRIM(model)) = 'ENIGMA'",
+    )
   })
 })
