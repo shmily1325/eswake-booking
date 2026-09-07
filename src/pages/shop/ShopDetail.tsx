@@ -702,6 +702,7 @@ function ProductDetailBody({
                               height: 20,
                               minWidth: 20,
                               minHeight: 20,
+                              padding: 0,
                               boxSizing: 'border-box',
                               backgroundColor: field.swatches?.[value] ?? '#d1d5db',
                             }}
