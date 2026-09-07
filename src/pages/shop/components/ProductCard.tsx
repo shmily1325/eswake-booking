@@ -74,7 +74,7 @@ export function ProductCard({ product, variants }: ProductCardProps) {
   )
   const modelName = formatProductModelName(product)
   const secondaryLine = formatProductSecondaryLine(product)
-  const deadline = summary.hasPreOrder
+  const deadline = summary.hasPreOrder && !summary.hasCustomOrder
     ? formatPreOrderDeadline(summary.preOrderUntil)
     : null
 
@@ -92,6 +92,11 @@ export function ProductCard({ product, variants }: ProductCardProps) {
           imgClassName={SHOP_PRODUCT_IMG}
           fallback={<NoImagePlaceholder />}
         />
+        {summary.hasCustomOrder ? (
+          <span className="absolute left-2 top-2 z-10 bg-zinc-900 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+            {SHOP_LABEL.customOrder}
+          </span>
+        ) : null}
       </div>
 
       <div className="px-3 pt-2.5 pb-3 flex flex-col">
@@ -158,6 +163,11 @@ export function ProductCard({ product, variants }: ProductCardProps) {
         {deadline ? (
           <div className={'mt-1.5 ' + SHOP_PREORDER_DEADLINE}>
             {deadline}
+          </div>
+        ) : null}
+        {summary.hasCustomOrder ? (
+          <div className="mt-1.5 text-xs font-medium text-zinc-600">
+            {SHOP_DETAIL.madeToOrder}
           </div>
         ) : null}
       </div>

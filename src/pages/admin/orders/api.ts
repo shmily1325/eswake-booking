@@ -157,6 +157,7 @@ export async function createShopOrder(input: CreateOrderInput): Promise<string> 
         qty: line.qty,
         was_preorder: line.was_preorder,
         brand_snapshot: line.brand_snapshot,
+        sale_mode_snapshot: line.sale_mode_snapshot,
         selected_options: line.selected_options ?? {},
       })),
     )
@@ -192,6 +193,7 @@ export async function updateShopOrder(orderId: string, input: UpdateOrderInput):
           qty: line.qty,
           was_preorder: line.was_preorder,
           brand_snapshot: line.brand_snapshot,
+          sale_mode_snapshot: line.sale_mode_snapshot,
           selected_options: line.selected_options ?? {},
         })),
       )

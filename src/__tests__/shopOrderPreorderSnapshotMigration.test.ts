@@ -12,6 +12,7 @@ describe('shop order preorder reporting snapshot migration', () => {
     expect(migration).toContain('ADD COLUMN IF NOT EXISTS was_preorder BOOLEAN')
     expect(migration).toContain('ADD COLUMN IF NOT EXISTS brand_snapshot TEXT')
     expect(migration).toContain('ALTER COLUMN was_preorder SET NOT NULL')
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS sale_mode_snapshot TEXT')
   })
 
   it('captures current SKU state automatically when an order item is inserted', () => {
@@ -23,6 +24,9 @@ describe('shop order preorder reporting snapshot migration', () => {
     )
     expect(migration).toContain(
       'NEW.was_preorder := COALESCE(NEW.was_preorder, v_was_preorder);',
+    )
+    expect(migration).toContain(
+      'NEW.sale_mode_snapshot := COALESCE(NEW.sale_mode_snapshot, v_sale_mode);',
     )
   })
 

@@ -12,6 +12,7 @@ import { getProductImageUrl } from './shopFormat'
 import {
   getShopVisibleVariants,
   getVariantAvailability,
+  isProductInCustomOrderSection,
   isProductInPreOrderSection,
   isProductInStockSection,
 } from './productAvailability'
@@ -21,7 +22,7 @@ import {
   type DiscountPreset,
 } from './shopPricing'
 
-export type HomeGalleryKind = 'pre-order' | 'es-series' | 'in-stock' | 'sale'
+export type HomeGalleryKind = 'pre-order' | 'custom-order' | 'es-series' | 'in-stock' | 'sale'
 
 export function isEsSeriesProduct(product: { category?: string | null }): boolean {
   return isEsSeriesCategory(product.category)
@@ -55,7 +56,12 @@ function focusedVariants(
     const tagged = visible.filter((v) => resolveShopPrice(v, presets).source === 'tag')
     return tagged.length > 0 ? tagged : visible
   }
-  const wanted = kind === 'pre-order' ? 'pre_order' : 'in_stock'
+  const wanted =
+    kind === 'pre-order'
+      ? 'pre_order'
+      : kind === 'custom-order'
+        ? 'custom_order'
+        : 'in_stock'
   const focused = visible.filter((v) => getVariantAvailability(v) === wanted)
   return focused.length > 0 ? focused : visible
 }
@@ -65,6 +71,7 @@ export function productHasTagSale(
   presets: readonly DiscountPreset[],
 ): boolean {
   if (isProductInPreOrderSection(product.variants)) return false
+  if (isProductInCustomOrderSection(product.variants)) return false
   return getShopVisibleVariants(product.variants).some(
     (v) => resolveShopPrice(v, presets).source === 'tag',
   )
@@ -83,6 +90,8 @@ export function collectHomeGalleryPool(
         ? es
         : kind === 'pre-order'
           ? !es && isProductInPreOrderSection(product.variants)
+          : kind === 'custom-order'
+            ? isProductInCustomOrderSection(product.variants)
           : kind === 'in-stock'
             ? isProductInStockSection(product.variants) &&
               !productHasTagSale(product, presets)

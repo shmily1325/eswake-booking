@@ -228,13 +228,12 @@ BEGIN
         'finish', finish.name,
         'width', dimension.width,
         'thickness', dimension.thickness,
-        'volume', dimension.volume,
-        '_preorder_discount_eligible', FALSE
+        'volume', dimension.volume
       )),
       finish.price,
       NULL,
       0,
-      'pre_order',
+      'custom_order',
       NULL,
       NULL,
       NULL,
@@ -266,8 +265,7 @@ BEGIN
         ) || jsonb_strip_nulls(jsonb_build_object(
           'width', dimension.width,
           'thickness', dimension.thickness,
-          'volume', dimension.volume,
-          '_preorder_discount_eligible', FALSE
+          'volume', dimension.volume
         )),
         price = CASE variant.attributes ->> 'finish'
           WHEN 'Standard' THEN 65000
@@ -275,7 +273,7 @@ BEGIN
           WHEN 'Full Carbon' THEN 75000
           ELSE variant.price
         END,
-        availability = 'pre_order',
+        availability = 'custom_order',
         is_active = TRUE
     FROM vibes_model_dimensions dimension
     WHERE variant.product_id = v_product_id

@@ -30,7 +30,7 @@ import {
   getVariantPurchaseLimit,
   isVariantPurchasable,
 } from './lib/productAvailability'
-import { SHOP_DETAIL } from './lib/shopCopy'
+import { SHOP_DETAIL, SHOP_LABEL } from './lib/shopCopy'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
 import { ShopDetailGallery } from './components/ShopDetailGallery'
@@ -245,7 +245,12 @@ export function ShopDetail() {
       discountCaption: shopPrice.caption,
       quantity: Math.min(quantity, quantityLimit),
       maxQuantity: quantityLimit,
-      availability: avail === 'pre_order' ? 'pre_order' : 'in_stock',
+      availability:
+        avail === 'pre_order'
+          ? 'pre_order'
+          : avail === 'custom_order'
+            ? 'custom_order'
+            : 'in_stock',
       preOrderEta: selectedVariant.pre_order_eta,
       selectedOptions: buildSelectedOptionSnapshot(
         optionConfig,
@@ -277,6 +282,7 @@ export function ShopDetail() {
       originalPrice: shopPrice.original,
       discountCaption: shopPrice.caption,
       isPreOrder: avail === 'pre_order',
+      isCustomOrder: avail === 'custom_order',
       preOrderEta: selectedVariant.pre_order_eta,
       selectedOptions: buildSelectedOptionSnapshot(
         optionConfig,
@@ -373,6 +379,7 @@ function ProductDetailBody({
   const variantAvail = selectedVariant ? getVariantAvailability(selectedVariant) : null
   const canPurchase = selectedVariant ? isVariantPurchasable(selectedVariant) : false
   const isPreOrder = variantAvail === 'pre_order'
+  const isCustomOrder = variantAvail === 'custom_order'
   const shopPrice = selectedVariant ? promo.resolve(selectedVariant) : null
   const hasPrice = shopPrice?.sale != null
   const priceText = hasPrice ? formatPrice(shopPrice!.sale!) : '價格洽詢'
@@ -522,6 +529,12 @@ function ProductDetailBody({
                 預計 {selectedVariant.pre_order_eta}
               </span>
             ) : null}
+          </div>
+        )}
+        {isCustomOrder && (
+          <div className="mt-2 inline-flex self-start items-center gap-2 rounded bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800">
+            <span>{SHOP_LABEL.customOrder}</span>
+            <span className="font-normal text-zinc-500">{SHOP_DETAIL.madeToOrder}</span>
           </div>
         )}
 

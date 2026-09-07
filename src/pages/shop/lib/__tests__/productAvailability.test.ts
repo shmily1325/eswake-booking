@@ -6,6 +6,7 @@ import {
   getVariantPurchaseLimit,
   getVariantSellableStock,
   isPreOrderOpen,
+  isProductInCustomOrderSection,
   isProductInPreOrderSection,
   isProductInStockSection,
   isProductVisibleInShop,
@@ -67,6 +68,13 @@ describe('getVariantAvailability', () => {
       getVariantPurchaseLimit(v({ availability: 'pre_order', stock: 0 }), 99),
     ).toBe(99)
   })
+
+  it('keeps custom orders purchasable with a 99 limit regardless of stock', () => {
+    const custom = v({ availability: 'custom_order', stock: 12 })
+    expect(getVariantAvailability(custom)).toBe('custom_order')
+    expect(isVariantPurchasable(custom)).toBe(true)
+    expect(getVariantPurchaseLimit(custom)).toBe(99)
+  })
 })
 
 describe('shop visibility', () => {
@@ -77,6 +85,18 @@ describe('shop visibility', () => {
   it('shows pre_order without stock', () => {
     expect(isProductVisibleInShop([v({ availability: 'pre_order', stock: 0 })])).toBe(true)
     expect(isVariantPurchasable(v({ availability: 'pre_order', stock: 0 }))).toBe(true)
+  })
+
+  it('shows custom orders only in their own availability section', () => {
+    const custom = v({ availability: 'custom_order', stock: 8 })
+    const summary = summarizeProductAvailability([custom])
+    expect(summary.hasCustomOrder).toBe(true)
+    expect(summary.primaryBadge).toBe('custom_order')
+    expect(isProductVisibleInShop([custom])).toBe(true)
+    expect(isProductInCustomOrderSection([custom])).toBe(true)
+    expect(isProductInPreOrderSection([custom])).toBe(false)
+    expect(isProductInStockSection([custom])).toBe(false)
+    expect(getShopVisibleVariants([custom])).toEqual([custom])
   })
 
   it('getShopVisibleVariants excludes sold_out', () => {

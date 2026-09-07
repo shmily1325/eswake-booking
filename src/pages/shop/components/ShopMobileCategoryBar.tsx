@@ -19,9 +19,11 @@ interface ShopCategoryBarProps {
   groupCounts: Map<ShopGroup, number>
   categoryCounts: Map<string, number>
   preOrderCount: number
+  customOrderCount: number
   onSelectAll: () => void
   onSelectCategory: (topLevel: TopLevel, subCat?: string) => void
   onSelectPreOrder: () => void
+  onSelectCustomOrder: () => void
   /** dark = 貼在黑色 hero 底下；light = 灰底列表頁（legacy） */
   variant?: 'dark' | 'light'
   /** 與 hero 底部漸層重疊，無硬邊界 */
@@ -34,9 +36,11 @@ export function ShopCategoryBar({
   groupCounts,
   categoryCounts,
   preOrderCount,
+  customOrderCount,
   onSelectAll,
   onSelectCategory,
   onSelectPreOrder,
+  onSelectCustomOrder,
   variant = 'dark',
   fadeFromHero = false,
 }: ShopCategoryBarProps) {
@@ -45,7 +49,8 @@ export function ShopCategoryBar({
   const allActive =
     filters.topLevel === ALL_GROUPS &&
     filters.subCat === ALL_SUBCATS &&
-    !filters.preOrderOnly
+    !filters.preOrderOnly &&
+    !filters.customOrderOnly
 
   const activeGroup =
     filters.topLevel !== ALL_GROUPS ? (filters.topLevel as ShopGroup) : null
@@ -117,8 +122,19 @@ export function ShopCategoryBar({
           </CategoryChip>
         )}
 
+        {customOrderCount > 0 && (
+          <CategoryChip
+            active={filters.customOrderOnly}
+            onClick={onSelectCustomOrder}
+            onDark={onDark}
+            count={customOrderCount}
+          >
+            {SHOP_LABEL.customOrder}
+          </CategoryChip>
+        )}
+
         {/* 桌機：子分類接在同一列 */}
-        {!filters.preOrderOnly && showSubRow && (
+        {!filters.preOrderOnly && !filters.customOrderOnly && showSubRow && (
           <div className="hidden lg:contents">
             <span
               className={
@@ -148,7 +164,7 @@ export function ShopCategoryBar({
       </div>
 
       {/* 手機：子分類（回到大類全選 → 再點上方 Wakeboarding） */}
-      {!filters.preOrderOnly && showSubRow && activeGroup && (
+      {!filters.preOrderOnly && !filters.customOrderOnly && showSubRow && activeGroup && (
         <div className="relative lg:hidden">
           <div
             className="relative z-21 max-w-7xl mx-auto flex gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

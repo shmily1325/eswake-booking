@@ -33,7 +33,7 @@ import {
   fetchVariantItemByLabelCode,
   flattenToVariantItems,
   batchSetProductsPublic,
-  batchSetVariantsPreOrder,
+  batchSetVariantsSaleMode,
   batchSetVariantsPreorderDiscountEligible,
   batchSetVariantsPreOrderUntil,
   batchSetVariantsPrice,
@@ -56,9 +56,11 @@ import { designSystem, getFontSize, getInputStyle, getPageContentShellStyle, PAG
 import { ProductBatchBar, SelectCheck } from './ProductBatchBar'
 import {
   formatBatchToast,
+  partitionPreOrderOnly,
   partitionPreOrderToggle,
   partitionPreOrderUntil,
   selectedVariantIds,
+  type BatchSaleMode,
   uniqueProductIdsFromSelection,
 } from './productBatch'
 import { matchesSelectedDataIssues } from './productFilterLogic'
@@ -221,6 +223,8 @@ export function ProductManagement({
   const [onlyInStock, setOnlyInStock] = useState(false)
   /** 預購：只顯示 pre_order；可跟待補資料疊加 */
   const [onlyPreOrder, setOnlyPreOrder] = useState(false)
+  /** 客訂：只顯示 custom_order；可跟待補資料疊加 */
+  const [onlyCustomOrder, setOnlyCustomOrder] = useState(false)
   /** 已售完 archive：active 時只顯示 sold_out；預設隱藏已售完（搜尋時仍會找到） */
   const [onlySoldOut, setOnlySoldOut] = useState(false)
   /** 檔期：只顯示已掛該 Sale 檔期的 SKU */
@@ -238,6 +242,7 @@ export function ProductManagement({
     setOnlyMissingLabel(false)
     setOnlyInStock(false)
     setOnlyPreOrder(false)
+    setOnlyCustomOrder(false)
     setOnlySoldOut(false)
     setDiscountPresetFilter(null)
     setActiveGroup('all')
@@ -259,6 +264,7 @@ export function ProductManagement({
     onlyMissingLabel ||
     onlyInStock ||
     onlyPreOrder ||
+    onlyCustomOrder ||
     onlySoldOut ||
     discountPresetFilter != null ||
     activeGroup !== 'all' ||
@@ -271,12 +277,13 @@ export function ProductManagement({
   const toggleMissingImage = () => setOnlyMissingImage((v) => !v)
   const toggleMissingCover = () => setOnlyMissingCover((v) => !v)
   const toggleMissingLabel = () => setOnlyMissingLabel((v) => !v)
-  /** 庫存狀態三選一：再按一次同 chip 取消 */
+  /** 供貨狀態互斥：再按一次同 chip 取消 */
   const toggleInStock = () => {
     setOnlyInStock((v) => {
       const next = !v
       if (next) {
         setOnlyPreOrder(false)
+        setOnlyCustomOrder(false)
         setOnlySoldOut(false)
       }
       return next
@@ -287,6 +294,18 @@ export function ProductManagement({
       const next = !v
       if (next) {
         setOnlyInStock(false)
+        setOnlyCustomOrder(false)
+        setOnlySoldOut(false)
+      }
+      return next
+    })
+  }
+  const toggleCustomOrder = () => {
+    setOnlyCustomOrder((v) => {
+      const next = !v
+      if (next) {
+        setOnlyInStock(false)
+        setOnlyPreOrder(false)
         setOnlySoldOut(false)
       }
       return next
@@ -298,6 +317,7 @@ export function ProductManagement({
       if (next) {
         setOnlyInStock(false)
         setOnlyPreOrder(false)
+        setOnlyCustomOrder(false)
       }
       return next
     })
@@ -492,6 +512,8 @@ export function ProductManagement({
       items = items.filter(isVariantInStock)
     } else if (onlyPreOrder) {
       items = items.filter(isVariantPreOrder)
+    } else if (onlyCustomOrder) {
+      items = items.filter(isVariantCustomOrder)
     } else if (!hasSearch) {
       items = items.filter((it) => !isVariantSoldOut(it))
     }
@@ -536,6 +558,7 @@ export function ProductManagement({
     onlyMissingLabel,
     onlyInStock,
     onlyPreOrder,
+    onlyCustomOrder,
     onlySoldOut,
     discountPresetFilter,
   ])
@@ -582,9 +605,11 @@ export function ProductManagement({
       ? [{ id: 'stock', label: '現貨', onRemove: () => setOnlyInStock(false) }]
       : onlyPreOrder
         ? [{ id: 'stock', label: '預購', onRemove: () => setOnlyPreOrder(false) }]
-        : onlySoldOut
-          ? [{ id: 'stock', label: '已售完', onRemove: () => setOnlySoldOut(false) }]
-          : []),
+        : onlyCustomOrder
+          ? [{ id: 'stock', label: '客訂', onRemove: () => setOnlyCustomOrder(false) }]
+          : onlySoldOut
+            ? [{ id: 'stock', label: '已售完', onRemove: () => setOnlySoldOut(false) }]
+            : []),
     ...(onlyUnlisted
       ? [{ id: 'unlisted', label: '未上架', onRemove: () => setOnlyUnlisted(false) }]
       : []),
@@ -678,11 +703,6 @@ export function ProductManagement({
       ),
     [filteredItems, selectedIds],
   )
-  const selectedCanPreOrder = useMemo(
-    () => partitionPreOrderToggle(filteredItems, selectedIds).applyIds.length > 0,
-    [filteredItems, selectedIds],
-  )
-
   const runBatch = async (work: () => Promise<string | null>) => {
     if (batchBusy) return
     setBatchBusy(true)
@@ -706,17 +726,21 @@ export function ProductManagement({
       return isPublic ? `已上架 ${productIds.length} 款` : `已下架 ${productIds.length} 款`
     })
 
-  const handleBatchPreOrder = (accept: boolean) =>
+  const handleBatchSaleMode = (saleMode: BatchSaleMode) =>
     runBatch(async () => {
-      const { applyIds, skippedInStock } = partitionPreOrderToggle(filteredItems, selectedIds)
+      const selected = selectedVariantIds(filteredItems, selectedIds)
+      const { applyIds, skippedInStock } = saleMode === 'pre_order'
+        ? partitionPreOrderToggle(filteredItems, selectedIds)
+        : { applyIds: selected, skippedInStock: 0 }
       if (applyIds.length === 0) {
-        return formatBatchToast(0, skippedInStock, accept ? '已開放預購' : '已關閉預購', '筆現貨')
+        return formatBatchToast(0, skippedInStock, '已更新販售方式', '筆現貨')
       }
-      await batchSetVariantsPreOrder(applyIds, accept)
+      await batchSetVariantsSaleMode(applyIds, saleMode)
+      const label = saleMode === 'custom_order' ? '已設為客訂' : saleMode === 'pre_order' ? '已設為預購' : '已設為一般'
       return formatBatchToast(
         applyIds.length,
         skippedInStock,
-        accept ? '已開放預購' : '已關閉預購',
+        label,
         '筆現貨',
       )
     })
@@ -760,12 +784,14 @@ export function ProductManagement({
 
   const handleBatchPreorderDiscountEligible = (eligible: boolean) =>
     runBatch(async () => {
-      const ids = selectedVariantIds(filteredItems, selectedIds)
-      if (ids.length === 0) return '請先勾選'
-      await batchSetVariantsPreorderDiscountEligible(ids, eligible)
+      const { applyIds, skipped } = partitionPreOrderOnly(filteredItems, selectedIds)
+      if (applyIds.length === 0) {
+        return formatBatchToast(0, skipped, '已更新預購折扣', '筆非預購')
+      }
+      await batchSetVariantsPreorderDiscountEligible(applyIds, eligible)
       return eligible
-        ? `已設為參與預購折扣 ${ids.length}`
-        : `已排除預購折扣 ${ids.length}`
+        ? formatBatchToast(applyIds.length, skipped, '已設為參與預購折扣', '筆非預購')
+        : formatBatchToast(applyIds.length, skipped, '已排除預購折扣', '筆非預購')
     })
 
   // ====== 權限尚未確認/拒絕：先顯示 loading ======
@@ -971,6 +997,7 @@ export function ProductManagement({
             onlyMissingLabel={onlyMissingLabel}
             onlyInStock={onlyInStock}
             onlyPreOrder={onlyPreOrder}
+            onlyCustomOrder={onlyCustomOrder}
             onlySoldOut={onlySoldOut}
             discountPresetFilter={discountPresetFilter}
             tagPresets={discountPresets.filter((p) => p.kind === 'tag')}
@@ -983,10 +1010,12 @@ export function ProductManagement({
             onShowActive={() => {
               setOnlyInStock(false)
               setOnlyPreOrder(false)
+              setOnlyCustomOrder(false)
               setOnlySoldOut(false)
             }}
             onToggleInStock={toggleInStock}
             onTogglePreOrder={togglePreOrder}
+            onToggleCustomOrder={toggleCustomOrder}
             onToggleSoldOut={toggleSoldOut}
             onToggleDiscountPreset={(id) =>
               setDiscountPresetFilter((prev) => (prev === id ? null : id))
@@ -1261,7 +1290,7 @@ export function ProductManagement({
             onClear={() => setSelectedIds(new Set())}
             onDone={exitSelectMode}
             onSetPublic={(isPublic) => void handleBatchPublic(isPublic)}
-            onSetPreOrder={(accept) => void handleBatchPreOrder(accept)}
+            onSetSaleMode={(saleMode) => void handleBatchSaleMode(saleMode)}
             onSetPreorderDiscountEligible={(eligible) =>
               void handleBatchPreorderDiscountEligible(eligible)}
             onSetUntil={(until) => void handleBatchUntil(until)}
@@ -1270,8 +1299,8 @@ export function ProductManagement({
             tagPresets={discountPresets
               .filter((p) => p.kind === 'tag' && p.is_active)
               .map((p) => ({ id: p.id, name: p.name, percent: p.percent }))}
-            preorderEnabled={selectedCanPreOrder}
             untilEnabled={selectedHasPreOrder}
+            preorderDiscountEnabled={selectedHasPreOrder}
           />
         )}
 
@@ -1597,6 +1626,10 @@ function isVariantPreOrder(it: VariantListItem): boolean {
   return getVariantAvailability(it.variant) === 'pre_order'
 }
 
+function isVariantCustomOrder(it: VariantListItem): boolean {
+  return getVariantAvailability(it.variant) === 'custom_order'
+}
+
 function isVariantInStock(it: VariantListItem): boolean {
   return getVariantAvailability(it.variant) === 'in_stock'
 }
@@ -1624,6 +1657,7 @@ interface InventoryDashboardProps {
   onlyMissingLabel: boolean
   onlyInStock: boolean
   onlyPreOrder: boolean
+  onlyCustomOrder: boolean
   onlySoldOut: boolean
   discountPresetFilter: string | null
   tagPresets: Array<{ id: string; name: string }>
@@ -1636,6 +1670,7 @@ interface InventoryDashboardProps {
   onShowActive: () => void
   onToggleInStock: () => void
   onTogglePreOrder: () => void
+  onToggleCustomOrder: () => void
   onToggleSoldOut: () => void
   onToggleDiscountPreset: (id: string) => void
   onClearAll: () => void
@@ -1655,6 +1690,7 @@ function InventoryDashboard({
   onlyMissingLabel,
   onlyInStock,
   onlyPreOrder,
+  onlyCustomOrder,
   onlySoldOut,
   discountPresetFilter,
   tagPresets,
@@ -1667,6 +1703,7 @@ function InventoryDashboard({
   onShowActive,
   onToggleInStock,
   onTogglePreOrder,
+  onToggleCustomOrder,
   onToggleSoldOut,
   onToggleDiscountPreset,
   onClearAll,
@@ -1679,8 +1716,9 @@ function InventoryDashboard({
     if (onlySoldOut) return base.filter(isVariantSoldOut)
     if (onlyInStock) return base.filter(isVariantInStock)
     if (onlyPreOrder) return base.filter(isVariantPreOrder)
+    if (onlyCustomOrder) return base.filter(isVariantCustomOrder)
     return activeBase
-  }, [base, activeBase, onlyInStock, onlyPreOrder, onlySoldOut])
+  }, [base, activeBase, onlyInStock, onlyPreOrder, onlyCustomOrder, onlySoldOut])
 
   const missingPriceCount = qualityBase.filter((it) => it.variant.price == null).length
   const missingImageCount = qualityBase.filter((it) => !it.variant.image_url).length
@@ -1691,13 +1729,14 @@ function InventoryDashboard({
   const unlistedCount = qualityBase.filter(isVariantUnlisted).length
   const inStockCount = activeBase.filter(isVariantInStock).length
   const preOrderCount = activeBase.filter(isVariantPreOrder).length
+  const customOrderCount = activeBase.filter(isVariantCustomOrder).length
 
   const stockStatusChips = (
     <>
       <DashboardStatChip
         label="販售中"
         count={activeBase.length}
-        active={!onlyInStock && !onlyPreOrder && !onlySoldOut}
+        active={!onlyInStock && !onlyPreOrder && !onlyCustomOrder && !onlySoldOut}
         onClick={onShowActive}
         trackId="product_filter_active"
         isMobile={isMobile}
@@ -1716,6 +1755,14 @@ function InventoryDashboard({
         active={onlyPreOrder}
         onClick={onTogglePreOrder}
         trackId="product_filter_pre_order"
+        isMobile={isMobile}
+      />
+      <DashboardStatChip
+        label="客訂"
+        count={customOrderCount}
+        active={onlyCustomOrder}
+        onClick={onToggleCustomOrder}
+        trackId="product_filter_custom_order"
         isMobile={isMobile}
       />
       <DashboardStatChip
@@ -1913,6 +1960,9 @@ function inventoryStatusBadge(
   }
   if (availability === 'pre_order') {
     return { bg: 'transparent', color: colors.text.primary, label: '預購' }
+  }
+  if (availability === 'custom_order') {
+    return { bg: 'transparent', color: colors.text.primary, label: '客訂' }
   }
   return { bg: 'transparent', color: colors.text.disabled, label: '已售完' }
 }

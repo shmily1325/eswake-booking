@@ -4,9 +4,9 @@
 
 import type { ProductVariantRow } from '../../admin/products/types'
 
-export type VariantAvailability = 'in_stock' | 'pre_order' | 'sold_out'
+export type VariantAvailability = 'in_stock' | 'pre_order' | 'custom_order' | 'sold_out'
 
-const AVAIL_SET = new Set<string>(['in_stock', 'pre_order', 'sold_out'])
+const AVAIL_SET = new Set<string>(['in_stock', 'pre_order', 'custom_order', 'sold_out'])
 
 export function isVariantAvailability(v: unknown): v is VariantAvailability {
   return typeof v === 'string' && AVAIL_SET.has(v)
@@ -18,6 +18,7 @@ export function getVariantAvailability(
 ): VariantAvailability {
   const stock = v.stock ?? 0
   if (isVariantAvailability(v.availability)) {
+    if (v.availability === 'custom_order') return 'custom_order'
     if (v.availability === 'in_stock' && stock <= 0) return 'sold_out'
     if (v.availability === 'pre_order' && stock > 0) return 'in_stock'
     return v.availability
@@ -60,12 +61,13 @@ export function isPreOrderOpen(
 /** SKU 是否可加入購物車 / LINE 詢問 */
 export function isVariantPurchasable(v: ProductVariantRow): boolean {
   const avail = getVariantAvailability(v)
+  if (avail === 'custom_order') return true
   if (avail === 'pre_order') return isPreOrderOpen(v)
   if (avail === 'in_stock') return getVariantSellableStock(v) > 0
   return false
 }
 
-/** 單次可選數量；現貨不得超過可售庫存，預購沿用介面上限。 */
+/** 單次可選數量；現貨不得超過可售庫存，預購／客訂沿用介面上限。 */
 export function getVariantPurchaseLimit(
   v: ProductVariantRow,
   preOrderLimit = 99,
@@ -78,9 +80,10 @@ export function getVariantPurchaseLimit(
 export interface ProductAvailabilitySummary {
   hasInStock: boolean
   hasPreOrder: boolean
+  hasCustomOrder: boolean
   allSoldOut: boolean
   /** 列表 card 主 badge */
-  primaryBadge: 'in_stock' | 'pre_order' | 'sold_out' | null
+  primaryBadge: VariantAvailability | null
   /** 最短 ETA（有多個 pre_order variant 時取第一個有值的） */
   preOrderEta: string | null
   /** 預購 SKU 裡最早的截止日 YYYY-MM-DD */
@@ -94,6 +97,7 @@ export function summarizeProductAvailability(
     return {
       hasInStock: false,
       hasPreOrder: false,
+      hasCustomOrder: false,
       allSoldOut: true,
       primaryBadge: 'sold_out',
       preOrderEta: null,
@@ -103,6 +107,7 @@ export function summarizeProductAvailability(
 
   let hasInStock = false
   let hasPreOrder = false
+  let hasCustomOrder = false
   let allSoldOut = true
   let preOrderEta: string | null = null
   let preOrderUntil: string | null = null
@@ -124,14 +129,19 @@ export function summarizeProductAvailability(
         if (!preOrderUntil || until < preOrderUntil) preOrderUntil = until
       }
     }
+    if (avail === 'custom_order') {
+      hasCustomOrder = true
+      allSoldOut = false
+    }
   }
 
   let primaryBadge: ProductAvailabilitySummary['primaryBadge'] = null
   if (hasInStock) primaryBadge = 'in_stock'
   else if (hasPreOrder) primaryBadge = 'pre_order'
+  else if (hasCustomOrder) primaryBadge = 'custom_order'
   else if (allSoldOut) primaryBadge = 'sold_out'
 
-  return { hasInStock, hasPreOrder, allSoldOut, primaryBadge, preOrderEta, preOrderUntil }
+  return { hasInStock, hasPreOrder, hasCustomOrder, allSoldOut, primaryBadge, preOrderEta, preOrderUntil }
 }
 
 /** 商品是否至少有一個 variant 符合供貨 facet */
@@ -145,8 +155,8 @@ export function productMatchesAvailability(
 
 /** 商城是否顯示此商品（缺貨、過期預購不算；封面另檢） */
 export function isProductVisibleInShop(variants: ProductVariantRow[]): boolean {
-  const { hasInStock, hasPreOrder } = summarizeProductAvailability(variants)
-  return hasInStock || hasPreOrder
+  const { hasInStock, hasPreOrder, hasCustomOrder } = summarizeProductAvailability(variants)
+  return hasInStock || hasPreOrder || hasCustomOrder
 }
 
 /** 預購專區：至少有一個仍有效的 pre_order variant */
@@ -159,12 +169,18 @@ export function isProductInStockSection(variants: ProductVariantRow[]): boolean 
   return summarizeProductAvailability(variants).hasInStock
 }
 
+/** 客訂專區：至少有一個 custom_order variant。 */
+export function isProductInCustomOrderSection(variants: ProductVariantRow[]): boolean {
+  return summarizeProductAvailability(variants).hasCustomOrder
+}
+
 /** 定價 / 圖片用：只取商城可見的 variant */
 export function getShopVisibleVariants(
   variants: ProductVariantRow[],
 ): ProductVariantRow[] {
   return variants.filter((v) => {
     const avail = getVariantAvailability(v)
+    if (avail === 'custom_order') return true
     if (avail === 'pre_order') return isPreOrderOpen(v)
     if (avail === 'in_stock') return getVariantSellableStock(v) > 0
     return false

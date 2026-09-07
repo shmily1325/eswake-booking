@@ -16,6 +16,7 @@ import type {
   VariantListItem,
 } from './types'
 import { deriveVariantAvailability } from './availabilityHelpers'
+import type { VariantSaleMode } from './availabilityHelpers'
 import { normalizePreOrderUntil } from './productBatch'
 import { getCategoryLabelCode } from './schema'
 import { buildLabelPrefix, composeLabelCode, maxLabelSeq } from './labelCode'
@@ -64,6 +65,8 @@ export interface SaveProductWithVariantsInput {
     price: number | null
     member_price: number | null
     stock: number
+    availability: 'in_stock' | 'pre_order' | 'custom_order' | 'sold_out'
+    /** 保留給尚未讀取 availability 的舊版 RPC。 */
     accept_pre_order: boolean
     pre_order_until: string | null
     cover_image_url: string | null
@@ -435,7 +438,7 @@ export interface CreateVariantInput {
   cost?: number | null
   stock?: number
   availability?: string
-  /** 與 availability 二擇一；後台 UI 只傳這個，由系統推導 availability */
+  /** 舊呼叫端相容；新呼叫端應明確傳 availability。 */
   acceptPreOrder?: boolean
   pre_order_eta?: string | null
   pre_order_note?: string | null
@@ -458,7 +461,7 @@ function normalizePrice(v: number | null | undefined): number | null {
 
 function resolveAvailabilityFields(input: {
   availability?: string
-  /** 與 availability 二擇一；後台 UI 只傳這個，由系統推導 availability */
+  /** 舊呼叫端相容；新呼叫端應明確傳 availability。 */
   acceptPreOrder?: boolean
   pre_order_eta?: string | null
   pre_order_note?: string | null
@@ -470,9 +473,17 @@ function resolveAvailabilityFields(input: {
 } {
   const stock = Math.max(0, Math.round(input.stock))
 
+  if (input.availability === 'custom_order') {
+    return {
+      availability: 'custom_order',
+      pre_order_eta: null,
+      pre_order_note: null,
+    }
+  }
+
   if (input.acceptPreOrder !== undefined) {
     return {
-      availability: deriveVariantAvailability(stock, input.acceptPreOrder),
+      availability: deriveVariantAvailability(stock, input.acceptPreOrder ? 'pre_order' : 'standard'),
       pre_order_eta: null,
       pre_order_note: null,
     }
@@ -493,7 +504,7 @@ function resolveAvailabilityFields(input: {
   }
 
   return {
-    availability: deriveVariantAvailability(stock, false),
+    availability: deriveVariantAvailability(stock, 'standard'),
     pre_order_eta: null,
     pre_order_note: null,
   }
@@ -545,7 +556,7 @@ export interface UpdateVariantInput {
   cost?: number | null
   stock?: number
   availability?: string
-  /** 與 availability 二擇一；後台 UI 只傳這個，由系統推導 availability */
+  /** 舊呼叫端相容；新呼叫端應明確傳 availability。 */
   acceptPreOrder?: boolean
   pre_order_eta?: string | null
   pre_order_note?: string | null
@@ -601,7 +612,12 @@ export async function updateVariant(variantId: string, input: UpdateVariantInput
     }
   }
 
-  if (input.pre_order_until !== undefined && patch.availability !== 'sold_out' && patch.availability !== 'in_stock') {
+  if (
+    input.pre_order_until !== undefined &&
+    patch.availability !== 'custom_order' &&
+    patch.availability !== 'sold_out' &&
+    patch.availability !== 'in_stock'
+  ) {
     patch.pre_order_until = normalizePreOrderUntil(input.pre_order_until)
   }
 
@@ -740,25 +756,45 @@ export async function batchSetProductsPublic(
   await updateRowsByIds('products', { is_public: isPublic }, productIds)
 }
 
-export async function batchSetVariantsPreOrder(
+/** 批次切換販售方式；一般販售依各 SKU 的庫存還原成現貨或缺貨。 */
+export async function batchSetVariantsSaleMode(
   variantIds: string[],
-  accept: boolean,
+  saleMode: VariantSaleMode,
 ): Promise<void> {
   if (variantIds.length === 0) return
-  if (accept) {
+  const clearPreOrder = {
+    pre_order_until: null,
+    pre_order_eta: null,
+    pre_order_note: null,
+  }
+  if (saleMode === 'custom_order') {
+    await updateRowsByIds(
+      'product_variants',
+      { availability: 'custom_order', ...clearPreOrder },
+      variantIds,
+    )
+    return
+  }
+  if (saleMode === 'pre_order') {
     await updateRowsByIds('product_variants', { availability: 'pre_order' }, variantIds)
     return
   }
-  await updateRowsByIds(
-    'product_variants',
-    {
-      availability: 'sold_out',
-      pre_order_until: null,
-      pre_order_eta: null,
-      pre_order_note: null,
-    },
-    variantIds,
-  )
+
+  for (let i = 0; i < variantIds.length; i += BATCH_CHUNK) {
+    const slice = variantIds.slice(i, i + BATCH_CHUNK)
+    const inStock = await supabase
+      .from('product_variants')
+      .update({ availability: 'in_stock', ...clearPreOrder })
+      .in('id', slice)
+      .gt('stock', 0)
+    if (inStock.error) throw inStock.error
+    const soldOut = await supabase
+      .from('product_variants')
+      .update({ availability: 'sold_out', ...clearPreOrder })
+      .in('id', slice)
+      .lte('stock', 0)
+    if (soldOut.error) throw soldOut.error
+  }
 }
 
 export async function batchSetVariantsPrice(

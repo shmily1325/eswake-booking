@@ -36,7 +36,7 @@ import { ShopFooter } from './components/ShopFooter'
 /**
  * 商城列表。
  * - `/shop` 無 query：首頁 gallery（Pre-Order / ES Series / In-Stock / Sale）
- * - `?preorder=1`：預購列表；`?stock=1`：現貨列表；`?sale=1`：非預購特價
+ * - `?preorder=1`：預購；`?custom=1`：客訂；`?stock=1`：現貨；`?sale=1`：特價
  */
 export function ShopList() {
   const location = useLocation()
@@ -55,6 +55,7 @@ export function ShopList() {
     hasFilter,
     selectAll,
     setPreOrderOnly,
+    setCustomOrderOnly,
     selectCategory,
     selectPreOrderBrand,
     selectPreOrderCategory,
@@ -119,9 +120,11 @@ export function ShopList() {
                 groupCounts={facets.groupCounts}
                 categoryCounts={facets.categoryCounts}
                 preOrderCount={facets.preOrderCount}
+                customOrderCount={facets.customOrderCount}
                 onSelectAll={selectAll}
                 onSelectCategory={selectCategory}
                 onSelectPreOrder={() => setPreOrderOnly(true)}
+                onSelectCustomOrder={() => setCustomOrderOnly(true)}
                 variant="dark"
                 fadeFromHero
               />
@@ -193,6 +196,8 @@ export function ShopList() {
                       ? SHOP_COPY.emptyFilter
                       : filters.preOrderOnly
                         ? SHOP_COPY.emptyPreOrder
+                      : filters.customOrderOnly
+                        ? SHOP_COPY.emptyCustomOrder
                         : filters.inStockOnly
                           ? SHOP_COPY.emptyInStock
                           : filters.saleOnly
@@ -203,6 +208,7 @@ export function ShopList() {
                   hasFilter ||
                   filters.search.trim().length > 0 ||
                   filters.preOrderOnly ||
+                  filters.customOrderOnly ||
                   filters.inStockOnly ||
                   filters.saleOnly
                 }

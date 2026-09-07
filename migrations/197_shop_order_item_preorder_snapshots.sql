@@ -3,13 +3,17 @@
 
 ALTER TABLE public.shop_order_items
   ADD COLUMN IF NOT EXISTS was_preorder BOOLEAN,
-  ADD COLUMN IF NOT EXISTS brand_snapshot TEXT;
+  ADD COLUMN IF NOT EXISTS brand_snapshot TEXT,
+  ADD COLUMN IF NOT EXISTS sale_mode_snapshot TEXT;
 
 COMMENT ON COLUMN public.shop_order_items.was_preorder IS
   '開單當下 SKU 是否為預購；後續商品到貨或訂單編輯不會改寫';
 
 COMMENT ON COLUMN public.shop_order_items.brand_snapshot IS
   '開單當下的商品品牌，用於不受後續改名影響的歷史統計';
+
+COMMENT ON COLUMN public.shop_order_items.sale_mode_snapshot IS
+  '開單當下販售方式：in_stock, pre_order, custom_order 或 sold_out';
 
 -- 上線時尚無預購訂單，因此既有訂單可安全標記為非預購並補上品牌。
 UPDATE public.shop_order_items AS item
@@ -23,6 +27,22 @@ UPDATE public.shop_order_items
 SET was_preorder = false
 WHERE was_preorder IS NULL;
 
+UPDATE public.shop_order_items
+SET sale_mode_snapshot = CASE
+  WHEN was_preorder THEN 'pre_order'
+  ELSE 'in_stock'
+END
+WHERE sale_mode_snapshot IS NULL;
+
+ALTER TABLE public.shop_order_items
+  DROP CONSTRAINT IF EXISTS shop_order_items_sale_mode_snapshot_check;
+ALTER TABLE public.shop_order_items
+  ADD CONSTRAINT shop_order_items_sale_mode_snapshot_check
+  CHECK (
+    sale_mode_snapshot IS NULL
+    OR sale_mode_snapshot IN ('in_stock', 'pre_order', 'custom_order', 'sold_out')
+  );
+
 ALTER TABLE public.shop_order_items
   ALTER COLUMN was_preorder SET NOT NULL;
 
@@ -35,11 +55,13 @@ AS $$
 DECLARE
   v_was_preorder BOOLEAN;
   v_brand TEXT;
+  v_sale_mode TEXT;
 BEGIN
   SELECT
     variant.availability = 'pre_order',
-    NULLIF(BTRIM(product.brand), '')
-  INTO v_was_preorder, v_brand
+    NULLIF(BTRIM(product.brand), ''),
+    variant.availability
+  INTO v_was_preorder, v_brand, v_sale_mode
   FROM public.product_variants AS variant
   JOIN public.products AS product ON product.id = variant.product_id
   WHERE variant.id = NEW.variant_id;
@@ -51,6 +73,7 @@ BEGIN
   -- 編輯訂單採刪除後重建品項；若前端帶回既有快照，必須保留原值。
   NEW.was_preorder := COALESCE(NEW.was_preorder, v_was_preorder);
   NEW.brand_snapshot := COALESCE(NEW.brand_snapshot, v_brand);
+  NEW.sale_mode_snapshot := COALESCE(NEW.sale_mode_snapshot, v_sale_mode);
   RETURN NEW;
 END;
 $$;

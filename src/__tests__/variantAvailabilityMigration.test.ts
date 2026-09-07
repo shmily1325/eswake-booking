@@ -6,6 +6,10 @@ const migration = readFileSync(
   resolve(process.cwd(), 'migrations/152_sync_variant_availability_with_stock.sql'),
   'utf8',
 )
+const customOrderMigration = readFileSync(
+  resolve(process.cwd(), 'migrations/227_custom_order_mode.sql'),
+  'utf8',
+)
 
 describe('variant availability stock synchronization migration', () => {
   it('marks zero-stock in-stock variants as sold out', () => {
@@ -33,5 +37,15 @@ describe('variant availability stock synchronization migration', () => {
     expect(migration).toContain('NEW.pre_order_eta := NULL;')
     expect(migration).toContain('NEW.pre_order_note := NULL;')
     expect(migration).toContain('NEW.pre_order_until := NULL;')
+  })
+
+  it('adds a durable custom-order state that stock changes do not replace', () => {
+    expect(customOrderMigration).toContain(
+      "availability IN ('in_stock', 'pre_order', 'custom_order', 'sold_out')",
+    )
+    expect(customOrderMigration).toContain(
+      "IF NEW.availability = 'custom_order' THEN",
+    )
+    expect(customOrderMigration).toContain('RETURN NEW;')
   })
 })

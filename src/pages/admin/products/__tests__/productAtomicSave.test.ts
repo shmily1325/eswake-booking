@@ -38,6 +38,7 @@ function payload(): SaveProductWithVariantsInput {
       price: 1000,
       member_price: null,
       stock: 1,
+      availability: 'in_stock',
       accept_pre_order: false,
       pre_order_until: null,
       cover_image_url: null,

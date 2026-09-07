@@ -9,7 +9,7 @@
 export const TAG_ON_PREORDER_HINT = '預購商品掛檔後仍在 Pre-Order，不會進 Sale。'
 
 import type { ProductVariantRow } from '../../admin/products/types'
-import { isPreOrderOpen } from './productAvailability'
+import { getVariantAvailability, isPreOrderOpen } from './productAvailability'
 import { formatPrice, normalizeShopPrice } from './shopFormat'
 
 /** 後台快捷檔：9 / 85 / 8 / 7 / 6 / 5 折。自訂折數走 10–99。 */
@@ -160,6 +160,11 @@ export function resolveShopPrice(
 ): ShopPrice {
   const original = normalizeShopPrice(variant.price)
   if (original == null) return fullPrice(null)
+
+  // 客訂永遠用原價，不套全館預購或指定 Sale 檔。
+  if (getVariantAvailability(variant) === 'custom_order') {
+    return fullPrice(original)
+  }
 
   const assignedId = variant.discount_preset_id
   if (assignedId) {

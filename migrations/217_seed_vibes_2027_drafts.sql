@@ -240,7 +240,7 @@ BEGIN
         v_finish.price,
         NULL,
         0,
-        'pre_order',
+        'custom_order',
         NULL,
         NULL,
         NULL,

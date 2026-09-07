@@ -112,6 +112,7 @@ interface SingleInquiryInput {
   originalPrice?: number | null
   discountCaption?: string | null
   isPreOrder?: boolean
+  isCustomOrder?: boolean
   preOrderEta?: string | null
   selectedOptions?: Record<string, { label: string; value: string }>
 }
@@ -159,7 +160,11 @@ function renderSingleMessage(
   const attrsText = formatVariantAttributes(input.categoryId, input.attributes)
   const productUrl = includeUrl ? buildProductUrl(input.productId) : ''
   const lines: string[] = [
-    input.isPreOrder ? '我想預購以下商品：' : '我想詢問以下商品：',
+    input.isCustomOrder
+      ? '我想客訂以下商品：'
+      : input.isPreOrder
+        ? '我想預購以下商品：'
+        : '我想詢問以下商品：',
     '',
     `品項：${input.productName}`,
   ]
@@ -169,6 +174,7 @@ function renderSingleMessage(
     lines.push('類型：預購')
     if (input.preOrderEta?.trim()) lines.push(`預計到貨：${input.preOrderEta.trim()}`)
   }
+  if (input.isCustomOrder) lines.push('類型：客訂（Made to Order）')
   lines.push(`數量：${input.quantity}`)
   lines.push(`單價：${lineUnitText(input)}`)
   if (productUrl) lines.push(`商品頁：${productUrl}`)
@@ -186,18 +192,26 @@ function renderCartMessage(items: CartItem[], includeUrls: boolean): string {
     0
   )
   const hasUnknownPrice = items.some((it) => it.unitPrice == null)
+  const customCount = items.filter((it) => it.availability === 'custom_order').length
+  const allCustom = customCount === items.length
 
   const lines: string[] = [
-    items.some((it) => it.availability === 'pre_order')
-      ? `我想預購以下商品（共 ${totalCount} 件）：`
-      : `我想詢問以下商品（共 ${totalCount} 件）：`,
+    allCustom
+      ? `我想客訂以下商品（共 ${totalCount} 件）：`
+      : customCount > 0
+        ? `我想詢問以下商品（含客訂，共 ${totalCount} 件）：`
+        : items.some((it) => it.availability === 'pre_order')
+          ? `我想預購以下商品（共 ${totalCount} 件）：`
+          : `我想詢問以下商品（共 ${totalCount} 件）：`,
     '',
   ]
   items.forEach((it, idx) => {
     const attrsText = formatVariantAttributes(it.categoryId, it.attributes)
     const productUrl = includeUrls ? buildProductUrl(it.productId) : ''
     const isPre = it.availability === 'pre_order'
-    lines.push(`【${idx + 1}】${it.productName}${isPre ? '（預購）' : ''}`)
+    const isCustom = it.availability === 'custom_order'
+    const kind = isCustom ? '（客訂／Made to Order）' : isPre ? '（預購）' : ''
+    lines.push(`【${idx + 1}】${it.productName}${kind}`)
     if (attrsText) lines.push(`　規格：${attrsText}`)
     appendSelectedOptions(lines, it.selectedOptions, '　')
     if (isPre && it.preOrderEta?.trim()) {

@@ -119,7 +119,7 @@ BEGIN
     UPDATE public.product_variants
     SET attributes = jsonb_set(attributes, '{finish}', to_jsonb('Full Color'::TEXT)),
         price = 70000,
-        availability = 'pre_order',
+        availability = 'custom_order',
         is_active = TRUE
     WHERE product_id = v_product_id
       AND attributes ->> 'finish' = '客製色';
@@ -152,7 +152,7 @@ BEGIN
       finish_entry.price,
       NULL,
       0,
-      'pre_order',
+      'custom_order',
       NULL,
       NULL,
       NULL,
@@ -187,7 +187,7 @@ BEGIN
           WHEN 'Full Carbon' THEN 75000
           ELSE price
         END,
-        availability = 'pre_order',
+        availability = 'custom_order',
         is_active = TRUE
     WHERE product_id = v_product_id
       AND attributes ->> 'finish' IN ('Standard', 'Full Color', 'Full Carbon');

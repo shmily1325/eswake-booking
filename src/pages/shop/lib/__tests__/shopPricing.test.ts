@@ -172,6 +172,24 @@ describe('resolveShopPrice', () => {
     })
   })
 
+  it('keeps custom orders at full price even when tagged', () => {
+    const price = resolveShopPrice(
+      vest({
+        stock: 20,
+        availability: 'custom_order',
+        discount_preset_id: 'red',
+      }),
+      [PREORDER, RED],
+    )
+    expect(price).toMatchObject({
+      original: 10125,
+      sale: 10125,
+      hasDiscount: false,
+      source: null,
+      badge: null,
+    })
+  })
+
   it('ignores inactive preorder campaign', () => {
     const price = resolveShopPrice(vest(), [{ ...PREORDER, is_active: false }])
     expect(price.hasDiscount).toBe(false)

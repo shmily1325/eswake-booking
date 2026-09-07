@@ -13,6 +13,7 @@ export const SHOP_LABEL = {
   type: 'Type',
   preOrder: 'Pre-Order',
   preOrderOnly: 'Pre-Order only',
+  customOrder: 'CUSTOM ORDER',
   esSeries: 'ES SERIES',
   inStock: 'In-Stock',
   sale: 'Sale',
@@ -37,6 +38,7 @@ export const SHOP_COPY = {
   emptySearch: (q: string) => `找不到符合「${q}」的商品`,
   emptyFilter: '沒有符合篩選條件的商品',
   emptyPreOrder: '目前沒有開放預購的商品',
+  emptyCustomOrder: '目前沒有客訂商品',
   emptyInStock: '目前沒有現貨商品',
   emptySale: '目前沒有特價商品',
   emptyCatalog: '目前還沒有上架商品',
@@ -58,5 +60,7 @@ export const SHOP_DETAIL = {
   imagePhoto: 'Photo',
   noVariants: '此商品目前沒有可選規格',
   preOrder: '預購',
+  customOrder: '客訂',
+  madeToOrder: 'Made to Order',
   memberPrice: '會員價',
 } as const

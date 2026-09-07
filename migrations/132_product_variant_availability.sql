@@ -1,4 +1,4 @@
--- 132: SKU 供貨狀態（現貨 / 預購 / 缺貨），供商城 facet 篩選與 badge 使用
+-- 132: SKU 供貨狀態（現貨 / 預購 / 客訂 / 缺貨），供商城 facet 篩選與 badge 使用
 
 ALTER TABLE product_variants
   ADD COLUMN IF NOT EXISTS availability text NOT NULL DEFAULT 'in_stock',
@@ -11,9 +11,9 @@ ALTER TABLE product_variants
 
 ALTER TABLE product_variants
   ADD CONSTRAINT product_variants_availability_check
-  CHECK (availability IN ('in_stock', 'pre_order', 'sold_out'));
+  CHECK (availability IN ('in_stock', 'pre_order', 'custom_order', 'sold_out'));
 
-COMMENT ON COLUMN product_variants.availability IS '供貨狀態：in_stock=現貨, pre_order=可預購, sold_out=缺貨不售';
+COMMENT ON COLUMN product_variants.availability IS '供貨狀態：in_stock=現貨, pre_order=可預購, custom_order=長期客訂, sold_out=缺貨不售';
 COMMENT ON COLUMN product_variants.pre_order_eta IS '預購預計到貨（顯示用，例：2026/08、Q3）';
 COMMENT ON COLUMN product_variants.pre_order_note IS '預購備註（例：首批限量 20 片）';
 COMMENT ON COLUMN product_variants.pre_order_until IS '預購截止日（選填）';

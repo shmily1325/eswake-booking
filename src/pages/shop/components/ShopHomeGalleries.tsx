@@ -13,6 +13,7 @@ import {
 } from '../lib/shopHomeGallery'
 import {
   shopGroupListPath,
+  shopCustomOrderListPath,
   shopInStockListPath,
   shopListPath,
   shopPreOrderListPath,
@@ -94,6 +95,14 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
       ),
     [products, seed, promo.presets],
   )
+  const customOrderItems = useMemo(
+    () =>
+      pickHomeGalleryItems(
+        collectHomeGalleryPool(products, 'custom-order', promo.presets),
+        seed ^ 0x4cf5ad43,
+      ),
+    [products, seed, promo.presets],
+  )
   const inStockItems = useMemo(
     () =>
       pickHomeGalleryItems(
@@ -111,6 +120,16 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
     [products, seed, promo.presets],
   )
 
+  const customOrderSlot = useMemo(
+    () => ({
+      key: 'custom-order',
+      title: SHOP_LABEL.customOrder,
+      items: customOrderItems,
+      viewAllTo: shopCustomOrderListPath(),
+      accent: 'custom' as const,
+    }),
+    [customOrderItems],
+  )
   const slots = useMemo(
     () =>
       [
@@ -145,7 +164,10 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
       ] as const,
     [preOrderItems, esSeriesItems, inStockItems, saleItems],
   )
-  const hasGallery = slots.some((slot) => slot.items.length > 0)
+  const hasStandardGallery = slots.some((slot) => slot.items.length > 0)
+  const hasGallery =
+    customOrderSlot.items.length > 0 ||
+    hasStandardGallery
 
   const listed = useMemo(() => getShopBaseProducts(products), [products])
   const groups = useMemo(() => {
@@ -163,7 +185,18 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
-      {hasGallery && (
+      {customOrderSlot.items.length > 0 && (
+        <div className="mb-8">
+          <HomeGalleryRow
+            galleryKey={customOrderSlot.key}
+            title={customOrderSlot.title}
+            items={customOrderSlot.items}
+            viewAllTo={customOrderSlot.viewAllTo}
+            accent={customOrderSlot.accent}
+          />
+        </div>
+      )}
+      {hasStandardGallery && (
         <div className={SHOP_HOME_GALLERY_GRID}>
           {slots.map((slot) =>
             slot.items.length > 0 ? (
@@ -232,7 +265,7 @@ function HomeGalleryRow({
   title: string
   items: HomeGalleryItem[]
   viewAllTo: string
-  accent?: 'sale' | 'preorder'
+  accent?: 'sale' | 'preorder' | 'custom'
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const canSlide = items.length > 1
@@ -325,6 +358,10 @@ function HomeGalleryRow({
                 {isSale ? (
                   <span className="absolute top-2 left-2 z-10 bg-red-600 text-white text-[10px] font-black italic uppercase tracking-wider px-2 py-1">
                     {item.offerFold || SHOP_LABEL.sale}
+                  </span>
+                ) : accent === 'custom' ? (
+                  <span className="absolute top-2 left-2 z-10 bg-zinc-900 text-white text-[10px] font-black uppercase tracking-wider px-2 py-1">
+                    {SHOP_LABEL.customOrder}
                   </span>
                 ) : accent === 'preorder' && item.offerFold ? (
                   <span className="absolute top-2 left-2 z-10 bg-amber-700 text-white text-[10px] font-black italic uppercase tracking-wider px-2 py-1">

@@ -79,4 +79,47 @@ describe('LINE inquiry prices', () => {
     })
     expect(payload.message).toContain('Pantone 色號：與客服洽詢顏色')
   })
+
+  it('uses made-to-order wording for a single custom order', () => {
+    const payload = buildSingleInquiry({
+      productId: 'p-custom',
+      productName: 'Custom Board',
+      categoryId: 'ws_board',
+      attributes: {},
+      quantity: 1,
+      unitPrice: 70000,
+      isCustomOrder: true,
+    })
+    expect(payload.message).toContain('我想客訂以下商品：')
+    expect(payload.message).toContain('類型：客訂（Made to Order）')
+    expect(payload.message).not.toContain('預計到貨')
+  })
+
+  it('marks custom-order lines in a mixed cart inquiry', () => {
+    const custom: CartItem = {
+      cartItemId: 'custom',
+      variantId: 'custom',
+      productId: 'p-custom',
+      productName: 'Custom Board',
+      categoryId: 'ws_board',
+      attributes: {},
+      imageUrl: null,
+      unitPrice: 70000,
+      quantity: 1,
+      maxQuantity: 99,
+      addedAt: 1,
+      availability: 'custom_order',
+    }
+    const stock: CartItem = {
+      ...custom,
+      cartItemId: 'stock',
+      variantId: 'stock',
+      productId: 'p-stock',
+      productName: 'Stock Vest',
+      availability: 'in_stock',
+    }
+    const payload = buildCartInquiry([custom, stock])
+    expect(payload.message).toContain('我想詢問以下商品（含客訂，共 2 件）：')
+    expect(payload.message).toContain('Custom Board（客訂／Made to Order）')
+  })
 })

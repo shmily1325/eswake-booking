@@ -1601,6 +1601,7 @@ export type Database = {
           qty_paid: number
           was_preorder: boolean
           brand_snapshot: string | null
+          sale_mode_snapshot: string | null
           selected_options: Json
           created_at: string
           updated_at: string
@@ -1615,6 +1616,7 @@ export type Database = {
           qty_paid?: number
           was_preorder?: boolean
           brand_snapshot?: string | null
+          sale_mode_snapshot?: string | null
           selected_options?: Json
           created_at?: string
           updated_at?: string
@@ -1629,6 +1631,7 @@ export type Database = {
           qty_paid?: number
           was_preorder?: boolean
           brand_snapshot?: string | null
+          sale_mode_snapshot?: string | null
           selected_options?: Json
           created_at?: string
           updated_at?: string

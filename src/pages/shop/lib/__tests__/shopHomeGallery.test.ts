@@ -7,7 +7,7 @@ import {
 
 function product(
   id: string,
-  availability: 'in_stock' | 'pre_order',
+  availability: 'in_stock' | 'pre_order' | 'custom_order',
   image: string | null,
   stock = 1,
   discountPresetId: string | null = null,
@@ -47,6 +47,7 @@ describe('collectHomeGalleryPool', () => {
     product('stock-blank', 'in_stock', null, 1, null, 'wb_board'),
     product('pre-photo', 'pre_order', 'https://img/b.jpg', 0),
     product('pre-blank', 'pre_order', null, 0),
+    product('custom-photo', 'custom_order', 'https://img/custom.jpg', 9),
   ]
 
     it('keeps every listed ES SERIES product in the ES Series pool', () => {
@@ -71,6 +72,18 @@ describe('collectHomeGalleryPool', () => {
     expect(collectHomeGalleryPool(products, 'pre-order').map((p) => p.productId)).toEqual([
       'pre-photo',
     ])
+  })
+
+  it('keeps custom orders in an independent gallery', () => {
+    expect(collectHomeGalleryPool(products, 'custom-order').map((p) => p.productId)).toEqual([
+      'custom-photo',
+    ])
+    expect(collectHomeGalleryPool(products, 'pre-order').map((p) => p.productId)).not.toContain(
+      'custom-photo',
+    )
+    expect(collectHomeGalleryPool(products, 'in-stock').map((p) => p.productId)).not.toContain(
+      'custom-photo',
+    )
   })
 
   it('shows pre-order fold and sale price when a campaign is on', () => {
@@ -162,6 +175,26 @@ describe('collectHomeGalleryPool', () => {
     expect(
       collectHomeGalleryPool([taggedPre], 'sale', [red]).map((p) => p.productId),
     ).toEqual([])
+  })
+
+  it('keeps tagged custom orders out of the sale pool', () => {
+    const red = {
+      id: 'red',
+      kind: 'tag' as const,
+      name: '紅標',
+      label: '紅標',
+      percent: 60,
+      is_active: true,
+      sort_order: 1,
+    }
+    const taggedCustom = product(
+      'custom-red',
+      'custom_order',
+      'https://img/custom-red.jpg',
+      5,
+      'red',
+    )
+    expect(collectHomeGalleryPool([taggedCustom], 'sale', [red])).toEqual([])
   })
 })
 

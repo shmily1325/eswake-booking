@@ -186,6 +186,11 @@ function CartLine({ item, onChangeQuantity, onRemove }: CartLineProps) {
             預購
           </span>
         )}
+        {item.availability === 'custom_order' && (
+          <span className="mt-1 inline-block rounded bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
+            客訂 · Made to Order
+          </span>
+        )}
 
         <div className="mt-auto pt-2 flex items-center justify-between gap-2">
           <QuantityStepper

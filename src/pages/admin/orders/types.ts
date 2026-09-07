@@ -37,6 +37,8 @@ export interface ShopOrderItemRow {
   was_preorder?: boolean
   /** 開單當下品牌快照，供年度品牌統計。 */
   brand_snapshot?: string | null
+  /** 開單當下販售方式；客訂與預購報表分開。 */
+  sale_mode_snapshot?: string | null
   /** 客製欄位的成交快照；key 為穩定欄位 key，value 含當時顯示名稱和值。 */
   selected_options?: Record<string, { label: string; value: string }>
   created_at: string
@@ -108,6 +110,7 @@ export interface OrderLineInput {
   /** 編輯既有訂單時帶回原始統計快照；新列留空由 DB 自動判斷。 */
   was_preorder?: boolean
   brand_snapshot?: string | null
+  sale_mode_snapshot?: string | null
   selected_options?: Record<string, { label: string; value: string }>
 }
 

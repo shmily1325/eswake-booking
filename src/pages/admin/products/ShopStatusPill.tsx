@@ -2,7 +2,7 @@
  * Design thinking:
  * Current feel: Material greens/oranges read as admin status noise.
  * Hierarchy: label text first; soft tonal fill only for quick scan.
- * Primary task: recognize 現貨 / 預購 / 已售完 / 上架 without competing chrome.
+ * Primary task: recognize 現貨 / 預購 / 客訂 / 已售完 / 上架 without competing chrome.
  */
 import type { CSSProperties } from 'react'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
@@ -15,6 +15,7 @@ const { colors } = designSystem
 const PILL: Record<ShopAvailability, { bg: string; color: string; label: string }> = {
   in_stock: { bg: 'transparent', color: colors.text.secondary, label: '現貨' },
   pre_order: { bg: 'transparent', color: colors.text.primary, label: '預購' },
+  custom_order: { bg: 'transparent', color: colors.text.primary, label: '客訂' },
   sold_out: { bg: 'transparent', color: colors.text.disabled, label: '已售完' },
 }
 

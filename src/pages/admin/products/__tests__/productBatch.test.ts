@@ -4,6 +4,7 @@ import {
   formatBatchToast,
   normalizePreOrderUntil,
   parseBatchPrice,
+  partitionPreOrderOnly,
   partitionPreOrderToggle,
   partitionPreOrderUntil,
   selectedVariantIds,
@@ -14,7 +15,7 @@ function item(
   productId: string,
   variantId: string,
   stock: number,
-  availability: 'in_stock' | 'pre_order' | 'sold_out',
+  availability: 'in_stock' | 'pre_order' | 'custom_order' | 'sold_out',
 ): VariantListItem {
   return {
     product: { id: productId } as ProductRow,
@@ -31,6 +32,7 @@ const rows = [
   item('p1', 'v1', 0, 'pre_order'),
   item('p1', 'v2', 2, 'in_stock'),
   item('p2', 'v3', 0, 'sold_out'),
+  item('p3', 'v4', 0, 'custom_order'),
 ]
 
 describe('normalizePreOrderUntil', () => {
@@ -84,9 +86,18 @@ describe('partitionPreOrderToggle', () => {
 
 describe('partitionPreOrderUntil', () => {
   it('only applies to open pre-orders', () => {
-    expect(partitionPreOrderUntil(rows, new Set(['v1', 'v2', 'v3']))).toEqual({
+    expect(partitionPreOrderUntil(rows, new Set(['v1', 'v2', 'v3', 'v4']))).toEqual({
       applyIds: ['v1'],
-      skipped: 2,
+      skipped: 3,
+    })
+  })
+})
+
+describe('partitionPreOrderOnly', () => {
+  it('protects custom orders from preorder-discount changes', () => {
+    expect(partitionPreOrderOnly(rows, new Set(['v1', 'v4']))).toEqual({
+      applyIds: ['v1'],
+      skipped: 1,
     })
   })
 })

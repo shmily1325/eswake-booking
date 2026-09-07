@@ -56,6 +56,7 @@ interface DraftLine {
   label: string
   was_preorder?: boolean
   brand_snapshot?: string | null
+  sale_mode_snapshot?: string | null
   suggested_original_price?: number | null
   suggested_discount_caption?: string | null
   selected_options: SelectedOptionSnapshot
@@ -202,6 +203,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           label: lineLabel(it.variant?.product, it.variant),
           was_preorder: it.was_preorder,
           brand_snapshot: it.brand_snapshot,
+          sale_mode_snapshot: it.sale_mode_snapshot,
           selected_options: it.selected_options ?? {},
         })),
       )
@@ -512,12 +514,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             shipping_info: shippingInfo,
             customer_note: customerNote,
             internal_notes: internalNotes,
-            lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, selected_options }) => ({
+            lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, sale_mode_snapshot, selected_options }) => ({
               variant_id,
               unit_price,
               qty,
               was_preorder,
               brand_snapshot,
+              sale_mode_snapshot,
               selected_options,
             })),
             updated_by: userEmail ?? null,
@@ -538,12 +541,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           shipping_info: shippingInfo,
           customer_note: customerNote,
           internal_notes: internalNotes,
-          lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, selected_options }) => ({
+          lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, sale_mode_snapshot, selected_options }) => ({
             variant_id,
             unit_price,
             qty,
             was_preorder,
             brand_snapshot,
+            sale_mode_snapshot,
             selected_options,
           })),
           created_by: userEmail ?? null,

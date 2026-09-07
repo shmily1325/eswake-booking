@@ -62,6 +62,7 @@ export function useShopFilters(
       brands: [],
       sizes: [],
       preOrderOnly: true,
+      customOrderOnly: false,
       inStockOnly: false,
       saleOnly: false,
     })
@@ -80,8 +81,9 @@ export function useShopFilters(
       preOrderBrandCounts,
       preOrderCategoryCounts,
       preOrderCount: catalogFacets.preOrderCount,
+      customOrderCount: catalogFacets.customOrderCount,
     }
-  }, [baseProducts, filters, catalogFacets.preOrderCount])
+  }, [baseProducts, filters, catalogFacets.preOrderCount, catalogFacets.customOrderCount])
 
   const filteredProducts = useMemo(
     () => filterAndSortProducts(baseProducts, filters, presets),
@@ -135,6 +137,7 @@ export function useShopFilters(
       brands: [],
       sizes: [],
       preOrderOnly: false,
+      customOrderOnly: false,
       inStockOnly: prev.inStockOnly,
       saleOnly: false,
     }))
@@ -144,6 +147,23 @@ export function useShopFilters(
     (preOrderOnly: boolean) => {
       writeFilters({
         preOrderOnly,
+        customOrderOnly: false,
+        inStockOnly: false,
+        saleOnly: false,
+        topLevel: ALL_GROUPS,
+        subCat: ALL_SUBCATS,
+        brands: [],
+        sizes: [],
+      })
+    },
+    [writeFilters],
+  )
+
+  const setCustomOrderOnly = useCallback(
+    (customOrderOnly: boolean) => {
+      writeFilters({
+        customOrderOnly,
+        preOrderOnly: false,
         inStockOnly: false,
         saleOnly: false,
         topLevel: ALL_GROUPS,
@@ -160,6 +180,7 @@ export function useShopFilters(
       writeFilters({
         inStockOnly,
         preOrderOnly: false,
+        customOrderOnly: false,
         saleOnly: false,
         topLevel: ALL_GROUPS,
         subCat: ALL_SUBCATS,
@@ -177,6 +198,7 @@ export function useShopFilters(
         topLevel,
         subCat,
         preOrderOnly: false,
+        customOrderOnly: false,
         inStockOnly: prev.inStockOnly,
         saleOnly: prev.saleOnly,
         brands: [],
@@ -191,6 +213,7 @@ export function useShopFilters(
       writeFilters((prev) => ({
         ...prev,
         preOrderOnly: true,
+        customOrderOnly: false,
         inStockOnly: false,
         saleOnly: false,
         topLevel: ALL_GROUPS,
@@ -206,6 +229,7 @@ export function useShopFilters(
     (subCat: string) => {
       writeFilters({
         preOrderOnly: true,
+        customOrderOnly: false,
         inStockOnly: false,
         saleOnly: false,
         topLevel: ALL_GROUPS,
@@ -333,6 +357,7 @@ export function useShopFilters(
     hasFilter,
     selectAll,
     setPreOrderOnly,
+    setCustomOrderOnly,
     setInStockOnly,
     selectCategory,
     selectPreOrderBrand,

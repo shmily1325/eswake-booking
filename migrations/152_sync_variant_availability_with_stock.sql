@@ -3,6 +3,7 @@
 -- Rules:
 -- - stock <= 0 + in_stock  -> sold_out
 -- - pre_order at zero stock remains pre_order
+-- - custom_order remains custom_order regardless of stock changes
 -- - stock-in from zero keeps the existing behavior: sold_out/pre_order -> in_stock
 
 DROP TRIGGER IF EXISTS trg_variants_availability_on_stock_in ON public.product_variants;
@@ -14,7 +15,9 @@ LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  IF NEW.stock <= 0 AND NEW.availability = 'in_stock' THEN
+  IF NEW.availability = 'custom_order' THEN
+    RETURN NEW;
+  ELSIF NEW.stock <= 0 AND NEW.availability = 'in_stock' THEN
     NEW.availability := 'sold_out';
   ELSIF TG_OP = 'UPDATE'
     AND NEW.stock > OLD.stock

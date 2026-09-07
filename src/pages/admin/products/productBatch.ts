@@ -5,7 +5,10 @@
  */
 
 import { getVariantAvailability } from '../../shop/lib/productAvailability'
+import type { VariantSaleMode } from './availabilityHelpers'
 import type { VariantListItem } from './types'
+
+export type BatchSaleMode = VariantSaleMode
 
 export function normalizePreOrderUntil(value: string | null | undefined): string | null {
   const day = value?.trim().slice(0, 10) ?? ''
@@ -72,6 +75,14 @@ export function partitionPreOrderUntil(
     }
   }
   return { applyIds, skipped }
+}
+
+/** 到期日與預購折扣只可修改預購 SKU，客訂與一般販售一律略過。 */
+export function partitionPreOrderOnly(
+  items: VariantListItem[],
+  selectedIds: ReadonlySet<string>,
+): { applyIds: string[]; skipped: number } {
+  return partitionPreOrderUntil(items, selectedIds)
 }
 
 export function formatBatchToast(

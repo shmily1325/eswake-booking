@@ -36,8 +36,9 @@ import {
 import { fetchDiscountPresets } from './discountApi'
 import type { ProductVariantRow, ProductWithVariants } from './types'
 import {
-  acceptPreOrderFromVariant,
   deriveVariantAvailability,
+  saleModeFromVariant,
+  type VariantSaleMode,
 } from './availabilityHelpers'
 import { ShopStatusPill } from './ShopStatusPill'
 import { collectZeroStockWarnings } from './productSaveWarnings'
@@ -120,8 +121,8 @@ interface DraftVariant {
   stock: string
   /** 已送結帳、待結帳的保留量（唯讀提示用；不可在此頁編輯） */
   reserved_qty: number
-  /** 無庫存時是否開放預購（有庫存時忽略，自動為現貨） */
-  acceptPreOrder: boolean
+  /** 販售方式；一般商品再依 stock 顯示現貨／缺貨。 */
+  saleMode: VariantSaleMode
   /** 預購截止日 YYYY-MM-DD；未填則一直掛到關掉預購 */
   pre_order_until: string | null
   last_stock_in_at: string | null
@@ -182,7 +183,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     member_price: v.member_price == null ? '' : String(v.member_price),
     stock: String(v.stock ?? 0),
     reserved_qty: v.reserved_qty ?? 0,
-    acceptPreOrder: acceptPreOrderFromVariant(v),
+    saleMode: saleModeFromVariant(v),
     pre_order_until: v.pre_order_until?.slice(0, 10) || null,
     last_stock_in_at: v.last_stock_in_at ?? null,
     cover_images,
@@ -209,7 +210,7 @@ function emptyDraft(): DraftVariant {
     member_price: '',
     stock: '',
     reserved_qty: 0,
-    acceptPreOrder: false,
+    saleMode: 'standard',
     pre_order_until: null,
     last_stock_in_at: null,
     cover_images: [],
@@ -544,7 +545,7 @@ export function ProductEditView({
           member_price: lastActive.member_price,
           stock: '',
           reserved_qty: 0,
-          acceptPreOrder: lastActive.acceptPreOrder,
+          saleMode: lastActive.saleMode,
           pre_order_until: lastActive.pre_order_until,
           last_stock_in_at: null,
           cover_images,
@@ -868,9 +869,11 @@ export function ProductEditView({
           price: d.price.trim() === '' ? null : Number(d.price),
           member_price: d.member_price.trim() === '' ? null : Number(d.member_price),
           stock: stockNum,
-          accept_pre_order: d.acceptPreOrder,
+          availability: deriveVariantAvailability(stockNum, d.saleMode),
+          // 舊版 RPC 只辨識此欄；新版以 availability 為準。
+          accept_pre_order: d.saleMode === 'pre_order',
           pre_order_until:
-            d.acceptPreOrder && stockNum <= 0
+            d.saleMode === 'pre_order' && stockNum <= 0
               ? normalizePreOrderUntil(d.pre_order_until)
               : null,
           cover_image_url: primary.url,
@@ -2084,15 +2087,15 @@ function VariantBlock({
           disabled={disabled || draft.pendingDelete}
           placeholder="請輸入"
           isMobile={isMobile}
-          onChange={(digits) =>
+          onChange={(digits) => {
+            const hasStock = digits !== '' && Number(digits) > 0
             onChange({
               stock: digits,
-              acceptPreOrder:
-                digits !== '' && Number(digits) > 0 ? false : draft.acceptPreOrder,
-              pre_order_until:
-                digits !== '' && Number(digits) > 0 ? null : draft.pre_order_until,
+              ...(hasStock && draft.saleMode === 'pre_order'
+                ? { saleMode: 'standard', pre_order_until: null }
+                : {}),
             })
-          }
+          }}
         />
         <span style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>
           件
@@ -2119,43 +2122,31 @@ function VariantBlock({
   )
 
   const stockNum = Number(draft.stock) || 0
-  const shopStatus = deriveVariantAvailability(stockNum, draft.acceptPreOrder)
+  const shopStatus = deriveVariantAvailability(stockNum, draft.saleMode)
 
-  const preOrderField =
-    stockNum > 0 ? (
-      <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
-        <ShopStatusPill status={shopStatus} isMobile={isMobile} />
-      </div>
-    ) : (
-      <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            fontSize: getFontSize('body', isMobile),
-            cursor: disabled || draft.pendingDelete ? 'default' : 'pointer',
+  const saleModeField = (
+    <div style={isMobile ? { gridColumn: '1 / -1' } : undefined}>
+      <label style={labelStyle}>販售方式</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <select
+          style={{ ...inputStyle, flex: 1 }}
+          value={draft.saleMode}
+          disabled={disabled || draft.pendingDelete}
+          onChange={(event) => {
+            const saleMode = event.target.value as VariantSaleMode
+            onChange({
+              saleMode,
+              pre_order_until: saleMode === 'pre_order' ? draft.pre_order_until : null,
+            })
           }}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <input
-              type="checkbox"
-              checked={draft.acceptPreOrder}
-              onChange={(e) =>
-                onChange({
-                  acceptPreOrder: e.target.checked,
-                  pre_order_until: e.target.checked ? draft.pre_order_until : null,
-                })
-              }
-              disabled={disabled || draft.pendingDelete}
-              style={{ width: 16, height: 16, flexShrink: 0 }}
-            />
-            <span style={{ fontWeight: 600 }}>開放預購</span>
-          </span>
-          <ShopStatusPill status={shopStatus} isMobile={isMobile} />
-        </label>
-        {draft.acceptPreOrder && (
+          <option value="standard">一般</option>
+          <option value="pre_order" disabled={stockNum > 0}>預購（庫存為 0 時可選）</option>
+          <option value="custom_order">客訂</option>
+        </select>
+        <ShopStatusPill status={shopStatus} isMobile={isMobile} />
+      </div>
+      {draft.saleMode === 'pre_order' && (
           <label
             style={{
               display: 'block',
@@ -2182,9 +2173,9 @@ function VariantBlock({
               }}
             />
           </label>
-        )}
-      </div>
-    )
+      )}
+    </div>
+  )
 
   const specFieldsGrid = (
     <div
@@ -2253,7 +2244,7 @@ function VariantBlock({
       price: draft.price.trim() === '' ? null : Number(draft.price),
       discount_preset_id: draft.discount_preset_id,
       stock: Number(draft.stock) || 0,
-      availability: deriveVariantAvailability(Number(draft.stock) || 0, draft.acceptPreOrder),
+      availability: deriveVariantAvailability(Number(draft.stock) || 0, draft.saleMode),
       pre_order_until: draft.pre_order_until,
       attributes: draft.preorderDiscountEligible
         ? {}
@@ -2277,7 +2268,7 @@ function VariantBlock({
           </option>
         ))}
       </select>
-      {draft.acceptPreOrder ? (
+      {draft.saleMode === 'pre_order' ? (
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 13 }}>
           <input
             type="checkbox"
@@ -2290,7 +2281,7 @@ function VariantBlock({
       ) : null}
       {isPreOrderOpen({
         stock: Number(draft.stock) || 0,
-        availability: deriveVariantAvailability(Number(draft.stock) || 0, draft.acceptPreOrder),
+        availability: deriveVariantAvailability(Number(draft.stock) || 0, draft.saleMode),
         pre_order_until: draft.pre_order_until,
       }) ? (
         <div
@@ -2354,7 +2345,7 @@ function VariantBlock({
     >
       {isMobile ? (
         <>
-          {preOrderField}
+          {saleModeField}
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelStyle}>售價</label>
             <NumericTextInput
@@ -2382,7 +2373,7 @@ function VariantBlock({
       ) : (
         <>
           {stockField}
-          {preOrderField}
+          {saleModeField}
           <div>
             <label style={labelStyle}>售價</label>
             <NumericTextInput

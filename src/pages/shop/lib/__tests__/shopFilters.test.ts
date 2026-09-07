@@ -160,6 +160,22 @@ describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
     expect(parseFiltersFromSearchParams(built).preOrderOnly).toBe(true)
   })
 
+  it('round-trips custom-order as an exclusive filter', () => {
+    const built = buildShopSearchParams({
+      ...defaultFilterState(),
+      customOrderOnly: true,
+      preOrderOnly: true,
+    })
+    expect(built.toString()).toBe('custom=1')
+    const parsed = parseFiltersFromSearchParams(
+      new URLSearchParams('custom=1&preorder=1&stock=1&sale=1'),
+    )
+    expect(parsed.customOrderOnly).toBe(true)
+    expect(parsed.preOrderOnly).toBe(false)
+    expect(parsed.inStockOnly).toBe(false)
+    expect(parsed.saleOnly).toBe(false)
+  })
+
   it('round-trips sale filter', () => {
     const built = buildShopSearchParams({
       ...defaultFilterState(),
@@ -247,6 +263,29 @@ describe('filterAndSortProducts', () => {
       inStockOnly: true,
     })
     expect(filtered.map((p) => p.category)).toEqual(['wb_board'])
+  })
+
+  it('shows custom orders only in the custom-order view', () => {
+    const custom = product('lifejacket', {
+      id: 'custom',
+      variants: [
+        {
+          id: 'v-custom',
+          product_id: 'custom',
+          stock: 20,
+          reserved_qty: 0,
+          availability: 'custom_order',
+          price: 100,
+          attributes: {},
+        },
+      ] as ProductWithVariants['variants'],
+    })
+    expect(
+      filterAndSortProducts([base[0], custom], {
+        ...defaultFilterState(),
+        customOrderOnly: true,
+      }).map((p) => p.id),
+    ).toEqual(['custom'])
   })
 
   it('does not keep essentials when switching from cat-only URL to wakeboarding', () => {
@@ -394,6 +433,9 @@ describe('isShopCatalogHome', () => {
     ).toBe(false)
     expect(
       isShopCatalogHome({ ...defaultFilterState(), preOrderOnly: true }),
+    ).toBe(false)
+    expect(
+      isShopCatalogHome({ ...defaultFilterState(), customOrderOnly: true }),
     ).toBe(false)
     expect(
       isShopCatalogHome({ ...defaultFilterState(), inStockOnly: true }),

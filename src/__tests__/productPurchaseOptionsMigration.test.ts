@@ -46,6 +46,10 @@ const correctDrakeModelYear = readFileSync(
   resolve(process.cwd(), 'migrations/226_correct_drake_model_year.sql'),
   'utf8',
 )
+const customOrderMode = readFileSync(
+  resolve(process.cwd(), 'migrations/227_custom_order_mode.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -168,14 +172,25 @@ describe('product purchase option migrations', () => {
     expect(publishDrakeAndPrototype).toContain(
       "v_model.model = 'DRAKE'",
     )
-    expect(publishDrakeAndPrototype).toContain(
-      "'_preorder_discount_eligible', FALSE",
-    )
+    expect(publishDrakeAndPrototype).toContain("'custom_order'")
     expect(publishDrakeAndPrototype).toContain(
       "UPPER(BTRIM(model)) = 'ENIGMA'",
     )
     expect(correctDrakeModelYear).toContain('SET model_year = 2026')
     expect(correctDrakeModelYear).toContain('SET model_year = NULL')
     expect(correctDrakeModelYear).toContain('v_has_orders')
+  })
+
+  it('moves VIBES into a permanent custom-order mode', () => {
+    expect(optionsMigration).toContain(
+      "WHEN v_requested_availability = 'custom_order' THEN 'custom_order'",
+    )
+    expect(confirmedVibesPublish).toContain("'custom_order'")
+    expect(publishDrakeAndPrototype).toContain("'custom_order'")
+    expect(customOrderMode).toContain("SET availability = 'custom_order'")
+    expect(customOrderMode).toContain(
+      "attributes = COALESCE(variant.attributes, '{}'::JSONB)",
+    )
+    expect(customOrderMode).toContain('sale_mode_snapshot')
   })
 })

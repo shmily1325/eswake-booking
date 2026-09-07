@@ -19,13 +19,14 @@ import { isProductListedInShop } from './shopFormat'
 import { productHasTagSale } from './shopHomeGallery'
 import {
   getShopVisibleVariants,
+  isProductInCustomOrderSection,
   isProductInPreOrderSection,
   isProductInStockSection,
 } from './productAvailability'
 import { productMatchesShopSearch } from './shopProductSearch'
 import { specAttrValue } from './variantSpecAxes'
 
-export type ShopCatalogMode = 'catalog' | 'pre-order' | 'in-stock'
+export type ShopCatalogMode = 'catalog' | 'pre-order' | 'custom-order' | 'in-stock'
 
 export type SortBy = 'newest' | 'price-asc' | 'price-desc'
 
@@ -42,6 +43,8 @@ export interface ShopFilterState {
   sortBy: SortBy
   search: string
   preOrderOnly: boolean
+  /** 僅客訂；與其他供貨專區互斥 */
+  customOrderOnly: boolean
   /** 僅現貨；與 preOrderOnly 互斥 */
   inStockOnly: boolean
   /** 僅非預購的掛檔次特價；與 preorder / stock 互斥 */
@@ -54,6 +57,7 @@ export interface ShopFacets {
   brandCounts: Map<string, number>
   totalVisible: number
   preOrderCount: number
+  customOrderCount: number
 }
 
 export function defaultFilterState(): ShopFilterState {
@@ -65,6 +69,7 @@ export function defaultFilterState(): ShopFilterState {
     sortBy: 'newest',
     search: '',
     preOrderOnly: false,
+    customOrderOnly: false,
     inStockOnly: false,
     saleOnly: false,
   }
@@ -86,6 +91,18 @@ function parseSort(raw: string | null): SortBy {
 
 /** 讓 group / cat URL 一致（cat 隱含所屬 shopGroup；跨組合時清掉 cat） */
 export function normalizeFilterState(state: ShopFilterState): ShopFilterState {
+  if (state.customOrderOnly) {
+    return {
+      ...state,
+      topLevel: ALL_GROUPS,
+      subCat: ALL_SUBCATS,
+      sizes: [],
+      preOrderOnly: false,
+      inStockOnly: false,
+      saleOnly: false,
+    }
+  }
+
   // 預購：不套運動大類；有選品牌才保留商品分類。
   if (state.preOrderOnly) {
     let subCat = state.subCat
@@ -101,6 +118,7 @@ export function normalizeFilterState(state: ShopFilterState): ShopFilterState {
       subCat,
       sizes: subCat === ALL_SUBCATS ? [] : state.sizes,
       inStockOnly: false,
+      customOrderOnly: false,
       saleOnly: false,
     }
   }
@@ -159,9 +177,12 @@ export function parseFiltersFromSearchParams(
     sortBy: parseSort(params.get('sort')),
     search: params.get('q')?.trim() ?? '',
     preOrderOnly: params.get('preorder') === '1',
+    customOrderOnly: params.get('custom') === '1',
     saleOnly:
+      params.get('custom') !== '1' &&
       params.get('preorder') !== '1' && params.get('sale') === '1',
     inStockOnly:
+      params.get('custom') !== '1' &&
       params.get('preorder') !== '1' &&
       params.get('sale') !== '1' &&
       params.get('stock') === '1',
@@ -171,7 +192,8 @@ export function parseFiltersFromSearchParams(
 export function buildShopSearchParams(filters: ShopFilterState): URLSearchParams {
   const p = new URLSearchParams()
   if (filters.search) p.set('q', filters.search)
-  if (filters.preOrderOnly) p.set('preorder', '1')
+  if (filters.customOrderOnly) p.set('custom', '1')
+  else if (filters.preOrderOnly) p.set('preorder', '1')
   else if (filters.saleOnly) p.set('sale', '1')
   else if (filters.inStockOnly) p.set('stock', '1')
   if (filters.topLevel !== ALL_GROUPS) p.set('group', filters.topLevel)
@@ -202,6 +224,9 @@ export function getModeBaseProducts(
   if (mode === 'pre-order') {
     return base.filter((p) => isProductInPreOrderSection(p.variants))
   }
+  if (mode === 'custom-order') {
+    return base.filter((p) => isProductInCustomOrderSection(p.variants))
+  }
   if (mode === 'in-stock') {
     return base.filter((p) => isProductInStockSection(p.variants))
   }
@@ -212,7 +237,11 @@ export function getFacetProductPool(
   baseProducts: ProductWithVariants[],
   preOrderOnly: boolean,
   inStockOnly = false,
+  customOrderOnly = false,
 ): ProductWithVariants[] {
+  if (customOrderOnly) {
+    return baseProducts.filter((p) => isProductInCustomOrderSection(p.variants))
+  }
   if (preOrderOnly) {
     return baseProducts.filter(
       (p) =>
@@ -229,6 +258,7 @@ export function computeFacets(baseProducts: ProductWithVariants[]): ShopFacets {
   const groupCounts = new Map<ShopGroup, number>()
   const categoryCounts = new Map<string, number>()
   let preOrderCount = 0
+  let customOrderCount = 0
 
   for (const p of baseProducts) {
     if (
@@ -237,6 +267,7 @@ export function computeFacets(baseProducts: ProductWithVariants[]): ShopFacets {
     ) {
       preOrderCount++
     }
+    if (isProductInCustomOrderSection(p.variants)) customOrderCount++
     if (isEsSeriesCategory(p.category)) {
       groupCounts.set('ES', (groupCounts.get('ES') ?? 0) + 1)
       continue
@@ -258,6 +289,7 @@ export function computeFacets(baseProducts: ProductWithVariants[]): ShopFacets {
     brandCounts: computeBrandCounts(baseProducts),
     totalVisible: baseProducts.length,
     preOrderCount,
+    customOrderCount,
   }
 }
 
@@ -270,6 +302,7 @@ export function filterProductsForBrandFacets(
     baseProducts,
     filters.preOrderOnly,
     filters.inStockOnly,
+    filters.customOrderOnly,
   )
   return pool.filter(
     (p) =>
@@ -289,6 +322,7 @@ export function filterProductsForSizeFacets(
     baseProducts,
     filters.preOrderOnly,
     filters.inStockOnly,
+    filters.customOrderOnly,
   )
   return pool.filter(
     (p) =>
@@ -416,6 +450,14 @@ function productMatchesInStock(
   return isProductInStockSection(p.variants)
 }
 
+function productMatchesCustomOrder(
+  p: ProductWithVariants,
+  customOrderOnly: boolean,
+): boolean {
+  if (!customOrderOnly) return true
+  return isProductInCustomOrderSection(p.variants)
+}
+
 function productMatchesSale(
   p: ProductWithVariants,
   saleOnly: boolean,
@@ -433,6 +475,7 @@ export function filterAndSortProducts(
   let list = baseProducts.filter(
     (p) =>
       productMatchesPreOrder(p, filters.preOrderOnly) &&
+      productMatchesCustomOrder(p, filters.customOrderOnly) &&
       productMatchesInStock(p, filters.inStockOnly) &&
       productMatchesSale(p, filters.saleOnly, presets) &&
       productMatchesCategory(p, filters) &&
@@ -469,6 +512,7 @@ export function filterAndSortProducts(
 export function countActiveFilters(filters: ShopFilterState): number {
   let n = 0
   if (filters.preOrderOnly) n++
+  if (filters.customOrderOnly) n++
   if (filters.inStockOnly) n++
   if (filters.saleOnly) n++
   if (filters.topLevel !== ALL_GROUPS) n++
@@ -496,6 +540,13 @@ export function hasNonDefaultFilters(filters: ShopFilterState): boolean {
 export function getShopFilterContextLabel(filters: ShopFilterState): string {
   if (filters.search.trim()) {
     return SHOP_COPY.searchContext(filters.search.trim())
+  }
+  if (
+    filters.customOrderOnly &&
+    filters.topLevel === ALL_GROUPS &&
+    filters.subCat === ALL_SUBCATS
+  ) {
+    return 'CUSTOM ORDER'
   }
   if (
     filters.preOrderOnly &&
@@ -549,6 +600,7 @@ export function getHeroTitle(filters: ShopFilterState): string {
   }
   if (filters.topLevel !== ALL_GROUPS) return getShopGroupLabel(filters.topLevel)
   if (filters.preOrderOnly) return 'Pre-Order'
+  if (filters.customOrderOnly) return 'CUSTOM ORDER'
   if (filters.inStockOnly) return 'In-Stock'
   if (filters.saleOnly) return 'Sale'
   return 'Catalog'
@@ -560,6 +612,7 @@ export function isShopCatalogHome(filters: ShopFilterState): boolean {
     filters.topLevel === ALL_GROUPS &&
     filters.subCat === ALL_SUBCATS &&
     !filters.preOrderOnly &&
+    !filters.customOrderOnly &&
     !filters.inStockOnly &&
     !filters.saleOnly &&
     !filters.search.trim() &&

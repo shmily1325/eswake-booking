@@ -267,6 +267,7 @@ DECLARE
   v_active_count INTEGER := 0;
   v_stock INTEGER;
   v_accept_pre_order BOOLEAN;
+  v_requested_availability TEXT;
   v_availability TEXT;
   v_label_code TEXT;
   v_conflict RECORD;
@@ -563,9 +564,11 @@ BEGIN
     v_variant_id := NULLIF(BTRIM(v_item ->> 'id'), '')::UUID;
     v_stock := GREATEST(0, COALESCE((v_item ->> 'stock')::INTEGER, 0));
     v_accept_pre_order := COALESCE((v_item ->> 'accept_pre_order')::BOOLEAN, FALSE);
+    v_requested_availability := NULLIF(BTRIM(v_item ->> 'availability'), '');
     v_availability := CASE
+      WHEN v_requested_availability = 'custom_order' THEN 'custom_order'
       WHEN v_stock > 0 THEN 'in_stock'
-      WHEN v_accept_pre_order THEN 'pre_order'
+      WHEN v_requested_availability = 'pre_order' OR v_accept_pre_order THEN 'pre_order'
       ELSE 'sold_out'
     END;
     v_label_code := UPPER(NULLIF(BTRIM(v_item ->> 'label_code'), ''));

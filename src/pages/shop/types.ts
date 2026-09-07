@@ -46,8 +46,8 @@ export interface CartItem {
   /** 加入購物車的時間，用來排序與除錯 */
   addedAt: number
 
-  /** 下單時供貨狀態 snapshot（預購 vs 現貨，影響 LINE 訊息用詞） */
-  availability?: 'in_stock' | 'pre_order'
+  /** 下單時供貨狀態 snapshot（影響購物車與 LINE 訊息用詞） */
+  availability?: 'in_stock' | 'pre_order' | 'custom_order'
   preOrderEta?: string | null
   /** 客製欄位快照，保留成交當時的顯示名稱，不受日後商品設定改名影響。 */
   selectedOptions?: Record<string, { label: string; value: string }>
