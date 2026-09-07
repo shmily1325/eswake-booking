@@ -49,7 +49,7 @@ interface PersonRemaining {
   remaining: number
 }
 
-type SortMode = 'remaining_desc' | 'remaining_asc' | 'name'
+type SortMode = 'remaining_desc' | 'remaining_asc'
 
 interface VoucherYearBalancePanelProps {
   onOpenMember: (member: YearBalanceMemberRef) => void
@@ -74,8 +74,6 @@ const PREFERENCES_KEY = 'voucher-year-balance-preferences'
 interface YearBalancePreferences {
   year?: number
   sortMode?: SortMode
-  hideZero?: boolean
-  negativeOnly?: boolean
 }
 
 function loadPreferences(): YearBalancePreferences {
@@ -101,10 +99,8 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
   const [error, setError] = useState<string | null>(null)
   const [lots, setLots] = useState<LotRow[]>([])
   const [yearFilter, setYearFilter] = useState<number | null>(initialPreferences.year ?? null)
-  const [hideZero, setHideZero] = useState(initialPreferences.hideZero ?? true)
-  const [negativeOnly, setNegativeOnly] = useState(initialPreferences.negativeOnly ?? false)
   const [sortMode, setSortMode] = useState<SortMode>(
-    initialPreferences.sortMode ?? 'remaining_desc'
+    initialPreferences.sortMode === 'remaining_asc' ? 'remaining_asc' : 'remaining_desc'
   )
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -155,9 +151,9 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
     if (typeof window === 'undefined') return
     window.localStorage.setItem(
       PREFERENCES_KEY,
-      JSON.stringify({ year: yearFilter, sortMode, hideZero, negativeOnly })
+      JSON.stringify({ year: yearFilter, sortMode })
     )
-  }, [yearFilter, sortMode, hideZero, negativeOnly])
+  }, [yearFilter, sortMode])
 
   const sections = useMemo(() => {
     if (yearFilter === null) return []
@@ -179,8 +175,6 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
           if (!hay.includes(q)) continue
         }
         const remaining = Number(lot.remaining)
-        if (negativeOnly && remaining >= 0) continue
-        if (hideZero && remaining === 0) continue
 
         peopleMap.set(lot.member_id, {
           memberId: lot.member_id,
@@ -191,9 +185,6 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
       }
 
       const people = [...peopleMap.values()].sort((a, b) => {
-        if (sortMode === 'name') {
-          return a.nickname.localeCompare(b.nickname, 'zh-Hant')
-        }
         const remainingComparison = a.remaining - b.remaining
         if (remainingComparison !== 0) {
           return sortMode === 'remaining_asc' ? remainingComparison : -remainingComparison
@@ -203,7 +194,7 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
 
       return { category, label: CATEGORY_LABEL[category], people }
     }).filter((section) => section.people.length > 0)
-  }, [lots, yearFilter, searchTerm, hideZero, negativeOnly, sortMode])
+  }, [lots, yearFilter, searchTerm, sortMode])
 
   const totalPeople = useMemo(() => {
     const ids = new Set<string>()
@@ -236,68 +227,43 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
           alignItems: 'center',
         }}
       >
-        {availableYears.map((y) => {
-          const selected = yearFilter === y
-          return (
-            <button
-              key={y}
-              type="button"
-              data-track={`voucher_year_filter_${y}`}
-              aria-pressed={selected}
-              onClick={() => setYearFilter(y)}
-              style={{
-                ...getBookingChoiceStyle(selected),
-                padding: isMobile ? '10px 14px' : '10px 16px',
-                fontSize: getFontSize('button', isMobile),
-                fontWeight: 600,
-                cursor: 'pointer',
-                minHeight: 44,
-              }}
-            >
-              {y}
-            </button>
-          )
-        })}
-
-        <button
-          type="button"
-          data-track="voucher_year_hide_zero"
-          aria-pressed={hideZero}
-          onClick={() => setHideZero((v) => !v)}
+        <div
           style={{
-            ...getBookingChoiceStyle(hideZero),
-            marginLeft: isMobile ? 0 : 'auto',
-            padding: isMobile ? '10px 14px' : '10px 16px',
-            fontSize: getFontSize('button', isMobile),
-            fontWeight: 600,
-            cursor: 'pointer',
-            minHeight: 44,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: designSystem.spacing.sm,
+            width: isMobile ? '100%' : 'auto',
           }}
         >
-          只看有剩餘
-        </button>
-        <button
-          type="button"
-          data-track="voucher_year_negative_only"
-          aria-pressed={negativeOnly}
-          onClick={() => setNegativeOnly((value) => !value)}
-          style={{
-            ...getBookingChoiceStyle(negativeOnly),
-            padding: isMobile ? '10px 14px' : '10px 16px',
-            fontSize: getFontSize('button', isMobile),
-            fontWeight: 600,
-            cursor: 'pointer',
-            minHeight: 44,
-          }}
-        >
-          只看負數
-        </button>
+          {availableYears.map((y) => {
+            const selected = yearFilter === y
+            return (
+              <button
+                key={y}
+                type="button"
+                data-track={`voucher_year_filter_${y}`}
+                aria-pressed={selected}
+                onClick={() => setYearFilter(y)}
+                style={{
+                  ...getBookingChoiceStyle(selected),
+                  padding: isMobile ? '10px 14px' : '10px 16px',
+                  fontSize: getFontSize('button', isMobile),
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minHeight: 44,
+                }}
+              >
+                {y}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 180px',
+          gridTemplateColumns: 'minmax(0, 1fr) auto',
           gap: designSystem.spacing.sm,
           marginBottom: designSystem.spacing.lg,
         }}
@@ -339,21 +305,38 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
             </button>
           ) : null}
         </div>
-        <select
-          aria-label="排序方式"
-          value={sortMode}
-          onChange={(event) => setSortMode(event.target.value as SortMode)}
+        <button
+          type="button"
+          data-track="voucher_year_toggle_sort"
+          aria-label={
+            sortMode === 'remaining_desc'
+              ? '目前餘額由高至低，點擊改為由低至高'
+              : '目前餘額由低至高，點擊改為由高至低'
+          }
+          title={
+            sortMode === 'remaining_desc'
+              ? '目前由高至低，點擊改為由低至高'
+              : '目前由低至高，點擊改為由高至低'
+          }
+          onClick={() =>
+            setSortMode((current) =>
+              current === 'remaining_desc' ? 'remaining_asc' : 'remaining_desc'
+            )
+          }
           style={{
-            ...getInputStyle(isMobile),
-            width: '100%',
-            boxSizing: 'border-box',
+            ...getBookingChoiceStyle(false),
+            minWidth: isMobile ? 116 : 148,
+            minHeight: 44,
+            padding: isMobile ? '10px 12px' : '10px 16px',
+            fontSize: getFontSize('button', isMobile),
+            fontWeight: 600,
             cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            boxShadow: designSystem.shadows.xs,
           }}
         >
-          <option value="remaining_desc">餘額：高至低</option>
-          <option value="remaining_asc">餘額：低至高</option>
-          <option value="name">會員：姓名排序</option>
-        </select>
+          {sortMode === 'remaining_desc' ? '餘額 高→低' : '餘額 低→高'}
+        </button>
       </div>
 
       {loading ? (
@@ -393,9 +376,9 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
         >
           {lots.length === 0
             ? '尚無資料'
-            : hideZero
-              ? '此年沒有剩餘'
-              : '沒有符合的資料'}
+            : searchTerm.trim()
+              ? '沒有符合的會員'
+              : '此年沒有餘額資料'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.xl }}>
