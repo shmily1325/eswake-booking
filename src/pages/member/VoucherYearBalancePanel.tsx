@@ -49,6 +49,8 @@ interface PersonRemaining {
   remaining: number
 }
 
+type SortMode = 'remaining_desc' | 'remaining_asc' | 'name'
+
 interface VoucherYearBalancePanelProps {
   onOpenMember: (member: YearBalanceMemberRef) => void
   /** 變更時重新載入 lots（例如細帳成功後） */
@@ -67,6 +69,24 @@ const CATEGORY_LABEL: Record<LotCategory, string> = {
   vip_voucher: 'VIP',
 }
 
+const PREFERENCES_KEY = 'voucher-year-balance-preferences'
+
+interface YearBalancePreferences {
+  year?: number
+  sortMode?: SortMode
+  hideZero?: boolean
+  negativeOnly?: boolean
+}
+
+function loadPreferences(): YearBalancePreferences {
+  if (typeof window === 'undefined') return {}
+  try {
+    return JSON.parse(window.localStorage.getItem(PREFERENCES_KEY) || '{}') as YearBalancePreferences
+  } catch {
+    return {}
+  }
+}
+
 function formatAmount(category: LotCategory, value: number): string {
   if (category === 'vip_voucher') {
     return `$${value.toLocaleString()}`
@@ -76,11 +96,16 @@ function formatAmount(category: LotCategory, value: number): string {
 
 export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: VoucherYearBalancePanelProps) {
   const { isMobile } = useResponsive()
+  const [initialPreferences] = useState(loadPreferences)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lots, setLots] = useState<LotRow[]>([])
-  const [yearFilter, setYearFilter] = useState<number | null>(null)
-  const [hideZero, setHideZero] = useState(true)
+  const [yearFilter, setYearFilter] = useState<number | null>(initialPreferences.year ?? null)
+  const [hideZero, setHideZero] = useState(initialPreferences.hideZero ?? true)
+  const [negativeOnly, setNegativeOnly] = useState(initialPreferences.negativeOnly ?? false)
+  const [sortMode, setSortMode] = useState<SortMode>(
+    initialPreferences.sortMode ?? 'remaining_desc'
+  )
   const [searchTerm, setSearchTerm] = useState('')
 
   const loadLots = useCallback(async () => {
@@ -126,6 +151,14 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
     setYearFilter(availableYears[availableYears.length - 1])
   }, [availableYears, yearFilter])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(
+      PREFERENCES_KEY,
+      JSON.stringify({ year: yearFilter, sortMode, hideZero, negativeOnly })
+    )
+  }, [yearFilter, sortMode, hideZero, negativeOnly])
+
   const sections = useMemo(() => {
     if (yearFilter === null) return []
 
@@ -146,6 +179,7 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
           if (!hay.includes(q)) continue
         }
         const remaining = Number(lot.remaining)
+        if (negativeOnly && remaining >= 0) continue
         if (hideZero && remaining === 0) continue
 
         peopleMap.set(lot.member_id, {
@@ -156,13 +190,20 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
         })
       }
 
-      const people = [...peopleMap.values()].sort((a, b) =>
-        a.nickname.localeCompare(b.nickname, 'zh-Hant')
-      )
+      const people = [...peopleMap.values()].sort((a, b) => {
+        if (sortMode === 'name') {
+          return a.nickname.localeCompare(b.nickname, 'zh-Hant')
+        }
+        const remainingComparison = a.remaining - b.remaining
+        if (remainingComparison !== 0) {
+          return sortMode === 'remaining_asc' ? remainingComparison : -remainingComparison
+        }
+        return a.nickname.localeCompare(b.nickname, 'zh-Hant')
+      })
 
       return { category, label: CATEGORY_LABEL[category], people }
     }).filter((section) => section.people.length > 0)
-  }, [lots, yearFilter, searchTerm, hideZero])
+  }, [lots, yearFilter, searchTerm, hideZero, negativeOnly, sortMode])
 
   const totalPeople = useMemo(() => {
     const ids = new Set<string>()
@@ -182,7 +223,7 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
             color: designSystem.colors.text.primary,
           }}
         >
-          年度細帳
+          年度餘額明細
         </h2>
       </div>
 
@@ -235,44 +276,84 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
         >
           只看有剩餘
         </button>
+        <button
+          type="button"
+          data-track="voucher_year_negative_only"
+          aria-pressed={negativeOnly}
+          onClick={() => setNegativeOnly((value) => !value)}
+          style={{
+            ...getBookingChoiceStyle(negativeOnly),
+            padding: isMobile ? '10px 14px' : '10px 16px',
+            fontSize: getFontSize('button', isMobile),
+            fontWeight: 600,
+            cursor: 'pointer',
+            minHeight: 44,
+          }}
+        >
+          只看負數
+        </button>
       </div>
 
-      <div style={{ position: 'relative', marginBottom: designSystem.spacing.lg }}>
-        <input
-          type="text"
-          placeholder="搜尋會員"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 180px',
+          gap: designSystem.spacing.sm,
+          marginBottom: designSystem.spacing.lg,
+        }}
+      >
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            placeholder="搜尋會員（姓名、暱稱）"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              ...getInputStyle(isMobile),
+              width: '100%',
+              boxSizing: 'border-box',
+              paddingRight: searchTerm ? 40 : undefined,
+            }}
+          />
+          {searchTerm ? (
+            <button
+              type="button"
+              aria-label="清除搜尋"
+              onClick={() => setSearchTerm('')}
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                border: 'none',
+                background: designSystem.colors.text.secondary,
+                color: '#fff',
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                cursor: 'pointer',
+                fontSize: getFontSize('caption', isMobile),
+              }}
+            >
+              ✕
+            </button>
+          ) : null}
+        </div>
+        <select
+          aria-label="排序方式"
+          value={sortMode}
+          onChange={(event) => setSortMode(event.target.value as SortMode)}
           style={{
             ...getInputStyle(isMobile),
             width: '100%',
             boxSizing: 'border-box',
-            paddingRight: searchTerm ? 40 : undefined,
+            cursor: 'pointer',
           }}
-        />
-        {searchTerm ? (
-          <button
-            type="button"
-            aria-label="清除搜尋"
-            onClick={() => setSearchTerm('')}
-            style={{
-              position: 'absolute',
-              right: 10,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              border: 'none',
-              background: designSystem.colors.text.secondary,
-              color: '#fff',
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              cursor: 'pointer',
-              fontSize: getFontSize('caption', isMobile),
-            }}
-          >
-            ✕
-          </button>
-        ) : null}
+        >
+          <option value="remaining_desc">餘額：高至低</option>
+          <option value="remaining_asc">餘額：低至高</option>
+          <option value="name">會員：姓名排序</option>
+        </select>
       </div>
 
       {loading ? (
@@ -327,7 +408,11 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                   justifyContent: 'space-between',
                   gap: designSystem.spacing.md,
                   marginBottom: designSystem.spacing.sm,
-                  padding: isMobile ? '0 2px' : '0 4px',
+                  padding: isMobile ? '8px 2px' : '8px 4px',
+                  position: 'sticky',
+                  top: isMobile ? 0 : 84,
+                  zIndex: 10,
+                  background: designSystem.colors.background.main,
                 }}
               >
                 <h3
@@ -356,14 +441,13 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                   background: designSystem.colors.background.card,
                   borderRadius: designSystem.borderRadius.xl,
                   boxShadow: designSystem.shadows.sm,
-                  overflow: 'hidden',
                 }}
               >
                 {!isMobile ? (
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr auto',
+                      gridTemplateColumns: '1fr auto 16px',
                       gap: designSystem.spacing.md,
                       padding: '12px 20px',
                       borderBottom: `1px solid ${designSystem.colors.border.light}`,
@@ -371,10 +455,18 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                       color: designSystem.colors.text.secondary,
                       fontWeight: 600,
                       letterSpacing: '0.02em',
+                      position: 'sticky',
+                      top: 128,
+                      zIndex: 9,
+                      background: designSystem.colors.background.card,
+                      borderRadius: `${designSystem.borderRadius.xl} ${designSystem.borderRadius.xl} 0 0`,
                     }}
                   >
                     <div>會員</div>
-                    <div style={{ textAlign: 'right', minWidth: 96 }}>剩餘</div>
+                    <div style={{ textAlign: 'right', minWidth: 96 }}>
+                      {section.category === 'vip_voucher' ? '剩餘金額' : '剩餘點數'}
+                    </div>
+                    <div aria-hidden="true" />
                   </div>
                 ) : null}
 
@@ -383,6 +475,8 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                     key={`${section.category}-${person.memberId}`}
                     type="button"
                     data-track="voucher_year_open_member"
+                    aria-label={`查看 ${person.nickname} 的${section.label}餘額明細`}
+                    title="查看會員餘額明細"
                     onClick={() =>
                       onOpenMember({
                         id: person.memberId,
@@ -391,9 +485,21 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                         category: section.category,
                       })
                     }
+                    onMouseEnter={(event) => {
+                      event.currentTarget.style.background = designSystem.colors.background.hover
+                    }}
+                    onMouseLeave={(event) => {
+                      event.currentTarget.style.background = 'transparent'
+                    }}
+                    onFocus={(event) => {
+                      event.currentTarget.style.background = designSystem.colors.background.hover
+                    }}
+                    onBlur={(event) => {
+                      event.currentTarget.style.background = 'transparent'
+                    }}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr auto',
+                      gridTemplateColumns: '1fr auto 16px',
                       gap: designSystem.spacing.md,
                       alignItems: 'center',
                       width: '100%',
@@ -406,6 +512,10 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                         index === 0
                           ? undefined
                           : `1px solid ${designSystem.colors.border.light}`,
+                      borderRadius:
+                        index === section.people.length - 1
+                          ? `0 0 ${designSystem.borderRadius.xl} ${designSystem.borderRadius.xl}`
+                          : undefined,
                       boxSizing: 'border-box',
                     }}
                   >
@@ -436,13 +546,28 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                         fontSize: getFontSize('bodyLarge', isMobile),
                         fontWeight: 600,
                         fontVariantNumeric: 'tabular-nums',
-                        color: designSystem.colors.text.primary,
+                        color:
+                          person.remaining < 0
+                            ? designSystem.colors.danger[700]
+                            : person.remaining === 0
+                              ? designSystem.colors.text.secondary
+                              : designSystem.colors.text.primary,
                         textAlign: 'right',
                         whiteSpace: 'nowrap',
                       }}
                     >
                       {formatAmount(section.category, person.remaining)}
                     </div>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        color: designSystem.colors.text.secondary,
+                        fontSize: getFontSize('bodyLarge', isMobile),
+                        lineHeight: 1,
+                      }}
+                    >
+                      ›
+                    </span>
                   </button>
                 ))}
               </div>

@@ -362,7 +362,7 @@ export function MemberTransaction() {
               ? [
                   { label: '會員', link: '/members' },
                   view === 'ledger'
-                    ? { label: '年度細帳', link: '/member-transaction?view=year' }
+                    ? { label: '年度餘額明細', link: '/member-transaction?view=year' }
                     : { label: '記帳', link: '/member-transaction' },
                 ]
               : undefined
