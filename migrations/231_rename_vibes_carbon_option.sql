@@ -34,10 +34,10 @@ WITH rewritten AS (
                     WITH ORDINALITY AS options(option_value, option_order)
                 ),
                 'optionPrices',
-                (field -> 'optionPrices' - 'Black Ops Carbon')
+                ((field -> 'optionPrices') - 'Black Ops Carbon')
                   || jsonb_build_object(
                     'Carbon',
-                    field -> 'optionPrices' -> 'Black Ops Carbon'
+                    (field -> 'optionPrices') -> 'Black Ops Carbon'
                   ),
                 'optionNotes',
                 jsonb_build_object(
