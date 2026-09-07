@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildSelectedOptionSnapshot,
+  createVibesCustomOrderConfig,
   findMissingAxisCombinations,
   formatOptionSelection,
   getVibesBuildSettings,
@@ -350,5 +351,18 @@ describe('product options core', () => {
     expect(resized.customFields.find((field) => field.key === 'standard_color')).toEqual(vibesConfig.customFields[2])
     expect(resized.customFields.find((field) => field.key === 'carbon_color')).toEqual(vibesConfig.customFields[3])
     expect(validateVibesCustomOrderConfig(resized)).toEqual([])
+  })
+
+  it('creates a ready-to-edit VIBES custom product template', () => {
+    const config = createVibesCustomOrderConfig()
+    expect(isVibesCustomOrderConfig('ws_board', 'VIBES', config)).toBe(true)
+    expect(getVibesBuildSettings(config).map(({ name, price }) => ({ name, price }))).toEqual([
+      { name: 'Standard', price: 65000 },
+      { name: 'Custom Color', price: 70000 },
+      { name: 'Carbon', price: 75000 },
+    ])
+    expect(getVibesColorSettings(config)).toHaveLength(8)
+    expect(config.variantFields.axis[0]).toMatchObject({ key: 'size', values: [] })
+    expect(validateVibesCustomOrderConfig(config)).toEqual([])
   })
 })

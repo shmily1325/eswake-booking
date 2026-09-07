@@ -167,7 +167,7 @@ function FilterGroup({
 type ViewMode =
   | { kind: 'list' }
   | { kind: 'edit'; productId: string; focusVariantId?: string; addNewVariant?: boolean }
-  | { kind: 'create'; defaultCategory: string }
+  | { kind: 'create'; defaultCategory: string; vibesCustomOrder?: boolean }
 
 function openProductEdit(productId: string, variantId: string): ViewMode {
   return { kind: 'edit', productId, focusVariantId: variantId }
@@ -841,12 +841,15 @@ export function ProductManagement({
             key={
               view.kind === 'edit'
                 ? `edit-${view.productId}-${view.focusVariantId ?? 'all'}`
-                : 'create'
+                : view.vibesCustomOrder
+                  ? 'create-vibes-custom'
+                  : 'create'
             }
             productId={view.kind === 'edit' ? view.productId : null}
             focusVariantId={view.kind === 'edit' ? view.focusVariantId : undefined}
             addNewVariantOnLoad={view.kind === 'edit' ? view.addNewVariant : false}
             defaultCategory={view.kind === 'create' ? view.defaultCategory : undefined}
+            vibesCustomOrderTemplate={view.kind === 'create' && view.vibesCustomOrder}
             readOnly={!canEdit}
             existingProducts={products.map((p) => ({
               id: p.id,
@@ -967,6 +970,18 @@ export function ProductManagement({
             >
               {isMobile ? '掃碼' : '掃碼查庫存'}
             </Button>
+            {canEdit && (
+              <Button
+                variant="outline"
+                data-track="product_add_vibes_custom"
+                style={isMobile ? { flex: 1 } : undefined}
+                onClick={() => {
+                  setView({ kind: 'create', defaultCategory: 'ws_board', vibesCustomOrder: true })
+                }}
+              >
+                {isMobile ? 'VIBES 客製' : '+ VIBES 客製'}
+              </Button>
+            )}
             {canEdit && (
               <Button
                 variant="primary"

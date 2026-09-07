@@ -77,6 +77,7 @@ import {
 import { ProductOptionsEditor } from './ProductOptionsEditor'
 import { VibesCustomOrderEditor } from './VibesCustomOrderEditor'
 import {
+  createVibesCustomOrderConfig,
   findMissingAxisCombinations,
   getVibesBuildSettings,
   isEmptyProductOptionConfig,
@@ -98,6 +99,8 @@ interface ProductEditViewProps {
   addNewVariantOnLoad?: boolean
   /** 預設類別（新增時用，從目前 Tab 帶入） */
   defaultCategory?: string
+  /** 使用店家日常操作用的 VIBES 客製商品範本。 */
+  vibesCustomOrderTemplate?: boolean
   /** 已存在的商品（給 autocomplete 與重複建檔檢查用） */
   existingProducts?: readonly ProductIdentityCandidate[]
   /** 新增時發現既有商品，改前往該商品新增 SKU */
@@ -227,6 +230,7 @@ export function ProductEditView({
   focusVariantId,
   addNewVariantOnLoad = false,
   defaultCategory,
+  vibesCustomOrderTemplate = false,
   existingProducts = [],
   onOpenExistingProduct,
   readOnly = false,
@@ -236,6 +240,7 @@ export function ProductEditView({
   const toast = useToast()
   const { isMobile } = useResponsive()
   const isNew = productId == null
+  const useVibesTemplate = isNew && vibesCustomOrderTemplate
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
@@ -246,8 +251,10 @@ export function ProductEditView({
   const [original, setOriginal] = useState<ProductWithVariants | null>(null)
   const [discountPresets, setDiscountPresets] = useState<DiscountPreset[]>([])
 
-  const [category, setCategory] = useState<string>(defaultCategory ?? Object.keys(CATEGORY_SCHEMAS)[0] ?? 'lifejacket')
-  const [brand, setBrand] = useState('')
+  const [category, setCategory] = useState<string>(
+    useVibesTemplate ? 'ws_board' : defaultCategory ?? Object.keys(CATEGORY_SCHEMAS)[0] ?? 'lifejacket',
+  )
+  const [brand, setBrand] = useState(useVibesTemplate ? 'VIBES' : '')
   const [model, setModel] = useState('')
   const [modelYear, setModelYear] = useState('')
   const [color, setColor] = useState('')
@@ -259,14 +266,32 @@ export function ProductEditView({
    * - 新商品預設 true（上架到商城）
    * - 既有商品由 DB 載入
    */
-  const [isPublic, setIsPublic] = useState<boolean>(isNew)
+  const [isPublic, setIsPublic] = useState<boolean>(useVibesTemplate ? false : isNew)
   /** null 代表完整沿用 category schema；不可自動轉成空 config。 */
-  const [optionConfig, setOptionConfig] = useState<ProductOptionConfig | null>(null)
+  const [optionConfig, setOptionConfig] = useState<ProductOptionConfig | null>(() =>
+    useVibesTemplate ? createVibesCustomOrderConfig() : null,
+  )
   const [originalOptionImagePaths, setOriginalOptionImagePaths] = useState<string[]>([])
   /** 商品卡層封面（一色一卡共用）；多色舊卡可留空改用 SKU 封面 */
   const [productCoverImages, setProductCoverImages] = useState<DraftCoverImage[]>([])
   const [originalProductCoverPaths, setOriginalProductCoverPaths] = useState<string[]>([])
-  const [drafts, setDrafts] = useState<DraftVariant[]>(() => (isNew ? [emptyDraft()] : []))
+  const [drafts, setDrafts] = useState<DraftVariant[]>(() =>
+    isNew
+      ? [
+          {
+            ...emptyDraft(),
+            ...(useVibesTemplate
+              ? {
+                  price: '65000',
+                  stock: '0',
+                  saleMode: 'custom_order' as const,
+                  preorderDiscountEligible: false,
+                }
+              : {}),
+          },
+        ]
+      : [],
+  )
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmZeroStock, setConfirmZeroStock] = useState(false)
   const [serverIdentityMatch, setServerIdentityMatch] = useState<ProductIdentityCandidate | null>(null)
@@ -1275,7 +1300,13 @@ export function ProductEditView({
             color: designSystem.colors.text.primary,
           }}
         >
-          {readOnly ? '查看商品' : isNew ? '新增商品' : '編輯商品'}
+          {readOnly
+            ? '查看商品'
+            : useVibesTemplate
+              ? '新增 VIBES 客製商品'
+              : isNew
+                ? '新增商品'
+                : '編輯商品'}
           {original && (
             <span
               style={{
@@ -1408,7 +1439,7 @@ export function ProductEditView({
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   style={inputStyle}
-                  disabled={saving || readOnly}
+                  disabled={saving || readOnly || isVibesCustomOrder}
                 >
                   {Object.values(CATEGORY_SCHEMAS).map((c) => (
                     <option key={c.id} value={c.id}>
@@ -1423,7 +1454,7 @@ export function ProductEditView({
                   value={brand}
                   onChange={setBrand}
                   currentUserEmail={currentUserEmail}
-                  disabled={saving || readOnly}
+                  disabled={saving || readOnly || isVibesCustomOrder}
                   isMobile={isMobile}
                 />
               </div>
@@ -1594,7 +1625,7 @@ export function ProductEditView({
                 color: designSystem.colors.text.primary,
               }}
             >
-              {isVibesCustomOrder ? 'VIBES 客訂商品' : '規格與庫存'}
+              {isVibesCustomOrder ? 'VIBES 客製商品' : '規格與庫存'}
             </h3>
             <Badge variant="info" size="small">
               {drafts.filter((d) => !d.pendingDelete).length}
@@ -1758,48 +1789,30 @@ export function ProductEditView({
                   color: designSystem.colors.text.primary,
                 }}
               >
-                {isVibesCustomOrder ? 'VIBES 客訂設定' : '商品選項'}
+                {isVibesCustomOrder ? 'VIBES 客製設定' : '商品選項'}
               </h3>
               {isVibesCustomOrder && optionConfig ? (
-                <>
-                  <VibesCustomOrderEditor
-                    value={optionConfig}
-                    onChange={handleVibesConfigChange}
-                    specs={visibleDrafts.map((draft, index) => ({
-                      index,
-                      key: draft.clientKey,
-                      size: draft.attributes.size ?? '',
-                      width: draft.attributes.width ?? '',
-                      thickness: draft.attributes.thickness ?? '',
-                      volume: draft.attributes.volume ?? '',
-                      pendingDelete: Boolean(draft.pendingDelete),
-                    }))}
-                    onSpecChange={handleVibesSpecChange}
-                    onAddSpec={handleAddVibesSpec}
-                    onRemoveSpec={handleRemoveVibesSpec}
-                    onRestoreSpec={handleRestoreVibesSpec}
-                    disabled={saving || readOnly}
-                    isMobile={isMobile}
-                    productId={productId}
-                    onImageUpload={trackUpload}
-                  />
-                  <details style={{ marginTop: 16 }}>
-                    <summary style={{ cursor: 'pointer', fontSize: 13, color: designSystem.colors.text.secondary }}>
-                      進階商品選項
-                    </summary>
-                    <div style={{ marginTop: 12 }}>
-                      <ProductOptionsEditor
-                        value={optionConfig}
-                        onChange={setOptionConfig}
-                        disabled={saving || readOnly}
-                        isMobile={isMobile}
-                        defaultVariantFields={getSkuFields(category)}
-                        productId={productId}
-                        onImageUpload={trackUpload}
-                      />
-                    </div>
-                  </details>
-                </>
+                <VibesCustomOrderEditor
+                  value={optionConfig}
+                  onChange={handleVibesConfigChange}
+                  specs={visibleDrafts.map((draft, index) => ({
+                    index,
+                    key: draft.clientKey,
+                    size: draft.attributes.size ?? '',
+                    width: draft.attributes.width ?? '',
+                    thickness: draft.attributes.thickness ?? '',
+                    volume: draft.attributes.volume ?? '',
+                    pendingDelete: Boolean(draft.pendingDelete),
+                  }))}
+                  onSpecChange={handleVibesSpecChange}
+                  onAddSpec={handleAddVibesSpec}
+                  onRemoveSpec={handleRemoveVibesSpec}
+                  onRestoreSpec={handleRestoreVibesSpec}
+                  disabled={saving || readOnly}
+                  isMobile={isMobile}
+                  productId={productId}
+                  onImageUpload={trackUpload}
+                />
               ) : (
                 <ProductOptionsEditor
                   value={optionConfig}
@@ -1814,7 +1827,7 @@ export function ProductEditView({
             </div>
           )}
 
-          <details open={!isVibesCustomOrder}>
+          {!isVibesCustomOrder && <details open>
             <summary
               style={{
                 display: isVibesCustomOrder ? 'list-item' : 'none',
@@ -1979,7 +1992,7 @@ export function ProductEditView({
                 </div>
               )}
             </div>
-          </details>
+          </details>}
         </section>
       )}
 

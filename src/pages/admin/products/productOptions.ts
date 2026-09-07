@@ -54,6 +54,90 @@ export const EMPTY_PRODUCT_OPTION_CONFIG: ProductOptionConfig = {
 export const VIBES_BUILD_NAMES = ['Standard', 'Custom Color', 'Carbon'] as const
 export type VibesBuildName = (typeof VIBES_BUILD_NAMES)[number]
 
+export function createVibesCustomOrderConfig(): ProductOptionConfig {
+  const colors = [
+    'HOT PINK',
+    'YELLOW',
+    'NEON GREEN',
+    'SKY BLUE',
+    'ORANGE CRUSH',
+    'PURPLE HAZE',
+    'TIFF BLUE',
+    'PLATINUM GRAY',
+  ]
+  return {
+    version: PRODUCT_OPTION_CONFIG_VERSION,
+    variantFields: {
+      axis: [{ key: 'size', label: 'Size', inputType: 'select', values: [] }],
+      detail: [
+        { key: 'width', label: 'Width', inputType: 'text', suffix: 'in' },
+        { key: 'thickness', label: 'Thickness', inputType: 'text', suffix: 'in' },
+        { key: 'volume', label: 'Volume', inputType: 'text', suffix: 'L' },
+      ],
+    },
+    customFields: [
+      {
+        key: 'build_option',
+        label: 'Build',
+        inputType: 'select',
+        values: [...VIBES_BUILD_NAMES],
+        required: true,
+        displayStyle: 'price-list',
+        optionPrices: {
+          Standard: 65000,
+          'Custom Color': 70000,
+          Carbon: 75000,
+        },
+        optionNotes: {
+          Standard: '標準板',
+          'Custom Color': '可選推薦色或用Pantone色號選色',
+          Carbon: '碳纖維製作・固定黑色',
+        },
+      },
+      {
+        key: 'standard_color',
+        label: 'Color',
+        inputType: 'text',
+        required: true,
+        readOnly: true,
+        defaultDisplay: 'White',
+        visibility: { customField: { key: 'build_option', value: 'Standard' } },
+      },
+      {
+        key: 'spray_color',
+        label: 'Color',
+        inputType: 'select',
+        values: colors,
+        required: true,
+        displayStyle: 'swatches',
+        swatches: {
+          'HOT PINK': '#FF4FA3',
+          YELLOW: '#FFD928',
+          'NEON GREEN': '#63FF33',
+          'SKY BLUE': '#48BCEB',
+          'ORANGE CRUSH': '#FF7A1A',
+          'PURPLE HAZE': '#9B6BDB',
+          'TIFF BLUE': '#55DDE0',
+          'PLATINUM GRAY': '#A7A9AC',
+        },
+        allowCustomValue: true,
+        placeholder: 'Choose a color',
+        help: '可選推薦色或用Pantone色號選色',
+        visibility: { customField: { key: 'build_option', value: 'Custom Color' } },
+      },
+      {
+        key: 'carbon_color',
+        label: 'Color',
+        inputType: 'text',
+        required: true,
+        readOnly: true,
+        defaultDisplay: 'Black',
+        visibility: { customField: { key: 'build_option', value: 'Carbon' } },
+      },
+    ],
+  }
+}
+
 export interface VibesBuildSetting {
   name: VibesBuildName
   price: number | null
