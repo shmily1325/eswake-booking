@@ -698,9 +698,9 @@ function ProductDetailBody({
                                 : 'border-gray-200 hover:border-gray-500'
                             }`}
                             style={{
-                              width: 36,
-                              height: 36,
-                              minWidth: 36,
+                              width: 30,
+                              height: 30,
+                              minWidth: 30,
                               backgroundColor: field.swatches?.[value] ?? '#d1d5db',
                             }}
                             onClick={() => onCustomValueChange(field.key, value)}
