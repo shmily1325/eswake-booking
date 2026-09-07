@@ -56,6 +56,11 @@ import {
   visibleCustomFields,
   type ProductOptionConfig,
 } from '../admin/products/productOptions'
+import {
+  formatPantoneSelection,
+  normalizePreviewHex,
+  parsePantoneSelection,
+} from './lib/pantoneSelection'
 
 /** Supabase 的 `id` 是 uuid，亂打字串會炸出 22P02 錯誤，先在 client 擋掉 */
 const UUID_REGEX =
@@ -405,6 +410,7 @@ function ProductDetailBody({
   const [pantoneDialogFieldKey, setPantoneDialogFieldKey] = useState<string | null>(null)
   const [pantoneCode, setPantoneCode] = useState('')
   const [pantonePreview, setPantonePreview] = useState('#808080')
+  const [pantoneHexInput, setPantoneHexInput] = useState('#808080')
   const categoryName = getCategoryShopName(product.category)
   const variantAvail = selectedVariant ? getVariantAvailability(selectedVariant) : null
   const canPurchase = selectedVariant ? isVariantPurchasable(selectedVariant) : false
@@ -676,19 +682,30 @@ function ProductDetailBody({
                         type="button"
                         className="mt-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:border-zinc-700"
                         onClick={() => {
-                          setPantoneCode(
-                            field.values?.includes(customValues[field.key] ?? '')
-                              ? ''
-                              : customValues[field.key] ?? '',
-                          )
+                          const current = field.values?.includes(customValues[field.key] ?? '')
+                            ? ''
+                            : customValues[field.key] ?? ''
+                          const parsed = parsePantoneSelection(current)
+                          setPantoneCode(parsed?.code ?? current)
+                          setPantonePreview(parsed?.previewHex ?? '#808080')
+                          setPantoneHexInput(parsed?.previewHex ?? '#808080')
                           setPantoneDialogFieldKey(field.key)
                         }}
                       >
                         選其他 Pantone
                       </button>
                     ) : null}
-                    <div className="mt-2 min-h-5 text-sm text-gray-600">
-                      {customValues[field.key] ? `已選：${customValues[field.key]}` : '請選擇顏色'}
+                    <div className="mt-2 flex min-h-5 items-center gap-2 text-sm text-gray-600">
+                      {parsePantoneSelection(customValues[field.key] ?? '') ? (
+                        <span
+                          aria-hidden="true"
+                          className="h-4 w-4 shrink-0 rounded-full border border-black/15"
+                          style={{
+                            backgroundColor: parsePantoneSelection(customValues[field.key] ?? '')?.previewHex,
+                          }}
+                        />
+                      ) : null}
+                      <span>{customValues[field.key] ? `已選：${customValues[field.key]}` : '請選擇顏色'}</span>
                     </div>
                   </div>
                 ) : field.readOnly ? (
@@ -738,7 +755,9 @@ function ProductDetailBody({
               onClick={(event) => event.stopPropagation()}
             >
               <h2 className="text-lg font-bold text-zinc-900">選其他 Pantone</h2>
-              <p className="mt-1 text-xs text-gray-500">螢幕顯示僅供參考，請以您填寫的 Pantone 色號為準。</p>
+              <p className="mt-1 text-xs text-gray-500">
+                請填寫 Pantone 色號並選擇螢幕參考色；兩者都會附在詢問內容中。
+              </p>
               <label className="mt-4 block text-sm font-medium text-gray-700">
                 Pantone 色號
                 <input
@@ -749,15 +768,37 @@ function ProductDetailBody({
                   onChange={(event) => setPantoneCode(event.target.value)}
                 />
               </label>
-              <label className="mt-3 block text-sm font-medium text-gray-700">
-                螢幕參考色
-                <input
-                  type="color"
-                  className="mt-1 block h-11 w-full rounded border border-gray-300"
-                  value={pantonePreview}
-                  onChange={(event) => setPantonePreview(event.target.value)}
-                />
-              </label>
+              <div className="mt-3">
+                <span className="block text-sm font-medium text-gray-700">螢幕參考色</span>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    type="color"
+                    aria-label="選擇螢幕參考色"
+                    className="h-11 w-14 shrink-0 cursor-pointer rounded border border-gray-300 bg-white p-1"
+                    value={pantonePreview}
+                    onChange={(event) => {
+                      const next = event.target.value.toUpperCase()
+                      setPantonePreview(next)
+                      setPantoneHexInput(next)
+                    }}
+                  />
+                  <input
+                    className="min-h-11 min-w-0 flex-1 rounded-md border border-gray-300 px-3 font-mono text-base uppercase"
+                    value={pantoneHexInput}
+                    placeholder="#808080"
+                    maxLength={7}
+                    onChange={(event) => {
+                      const next = event.target.value.toUpperCase()
+                      setPantoneHexInput(next)
+                      const valid = normalizePreviewHex(next)
+                      if (valid) setPantonePreview(valid)
+                    }}
+                  />
+                </div>
+                {!normalizePreviewHex(pantoneHexInput) ? (
+                  <span className="mt-1 block text-xs text-red-600">請輸入六位色碼，例如 #DA291C</span>
+                ) : null}
+              </div>
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   type="button"
@@ -768,10 +809,13 @@ function ProductDetailBody({
                 </button>
                 <button
                   type="button"
-                  disabled={!pantoneCode.trim()}
+                  disabled={!pantoneCode.trim() || !normalizePreviewHex(pantoneHexInput)}
                   className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-40"
                   onClick={() => {
-                    onCustomValueChange(pantoneDialogFieldKey, pantoneCode.trim())
+                    onCustomValueChange(
+                      pantoneDialogFieldKey,
+                      formatPantoneSelection(pantoneCode, pantoneHexInput),
+                    )
                     setPantoneDialogFieldKey(null)
                   }}
                 >
