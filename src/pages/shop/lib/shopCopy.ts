@@ -13,7 +13,7 @@ export const SHOP_LABEL = {
   type: 'Type',
   preOrder: 'Pre-Order',
   preOrderOnly: 'Pre-Order only',
-  customOrder: 'CUSTOM ORDER',
+  customOrder: 'Custom Order',
   esSeries: 'ES SERIES',
   inStock: 'In-Stock',
   sale: 'Sale',

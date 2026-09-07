@@ -41,7 +41,7 @@ WITH rewritten AS (
                   ),
                 'optionNotes',
                 jsonb_build_object(
-                  'Standard Build', '標準板',
+                  'Standard', '標準板',
                   'Custom Color', '可選推薦色或用Pantone色號選色',
                   'Carbon', '碳纖維製作・固定黑色'
                 )

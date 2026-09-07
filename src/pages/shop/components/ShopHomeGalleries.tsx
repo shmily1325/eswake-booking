@@ -153,7 +153,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
         },
         {
           key: 'custom-order',
-          title: SHOP_LABEL.customOrder,
+          title: `VIBES – ${SHOP_LABEL.customOrder}`,
           items: customOrderItems,
           viewAllTo: shopCustomOrderListPath(),
           accent: 'custom' as const,

@@ -66,6 +66,10 @@ const addVibesStandardWhiteColor = readFileSync(
   resolve(process.cwd(), 'migrations/233_add_vibes_standard_white_color.sql'),
   'utf8',
 )
+const syncVibesBuildLabels = readFileSync(
+  resolve(process.cwd(), 'migrations/234_sync_vibes_build_labels.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -212,11 +216,11 @@ describe('product purchase option migrations', () => {
 
   it('collapses VIBES to size SKUs with priced build and Pantone options', () => {
     expect(vibesPricedBuildOptions).toContain("'displayStyle', 'price-list'")
-    expect(vibesPricedBuildOptions).toContain("'Standard Build', 65000")
+    expect(vibesPricedBuildOptions).toContain("'Standard', 65000")
     expect(vibesPricedBuildOptions).toContain("'Custom Color', 70000")
     expect(vibesPricedBuildOptions).toContain("'Carbon', 75000")
     expect(vibesPricedBuildOptions).not.toContain('Black Ops Carbon')
-    expect(vibesPricedBuildOptions).toContain("'Standard Build', '標準板'")
+    expect(vibesPricedBuildOptions).toContain("'Standard', '標準板'")
     expect(vibesPricedBuildOptions).toContain("'key', 'standard_color'")
     expect(vibesPricedBuildOptions).toContain("'可選推薦色或用Pantone色號選色'")
     expect(vibesPricedBuildOptions).toContain("'allowCustomValue', TRUE")
@@ -251,18 +255,25 @@ describe('product purchase option migrations', () => {
   })
 
   it('synchronizes concise Chinese build descriptions across VIBES products', () => {
-    expect(syncVibesBuildDescriptions).toContain("'Standard Build', '標準板'")
+    expect(syncVibesBuildDescriptions).toContain("'Standard', '標準板'")
     expect(syncVibesBuildDescriptions).toContain(
       "'Custom Color', '可選推薦色或用Pantone色號選色'",
     )
     expect(syncVibesBuildDescriptions).toContain("'Carbon', '碳纖維製作・固定黑色'")
   })
 
-  it('adds a fixed white color snapshot for Standard Build', () => {
+  it('adds a fixed white color snapshot for Standard', () => {
     expect(addVibesStandardWhiteColor).toContain("'key', 'standard_color'")
     expect(addVibesStandardWhiteColor).toContain("'defaultDisplay', 'White'")
     expect(addVibesStandardWhiteColor).toContain(
-      "item.selected_options #>> '{build_option,value}' = 'Standard Build'",
+      "item.selected_options #>> '{build_option,value}' IN ('Standard', 'Standard Build')",
     )
+  })
+
+  it('synchronizes VIBES Build labels without rewriting historical orders', () => {
+    expect(syncVibesBuildLabels).toContain("'label', 'Build'")
+    expect(syncVibesBuildLabels).toContain("WHEN option_value = 'Standard Build' THEN 'Standard'")
+    expect(syncVibesBuildLabels).toContain("'{visibility,customField,value}'")
+    expect(syncVibesBuildLabels).not.toContain('UPDATE public.shop_order_items')
   })
 })

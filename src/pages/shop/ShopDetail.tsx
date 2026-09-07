@@ -56,17 +56,13 @@ import {
   visibleCustomFields,
   type ProductOptionConfig,
 } from '../admin/products/productOptions'
-import {
-  formatPantoneSelection,
-  normalizePreviewHex,
-  parsePantoneSelection,
-} from './lib/pantoneSelection'
+import { parsePantoneSelection } from './lib/pantoneSelection'
 
 /** Supabase 的 `id` 是 uuid，亂打字串會炸出 22P02 錯誤，先在 client 擋掉 */
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-function inquiryValuesWithPendingColor(
+function selectionValuesWithPendingColor(
   config: ProductOptionConfig | null,
   attributes: Readonly<Record<string, unknown>>,
   values: Readonly<Record<string, string>>,
@@ -87,6 +83,16 @@ function inquiryValuesWithPendingColor(
   return filledPendingColor && validateCustomSelection(config, attributes, next) === null
     ? next
     : null
+}
+
+function customFieldShopLabel(key: string, fallback: string): string {
+  if (key === 'build_option') return 'Build'
+  if (key === 'standard_color' || key === 'spray_color' || key === 'carbon_color') return 'Color'
+  return fallback
+}
+
+function customOptionShopLabel(fieldKey: string, value: string): string {
+  return fieldKey === 'build_option' && value === 'Standard Build' ? 'Standard' : value
 }
 
 /**
@@ -264,7 +270,12 @@ export function ShopDetail() {
   const handleAddToCart = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
     const selectionError = validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
-    if (selectionError) {
+    const cartValues = selectionValuesWithPendingColor(
+      optionConfig,
+      selectedVariant.attributes,
+      customValues,
+    )
+    if (selectionError && !cartValues) {
       alert(selectionError)
       return
     }
@@ -298,7 +309,7 @@ export function ShopDetail() {
       selectedOptions: buildSelectedOptionSnapshot(
         optionConfig,
         selectedVariant.attributes,
-        customValues,
+        cartValues ?? customValues,
         getSkuFields(product.category).map((field) => field.key),
       ),
     })
@@ -308,7 +319,7 @@ export function ShopDetail() {
   const handleDirectInquiry = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
     const selectionError = validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
-    const inquiryValues = inquiryValuesWithPendingColor(
+    const inquiryValues = selectionValuesWithPendingColor(
       optionConfig,
       selectedVariant.attributes,
       customValues,
@@ -437,8 +448,6 @@ function ProductDetailBody({
   const promo = useShopPromo()
   const [pantoneDialogFieldKey, setPantoneDialogFieldKey] = useState<string | null>(null)
   const [pantoneCode, setPantoneCode] = useState('')
-  const [pantonePreview, setPantonePreview] = useState('#808080')
-  const [pantoneHexInput, setPantoneHexInput] = useState('#808080')
   const categoryName = getCategoryShopName(product.category)
   const variantAvail = selectedVariant ? getVariantAvailability(selectedVariant) : null
   const canPurchase = selectedVariant ? isVariantPurchasable(selectedVariant) : false
@@ -466,25 +475,41 @@ function ProductDetailBody({
       : null
   const secondaryLine = formatProductSecondaryLine(product)
   const configured = optionConfig && !isEmptyProductOptionConfig(optionConfig)
-  const detailText = configured && selectedVariant
-    ? optionConfig.variantFields.detail
-        .map((field) => {
+  const detailSpecs = configured && selectedVariant
+    ? [
+        selectedVariant.attributes.size == null || String(selectedVariant.attributes.size).trim() === ''
+          ? null
+          : {
+              key: 'length',
+              label: 'Length',
+              value: String(selectedVariant.attributes.size).trim(),
+            },
+        ...optionConfig.variantFields.detail.map((field) => {
           const value = selectedVariant.attributes[field.key]
-          return value == null || String(value).trim() === ''
-            ? ''
-            : `${field.label} ${String(value).trim()}${field.suffix ?? ''}`
-        })
-        .filter(Boolean)
-        .join(' · ')
-    : ''
+          if (value == null || String(value).trim() === '') return null
+          const label = field.key === 'width'
+            ? 'Width'
+            : field.key === 'thickness'
+              ? 'Thickness'
+              : field.key === 'volume'
+                ? 'Volume'
+                : field.label
+          return {
+            key: field.key,
+            label,
+            value: `${String(value).trim()}${field.suffix ?? ''}`,
+          }
+        }),
+      ].filter((spec): spec is { key: string; label: string; value: string } => spec !== null)
+    : []
   const customFields = selectedVariant
     ? visibleCustomFields(optionConfig, selectedVariant.attributes, customValues)
     : []
   const customSelectionError = selectedVariant
     ? validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
     : null
-  const pendingColorInquiryValues = selectedVariant
-    ? inquiryValuesWithPendingColor(optionConfig, selectedVariant.attributes, customValues)
+  const pendingColorValues = selectedVariant
+    ? selectionValuesWithPendingColor(optionConfig, selectedVariant.attributes, customValues)
     : null
   const selectedSwatchImage = customFields
     .map((field) => field.swatchImages?.[customValues[field.key] ?? ''])
@@ -628,8 +653,20 @@ function ProductDetailBody({
           />
         </div>
 
-        {detailText ? (
-          <div className="mt-3 text-sm text-gray-500">{detailText}</div>
+        {detailSpecs.length > 0 ? (
+          <section className="mt-4 rounded-lg border border-gray-200 bg-zinc-50 p-3" aria-labelledby="board-specs">
+            <h2 id="board-specs" className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-700">
+              Board Specs
+            </h2>
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+              {detailSpecs.map((spec) => (
+                <div key={spec.key}>
+                  <dt className="text-xs text-gray-500">{spec.label}</dt>
+                  <dd className="mt-0.5 font-semibold tabular-nums text-zinc-900">{spec.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         ) : null}
 
         {customFields.length > 0 ? (
@@ -637,10 +674,14 @@ function ProductDetailBody({
             {customFields.map((field) => (
               <div key={field.key} className="block">
                 <span className="text-sm font-medium text-gray-700">
-                  {field.label}{field.required ? ' *' : ''}
+                  {customFieldShopLabel(field.key, field.label)}{field.required ? ' *' : ''}
                 </span>
                 {field.inputType === 'select' && field.displayStyle === 'price-list' ? (
-                  <div className="mt-2 grid gap-2" role="radiogroup" aria-label={field.label}>
+                  <div
+                    className="mt-2 grid gap-2"
+                    role="radiogroup"
+                    aria-label={customFieldShopLabel(field.key, field.label)}
+                  >
                     {(field.values ?? []).map((value) => {
                       const selected = customValues[field.key] === value
                       const price = field.optionPrices?.[value]
@@ -661,7 +702,9 @@ function ProductDetailBody({
                             selected ? 'border-4 border-zinc-900' : 'border-gray-400'
                           }`} />
                           <span className="min-w-0 flex-1">
-                            <span className="block font-semibold text-zinc-900">{value}</span>
+                            <span className="block font-semibold text-zinc-900">
+                              {customOptionShopLabel(field.key, value)}
+                            </span>
                             {field.optionNotes?.[value] ? (
                               <span className="mt-0.5 block text-xs text-gray-500">
                                 {field.optionNotes[value]}
@@ -678,9 +721,9 @@ function ProductDetailBody({
                 ) : field.inputType === 'select' && field.displayStyle === 'swatches' ? (
                   <div className="mt-2">
                     <div
-                      className="flex flex-nowrap gap-2 overflow-x-auto py-1"
+                      className="flex flex-nowrap gap-3 overflow-x-auto py-1"
                       role="radiogroup"
-                      aria-label={field.label}
+                      aria-label={customFieldShopLabel(field.key, field.label)}
                     >
                       {(field.allowCustomValue ? (field.values ?? []).slice(0, 8) : (field.values ?? [])).map((value) => {
                         const selected = customValues[field.key] === value
@@ -698,10 +741,10 @@ function ProductDetailBody({
                                 : 'border-gray-200 hover:border-gray-500'
                             }`}
                             style={{
-                              width: 20,
-                              height: 20,
-                              minWidth: 20,
-                              minHeight: 20,
+                              width: 26,
+                              height: 26,
+                              minWidth: 26,
+                              minHeight: 26,
                               padding: 0,
                               boxSizing: 'border-box',
                               backgroundColor: field.swatches?.[value] ?? '#d1d5db',
@@ -721,8 +764,6 @@ function ProductDetailBody({
                             : customValues[field.key] ?? ''
                           const parsed = parsePantoneSelection(current)
                           setPantoneCode(parsed?.code ?? current)
-                          setPantonePreview(parsed?.previewHex ?? '#808080')
-                          setPantoneHexInput(parsed?.previewHex ?? '#808080')
                           setPantoneDialogFieldKey(field.key)
                         }}
                       >
@@ -730,18 +771,9 @@ function ProductDetailBody({
                       </button>
                     ) : null}
                     {customValues[field.key] ? (
-                    <div className="mt-2 flex min-h-5 items-center gap-2 text-sm text-gray-600">
-                      {parsePantoneSelection(customValues[field.key] ?? '') ? (
-                        <span
-                          aria-hidden="true"
-                          className="h-4 w-4 shrink-0 rounded-full border border-black/15"
-                          style={{
-                            backgroundColor: parsePantoneSelection(customValues[field.key] ?? '')?.previewHex,
-                          }}
-                        />
-                      ) : null}
-                      <span>已選：{customValues[field.key]}</span>
-                    </div>
+                      <div className="mt-2 min-h-5 text-sm text-gray-600">
+                        已選：{parsePantoneSelection(customValues[field.key] ?? '')?.code ?? customValues[field.key]}
+                      </div>
                     ) : null}
                   </div>
                 ) : field.readOnly
@@ -749,7 +781,7 @@ function ProductDetailBody({
                   <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
                     <span
                       aria-hidden="true"
-                      className="block h-5 w-5 shrink-0 rounded-full border-2 border-zinc-900 ring-1 ring-zinc-900 ring-offset-1"
+                      className="block h-[26px] w-[26px] shrink-0 rounded-full border-2 border-zinc-900 ring-1 ring-zinc-900 ring-offset-1"
                       style={{
                         backgroundColor: field.key === 'carbon_color' ? '#000000' : '#FFFFFF',
                       }}
@@ -807,7 +839,7 @@ function ProductDetailBody({
               onClick={(event) => event.stopPropagation()}
             >
               <h2 className="text-lg font-bold text-zinc-900">其他 Pantone 色號</h2>
-              <p className="mt-1 text-xs text-gray-500">參考色僅供螢幕顯示。</p>
+              <p className="mt-1 text-xs text-gray-500">請輸入製作時使用的 Pantone 色號。</p>
               <label className="mt-4 block text-sm font-medium text-gray-700">
                 Pantone 色號
                 <input
@@ -818,37 +850,6 @@ function ProductDetailBody({
                   onChange={(event) => setPantoneCode(event.target.value)}
                 />
               </label>
-              <div className="mt-3">
-                <span className="block text-sm font-medium text-gray-700">螢幕參考色</span>
-                <div className="mt-1 flex items-center gap-2">
-                  <input
-                    type="color"
-                    aria-label="選擇螢幕參考色"
-                    className="h-12 w-12 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 border-white bg-transparent p-0 shadow ring-1 ring-gray-300 [&::-moz-color-swatch]:rounded-full [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0"
-                    value={pantonePreview}
-                    onChange={(event) => {
-                      const next = event.target.value.toUpperCase()
-                      setPantonePreview(next)
-                      setPantoneHexInput(next)
-                    }}
-                  />
-                  <input
-                    className="min-h-11 min-w-0 flex-1 rounded-md border border-gray-300 px-3 font-mono text-base uppercase"
-                    value={pantoneHexInput}
-                    placeholder="#808080"
-                    maxLength={7}
-                    onChange={(event) => {
-                      const next = event.target.value.toUpperCase()
-                      setPantoneHexInput(next)
-                      const valid = normalizePreviewHex(next)
-                      if (valid) setPantonePreview(valid)
-                    }}
-                  />
-                </div>
-                {!normalizePreviewHex(pantoneHexInput) ? (
-                  <span className="mt-1 block text-xs text-red-600">請輸入六位色碼，例如 #DA291C</span>
-                ) : null}
-              </div>
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   type="button"
@@ -859,13 +860,10 @@ function ProductDetailBody({
                 </button>
                 <button
                   type="button"
-                  disabled={!pantoneCode.trim() || !normalizePreviewHex(pantoneHexInput)}
+                  disabled={!pantoneCode.trim()}
                   className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-40"
                   onClick={() => {
-                    onCustomValueChange(
-                      pantoneDialogFieldKey,
-                      formatPantoneSelection(pantoneCode, pantoneHexInput),
-                    )
+                    onCustomValueChange(pantoneDialogFieldKey, pantoneCode.trim().toUpperCase())
                     setPantoneDialogFieldKey(null)
                   }}
                 >
@@ -875,8 +873,10 @@ function ProductDetailBody({
             </div>
           </div>
         ) : null}
-        {!pendingColorInquiryValues && customSelectionError ? (
+        {!pendingColorValues && customSelectionError ? (
           <div className="mt-2 text-xs text-amber-700">{customSelectionError}</div>
+        ) : pendingColorValues && customSelectionError ? (
+          <div className="mt-2 text-xs text-gray-500">尚未選色時，將由客服後續確認。</div>
         ) : null}
 
         {product.size_chart ? <ProductSizeChart chart={product.size_chart} /> : null}
@@ -898,11 +898,15 @@ function ProductDetailBody({
         <div className="mt-6 hidden lg:block">
           <DetailPurchaseActions
             layout="stacked"
-            canAddToCart={!!selectedVariant && canPurchase && !customSelectionError}
+            canAddToCart={
+              !!selectedVariant
+              && canPurchase
+              && (!customSelectionError || pendingColorValues !== null)
+            }
             canInquire={
               !!selectedVariant
               && canPurchase
-              && (!customSelectionError || pendingColorInquiryValues !== null)
+              && (!customSelectionError || pendingColorValues !== null)
             }
             onAddToCart={onAddToCart}
             onDirectInquiry={onDirectInquiry}
@@ -920,11 +924,15 @@ function ProductDetailBody({
       <div className="max-w-7xl mx-auto px-4 pt-3">
         <DetailPurchaseActions
           layout="sticky"
-          canAddToCart={!!selectedVariant && canPurchase && !customSelectionError}
+          canAddToCart={
+            !!selectedVariant
+            && canPurchase
+            && (!customSelectionError || pendingColorValues !== null)
+          }
           canInquire={
             !!selectedVariant
             && canPurchase
-            && (!customSelectionError || pendingColorInquiryValues !== null)
+            && (!customSelectionError || pendingColorValues !== null)
           }
           onAddToCart={onAddToCart}
           onDirectInquiry={onDirectInquiry}

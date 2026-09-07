@@ -513,22 +513,22 @@ BEGIN
       'customFields', jsonb_build_array(
         jsonb_build_object(
           'key', 'build_option',
-          'label', 'Build Option',
+          'label', 'Build',
           'inputType', 'select',
           'values', jsonb_build_array(
-            'Standard Build',
+            'Standard',
             'Custom Color',
             'Carbon'
           ),
           'required', TRUE,
           'displayStyle', 'price-list',
           'optionPrices', jsonb_build_object(
-            'Standard Build', 65000,
+            'Standard', 65000,
             'Custom Color', 70000,
             'Carbon', 75000
           ),
           'optionNotes', jsonb_build_object(
-            'Standard Build', '標準板',
+            'Standard', '標準板',
             'Custom Color', '可選推薦色或用Pantone色號選色',
             'Carbon', '碳纖維製作・固定黑色'
           )
@@ -543,7 +543,7 @@ BEGIN
           'visibility', jsonb_build_object(
             'customField', jsonb_build_object(
               'key', 'build_option',
-              'value', 'Standard Build'
+              'value', 'Standard'
             )
           )
         ),
@@ -589,7 +589,7 @@ BEGIN
             WHEN 'Full Color' THEN 'Custom Color'
             WHEN '客製色' THEN 'Custom Color'
             WHEN 'Full Carbon' THEN 'Carbon'
-            ELSE 'Standard Build'
+            ELSE 'Standard'
           END
         )
       )

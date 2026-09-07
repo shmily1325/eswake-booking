@@ -1,4 +1,4 @@
--- Show Standard Build's fixed white color consistently with Carbon's black color.
+-- Show Standard's fixed white color consistently with Carbon's black color.
 
 BEGIN;
 
@@ -18,7 +18,7 @@ WITH rewritten AS (
                 field,
                 '{optionNotes}',
                 jsonb_build_object(
-                  'Standard Build', '標準板',
+                  'Standard', '標準板',
                   'Custom Color', '可選推薦色或用Pantone色號選色',
                   'Carbon', '碳纖維製作・固定黑色'
                 ),
@@ -46,7 +46,7 @@ WITH rewritten AS (
               'visibility', jsonb_build_object(
                 'customField', jsonb_build_object(
                   'key', 'build_option',
-                  'value', 'Standard Build'
+                  'value', 'Standard'
                 )
               )
             )
@@ -77,7 +77,7 @@ SET selected_options = item.selected_options
     'standard_color',
     jsonb_build_object('label', 'Color', 'value', 'White')
   )
-WHERE item.selected_options #>> '{build_option,value}' = 'Standard Build'
+WHERE item.selected_options #>> '{build_option,value}' IN ('Standard', 'Standard Build')
   AND NOT (item.selected_options ? 'standard_color')
   AND EXISTS (
     SELECT 1

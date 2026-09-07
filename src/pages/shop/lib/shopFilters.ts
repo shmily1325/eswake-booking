@@ -546,7 +546,7 @@ export function getShopFilterContextLabel(filters: ShopFilterState): string {
     filters.topLevel === ALL_GROUPS &&
     filters.subCat === ALL_SUBCATS
   ) {
-    return 'CUSTOM ORDER'
+    return 'Custom Order'
   }
   if (
     filters.preOrderOnly &&
@@ -600,7 +600,7 @@ export function getHeroTitle(filters: ShopFilterState): string {
   }
   if (filters.topLevel !== ALL_GROUPS) return getShopGroupLabel(filters.topLevel)
   if (filters.preOrderOnly) return 'Pre-Order'
-  if (filters.customOrderOnly) return 'CUSTOM ORDER'
+  if (filters.customOrderOnly) return 'Custom Order'
   if (filters.inStockOnly) return 'In-Stock'
   if (filters.saleOnly) return 'Sale'
   return 'Catalog'
