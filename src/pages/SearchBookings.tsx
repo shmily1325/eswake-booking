@@ -33,6 +33,7 @@ import {
 } from '../utils/searchBookingMemberQuery'
 import {
   callReminderGuestApi,
+  getBookingSavedLineReminderGuests,
   searchSavedLineReminderGuests,
   type SavedLineReminderGuest,
 } from '../utils/lineReminderGuests'
@@ -732,6 +733,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
   const handleBookingClick = async (bookingId: number) => {
     setLoadingBookingId(bookingId)
     try {
+      // 與預約明細並行預載，dialog 內會共用同一個請求，避免開啟後才開始等 LINE 標籤。
+      void getBookingSavedLineReminderGuests(bookingId).catch(() => undefined)
       // 並行查詢所有資料（比順序執行快 3-4 倍）
       const [bookingResult, coachesResult, driversResult, membersResult] = await Promise.all([
         supabase

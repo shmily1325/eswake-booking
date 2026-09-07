@@ -261,7 +261,7 @@ describe('useBookingForm', () => {
       })
     })
 
-    it('booking_members 有嵌套 members 時應立即從 contact_name 拆出非會員（不需等名冊）', async () => {
+    it('LINE 配對載入完成後應從 contact_name 拆出未建檔非會員', async () => {
       const initial: any = {
         id: 42,
         boat_id: 1,
@@ -330,7 +330,8 @@ describe('useBookingForm', () => {
 
       const { result } = renderHook(() => useBookingForm({ initialBooking: initial }))
 
-      expect(result.current.manualNames).toEqual(['訪客A'])
+      expect(result.current.manualNames).toEqual([])
+      expect(result.current.bookingSavedGuestsLoading).toBe(true)
 
       await act(async () => {
         await result.current.fetchAllData()
@@ -338,10 +339,11 @@ describe('useBookingForm', () => {
 
       await waitFor(() => {
         expect(result.current.manualNames).toEqual(['訪客A'])
+        expect(result.current.bookingSavedGuestsLoading).toBe(false)
       })
     })
 
-    it('無 member_id 且無 booking_members 時 contact_name 應立即全部當成手動名', () => {
+    it('無會員關聯時也應等 LINE 配對載入完成再顯示手動名', async () => {
       const initial: any = {
         id: 43,
         boat_id: 1,
@@ -359,7 +361,11 @@ describe('useBookingForm', () => {
 
       const { result } = renderHook(() => useBookingForm({ initialBooking: initial }))
 
-      expect(result.current.manualNames).toEqual(['訪客甲', '訪客乙'])
+      expect(result.current.manualNames).toEqual([])
+
+      await waitFor(() => {
+        expect(result.current.manualNames).toEqual(['訪客甲', '訪客乙'])
+      })
     })
   })
 

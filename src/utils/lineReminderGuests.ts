@@ -13,6 +13,12 @@ export type SavedLineReminderGuest = {
   } | null
 }
 
+const BOOKING_GUEST_CACHE_MS = 5_000
+const bookingGuestRequests = new Map<
+  number,
+  { promise: Promise<SavedLineReminderGuest[]>; expiresAt: number }
+>()
+
 export async function callReminderGuestApi(body: Record<string, unknown>) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
@@ -65,8 +71,28 @@ export async function searchSavedLineReminderGuests(
 export async function getBookingSavedLineReminderGuests(
   bookingId: number,
 ): Promise<SavedLineReminderGuest[]> {
-  const result = await callReminderGuestApi({ action: 'get_booking_guests', bookingId })
-  return (result?.guests ?? []) as SavedLineReminderGuest[]
+  const cached = bookingGuestRequests.get(bookingId)
+  if (cached && cached.expiresAt > Date.now()) return cached.promise
+
+  let promise: Promise<SavedLineReminderGuest[]>
+  promise = callReminderGuestApi({ action: 'get_booking_guests', bookingId })
+    .then((result) => {
+      const guests = (result?.guests ?? []) as SavedLineReminderGuest[]
+      const entry = bookingGuestRequests.get(bookingId)
+      if (entry?.promise === promise) {
+        entry.expiresAt = Date.now() + BOOKING_GUEST_CACHE_MS
+      }
+      return guests
+    })
+    .catch((error) => {
+      bookingGuestRequests.delete(bookingId)
+      throw error
+    })
+  bookingGuestRequests.set(bookingId, {
+    promise,
+    expiresAt: Number.POSITIVE_INFINITY,
+  })
+  return promise
 }
 
 export async function syncBookingSavedLineReminderGuests(
@@ -74,4 +100,5 @@ export async function syncBookingSavedLineReminderGuests(
   guests: Array<{ guestId: string; contactName: string }>,
 ): Promise<void> {
   await callReminderGuestApi({ action: 'sync_booking_guests', bookingId, guests })
+  bookingGuestRequests.delete(bookingId)
 }

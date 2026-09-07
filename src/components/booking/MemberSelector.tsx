@@ -30,6 +30,7 @@ interface MemberSelectorProps {
     setShowSavedGuestDropdown?: (show: boolean) => void
     handleSavedGuestSearch?: (term: string) => void
     savedGuestSearchLoading?: boolean
+    bookingSavedGuestsLoading?: boolean
     actualRider: string
     setActualRider: (value: string) => void
 }
@@ -56,6 +57,7 @@ export function MemberSelector({
     setShowSavedGuestDropdown,
     handleSavedGuestSearch,
     savedGuestSearchLoading = false,
+    bookingSavedGuestsLoading = false,
     actualRider,
     setActualRider,
 }: MemberSelectorProps) {
@@ -121,8 +123,27 @@ export function MemberSelector({
                 )}
             </label>
 
-            {(selectedMemberIds.length > 0 || manualNames.length > 0 || selectedSavedGuests.length > 0) && (
+            {(selectedMemberIds.length > 0 ||
+                manualNames.length > 0 ||
+                selectedSavedGuests.length > 0 ||
+                bookingSavedGuestsLoading) && (
                 <div style={{ marginBottom: designSystem.spacing.sm, display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {bookingSavedGuestsLoading && (
+                        <span
+                            role="status"
+                            style={{
+                                padding: '6px 12px',
+                                background: designSystem.colors.background.hover,
+                                color: designSystem.colors.text.secondary,
+                                border: `1px solid ${designSystem.colors.border.main}`,
+                                borderRadius: designSystem.borderRadius.md,
+                                fontSize: getFontSize('body', true),
+                                fontWeight: '600',
+                            }}
+                        >
+                            LINE 配對載入中…
+                        </span>
+                    )}
                     {selectedMemberIds.map(memberId => {
                         const member = members.find(m => m.id === memberId)
                         return member ? (

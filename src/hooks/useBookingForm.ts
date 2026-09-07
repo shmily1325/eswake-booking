@@ -70,6 +70,9 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     const [initialSavedGuestAssignments, setInitialSavedGuestAssignments] = useState<string[]>([])
     const [showSavedGuestDropdown, setShowSavedGuestDropdown] = useState(false)
     const [savedGuestSearchLoading, setSavedGuestSearchLoading] = useState(false)
+    const [bookingSavedGuestsLoading, setBookingSavedGuestsLoading] = useState(
+        Boolean(initialBooking?.id)
+    )
 
     // Time & Details
     const [startDate, setStartDate] = useState('')
@@ -137,6 +140,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
                 setSelectedSavedGuests([])
                 setInitialSavedGuestIds([])
                 setInitialSavedGuestAssignments([])
+                setBookingSavedGuestsLoading(Boolean(initialBooking.id))
             }
 
             // Edit Mode Initialization
@@ -199,7 +203,9 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
                 // 有關聯會員但嵌套資料比對不到姓名時，先不把手動名寫入 state，等 members 載入後再解析，避免橘標閃一下又消失
                 const deferUntilMembers =
                     initialMemberIds.length > 0 && memberNamesSet.size === 0
-                setManualNames(deferUntilMembers ? [] : nonMemberNames)
+                // 已建檔 LINE 客人由另一個請求載入；完成前不要先誤顯示成橘色一般客人。
+                const deferUntilSavedGuests = Boolean(initialBooking.id)
+                setManualNames(deferUntilMembers || deferUntilSavedGuests ? [] : nonMemberNames)
             } else {
                 setManualNames([])
             }
@@ -216,6 +222,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             setInitialSavedGuestAssignments([])
             setSavedGuestSearchResults([])
             setShowSavedGuestDropdown(false)
+            setBookingSavedGuestsLoading(false)
 
             if (defaultDate) {
                 const datetime = defaultDate.substring(0, 16)
@@ -241,8 +248,12 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
     }, [initialBooking, defaultDate, defaultBoatId])
 
     useEffect(() => {
-        if (!initialBooking?.id) return
+        if (!initialBooking?.id) {
+            setBookingSavedGuestsLoading(false)
+            return
+        }
         let cancelled = false
+        setBookingSavedGuestsLoading(true)
         void getBookingSavedLineReminderGuests(initialBooking.id)
             .then((guests) => {
                 if (cancelled) return
@@ -265,6 +276,9 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             .catch((error) => {
                 if (!cancelled) console.error('Error loading saved LINE reminder guests:', error)
             })
+            .finally(() => {
+                if (!cancelled) setBookingSavedGuestsLoading(false)
+            })
         return () => {
             cancelled = true
         }
@@ -272,10 +286,15 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
     // 編輯模式：會員名冊載入後一次從 contact_name 還原手動名（與預約上的 member 比對），避免先畫錯誤橘標
     useEffect(() => {
-        if (!initialBooking?.contact_name || members.length === 0) {
+        if (bookingSavedGuestsLoading) return
+        if (!initialBooking?.contact_name) {
             if (!initialBooking) contactManualParsedKeyRef.current = null
             return
         }
+        const hasInitialMemberLinks = Boolean(
+            initialBooking.member_id || initialBooking.booking_members?.length
+        )
+        if (hasInitialMemberLinks && members.length === 0) return
 
         const parseKey = `${initialBooking.id}|${initialBooking.contact_name}`
         if (contactManualParsedKeyRef.current === parseKey) return
@@ -323,7 +342,12 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
 
         setManualNames(nonMemberNames)
         contactManualParsedKeyRef.current = parseKey
-    }, [initialBooking, members, selectedSavedGuests])
+    }, [
+        bookingSavedGuestsLoading,
+        initialBooking,
+        members,
+        selectedSavedGuests,
+    ])
 
     // 會員名冊載入後：contact_name 拆出的手動名若與已選會員本名／暱稱相同則移除，避免同一人出現藍標＋橘標
     useEffect(() => {
@@ -583,6 +607,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         setShowMemberDropdown(false)
         setMemberSearchLoading(false)
         setSavedGuestSearchLoading(false)
+        setBookingSavedGuestsLoading(false)
         setActivityTypes([])
         setActualRider('')
         setNotes('')
@@ -617,6 +642,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         initialSavedGuestAssignments,
         showSavedGuestDropdown,
         savedGuestSearchLoading,
+        bookingSavedGuestsLoading,
         startDate,
         startTime,
         durationMin,

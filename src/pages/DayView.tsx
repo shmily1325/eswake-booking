@@ -22,6 +22,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { injectAnimationStyles } from '../utils/animations'
 import { hasEditorFeatureAsync, hasViewAccess } from '../utils/auth'
 import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
+import { getBookingSavedLineReminderGuests } from '../utils/lineReminderGuests'
 import {
   mapBoatUnavailableRowsToBlocks,
   type BoatUnavailableBlock,
@@ -570,6 +571,8 @@ export function DayView() {
     }
 
     if (booking) {
+      // 使用者點擊時立即預載；共用請求快取可讓編輯表單直接取得 LINE 標籤。
+      void getBookingSavedLineReminderGuests(booking.id).catch(() => undefined)
       setSelectedBooking(booking)
       setEditDialogOpen(true)
     } else {

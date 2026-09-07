@@ -75,6 +75,7 @@ export function EditBookingDialog({
     initialSavedGuestAssignments,
     showSavedGuestDropdown,
     savedGuestSearchLoading,
+    bookingSavedGuestsLoading,
     startDate,
     startTime,
     durationMin,
@@ -1003,6 +1004,7 @@ export function EditBookingDialog({
             setSelectedSavedGuests={setSelectedSavedGuests}
             showSavedGuestDropdown={showSavedGuestDropdown}
             savedGuestSearchLoading={savedGuestSearchLoading}
+            bookingSavedGuestsLoading={bookingSavedGuestsLoading}
             setShowSavedGuestDropdown={setShowSavedGuestDropdown}
             handleSavedGuestSearch={handleSavedGuestSearch}
             actualRider={actualRider}

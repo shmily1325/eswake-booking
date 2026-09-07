@@ -90,6 +90,7 @@ export function RepeatBookingDialog({
     selectedSavedGuests,
     showSavedGuestDropdown,
     savedGuestSearchLoading,
+    bookingSavedGuestsLoading,
     startDate,
     startTime,
     durationMin,
@@ -691,6 +692,7 @@ export function RepeatBookingDialog({
             setSelectedSavedGuests={setSelectedSavedGuests}
             showSavedGuestDropdown={showSavedGuestDropdown}
             savedGuestSearchLoading={savedGuestSearchLoading}
+            bookingSavedGuestsLoading={bookingSavedGuestsLoading}
             setShowSavedGuestDropdown={setShowSavedGuestDropdown}
             handleSavedGuestSearch={handleSavedGuestSearch}
             actualRider={actualRider}
