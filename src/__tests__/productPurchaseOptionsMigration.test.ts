@@ -58,6 +58,10 @@ const renameVibesCarbonOption = readFileSync(
   resolve(process.cwd(), 'migrations/231_rename_vibes_carbon_option.sql'),
   'utf8',
 )
+const syncVibesBuildDescriptions = readFileSync(
+  resolve(process.cwd(), 'migrations/232_sync_vibes_build_option_descriptions.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -208,8 +212,8 @@ describe('product purchase option migrations', () => {
     expect(vibesPricedBuildOptions).toContain("'Custom Color', 70000")
     expect(vibesPricedBuildOptions).toContain("'Carbon', 75000")
     expect(vibesPricedBuildOptions).not.toContain('Black Ops Carbon')
-    expect(vibesPricedBuildOptions).toContain("'Standard Build', '標準製作'")
-    expect(vibesPricedBuildOptions).toContain("'選推薦色或輸入 Pantone 色號'")
+    expect(vibesPricedBuildOptions).toContain("'Standard Build', '標準白色板'")
+    expect(vibesPricedBuildOptions).toContain("'可選推薦色或用Pantone色號選色'")
     expect(vibesPricedBuildOptions).toContain("'allowCustomValue', TRUE")
     expect(vibesPricedBuildOptions).toContain(
       "'customField', jsonb_build_object(",
@@ -235,9 +239,17 @@ describe('product purchase option migrations', () => {
   it('renames already-deployed VIBES carbon options and order snapshots', () => {
     expect(renameVibesCarbonOption).toContain("'Black Ops Carbon'")
     expect(renameVibesCarbonOption).toContain("'Carbon'")
-    expect(renameVibesCarbonOption).toContain("'Custom Color', '可選推薦色或 Pantone'")
+    expect(renameVibesCarbonOption).toContain("'Custom Color', '可選推薦色或用Pantone色號選色'")
     expect(renameVibesCarbonOption).toContain(
       "item.selected_options #>> '{build_option,value}' = 'Black Ops Carbon'",
     )
+  })
+
+  it('synchronizes concise Chinese build descriptions across VIBES products', () => {
+    expect(syncVibesBuildDescriptions).toContain("'Standard Build', '標準白色板'")
+    expect(syncVibesBuildDescriptions).toContain(
+      "'Custom Color', '可選推薦色或用Pantone色號選色'",
+    )
+    expect(syncVibesBuildDescriptions).toContain("'Carbon', '碳纖維製作・固定黑色'")
   })
 })

@@ -461,7 +461,7 @@ BEGIN
       'allowCustomValue', TRUE,
       'placeholder', 'Choose a color',
       'help',
-        '選推薦色或輸入 Pantone 色號',
+        '可選推薦色或用Pantone色號選色',
       'visibility', jsonb_build_object(
         'customField', jsonb_build_object(
           'key', 'build_option',
@@ -528,9 +528,9 @@ BEGIN
             'Carbon', 75000
           ),
           'optionNotes', jsonb_build_object(
-            'Standard Build', '標準製作',
-            'Custom Color', '可選推薦色或 Pantone',
-            'Carbon', '碳纖維製作 · 固定黑色'
+            'Standard Build', '標準白色板',
+            'Custom Color', '可選推薦色或用Pantone色號選色',
+            'Carbon', '碳纖維製作・固定黑色'
           )
         ),
         v_spray,

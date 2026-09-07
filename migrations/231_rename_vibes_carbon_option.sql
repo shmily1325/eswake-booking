@@ -41,9 +41,9 @@ WITH rewritten AS (
                   ),
                 'optionNotes',
                 jsonb_build_object(
-                  'Standard Build', '標準製作',
-                  'Custom Color', '可選推薦色或 Pantone',
-                  'Carbon', '碳纖維製作 · 固定黑色'
+                  'Standard Build', '標準白色板',
+                  'Custom Color', '可選推薦色或用Pantone色號選色',
+                  'Carbon', '碳纖維製作・固定黑色'
                 )
               )
             WHEN field ->> 'key' = 'spray_color' THEN
@@ -51,7 +51,7 @@ WITH rewritten AS (
                 field
                 - 'help'
               ) || jsonb_build_object(
-                'help', '選推薦色或輸入 Pantone 色號'
+                'help', '可選推薦色或用Pantone色號選色'
               )
             WHEN field ->> 'key' = 'carbon_color' THEN
               jsonb_set(
