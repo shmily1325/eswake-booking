@@ -105,6 +105,110 @@ function OptionValuesEditor({
   )
 }
 
+function PriceOptionsEditor({
+  field,
+  disabled,
+  inputStyle,
+  onChange,
+}: {
+  field: ProductCustomField
+  disabled: boolean
+  inputStyle: CSSProperties
+  onChange: (patch: Partial<ProductCustomField>) => void
+}) {
+  const [draft, setDraft] = useState('')
+  const updateName = (oldName: string, nextName: string) => {
+    const values = (field.values ?? []).map((value) => value === oldName ? nextName : value)
+    const optionPrices = { ...field.optionPrices }
+    const optionNotes = { ...field.optionNotes }
+    optionPrices[nextName] = optionPrices[oldName] ?? 0
+    if (optionNotes[oldName]) optionNotes[nextName] = optionNotes[oldName]
+    if (nextName !== oldName) {
+      delete optionPrices[oldName]
+      delete optionNotes[oldName]
+    }
+    onChange({ values, optionPrices, optionNotes })
+  }
+  const remove = (name: string) => {
+    const optionPrices = { ...field.optionPrices }
+    const optionNotes = { ...field.optionNotes }
+    delete optionPrices[name]
+    delete optionNotes[name]
+    onChange({
+      values: field.values?.filter((value) => value !== name),
+      optionPrices,
+      optionNotes,
+    })
+  }
+  const add = () => {
+    const name = draft.trim()
+    if (!name || field.values?.includes(name)) return
+    onChange({
+      values: [...(field.values ?? []), name],
+      optionPrices: { ...field.optionPrices, [name]: 0 },
+    })
+    setDraft('')
+  }
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {(field.values ?? []).map((name) => (
+        <div
+          key={name}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(120px, 1fr) 120px minmax(160px, 1.5fr) auto',
+            gap: 8,
+            alignItems: 'end',
+          }}
+        >
+          <label>
+            <span style={labelStyle}>名稱</span>
+            <input style={inputStyle} value={name} disabled={disabled}
+              onChange={(event) => updateName(name, event.target.value)} />
+          </label>
+          <label>
+            <span style={labelStyle}>固定成交價</span>
+            <input type="number" min={0} step={1} style={inputStyle}
+              value={field.optionPrices?.[name] ?? 0} disabled={disabled}
+              onChange={(event) => onChange({
+                optionPrices: {
+                  ...field.optionPrices,
+                  [name]: Math.max(0, Number(event.target.value) || 0),
+                },
+              })} />
+          </label>
+          <label>
+            <span style={labelStyle}>說明</span>
+            <input style={inputStyle} value={field.optionNotes?.[name] ?? ''} disabled={disabled}
+              onChange={(event) => onChange({
+                optionNotes: {
+                  ...field.optionNotes,
+                  [name]: event.target.value,
+                },
+              })} />
+          </label>
+          <Button variant="danger" size="small" disabled={disabled} onClick={() => remove(name)}>
+            移除
+          </Button>
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input style={inputStyle} value={draft} disabled={disabled}
+          placeholder="新增價格選項名稱"
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return
+            event.preventDefault()
+            add()
+          }} />
+        <Button variant="outline" size="small" disabled={disabled || !draft.trim()} onClick={add}>
+          新增
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function ProductOptionsEditor({
   value,
   onChange,
@@ -361,7 +465,21 @@ export function ProductOptionsEditor({
         {value.customFields.map((field, index) => ({ field, index }))
           .filter(({ field }) => !field.readOnly)
           .map(({ field, index }) => {
-          const visibility = field.visibility?.axis
+          const axisVisibility = field.visibility && 'axis' in field.visibility
+            ? field.visibility.axis
+            : undefined
+          const customVisibility = field.visibility && 'customField' in field.visibility
+            ? field.visibility.customField
+            : undefined
+          const visibilitySource = axisVisibility
+            ? `axis:${axisVisibility.key}`
+            : customVisibility
+              ? `custom:${customVisibility.key}`
+              : ''
+          const visibilityValue = axisVisibility?.value ?? customVisibility?.value ?? ''
+          const customVisibilitySource = value.customFields
+            .slice(0, index)
+            .find((candidate) => candidate.key === customVisibility?.key)
           return (
             <details
               key={`custom-${index}`}
@@ -385,7 +503,8 @@ export function ProductOptionsEditor({
                 <strong style={{ minWidth: 90, fontSize: 14 }}>{field.label}</strong>
                 <span style={{ flex: 1, color: designSystem.colors.text.secondary, fontSize: 12 }}>
                   {field.values?.length ? `${field.values.length} 個選項` : '文字'}
-                  {visibility ? ` · ${value.variantFields.axis.find((axis) => axis.key === visibility.key)?.label ?? visibility.key}為 ${visibility.value} 時顯示` : ''}
+                  {axisVisibility ? ` · ${value.variantFields.axis.find((axis) => axis.key === axisVisibility.key)?.label ?? axisVisibility.key}為 ${axisVisibility.value} 時顯示` : ''}
+                  {customVisibility ? ` · ${customVisibilitySource?.label ?? customVisibility.key}為 ${customVisibility.value} 時顯示` : ''}
                 </span>
                 <span style={{ color: designSystem.colors.primary[700], fontSize: 12 }}>編輯</span>
               </summary>
@@ -406,7 +525,7 @@ export function ProductOptionsEditor({
                     <option value="select">固定選項</option>
                   </select>
                 </label>
-                {field.inputType === 'select' ? <div>
+                {field.inputType === 'select' && field.displayStyle !== 'price-list' ? <div>
                   <span style={labelStyle}>選項</span>
                   <OptionValuesEditor
                     values={field.values}
@@ -441,7 +560,7 @@ export function ProductOptionsEditor({
                     onChange={(event) => {
                       const displayStyle = event.target.value as ProductCustomField['displayStyle']
                       updateCustomField(index, {
-                        displayStyle: displayStyle === 'swatches' ? 'swatches' : undefined,
+                        displayStyle: displayStyle === 'select' ? undefined : displayStyle,
                         swatches: displayStyle === 'swatches'
                           ? Object.fromEntries(
                             (field.values ?? []).map((option) => [
@@ -450,17 +569,52 @@ export function ProductOptionsEditor({
                             ]),
                           )
                           : undefined,
+                        optionPrices: displayStyle === 'price-list'
+                          ? Object.fromEntries(
+                            (field.values ?? []).map((option) => [
+                              option,
+                              field.optionPrices?.[option] ?? 0,
+                            ]),
+                          )
+                          : undefined,
+                        optionNotes: displayStyle === 'price-list' ? field.optionNotes : undefined,
+                        allowCustomValue: displayStyle === 'swatches'
+                          ? field.allowCustomValue
+                          : undefined,
                       })
                     }}
                   >
                     <option value="select">下拉選單</option>
                     <option value="swatches">色票圈圈</option>
+                    <option value="price-list">價格選項清單</option>
                   </select>
                 </label> : <div />}
               </div>
+              {field.inputType === 'select' && field.displayStyle === 'price-list' ? (
+                <div style={{ marginTop: 10 }}>
+                  <span style={labelStyle}>價格選項（名稱、固定成交價、說明）</span>
+                  <PriceOptionsEditor
+                    field={field}
+                    disabled={disabled}
+                    inputStyle={inputStyle}
+                    onChange={(patch) => updateCustomField(index, patch)}
+                  />
+                </div>
+              ) : null}
               {field.inputType === 'select' && field.displayStyle === 'swatches' ? (
                 <div style={{ marginTop: 10 }}>
                   <span style={labelStyle}>色票設定</span>
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={field.allowCustomValue === true}
+                      disabled={disabled}
+                      onChange={(event) => updateCustomField(index, {
+                        allowCustomValue: event.target.checked || undefined,
+                      })}
+                    />
+                    {' '}允許客人輸入其他 Pantone 色號
+                  </label>
                   <div style={{ display: 'grid', gap: 8 }}>
                     {(field.values ?? []).map((option) => (
                       <div
@@ -554,25 +708,47 @@ export function ProductOptionsEditor({
                   <span style={labelStyle}>顯示條件</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span>當</span>
-                  <select style={{ ...inputStyle, width: 'auto', flex: 1 }} value={visibility?.key ?? ''} disabled={disabled}
-                    onChange={(event) => updateCustomField(index, {
-                      visibility: event.target.value
-                        ? { axis: { key: event.target.value, value: '' } }
-                        : undefined,
-                    })}>
+                  <select style={{ ...inputStyle, width: 'auto', flex: 1 }} value={visibilitySource} disabled={disabled}
+                    onChange={(event) => {
+                      const [kind, key] = event.target.value.split(':')
+                      updateCustomField(index, {
+                        visibility: kind === 'axis' && key
+                          ? { axis: { key, value: '' } }
+                          : kind === 'custom' && key
+                            ? { customField: { key, value: '' } }
+                            : undefined,
+                      })
+                    }}>
                     <option value="">任何情況</option>
                     {value.variantFields.axis.map((axis) => (
-                      <option key={axis.key} value={axis.key}>{axis.label}</option>
+                      <option key={`axis:${axis.key}`} value={`axis:${axis.key}`}>SKU：{axis.label}</option>
                     ))}
+                    {value.customFields.slice(0, index)
+                      .filter((candidate) => candidate.inputType === 'select')
+                      .map((candidate) => (
+                        <option key={`custom:${candidate.key}`} value={`custom:${candidate.key}`}>
+                          客製：{candidate.label}
+                        </option>
+                      ))}
                   </select>
-                  {visibility ? <>
+                  {visibilitySource ? <>
                   <span>為</span>
-                  <select style={{ ...inputStyle, width: 'auto', flex: 1 }} value={visibility.value} disabled={disabled}
-                    onChange={(event) => visibility && updateCustomField(index, {
-                      visibility: { axis: { ...visibility, value: event.target.value } },
-                    })}>
+                  <select style={{ ...inputStyle, width: 'auto', flex: 1 }} value={visibilityValue} disabled={disabled}
+                    onChange={(event) => {
+                      if (axisVisibility) {
+                        updateCustomField(index, {
+                          visibility: { axis: { ...axisVisibility, value: event.target.value } },
+                        })
+                      } else if (customVisibility) {
+                        updateCustomField(index, {
+                          visibility: { customField: { ...customVisibility, value: event.target.value } },
+                        })
+                      }
+                    }}>
                     <option value="">請選擇</option>
-                    {(value.variantFields.axis.find((axis) => axis.key === visibility.key)?.values ?? [])
+                    {((axisVisibility
+                      ? value.variantFields.axis.find((axis) => axis.key === axisVisibility.key)?.values
+                      : customVisibilitySource?.values) ?? [])
                       .map((option) => <option key={option} value={option}>{option}</option>)}
                   </select>
                   <span>時顯示</span>

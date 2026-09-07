@@ -50,6 +50,10 @@ const customOrderMode = readFileSync(
   resolve(process.cwd(), 'migrations/227_custom_order_mode.sql'),
   'utf8',
 )
+const vibesPricedBuildOptions = readFileSync(
+  resolve(process.cwd(), 'migrations/230_vibes_priced_build_options.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -192,5 +196,32 @@ describe('product purchase option migrations', () => {
       "attributes = COALESCE(variant.attributes, '{}'::JSONB)",
     )
     expect(customOrderMode).toContain('sale_mode_snapshot')
+  })
+
+  it('collapses VIBES to size SKUs with priced build and Pantone options', () => {
+    expect(vibesPricedBuildOptions).toContain("'displayStyle', 'price-list'")
+    expect(vibesPricedBuildOptions).toContain("'Standard Build', 65000")
+    expect(vibesPricedBuildOptions).toContain("'Custom Color', 70000")
+    expect(vibesPricedBuildOptions).toContain("'Black Ops Carbon', 75000")
+    expect(vibesPricedBuildOptions).toContain("'allowCustomValue', TRUE")
+    expect(vibesPricedBuildOptions).toContain(
+      "'customField', jsonb_build_object(",
+    )
+    expect(vibesPricedBuildOptions).toContain("- 'finish'")
+    expect(vibesPricedBuildOptions).toContain('id <> v_canonical_id')
+    expect(vibesPricedBuildOptions).toContain('SET is_active = FALSE')
+    expect(vibesPricedBuildOptions).toContain(
+      "availability = 'custom_order'",
+    )
+    expect(vibesPricedBuildOptions).toContain(
+      "option_axis ->> 'key' = 'finish'",
+    )
+    expect(vibesPricedBuildOptions).toContain(
+      "custom_field ->> 'key' = 'build_option'",
+    )
+    expect(vibesPricedBuildOptions).toContain("- 'pantone'")
+    expect(vibesPricedBuildOptions).toContain(
+      "item.selected_options #>> '{pantone,value}'",
+    )
   })
 })

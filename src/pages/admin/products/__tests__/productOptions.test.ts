@@ -4,7 +4,10 @@ import {
   findMissingAxisCombinations,
   formatOptionSelection,
   normalizeProductOptionConfig,
+  pruneHiddenCustomValues,
+  resolveCustomPriceRange,
   resolveVariantFields,
+  resolveCustomSelectionPrice,
   stableOptionIdentity,
   validateProductOptionConfig,
   visibleCustomFields,
@@ -139,5 +142,116 @@ describe('product options core', () => {
         swatches: { 'HOT PINK': '#ff4fa3' },
       }],
     }).map((issue) => issue.message)).toContain('YELLOW 尚未設定顯示顏色')
+  })
+
+  it('normalizes price-list metadata and resolves its fixed transaction price', () => {
+    const priceConfig: ProductOptionConfig = {
+      ...config,
+      customFields: [{
+        key: 'build_option',
+        label: 'Build Option',
+        inputType: 'select',
+        values: ['Standard Build', 'Carbon Build'],
+        displayStyle: 'price-list',
+        optionPrices: {
+          'Standard Build': 68000,
+          'Carbon Build': 78000,
+        },
+        optionNotes: {
+          'Carbon Build': 'Carbon construction',
+        },
+        required: true,
+      }],
+    }
+    expect(normalizeProductOptionConfig(priceConfig)).toEqual(priceConfig)
+    expect(validateProductOptionConfig(priceConfig)).toEqual([])
+    expect(resolveCustomSelectionPrice(
+      priceConfig,
+      {},
+      { build_option: 'Carbon Build' },
+    )).toBe(78000)
+    expect(resolveCustomPriceRange(priceConfig)).toEqual({
+      min: 68000,
+      max: 78000,
+    })
+    expect(validateProductOptionConfig({
+      ...priceConfig,
+      customFields: [{
+        ...priceConfig.customFields[0],
+        optionPrices: { 'Standard Build': 68000 },
+      }],
+    }).map((issue) => issue.message)).toContain('Carbon Build 尚未設定有效價格')
+    expect(validateProductOptionConfig({
+      ...priceConfig,
+      customFields: [{
+        ...priceConfig.customFields[0],
+        allowCustomValue: true,
+      }],
+    }).map((issue) => issue.message)).toContain('價格選項不可接受未定價的自訂值')
+  })
+
+  it('supports custom-field visibility and prunes hidden dependent values', () => {
+    const vibesConfig: ProductOptionConfig = {
+      ...config,
+      customFields: [
+        {
+          key: 'build_option',
+          label: 'Build Option',
+          inputType: 'select',
+          values: ['Standard Build', 'Custom Color', 'Carbon Build'],
+        },
+        {
+          key: 'spray_color',
+          label: 'Spray Color',
+          inputType: 'select',
+          values: ['PINK'],
+          displayStyle: 'swatches',
+          swatches: { PINK: '#ff4fa3' },
+          allowCustomValue: true,
+          visibility: { customField: { key: 'build_option', value: 'Custom Color' } },
+        },
+        {
+          key: 'carbon_color',
+          label: 'Carbon Color',
+          inputType: 'select',
+          values: ['BLACK'],
+          visibility: { customField: { key: 'build_option', value: 'Carbon Build' } },
+        },
+      ],
+    }
+    expect(visibleCustomFields(
+      vibesConfig,
+      {},
+      { build_option: 'Custom Color' },
+    ).map((field) => field.key)).toEqual(['build_option', 'spray_color'])
+    expect(validateCustomSelection(
+      vibesConfig,
+      {},
+      { build_option: 'Custom Color', spray_color: '186 C' },
+    )).toBeNull()
+    expect(pruneHiddenCustomValues(
+      vibesConfig,
+      {},
+      {
+        build_option: 'Carbon Build',
+        spray_color: '186 C',
+        carbon_color: 'BLACK',
+      },
+    )).toEqual({
+      build_option: 'Carbon Build',
+      carbon_color: 'BLACK',
+    })
+    expect(buildSelectedOptionSnapshot(
+      vibesConfig,
+      {},
+      {
+        build_option: 'Carbon Build',
+        spray_color: '186 C',
+        carbon_color: 'BLACK',
+      },
+    )).toEqual({
+      build_option: { label: 'Build Option', value: 'Carbon Build' },
+      carbon_color: { label: 'Carbon Color', value: 'BLACK' },
+    })
   })
 })

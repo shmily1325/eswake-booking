@@ -18,7 +18,7 @@ DECLARE
   v_values TEXT[];
   v_visibility JSONB;
   v_condition JSONB;
-  v_axis JSONB;
+  v_target JSONB;
 BEGIN
   IF jsonb_typeof(p_config) IS DISTINCT FROM 'object'
      OR p_config -> 'version' IS DISTINCT FROM '1'::JSONB
@@ -127,27 +127,99 @@ BEGIN
          AND NULLIF(BTRIM(v_field ->> 'defaultDisplay'), '') IS NULL THEN
         RETURN FALSE;
       END IF;
+      IF (v_field ? 'allowCustomValue')
+         AND jsonb_typeof(v_field -> 'allowCustomValue') <> 'boolean' THEN
+        RETURN FALSE;
+      END IF;
+      IF COALESCE((v_field ->> 'allowCustomValue')::BOOLEAN, FALSE)
+         AND v_field ->> 'inputType' <> 'select' THEN
+        RETURN FALSE;
+      END IF;
+      IF v_field ? 'displayStyle' THEN
+        IF jsonb_typeof(v_field -> 'displayStyle') <> 'string'
+           OR v_field ->> 'displayStyle' NOT IN ('select', 'swatches', 'price-list') THEN
+          RETURN FALSE;
+        END IF;
+        IF v_field ->> 'inputType' <> 'select' THEN
+          RETURN FALSE;
+        END IF;
+      END IF;
+      IF v_field ? 'optionPrices' THEN
+        IF jsonb_typeof(v_field -> 'optionPrices') <> 'object'
+           OR EXISTS (
+             SELECT 1
+             FROM jsonb_each(v_field -> 'optionPrices') price
+             WHERE NOT (v_field -> 'values' @> jsonb_build_array(price.key))
+                OR jsonb_typeof(price.value) <> 'number'
+                OR (price.value #>> '{}')::NUMERIC < 0
+           ) THEN
+          RETURN FALSE;
+        END IF;
+      END IF;
+      IF v_field ->> 'displayStyle' = 'price-list'
+         AND (
+           COALESCE((v_field ->> 'allowCustomValue')::BOOLEAN, FALSE)
+           OR
+           jsonb_typeof(v_field -> 'optionPrices') <> 'object'
+           OR EXISTS (
+             SELECT 1
+             FROM jsonb_array_elements_text(v_field -> 'values') option_value
+             WHERE NOT (v_field -> 'optionPrices' ? option_value)
+           )
+         ) THEN
+        RETURN FALSE;
+      END IF;
+      IF v_field ? 'optionNotes'
+         AND (
+           jsonb_typeof(v_field -> 'optionNotes') <> 'object'
+           OR EXISTS (
+             SELECT 1
+             FROM jsonb_each(v_field -> 'optionNotes') note
+             WHERE NOT (v_field -> 'values' @> jsonb_build_array(note.key))
+                OR jsonb_typeof(note.value) <> 'string'
+           )
+         ) THEN
+        RETURN FALSE;
+      END IF;
 
       IF v_field ? 'visibility' THEN
         v_visibility := v_field -> 'visibility';
-        v_condition := v_visibility -> 'axis';
+        v_condition := COALESCE(
+          v_visibility -> 'axis',
+          v_visibility -> 'customField'
+        );
         IF jsonb_typeof(v_visibility) <> 'object'
            OR jsonb_typeof(v_condition) <> 'object'
            OR NULLIF(BTRIM(v_condition ->> 'key'), '') IS NULL
-           OR NULLIF(BTRIM(v_condition ->> 'value'), '') IS NULL THEN
+           OR NULLIF(BTRIM(v_condition ->> 'value'), '') IS NULL
+           OR (
+             CASE WHEN v_visibility ? 'axis' THEN 1 ELSE 0 END
+             + CASE WHEN v_visibility ? 'customField' THEN 1 ELSE 0 END
+           ) <> 1 THEN
           RETURN FALSE;
         END IF;
 
-        SELECT axis_field
-        INTO v_axis
-        FROM jsonb_array_elements(p_config #> '{variantFields,axis}') axis_field
-        WHERE axis_field ->> 'key' = v_condition ->> 'key'
-        LIMIT 1;
-        IF v_axis IS NULL THEN
+        IF v_visibility ? 'axis' THEN
+          SELECT axis_field
+          INTO v_target
+          FROM jsonb_array_elements(p_config #> '{variantFields,axis}') axis_field
+          WHERE axis_field ->> 'key' = v_condition ->> 'key'
+          LIMIT 1;
+        ELSE
+          SELECT custom_field
+          INTO v_target
+          FROM jsonb_array_elements(p_config -> 'customFields') custom_field
+          WHERE custom_field ->> 'key' = v_condition ->> 'key'
+          LIMIT 1;
+        END IF;
+        IF v_target IS NULL OR v_target ->> 'inputType' <> 'select' THEN
           RETURN FALSE;
         END IF;
-        IF v_axis ? 'values'
-           AND NOT (v_axis -> 'values' @> jsonb_build_array(v_condition ->> 'value')) THEN
+        IF v_target ? 'values'
+           AND NOT (
+             v_target -> 'values'
+             @> jsonb_build_array(v_condition ->> 'value')
+           ) THEN
           RETURN FALSE;
         END IF;
       END IF;
@@ -711,8 +783,16 @@ BEGIN
   LOOP
     v_visible := NOT (v_field ? 'visibility')
       OR (
-        v_attributes ->> (v_field #>> '{visibility,axis,key}')
-        = v_field #>> '{visibility,axis,value}'
+        (v_field #> '{visibility,axis}') IS NOT NULL
+        AND v_attributes ->> (v_field #>> '{visibility,axis,key}')
+          = v_field #>> '{visibility,axis,value}'
+      )
+      OR (
+        (v_field #> '{visibility,customField}') IS NOT NULL
+        AND NEW.selected_options #>> ARRAY[
+          v_field #>> '{visibility,customField,key}',
+          'value'
+        ] = v_field #>> '{visibility,customField,value}'
       );
     v_entry := NEW.selected_options -> (v_field ->> 'key');
 
@@ -729,6 +809,10 @@ BEGIN
          v_entry ->> 'label' <> v_field ->> 'label'
          OR (
            v_field ->> 'inputType' = 'select'
+           AND NOT COALESCE(
+             (v_field ->> 'allowCustomValue')::BOOLEAN,
+             FALSE
+           )
            AND NOT (v_field -> 'values' @> jsonb_build_array(v_entry ->> 'value'))
          )
        ) THEN

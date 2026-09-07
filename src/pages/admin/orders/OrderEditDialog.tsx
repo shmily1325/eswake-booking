@@ -43,6 +43,7 @@ import type { DeliveryMethod, ShopOrderWithItems } from './types'
 import {
   buildSelectedOptionSnapshot,
   normalizeProductOptionConfig,
+  resolveCustomSelectionPrice,
   validateCustomSelection,
   visibleCustomFields,
   type SelectedOptionSnapshot,
@@ -921,10 +922,16 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                 selectedOptions={line.selected_options}
                 disabled={locked}
                 isMobile={isMobile}
-                onChange={(selected_options) =>
+                onChange={(selected_options, optionPrice) =>
                   setLines((current) =>
                     current.map((candidate, i) =>
-                      i === idx ? { ...candidate, selected_options } : candidate,
+                      i === idx
+                        ? {
+                            ...candidate,
+                            selected_options,
+                            ...(optionPrice != null ? { unit_price: optionPrice } : {}),
+                          }
+                        : candidate,
                     ),
                   )
                 }
@@ -1115,21 +1122,22 @@ function OrderLineCustomFields({
   selectedOptions: SelectedOptionSnapshot
   disabled: boolean
   isMobile: boolean
-  onChange: (value: SelectedOptionSnapshot) => void
+  onChange: (value: SelectedOptionSnapshot, optionPrice: number | null) => void
 }) {
   if (!item) return null
   const config = normalizeProductOptionConfig(item.product.option_config)
-  const fields = visibleCustomFields(config, item.variant.attributes)
-  if (fields.length === 0) return null
   const values = selectedOptionValues(selectedOptions ?? {})
+  const fields = visibleCustomFields(config, item.variant.attributes, values)
+  if (fields.length === 0) return null
   const inputStyle = getInputStyle(isMobile)
   const update = (key: string, value: string) => {
+    const nextValues = { ...values, [key]: value }
     onChange(buildSelectedOptionSnapshot(
       config,
       item.variant.attributes,
-      { ...values, [key]: value },
+      nextValues,
       getSkuFields(item.product.category).map((field) => field.key),
-    ))
+    ), resolveCustomSelectionPrice(config, item.variant.attributes, nextValues))
   }
   return (
     <div style={{ display: 'grid', gap: 10, marginBottom: 12 }}>
@@ -1138,7 +1146,21 @@ function OrderLineCustomFields({
           <span style={{ display: 'block', marginBottom: 4, fontSize: 12, color: designSystem.colors.text.secondary }}>
             {field.label}{field.required ? ' *' : ''}
           </span>
-          {field.inputType === 'select' ? (
+          {field.inputType === 'select' && field.allowCustomValue ? (
+            <>
+              <input
+                list={`order-options-${item.variant.id}-${field.key}`}
+                style={inputStyle}
+                value={values[field.key] === field.defaultDisplay ? '' : (values[field.key] ?? '')}
+                placeholder={field.placeholder || field.defaultDisplay}
+                disabled={disabled || field.readOnly}
+                onChange={(event) => update(field.key, event.target.value)}
+              />
+              <datalist id={`order-options-${item.variant.id}-${field.key}`}>
+                {(field.values ?? []).map((value) => <option key={value} value={value} />)}
+              </datalist>
+            </>
+          ) : field.inputType === 'select' ? (
             <select
               style={inputStyle}
               value={field.readOnly
@@ -1149,7 +1171,11 @@ function OrderLineCustomFields({
             >
               <option value="">{field.defaultDisplay || '--'}</option>
               {(field.values ?? []).map((value) => (
-                <option key={value} value={value}>{value}</option>
+                <option key={value} value={value}>
+                  {field.displayStyle === 'price-list' && field.optionPrices?.[value] != null
+                    ? `${value} — NT$${field.optionPrices[value].toLocaleString()}`
+                    : value}
+                </option>
               ))}
             </select>
           ) : (

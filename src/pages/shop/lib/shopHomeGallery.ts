@@ -4,11 +4,15 @@
 
 import type { ProductWithVariants } from '../../admin/products/types'
 import {
+  normalizeProductOptionConfig,
+  resolveCustomPriceRange,
+} from '../../admin/products/productOptions'
+import {
   formatProductModelName,
   formatProductSecondaryLine,
   isEsSeriesCategory,
 } from '../../admin/products/schema'
-import { getProductImageUrl } from './shopFormat'
+import { formatPrice, getProductImageUrl } from './shopFormat'
 import {
   getShopVisibleVariants,
   getVariantAvailability,
@@ -101,16 +105,24 @@ export function collectHomeGalleryPool(
     const imageUrl = getProductImageUrl(product, focused)
     if (!imageUrl) continue
     const price = summarizeProductShopPrice(focused, presets)
+    const customRange = resolveCustomPriceRange(
+      normalizeProductOptionConfig(product.option_config),
+    )
+    const customPriceText = customRange
+      ? customRange.min === customRange.max
+        ? formatPrice(customRange.min)
+        : `${formatPrice(customRange.min)} – ${formatPrice(customRange.max)}`
+      : null
     items.push({
       productId: product.id,
       brand: (product.brand ?? '').trim(),
       title: formatProductModelName(product),
       subtitle: formatProductSecondaryLine(product),
       imageUrl,
-      saleText: price && !price.inquiry ? price.saleText : null,
-      originalText: price?.hasDiscount ? price.originalText : null,
-      offerFold: price?.offerFold ?? null,
-      memberText: price?.memberText ?? null,
+      saleText: customPriceText ?? (price && !price.inquiry ? price.saleText : null),
+      originalText: customRange ? null : price?.hasDiscount ? price.originalText : null,
+      offerFold: customRange ? null : price?.offerFold ?? null,
+      memberText: customRange ? null : price?.memberText ?? null,
     })
   }
   return items

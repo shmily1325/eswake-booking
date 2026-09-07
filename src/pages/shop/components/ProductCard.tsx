@@ -1,6 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { ProductVariantRow, ProductRow } from '../../admin/products/types'
-import { formatPreOrderDeadline, getProductImageUrl } from '../lib/shopFormat'
+import { formatPreOrderDeadline, formatPrice, getProductImageUrl } from '../lib/shopFormat'
+import {
+  normalizeProductOptionConfig,
+  resolveCustomPriceRange,
+} from '../../admin/products/productOptions'
 import { summarizeProductShopPrice } from '../lib/shopPricing'
 import { useShopPromo } from '../hooks/useShopPromo'
 import {
@@ -64,7 +68,15 @@ export function ProductCard({ product, variants }: ProductCardProps) {
     visibleVariants.length ? visibleVariants : variants,
     promo.presets,
   )
-  const isInquiryOnly = priceSummary.inquiry
+  const customPriceRange = resolveCustomPriceRange(
+    normalizeProductOptionConfig(product.option_config),
+  )
+  const customPriceText = customPriceRange
+    ? customPriceRange.min === customPriceRange.max
+      ? formatPrice(customPriceRange.min)
+      : `${formatPrice(customPriceRange.min)} – ${formatPrice(customPriceRange.max)}`
+    : null
+  const isInquiryOnly = !customPriceText && priceSummary.inquiry
   const specLine = formatCardSpecLine(
     product.category,
     visibleVariants.length ? visibleVariants : variants,
@@ -113,7 +125,11 @@ export function ProductCard({ product, variants }: ProductCardProps) {
         ) : null}
 
         <div className="mt-3">
-          {isInquiryOnly ? (
+          {customPriceText ? (
+            <div className="text-base sm:text-lg font-bold text-zinc-900 tabular-nums leading-none">
+              {customPriceText}
+            </div>
+          ) : isInquiryOnly ? (
             <div className="text-sm text-gray-500 leading-none">
               {priceSummary.saleText}
             </div>

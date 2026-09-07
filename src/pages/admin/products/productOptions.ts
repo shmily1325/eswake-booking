@@ -17,18 +17,18 @@ export interface ProductOptionField {
 export interface ProductCustomField extends ProductOptionField {
   required?: boolean
   readOnly?: boolean
-  displayStyle?: 'select' | 'swatches'
+  displayStyle?: 'select' | 'swatches' | 'price-list'
   swatches?: Record<string, string>
   swatchImages?: Record<string, { url: string; path?: string }>
+  optionPrices?: Record<string, number>
+  optionNotes?: Record<string, string>
+  allowCustomValue?: boolean
   placeholder?: string
   help?: string
   defaultDisplay?: string
-  visibility?: {
-    axis: {
-      key: string
-      value: string
-    }
-  }
+  visibility?:
+    | { axis: { key: string; value: string } }
+    | { customField: { key: string; value: string } }
 }
 
 export interface ProductOptionConfig {
@@ -99,7 +99,10 @@ function normalizeCustomField(value: unknown): ProductCustomField | null {
   const field: ProductCustomField = { ...base }
   if (source.required === true) field.required = true
   if (source.readOnly === true) field.readOnly = true
-  if (source.displayStyle === 'swatches') field.displayStyle = 'swatches'
+  if (source.displayStyle === 'swatches' || source.displayStyle === 'price-list') {
+    field.displayStyle = source.displayStyle
+  }
+  if (source.allowCustomValue === true) field.allowCustomValue = true
   if (source.swatches && typeof source.swatches === 'object' && !Array.isArray(source.swatches)) {
     const swatches = Object.fromEntries(
       Object.entries(source.swatches as Record<string, unknown>)
@@ -123,6 +126,22 @@ function normalizeCustomField(value: unknown): ProductCustomField | null {
     )
     if (Object.keys(swatchImages).length > 0) field.swatchImages = swatchImages
   }
+  if (source.optionPrices && typeof source.optionPrices === 'object' && !Array.isArray(source.optionPrices)) {
+    const optionPrices = Object.fromEntries(
+      Object.entries(source.optionPrices as Record<string, unknown>)
+        .map(([key, price]) => [cleanText(key), typeof price === 'number' ? price : Number.NaN] as const)
+        .filter(([key, price]) => key && Number.isFinite(price) && price >= 0),
+    )
+    if (Object.keys(optionPrices).length > 0) field.optionPrices = optionPrices
+  }
+  if (source.optionNotes && typeof source.optionNotes === 'object' && !Array.isArray(source.optionNotes)) {
+    const optionNotes = Object.fromEntries(
+      Object.entries(source.optionNotes as Record<string, unknown>)
+        .map(([key, note]) => [cleanText(key), cleanText(note)] as const)
+        .filter(([key, note]) => key && note),
+    )
+    if (Object.keys(optionNotes).length > 0) field.optionNotes = optionNotes
+  }
   const placeholder = cleanText(source.placeholder)
   if (placeholder) field.placeholder = placeholder
   const defaultDisplay = cleanText(source.defaultDisplay)
@@ -130,11 +149,19 @@ function normalizeCustomField(value: unknown): ProductCustomField | null {
 
   const visibility = source.visibility
   if (visibility && typeof visibility === 'object' && !Array.isArray(visibility)) {
-    const axis = (visibility as Record<string, unknown>).axis
+    const visibilitySource = visibility as Record<string, unknown>
+    const axis = visibilitySource.axis
     if (axis && typeof axis === 'object' && !Array.isArray(axis)) {
       const key = cleanText((axis as Record<string, unknown>).key)
       const axisValue = cleanText((axis as Record<string, unknown>).value)
       if (key && axisValue) field.visibility = { axis: { key, value: axisValue } }
+    } else {
+      const customField = visibilitySource.customField
+      if (customField && typeof customField === 'object' && !Array.isArray(customField)) {
+        const key = cleanText((customField as Record<string, unknown>).key)
+        const customValue = cleanText((customField as Record<string, unknown>).value)
+        if (key && customValue) field.visibility = { customField: { key, value: customValue } }
+      }
     }
   }
   return field
@@ -205,10 +232,27 @@ export function validateProductOptionConfig(
         }
       }
     }
+    if (customField.displayStyle === 'price-list') {
+      if (customField.inputType !== 'select') {
+        issues.push({ path: `${path}.displayStyle`, message: '價格選項只能用於固定選項' })
+      }
+      if (customField.allowCustomValue) {
+        issues.push({ path: `${path}.allowCustomValue`, message: '價格選項不可接受未定價的自訂值' })
+      }
+      for (const value of customField.values ?? []) {
+        const price = customField.optionPrices?.[value]
+        if (!Number.isFinite(price) || (price ?? -1) < 0) {
+          issues.push({ path: `${path}.optionPrices`, message: `${value} 尚未設定有效價格` })
+        }
+      }
+    }
   }
   const axisByKey = new Map(config.variantFields.axis.map((field) => [field.key, field]))
-  for (const field of config.customFields) {
-    const condition = field.visibility?.axis
+  for (let index = 0; index < config.customFields.length; index += 1) {
+    const field = config.customFields[index]
+    const condition = field.visibility && 'axis' in field.visibility
+      ? field.visibility.axis
+      : undefined
     if (!condition) continue
     const axis = axisByKey.get(condition.key)
     if (!condition.value.trim()) {
@@ -225,6 +269,31 @@ export function validateProductOptionConfig(
       issues.push({
         path: `customFields.${field.key}.visibility`,
         message: `${condition.value} 不在 ${condition.key} 的選項內`,
+      })
+    }
+  }
+  for (let index = 0; index < config.customFields.length; index += 1) {
+    const field = config.customFields[index]
+    const condition = field.visibility && 'customField' in field.visibility
+      ? field.visibility.customField
+      : undefined
+    if (!condition) continue
+    const sourceIndex = config.customFields.findIndex((candidate) => candidate.key === condition.key)
+    const source = config.customFields[sourceIndex]
+    if (sourceIndex < 0 || sourceIndex >= index) {
+      issues.push({
+        path: `customFields.${field.key}.visibility`,
+        message: `顯示條件須選擇前一個客製欄位`,
+      })
+    } else if (source?.inputType !== 'select') {
+      issues.push({
+        path: `customFields.${field.key}.visibility`,
+        message: `${source?.label ?? condition.key} 不是固定選項欄位`,
+      })
+    } else if (!source.allowCustomValue && !source.values?.includes(condition.value)) {
+      issues.push({
+        path: `customFields.${field.key}.visibility`,
+        message: `${condition.value} 不在 ${source.label} 的選項內`,
       })
     }
   }
@@ -268,16 +337,41 @@ export function resolveProductOptionFields(
 
 export function visibleCustomFields(
   config: ProductOptionConfig | null | undefined,
-  selection: Readonly<Record<string, unknown>>,
+  variantAttributes: Readonly<Record<string, unknown>>,
+  customValues: Readonly<Record<string, unknown>> = {},
 ): ProductCustomField[] {
   if (!config) return []
   return config.customFields.filter((field) => {
-    const condition = field.visibility?.axis
-    return !condition || String(selection[condition.key] ?? '') === condition.value
+    const visibility = field.visibility
+    if (!visibility) return true
+    if ('axis' in visibility) {
+      return String(variantAttributes[visibility.axis.key] ?? '') === visibility.axis.value
+    }
+    return String(customValues[visibility.customField.key] ?? '') === visibility.customField.value
   })
 }
 
 export const getVisibleCustomFields = visibleCustomFields
+
+/** Removes values whose conditional fields are no longer visible. */
+export function pruneHiddenCustomValues(
+  config: ProductOptionConfig | null | undefined,
+  variantAttributes: Readonly<Record<string, unknown>>,
+  values: Readonly<Record<string, string>>,
+): Record<string, string> {
+  let next = { ...values }
+  for (let pass = 0; pass < (config?.customFields.length ?? 0); pass += 1) {
+    const visibleKeys = new Set(
+      visibleCustomFields(config, variantAttributes, next).map((field) => field.key),
+    )
+    const pruned = Object.fromEntries(
+      Object.entries(next).filter(([key]) => visibleKeys.has(key)),
+    )
+    if (Object.keys(pruned).length === Object.keys(next).length) return pruned
+    next = pruned
+  }
+  return next
+}
 
 export function buildSelectedOptionSnapshot(
   config: ProductOptionConfig | null | undefined,
@@ -293,7 +387,7 @@ export function buildSelectedOptionSnapshot(
       snapshot[field.key] = { label: field.label, value }
     }
   }
-  for (const field of visibleCustomFields(config, variantAttributes)) {
+  for (const field of visibleCustomFields(config, variantAttributes, values)) {
     const value = values[field.key]?.trim() || field.defaultDisplay?.trim() || ''
     if (value) snapshot[field.key] = { label: field.label, value }
   }
@@ -305,16 +399,53 @@ export function validateCustomSelection(
   variantAttributes: Readonly<Record<string, unknown>>,
   values: Readonly<Record<string, string>>,
 ): string | null {
-  for (const field of visibleCustomFields(config, variantAttributes)) {
+  for (const field of visibleCustomFields(config, variantAttributes, values)) {
     if (field.required && !values[field.key]?.trim() && !(field.readOnly && field.defaultDisplay)) {
       return `${field.label}為必填`
     }
     const value = values[field.key]?.trim()
-    if (value && field.inputType === 'select' && !field.values?.includes(value)) {
+    if (
+      value
+      && field.inputType === 'select'
+      && !field.allowCustomValue
+      && !field.values?.includes(value)
+    ) {
       return `${field.label}的選項無效`
     }
   }
   return null
+}
+
+/** Returns the fixed transaction price selected by a price-list field, if any. */
+export function resolveCustomSelectionPrice(
+  config: ProductOptionConfig | null | undefined,
+  variantAttributes: Readonly<Record<string, unknown>>,
+  values: Readonly<Record<string, string>>,
+): number | null {
+  for (const field of visibleCustomFields(config, variantAttributes, values)) {
+    if (field.displayStyle !== 'price-list') continue
+    const selected = values[field.key]?.trim()
+    const price = selected ? field.optionPrices?.[selected] : undefined
+    if (Number.isFinite(price) && (price ?? -1) >= 0) return price!
+  }
+  return null
+}
+
+/** Fixed-price range advertised by configured price-list fields. */
+export function resolveCustomPriceRange(
+  config: ProductOptionConfig | null | undefined,
+): { min: number; max: number } | null {
+  const prices = (config?.customFields ?? [])
+    .filter((field) => field.displayStyle === 'price-list')
+    .flatMap((field) =>
+      (field.values ?? [])
+        .map((value) => field.optionPrices?.[value])
+        .filter((price): price is number =>
+          Number.isFinite(price) && (price ?? -1) >= 0,
+        ),
+    )
+  if (prices.length === 0) return null
+  return { min: Math.min(...prices), max: Math.max(...prices) }
 }
 
 function printableValue(value: unknown): string {

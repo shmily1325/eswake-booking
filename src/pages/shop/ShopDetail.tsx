@@ -49,6 +49,9 @@ import {
   buildSelectedOptionSnapshot,
   isEmptyProductOptionConfig,
   normalizeProductOptionConfig,
+  pruneHiddenCustomValues,
+  resolveCustomPriceRange,
+  resolveCustomSelectionPrice,
   validateCustomSelection,
   visibleCustomFields,
   type ProductOptionConfig,
@@ -219,6 +222,13 @@ export function ShopDetail() {
     setQuantity((current) => Math.min(current, quantityLimit))
   }, [quantityLimit])
 
+  useEffect(() => {
+    if (!selectedVariant) return
+    setCustomValues((current) =>
+      pruneHiddenCustomValues(optionConfig, selectedVariant.attributes, current),
+    )
+  }, [optionConfig, selectedVariant])
+
   const imageUrl = product
     ? getProductDetailHeroImageUrl(product, selectedVariant, product.variants)
     : null
@@ -233,6 +243,11 @@ export function ShopDetail() {
     const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
     const shopPrice = promo.resolve(selectedVariant)
+    const customPrice = resolveCustomSelectionPrice(
+      optionConfig,
+      selectedVariant.attributes,
+      customValues,
+    )
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
@@ -240,9 +255,9 @@ export function ShopDetail() {
       categoryId: product.category ?? '',
       attributes: selectedVariant.attributes,
       imageUrl: selectedVariant.cover_image_url ?? selectedVariant.image_url ?? imageUrl ?? null,
-      unitPrice: shopPrice.sale,
-      originalPrice: shopPrice.original,
-      discountCaption: shopPrice.caption,
+      unitPrice: customPrice ?? shopPrice.sale,
+      originalPrice: customPrice == null ? shopPrice.original : null,
+      discountCaption: customPrice == null ? shopPrice.caption : null,
       quantity: Math.min(quantity, quantityLimit),
       maxQuantity: quantityLimit,
       availability:
@@ -272,15 +287,20 @@ export function ShopDetail() {
     const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
     const shopPrice = promo.resolve(selectedVariant)
+    const customPrice = resolveCustomSelectionPrice(
+      optionConfig,
+      selectedVariant.attributes,
+      customValues,
+    )
     const payload = buildSingleInquiry({
       productId: product.id,
       productName: productName || '(Unnamed product)',
       categoryId: product.category,
       attributes: selectedVariant.attributes,
       quantity: Math.min(quantity, quantityLimit),
-      unitPrice: shopPrice.sale,
-      originalPrice: shopPrice.original,
-      discountCaption: shopPrice.caption,
+      unitPrice: customPrice ?? shopPrice.sale,
+      originalPrice: customPrice == null ? shopPrice.original : null,
+      discountCaption: customPrice == null ? shopPrice.caption : null,
       isPreOrder: avail === 'pre_order',
       isCustomOrder: avail === 'custom_order',
       preOrderEta: selectedVariant.pre_order_eta,
@@ -327,7 +347,14 @@ export function ShopDetail() {
             optionConfig={optionConfig}
             customValues={customValues}
             onCustomValueChange={(key, value) =>
-              setCustomValues((current) => ({ ...current, [key]: value }))
+              setCustomValues((current) => {
+                if (!selectedVariant) return { ...current, [key]: value }
+                return pruneHiddenCustomValues(
+                  optionConfig,
+                  selectedVariant.attributes,
+                  { ...current, [key]: value },
+                )
+              })
             }
           />
         )}
@@ -375,14 +402,30 @@ function ProductDetailBody({
   onCustomValueChange,
 }: ProductDetailBodyProps) {
   const promo = useShopPromo()
+  const [pantoneDialogFieldKey, setPantoneDialogFieldKey] = useState<string | null>(null)
+  const [pantoneCode, setPantoneCode] = useState('')
+  const [pantonePreview, setPantonePreview] = useState('#808080')
   const categoryName = getCategoryShopName(product.category)
   const variantAvail = selectedVariant ? getVariantAvailability(selectedVariant) : null
   const canPurchase = selectedVariant ? isVariantPurchasable(selectedVariant) : false
   const isPreOrder = variantAvail === 'pre_order'
   const isCustomOrder = variantAvail === 'custom_order'
   const shopPrice = selectedVariant ? promo.resolve(selectedVariant) : null
-  const hasPrice = shopPrice?.sale != null
-  const priceText = hasPrice ? formatPrice(shopPrice!.sale!) : '價格洽詢'
+  const customPrice = selectedVariant
+    ? resolveCustomSelectionPrice(optionConfig, selectedVariant.attributes, customValues)
+    : null
+  const customPriceRange = resolveCustomPriceRange(optionConfig)
+  const effectivePrice = customPrice ?? shopPrice?.sale ?? null
+  const hasPrice = effectivePrice != null || customPriceRange != null
+  const priceText = customPrice != null
+    ? formatPrice(customPrice)
+    : customPriceRange
+      ? customPriceRange.min === customPriceRange.max
+        ? formatPrice(customPriceRange.min)
+        : `${formatPrice(customPriceRange.min)} – ${formatPrice(customPriceRange.max)}`
+      : effectivePrice != null
+        ? formatPrice(effectivePrice)
+        : '價格洽詢'
   const memberPrice =
     selectedVariant?.member_price != null
       ? formatPrice(selectedVariant.member_price)
@@ -401,7 +444,7 @@ function ProductDetailBody({
         .join(' · ')
     : ''
   const customFields = selectedVariant
-    ? visibleCustomFields(optionConfig, selectedVariant.attributes)
+    ? visibleCustomFields(optionConfig, selectedVariant.attributes, customValues)
     : []
   const customSelectionError = selectedVariant
     ? validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
@@ -452,7 +495,7 @@ function ProductDetailBody({
           <div className="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums">
             {priceText}
           </div>
-          {shopPrice?.hasDiscount && shopPrice.original != null && (
+          {customPrice == null && shopPrice?.hasDiscount && shopPrice.original != null && (
             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
               <span className="text-sm text-gray-400 line-through tabular-nums">
                 {formatPrice(shopPrice.original)}
@@ -559,14 +602,50 @@ function ProductDetailBody({
                 <span className="text-sm font-medium text-gray-700">
                   {field.label}{field.required ? ' *' : ''}
                 </span>
-                {field.inputType === 'select' && field.displayStyle === 'swatches' ? (
+                {field.inputType === 'select' && field.displayStyle === 'price-list' ? (
+                  <div className="mt-2 grid gap-2" role="radiogroup" aria-label={field.label}>
+                    {(field.values ?? []).map((value) => {
+                      const selected = customValues[field.key] === value
+                      const price = field.optionPrices?.[value]
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left ${
+                            selected
+                              ? 'border-zinc-900 bg-zinc-50 ring-1 ring-zinc-900'
+                              : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                          onClick={() => onCustomValueChange(field.key, value)}
+                        >
+                          <span className={`mt-1 h-4 w-4 shrink-0 rounded-full border ${
+                            selected ? 'border-4 border-zinc-900' : 'border-gray-400'
+                          }`} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-semibold text-zinc-900">{value}</span>
+                            {field.optionNotes?.[value] ? (
+                              <span className="mt-0.5 block text-xs text-gray-500">
+                                {field.optionNotes[value]}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="shrink-0 font-semibold tabular-nums text-zinc-900">
+                            {Number.isFinite(price) ? formatPrice(price!) : '價格未設定'}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : field.inputType === 'select' && field.displayStyle === 'swatches' ? (
                   <div className="mt-2">
                     <div
                       className="flex flex-nowrap gap-2 overflow-x-auto py-1"
                       role="radiogroup"
                       aria-label={field.label}
                     >
-                      {(field.values ?? []).map((value) => {
+                      {(field.allowCustomValue ? (field.values ?? []).slice(0, 8) : (field.values ?? [])).map((value) => {
                         const selected = customValues[field.key] === value
                         return (
                           <button
@@ -592,6 +671,22 @@ function ProductDetailBody({
                         )
                       })}
                     </div>
+                    {field.allowCustomValue ? (
+                      <button
+                        type="button"
+                        className="mt-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:border-zinc-700"
+                        onClick={() => {
+                          setPantoneCode(
+                            field.values?.includes(customValues[field.key] ?? '')
+                              ? ''
+                              : customValues[field.key] ?? '',
+                          )
+                          setPantoneDialogFieldKey(field.key)
+                        }}
+                      >
+                        選其他 Pantone
+                      </button>
+                    ) : null}
                     <div className="mt-2 min-h-5 text-sm text-gray-600">
                       {customValues[field.key] ? `已選：${customValues[field.key]}` : '請選擇顏色'}
                     </div>
@@ -628,6 +723,62 @@ function ProductDetailBody({
                 ) : null}
               </div>
             ))}
+          </div>
+        ) : null}
+        {pantoneDialogFieldKey ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="選其他 Pantone"
+            onClick={() => setPantoneDialogFieldKey(null)}
+          >
+            <div
+              className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 className="text-lg font-bold text-zinc-900">選其他 Pantone</h2>
+              <p className="mt-1 text-xs text-gray-500">螢幕顯示僅供參考，請以您填寫的 Pantone 色號為準。</p>
+              <label className="mt-4 block text-sm font-medium text-gray-700">
+                Pantone 色號
+                <input
+                  className="mt-1 block min-h-11 w-full rounded-md border border-gray-300 px-3 text-base"
+                  value={pantoneCode}
+                  placeholder="例如 186 C"
+                  autoFocus
+                  onChange={(event) => setPantoneCode(event.target.value)}
+                />
+              </label>
+              <label className="mt-3 block text-sm font-medium text-gray-700">
+                螢幕參考色
+                <input
+                  type="color"
+                  className="mt-1 block h-11 w-full rounded border border-gray-300"
+                  value={pantonePreview}
+                  onChange={(event) => setPantonePreview(event.target.value)}
+                />
+              </label>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm"
+                  onClick={() => setPantoneDialogFieldKey(null)}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  disabled={!pantoneCode.trim()}
+                  className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-40"
+                  onClick={() => {
+                    onCustomValueChange(pantoneDialogFieldKey, pantoneCode.trim())
+                    setPantoneDialogFieldKey(null)
+                  }}
+                >
+                  確認
+                </button>
+              </div>
+            </div>
           </div>
         ) : null}
         {customSelectionError ? (
