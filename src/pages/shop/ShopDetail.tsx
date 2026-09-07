@@ -66,6 +66,29 @@ import {
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+function inquiryValuesWithPendingColor(
+  config: ProductOptionConfig | null,
+  attributes: Readonly<Record<string, unknown>>,
+  values: Readonly<Record<string, string>>,
+): Record<string, string> | null {
+  const next = { ...values }
+  let filledPendingColor = false
+  for (const field of visibleCustomFields(config, attributes, values)) {
+    if (
+      field.required
+      && !values[field.key]?.trim()
+      && field.displayStyle === 'swatches'
+      && field.allowCustomValue
+    ) {
+      next[field.key] = '待與客服確認'
+      filledPendingColor = true
+    }
+  }
+  return filledPendingColor && validateCustomSelection(config, attributes, next) === null
+    ? next
+    : null
+}
+
 /**
  * 商品詳情頁（/shop/:productId）。
  *
@@ -285,7 +308,12 @@ export function ShopDetail() {
   const handleDirectInquiry = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
     const selectionError = validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
-    if (selectionError) {
+    const inquiryValues = inquiryValuesWithPendingColor(
+      optionConfig,
+      selectedVariant.attributes,
+      customValues,
+    )
+    if (selectionError && !inquiryValues) {
       alert(selectionError)
       return
     }
@@ -312,7 +340,7 @@ export function ShopDetail() {
       selectedOptions: buildSelectedOptionSnapshot(
         optionConfig,
         selectedVariant.attributes,
-        customValues,
+        inquiryValues ?? customValues,
         getSkuFields(product.category).map((field) => field.key),
       ),
     })
@@ -454,6 +482,9 @@ function ProductDetailBody({
     : []
   const customSelectionError = selectedVariant
     ? validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
+    : null
+  const pendingColorInquiryValues = selectedVariant
+    ? inquiryValuesWithPendingColor(optionConfig, selectedVariant.attributes, customValues)
     : null
   const selectedSwatchImage = customFields
     .map((field) => field.swatchImages?.[customValues[field.key] ?? ''])
@@ -661,19 +692,19 @@ function ProductDetailBody({
                             aria-label={value}
                             aria-checked={selected}
                             title={value}
-                            className={`h-10 w-10 shrink-0 rounded-full border-2 p-1 transition ${
+                            className={`shrink-0 rounded-full border-2 transition ${
                               selected
                                 ? 'border-zinc-900 ring-2 ring-zinc-900 ring-offset-2'
                                 : 'border-gray-200 hover:border-gray-500'
                             }`}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              minWidth: 36,
+                              backgroundColor: field.swatches?.[value] ?? '#d1d5db',
+                            }}
                             onClick={() => onCustomValueChange(field.key, value)}
-                          >
-                            <span
-                              aria-hidden="true"
-                              className="block h-full w-full rounded-full border border-black/10 shadow-inner"
-                              style={{ backgroundColor: field.swatches?.[value] ?? '#d1d5db' }}
-                            />
-                          </button>
+                          />
                         )
                       })}
                     </div>
@@ -774,7 +805,7 @@ function ProductDetailBody({
                   <input
                     type="color"
                     aria-label="選擇螢幕參考色"
-                    className="h-11 w-14 shrink-0 cursor-pointer rounded border border-gray-300 bg-white p-1"
+                    className="h-12 w-12 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 border-white bg-transparent p-0 shadow ring-1 ring-gray-300 [&::-moz-color-swatch]:rounded-full [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0"
                     value={pantonePreview}
                     onChange={(event) => {
                       const next = event.target.value.toUpperCase()
@@ -825,7 +856,9 @@ function ProductDetailBody({
             </div>
           </div>
         ) : null}
-        {customSelectionError ? (
+        {pendingColorInquiryValues ? (
+          <div className="mt-2 text-xs text-gray-500">尚未選色，也可以先用 LINE 詢問。</div>
+        ) : customSelectionError ? (
           <div className="mt-2 text-xs text-amber-700">{customSelectionError}</div>
         ) : null}
 
@@ -848,7 +881,12 @@ function ProductDetailBody({
         <div className="mt-6 hidden lg:block">
           <DetailPurchaseActions
             layout="stacked"
-            canPurchase={!!selectedVariant && canPurchase && !customSelectionError}
+            canAddToCart={!!selectedVariant && canPurchase && !customSelectionError}
+            canInquire={
+              !!selectedVariant
+              && canPurchase
+              && (!customSelectionError || pendingColorInquiryValues !== null)
+            }
             onAddToCart={onAddToCart}
             onDirectInquiry={onDirectInquiry}
           />
@@ -868,7 +906,12 @@ function ProductDetailBody({
       <div className="max-w-7xl mx-auto px-4 pt-3">
         <DetailPurchaseActions
           layout="sticky"
-          canPurchase={!!selectedVariant && canPurchase && !customSelectionError}
+          canAddToCart={!!selectedVariant && canPurchase && !customSelectionError}
+          canInquire={
+            !!selectedVariant
+            && canPurchase
+            && (!customSelectionError || pendingColorInquiryValues !== null)
+          }
           onAddToCart={onAddToCart}
           onDirectInquiry={onDirectInquiry}
         />

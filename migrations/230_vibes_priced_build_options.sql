@@ -461,7 +461,7 @@ BEGIN
       'allowCustomValue', TRUE,
       'placeholder', 'Choose a color',
       'help',
-        'Choose a suggested color or enter another Pantone reference.',
+        '選推薦色或輸入 Pantone 色號',
       'visibility', jsonb_build_object(
         'customField', jsonb_build_object(
           'key', 'build_option',
@@ -491,7 +491,7 @@ BEGIN
       'visibility', jsonb_build_object(
         'customField', jsonb_build_object(
           'key', 'build_option',
-          'value', 'Black Ops Carbon'
+          'value', 'Carbon'
         )
       )
     );
@@ -518,19 +518,19 @@ BEGIN
           'values', jsonb_build_array(
             'Standard Build',
             'Custom Color',
-            'Black Ops Carbon'
+            'Carbon'
           ),
           'required', TRUE,
           'displayStyle', 'price-list',
           'optionPrices', jsonb_build_object(
             'Standard Build', 65000,
             'Custom Color', 70000,
-            'Black Ops Carbon', 75000
+            'Carbon', 75000
           ),
           'optionNotes', jsonb_build_object(
-            'Standard Build', 'Standard construction',
-            'Custom Color', 'Choose a suggested or Pantone color',
-            'Black Ops Carbon', 'Carbon construction · Black'
+            'Standard Build', '標準製作',
+            'Custom Color', '可選推薦色或 Pantone',
+            'Carbon', '碳纖維製作 · 固定黑色'
           )
         ),
         v_spray,
@@ -574,7 +574,7 @@ BEGIN
           'value', CASE variant.attributes ->> 'finish'
             WHEN 'Full Color' THEN 'Custom Color'
             WHEN '客製色' THEN 'Custom Color'
-            WHEN 'Full Carbon' THEN 'Black Ops Carbon'
+            WHEN 'Full Carbon' THEN 'Carbon'
             ELSE 'Standard Build'
           END
         )

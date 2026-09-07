@@ -54,6 +54,10 @@ const vibesPricedBuildOptions = readFileSync(
   resolve(process.cwd(), 'migrations/230_vibes_priced_build_options.sql'),
   'utf8',
 )
+const renameVibesCarbonOption = readFileSync(
+  resolve(process.cwd(), 'migrations/231_rename_vibes_carbon_option.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -202,7 +206,10 @@ describe('product purchase option migrations', () => {
     expect(vibesPricedBuildOptions).toContain("'displayStyle', 'price-list'")
     expect(vibesPricedBuildOptions).toContain("'Standard Build', 65000")
     expect(vibesPricedBuildOptions).toContain("'Custom Color', 70000")
-    expect(vibesPricedBuildOptions).toContain("'Black Ops Carbon', 75000")
+    expect(vibesPricedBuildOptions).toContain("'Carbon', 75000")
+    expect(vibesPricedBuildOptions).not.toContain('Black Ops Carbon')
+    expect(vibesPricedBuildOptions).toContain("'Standard Build', '標準製作'")
+    expect(vibesPricedBuildOptions).toContain("'選推薦色或輸入 Pantone 色號'")
     expect(vibesPricedBuildOptions).toContain("'allowCustomValue', TRUE")
     expect(vibesPricedBuildOptions).toContain(
       "'customField', jsonb_build_object(",
@@ -222,6 +229,15 @@ describe('product purchase option migrations', () => {
     expect(vibesPricedBuildOptions).toContain("- 'pantone'")
     expect(vibesPricedBuildOptions).toContain(
       "item.selected_options #>> '{pantone,value}'",
+    )
+  })
+
+  it('renames already-deployed VIBES carbon options and order snapshots', () => {
+    expect(renameVibesCarbonOption).toContain("'Black Ops Carbon'")
+    expect(renameVibesCarbonOption).toContain("'Carbon'")
+    expect(renameVibesCarbonOption).toContain("'Custom Color', '可選推薦色或 Pantone'")
+    expect(renameVibesCarbonOption).toContain(
+      "item.selected_options #>> '{build_option,value}' = 'Black Ops Carbon'",
     )
   })
 })
