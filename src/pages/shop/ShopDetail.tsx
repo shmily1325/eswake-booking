@@ -723,9 +723,10 @@ function ProductDetailBody({
                           setPantoneDialogFieldKey(field.key)
                         }}
                       >
-                        選其他 Pantone
+                        其他 Pantone 色號
                       </button>
                     ) : null}
+                    {customValues[field.key] ? (
                     <div className="mt-2 flex min-h-5 items-center gap-2 text-sm text-gray-600">
                       {parsePantoneSelection(customValues[field.key] ?? '') ? (
                         <span
@@ -736,8 +737,17 @@ function ProductDetailBody({
                           }}
                         />
                       ) : null}
-                      <span>{customValues[field.key] ? `已選：${customValues[field.key]}` : '請選擇顏色'}</span>
+                      <span>已選：{customValues[field.key]}</span>
                     </div>
+                    ) : null}
+                  </div>
+                ) : field.readOnly && field.key === 'carbon_color' ? (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                    <span
+                      aria-hidden="true"
+                      className="block h-[30px] w-[30px] rounded-full border-2 border-zinc-900 bg-black ring-2 ring-zinc-900 ring-offset-2"
+                    />
+                    <span>已選：{field.defaultDisplay || 'Black'}</span>
                   </div>
                 ) : field.readOnly ? (
                   <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-zinc-800">
@@ -764,7 +774,9 @@ function ProductDetailBody({
                     onChange={(event) => onCustomValueChange(field.key, event.target.value)}
                   />
                 )}
-                {!field.readOnly && (field.help || field.defaultDisplay) ? (
+                {!field.readOnly
+                  && field.displayStyle !== 'swatches'
+                  && (field.help || field.defaultDisplay) ? (
                   <span className="mt-1 block text-xs text-gray-500">
                     {field.help || field.defaultDisplay}
                   </span>
@@ -778,17 +790,15 @@ function ProductDetailBody({
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
             role="dialog"
             aria-modal="true"
-            aria-label="選其他 Pantone"
+            aria-label="其他 Pantone 色號"
             onClick={() => setPantoneDialogFieldKey(null)}
           >
             <div
               className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <h2 className="text-lg font-bold text-zinc-900">選其他 Pantone</h2>
-              <p className="mt-1 text-xs text-gray-500">
-                請填寫 Pantone 色號並選擇螢幕參考色；兩者都會附在詢問內容中。
-              </p>
+              <h2 className="text-lg font-bold text-zinc-900">其他 Pantone 色號</h2>
+              <p className="mt-1 text-xs text-gray-500">參考色僅供螢幕顯示。</p>
               <label className="mt-4 block text-sm font-medium text-gray-700">
                 Pantone 色號
                 <input
@@ -856,9 +866,7 @@ function ProductDetailBody({
             </div>
           </div>
         ) : null}
-        {pendingColorInquiryValues ? (
-          <div className="mt-2 text-xs text-gray-500">尚未選色，也可以先用 LINE 詢問。</div>
-        ) : customSelectionError ? (
+        {!pendingColorInquiryValues && customSelectionError ? (
           <div className="mt-2 text-xs text-amber-700">{customSelectionError}</div>
         ) : null}
 
@@ -892,9 +900,6 @@ function ProductDetailBody({
           />
         </div>
 
-        <p className="mt-4 text-xs text-gray-500 leading-relaxed hidden lg:block">
-          * {SHOP_DETAIL.lineNote}
-        </p>
       </div>
     </div>
 
