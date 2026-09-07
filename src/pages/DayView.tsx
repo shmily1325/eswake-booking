@@ -22,7 +22,10 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { injectAnimationStyles } from '../utils/animations'
 import { hasEditorFeatureAsync, hasViewAccess } from '../utils/auth'
 import { sortBoatsByDisplayOrder } from '../utils/boatUtils'
-import { getBookingSavedLineReminderGuests } from '../utils/lineReminderGuests'
+import {
+  getBookingSavedLineReminderGuests,
+  prefetchBookingSavedLineReminderGuests,
+} from '../utils/lineReminderGuests'
 import {
   mapBoatUnavailableRowsToBlocks,
   type BoatUnavailableBlock,
@@ -269,6 +272,7 @@ export function DayView() {
     })
 
     const bookingIds = validBookings.map(b => b.id)
+    void prefetchBookingSavedLineReminderGuests(bookingIds).catch(() => undefined)
 
     // 優化：並行查詢教練和駕駛,只查詢必要欄位
     // 註：有 booking_coaches 記錄 = 指定教練

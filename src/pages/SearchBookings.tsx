@@ -34,6 +34,7 @@ import {
 import {
   callReminderGuestApi,
   getBookingSavedLineReminderGuests,
+  prefetchBookingSavedLineReminderGuests,
   searchSavedLineReminderGuests,
   type SavedLineReminderGuest,
 } from '../utils/lineReminderGuests'
@@ -637,6 +638,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
       }))
 
       setBookings(finalBookings as Booking[])
+      void prefetchBookingSavedLineReminderGuests(
+        finalBookings.map((booking) => booking.id),
+      ).catch(() => undefined)
     } catch (err) {
       console.error('Search error:', err)
       setBookings([])

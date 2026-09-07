@@ -121,29 +121,30 @@ export function MemberSelector({
                         （已選 {selectedMemberIds.length} 位）
                     </span>
                 )}
+                {bookingSavedGuestsLoading && (
+                    <span
+                        role="status"
+                        aria-label="正在載入 LINE 配對"
+                        title="正在載入 LINE 配對"
+                        style={{
+                            display: 'inline-block',
+                            width: 10,
+                            height: 10,
+                            marginLeft: 6,
+                            border: `2px solid ${designSystem.colors.border.main}`,
+                            borderTopColor: designSystem.colors.success[500],
+                            borderRadius: '50%',
+                            animation: 'spin 0.8s linear infinite',
+                            verticalAlign: '-1px',
+                        }}
+                    />
+                )}
             </label>
 
             {(selectedMemberIds.length > 0 ||
                 manualNames.length > 0 ||
-                selectedSavedGuests.length > 0 ||
-                bookingSavedGuestsLoading) && (
+                selectedSavedGuests.length > 0) && (
                 <div style={{ marginBottom: designSystem.spacing.sm, display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {bookingSavedGuestsLoading && (
-                        <span
-                            role="status"
-                            style={{
-                                padding: '6px 12px',
-                                background: designSystem.colors.background.hover,
-                                color: designSystem.colors.text.secondary,
-                                border: `1px solid ${designSystem.colors.border.main}`,
-                                borderRadius: designSystem.borderRadius.md,
-                                fontSize: getFontSize('body', true),
-                                fontWeight: '600',
-                            }}
-                        >
-                            LINE 配對載入中…
-                        </span>
-                    )}
                     {selectedMemberIds.map(memberId => {
                         const member = members.find(m => m.id === memberId)
                         return member ? (
