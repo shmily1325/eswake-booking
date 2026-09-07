@@ -1,4 +1,4 @@
--- Publish only the five VIBES 2027 models confirmed by the workbook List sheet.
+-- Publish only the five VIBES models confirmed by the 2027 workbook List sheet.
 -- Full Color is a priced production choice with one of eight spray colors.
 -- Full Carbon is a material choice and always uses the fixed black display value.
 
@@ -101,16 +101,17 @@ BEGIN
     WHERE p.category = 'ws_board'
       AND LOWER(BTRIM(p.brand)) = 'vibes'
       AND LOWER(BTRIM(p.model)) = LOWER(v_model)
-      AND p.model_year = 2027
+      AND (p.model_year = 2027 OR p.model_year IS NULL)
     ORDER BY p.created_at NULLS LAST, p.id
     LIMIT 1;
 
     IF v_product_id IS NULL THEN
-      RAISE EXCEPTION 'Missing VIBES 2027 draft for model %; run migration 217 first', v_model;
+      RAISE EXCEPTION 'Missing VIBES draft for model %; run migration 217 first', v_model;
     END IF;
 
     UPDATE public.products
     SET option_config = v_option_config,
+        model_year = NULL,
         is_public = TRUE,
         is_active = TRUE
     WHERE id = v_product_id;
@@ -197,7 +198,7 @@ BEGIN
   WHERE category = 'ws_board'
     AND LOWER(BTRIM(brand)) = 'vibes'
     AND UPPER(BTRIM(model)) = 'ENIGMA'
-    AND model_year = 2027;
+    AND model_year IS NULL;
 END;
 $$;
 

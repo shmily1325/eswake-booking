@@ -35,7 +35,7 @@ WHERE category = 'ws_board'
     'XO STOCK',
     'XO TEAM'
   )
-  AND model_year = 2027
+  AND model_year IS NULL
   AND option_config #>> '{customFields,0,key}' = 'spray_color';
 
 COMMIT;

@@ -18,7 +18,7 @@ WHERE variant.product_id = product.id
     'XO STOCK',
     'XO TEAM'
   )
-  AND product.model_year = 2027
+  AND product.model_year IS NULL
   AND variant.attributes ->> 'finish' = '空板';
 
 UPDATE public.products product
@@ -61,7 +61,7 @@ WHERE product.category = 'ws_board'
     'XO STOCK',
     'XO TEAM'
   )
-  AND product.model_year = 2027
+  AND product.model_year IS NULL
   AND product.option_config #>> '{variantFields,axis,0,key}' = 'size'
   AND product.option_config #>> '{variantFields,axis,1,key}' = 'finish'
   AND product.option_config #>> '{customFields,0,key}' = 'spray_color';

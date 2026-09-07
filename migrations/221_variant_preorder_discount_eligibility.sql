@@ -55,7 +55,7 @@ WHERE product.id = variant.product_id
     'XO STOCK',
     'XO TEAM'
   )
-  AND product.model_year = 2027;
+  AND product.model_year IS NULL;
 
 COMMIT;
 

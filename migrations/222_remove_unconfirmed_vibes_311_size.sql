@@ -21,7 +21,7 @@ BEGIN
         'XO STOCK',
         'XO TEAM'
       )
-      AND product.model_year = 2027
+      AND product.model_year IS NULL
       AND variant.attributes ->> 'size' = '3''11'
   ) THEN
     RAISE EXCEPTION 'Cannot remove VIBES 3''11 because an order already references it';
@@ -39,7 +39,7 @@ BEGIN
       'XO STOCK',
       'XO TEAM'
     )
-    AND product.model_year = 2027
+    AND product.model_year IS NULL
     AND variant.attributes ->> 'size' = '3''11';
 
   UPDATE public.products product
@@ -58,7 +58,7 @@ BEGIN
       'XO STOCK',
       'XO TEAM'
     )
-    AND product.model_year = 2027
+    AND product.model_year IS NULL
     AND product.option_config #>> '{variantFields,axis,0,key}' = 'size';
 END;
 $$;

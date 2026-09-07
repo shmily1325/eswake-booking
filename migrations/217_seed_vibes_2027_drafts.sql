@@ -1,4 +1,4 @@
--- VIBES 2027 draft catalog.
+-- VIBES draft catalog sourced from the 2027 workbook; model year is not displayed.
 -- Source (read-only): VIBES_Dims_Dealer_Order_2027.xlsx, Master sheet.
 -- Prototype sheet is intentionally excluded.
 -- Re-runs only add missing product identities and missing size/finish SKUs.
@@ -33,7 +33,7 @@ BEGIN
     WHERE p.category = 'ws_board'
       AND LOWER(BTRIM(p.brand)) = 'vibes'
       AND LOWER(BTRIM(p.model)) = LOWER(v_model)
-      AND p.model_year = 2027
+      AND (p.model_year = 2027 OR p.model_year IS NULL)
     ORDER BY p.created_at NULLS LAST, p.id
     LIMIT 1;
 
@@ -117,7 +117,7 @@ BEGIN
         'ws_board',
         'VIBES',
         v_model,
-        2027,
+        NULL,
         NULL,
         NULL,
         v_option_config,
@@ -126,6 +126,10 @@ BEGIN
       )
       RETURNING id INTO v_product_id;
     END IF;
+
+    UPDATE public.products
+    SET model_year = NULL
+    WHERE id = v_product_id;
   END LOOP;
 
   FOR v_dimension IN
@@ -195,7 +199,7 @@ BEGIN
     WHERE p.category = 'ws_board'
       AND LOWER(BTRIM(p.brand)) = 'vibes'
       AND LOWER(BTRIM(p.model)) = LOWER(v_dimension.model)
-      AND p.model_year = 2027
+      AND p.model_year IS NULL
     ORDER BY p.created_at NULLS LAST, p.id
     LIMIT 1;
 

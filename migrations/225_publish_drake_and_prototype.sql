@@ -1,4 +1,4 @@
--- Publish DRAKE as a 2027 model and PROTOTYPE as a 2026 model.
+-- Publish DRAKE with model year 2026 and PROTOTYPE without a displayed year.
 -- Only dimensions present in the workbook are offered. PROTOTYPE has no
 -- volume values in its worksheet, so volume is intentionally not displayed.
 
@@ -8,42 +8,41 @@ SELECT pg_advisory_xact_lock(hashtext('225_publish_drake_and_prototype'));
 
 CREATE TEMP TABLE vibes_model_dimensions (
   model TEXT NOT NULL,
-  model_year INTEGER NOT NULL,
+  model_year INTEGER,
   sort_order INTEGER NOT NULL,
   size TEXT NOT NULL,
   width NUMERIC NOT NULL,
   thickness NUMERIC NOT NULL,
-  volume NUMERIC,
-  PRIMARY KEY (model, model_year, size)
+  volume NUMERIC
 ) ON COMMIT DROP;
 
 INSERT INTO vibes_model_dimensions
   (model, model_year, sort_order, size, width, thickness, volume)
 VALUES
-  ('DRAKE', 2027, 1, '3''11', 18.74, 1.53, 14.7),
-  ('DRAKE', 2027, 2, '4''0', 18.87, 1.54, 15.2),
-  ('DRAKE', 2027, 3, '4''1', 19.00, 1.55, 15.7),
-  ('DRAKE', 2027, 4, '4''2', 19.13, 1.56, 16.2),
-  ('DRAKE', 2027, 5, '4''3', 19.25, 1.57, 16.8),
-  ('DRAKE', 2027, 6, '4''4', 19.37, 1.58, 17.4),
-  ('DRAKE', 2027, 7, '4''5', 19.50, 1.59, 18.1),
-  ('DRAKE', 2027, 8, '4''6', 19.63, 1.60, 18.5),
-  ('DRAKE', 2027, 9, '4''7', 19.75, 1.62, 19.0),
-  ('DRAKE', 2027, 10, '4''8', 19.87, 1.63, 20.0),
-  ('DRAKE', 2027, 11, '4''9', 20.00, 1.64, 21.5),
-  ('DRAKE', 2027, 12, '4''10', 20.13, 1.65, 22.5),
-  ('PROTOTYPE', 2026, 1, '3''11', 18.74, 1.53, NULL),
-  ('PROTOTYPE', 2026, 2, '4''0', 18.87, 1.54, NULL),
-  ('PROTOTYPE', 2026, 3, '4''1', 19.00, 1.55, NULL),
-  ('PROTOTYPE', 2026, 4, '4''2', 19.13, 1.56, NULL),
-  ('PROTOTYPE', 2026, 5, '4''3', 19.25, 1.57, NULL),
-  ('PROTOTYPE', 2026, 6, '4''4', 19.37, 1.58, NULL),
-  ('PROTOTYPE', 2026, 7, '4''5', 19.50, 1.59, NULL),
-  ('PROTOTYPE', 2026, 8, '4''6', 19.63, 1.60, NULL),
-  ('PROTOTYPE', 2026, 9, '4''7', 19.75, 1.62, NULL),
-  ('PROTOTYPE', 2026, 10, '4''8', 19.87, 1.63, NULL),
-  ('PROTOTYPE', 2026, 11, '4''9', 20.00, 1.64, NULL),
-  ('PROTOTYPE', 2026, 12, '4''10', 20.13, 1.65, NULL);
+  ('DRAKE', 2026, 1, '3''11', 18.74, 1.53, 14.7),
+  ('DRAKE', 2026, 2, '4''0', 18.87, 1.54, 15.2),
+  ('DRAKE', 2026, 3, '4''1', 19.00, 1.55, 15.7),
+  ('DRAKE', 2026, 4, '4''2', 19.13, 1.56, 16.2),
+  ('DRAKE', 2026, 5, '4''3', 19.25, 1.57, 16.8),
+  ('DRAKE', 2026, 6, '4''4', 19.37, 1.58, 17.4),
+  ('DRAKE', 2026, 7, '4''5', 19.50, 1.59, 18.1),
+  ('DRAKE', 2026, 8, '4''6', 19.63, 1.60, 18.5),
+  ('DRAKE', 2026, 9, '4''7', 19.75, 1.62, 19.0),
+  ('DRAKE', 2026, 10, '4''8', 19.87, 1.63, 20.0),
+  ('DRAKE', 2026, 11, '4''9', 20.00, 1.64, 21.5),
+  ('DRAKE', 2026, 12, '4''10', 20.13, 1.65, 22.5),
+  ('PROTOTYPE', NULL, 1, '3''11', 18.74, 1.53, NULL),
+  ('PROTOTYPE', NULL, 2, '4''0', 18.87, 1.54, NULL),
+  ('PROTOTYPE', NULL, 3, '4''1', 19.00, 1.55, NULL),
+  ('PROTOTYPE', NULL, 4, '4''2', 19.13, 1.56, NULL),
+  ('PROTOTYPE', NULL, 5, '4''3', 19.25, 1.57, NULL),
+  ('PROTOTYPE', NULL, 6, '4''4', 19.37, 1.58, NULL),
+  ('PROTOTYPE', NULL, 7, '4''5', 19.50, 1.59, NULL),
+  ('PROTOTYPE', NULL, 8, '4''6', 19.63, 1.60, NULL),
+  ('PROTOTYPE', NULL, 9, '4''7', 19.75, 1.62, NULL),
+  ('PROTOTYPE', NULL, 10, '4''8', 19.87, 1.63, NULL),
+  ('PROTOTYPE', NULL, 11, '4''9', 20.00, 1.64, NULL),
+  ('PROTOTYPE', NULL, 12, '4''10', 20.13, 1.65, NULL);
 
 DO $$
 DECLARE
@@ -62,7 +61,7 @@ BEGIN
     INTO v_sizes
     FROM vibes_model_dimensions
     WHERE model = v_model.model
-      AND model_year = v_model.model_year;
+      AND model_year IS NOT DISTINCT FROM v_model.model_year;
 
     v_detail_fields := jsonb_build_array(
       jsonb_build_object(
@@ -160,7 +159,7 @@ BEGIN
     WHERE product.category = 'ws_board'
       AND LOWER(BTRIM(product.brand)) = 'vibes'
       AND UPPER(BTRIM(product.model)) = v_model.model
-      AND product.model_year = v_model.model_year
+      AND product.model_year IS NOT DISTINCT FROM v_model.model_year
     ORDER BY product.created_at NULLS LAST, product.id
     LIMIT 1;
 
@@ -248,7 +247,7 @@ BEGIN
         ('Full Carbon'::TEXT, 75000::INTEGER)
     ) finish(name, price)
     WHERE dimension.model = v_model.model
-      AND dimension.model_year = v_model.model_year
+      AND dimension.model_year IS NOT DISTINCT FROM v_model.model_year
       AND NOT EXISTS (
         SELECT 1
         FROM public.product_variants existing
@@ -281,7 +280,7 @@ BEGIN
     FROM vibes_model_dimensions dimension
     WHERE variant.product_id = v_product_id
       AND dimension.model = v_model.model
-      AND dimension.model_year = v_model.model_year
+      AND dimension.model_year IS NOT DISTINCT FROM v_model.model_year
       AND variant.attributes ->> 'size' = dimension.size
       AND variant.attributes ->> 'finish'
         IN ('Standard', 'Full Color', 'Full Carbon');
@@ -296,7 +295,7 @@ BEGIN
           SELECT 1
           FROM vibes_model_dimensions dimension
           WHERE dimension.model = v_model.model
-            AND dimension.model_year = v_model.model_year
+            AND dimension.model_year IS NOT DISTINCT FROM v_model.model_year
             AND dimension.size = variant.attributes ->> 'size'
         )
       );

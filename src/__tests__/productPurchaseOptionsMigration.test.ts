@@ -42,6 +42,10 @@ const publishDrakeAndPrototype = readFileSync(
   resolve(process.cwd(), 'migrations/225_publish_drake_and_prototype.sql'),
   'utf8',
 )
+const correctDrakeModelYear = readFileSync(
+  resolve(process.cwd(), 'migrations/226_correct_drake_model_year.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -154,12 +158,12 @@ describe('product purchase option migrations', () => {
     )
   })
 
-  it('publishes DRAKE 2027 and PROTOTYPE 2026 from workbook dimensions', () => {
+  it('publishes DRAKE as 2026 and leaves other VIBES years empty', () => {
     expect(publishDrakeAndPrototype).toContain(
-      "('DRAKE', 2027, 1, '3''11', 18.74, 1.53, 14.7)",
+      "('DRAKE', 2026, 1, '3''11', 18.74, 1.53, 14.7)",
     )
     expect(publishDrakeAndPrototype).toContain(
-      "('PROTOTYPE', 2026, 12, '4''10', 20.13, 1.65, NULL)",
+      "('PROTOTYPE', NULL, 12, '4''10', 20.13, 1.65, NULL)",
     )
     expect(publishDrakeAndPrototype).toContain(
       "v_model.model = 'DRAKE'",
@@ -170,5 +174,8 @@ describe('product purchase option migrations', () => {
     expect(publishDrakeAndPrototype).toContain(
       "UPPER(BTRIM(model)) = 'ENIGMA'",
     )
+    expect(correctDrakeModelYear).toContain('SET model_year = 2026')
+    expect(correctDrakeModelYear).toContain('SET model_year = NULL')
+    expect(correctDrakeModelYear).toContain('v_has_orders')
   })
 })

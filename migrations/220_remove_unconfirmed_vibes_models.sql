@@ -1,4 +1,4 @@
--- Remove the unconfirmed VIBES 2027 ENIGMA draft.
+-- Remove the unconfirmed VIBES ENIGMA draft.
 -- DRAKE was subsequently confirmed and must not be removed.
 
 BEGIN;
@@ -15,7 +15,6 @@ BEGIN
     WHERE product.category = 'ws_board'
       AND LOWER(BTRIM(product.brand)) = 'vibes'
       AND UPPER(BTRIM(product.model)) = 'ENIGMA'
-      AND product.model_year = 2027
   ) THEN
     RAISE EXCEPTION 'Cannot remove ENIGMA because an order already references it';
   END IF;
@@ -26,13 +25,11 @@ BEGIN
     AND product.category = 'ws_board'
     AND LOWER(BTRIM(product.brand)) = 'vibes'
     AND UPPER(BTRIM(product.model)) = 'ENIGMA'
-    AND product.model_year = 2027;
 
   DELETE FROM public.products product
   WHERE product.category = 'ws_board'
     AND LOWER(BTRIM(product.brand)) = 'vibes'
     AND UPPER(BTRIM(product.model)) = 'ENIGMA'
-    AND product.model_year = 2027;
 END;
 $$;
 
