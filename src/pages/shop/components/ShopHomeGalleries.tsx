@@ -73,7 +73,7 @@ interface ShopHomeGalleriesProps {
 }
 
 /**
- * 目錄首頁 2×2：Pre-Order | ES Series / In-Stock | Sale。
+ * 目錄首頁依序：Pre-Order / ES Series / In-Stock / Sale / Custom Order。
  * 沒貨的區不畫，桌機仍佔原格。卡片寬高固定。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
@@ -120,16 +120,6 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
     [products, seed, promo.presets],
   )
 
-  const customOrderSlot = useMemo(
-    () => ({
-      key: 'custom-order',
-      title: SHOP_LABEL.customOrder,
-      items: customOrderItems,
-      viewAllTo: shopCustomOrderListPath(),
-      accent: 'custom' as const,
-    }),
-    [customOrderItems],
-  )
   const slots = useMemo(
     () =>
       [
@@ -161,13 +151,17 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
           viewAllTo: shopSaleListPath(),
           accent: 'sale' as const,
         },
+        {
+          key: 'custom-order',
+          title: SHOP_LABEL.customOrder,
+          items: customOrderItems,
+          viewAllTo: shopCustomOrderListPath(),
+          accent: 'custom' as const,
+        },
       ] as const,
-    [preOrderItems, esSeriesItems, inStockItems, saleItems],
+    [preOrderItems, esSeriesItems, inStockItems, saleItems, customOrderItems],
   )
-  const hasStandardGallery = slots.some((slot) => slot.items.length > 0)
-  const hasGallery =
-    customOrderSlot.items.length > 0 ||
-    hasStandardGallery
+  const hasGallery = slots.some((slot) => slot.items.length > 0)
 
   const listed = useMemo(() => getShopBaseProducts(products), [products])
   const groups = useMemo(() => {
@@ -185,18 +179,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
-      {customOrderSlot.items.length > 0 && (
-        <div className="mb-8">
-          <HomeGalleryRow
-            galleryKey={customOrderSlot.key}
-            title={customOrderSlot.title}
-            items={customOrderSlot.items}
-            viewAllTo={customOrderSlot.viewAllTo}
-            accent={customOrderSlot.accent}
-          />
-        </div>
-      )}
-      {hasStandardGallery && (
+      {hasGallery && (
         <div className={SHOP_HOME_GALLERY_GRID}>
           {slots.map((slot) =>
             slot.items.length > 0 ? (
