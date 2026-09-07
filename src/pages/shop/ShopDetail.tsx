@@ -692,15 +692,17 @@ function ProductDetailBody({
                             aria-label={value}
                             aria-checked={selected}
                             title={value}
-                            className={`shrink-0 rounded-full border-2 transition ${
+                            className={`aspect-square shrink-0 rounded-full border-2 p-0 transition ${
                               selected
-                                ? 'border-zinc-900 ring-2 ring-zinc-900 ring-offset-2'
+                                ? 'border-zinc-900 ring-1 ring-zinc-900 ring-offset-1'
                                 : 'border-gray-200 hover:border-gray-500'
                             }`}
                             style={{
-                              width: 30,
-                              height: 30,
-                              minWidth: 30,
+                              width: 20,
+                              height: 20,
+                              minWidth: 20,
+                              minHeight: 20,
+                              boxSizing: 'border-box',
                               backgroundColor: field.swatches?.[value] ?? '#d1d5db',
                             }}
                             onClick={() => onCustomValueChange(field.key, value)}
@@ -746,7 +748,7 @@ function ProductDetailBody({
                   <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
                     <span
                       aria-hidden="true"
-                      className="block h-[30px] w-[30px] rounded-full border-2 border-zinc-900 ring-2 ring-zinc-900 ring-offset-2"
+                      className="block h-5 w-5 shrink-0 rounded-full border-2 border-zinc-900 ring-1 ring-zinc-900 ring-offset-1"
                       style={{
                         backgroundColor: field.key === 'carbon_color' ? '#000000' : '#FFFFFF',
                       }}
