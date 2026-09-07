@@ -528,9 +528,23 @@ BEGIN
             'Carbon', 75000
           ),
           'optionNotes', jsonb_build_object(
-            'Standard Build', '標準白色板',
+            'Standard Build', '標準板',
             'Custom Color', '可選推薦色或用Pantone色號選色',
             'Carbon', '碳纖維製作・固定黑色'
+          )
+        ),
+        jsonb_build_object(
+          'key', 'standard_color',
+          'label', 'Color',
+          'inputType', 'text',
+          'required', TRUE,
+          'readOnly', TRUE,
+          'defaultDisplay', 'White',
+          'visibility', jsonb_build_object(
+            'customField', jsonb_build_object(
+              'key', 'build_option',
+              'value', 'Standard Build'
+            )
           )
         ),
         v_spray,
@@ -580,6 +594,12 @@ BEGIN
         )
       )
       || CASE
+        WHEN variant.attributes ->> 'finish' IN ('Standard', '空板')
+          AND NOT (COALESCE(item.selected_options, '{}'::JSONB) ? 'standard_color')
+        THEN jsonb_build_object(
+          'standard_color',
+          jsonb_build_object('label', 'Color', 'value', 'White')
+        )
         WHEN variant.attributes ->> 'finish' IN ('Full Color', '客製色')
           AND NOT (COALESCE(item.selected_options, '{}'::JSONB) ? 'spray_color')
         THEN jsonb_build_object(

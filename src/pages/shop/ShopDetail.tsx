@@ -741,13 +741,19 @@ function ProductDetailBody({
                     </div>
                     ) : null}
                   </div>
-                ) : field.readOnly && field.key === 'carbon_color' ? (
+                ) : field.readOnly
+                  && (field.key === 'carbon_color' || field.key === 'standard_color') ? (
                   <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
                     <span
                       aria-hidden="true"
-                      className="block h-[30px] w-[30px] rounded-full border-2 border-zinc-900 bg-black ring-2 ring-zinc-900 ring-offset-2"
+                      className="block h-[30px] w-[30px] rounded-full border-2 border-zinc-900 ring-2 ring-zinc-900 ring-offset-2"
+                      style={{
+                        backgroundColor: field.key === 'carbon_color' ? '#000000' : '#FFFFFF',
+                      }}
                     />
-                    <span>已選：{field.defaultDisplay || 'Black'}</span>
+                    <span>
+                      已選：{field.defaultDisplay || (field.key === 'carbon_color' ? 'Black' : 'White')}
+                    </span>
                   </div>
                 ) : field.readOnly ? (
                   <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-zinc-800">

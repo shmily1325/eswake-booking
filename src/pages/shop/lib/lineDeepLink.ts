@@ -122,9 +122,16 @@ function appendSelectedOptions(
   selectedOptions: Record<string, { label: string; value: string }> | undefined,
   prefix = '',
 ): void {
-  for (const option of Object.values(selectedOptions ?? {})) {
+  for (const [key, option] of Object.entries(selectedOptions ?? {})) {
     const value = option.value.trim()
-    if (value) lines.push(`${prefix}${option.label}：${value}`)
+    if (!value) continue
+    const label =
+      key === 'build_option'
+        ? '製作方式'
+        : key === 'standard_color' || key === 'spray_color' || key === 'carbon_color'
+          ? '顏色'
+          : option.label
+    lines.push(`${prefix}${label}：${value}`)
   }
 }
 
@@ -138,12 +145,7 @@ function lineUnitText(input: {
   const price: ShopPrice = {
     original,
     sale,
-    hasDiscount: Boolean(
-      sale != null &&
-        original != null &&
-        input.discountCaption &&
-        sale < original,
-    ),
+    hasDiscount: Boolean(sale != null && original != null && input.discountCaption && sale < original),
     badge: null,
     caption: input.discountCaption ?? null,
     percent: null,
@@ -153,28 +155,19 @@ function lineUnitText(input: {
 }
 
 /** 內部：渲染單筆品項詢問的純文字訊息（不負責 URL） */
-function renderSingleMessage(
-  input: SingleInquiryInput,
-  includeUrl: boolean
-): string {
+function renderSingleMessage(input: SingleInquiryInput, includeUrl: boolean): string {
   const attrsText = formatVariantAttributes(input.categoryId, input.attributes)
   const productUrl = includeUrl ? buildProductUrl(input.productId) : ''
   const lines: string[] = [
-    input.isCustomOrder
-      ? '我想客訂以下商品：'
-      : input.isPreOrder
-        ? '我想預購以下商品：'
-        : '我想詢問以下商品：',
+    input.isCustomOrder ? '我想客訂以下商品：' : input.isPreOrder ? '我想預購以下商品：' : '我想詢問以下商品：',
     '',
     `品項：${input.productName}`,
   ]
   if (attrsText) lines.push(`規格：${attrsText}`)
   appendSelectedOptions(lines, input.selectedOptions)
   if (input.isPreOrder) {
-    lines.push('類型：預購')
     if (input.preOrderEta?.trim()) lines.push(`預計到貨：${input.preOrderEta.trim()}`)
   }
-  if (input.isCustomOrder) lines.push('類型：客訂（Made to Order）')
   lines.push(`數量：${input.quantity}`)
   lines.push(`單價：${lineUnitText(input)}`)
   if (productUrl) lines.push(`商品頁：${productUrl}`)
@@ -187,10 +180,7 @@ function renderCartMessage(items: CartItem[], includeUrls: boolean): string {
   if (items.length === 0) return ''
 
   const totalCount = items.reduce((s, it) => s + it.quantity, 0)
-  const totalAmount = items.reduce(
-    (s, it) => s + (it.unitPrice ?? 0) * it.quantity,
-    0
-  )
+  const totalAmount = items.reduce((s, it) => s + (it.unitPrice ?? 0) * it.quantity, 0)
   const hasUnknownPrice = items.some((it) => it.unitPrice == null)
   const customCount = items.filter((it) => it.availability === 'custom_order').length
   const allCustom = customCount === items.length
@@ -212,14 +202,14 @@ function renderCartMessage(items: CartItem[], includeUrls: boolean): string {
     const isCustom = it.availability === 'custom_order'
     const kind = isCustom ? '（客訂／Made to Order）' : isPre ? '（預購）' : ''
     lines.push(`【${idx + 1}】${it.productName}${kind}`)
-    if (attrsText) lines.push(`　規格：${attrsText}`)
-    appendSelectedOptions(lines, it.selectedOptions, '　')
+    if (attrsText) lines.push(`  規格：${attrsText}`)
+    appendSelectedOptions(lines, it.selectedOptions, '  ')
     if (isPre && it.preOrderEta?.trim()) {
-      lines.push(`　預計到貨：${it.preOrderEta.trim()}`)
+      lines.push(`  預計到貨：${it.preOrderEta.trim()}`)
     }
-    lines.push(`　數量：${it.quantity}`)
-    lines.push(`　單價：${lineUnitText(it)}`)
-    if (productUrl) lines.push(`　商品頁：${productUrl}`)
+    lines.push(`  數量：${it.quantity}`)
+    lines.push(`  單價：${lineUnitText(it)}`)
+    if (productUrl) lines.push(`  商品頁：${productUrl}`)
     lines.push('')
   })
   lines.push(`預估金額：${formatPrice(totalAmount)}`)
@@ -237,13 +227,16 @@ function renderCartMessage(items: CartItem[], includeUrls: boolean): string {
  * - 超標就退到不帶網址版，避免訊息被 LINE 截掉
  * - 若不帶網址還超標，標記 `stillTooLong` 讓 UI 警告
  */
-function buildPayload(
-  renderFn: (includeProductUrl: boolean) => string
-): InquiryPayload {
+function buildPayload(renderFn: (includeProductUrl: boolean) => string): InquiryPayload {
   const fullMsg = renderFn(true)
   const fullUrl = buildOaMessageUrl(fullMsg)
   if (fullUrl.length <= URL_BUDGET) {
-    return { url: fullUrl, message: fullMsg, urlsTrimmed: false, stillTooLong: false }
+    return {
+      url: fullUrl,
+      message: fullMsg,
+      urlsTrimmed: false,
+      stillTooLong: false,
+    }
   }
   const slimMsg = renderFn(false)
   const slimUrl = buildOaMessageUrl(slimMsg)
@@ -271,9 +264,7 @@ export function buildCartInquiry(items: CartItem[]): InquiryPayload {
  * - 手機：直接 `window.location.href = payload.url`，喚起 LINE app
  * - 桌機：回傳 `{ mode: 'desktop-fallback', message }` 讓 UI 顯示 modal
  */
-export type InquiryResult =
-  | { mode: 'mobile-deeplink' }
-  | { mode: 'desktop-fallback'; message: string }
+export type InquiryResult = { mode: 'mobile-deeplink' } | { mode: 'desktop-fallback'; message: string }
 
 export function launchInquiry(payload: InquiryPayload): InquiryResult {
   if (isMobileDevice()) {

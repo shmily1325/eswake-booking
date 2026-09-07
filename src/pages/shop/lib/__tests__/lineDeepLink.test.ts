@@ -86,12 +86,18 @@ describe('LINE inquiry prices', () => {
       productName: 'Custom Board',
       categoryId: 'ws_board',
       attributes: {},
+      selectedOptions: {
+        build_option: { label: 'Build Option', value: 'Custom Color' },
+        spray_color: { label: 'Color', value: '待與客服確認' },
+      },
       quantity: 1,
       unitPrice: 70000,
       isCustomOrder: true,
     })
     expect(payload.message).toContain('我想客訂以下商品：')
-    expect(payload.message).toContain('類型：客訂（Made to Order）')
+    expect(payload.message).toContain('製作方式：Custom Color')
+    expect(payload.message).toContain('顏色：待與客服確認')
+    expect(payload.message).not.toContain('類型：客訂')
     expect(payload.message).not.toContain('預計到貨')
   })
 

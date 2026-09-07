@@ -62,6 +62,10 @@ const syncVibesBuildDescriptions = readFileSync(
   resolve(process.cwd(), 'migrations/232_sync_vibes_build_option_descriptions.sql'),
   'utf8',
 )
+const addVibesStandardWhiteColor = readFileSync(
+  resolve(process.cwd(), 'migrations/233_add_vibes_standard_white_color.sql'),
+  'utf8',
+)
 
 describe('product purchase option migrations', () => {
   it('adds compatible JSON defaults and validates order snapshots', () => {
@@ -212,7 +216,8 @@ describe('product purchase option migrations', () => {
     expect(vibesPricedBuildOptions).toContain("'Custom Color', 70000")
     expect(vibesPricedBuildOptions).toContain("'Carbon', 75000")
     expect(vibesPricedBuildOptions).not.toContain('Black Ops Carbon')
-    expect(vibesPricedBuildOptions).toContain("'Standard Build', '標準白色板'")
+    expect(vibesPricedBuildOptions).toContain("'Standard Build', '標準板'")
+    expect(vibesPricedBuildOptions).toContain("'key', 'standard_color'")
     expect(vibesPricedBuildOptions).toContain("'可選推薦色或用Pantone色號選色'")
     expect(vibesPricedBuildOptions).toContain("'allowCustomValue', TRUE")
     expect(vibesPricedBuildOptions).toContain(
@@ -246,10 +251,18 @@ describe('product purchase option migrations', () => {
   })
 
   it('synchronizes concise Chinese build descriptions across VIBES products', () => {
-    expect(syncVibesBuildDescriptions).toContain("'Standard Build', '標準白色板'")
+    expect(syncVibesBuildDescriptions).toContain("'Standard Build', '標準板'")
     expect(syncVibesBuildDescriptions).toContain(
       "'Custom Color', '可選推薦色或用Pantone色號選色'",
     )
     expect(syncVibesBuildDescriptions).toContain("'Carbon', '碳纖維製作・固定黑色'")
+  })
+
+  it('adds a fixed white color snapshot for Standard Build', () => {
+    expect(addVibesStandardWhiteColor).toContain("'key', 'standard_color'")
+    expect(addVibesStandardWhiteColor).toContain("'defaultDisplay', 'White'")
+    expect(addVibesStandardWhiteColor).toContain(
+      "item.selected_options #>> '{build_option,value}' = 'Standard Build'",
+    )
   })
 })
