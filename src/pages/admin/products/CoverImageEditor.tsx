@@ -411,19 +411,23 @@ export function CoverImageEditor({
               value={null}
               entityId={entityId}
               storageFolder={storageFolder}
+              multiple
+              maxFiles={MAX_VARIANT_COVER_IMAGES - images.length}
               disabled={disabled || busy || atLimit}
               onChange={(next) => {
                 if (next.url && next.path) {
-                  onUpload?.(next.path)
-                  const wasEmpty = imagesRef.current.length === 0
-                  if (appendImage(next.url, next.path)) {
-                    toast.success(wasEmpty ? '封面已上傳' : '已加入封面圖')
-                  }
+                  appendImage(next.url, next.path)
                 }
               }}
               onUpload={onUpload}
+              onSelectionComplete={({ uploaded, failed }) => {
+                if (uploaded > 0) {
+                  toast.success(uploaded === 1 ? '封面已上傳' : `已加入 ${uploaded} 張封面圖`)
+                }
+                if (failed > 0) toast.error(`${failed} 張圖片上傳失敗`)
+              }}
               size={thumbSize}
-              emptyLabel="從相簿選圖"
+              emptyLabel="從相簿選圖（可多選）"
             />
           </div>
           <div
@@ -446,7 +450,7 @@ export function CoverImageEditor({
                   width: '100%',
                 }}
               >
-                從相簿選圖
+                從相簿選圖（可多選）
               </button>
             )}
             <button

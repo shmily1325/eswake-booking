@@ -28,6 +28,12 @@ interface ImageUploaderProps {
   square?: boolean
   /** 空白時的提示文字 */
   emptyLabel?: string
+  /** 是否允許在系統選檔器中一次選取多張圖片 */
+  multiple?: boolean
+  /** 單次最多處理的檔案數（僅在 multiple 時使用） */
+  maxFiles?: number
+  /** 一次選檔全部處理完畢後通知 */
+  onSelectionComplete?: (result: { uploaded: number; failed: number }) => void
   /** 唯讀（不可上傳/刪除） */
   disabled?: boolean
 }
@@ -47,6 +53,9 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
     size = 96,
     square = false,
     emptyLabel = '上傳圖片',
+    multiple = false,
+    maxFiles,
+    onSelectionComplete,
     disabled,
   },
   ref,
@@ -68,24 +77,45 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
   }
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const selectedFiles = Array.from(e.target.files ?? [])
     e.target.value = '' // reset 讓同一張圖也能再選
-    if (!file) return
-    if (!file.type.startsWith('image/')) {
+    if (selectedFiles.length === 0) return
+
+    const imageFiles = selectedFiles.filter((file) => file.type.startsWith('image/'))
+    if (imageFiles.length !== selectedFiles.length) {
       toast.error('請選擇圖片檔')
-      return
     }
+    const files =
+      multiple && maxFiles != null
+        ? imageFiles.slice(0, Math.max(0, maxFiles))
+        : imageFiles.slice(0, multiple ? undefined : 1)
+    if (multiple && maxFiles != null && imageFiles.length > maxFiles) {
+      toast.error(`這次最多可再選 ${Math.max(0, maxFiles)} 張`)
+    }
+    if (files.length === 0) return
+
     setUploading(true)
+    let uploaded = 0
+    let failed = 0
+    for (const file of files) {
+      try {
+        const result = await uploadProductImage(file, {
+          storageFolder,
+          entityId: entityId ?? variantId,
+        })
+        onUpload?.(result.path)
+        onChange({ url: result.publicUrl, path: result.path })
+        uploaded += 1
+      } catch (err) {
+        failed += 1
+        console.error('[ImageUploader] upload failed', err)
+        if (!onSelectionComplete) {
+          toast.error(err instanceof Error ? err.message : '圖片上傳失敗')
+        }
+      }
+    }
     try {
-      const result = await uploadProductImage(file, {
-        storageFolder,
-        entityId: entityId ?? variantId,
-      })
-      onUpload?.(result.path)
-      onChange({ url: result.publicUrl, path: result.path })
-    } catch (err) {
-      console.error('[ImageUploader] upload failed', err)
-      toast.error(err instanceof Error ? err.message : '圖片上傳失敗')
+      onSelectionComplete?.({ uploaded, failed })
     } finally {
       setUploading(false)
     }
@@ -192,7 +222,14 @@ export const ImageUploader = forwardRef<ImageUploaderHandle, ImageUploaderProps>
         accept="image/*"：限定圖片檔
         不設 capture：手機會跳出原生選單（相簿 / 拍照 / 檔案），不會直接強制開相機
       */}
-      <input ref={inputRef} type="file" accept="image/*" onChange={handleChange} style={{ display: 'none' }} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple={multiple}
+        onChange={handleChange}
+        style={{ display: 'none' }}
+      />
     </div>
   )
 })
