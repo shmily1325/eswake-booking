@@ -184,7 +184,22 @@ WHERE product.id = variant.product_id
   AND LOWER(BTRIM(product.brand)) = 'vibes'
   AND UPPER(BTRIM(product.model)) <> 'ENIGMA'
   AND product.is_active = TRUE
-  AND variant.is_active = TRUE;
+  AND variant.is_active = TRUE
+  AND (
+    EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements(
+        product.option_config #> '{variantFields,axis}'
+      ) option_axis
+      WHERE option_axis ->> 'key' = 'finish'
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements(product.option_config -> 'customFields')
+        custom_field
+      WHERE custom_field ->> 'key' = 'build_option'
+    )
+  );
 
 COMMIT;
 
