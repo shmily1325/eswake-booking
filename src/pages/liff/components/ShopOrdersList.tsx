@@ -88,8 +88,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
             style={{
               flexShrink: 0,
               fontSize: getFontSizePx('button', true),
-              fontWeight:
-                statusKey === 'done' || statusKey === 'cancelled' ? 500 : 700,
+              fontWeight: statusKey === 'done' || statusKey === 'cancelled' ? 500 : 700,
               color: status.color,
             }}
           >
@@ -113,9 +112,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
                 {order.shipping_info}
               </span>
             ) : null}
-            {progressSummary ? (
-              <span style={{ display: 'block', marginTop: 4 }}>{progressSummary}</span>
-            ) : null}
+            {progressSummary ? <span style={{ display: 'block', marginTop: 4 }}>{progressSummary}</span> : null}
           </div>
         )}
 
@@ -159,7 +156,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {visibleItems.map((item) => {
-          const { title, subtitle, progress } = formatLiffOrderItemLine(item)
+          const { title, spec, options, isCustomOrder, progress } = formatLiffOrderItemLine(item)
           const imageSrc = getLiffOrderItemImageUrl(item)
           return (
             <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
@@ -195,16 +192,33 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
                 </button>
               )}
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div
-                  style={{
-                    fontSize: getFontSizePx('body', false),
-                    fontWeight: 600,
-                    color: LIFF_THEME.inkSoft,
-                  }}
-                >
-                  {title}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      fontSize: getFontSizePx('body', false),
+                      fontWeight: 600,
+                      color: LIFF_THEME.inkSoft,
+                    }}
+                  >
+                    {title}
+                  </span>
+                  {isCustomOrder && (
+                    <span
+                      style={{
+                        padding: '2px 7px',
+                        borderRadius: 999,
+                        background: LIFF_THEME.inkSoft,
+                        color: '#fff',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      客訂
+                    </span>
+                  )}
                 </div>
-                {subtitle && (
+                {spec && (
                   <div
                     style={{
                       fontSize: getFontSizePx('bodySmall', true),
@@ -212,7 +226,34 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
                       marginTop: 2,
                     }}
                   >
-                    {subtitle}
+                    {spec}
+                  </div>
+                )}
+                {options.length > 0 && (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gap: 4,
+                      marginTop: 7,
+                      padding: '7px 9px',
+                      borderRadius: 8,
+                      background: LIFF_THEME.surfaceInset,
+                    }}
+                  >
+                    {options.map((option) => (
+                      <div
+                        key={option.key}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'minmax(54px, auto) 1fr',
+                          gap: 8,
+                          fontSize: getFontSizePx('bodySmall', true),
+                        }}
+                      >
+                        <span style={{ color: LIFF_THEME.mutedLight }}>{option.label}</span>
+                        <span style={{ color: LIFF_THEME.inkSoft, fontWeight: 600 }}>{option.value}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
                 <div
@@ -253,9 +294,7 @@ function ShopOrderRow({ order, isLast }: { order: LiffShopOrder; isLast: boolean
         <span style={{ fontSize: getFontSizePx('bodySmall', true), color: LIFF_THEME.muted }}>
           {settledTotal !== null ? '結帳金額' : '訂單金額'}
         </span>
-        <strong style={{ fontSize: getFontSizePx('body', true) }}>
-          ${displayTotal.toLocaleString()}
-        </strong>
+        <strong style={{ fontSize: getFontSizePx('body', true) }}>${displayTotal.toLocaleString()}</strong>
       </div>
       {previewSrc && (
         <div
@@ -368,11 +407,7 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
       <div style={liffContentPanel}>
         <div>
           {orders.map((order, index) => (
-            <ShopOrderRow
-              key={order.id}
-              order={order}
-              isLast={index === orders.length - 1}
-            />
+            <ShopOrderRow key={order.id} order={order} isLast={index === orders.length - 1} />
           ))}
         </div>
         <LiffPageHint>{ORDERS_PAGE_HINT}</LiffPageHint>

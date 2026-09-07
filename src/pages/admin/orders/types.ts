@@ -39,6 +39,10 @@ export interface ShopOrderItemRow {
   brand_snapshot?: string | null
   /** 開單當下販售方式；客訂與預購報表分開。 */
   sale_mode_snapshot?: string | null
+  /** 客服已和客人確認 Build、尺寸、顏色與成交價。 */
+  custom_order_confirmed_at?: string | null
+  /** 此筆客訂實品已到貨，並已轉為待付款。 */
+  custom_order_arrived_at?: string | null
   /** 客製欄位的成交快照；key 為穩定欄位 key，value 含當時顯示名稱和值。 */
   selected_options?: Record<string, { label: string; value: string }>
   created_at: string
@@ -136,4 +140,4 @@ export interface UpdateOrderInput {
   updated_by?: string | null
 }
 
-export type OrderInboxTab = 'waiting' | 'ready' | 'pending' | 'settled' | 'cancelled' | 'all'
+export type OrderInboxTab = 'custom' | 'waiting' | 'ready' | 'pending' | 'settled' | 'cancelled' | 'all'

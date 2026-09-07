@@ -9,25 +9,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { Footer } from '../../../components/Footer'
-import {
-  adminContentCardStyle,
-  adminLoadingStyle,
-  adminStatsBarStyle,
-} from '../../../components/AdminPageLayout'
+import { adminContentCardStyle, adminLoadingStyle, adminStatsBarStyle } from '../../../components/AdminPageLayout'
 import { Button, ToastContainer, useToast } from '../../../components/ui'
 import { ConfirmModal } from '../../../components/ui/Modal'
 import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
 import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
 import { hasEditorFeatureAsync, isAdmin } from '../../../utils/auth'
-import {
-  fetchShopOrders,
-  shopOrdersListCreatedAfterIso,
-} from './api'
+import { fetchShopOrders, shopOrdersListCreatedAfterIso } from './api'
 import { formatCurrency, formatDate, formatDateTime, formatTime } from '../../../utils/formatters'
 import {
   cancelShopOrderBilling,
   countOrderTransactions,
+  markCustomOrderItemArrived,
+  setCustomOrderItemConfirmation,
   shopOrderErrorMessage,
   submitShopOrderBilling,
   voidShopOrder,
@@ -39,6 +34,7 @@ import {
   buildSubmitBillingConfirmMessage,
   buildSubmitBillingPayload,
   confirmVoidOrder,
+  customOrderItemStage,
   deliveryMethodLabel,
   filterOrdersByInbox,
   filterOrdersBySearch,
@@ -47,6 +43,7 @@ import {
   getOrderItemImageUrl,
   itemQtyChipsForCard,
   orderHasPendingBill,
+  orderHasCustomOrder,
   orderCanSubmitBilling,
   orderHasReadyToBill,
   orderHasWaitingStock,
@@ -66,6 +63,7 @@ const UI_SANS = 'var(--font-ui)'
 
 const TAB_LABELS: Record<OrderInboxTab, string> = {
   all: '全部',
+  custom: '客訂',
   waiting: '等貨',
   ready: '可送結帳',
   pending: '待結帳',
@@ -79,6 +77,7 @@ const STAT_FILTERS: {
   mobileLabel: string
   color: string
 }[] = [
+  { id: 'custom', label: '客訂生產', mobileLabel: '客訂', color: colors.primary[700] },
   { id: 'waiting', label: '等貨', mobileLabel: '等貨', color: colors.warning[700] },
   { id: 'ready', label: '可送結帳', mobileLabel: '可送', color: colors.info[700] },
   { id: 'pending', label: '待結帳', mobileLabel: '待結', color: colors.secondary[700] },
@@ -111,6 +110,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   const [search, setSearch] = useState('')
   const [billingBusyOrderId, setBillingBusyOrderId] = useState<string | null>(null)
   const [billingConfirmation, setBillingConfirmation] = useState<BillingConfirmation | null>(null)
+  const [customItemBusyId, setCustomItemBusyId] = useState<string | null>(null)
   const [highlightOrderId, setHighlightOrderId] = useState<string | null>(null)
   const [includeOlderOrders, setIncludeOlderOrders] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
@@ -133,11 +133,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       const loadAll = opts?.includeOlder ?? includeOlderOrders
       try {
         setLoadError(null)
-        setOrders(
-          await fetchShopOrders(
-            loadAll ? undefined : { createdAfter: shopOrdersListCreatedAfterIso() },
-          ),
-        )
+        setOrders(await fetchShopOrders(loadAll ? undefined : { createdAfter: shopOrdersListCreatedAfterIso() }))
         if (opts?.includeOlder) setIncludeOlderOrders(true)
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : '載入失敗'
@@ -170,8 +166,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       setLoadError(null)
       try {
         if (!embedded) {
-          const allowed =
-            (await hasEditorFeatureAsync(user, 'can_products')) || isAdmin(user)
+          const allowed = (await hasEditorFeatureAsync(user, 'can_products')) || isAdmin(user)
           if (cancelled) return
           if (!allowed) {
             toast.error('您沒有權限開單')
@@ -230,6 +225,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
 
   const tabCounts = useMemo(
     () => ({
+      custom: activeOrders.filter(orderHasCustomOrder).length,
       waiting: activeOrders.filter(orderHasWaitingStock).length,
       ready: activeOrders.filter(orderHasReadyToBill).length,
       pending: activeOrders.filter(orderHasPendingBill).length,
@@ -264,6 +260,39 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'auto' }))
   }, [reloadOrders])
 
+  const handleCustomItemConfirmation = async (item: ShopOrderItemWithVariant, confirmed: boolean) => {
+    if (customItemBusyId) return
+    const message = confirmed
+      ? '確認 Build、尺寸、顏色與成交價皆已和客人確認？確認後規格將鎖定。'
+      : '重新開放編輯後，請再次確認規格才能標記到貨。確定繼續？'
+    if (!window.confirm(message)) return
+    setCustomItemBusyId(item.id)
+    try {
+      await setCustomOrderItemConfirmation(item.id, confirmed, user?.email ?? null)
+      await afterOrderMutation()
+      globalToast.success(confirmed ? '客訂規格已確認' : '已重新開放編輯')
+    } catch (error) {
+      toast.error(shopOrderErrorMessage(error, '客訂狀態更新失敗'))
+    } finally {
+      setCustomItemBusyId(null)
+    }
+  }
+
+  const handleCustomItemArrived = async (item: ShopOrderItemWithVariant) => {
+    if (customItemBusyId) return
+    if (!window.confirm('確認此客訂品項已實際到貨？確認後會直接進入待付款。')) return
+    setCustomItemBusyId(item.id)
+    try {
+      await markCustomOrderItemArrived(item.id, user?.email ?? null)
+      await afterOrderMutation()
+      globalToast.success('客訂已到貨，已轉為待付款')
+    } catch (error) {
+      toast.error(shopOrderErrorMessage(error, '標記客訂到貨失敗'))
+    } finally {
+      setCustomItemBusyId(null)
+    }
+  }
+
   const handleSubmitBilling = (order: ShopOrderWithItems) => {
     if (billingBusyOrderId) return
     const payload = buildSubmitBillingPayload(order)
@@ -297,12 +326,9 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
   const confirmBillingAction = async () => {
     if (!billingConfirmation || billingBusyOrderId) return
     const { kind, order } = billingConfirmation
-    const payload =
-      kind === 'submit' ? buildSubmitBillingPayload(order) : buildCancelBillingPayload(order)
+    const payload = kind === 'submit' ? buildSubmitBillingPayload(order) : buildCancelBillingPayload(order)
     const validation =
-      kind === 'submit'
-        ? validateSubmitBillingDraft(order, payload)
-        : validateCancelBillingDraft(order, payload)
+      kind === 'submit' ? validateSubmitBillingDraft(order, payload) : validateCancelBillingDraft(order, payload)
     if (!validation.ok) {
       toast.error(validation.error)
       setBillingConfirmation(null)
@@ -416,9 +442,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={
-              isMobile
-                ? '搜尋姓名、品名、訂單號、標籤碼…'
-                : '搜尋訂單號、訂購人、品牌、品名、貨號、標籤碼、規格…'
+              isMobile ? '搜尋姓名、品名、訂單號、標籤碼…' : '搜尋訂單號、訂購人、品牌、品名、貨號、標籤碼、規格…'
             }
             style={{
               width: '100%',
@@ -458,13 +482,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             style={{
               display: 'grid',
               gridTemplateColumns:
-                !includeOlderOrders && canEdit
-                  ? isMobile
-                    ? '1fr 1fr'
-                    : 'auto auto'
-                  : isMobile
-                    ? '1fr'
-                    : 'auto',
+                !includeOlderOrders && canEdit ? (isMobile ? '1fr 1fr' : 'auto auto') : isMobile ? '1fr' : 'auto',
               gap: 8,
               flexShrink: 0,
               width: isMobile ? '100%' : 'auto',
@@ -522,9 +540,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       {loading ? (
         <div style={adminLoadingStyle()}>載入中…</div>
       ) : loadError ? (
-        <div style={{ ...adminContentCardStyle(isMobile), color: colors.danger[700] }}>
-          載入失敗：{loadError}
-        </div>
+        <div style={{ ...adminContentCardStyle(isMobile), color: colors.danger[700] }}>載入失敗：{loadError}</div>
       ) : visible.length === 0 ? (
         <div style={adminContentCardStyle(isMobile)}>
           <div
@@ -534,11 +550,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
               marginBottom: 4,
             }}
           >
-            {search.trim()
-              ? '沒有符合搜尋的訂單'
-              : tab !== 'all'
-                ? `沒有「${TAB_LABELS[tab]}」的訂單`
-                : '還沒有訂單'}
+            {search.trim() ? '沒有符合搜尋的訂單' : tab !== 'all' ? `沒有「${TAB_LABELS[tab]}」的訂單` : '還沒有訂單'}
           </div>
           {tab !== 'all' && (
             <button
@@ -579,6 +591,9 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
               const src = getOrderItemImageUrl(item)
               if (src) setPreviewSrc(src)
             }}
+            customItemBusyId={customItemBusyId}
+            onConfirmCustomItem={(item, confirmed) => void handleCustomItemConfirmation(item, confirmed)}
+            onMarkCustomItemArrived={(item) => void handleCustomItemArrived(item)}
           />
         ))
       )}
@@ -621,11 +636,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             cursor: 'pointer',
           }}
         >
-          <img
-            src={previewSrc}
-            alt=""
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-          />
+          <img src={previewSrc} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
         </div>
       )}
 
@@ -655,6 +666,9 @@ function OrderCard({
   onCancelBilling,
   onVoidOrder,
   onOpenImagePreview,
+  customItemBusyId,
+  onConfirmCustomItem,
+  onMarkCustomItemArrived,
 }: {
   order: ShopOrderWithItems
   isMobile: boolean
@@ -666,16 +680,19 @@ function OrderCard({
   onCancelBilling: () => void
   onVoidOrder: () => void
   onOpenImagePreview: (item: ShopOrderItemWithVariant) => void
+  customItemBusyId: string | null
+  onConfirmCustomItem: (item: ShopOrderItemWithVariant, confirmed: boolean) => void
+  onMarkCustomItemArrived: (item: ShopOrderItemWithVariant) => void
 }) {
   const cancelled = Boolean(order.cancelled_at)
   const statusKey = orderPrimaryStatus(order)
   const status = orderStatusMeta(statusKey)
   const showSubmit = orderCanSubmitBilling(order)
   const showCancelBill = !cancelled && orderHasPendingBill(order)
-  const orderAmountTotal = order.items.reduce(
-    (total, item) => total + item.unit_price * item.qty,
-    0,
+  const hasLockedCustomItem = order.items.some(
+    (item) => item.sale_mode_snapshot === 'custom_order' && Boolean(item.custom_order_confirmed_at),
   )
+  const orderAmountTotal = order.items.reduce((total, item) => total + item.unit_price * item.qty, 0)
   const settledTotal = statusKey === 'settled' ? settlementAmountTotal(order.settlements) : null
   return (
     <div
@@ -683,9 +700,7 @@ function OrderCard({
         background: highlighted ? colors.info[50] : colors.background.card,
         borderRadius: borderRadius.lg,
         marginBottom: 10,
-        border: highlighted
-          ? `1px solid ${colors.info[500]}`
-          : `1px solid ${colors.border.light}`,
+        border: highlighted ? `1px solid ${colors.info[500]}` : `1px solid ${colors.border.light}`,
         opacity: cancelled ? 0.72 : statusKey === 'settled' ? 0.88 : 1,
         overflow: 'hidden',
         boxShadow: designSystem.shadows.xs,
@@ -766,6 +781,9 @@ function OrderCard({
             isMobile={isMobile}
             showDivider={idx > 0}
             onOpenImagePreview={onOpenImagePreview}
+            customItemBusy={customItemBusyId === it.id}
+            onConfirmCustomItem={onConfirmCustomItem}
+            onMarkCustomItemArrived={onMarkCustomItemArrived}
           />
         ))}
         <div
@@ -840,9 +858,10 @@ function OrderCard({
               isMobile={isMobile}
               flex={isMobile && showSubmit}
               trackId="product_order_edit_open"
+              disabled={!cancelled && hasLockedCustomItem}
               onClick={onEdit}
             >
-              {cancelled ? '查看' : '編輯'}
+              {cancelled ? '查看' : hasLockedCustomItem ? '規格已鎖定' : '編輯'}
             </ActionBtn>
           </div>
           {!cancelled && (
@@ -854,11 +873,7 @@ function OrderCard({
               }}
             >
               {showCancelBill && (
-                <TextAction
-                  isMobile={isMobile}
-                  trackId="product_order_cancel_billing"
-                  onClick={onCancelBilling}
-                >
+                <TextAction isMobile={isMobile} trackId="product_order_cancel_billing" onClick={onCancelBilling}>
                   撤回送結帳
                 </TextAction>
               )}
@@ -873,13 +888,7 @@ function OrderCard({
   )
 }
 
-function OrderContextDetails({
-  order,
-  isMobile,
-}: {
-  order: ShopOrderWithItems
-  isMobile: boolean
-}) {
+function OrderContextDetails({ order, isMobile }: { order: ShopOrderWithItems; isMobile: boolean }) {
   const shippingInfo = order.shipping_info?.trim() || ''
   const customerNote = order.customer_note?.trim() || ''
   const internalNotes = order.internal_notes?.trim() || ''
@@ -935,15 +944,22 @@ function OrderItemRow({
   isMobile,
   showDivider,
   onOpenImagePreview,
+  customItemBusy,
+  onConfirmCustomItem,
+  onMarkCustomItemArrived,
 }: {
   item: ShopOrderWithItems['items'][number]
   order: ShopOrderWithItems
   isMobile: boolean
   showDivider: boolean
   onOpenImagePreview: (item: ShopOrderItemWithVariant) => void
+  customItemBusy: boolean
+  onConfirmCustomItem: (item: ShopOrderItemWithVariant, confirmed: boolean) => void
+  onMarkCustomItemArrived: (item: ShopOrderItemWithVariant) => void
 }) {
   const { title, subtitle } = formatOrderItemParts(item)
   const chips = itemQtyChipsForCard(item, order)
+  const customStage = customOrderItemStage(item)
   const thumbSize = isMobile ? 44 : 48
   const orderUnitPrice = `NT$${formatCurrency(item.unit_price, false)}`
   return (
@@ -964,12 +980,7 @@ function OrderItemRow({
         borderTop: showDivider ? `1px solid ${colors.border.light}` : 'none',
       }}
     >
-      <OrderItemThumb
-        item={item}
-        size={thumbSize}
-        isMobile={isMobile}
-        onOpen={() => onOpenImagePreview(item)}
-      />
+      <OrderItemThumb item={item} size={thumbSize} isMobile={isMobile} onOpen={() => onOpenImagePreview(item)} />
       <div style={{ minWidth: 0 }}>
         <div
           style={{
@@ -991,6 +1002,66 @@ function OrderItemRow({
             }}
           >
             {subtitle}
+          </div>
+        )}
+        {customStage && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 6,
+              marginTop: 7,
+            }}
+          >
+            <span
+              style={{
+                padding: '3px 7px',
+                borderRadius: 999,
+                background:
+                  customStage === 'completed'
+                    ? colors.success[50]
+                    : customStage === 'arrived'
+                      ? colors.info[50]
+                      : colors.warning[50],
+                color:
+                  customStage === 'completed'
+                    ? colors.success[700]
+                    : customStage === 'arrived'
+                      ? colors.info[700]
+                      : colors.warning[700],
+                fontSize: getFontSize('caption', isMobile),
+                fontWeight: 700,
+              }}
+            >
+              {customStage === 'unconfirmed'
+                ? '客訂 · 待確認'
+                : customStage === 'production'
+                  ? '客訂 · 製作中'
+                  : customStage === 'arrived'
+                    ? '客訂 · 已到貨／待付款'
+                    : '客訂 · 已完成'}
+            </span>
+            {!order.cancelled_at && customStage === 'unconfirmed' && (
+              <Button size="small" disabled={customItemBusy} onClick={() => onConfirmCustomItem(item, true)}>
+                {customItemBusy ? '處理中…' : '確認規格'}
+              </Button>
+            )}
+            {!order.cancelled_at && customStage === 'production' && (
+              <>
+                <Button size="small" disabled={customItemBusy} onClick={() => onMarkCustomItemArrived(item)}>
+                  {customItemBusy ? '處理中…' : '標記到貨'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="small"
+                  disabled={customItemBusy}
+                  onClick={() => onConfirmCustomItem(item, false)}
+                >
+                  重新編輯
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -1098,17 +1169,7 @@ function OrderItemThumb({
   )
 }
 
-function QtyChip({
-  label,
-  color,
-  bg,
-  isMobile,
-}: {
-  label: string
-  color: string
-  bg: string
-  isMobile: boolean
-}) {
+function QtyChip({ label, color, bg, isMobile }: { label: string; color: string; bg: string; isMobile: boolean }) {
   return (
     <span
       style={{
@@ -1134,17 +1195,7 @@ function formatOrderCardMeta(order: ShopOrderWithItems, isMobile: boolean): stri
   return `${delivery} · ${formatDateTime(order.created_at)}`
 }
 
-function OrderTag({
-  label,
-  color,
-  bg,
-  isMobile,
-}: {
-  label: string
-  color: string
-  bg: string
-  isMobile?: boolean
-}) {
+function OrderTag({ label, color, bg, isMobile }: { label: string; color: string; bg: string; isMobile?: boolean }) {
   return (
     <span
       style={{

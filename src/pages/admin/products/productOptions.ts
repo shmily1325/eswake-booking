@@ -26,9 +26,7 @@ export interface ProductCustomField extends ProductOptionField {
   placeholder?: string
   help?: string
   defaultDisplay?: string
-  visibility?:
-    | { axis: { key: string; value: string } }
-    | { customField: { key: string; value: string } }
+  visibility?: { axis: { key: string; value: string } } | { customField: { key: string; value: string } }
 }
 
 export interface ProductOptionConfig {
@@ -51,6 +49,135 @@ export const EMPTY_PRODUCT_OPTION_CONFIG: ProductOptionConfig = {
   version: PRODUCT_OPTION_CONFIG_VERSION,
   variantFields: { axis: [], detail: [] },
   customFields: [],
+}
+
+export const VIBES_BUILD_NAMES = ['Standard', 'Custom Color', 'Carbon'] as const
+export type VibesBuildName = (typeof VIBES_BUILD_NAMES)[number]
+
+export interface VibesBuildSetting {
+  name: VibesBuildName
+  price: number | null
+  note: string
+}
+
+export interface VibesColorSetting {
+  name: string
+  hex: string
+  image?: { url: string; path?: string }
+}
+
+function vibesStoredBuildName(name: VibesBuildName, field: ProductCustomField): string {
+  if (name === 'Standard' && field.values?.includes('Standard Build')) return 'Standard Build'
+  return name
+}
+
+export function isVibesCustomOrderConfig(
+  category: string | null | undefined,
+  brand: string | null | undefined,
+  config: ProductOptionConfig | null | undefined,
+): boolean {
+  return (
+    category === 'ws_board' &&
+    brand?.trim().toLowerCase() === 'vibes' &&
+    Boolean(config?.customFields.some((field) => field.key === 'build_option'))
+  )
+}
+
+export function getVibesBuildSettings(config: ProductOptionConfig): VibesBuildSetting[] {
+  const field = config.customFields.find((candidate) => candidate.key === 'build_option')
+  if (!field) return []
+  return VIBES_BUILD_NAMES.map((name) => {
+    const storedName = vibesStoredBuildName(name, field)
+    const price = field.optionPrices?.[storedName]
+    return {
+      name,
+      price: Number.isFinite(price) ? price! : null,
+      note: field.optionNotes?.[storedName] ?? '',
+    }
+  })
+}
+
+export function updateVibesBuildSetting(
+  config: ProductOptionConfig,
+  name: VibesBuildName,
+  patch: { price?: number | null; note?: string },
+): ProductOptionConfig {
+  return {
+    ...config,
+    customFields: config.customFields.map((field) => {
+      if (field.key !== 'build_option') return field
+      const storedName = vibesStoredBuildName(name, field)
+      const optionPrices = { ...field.optionPrices }
+      const optionNotes = { ...field.optionNotes }
+      if ('price' in patch) {
+        if (patch.price == null) delete optionPrices[storedName]
+        else optionPrices[storedName] = patch.price
+      }
+      if ('note' in patch) {
+        const note = patch.note?.trim() ?? ''
+        if (note) optionNotes[storedName] = note
+        else delete optionNotes[storedName]
+      }
+      return { ...field, optionPrices, optionNotes }
+    }),
+  }
+}
+
+export function getVibesColorSettings(config: ProductOptionConfig): VibesColorSetting[] {
+  const field = config.customFields.find((candidate) => candidate.key === 'spray_color')
+  if (!field) return []
+  return (field.values ?? []).map((name) => ({
+    name,
+    hex: field.swatches?.[name] ?? '#d1d5db',
+    ...(field.swatchImages?.[name] ? { image: field.swatchImages[name] } : {}),
+  }))
+}
+
+export function setVibesColorSettings(
+  config: ProductOptionConfig,
+  colors: readonly VibesColorSetting[],
+): ProductOptionConfig {
+  return {
+    ...config,
+    customFields: config.customFields.map((field) =>
+      field.key === 'spray_color'
+        ? {
+            ...field,
+            values: colors.map((color) => color.name),
+            swatches: Object.fromEntries(colors.map((color) => [color.name, color.hex])),
+            swatchImages: Object.fromEntries(
+              colors.filter((color) => Boolean(color.image?.url)).map((color) => [color.name, color.image!]),
+            ),
+          }
+        : field,
+    ),
+  }
+}
+
+export function setVibesSizeValues(config: ProductOptionConfig, sizes: readonly string[]): ProductOptionConfig {
+  const normalized = Array.from(new Set(sizes.map((size) => size.trim()).filter(Boolean)))
+  return {
+    ...config,
+    variantFields: {
+      ...config.variantFields,
+      axis: config.variantFields.axis.map((field) => (field.key === 'size' ? { ...field, values: normalized } : field)),
+    },
+  }
+}
+
+export function validateVibesCustomOrderConfig(config: ProductOptionConfig): string[] {
+  const issues: string[] = []
+  const builds = getVibesBuildSettings(config)
+  for (const name of VIBES_BUILD_NAMES) {
+    const build = builds.find((candidate) => candidate.name === name)
+    if (!build || build.price == null || build.price < 0) issues.push(`${name} 尚未設定價格`)
+  }
+  const colors = getVibesColorSettings(config)
+  const normalizedNames = colors.map((color) => color.name.trim().toLowerCase())
+  if (normalizedNames.some((name) => !name)) issues.push('推薦色名稱不可空白')
+  if (new Set(normalizedNames).size !== normalizedNames.length) issues.push('推薦色名稱不可重複')
+  if (colors.some((color) => !/^#[0-9a-f]{6}$/i.test(color.hex))) issues.push('推薦色色碼格式不正確')
+  return issues
 }
 
 function cleanText(value: unknown): string {
@@ -118,9 +245,7 @@ function normalizeCustomField(value: unknown): ProductCustomField | null {
           if (!image || typeof image !== 'object' || Array.isArray(image)) return null
           const url = cleanText((image as Record<string, unknown>).url)
           const path = cleanText((image as Record<string, unknown>).path)
-          return key.trim() && url
-            ? [key.trim(), { url, ...(path ? { path } : {}) }] as const
-            : null
+          return key.trim() && url ? ([key.trim(), { url, ...(path ? { path } : {}) }] as const) : null
         })
         .filter((entry): entry is readonly [string, { url: string; path?: string }] => entry !== null),
     )
@@ -177,12 +302,10 @@ export function normalizeProductOptionConfig(value: unknown): ProductOptionConfi
   if (source.version !== PRODUCT_OPTION_CONFIG_VERSION) return null
   const variantFields =
     source.variantFields && typeof source.variantFields === 'object' && !Array.isArray(source.variantFields)
-      ? source.variantFields as Record<string, unknown>
+      ? (source.variantFields as Record<string, unknown>)
       : {}
   const customFields = Array.isArray(source.customFields)
-    ? source.customFields
-        .map(normalizeCustomField)
-        .filter((field): field is ProductCustomField => field !== null)
+    ? source.customFields.map(normalizeCustomField).filter((field): field is ProductCustomField => field !== null)
     : []
   return {
     version: PRODUCT_OPTION_CONFIG_VERSION,
@@ -196,9 +319,7 @@ export function normalizeProductOptionConfig(value: unknown): ProductOptionConfi
 
 const VALID_KEY = /^[a-z][a-z0-9_]*$/
 
-export function validateProductOptionConfig(
-  config: ProductOptionConfig | null,
-): OptionConfigValidationIssue[] {
+export function validateProductOptionConfig(config: ProductOptionConfig | null): OptionConfigValidationIssue[] {
   if (!config) return []
   const issues: OptionConfigValidationIssue[] = []
   if (config.version !== PRODUCT_OPTION_CONFIG_VERSION) {
@@ -250,9 +371,7 @@ export function validateProductOptionConfig(
   const axisByKey = new Map(config.variantFields.axis.map((field) => [field.key, field]))
   for (let index = 0; index < config.customFields.length; index += 1) {
     const field = config.customFields[index]
-    const condition = field.visibility && 'axis' in field.visibility
-      ? field.visibility.axis
-      : undefined
+    const condition = field.visibility && 'axis' in field.visibility ? field.visibility.axis : undefined
     if (!condition) continue
     const axis = axisByKey.get(condition.key)
     if (!condition.value.trim()) {
@@ -274,9 +393,7 @@ export function validateProductOptionConfig(
   }
   for (let index = 0; index < config.customFields.length; index += 1) {
     const field = config.customFields[index]
-    const condition = field.visibility && 'customField' in field.visibility
-      ? field.visibility.customField
-      : undefined
+    const condition = field.visibility && 'customField' in field.visibility ? field.visibility.customField : undefined
     if (!condition) continue
     const sourceIndex = config.customFields.findIndex((candidate) => candidate.key === condition.key)
     const source = config.customFields[sourceIndex]
@@ -301,14 +418,12 @@ export function validateProductOptionConfig(
 }
 
 /** The migration's all-empty v1 value is the persisted legacy/no-config sentinel. */
-export function isEmptyProductOptionConfig(
-  config: ProductOptionConfig | null | undefined,
-): boolean {
+export function isEmptyProductOptionConfig(config: ProductOptionConfig | null | undefined): boolean {
   return Boolean(
-    config
-    && config.variantFields.axis.length === 0
-    && config.variantFields.detail.length === 0
-    && config.customFields.length === 0,
+    config &&
+    config.variantFields.axis.length === 0 &&
+    config.variantFields.detail.length === 0 &&
+    config.customFields.length === 0,
   )
 }
 
@@ -361,12 +476,8 @@ export function pruneHiddenCustomValues(
 ): Record<string, string> {
   let next = { ...values }
   for (let pass = 0; pass < (config?.customFields.length ?? 0); pass += 1) {
-    const visibleKeys = new Set(
-      visibleCustomFields(config, variantAttributes, next).map((field) => field.key),
-    )
-    const pruned = Object.fromEntries(
-      Object.entries(next).filter(([key]) => visibleKeys.has(key)),
-    )
+    const visibleKeys = new Set(visibleCustomFields(config, variantAttributes, next).map((field) => field.key))
+    const pruned = Object.fromEntries(Object.entries(next).filter(([key]) => visibleKeys.has(key)))
     if (Object.keys(pruned).length === Object.keys(next).length) return pruned
     next = pruned
   }
@@ -404,12 +515,7 @@ export function validateCustomSelection(
       return `${field.label}為必填`
     }
     const value = values[field.key]?.trim()
-    if (
-      value
-      && field.inputType === 'select'
-      && !field.allowCustomValue
-      && !field.values?.includes(value)
-    ) {
+    if (value && field.inputType === 'select' && !field.allowCustomValue && !field.values?.includes(value)) {
       return `${field.label}的選項無效`
     }
   }
@@ -440,9 +546,7 @@ export function resolveCustomPriceRange(
     .flatMap((field) =>
       (field.values ?? [])
         .map((value) => field.optionPrices?.[value])
-        .filter((price): price is number =>
-          Number.isFinite(price) && (price ?? -1) >= 0,
-        ),
+        .filter((price): price is number => Number.isFinite(price) && (price ?? -1) >= 0),
     )
   if (prices.length === 0) return null
   return { min: Math.min(...prices), max: Math.max(...prices) }
@@ -453,15 +557,14 @@ function printableValue(value: unknown): string {
 }
 
 export function formatOptionSelection(
-  configOrFields:
-    | ProductOptionConfig
-    | readonly Pick<ProductOptionField, 'key' | 'suffix'>[],
+  configOrFields: ProductOptionConfig | readonly Pick<ProductOptionField, 'key' | 'suffix'>[],
   selection: Readonly<Record<string, unknown>>,
   separator = ' / ',
 ): string {
-  const fields = 'variantFields' in configOrFields
-    ? [...configOrFields.variantFields.axis, ...configOrFields.variantFields.detail]
-    : configOrFields
+  const fields =
+    'variantFields' in configOrFields
+      ? [...configOrFields.variantFields.axis, ...configOrFields.variantFields.detail]
+      : configOrFields
   return fields
     .map((field) => {
       const value = printableValue(selection[field.key])
@@ -494,17 +597,13 @@ export function stableVariantIdentity(
 
 export const variantIdentityKey = stableVariantIdentity
 
-export function buildAxisCombinations(
-  axes: readonly ProductOptionField[],
-): Array<Record<string, string>> {
+export function buildAxisCombinations(axes: readonly ProductOptionField[]): Array<Record<string, string>> {
   if (axes.length === 0) return []
   let combinations: Array<Record<string, string>> = [{}]
   for (const axis of axes) {
     const values = axis.values ?? []
     if (values.length === 0) return []
-    combinations = combinations.flatMap((combination) =>
-      values.map((value) => ({ ...combination, [axis.key]: value })),
-    )
+    combinations = combinations.flatMap((combination) => values.map((value) => ({ ...combination, [axis.key]: value })))
   }
   return combinations
 }
@@ -514,9 +613,7 @@ export function findMissingAxisCombinations(
   selections: readonly Readonly<Record<string, unknown>>[],
 ): Array<Record<string, string>> {
   const identities = new Set(selections.map((selection) => stableOptionIdentity(axes, selection)))
-  return buildAxisCombinations(axes).filter(
-    (combination) => !identities.has(stableOptionIdentity(axes, combination)),
-  )
+  return buildAxisCombinations(axes).filter((combination) => !identities.has(stableOptionIdentity(axes, combination)))
 }
 
 export const generateMissingAxisCombinations = findMissingAxisCombinations

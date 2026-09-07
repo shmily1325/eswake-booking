@@ -19,13 +19,7 @@ function mockItem(
     reserved_qty?: number
   },
 ): ShopOrderItemWithVariant {
-  const {
-    qty_pending_bill = 0,
-    qty_paid = 0,
-    stock = 10,
-    reserved_qty = 0,
-    ...rest
-  } = overrides
+  const { qty_pending_bill = 0, qty_paid = 0, stock = 10, reserved_qty = 0, ...rest } = overrides
   return {
     order_id: 'o1',
     variant_id: `v-${rest.id}`,
@@ -113,6 +107,24 @@ describe('formatLiffOrderItemLine', () => {
     })
     expect(formatLiffOrderItemLine(item).subtitle).toContain('板面：客製色')
     expect(formatLiffOrderItemLine(item).subtitle).toContain('Pantone 色號：PINK C')
+  })
+
+  it('formats VIBES custom orders as a labeled option list', () => {
+    const item = mockItem({
+      id: 'vibes-custom',
+      qty: 1,
+      sale_mode_snapshot: 'custom_order',
+      selected_options: {
+        build_option: { label: 'Build', value: 'Standard Build' },
+        spray_color: { label: 'Color', value: '186 C' },
+      },
+    })
+    const line = formatLiffOrderItemLine(item)
+    expect(line.isCustomOrder).toBe(true)
+    expect(line.options).toEqual([
+      { key: 'build_option', label: 'Build', value: 'Standard' },
+      { key: 'spray_color', label: 'Color', value: '186 C' },
+    ])
   })
 })
 

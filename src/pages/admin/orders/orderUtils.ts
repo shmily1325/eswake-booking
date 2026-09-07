@@ -4,7 +4,7 @@
  * Hierarchy: status keys unchanged; presentation uses quiet designSystem tonal scales.
  * Primary task: scan order/item state without rainbow chrome competing with actions.
  */
-import type { ShopOrderItemWithVariant, ShopOrderWithItems } from './types'
+import type { OrderInboxTab, ShopOrderItemWithVariant, ShopOrderWithItems } from './types'
 import { normalizeVariantCoverImages } from '../products/coverImages'
 import { formatAttributes, formatProductTitle } from '../products/schema'
 import { getLocalDateString } from '../../../utils/date'
@@ -55,6 +55,7 @@ export function qtyOpen(item: ShopOrderItemWithVariant): number {
 export function qtyBillable(item: ShopOrderItemWithVariant): number {
   const open = qtyOpen(item)
   if (open <= 0) return 0
+  if (item.sale_mode_snapshot === 'custom_order') return 0
   const stock = item.variant?.stock ?? 0
   const reserved = item.variant?.reserved_qty ?? 0
   const available = Math.max(0, stock - reserved)
@@ -89,6 +90,20 @@ export function orderHasReadyToBill(order: ShopOrderWithItems): boolean {
 
 export function orderHasPendingBill(order: ShopOrderWithItems): boolean {
   return order.items.some((it) => it.qty_pending_bill > 0)
+}
+
+export function orderHasCustomOrder(order: ShopOrderWithItems): boolean {
+  return order.items.some((item) => item.sale_mode_snapshot === 'custom_order')
+}
+
+export type CustomOrderItemStage = 'unconfirmed' | 'production' | 'arrived' | 'completed'
+
+export function customOrderItemStage(item: ShopOrderItemWithVariant): CustomOrderItemStage | null {
+  if (item.sale_mode_snapshot !== 'custom_order') return null
+  if (item.qty_paid >= item.qty) return 'completed'
+  if (item.custom_order_arrived_at || item.qty_pending_bill > 0) return 'arrived'
+  if (item.custom_order_confirmed_at) return 'production'
+  return 'unconfirmed'
 }
 
 /** 全部品項已結清（無待結帳、無未送出的 open qty） */
@@ -144,15 +159,13 @@ export function filterOrdersBySearch(orders: ShopOrderWithItems[], query: string
   return orders.filter((o) => orderSearchHaystack(o).includes(q))
 }
 
-export function filterOrdersByInbox(
-  orders: ShopOrderWithItems[],
-  tab: 'waiting' | 'ready' | 'pending' | 'settled' | 'cancelled' | 'all',
-): ShopOrderWithItems[] {
+export function filterOrdersByInbox(orders: ShopOrderWithItems[], tab: OrderInboxTab): ShopOrderWithItems[] {
   if (tab === 'cancelled') {
     return orders.filter((o) => Boolean(o.cancelled_at))
   }
   const active = orders.filter((o) => !o.cancelled_at)
   if (tab === 'all') return active
+  if (tab === 'custom') return active.filter(orderHasCustomOrder)
   if (tab === 'waiting') return active.filter(orderHasWaitingStock)
   if (tab === 'pending') return active.filter(orderHasPendingBill)
   if (tab === 'settled') return active.filter(orderIsFullySettled)
@@ -173,10 +186,7 @@ export function orderLatestStockInMs(order: ShopOrderWithItems): number {
 }
 
 /** 訂單列表預設排序：可送結帳優先，剛入庫者靠前 */
-export function sortOrdersForInbox(
-  orders: ShopOrderWithItems[],
-  tab: 'waiting' | 'ready' | 'pending' | 'settled' | 'cancelled' | 'all',
-): ShopOrderWithItems[] {
+export function sortOrdersForInbox(orders: ShopOrderWithItems[], tab: OrderInboxTab): ShopOrderWithItems[] {
   const sorted = [...orders]
   if (tab === 'cancelled') {
     return sorted.sort((a, b) => (b.cancelled_at ?? '').localeCompare(a.cancelled_at ?? ''))
@@ -235,26 +245,15 @@ export function formatOrderItemParts(item: ShopOrderItemWithVariant): {
   if (!p || !item.variant) return { title: '商品', subtitle: '' }
   return {
     title: formatProductTitle(p),
-    subtitle: [
-      formatAttributes(p.category, item.variant.attributes),
-      formatSelectedOptions(item.selected_options),
-    ].filter(Boolean).join(' · '),
+    subtitle: [formatAttributes(p.category, item.variant.attributes), formatSelectedOptions(item.selected_options)]
+      .filter(Boolean)
+      .join(' · '),
   }
 }
 
-export type OrderStatusKey =
-  | 'cancelled'
-  | 'ready'
-  | 'partial'
-  | 'waiting'
-  | 'pending'
-  | 'settled'
-  | 'open'
+export type OrderStatusKey = 'cancelled' | 'ready' | 'partial' | 'waiting' | 'pending' | 'settled' | 'open'
 
-const ORDER_STATUS_META: Record<
-  OrderStatusKey,
-  { label: string; color: string; bg: string; border: string }
-> = {
+const ORDER_STATUS_META: Record<OrderStatusKey, { label: string; color: string; bg: string; border: string }> = {
   cancelled: { label: '已作廢', color: c.text.disabled, bg: c.secondary[100], border: c.border.main },
   ready: { label: '可送結帳', color: c.info[700], bg: c.info[50], border: c.info[500] },
   partial: { label: '部分待結', color: c.secondary[700], bg: c.secondary[100], border: c.secondary[400] },
@@ -323,10 +322,7 @@ export function itemQtyChips(item: ShopOrderItemWithVariant): ItemQtyChip[] {
  * 卡片列表用：與右上 badge 重複的 chip 不顯示。
  * 部分待結／進行中等混雜狀態仍保留品項 chip。
  */
-export function itemQtyChipsForCard(
-  item: ShopOrderItemWithVariant,
-  order: ShopOrderWithItems,
-): ItemQtyChip[] {
+export function itemQtyChipsForCard(item: ShopOrderItemWithVariant, order: ShopOrderWithItems): ItemQtyChip[] {
   const chips = itemQtyChips(item)
   const statusKey = orderPrimaryStatus(order)
 
@@ -344,9 +340,7 @@ export function itemQtyChipsForCard(
 
 /** 本次實際要送結帳的 payload（僅 qtyBillable > 0；已待結／已結清不在內） */
 export function buildSubmitBillingPayload(order: ShopOrderWithItems): BillingQtyPayload[] {
-  return order.items
-    .map((it) => ({ item_id: it.id, qty: qtyBillable(it) }))
-    .filter((x) => x.qty > 0)
+  return order.items.map((it) => ({ item_id: it.id, qty: qtyBillable(it) })).filter((x) => x.qty > 0)
 }
 
 /** 是否可執行送結帳（與 buildSubmitBillingPayload 同步；已作廢為 false） */
@@ -357,9 +351,7 @@ export function orderCanSubmitBilling(order: ShopOrderWithItems): boolean {
 
 /** 撤回送結帳 payload（整批待結） */
 export function buildCancelBillingPayload(order: ShopOrderWithItems): BillingQtyPayload[] {
-  return order.items
-    .filter((it) => it.qty_pending_bill > 0)
-    .map((it) => ({ item_id: it.id, qty: it.qty_pending_bill }))
+  return order.items.filter((it) => it.qty_pending_bill > 0).map((it) => ({ item_id: it.id, qty: it.qty_pending_bill }))
 }
 
 /** 送結帳 confirm 文案（含品項摘要；明確標示不含已送） */
@@ -376,9 +368,7 @@ export function buildCancelBillingConfirmMessage(order: ShopOrderWithItems): str
 
 export type BillingQtyPayload = { item_id: string; qty: number }
 
-export type BillingQtyValidation =
-  | { ok: true; items: BillingQtyPayload[] }
-  | { ok: false; error: string }
+export type BillingQtyValidation = { ok: true; items: BillingQtyPayload[] } | { ok: false; error: string }
 
 function positiveBillingLines(lines: BillingQtyPayload[]): BillingQtyPayload[] {
   return lines.filter((l) => Number.isInteger(l.qty) && l.qty > 0)
@@ -431,10 +421,7 @@ export function validateCancelBillingDraft(
   return { ok: true, items }
 }
 
-export function buildSubmitBillingSummaryMessage(
-  order: ShopOrderWithItems,
-  items: BillingQtyPayload[],
-): string {
+export function buildSubmitBillingSummaryMessage(order: ShopOrderWithItems, items: BillingQtyPayload[]): string {
   const active = positiveBillingLines(items)
   const totalQty = active.reduce((sum, x) => sum + x.qty, 0)
   const pendingSkipped = order.items.reduce((sum, it) => sum + it.qty_pending_bill, 0)
@@ -456,10 +443,7 @@ export function buildSubmitBillingSummaryMessage(
   return lines.join('\n')
 }
 
-export function buildCancelBillingSummaryMessage(
-  order: ShopOrderWithItems,
-  items: BillingQtyPayload[],
-): string {
+export function buildCancelBillingSummaryMessage(order: ShopOrderWithItems, items: BillingQtyPayload[]): string {
   const active = positiveBillingLines(items)
   const totalQty = active.reduce((sum, x) => sum + x.qty, 0)
   const itemLines = active.map((line) => {

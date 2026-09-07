@@ -1,12 +1,7 @@
 import { designSystem } from '../../styles/designSystem'
 import { normalizeVariantCoverImages } from '../admin/products/coverImages'
 import { formatAttributes } from '../admin/products/schema'
-import {
-  orderHasPendingBill,
-  orderIsFullySettled,
-  qtyOpen,
-  settlementAmountTotal,
-} from '../admin/orders/orderUtils'
+import { orderHasPendingBill, orderIsFullySettled, qtyOpen, settlementAmountTotal } from '../admin/orders/orderUtils'
 import type { ShopOrderWithItems } from '../admin/orders/types'
 import { callLiffMemberApi } from './liffMemberShared'
 
@@ -16,18 +11,10 @@ export type LiffShopOrder = ShopOrderWithItems & {
   settlements?: Array<{ amount_total: number }>
 }
 
-export type LiffOrderStatusKey =
-  | 'cancelled'
-  | 'done'
-  | 'partial'
-  | 'pending_pay'
-  | 'waiting'
+export type LiffOrderStatusKey = 'cancelled' | 'done' | 'partial' | 'pending_pay' | 'waiting'
 
 /** 狀態文字色（對齊 designSystem；LIFF 列表不再用彩色 pill） */
-export const LIFF_ORDER_STATUS: Record<
-  LiffOrderStatusKey,
-  { label: string; color: string; bg: string }
-> = {
+export const LIFF_ORDER_STATUS: Record<LiffOrderStatusKey, { label: string; color: string; bg: string }> = {
   cancelled: { label: '已取消', color: c.text.disabled, bg: c.background.main },
   done: { label: '已完成', color: c.success[700], bg: c.success[50] },
   partial: { label: '部分到貨', color: c.secondary[700], bg: c.secondary[50] },
@@ -103,9 +90,7 @@ export function liffOrderQuotedTotal(order: LiffShopOrder): number {
 }
 
 /** 會員訂單圖：商品封面優先，其次 SKU 封面，最後才顯示實品照。 */
-export function getLiffOrderItemImageUrl(
-  item: LiffShopOrder['items'][number],
-): string | null {
+export function getLiffOrderItemImageUrl(item: LiffShopOrder['items'][number]): string | null {
   const variant = item.variant
   if (!variant) return null
 
@@ -133,6 +118,7 @@ export function liffDeliveryLabel(method: string): string {
 }
 
 export type LiffItemProgressChip = { label: string; color: string; bg: string }
+export type LiffOrderItemOption = { key: string; label: string; value: string }
 
 export function liffOrderItemProgressChips(item: LiffShopOrder['items'][number]): LiffItemProgressChip[] {
   const open = qtyOpen(item)
@@ -149,24 +135,42 @@ export function liffOrderItemProgressChips(item: LiffShopOrder['items'][number])
   return chips
 }
 
-export function formatLiffOrderItemLine(
-  item: LiffShopOrder['items'][number],
-): { title: string; subtitle: string | null; progress: string; chips: LiffItemProgressChip[] } {
+export function formatLiffOrderItemLine(item: LiffShopOrder['items'][number]): {
+  title: string
+  subtitle: string | null
+  spec: string | null
+  options: LiffOrderItemOption[]
+  isCustomOrder: boolean
+  progress: string
+  chips: LiffItemProgressChip[]
+} {
   const p = item.variant?.product
-  const title = p
-    ? `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''}`
-    : '商品'
+  const title = p ? `${p.brand} ${p.model}${p.model_year != null ? ` · ${p.model_year}` : ''}` : '商品'
   const spec = p ? formatAttributes(p.category, item.variant!.attributes) : ''
-  const customization = Object.values(item.selected_options ?? {})
-    .map((option) => `${option.label}：${option.value}`)
-    .join(' · ')
+  const options = Object.entries(item.selected_options ?? {}).map(([key, option]) => ({
+    key,
+    label:
+      key === 'build_option'
+        ? 'Build'
+        : key === 'standard_color' || key === 'spray_color' || key === 'carbon_color'
+          ? 'Color'
+          : option.label,
+    value: key === 'build_option' && option.value === 'Standard Build' ? 'Standard' : option.value,
+  }))
+  const customization = options.map((option) => `${option.label}：${option.value}`).join(' · ')
   const subtitle = [spec, customization].filter(Boolean).join(' · ') || null
   const chips = liffOrderItemProgressChips(item)
-  const progress =
-    chips.length > 0
-      ? chips.map((c) => c.label).join(' · ')
-      : `共訂 ${item.qty} 件`
-  return { title, subtitle, progress, chips }
+  const isCustomOrder = item.sale_mode_snapshot === 'custom_order'
+  const progress = chips.length > 0 ? chips.map((c) => c.label).join(' · ') : `共訂 ${item.qty} 件`
+  return {
+    title,
+    subtitle,
+    spec: spec || null,
+    options,
+    isCustomOrder,
+    progress,
+    chips,
+  }
 }
 
 /** 收合時提示被藏起來的品項進度 */

@@ -5,6 +5,8 @@ import {
   buildCancelBillingPayload,
   buildSubmitBillingConfirmMessage,
   buildSubmitBillingPayload,
+  customOrderItemStage,
+  filterOrdersByInbox,
   getOrderItemImageUrl,
   itemQtyChipsForCard,
   itemStockInBillableHint,
@@ -32,13 +34,7 @@ function mockItem(
     reserved_qty?: number
   },
 ): ShopOrderItemWithVariant {
-  const {
-    stock = 10,
-    reserved_qty = 0,
-    qty_pending_bill = 0,
-    qty_paid = 0,
-    ...rest
-  } = overrides
+  const { stock = 10, reserved_qty = 0, qty_pending_bill = 0, qty_paid = 0, ...rest } = overrides
   return {
     order_id: 'order-1',
     variant_id: `var-${rest.id}`,
@@ -203,6 +199,42 @@ describe('qtyOpen / qtyBillable boundaries', () => {
     expect(qtyOpen(item)).toBe(2)
     expect(qtyBillable(item)).toBe(0)
   })
+
+  it('does not expose shared custom-order SKU stock to generic billing', () => {
+    const item = mockItem({
+      id: 'custom',
+      qty: 1,
+      stock: 10,
+      sale_mode_snapshot: 'custom_order',
+    })
+    expect(qtyBillable(item)).toBe(0)
+    expect(buildSubmitBillingPayload(mockOrder([item]))).toEqual([])
+  })
+})
+
+describe('custom order production workflow', () => {
+  it('derives each item stage from confirmation, arrival and payment', () => {
+    const item = mockItem({ id: 'custom', qty: 1, sale_mode_snapshot: 'custom_order' })
+    expect(customOrderItemStage(item)).toBe('unconfirmed')
+    expect(customOrderItemStage({ ...item, custom_order_confirmed_at: '2026-09-01' })).toBe('production')
+    expect(
+      customOrderItemStage({
+        ...item,
+        custom_order_confirmed_at: '2026-09-01',
+        custom_order_arrived_at: '2026-09-02',
+        qty_pending_bill: 1,
+      }),
+    ).toBe('arrived')
+    expect(customOrderItemStage({ ...item, qty_paid: 1 })).toBe('completed')
+  })
+
+  it('filters the production list without including normal inventory orders', () => {
+    const custom = mockOrder([mockItem({ id: 'custom', qty: 1, sale_mode_snapshot: 'custom_order' })])
+    custom.id = 'custom-order'
+    const stock = mockOrder([mockItem({ id: 'stock', qty: 1 })])
+    stock.id = 'stock-order'
+    expect(filterOrdersByInbox([stock, custom], 'custom').map((order) => order.id)).toEqual(['custom-order'])
+  })
 })
 
 describe('orderCanSubmitBilling sync', () => {
@@ -227,10 +259,7 @@ describe('orderCanSubmitBilling sync', () => {
 
 describe('Scenario A: 多品項，部分有貨（同一單、不拆單）', () => {
   it('第一輪只送有貨品項；B 到貨後第二輪只送 B，不重送 A', () => {
-    let order = mockOrder([
-      mockItem({ id: 'a', qty: 2, stock: 2 }),
-      mockItem({ id: 'b', qty: 1, stock: 0 }),
-    ])
+    let order = mockOrder([mockItem({ id: 'a', qty: 2, stock: 2 }), mockItem({ id: 'b', qty: 1, stock: 0 })])
 
     expect(orderPrimaryStatus(order)).toBe('ready')
     expect(buildSubmitBillingPayload(order)).toEqual([{ item_id: 'a', qty: 2 }])
@@ -328,10 +357,7 @@ describe('Scenario B: 同一品項分批到貨（同一單、不拆單）', () =
 
 describe('buildSubmitBillingPayload', () => {
   it('includes only billable qty', () => {
-    const order = mockOrder([
-      mockItem({ id: 'a', qty: 3, stock: 2 }),
-      mockItem({ id: 'b', qty: 2, stock: 0 }),
-    ])
+    const order = mockOrder([mockItem({ id: 'a', qty: 3, stock: 2 }), mockItem({ id: 'b', qty: 2, stock: 0 })])
     expect(buildSubmitBillingPayload(order)).toEqual([{ item_id: 'a', qty: 2 }])
   })
 

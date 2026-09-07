@@ -25,11 +25,7 @@ import {
   getSkuFields,
 } from '../admin/products/schema'
 import { normalizeVariantCoverImages } from '../admin/products/coverImages'
-import {
-  getVariantAvailability,
-  getVariantPurchaseLimit,
-  isVariantPurchasable,
-} from './lib/productAvailability'
+import { getVariantAvailability, getVariantPurchaseLimit, isVariantPurchasable } from './lib/productAvailability'
 import { SHOP_DETAIL, SHOP_LABEL } from './lib/shopCopy'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
@@ -37,11 +33,7 @@ import { ShopDetailGallery } from './components/ShopDetailGallery'
 import type { GalleryImage } from './components/ShopDetailGallery'
 import { getShopReturnTo } from './lib/shopReturnTo'
 import { shopListPath } from './lib/shopPaths'
-import {
-  SHOP_DETAIL_FRAME,
-  SHOP_DETAIL_WRAP,
-  shopDiscountBadgeClass,
-} from './lib/shopUiStyle'
+import { SHOP_DETAIL_FRAME, SHOP_DETAIL_WRAP, shopDiscountBadgeClass } from './lib/shopUiStyle'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { ShopFooter } from './components/ShopFooter'
 import { ProductSizeChart } from './components/ProductSizeChart'
@@ -59,8 +51,7 @@ import {
 import { parsePantoneSelection } from './lib/pantoneSelection'
 
 /** Supabase 的 `id` 是 uuid，亂打字串會炸出 22P02 錯誤，先在 client 擋掉 */
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function selectionValuesWithPendingColor(
   config: ProductOptionConfig | null,
@@ -70,19 +61,12 @@ function selectionValuesWithPendingColor(
   const next = { ...values }
   let filledPendingColor = false
   for (const field of visibleCustomFields(config, attributes, values)) {
-    if (
-      field.required
-      && !values[field.key]?.trim()
-      && field.displayStyle === 'swatches'
-      && field.allowCustomValue
-    ) {
+    if (field.required && !values[field.key]?.trim() && field.displayStyle === 'swatches' && field.allowCustomValue) {
       next[field.key] = '待與客服確認'
       filledPendingColor = true
     }
   }
-  return filledPendingColor && validateCustomSelection(config, attributes, next) === null
-    ? next
-    : null
+  return filledPendingColor && validateCustomSelection(config, attributes, next) === null ? next : null
 }
 
 function customFieldShopLabel(key: string, fallback: string): string {
@@ -108,9 +92,7 @@ function customOptionShopLabel(fieldKey: string, value: string): string {
  */
 function pickDefaultVariantId(variants: ProductVariantRow[]): string | null {
   const firstPurchasable = variants.find((v) => isVariantPurchasable(v))
-  const firstVisible = variants.find(
-    (v) => getVariantAvailability(v) !== 'sold_out',
-  )
+  const firstVisible = variants.find((v) => getVariantAvailability(v) !== 'sold_out')
   return (firstPurchasable ?? firstVisible ?? variants[0])?.id ?? null
 }
 
@@ -124,14 +106,8 @@ export function ShopDetail() {
   const mergeCatalogProduct = catalog.mergeProduct
   const promo = useShopPromo()
 
-  const preview =
-    productId && UUID_REGEX.test(productId)
-      ? getShopProductPreview(location.state, productId)
-      : null
-  const cachedProduct =
-    productId && UUID_REGEX.test(productId)
-      ? getCatalogProduct(productId)
-      : null
+  const preview = productId && UUID_REGEX.test(productId) ? getShopProductPreview(location.state, productId) : null
+  const cachedProduct = productId && UUID_REGEX.test(productId) ? getCatalogProduct(productId) : null
   const initialProduct = cachedProduct ?? preview
 
   const [product, setProduct] = useState<ProductWithVariants | null>(initialProduct)
@@ -173,9 +149,7 @@ export function ShopDetail() {
       setLoading(false)
       return
     }
-    const freshDetail = isProductDetailFresh(productId)
-      ? getCatalogProduct(productId)
-      : null
+    const freshDetail = isProductDetailFresh(productId) ? getCatalogProduct(productId) : null
     if (freshDetail) {
       resolvedProductIdRef.current = productId
       setProduct(freshDetail)
@@ -217,20 +191,12 @@ export function ShopDetail() {
     return () => {
       cancelled = true
     }
-  }, [
-    productId,
-    preview,
-    getCatalogProduct,
-    isProductDetailFresh,
-    mergeCatalogProduct,
-  ])
+  }, [productId, preview, getCatalogProduct, isProductDetailFresh, mergeCatalogProduct])
 
   useEffect(() => {
     if (!productId || !UUID_REGEX.test(productId)) return
     if (resolvedProductIdRef.current === productId) return
-    const next =
-      getCatalogProduct(productId) ??
-      getShopProductPreview(location.state, productId)
+    const next = getCatalogProduct(productId) ?? getShopProductPreview(location.state, productId)
     if (!next) return
     setProduct(next)
     setSelectedVariantId((prev) => {
@@ -244,13 +210,8 @@ export function ShopDetail() {
     if (!product || !selectedVariantId) return null
     return product.variants.find((v) => v.id === selectedVariantId) ?? null
   }, [product, selectedVariantId])
-  const optionConfig = useMemo(
-    () => normalizeProductOptionConfig(product?.option_config),
-    [product?.option_config],
-  )
-  const quantityLimit = selectedVariant
-    ? Math.max(1, getVariantPurchaseLimit(selectedVariant))
-    : 99
+  const optionConfig = useMemo(() => normalizeProductOptionConfig(product?.option_config), [product?.option_config])
+  const quantityLimit = selectedVariant ? Math.max(1, getVariantPurchaseLimit(selectedVariant)) : 99
 
   useEffect(() => {
     setQuantity((current) => Math.min(current, quantityLimit))
@@ -258,23 +219,15 @@ export function ShopDetail() {
 
   useEffect(() => {
     if (!selectedVariant) return
-    setCustomValues((current) =>
-      pruneHiddenCustomValues(optionConfig, selectedVariant.attributes, current),
-    )
+    setCustomValues((current) => pruneHiddenCustomValues(optionConfig, selectedVariant.attributes, current))
   }, [optionConfig, selectedVariant])
 
-  const imageUrl = product
-    ? getProductDetailHeroImageUrl(product, selectedVariant, product.variants)
-    : null
+  const imageUrl = product ? getProductDetailHeroImageUrl(product, selectedVariant, product.variants) : null
 
   const handleAddToCart = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
     const selectionError = validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
-    const cartValues = selectionValuesWithPendingColor(
-      optionConfig,
-      selectedVariant.attributes,
-      customValues,
-    )
+    const cartValues = selectionValuesWithPendingColor(optionConfig, selectedVariant.attributes, customValues)
     if (selectionError && !cartValues) {
       alert(selectionError)
       return
@@ -282,11 +235,7 @@ export function ShopDetail() {
     const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
     const shopPrice = promo.resolve(selectedVariant)
-    const customPrice = resolveCustomSelectionPrice(
-      optionConfig,
-      selectedVariant.attributes,
-      customValues,
-    )
+    const customPrice = resolveCustomSelectionPrice(optionConfig, selectedVariant.attributes, customValues)
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
@@ -299,12 +248,7 @@ export function ShopDetail() {
       discountCaption: customPrice == null ? shopPrice.caption : null,
       quantity: Math.min(quantity, quantityLimit),
       maxQuantity: quantityLimit,
-      availability:
-        avail === 'pre_order'
-          ? 'pre_order'
-          : avail === 'custom_order'
-            ? 'custom_order'
-            : 'in_stock',
+      availability: avail === 'pre_order' ? 'pre_order' : avail === 'custom_order' ? 'custom_order' : 'in_stock',
       preOrderEta: selectedVariant.pre_order_eta,
       selectedOptions: buildSelectedOptionSnapshot(
         optionConfig,
@@ -319,11 +263,7 @@ export function ShopDetail() {
   const handleDirectInquiry = () => {
     if (!product || !selectedVariant || !isVariantPurchasable(selectedVariant)) return
     const selectionError = validateCustomSelection(optionConfig, selectedVariant.attributes, customValues)
-    const inquiryValues = selectionValuesWithPendingColor(
-      optionConfig,
-      selectedVariant.attributes,
-      customValues,
-    )
+    const inquiryValues = selectionValuesWithPendingColor(optionConfig, selectedVariant.attributes, customValues)
     if (selectionError && !inquiryValues) {
       alert(selectionError)
       return
@@ -331,11 +271,7 @@ export function ShopDetail() {
     const productName = formatProductTitle(product) || '(Unnamed product)'
     const avail = getVariantAvailability(selectedVariant)
     const shopPrice = promo.resolve(selectedVariant)
-    const customPrice = resolveCustomSelectionPrice(
-      optionConfig,
-      selectedVariant.attributes,
-      customValues,
-    )
+    const customPrice = resolveCustomSelectionPrice(optionConfig, selectedVariant.attributes, customValues)
     const payload = buildSingleInquiry({
       productId: product.id,
       productName: productName || '(Unnamed product)',
@@ -393,11 +329,7 @@ export function ShopDetail() {
             onCustomValueChange={(key, value) =>
               setCustomValues((current) => {
                 if (!selectedVariant) return { ...current, [key]: value }
-                return pruneHiddenCustomValues(
-                  optionConfig,
-                  selectedVariant.attributes,
-                  { ...current, [key]: value },
-                )
+                return pruneHiddenCustomValues(optionConfig, selectedVariant.attributes, { ...current, [key]: value })
               })
             }
           />
@@ -406,10 +338,7 @@ export function ShopDetail() {
 
       <ShopFooter />
 
-      <LineInquiryModal
-        message={fallbackMessage}
-        onClose={() => setFallbackMessage(null)}
-      />
+      <LineInquiryModal message={fallbackMessage} onClose={() => setFallbackMessage(null)} />
     </div>
   )
 }
@@ -460,48 +389,48 @@ function ProductDetailBody({
   const customPriceRange = resolveCustomPriceRange(optionConfig)
   const effectivePrice = customPrice ?? shopPrice?.sale ?? null
   const hasPrice = effectivePrice != null || customPriceRange != null
-  const priceText = customPrice != null
-    ? formatPrice(customPrice)
-    : customPriceRange
-      ? customPriceRange.min === customPriceRange.max
-        ? formatPrice(customPriceRange.min)
-        : `${formatPrice(customPriceRange.min)} – ${formatPrice(customPriceRange.max)}`
-      : effectivePrice != null
-        ? formatPrice(effectivePrice)
-        : '價格洽詢'
-  const memberPrice =
-    selectedVariant?.member_price != null
-      ? formatPrice(selectedVariant.member_price)
-      : null
+  const priceText =
+    customPrice != null
+      ? formatPrice(customPrice)
+      : customPriceRange
+        ? customPriceRange.min === customPriceRange.max
+          ? formatPrice(customPriceRange.min)
+          : `${formatPrice(customPriceRange.min)} – ${formatPrice(customPriceRange.max)}`
+        : effectivePrice != null
+          ? formatPrice(effectivePrice)
+          : '價格洽詢'
+  const memberPrice = selectedVariant?.member_price != null ? formatPrice(selectedVariant.member_price) : null
   const secondaryLine = formatProductSecondaryLine(product)
   const configured = optionConfig && !isEmptyProductOptionConfig(optionConfig)
-  const detailSpecs = configured && selectedVariant
-    ? [
-        selectedVariant.attributes.size == null || String(selectedVariant.attributes.size).trim() === ''
-          ? null
-          : {
-              key: 'length',
-              label: 'Length',
-              value: String(selectedVariant.attributes.size).trim(),
-            },
-        ...optionConfig.variantFields.detail.map((field) => {
-          const value = selectedVariant.attributes[field.key]
-          if (value == null || String(value).trim() === '') return null
-          const label = field.key === 'width'
-            ? 'Width'
-            : field.key === 'thickness'
-              ? 'Thickness'
-              : field.key === 'volume'
-                ? 'Volume'
-                : field.label
-          return {
-            key: field.key,
-            label,
-            value: `${String(value).trim()}${field.suffix ?? ''}`,
-          }
-        }),
-      ].filter((spec): spec is { key: string; label: string; value: string } => spec !== null)
-    : []
+  const detailSpecs =
+    configured && selectedVariant
+      ? [
+          selectedVariant.attributes.size == null || String(selectedVariant.attributes.size).trim() === ''
+            ? null
+            : {
+                key: 'length',
+                label: 'Length',
+                value: String(selectedVariant.attributes.size).trim(),
+              },
+          ...optionConfig.variantFields.detail.map((field) => {
+            const value = selectedVariant.attributes[field.key]
+            if (value == null || String(value).trim() === '') return null
+            const label =
+              field.key === 'width'
+                ? 'Width'
+                : field.key === 'thickness'
+                  ? 'Thickness'
+                  : field.key === 'volume'
+                    ? 'Volume'
+                    : field.label
+            return {
+              key: field.key,
+              label,
+              value: `${String(value).trim()}${field.suffix ?? ''}`,
+            }
+          }),
+        ].filter((spec): spec is { key: string; label: string; value: string } => spec !== null)
+      : []
   const customFields = selectedVariant
     ? visibleCustomFields(optionConfig, selectedVariant.attributes, customValues)
     : []
@@ -554,26 +483,18 @@ function ProductDetailBody({
     <div>
       {hasPrice ? (
         <div>
-          <div className="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums">
-            {priceText}
-          </div>
+          <div className="text-2xl sm:text-3xl font-bold text-zinc-900 tabular-nums">{priceText}</div>
           {customPrice == null && shopPrice?.hasDiscount && shopPrice.original != null && (
             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-gray-400 line-through tabular-nums">
-                {formatPrice(shopPrice.original)}
-              </span>
+              <span className="text-sm text-gray-400 line-through tabular-nums">{formatPrice(shopPrice.original)}</span>
               {shopPrice.caption ? (
-                <span className={shopDiscountBadgeClass(shopPrice.source) + ' sm:text-xs'}>
-                  {shopPrice.caption}
-                </span>
+                <span className={shopDiscountBadgeClass(shopPrice.source) + ' sm:text-xs'}>{shopPrice.caption}</span>
               ) : null}
             </div>
           )}
         </div>
       ) : (
-        <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">
-          {priceText}
-        </span>
+        <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-600">{priceText}</span>
       )}
       {memberPrice ? (
         <div className="mt-2 text-base sm:text-lg font-semibold text-zinc-800 tabular-nums">
@@ -585,360 +506,336 @@ function ProductDetailBody({
 
   return (
     <>
-    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
-      {/* 圖片 gallery：手機滑主圖 + 圓點，桌機縮圖列 + 箭頭 */}
-      <div className="relative">
-        <ShopDetailGallery
-          images={imageOptions}
-          alt={formatProductTitle(product)}
-          resetKey={`${product.id}:${selectedVariantId ?? ''}:${selectedSwatchImage?.url ?? ''}`}
-        />
-      </div>
-
-      {/* 資訊區 */}
-      <div className="flex flex-col">
-        <Link
-          to={
-            product.category
-              ? shopListPath(`cat=${encodeURIComponent(product.category)}`)
-              : shopListPath()
-          }
-          className="self-start text-xs text-gray-400 uppercase tracking-widest hover:text-black"
-        >
-          {categoryName}
-        </Link>
-
-        {/*
-          標題層級：品牌 kicker → 型號最大 → 顏色 · 年份次要
-        */}
-        {product.brand && (
-          <div className="text-xs sm:text-sm font-bold tracking-[0.18em] text-gray-500 uppercase">
-            {product.brand}
-          </div>
-        )}
-        <h1 className="mt-1 text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 tracking-tight leading-tight">
-          {formatProductModelName(product)}
-        </h1>
-        {secondaryLine ? (
-          <div className="mt-1 text-sm sm:text-base text-gray-500">
-            {secondaryLine}
-          </div>
-        ) : null}
-
-        <div className="mt-3 sm:mt-4">{priceBlock}</div>
-        {isPreOrder && (
-          <div className="mt-2 text-xs sm:text-sm text-amber-800">
-            {formatPreOrderDeadline(selectedVariant?.pre_order_until) ?? SHOP_DETAIL.preOrder}
-            {selectedVariant?.pre_order_eta ? (
-              <span className="ml-2 font-normal text-gray-500">
-                預計 {selectedVariant.pre_order_eta}
-              </span>
-            ) : null}
-          </div>
-        )}
-        {isCustomOrder && (
-          <div className="mt-2 inline-flex self-start items-center gap-2 rounded bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800">
-            <span>{SHOP_LABEL.customOrder}</span>
-            <span className="font-normal text-zinc-500">{SHOP_DETAIL.madeToOrder}</span>
-          </div>
-        )}
-
-        <div className="mt-4">
-          <VariantPicker
-            variants={product.variants}
-            selectedVariantId={selectedVariantId}
-            categoryId={product.category}
-            optionConfig={product.option_config}
-            onSelect={onSelectVariant}
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10 bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
+        {/* 圖片 gallery：手機滑主圖 + 圓點，桌機縮圖列 + 箭頭 */}
+        <div className="relative">
+          <ShopDetailGallery
+            images={imageOptions}
+            alt={formatProductTitle(product)}
+            resetKey={`${product.id}:${selectedVariantId ?? ''}:${selectedSwatchImage?.url ?? ''}`}
           />
         </div>
 
-        {detailSpecs.length > 0 ? (
-          <section className="mt-4 rounded-lg border border-gray-200 bg-zinc-50 p-3" aria-labelledby="board-specs">
-            <h2 id="board-specs" className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-700">
-              Board Specs
-            </h2>
-            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
-              {detailSpecs.map((spec) => (
-                <div key={spec.key}>
-                  <dt className="text-xs text-gray-500">{spec.label}</dt>
-                  <dd className="mt-0.5 font-semibold tabular-nums text-zinc-900">{spec.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        ) : null}
+        {/* 資訊區 */}
+        <div className="flex flex-col">
+          <Link
+            to={product.category ? shopListPath(`cat=${encodeURIComponent(product.category)}`) : shopListPath()}
+            className="self-start text-xs text-gray-400 uppercase tracking-widest hover:text-black"
+          >
+            {categoryName}
+          </Link>
 
-        {customFields.length > 0 ? (
-          <div className="mt-4 space-y-3">
-            {customFields.map((field) => (
-              <div key={field.key} className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  {customFieldShopLabel(field.key, field.label)}{field.required ? ' *' : ''}
-                </span>
-                {field.inputType === 'select' && field.displayStyle === 'price-list' ? (
-                  <div
-                    className="mt-2 grid gap-2"
-                    role="radiogroup"
-                    aria-label={customFieldShopLabel(field.key, field.label)}
-                  >
-                    {(field.values ?? []).map((value) => {
-                      const selected = customValues[field.key] === value
-                      const price = field.optionPrices?.[value]
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          role="radio"
-                          aria-checked={selected}
-                          className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left ${
-                            selected
-                              ? 'border-zinc-900 bg-zinc-50 ring-1 ring-zinc-900'
-                              : 'border-gray-200 hover:border-gray-400'
-                          }`}
-                          onClick={() => onCustomValueChange(field.key, value)}
-                        >
-                          <span className={`mt-1 h-4 w-4 shrink-0 rounded-full border ${
-                            selected ? 'border-4 border-zinc-900' : 'border-gray-400'
-                          }`} />
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-semibold text-zinc-900">
-                              {customOptionShopLabel(field.key, value)}
-                            </span>
-                            {field.optionNotes?.[value] ? (
-                              <span className="mt-0.5 block text-xs text-gray-500">
-                                {field.optionNotes[value]}
-                              </span>
-                            ) : null}
-                          </span>
-                          <span className="shrink-0 font-semibold tabular-nums text-zinc-900">
-                            {Number.isFinite(price) ? formatPrice(price!) : '價格未設定'}
-                          </span>
-                        </button>
-                      )
-                    })}
+          {/*
+          標題層級：品牌 kicker → 型號最大 → 顏色 · 年份次要
+        */}
+          {product.brand && (
+            <div className="text-xs sm:text-sm font-bold tracking-[0.18em] text-gray-500 uppercase">
+              {product.brand}
+            </div>
+          )}
+          <h1 className="mt-1 text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 tracking-tight leading-tight">
+            {formatProductModelName(product)}
+          </h1>
+          {secondaryLine ? <div className="mt-1 text-sm sm:text-base text-gray-500">{secondaryLine}</div> : null}
+
+          <div className="mt-3 sm:mt-4">{priceBlock}</div>
+          {isPreOrder && (
+            <div className="mt-2 text-xs sm:text-sm text-amber-800">
+              {formatPreOrderDeadline(selectedVariant?.pre_order_until) ?? SHOP_DETAIL.preOrder}
+              {selectedVariant?.pre_order_eta ? (
+                <span className="ml-2 font-normal text-gray-500">預計 {selectedVariant.pre_order_eta}</span>
+              ) : null}
+            </div>
+          )}
+          {isCustomOrder && (
+            <div className="mt-2 inline-flex self-start items-center gap-2 rounded bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800">
+              <span>{SHOP_LABEL.customOrder}</span>
+              <span className="font-normal text-zinc-500">{SHOP_DETAIL.madeToOrder}</span>
+            </div>
+          )}
+
+          <div className="mt-4">
+            <VariantPicker
+              variants={product.variants}
+              selectedVariantId={selectedVariantId}
+              categoryId={product.category}
+              optionConfig={product.option_config}
+              onSelect={onSelectVariant}
+            />
+          </div>
+
+          {detailSpecs.length > 0 ? (
+            <section className="mt-4 rounded-lg border border-gray-200 bg-zinc-50 p-3" aria-labelledby="board-specs">
+              <h2 id="board-specs" className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-700">
+                Board Specs
+              </h2>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+                {detailSpecs.map((spec) => (
+                  <div key={spec.key}>
+                    <dt className="text-xs text-gray-500">{spec.label}</dt>
+                    <dd className="mt-0.5 font-semibold tabular-nums text-zinc-900">{spec.value}</dd>
                   </div>
-                ) : field.inputType === 'select' && field.displayStyle === 'swatches' ? (
-                  <div className="mt-2">
+                ))}
+              </dl>
+            </section>
+          ) : null}
+
+          {customFields.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              {customFields.map((field) => (
+                <div key={field.key} className="block">
+                  <span className="text-sm font-medium text-gray-700">
+                    {customFieldShopLabel(field.key, field.label)}
+                    {field.required ? ' *' : ''}
+                  </span>
+                  {field.inputType === 'select' && field.displayStyle === 'price-list' ? (
                     <div
-                      className="flex flex-nowrap gap-3 overflow-x-auto py-1"
+                      className="mt-2 grid gap-2"
                       role="radiogroup"
                       aria-label={customFieldShopLabel(field.key, field.label)}
                     >
-                      {(field.allowCustomValue ? (field.values ?? []).slice(0, 8) : (field.values ?? [])).map((value) => {
+                      {(field.values ?? []).map((value) => {
                         const selected = customValues[field.key] === value
+                        const price = field.optionPrices?.[value]
                         return (
                           <button
                             key={value}
                             type="button"
                             role="radio"
-                            aria-label={value}
                             aria-checked={selected}
-                            title={value}
-                            className={`aspect-square shrink-0 rounded-full border-2 p-0 transition ${
+                            className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left ${
                               selected
-                                ? 'border-zinc-900 ring-1 ring-zinc-900 ring-offset-1'
-                                : 'border-gray-200 hover:border-gray-500'
+                                ? 'border-zinc-900 bg-zinc-50 ring-1 ring-zinc-900'
+                                : 'border-gray-200 hover:border-gray-400'
                             }`}
-                            style={{
-                              width: 26,
-                              height: 26,
-                              minWidth: 26,
-                              minHeight: 26,
-                              padding: 0,
-                              boxSizing: 'border-box',
-                              backgroundColor: field.swatches?.[value] ?? '#d1d5db',
-                            }}
                             onClick={() => onCustomValueChange(field.key, value)}
-                          />
+                          >
+                            <span
+                              className={`mt-1 h-4 w-4 shrink-0 rounded-full border ${
+                                selected ? 'border-4 border-zinc-900' : 'border-gray-400'
+                              }`}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-semibold text-zinc-900">
+                                {customOptionShopLabel(field.key, value)}
+                              </span>
+                              {field.optionNotes?.[value] ? (
+                                <span className="mt-0.5 block text-xs text-gray-500">{field.optionNotes[value]}</span>
+                              ) : null}
+                            </span>
+                            <span className="shrink-0 font-semibold tabular-nums text-zinc-900">
+                              {Number.isFinite(price) ? formatPrice(price!) : '價格未設定'}
+                            </span>
+                          </button>
                         )
                       })}
                     </div>
-                    {field.allowCustomValue ? (
-                      <button
-                        type="button"
-                        className="mt-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:border-zinc-700"
-                        onClick={() => {
-                          const current = field.values?.includes(customValues[field.key] ?? '')
-                            ? ''
-                            : customValues[field.key] ?? ''
-                          const parsed = parsePantoneSelection(current)
-                          setPantoneCode(parsed?.code ?? current)
-                          setPantoneDialogFieldKey(field.key)
-                        }}
+                  ) : field.inputType === 'select' && field.displayStyle === 'swatches' ? (
+                    <div className="mt-2">
+                      <div
+                        className="flex flex-nowrap gap-3 overflow-x-auto py-1"
+                        role="radiogroup"
+                        aria-label={customFieldShopLabel(field.key, field.label)}
                       >
-                        其他 Pantone 色號
-                      </button>
-                    ) : null}
-                    {customValues[field.key] ? (
-                      <div className="mt-2 min-h-5 text-sm text-gray-600">
-                        已選：{parsePantoneSelection(customValues[field.key] ?? '')?.code ?? customValues[field.key]}
+                        {(field.allowCustomValue ? (field.values ?? []).slice(0, 8) : (field.values ?? [])).map(
+                          (value) => {
+                            const selected = customValues[field.key] === value
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                role="radio"
+                                aria-label={value}
+                                aria-checked={selected}
+                                title={value}
+                                className={`aspect-square shrink-0 rounded-full border-2 p-0 transition ${
+                                  selected
+                                    ? 'border-zinc-900 ring-1 ring-zinc-900 ring-offset-1'
+                                    : 'border-gray-200 hover:border-gray-500'
+                                }`}
+                                style={{
+                                  width: 26,
+                                  height: 26,
+                                  minWidth: 26,
+                                  minHeight: 26,
+                                  padding: 0,
+                                  boxSizing: 'border-box',
+                                  backgroundColor: field.swatches?.[value] ?? '#d1d5db',
+                                }}
+                                onClick={() => onCustomValueChange(field.key, value)}
+                              />
+                            )
+                          },
+                        )}
                       </div>
-                    ) : null}
-                  </div>
-                ) : field.readOnly
-                  && (field.key === 'carbon_color' || field.key === 'standard_color') ? (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                    <span
-                      aria-hidden="true"
-                      className="block h-[26px] w-[26px] shrink-0 rounded-full border-2 border-zinc-900 ring-1 ring-zinc-900 ring-offset-1"
-                      style={{
-                        backgroundColor: field.key === 'carbon_color' ? '#000000' : '#FFFFFF',
-                      }}
+                      {field.allowCustomValue ? (
+                        <button
+                          type="button"
+                          className="mt-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:border-zinc-700"
+                          onClick={() => {
+                            const current = field.values?.includes(customValues[field.key] ?? '')
+                              ? ''
+                              : (customValues[field.key] ?? '')
+                            const parsed = parsePantoneSelection(current)
+                            setPantoneCode(parsed?.code ?? current)
+                            setPantoneDialogFieldKey(field.key)
+                          }}
+                        >
+                          其他 Pantone 色號
+                        </button>
+                      ) : null}
+                      {customValues[field.key] ? (
+                        <div className="mt-2 flex min-h-5 items-center gap-3 text-sm text-gray-600">
+                          <span>
+                            已選：
+                            {parsePantoneSelection(customValues[field.key] ?? '')?.code ?? customValues[field.key]}
+                          </span>
+                          <button
+                            type="button"
+                            className="border-0 bg-transparent p-0 text-xs font-medium text-gray-500 underline underline-offset-2 hover:text-zinc-900"
+                            style={{ padding: 0 }}
+                            onClick={() => onCustomValueChange(field.key, '')}
+                          >
+                            清除
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : field.readOnly && (field.key === 'carbon_color' || field.key === 'standard_color') ? (
+                    <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                      <span
+                        aria-hidden="true"
+                        className="block h-[26px] w-[26px] shrink-0 rounded-full border-2 border-zinc-900 ring-1 ring-zinc-900 ring-offset-1"
+                        style={{
+                          backgroundColor: field.key === 'carbon_color' ? '#000000' : '#FFFFFF',
+                        }}
+                      />
+                      <span>已選：{field.defaultDisplay || (field.key === 'carbon_color' ? 'Black' : 'White')}</span>
+                    </div>
+                  ) : field.readOnly ? (
+                    <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-zinc-800">
+                      {field.defaultDisplay || '—'}
+                    </div>
+                  ) : field.inputType === 'select' ? (
+                    <select
+                      className="mt-1 block w-full min-h-11 rounded-md border border-gray-300 bg-white px-3 text-base"
+                      value={customValues[field.key] ?? (field.readOnly ? (field.defaultDisplay ?? '') : '')}
+                      disabled={field.readOnly}
+                      onChange={(event) => onCustomValueChange(field.key, event.target.value)}
+                    >
+                      <option value="">{field.defaultDisplay || '--'}</option>
+                      {(field.values ?? []).map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="mt-1 block w-full min-h-11 rounded-md border border-gray-300 bg-white px-3 text-base"
+                      value={customValues[field.key] ?? (field.readOnly ? (field.defaultDisplay ?? '') : '')}
+                      placeholder={field.placeholder || field.defaultDisplay}
+                      disabled={field.readOnly}
+                      onChange={(event) => onCustomValueChange(field.key, event.target.value)}
                     />
-                    <span>
-                      已選：{field.defaultDisplay || (field.key === 'carbon_color' ? 'Black' : 'White')}
-                    </span>
-                  </div>
-                ) : field.readOnly ? (
-                  <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-zinc-800">
-                    {field.defaultDisplay || '—'}
-                  </div>
-                ) : field.inputType === 'select' ? (
-                  <select
-                    className="mt-1 block w-full min-h-11 rounded-md border border-gray-300 bg-white px-3 text-base"
-                    value={customValues[field.key] ?? (field.readOnly ? field.defaultDisplay ?? '' : '')}
-                    disabled={field.readOnly}
-                    onChange={(event) => onCustomValueChange(field.key, event.target.value)}
-                  >
-                    <option value="">{field.defaultDisplay || '--'}</option>
-                    {(field.values ?? []).map((value) => (
-                      <option key={value} value={value}>{value}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    className="mt-1 block w-full min-h-11 rounded-md border border-gray-300 bg-white px-3 text-base"
-                    value={customValues[field.key] ?? (field.readOnly ? field.defaultDisplay ?? '' : '')}
-                    placeholder={field.placeholder || field.defaultDisplay}
-                    disabled={field.readOnly}
-                    onChange={(event) => onCustomValueChange(field.key, event.target.value)}
-                  />
-                )}
-                {!field.readOnly
-                  && field.displayStyle !== 'swatches'
-                  && (field.help || field.defaultDisplay) ? (
-                  <span className="mt-1 block text-xs text-gray-500">
-                    {field.help || field.defaultDisplay}
-                  </span>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : null}
-        {pantoneDialogFieldKey ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="其他 Pantone 色號"
-            onClick={() => setPantoneDialogFieldKey(null)}
-          >
+                  )}
+                  {!field.readOnly && field.displayStyle !== 'swatches' && (field.help || field.defaultDisplay) ? (
+                    <span className="mt-1 block text-xs text-gray-500">{field.help || field.defaultDisplay}</span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {pantoneDialogFieldKey ? (
             <div
-              className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
-              onClick={(event) => event.stopPropagation()}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label="其他 Pantone 色號"
+              onClick={() => setPantoneDialogFieldKey(null)}
             >
-              <h2 className="text-lg font-bold text-zinc-900">其他 Pantone 色號</h2>
-              <p className="mt-1 text-xs text-gray-500">請輸入製作時使用的 Pantone 色號。</p>
-              <label className="mt-4 block text-sm font-medium text-gray-700">
-                Pantone 色號
-                <input
-                  className="mt-1 block min-h-11 w-full rounded-md border border-gray-300 px-3 text-base"
-                  value={pantoneCode}
-                  placeholder="例如 186 C"
-                  autoFocus
-                  onChange={(event) => setPantoneCode(event.target.value)}
-                />
-              </label>
-              <div className="mt-5 flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm"
-                  onClick={() => setPantoneDialogFieldKey(null)}
-                >
-                  取消
-                </button>
-                <button
-                  type="button"
-                  disabled={!pantoneCode.trim()}
-                  className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-40"
-                  onClick={() => {
-                    onCustomValueChange(pantoneDialogFieldKey, pantoneCode.trim().toUpperCase())
-                    setPantoneDialogFieldKey(null)
-                  }}
-                >
-                  確認
-                </button>
+              <div
+                className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <h2 className="text-lg font-bold text-zinc-900">其他 Pantone 色號</h2>
+                <p className="mt-1 text-xs text-gray-500">請輸入製作時使用的 Pantone 色號。</p>
+                <label className="mt-4 block text-sm font-medium text-gray-700">
+                  Pantone 色號
+                  <input
+                    className="mt-1 block min-h-11 w-full rounded-md border border-gray-300 px-3 text-base"
+                    value={pantoneCode}
+                    placeholder="例如 186 C"
+                    autoFocus
+                    onChange={(event) => setPantoneCode(event.target.value)}
+                  />
+                </label>
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    className="rounded-md border border-gray-300 px-4 py-2 text-sm"
+                    onClick={() => setPantoneDialogFieldKey(null)}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!pantoneCode.trim()}
+                    className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-40"
+                    onClick={() => {
+                      onCustomValueChange(pantoneDialogFieldKey, pantoneCode.trim().toUpperCase())
+                      setPantoneDialogFieldKey(null)
+                    }}
+                  >
+                    確認
+                  </button>
+                </div>
               </div>
             </div>
+          ) : null}
+          {!pendingColorValues && customSelectionError ? (
+            <div className="mt-2 text-xs text-amber-700">{customSelectionError}</div>
+          ) : pendingColorValues && customSelectionError ? (
+            <div className="mt-2 text-xs text-gray-500">尚未選色時，將由客服後續確認。</div>
+          ) : null}
+
+          {product.size_chart ? <ProductSizeChart chart={product.size_chart} /> : null}
+
+          <div className="mt-4 flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700">{SHOP_DETAIL.quantity}</span>
+            <ShopDetailQuantity value={quantity} max={quantityLimit} onChange={onChangeQuantity} />
+            {variantAvail === 'in_stock' && canPurchase && (
+              <span className="text-xs text-gray-500">最多 {quantityLimit} 件</span>
+            )}
           </div>
-        ) : null}
-        {!pendingColorValues && customSelectionError ? (
-          <div className="mt-2 text-xs text-amber-700">{customSelectionError}</div>
-        ) : pendingColorValues && customSelectionError ? (
-          <div className="mt-2 text-xs text-gray-500">尚未選色時，將由客服後續確認。</div>
-        ) : null}
 
-        {product.size_chart ? <ProductSizeChart chart={product.size_chart} /> : null}
-
-        <div className="mt-4 flex items-center gap-3">
-          <span className="text-sm font-medium text-gray-700">{SHOP_DETAIL.quantity}</span>
-          <ShopDetailQuantity
-            value={quantity}
-            max={quantityLimit}
-            onChange={onChangeQuantity}
-          />
-          {variantAvail === 'in_stock' && canPurchase && (
-            <span className="text-xs text-gray-500">
-              最多 {quantityLimit} 件
-            </span>
-          )}
+          <div className="mt-6 hidden lg:block">
+            <DetailPurchaseActions
+              layout="stacked"
+              canAddToCart={!!selectedVariant && canPurchase && (!customSelectionError || pendingColorValues !== null)}
+              canInquire={!!selectedVariant && canPurchase && (!customSelectionError || pendingColorValues !== null)}
+              onAddToCart={onAddToCart}
+              onDirectInquiry={onDirectInquiry}
+            />
+          </div>
         </div>
+      </div>
 
-        <div className="mt-6 hidden lg:block">
+      <div
+        className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.08)] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        role="region"
+        aria-label="Purchase actions"
+      >
+        <div className="max-w-7xl mx-auto px-4 pt-3">
           <DetailPurchaseActions
-            layout="stacked"
-            canAddToCart={
-              !!selectedVariant
-              && canPurchase
-              && (!customSelectionError || pendingColorValues !== null)
-            }
-            canInquire={
-              !!selectedVariant
-              && canPurchase
-              && (!customSelectionError || pendingColorValues !== null)
-            }
+            layout="sticky"
+            canAddToCart={!!selectedVariant && canPurchase && (!customSelectionError || pendingColorValues !== null)}
+            canInquire={!!selectedVariant && canPurchase && (!customSelectionError || pendingColorValues !== null)}
             onAddToCart={onAddToCart}
             onDirectInquiry={onDirectInquiry}
           />
         </div>
-
       </div>
-    </div>
-
-    <div
-      className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.08)] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-      role="region"
-      aria-label="Purchase actions"
-    >
-      <div className="max-w-7xl mx-auto px-4 pt-3">
-        <DetailPurchaseActions
-          layout="sticky"
-          canAddToCart={
-            !!selectedVariant
-            && canPurchase
-            && (!customSelectionError || pendingColorValues !== null)
-          }
-          canInquire={
-            !!selectedVariant
-            && canPurchase
-            && (!customSelectionError || pendingColorValues !== null)
-          }
-          onAddToCart={onAddToCart}
-          onDirectInquiry={onDirectInquiry}
-        />
-      </div>
-    </div>
     </>
   )
 }

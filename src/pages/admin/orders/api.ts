@@ -63,9 +63,7 @@ export type FetchShopOrdersOptions = {
   createdAfter?: string
 }
 
-export async function fetchShopOrders(
-  options?: FetchShopOrdersOptions,
-): Promise<ShopOrderWithItems[]> {
+export async function fetchShopOrders(options?: FetchShopOrdersOptions): Promise<ShopOrderWithItems[]> {
   let query = supabase.from('shop_orders').select(ORDER_SELECT)
   if (options?.createdAfter) {
     query = query.gte('created_at', options.createdAfter)
@@ -83,18 +81,12 @@ export async function fetchPendingBillOrderCount(): Promise<number> {
     .gt('qty_pending_bill', 0)
     .is('shop_orders.cancelled_at', null)
   if (error) throw new Error(error.message)
-  const ids = new Set(
-    (data ?? []).map((row) => (row as { order_id: string }).order_id),
-  )
+  const ids = new Set((data ?? []).map((row) => (row as { order_id: string }).order_id))
   return ids.size
 }
 
 export async function fetchShopOrder(orderId: string): Promise<ShopOrderWithItems | null> {
-  const { data, error } = await supabase
-    .from('shop_orders')
-    .select(ORDER_SELECT)
-    .eq('id', orderId)
-    .maybeSingle()
+  const { data, error } = await supabase.from('shop_orders').select(ORDER_SELECT).eq('id', orderId).maybeSingle()
   if (error) throw error
   return (data as unknown as ShopOrderWithItems) ?? null
 }
@@ -118,9 +110,7 @@ export async function fetchPendingBillOrders(): Promise<ShopOrderWithItems[]> {
   if (error) throw new Error(error.message)
 
   const orders = (data ?? []) as unknown as ShopOrderWithItems[]
-  return sortPendingBillOrders(
-    orders.filter((o) => o.items.some((it) => it.qty_pending_bill > 0)),
-  )
+  return sortPendingBillOrders(orders.filter((o) => o.items.some((it) => it.qty_pending_bill > 0)))
 }
 
 export async function generateOrderNo(): Promise<string> {
@@ -203,10 +193,7 @@ export async function updateShopOrder(orderId: string, input: UpdateOrderInput):
 }
 
 /** 作廢訂單（軟刪）：還原庫存、保留訂單與結帳紀錄 */
-export async function voidShopOrder(
-  orderId: string,
-  operatorEmail?: string | null,
-): Promise<void> {
+export async function voidShopOrder(orderId: string, operatorEmail?: string | null): Promise<void> {
   const result = await supabase.rpc('void_shop_order', {
     p_order_id: orderId,
     p_operator_email: operatorEmail ?? null,
@@ -215,10 +202,7 @@ export async function voidShopOrder(
 }
 
 /** @deprecated 請用 voidShopOrder */
-export async function deleteShopOrder(
-  orderId: string,
-  operatorEmail?: string | null,
-): Promise<void> {
+export async function deleteShopOrder(orderId: string, operatorEmail?: string | null): Promise<void> {
   await voidShopOrder(orderId, operatorEmail)
 }
 
@@ -248,6 +232,27 @@ export async function cancelShopOrderBilling(
   const result = await supabase.rpc('cancel_shop_order_billing', {
     p_order_id: orderId,
     p_items: items as unknown as Json,
+    p_operator_email: operatorEmail ?? null,
+  })
+  await rpcError(result)
+}
+
+export async function setCustomOrderItemConfirmation(
+  itemId: string,
+  confirmed: boolean,
+  operatorEmail?: string | null,
+): Promise<void> {
+  const result = await supabase.rpc('set_custom_order_item_confirmation', {
+    p_item_id: itemId,
+    p_confirmed: confirmed,
+    p_operator_email: operatorEmail ?? null,
+  })
+  await rpcError(result)
+}
+
+export async function markCustomOrderItemArrived(itemId: string, operatorEmail?: string | null): Promise<void> {
+  const result = await supabase.rpc('mark_custom_order_item_arrived', {
+    p_item_id: itemId,
     p_operator_email: operatorEmail ?? null,
   })
   await rpcError(result)
@@ -337,28 +342,30 @@ export async function fetchSettlementsInRange(
     .order('settled_at', { ascending: false })
   if (error) throw new Error(error.message)
 
-  return ((data ?? []) as unknown as Array<
-    ShopOrderSettlementRow & {
-      order: { order_no: string; contact_name: string; cancelled_at: string | null } | null
-      charge_member: { name: string; nickname: string | null } | null
-    }
-  >).map((row) => ({
-    id: row.id,
-    order_id: row.order_id,
-    payment_method: row.payment_method as OrderPaymentMethod,
-    charge_member_id: row.charge_member_id,
-    amount_total: Number(row.amount_total),
-    items_snapshot: parseItemsSnapshot(row.items_snapshot),
-    notes: row.notes,
-    settled_by: row.settled_by,
-    settled_at: row.settled_at,
-    order_no: row.order?.order_no ?? '—',
-    contact_name: row.order?.contact_name ?? '—',
-    order_cancelled_at: row.order?.cancelled_at ?? null,
-    charge_member_name: row.charge_member
-      ? row.charge_member.nickname || row.charge_member.name
-      : null,
-  })).filter((row) => options?.includeVoided || !row.order_cancelled_at)
+  return (
+    (data ?? []) as unknown as Array<
+      ShopOrderSettlementRow & {
+        order: { order_no: string; contact_name: string; cancelled_at: string | null } | null
+        charge_member: { name: string; nickname: string | null } | null
+      }
+    >
+  )
+    .map((row) => ({
+      id: row.id,
+      order_id: row.order_id,
+      payment_method: row.payment_method as OrderPaymentMethod,
+      charge_member_id: row.charge_member_id,
+      amount_total: Number(row.amount_total),
+      items_snapshot: parseItemsSnapshot(row.items_snapshot),
+      notes: row.notes,
+      settled_by: row.settled_by,
+      settled_at: row.settled_at,
+      order_no: row.order?.order_no ?? '—',
+      contact_name: row.order?.contact_name ?? '—',
+      order_cancelled_at: row.order?.cancelled_at ?? null,
+      charge_member_name: row.charge_member ? row.charge_member.nickname || row.charge_member.name : null,
+    }))
+    .filter((row) => options?.includeVoided || !row.order_cancelled_at)
 }
 
 /** 依開單日期查未作廢的預購品項，包含等貨、待付款與已完成數量。 */
@@ -384,37 +391,37 @@ export async function fetchPreorderReportInRange(
     .lte('shop_orders.created_at', `${endDate}T23:59:59`)
   if (error) throw new Error(error.message)
 
-  return ((data ?? []) as unknown as Array<{
-    id: string
-    order_id: string
-    unit_price: number
-    qty: number
-    qty_pending_bill: number
-    qty_paid: number
-    brand_snapshot: string | null
-    selected_options: Record<string, { label: string; value: string }> | null
-    variant: {
+  return (
+    (data ?? []) as unknown as Array<{
       id: string
-      vendor_code: string | null
-      attributes: Record<string, string | number | null> | null
-      product: {
-        brand: string
-        model: string
-        model_year: number | null
-        category: string
+      order_id: string
+      unit_price: number
+      qty: number
+      qty_pending_bill: number
+      qty_paid: number
+      brand_snapshot: string | null
+      selected_options: Record<string, { label: string; value: string }> | null
+      variant: {
+        id: string
+        vendor_code: string | null
+        attributes: Record<string, string | number | null> | null
+        product: {
+          brand: string
+          model: string
+          model_year: number | null
+          category: string
+        } | null
       } | null
-    } | null
-    shop_orders: {
-      order_no: string
-      contact_name: string
-      created_at: string
-      cancelled_at: string | null
-    }
-  }>).map((row) => {
+      shop_orders: {
+        order_no: string
+        contact_name: string
+        created_at: string
+        cancelled_at: string | null
+      }
+    }>
+  ).map((row) => {
     const product = row.variant?.product
-    const specification = product
-      ? formatAttributes(product.category, row.variant?.attributes ?? {})
-      : ''
+    const specification = product ? formatAttributes(product.category, row.variant?.attributes ?? {}) : ''
     const itemTitle = product
       ? `${product.brand} ${product.model}${product.model_year != null ? ` · ${product.model_year}` : ''}`
       : row.variant?.vendor_code || '商品'
@@ -427,11 +434,9 @@ export async function fetchPreorderReportInRange(
       brand: row.brand_snapshot?.trim() || product?.brand.trim() || '其他品牌',
       variant_id: row.variant?.id || row.id,
       item_title: itemTitle,
-      item_subtitle: [
-        specification,
-        formatSelectedOptions(row.selected_options),
-        row.variant?.vendor_code,
-      ].filter(Boolean).join(' · '),
+      item_subtitle: [specification, formatSelectedOptions(row.selected_options), row.variant?.vendor_code]
+        .filter(Boolean)
+        .join(' · '),
       unit_price: Number(row.unit_price),
       qty: Number(row.qty),
       qty_pending_bill: Number(row.qty_pending_bill),

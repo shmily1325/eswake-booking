@@ -35,11 +35,7 @@ import {
 } from './api'
 import { fetchDiscountPresets } from './discountApi'
 import type { ProductVariantRow, ProductWithVariants } from './types'
-import {
-  deriveVariantAvailability,
-  saleModeFromVariant,
-  type VariantSaleMode,
-} from './availabilityHelpers'
+import { deriveVariantAvailability, saleModeFromVariant, type VariantSaleMode } from './availabilityHelpers'
 import { ShopStatusPill } from './ShopStatusPill'
 import { collectZeroStockWarnings } from './productSaveWarnings'
 import { normalizePreOrderUntil } from './productBatch'
@@ -79,12 +75,17 @@ import {
   type DraftCoverImage,
 } from './coverImages'
 import { ProductOptionsEditor } from './ProductOptionsEditor'
+import { VibesCustomOrderEditor } from './VibesCustomOrderEditor'
 import {
   findMissingAxisCombinations,
+  getVibesBuildSettings,
   isEmptyProductOptionConfig,
+  isVibesCustomOrderConfig,
   normalizeProductOptionConfig,
   resolveVariantFields,
+  setVibesSizeValues,
   validateProductOptionConfig,
+  validateVibesCustomOrderConfig,
   type ProductOptionConfig,
 } from './productOptions'
 
@@ -192,9 +193,7 @@ function variantRowToDraft(v: ProductVariantRow): DraftVariant {
     image_path: v.image_path,
     originalImagePath: v.image_path,
     discount_preset_id: v.discount_preset_id ?? null,
-    preorderDiscountEligible: isPreorderDiscountEligible(
-      v.attributes as Record<string, unknown>,
-    ),
+    preorderDiscountEligible: isPreorderDiscountEligible(v.attributes as Record<string, unknown>),
   }
 }
 
@@ -319,20 +318,15 @@ export function ProductEditView({
     [existingProducts, category, brand, model],
   )
   const localIdentityMatch = useMemo(
-    () => findExactProductIdentityMatch(
-      existingProducts,
-      category,
-      brand,
-      model,
-      parsedModelYear,
-      normalizedProductColor,
-    ),
+    () =>
+      findExactProductIdentityMatch(existingProducts, category, brand, model, parsedModelYear, normalizedProductColor),
     [existingProducts, category, brand, model, parsedModelYear, normalizedProductColor],
   )
   const identityMatch = localIdentityMatch ?? serverIdentityMatch
-  const identityNeedsDecision = isNew
-    && !confirmedSeparateProduct
-    && Boolean(identityMatch || (parsedModelYear == null && sameModelCandidates.length > 0))
+  const identityNeedsDecision =
+    isNew &&
+    !confirmedSeparateProduct &&
+    Boolean(identityMatch || (parsedModelYear == null && sameModelCandidates.length > 0))
 
   /** 顏色已在商品層；若 SKU 仍殘留 2+ color 才當多色舊卡 */
   const isMultiColorProduct = useMemo(() => {
@@ -389,9 +383,7 @@ export function ProductEditView({
         setSizeChartId(p.size_chart_id)
         setIsPublic(p.is_public)
         const loadedOptionConfig = normalizeProductOptionConfig(p.option_config)
-        setOptionConfig(
-          isEmptyProductOptionConfig(loadedOptionConfig) ? null : loadedOptionConfig,
-        )
+        setOptionConfig(isEmptyProductOptionConfig(loadedOptionConfig) ? null : loadedOptionConfig)
         setOriginalOptionImagePaths(
           loadedOptionConfig?.customFields.flatMap((field) =>
             Object.values(field.swatchImages ?? {})
@@ -406,9 +398,7 @@ export function ProductEditView({
           `product-${p.id}`,
         )
         setProductCoverImages(loadedProductCovers)
-        setOriginalProductCoverPaths(
-          loadedProductCovers.map((img) => img.path).filter(Boolean),
-        )
+        setOriginalProductCoverPaths(loadedProductCovers.map((img) => img.path).filter(Boolean))
         const loadedDrafts = p.variants.map(variantRowToDraft)
         const nextDrafts = addNewVariantOnLoad
           ? [...loadedDrafts, emptyDraft()]
@@ -437,14 +427,77 @@ export function ProductEditView({
   }
 
   const updateDraftAttribute = (idx: number, key: string, value: string) => {
-    setDrafts((prev) =>
-      prev.map((d, i) => (i === idx ? { ...d, attributes: { ...d.attributes, [key]: value } } : d)),
-    )
+    setDrafts((prev) => prev.map((d, i) => (i === idx ? { ...d, attributes: { ...d.attributes, [key]: value } } : d)))
   }
 
   const handleAddVariant = () => {
     setActiveSkuIndex(drafts.length)
     setDrafts((prev) => [...prev, emptyDraft()])
+  }
+
+  const syncVibesSizes = (nextDrafts: readonly DraftVariant[]) => {
+    if (!optionConfig) return
+    setOptionConfig(
+      setVibesSizeValues(
+        optionConfig,
+        nextDrafts.filter((draft) => !draft.pendingDelete).map((draft) => draft.attributes.size ?? ''),
+      ),
+    )
+  }
+
+  const handleVibesSpecChange = (index: number, key: 'size' | 'width' | 'thickness' | 'volume', value: string) => {
+    const next = drafts.map((draft, draftIndex) =>
+      draftIndex === index ? { ...draft, attributes: { ...draft.attributes, [key]: value } } : draft,
+    )
+    setDrafts(next)
+    if (key === 'size') syncVibesSizes(next)
+  }
+
+  const handleAddVibesSpec = () => {
+    const standardPrice = optionConfig
+      ? getVibesBuildSettings(optionConfig).find((build) => build.name === 'Standard')?.price
+      : null
+    const next = [
+      ...drafts,
+      {
+        ...emptyDraft(),
+        price: standardPrice == null ? '' : String(standardPrice),
+        stock: '0',
+        saleMode: 'custom_order' as const,
+        preorderDiscountEligible: false,
+      },
+    ]
+    setDrafts(next)
+    syncVibesSizes(next)
+  }
+
+  const handleVibesConfigChange = (nextConfig: ProductOptionConfig) => {
+    setOptionConfig(nextConfig)
+    const standardPrice = getVibesBuildSettings(nextConfig).find((build) => build.name === 'Standard')?.price
+    if (standardPrice != null) {
+      setDrafts((current) =>
+        current.map((draft) => ({
+          ...draft,
+          price: String(standardPrice),
+        })),
+      )
+    }
+  }
+
+  const handleRemoveVibesSpec = (index: number) => {
+    const target = drafts[index]
+    if (!target) return
+    const next = target.id
+      ? drafts.map((draft, draftIndex) => (draftIndex === index ? { ...draft, pendingDelete: true } : draft))
+      : drafts.filter((_, draftIndex) => draftIndex !== index)
+    setDrafts(next)
+    syncVibesSizes(next)
+  }
+
+  const handleRestoreVibesSpec = (index: number) => {
+    const next = drafts.map((draft, draftIndex) => (draftIndex === index ? { ...draft, pendingDelete: false } : draft))
+    setDrafts(next)
+    syncVibesSizes(next)
   }
 
   const handleGenerateMissingAxisCombinations = () => {
@@ -472,11 +525,11 @@ export function ProductEditView({
     const count = drafts.filter(
       (draft) => !draft.pendingDelete && draft.attributes[batchAxisKey] === batchAxisValue,
     ).length
-    setDrafts((previous) => previous.map((draft) =>
-      draft.pendingDelete || draft.attributes[batchAxisKey] !== batchAxisValue
-        ? draft
-        : { ...draft, price },
-    ))
+    setDrafts((previous) =>
+      previous.map((draft) =>
+        draft.pendingDelete || draft.attributes[batchAxisKey] !== batchAxisValue ? draft : { ...draft, price },
+      ),
+    )
     toast.success(`已套用售價到 ${count} 個規格`)
   }
 
@@ -576,9 +629,7 @@ export function ProductEditView({
     }
     setDrafts((prev) =>
       prev.map((d, i) =>
-        i === sourceIdx || d.pendingDelete
-          ? d
-          : { ...d, discount_preset_id: source.discount_preset_id },
+        i === sourceIdx || d.pendingDelete ? d : { ...d, discount_preset_id: source.discount_preset_id },
       ),
     )
     toast.success(`已套用到其他 ${targetCount} 個尺寸`)
@@ -694,19 +745,18 @@ export function ProductEditView({
   }
 
   const visibleDrafts = drafts // 顯示全部，含 pendingDelete（給 UI 顯示「已標記刪除」狀態）
+  const isVibesCustomOrder = isVibesCustomOrderConfig(category, brand, optionConfig)
   const resolvedSkuFields = useMemo(
     () => resolveVariantFields(optionConfig, getSkuFields(category)),
     [optionConfig, category],
   )
-  const optionAxes = useMemo(
-    () => optionConfig?.variantFields.axis ?? [],
-    [optionConfig],
-  )
+  const optionAxes = useMemo(() => optionConfig?.variantFields.axis ?? [], [optionConfig])
   const missingAxisCombinations = useMemo(
-    () => findMissingAxisCombinations(
-      optionAxes,
-      drafts.filter((draft) => !draft.pendingDelete).map((draft) => draft.attributes),
-    ),
+    () =>
+      findMissingAxisCombinations(
+        optionAxes,
+        drafts.filter((draft) => !draft.pendingDelete).map((draft) => draft.attributes),
+      ),
     [optionAxes, drafts],
   )
 
@@ -757,8 +807,24 @@ export function ProductEditView({
   const validateSkuCore = (): string | null => {
     const configIssues = validateProductOptionConfig(optionConfig)
     if (configIssues.length > 0) return `商品選項：${configIssues[0].message}`
+    if (isVibesCustomOrder && optionConfig) {
+      const vibesIssues = validateVibesCustomOrderConfig(optionConfig)
+      if (vibesIssues.length > 0) return `VIBES 客訂設定：${vibesIssues[0]}`
+    }
     const active = drafts.filter((d) => !d.pendingDelete)
     if (active.length === 0) return '至少要有一個規格 (SKU)'
+    if (isVibesCustomOrder) {
+      const sizes = active.map((draft) => draft.attributes.size?.trim() ?? '')
+      if (sizes.some((size) => !size)) return 'VIBES 尺寸不可空白'
+      if (new Set(sizes.map((size) => size.toLowerCase())).size !== sizes.length) {
+        return 'VIBES 尺寸不可重複'
+      }
+      for (const draft of active) {
+        if (!draft.attributes.width?.trim() || !draft.attributes.thickness?.trim()) {
+          return `${draft.attributes.size}：Width 與 Thickness 不可空白`
+        }
+      }
+    }
     for (const [i, d] of active.entries()) {
       const errs = optionConfig
         ? resolvedSkuFields
@@ -848,11 +914,10 @@ export function ProductEditView({
       const productCovers = coverImagesForDb(productCoverImages)
       const productPrimary = primaryCoverFromGallery(productCovers)
       const variantPayloads = drafts.map((d, draftIndex) => {
-        const stockNum = Number(d.stock)
+        const stockNum = isVibesCustomOrder ? 0 : Number(d.stock)
+        const saleMode = isVibesCustomOrder ? 'custom_order' : d.saleMode
         // 一色一卡：封面只掛商品層，SKU 封面刻意清空，避免再複製出重複 storage 檔
-        const cover_images = useProductLevelCovers
-          ? []
-          : coverImagesForDb(d.cover_images)
+        const cover_images = useProductLevelCovers ? [] : coverImagesForDb(d.cover_images)
         const primary = primaryCoverFromGallery(cover_images)
         return {
           draft_index: draftIndex,
@@ -862,20 +927,15 @@ export function ProductEditView({
           vendor_code: d.vendor_code.trim() || null,
           attributes: {
             ...normalizeVariantAttributes(d.attributes),
-            ...(d.preorderDiscountEligible
-              ? {}
-              : { [PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE]: 0 }),
+            ...(d.preorderDiscountEligible ? {} : { [PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE]: 0 }),
           },
           price: d.price.trim() === '' ? null : Number(d.price),
           member_price: d.member_price.trim() === '' ? null : Number(d.member_price),
           stock: stockNum,
-          availability: deriveVariantAvailability(stockNum, d.saleMode),
+          availability: deriveVariantAvailability(stockNum, saleMode),
           // 舊版 RPC 只辨識此欄；新版以 availability 為準。
-          accept_pre_order: d.saleMode === 'pre_order',
-          pre_order_until:
-            d.saleMode === 'pre_order' && stockNum <= 0
-              ? normalizePreOrderUntil(d.pre_order_until)
-              : null,
+          accept_pre_order: saleMode === 'pre_order',
+          pre_order_until: saleMode === 'pre_order' && stockNum <= 0 ? normalizePreOrderUntil(d.pre_order_until) : null,
           cover_image_url: primary.url,
           cover_image_path: primary.path,
           cover_images,
@@ -910,21 +970,21 @@ export function ProductEditView({
       setCreatedProductId(pid)
       setOriginalProductCoverPaths(productCovers.map((img) => img.path).filter(Boolean))
 
-      const savedVariants = new Map(
-        (saveResult.variants ?? []).map((saved) => [saved.draft_index, saved]),
+      const savedVariants = new Map((saveResult.variants ?? []).map((saved) => [saved.draft_index, saved]))
+      setDrafts((current) =>
+        current.map((row, index) => {
+          const saved = savedVariants.get(index)
+          if (!saved) return row
+          const payload = variantPayloads[index]
+          return {
+            ...row,
+            id: saved.id,
+            savedLabelCode: saved.label_code ?? '',
+            originalCoverImagePaths: payload.cover_images.map((img) => img.path).filter(Boolean),
+            originalImagePath: payload.image_path,
+          }
+        }),
       )
-      setDrafts((current) => current.map((row, index) => {
-        const saved = savedVariants.get(index)
-        if (!saved) return row
-        const payload = variantPayloads[index]
-        return {
-          ...row,
-          id: saved.id,
-          savedLabelCode: saved.label_code ?? '',
-          originalCoverImagePaths: payload.cover_images.map((img) => img.path).filter(Boolean),
-          originalImagePath: payload.image_path,
-        }
-      }))
 
       // ===== Storage 清理：刪掉這個 session 內不再被引用的舊圖 =====
       // 1) 收集所有「最終會被 DB 引用」的 path
@@ -1034,22 +1094,24 @@ export function ProductEditView({
   }
 
   const handleOpenExistingProduct = (productIdToOpen: string) => {
-    const hasDraftWork = drafts.some(d =>
-      d.stock.trim() !== '' ||
-      d.price.trim() !== '' ||
-      d.member_price.trim() !== '' ||
-      d.vendor_code.trim() !== '' ||
-      d.label_code.trim() !== '' ||
-      Object.values(d.attributes).some(value => value.trim() !== '') ||
-      Boolean(d.image_path || d.cover_images.length > 0),
-    ) || productCoverImages.length > 0
+    const hasDraftWork =
+      drafts.some(
+        (d) =>
+          d.stock.trim() !== '' ||
+          d.price.trim() !== '' ||
+          d.member_price.trim() !== '' ||
+          d.vendor_code.trim() !== '' ||
+          d.label_code.trim() !== '' ||
+          Object.values(d.attributes).some((value) => value.trim() !== '') ||
+          Boolean(d.image_path || d.cover_images.length > 0),
+      ) || productCoverImages.length > 0
     if (hasDraftWork && !window.confirm('前往既有商品後，目前尚未儲存的 SKU 草稿不會自動合併。確定繼續？')) {
       return
     }
     if (sessionUploadsRef.current.size > 0) {
       const paths = Array.from(sessionUploadsRef.current)
       sessionUploadsRef.current.clear()
-      void Promise.all(paths.map(path => removeProductImage(path)))
+      void Promise.all(paths.map((path) => removeProductImage(path)))
     }
     onOpenExistingProduct?.(productIdToOpen)
   }
@@ -1116,12 +1178,16 @@ export function ProductEditView({
   const showSkuCoreSection = !mobileCreateWizard || createStep === 2
   const showAdvancedSection = !mobileCreateWizard || createStep === 3
   const selectedBatchAxis = optionAxes.find((axis) => axis.key === batchAxisKey)
-  const selectedBatchAxisValues = selectedBatchAxis?.values ?? Array.from(new Set(
-    drafts
-      .filter((draft) => !draft.pendingDelete)
-      .map((draft) => draft.attributes[batchAxisKey]?.trim())
-      .filter((value): value is string => Boolean(value)),
-  ))
+  const selectedBatchAxisValues =
+    selectedBatchAxis?.values ??
+    Array.from(
+      new Set(
+        drafts
+          .filter((draft) => !draft.pendingDelete)
+          .map((draft) => draft.attributes[batchAxisKey]?.trim())
+          .filter((value): value is string => Boolean(value)),
+      ),
+    )
 
   /** 手機：取消／儲存固定貼在螢幕底，避開 Home 條 */
   const mobileFooterBar =
@@ -1144,9 +1210,9 @@ export function ProductEditView({
         <button
           type="button"
           data-track={mobileCreateWizard && createStep > 1 ? 'product_create_previous' : 'product_edit_cancel'}
-          onClick={mobileCreateWizard && createStep > 1
-            ? () => goToCreateStep((createStep - 1) as CreateStep)
-            : handleCancel}
+          onClick={
+            mobileCreateWizard && createStep > 1 ? () => goToCreateStep((createStep - 1) as CreateStep) : handleCancel
+          }
           disabled={saving}
           style={{
             ...getButtonStyle('outline', 'large', isMobile),
@@ -1168,19 +1234,14 @@ export function ProductEditView({
             ...getButtonStyle('primary', 'large', isMobile),
             flex: 1,
             opacity: saving || (mobileCreateWizard && createStep === 1 && identityNeedsDecision) ? 0.55 : 1,
-            cursor: saving || (mobileCreateWizard && createStep === 1 && identityNeedsDecision) ? 'not-allowed' : 'pointer',
+            cursor:
+              saving || (mobileCreateWizard && createStep === 1 && identityNeedsDecision) ? 'not-allowed' : 'pointer',
             touchAction: 'manipulation',
             minHeight: 48,
-            background: saving
-              ? designSystem.colors.secondary[300]
-              : designSystem.colors.primary[500],
+            background: saving ? designSystem.colors.secondary[300] : designSystem.colors.primary[500],
           }}
         >
-          {saving
-            ? '儲存中…'
-            : mobileCreateWizard && createStep < 3
-              ? '下一步'
-              : '儲存'}
+          {saving ? '儲存中…' : mobileCreateWizard && createStep < 3 ? '下一步' : '儲存'}
         </button>
       </div>
     ) : null
@@ -1249,15 +1310,14 @@ export function ProductEditView({
               gap: 6,
             }}
           >
-            {([1, 2, 3] as CreateStep[]).map(step => (
+            {([1, 2, 3] as CreateStep[]).map((step) => (
               <div
                 key={step}
                 style={{
                   height: 4,
                   borderRadius: designSystem.borderRadius.full,
-                  background: step <= createStep
-                    ? designSystem.colors.primary[500]
-                    : designSystem.colors.secondary[200],
+                  background:
+                    step <= createStep ? designSystem.colors.primary[500] : designSystem.colors.secondary[200],
                 }}
               />
             ))}
@@ -1266,588 +1326,662 @@ export function ProductEditView({
       )}
 
       {/* 商品基本資訊：編輯時預設收合，新增維持全開 */}
-      {showIdentitySection && <section style={sectionStyle}>
-        <div
-          role={!isNew ? 'button' : undefined}
-          tabIndex={!isNew ? 0 : undefined}
-          onClick={!isNew ? () => setIdentityOpen((open) => !open) : undefined}
-          onKeyDown={!isNew ? (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              setIdentityOpen((open) => !open)
+      {showIdentitySection && (
+        <section style={sectionStyle}>
+          <div
+            role={!isNew ? 'button' : undefined}
+            tabIndex={!isNew ? 0 : undefined}
+            onClick={!isNew ? () => setIdentityOpen((open) => !open) : undefined}
+            onKeyDown={
+              !isNew
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setIdentityOpen((open) => !open)
+                    }
+                  }
+                : undefined
             }
-          } : undefined}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginBottom: isNew || identityOpen ? 16 : 0,
-            cursor: !isNew ? 'pointer' : 'default',
-            userSelect: 'none',
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              fontSize: getFontSize('h3', isMobile),
-              fontWeight: 700,
-              color: designSystem.colors.text.primary,
-              flexShrink: 0,
-            }}
-          >
-            商品資訊
-          </h3>
-          {!isNew && (
-            <>
-              {!identityOpen && (
-                <span
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    fontSize: getFontSize('bodySmall', isMobile),
-                    color: designSystem.colors.text.secondary,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {formatProductTitle({
-                    brand,
-                    model,
-                    color,
-                    model_year: modelYear ? Number(modelYear) : null,
-                  }) || getCategory(category)?.name || '（未命名）'}
-                </span>
-              )}
-              {identityOpen && <span style={{ flex: 1 }} />}
-              <span
-                aria-hidden
-                style={{
-                  fontSize: getFontSize('caption', isMobile),
-                  color: designSystem.colors.text.disabled,
-                  transform: identityOpen ? 'rotate(180deg)' : 'none',
-                }}
-              >
-                ▾
-              </span>
-            </>
-          )}
-        </div>
-        {(isNew || identityOpen) && (
-        <div style={{ display: 'grid', gap: 14, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
-          <div>
-            <label style={labelStyle}>類別 *</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              style={inputStyle}
-              disabled={saving || readOnly}
-            >
-              {Object.values(CATEGORY_SCHEMAS).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>品牌 *</label>
-            <ProductBrandSelector
-              value={brand}
-              onChange={setBrand}
-              currentUserEmail={currentUserEmail}
-              disabled={saving || readOnly}
-              isMobile={isMobile}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>型號 *</label>
-            <input
-              style={inputStyle}
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="例如：Signal Ladies"
-              disabled={saving || readOnly}
-              list="product-model-suggestions"
-              autoComplete="off"
-            />
-            <datalist id="product-model-suggestions">
-              {modelSuggestions.map((m) => (
-                <option key={m} value={m} />
-              ))}
-            </datalist>
-            {isNew && sameModelCandidates.length > 0 && (
-              <div
-                role="alert"
-                style={{
-                  marginTop: 10,
-                  padding: 12,
-                  borderRadius: designSystem.borderRadius.md,
-                  border: `1px solid ${designSystem.colors.border.main}`,
-                  background: designSystem.colors.background.card,
-                  color: designSystem.colors.text.primary,
-                }}
-              >
-                <div style={{ fontSize: getFontSize('bodySmall', isMobile), lineHeight: 1.5 }}>
-                  <strong>已有同型號商品</strong>
-                </div>
-                <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                  {sameModelCandidates.slice(0, 4).map((candidate) => (
-                    <div
-                      key={candidate.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 10,
-                        padding: 8,
-                        borderRadius: designSystem.borderRadius.sm,
-                        background: designSystem.colors.background.card,
-                      }}
-                    >
-                      <span style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
-                        {candidate.brand} {formatProductModelLine({
-                          model: candidate.model,
-                          color: candidate.color,
-                          model_year: candidate.modelYear,
-                        })}
-                        {candidate.variantCount != null ? ` · ${candidate.variantCount} 個 SKU` : ''}
-                      </span>
-                      {onOpenExistingProduct && (
-                        <Button
-                          variant="warning"
-                          size="small"
-                          data-track="product_create_open_existing"
-                          onClick={() => handleOpenExistingProduct(candidate.id)}
-                        >
-                          加入 SKU
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {identityNeedsDecision && (
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    data-track="product_create_confirm_separate"
-                    onClick={() => setConfirmedSeparateProduct(true)}
-                    style={{ marginTop: 10 }}
-                  >
-                    確認是新商品
-                  </Button>
-                )}
-                {confirmedSeparateProduct && (
-                  <div style={{ marginTop: 8, fontSize: getFontSize('caption', isMobile) }}>
-                    將建立新商品
-                  </div>
-                )}
-              </div>
-            )}
-            {isNew && sameModelCandidates.length === 0 && brand.trim() && identityCandidates.length > 0 && (
-              <div
-                style={{
-                  marginTop: 8,
-                  fontSize: getFontSize('caption', isMobile),
-                  color: designSystem.colors.text.secondary,
-                  lineHeight: 1.5,
-                }}
-              >
-                此品牌已有：{' '}
-                {identityCandidates.slice(0, 5).map((candidate, index) => (
-                  <span key={candidate.id}>
-                    {index > 0 ? '、' : ''}
-                    <button
-                      type="button"
-                      onClick={() => setModel(candidate.model)}
-                      style={{
-                        padding: 0,
-                        border: 'none',
-                        background: 'transparent',
-                        color: designSystem.colors.info[700],
-                        font: 'inherit',
-                        textDecoration: 'underline',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {candidate.model}
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <div>
-            <label style={labelStyle}>顏色（選填）</label>
-            <input
-              style={inputStyle}
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              placeholder="黑"
-              disabled={saving || readOnly}
-              autoComplete="off"
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>年份（選填）</label>
-            <NumericTextInput
-              style={inputStyle}
-              value={modelYear}
-              onChange={(value) => setModelYear(value)}
-              placeholder="2025"
-              disabled={saving || readOnly}
-            />
-          </div>
-          {!mobileCreateWizard && <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
-            <label style={labelStyle}>內部備註</label>
-            <input
-              style={inputStyle}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="備註"
-              disabled={saving || readOnly}
-            />
-          </div>}
-        </div>
-        )}
-      </section>}
-
-      {/* SKU 列表 */}
-      {(showSkuCoreSection || showAdvancedSection) && <section style={sectionStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
-          <h3
-            style={{
-              margin: 0,
-              fontSize: getFontSize('h3', isMobile),
-              fontWeight: 700,
-              flex: 1,
-              color: designSystem.colors.text.primary,
-            }}
-          >
-            規格與庫存
-          </h3>
-          <Badge variant="info" size="small">
-            {drafts.filter((d) => !d.pendingDelete).length}
-          </Badge>
-        </div>
-
-        {mobileCreateWizard && createStep === 3 && (
-          <div style={{ marginBottom: designSystem.spacing.lg }}>
-            <label style={labelStyle}>內部備註</label>
-            <input
-              style={inputStyle}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="備註"
-              disabled={saving}
-            />
-          </div>
-        )}
-
-        {(!mobileCreateWizard || createStep === 3) && useProductLevelCovers && (
-          <div
-            style={{
-              marginBottom: designSystem.spacing.lg,
-              paddingBottom: designSystem.spacing.lg,
-              borderBottom: `1px solid ${designSystem.colors.border.light}`,
-            }}
-          >
-            <h3
-              style={{
-                margin: `0 0 ${designSystem.spacing.sm} 0`,
-                fontSize: getFontSize('h3', isMobile),
-                fontWeight: 700,
-                color: designSystem.colors.text.primary,
-              }}
-            >
-              商品封面
-            </h3>
-            <CoverImageEditor
-              images={productCoverImages}
-              entityId={productEntityId}
-              storageFolder="covers"
-              brand={brand}
-              model={model}
-              disabled={saving || readOnly}
-              onChange={setProductCoverImages}
-              onUpload={trackUpload}
-            />
-          </div>
-        )}
-
-        {(!mobileCreateWizard || createStep === 3) && isMultiColorProduct && (
-          <p
-            style={{
-              margin: `0 0 ${designSystem.spacing.md} 0`,
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.text.secondary,
-              lineHeight: 1.4,
-            }}
-          >
-            多色舊卡：封面在各規格
-          </p>
-        )}
-
-        {(!mobileCreateWizard || createStep === 3) && (
-          <div
-            style={{
-              marginBottom: designSystem.spacing.lg,
-              paddingBottom: designSystem.spacing.lg,
-              borderBottom: `1px solid ${designSystem.colors.border.light}`,
-            }}
-          >
-            <h3
-              style={{
-                margin: `0 0 ${designSystem.spacing.sm} 0`,
-                fontSize: getFontSize('h3', isMobile),
-                fontWeight: 700,
-                color: designSystem.colors.text.primary,
-              }}
-            >
-              尺寸表
-            </h3>
-            <SizeChartPicker
-              value={sizeChartId}
-              brand={brand}
-              currentUserEmail={currentUserEmail}
-              disabled={saving || readOnly}
-              onChange={setSizeChartId}
-            />
-            {!readOnly && (
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginTop: designSystem.spacing.sm,
-                  fontSize: getFontSize('bodySmall', isMobile),
-                  color: designSystem.colors.text.secondary,
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={applySizeChartToModel}
-                  onChange={(event) => setApplySizeChartToModel(event.target.checked)}
-                  disabled={saving}
-                />
-                同步套用到同年份、同型號的所有顏色
-              </label>
-            )}
-          </div>
-        )}
-
-        {(!mobileCreateWizard || createStep === 3) && (
-          <label
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
-              marginBottom: designSystem.spacing.lg,
-              padding: isMobile ? '12px 0' : '4px 0',
-              cursor: readOnly || saving ? 'not-allowed' : 'pointer',
+              gap: 8,
+              marginBottom: isNew || identityOpen ? 16 : 0,
+              cursor: !isNew ? 'pointer' : 'default',
               userSelect: 'none',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={isPublic}
-              onChange={(e) => setIsPublic(e.target.checked)}
-              disabled={saving || readOnly}
-              style={{
-                width: 18,
-                height: 18,
-                cursor: 'inherit',
-                accentColor: designSystem.colors.primary[500],
-              }}
-            />
-            <span
-              style={{
-                fontSize: getFontSize('body', isMobile),
-                fontWeight: 600,
-                color: isPublic
-                  ? designSystem.colors.text.primary
-                  : designSystem.colors.text.disabled,
-              }}
-            >
-              {isPublic ? '上架' : '未上架'}
-            </span>
-          </label>
-        )}
-
-        {(!mobileCreateWizard || createStep === 2) && (
-          <div
-            style={{
-              marginBottom: designSystem.spacing.lg,
-              paddingBottom: designSystem.spacing.lg,
-              borderBottom: `1px solid ${designSystem.colors.border.light}`,
             }}
           >
             <h3
               style={{
-                margin: `0 0 ${designSystem.spacing.sm} 0`,
+                margin: 0,
                 fontSize: getFontSize('h3', isMobile),
+                fontWeight: 700,
+                color: designSystem.colors.text.primary,
+                flexShrink: 0,
+              }}
+            >
+              商品資訊
+            </h3>
+            {!isNew && (
+              <>
+                {!identityOpen && (
+                  <span
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      color: designSystem.colors.text.secondary,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {formatProductTitle({
+                      brand,
+                      model,
+                      color,
+                      model_year: modelYear ? Number(modelYear) : null,
+                    }) ||
+                      getCategory(category)?.name ||
+                      '（未命名）'}
+                  </span>
+                )}
+                {identityOpen && <span style={{ flex: 1 }} />}
+                <span
+                  aria-hidden
+                  style={{
+                    fontSize: getFontSize('caption', isMobile),
+                    color: designSystem.colors.text.disabled,
+                    transform: identityOpen ? 'rotate(180deg)' : 'none',
+                  }}
+                >
+                  ▾
+                </span>
+              </>
+            )}
+          </div>
+          {(isNew || identityOpen) && (
+            <div style={{ display: 'grid', gap: 14, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
+              <div>
+                <label style={labelStyle}>類別 *</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  style={inputStyle}
+                  disabled={saving || readOnly}
+                >
+                  {Object.values(CATEGORY_SCHEMAS).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>品牌 *</label>
+                <ProductBrandSelector
+                  value={brand}
+                  onChange={setBrand}
+                  currentUserEmail={currentUserEmail}
+                  disabled={saving || readOnly}
+                  isMobile={isMobile}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>型號 *</label>
+                <input
+                  style={inputStyle}
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="例如：Signal Ladies"
+                  disabled={saving || readOnly}
+                  list="product-model-suggestions"
+                  autoComplete="off"
+                />
+                <datalist id="product-model-suggestions">
+                  {modelSuggestions.map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
+                {isNew && sameModelCandidates.length > 0 && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: 10,
+                      padding: 12,
+                      borderRadius: designSystem.borderRadius.md,
+                      border: `1px solid ${designSystem.colors.border.main}`,
+                      background: designSystem.colors.background.card,
+                      color: designSystem.colors.text.primary,
+                    }}
+                  >
+                    <div style={{ fontSize: getFontSize('bodySmall', isMobile), lineHeight: 1.5 }}>
+                      <strong>已有同型號商品</strong>
+                    </div>
+                    <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                      {sameModelCandidates.slice(0, 4).map((candidate) => (
+                        <div
+                          key={candidate.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 10,
+                            padding: 8,
+                            borderRadius: designSystem.borderRadius.sm,
+                            background: designSystem.colors.background.card,
+                          }}
+                        >
+                          <span style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
+                            {candidate.brand}{' '}
+                            {formatProductModelLine({
+                              model: candidate.model,
+                              color: candidate.color,
+                              model_year: candidate.modelYear,
+                            })}
+                            {candidate.variantCount != null ? ` · ${candidate.variantCount} 個 SKU` : ''}
+                          </span>
+                          {onOpenExistingProduct && (
+                            <Button
+                              variant="warning"
+                              size="small"
+                              data-track="product_create_open_existing"
+                              onClick={() => handleOpenExistingProduct(candidate.id)}
+                            >
+                              加入 SKU
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {identityNeedsDecision && (
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        data-track="product_create_confirm_separate"
+                        onClick={() => setConfirmedSeparateProduct(true)}
+                        style={{ marginTop: 10 }}
+                      >
+                        確認是新商品
+                      </Button>
+                    )}
+                    {confirmedSeparateProduct && (
+                      <div style={{ marginTop: 8, fontSize: getFontSize('caption', isMobile) }}>將建立新商品</div>
+                    )}
+                  </div>
+                )}
+                {isNew && sameModelCandidates.length === 0 && brand.trim() && identityCandidates.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      fontSize: getFontSize('caption', isMobile),
+                      color: designSystem.colors.text.secondary,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    此品牌已有：{' '}
+                    {identityCandidates.slice(0, 5).map((candidate, index) => (
+                      <span key={candidate.id}>
+                        {index > 0 ? '、' : ''}
+                        <button
+                          type="button"
+                          onClick={() => setModel(candidate.model)}
+                          style={{
+                            padding: 0,
+                            border: 'none',
+                            background: 'transparent',
+                            color: designSystem.colors.info[700],
+                            font: 'inherit',
+                            textDecoration: 'underline',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {candidate.model}
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label style={labelStyle}>顏色（選填）</label>
+                <input
+                  style={inputStyle}
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  placeholder="黑"
+                  disabled={saving || readOnly}
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>年份（選填）</label>
+                <NumericTextInput
+                  style={inputStyle}
+                  value={modelYear}
+                  onChange={(value) => setModelYear(value)}
+                  placeholder="2025"
+                  disabled={saving || readOnly}
+                />
+              </div>
+              {!mobileCreateWizard && (
+                <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+                  <label style={labelStyle}>內部備註</label>
+                  <input
+                    style={inputStyle}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="備註"
+                    disabled={saving || readOnly}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* SKU 列表 */}
+      {(showSkuCoreSection || showAdvancedSection) && (
+        <section style={sectionStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: getFontSize('h3', isMobile),
+                fontWeight: 700,
+                flex: 1,
                 color: designSystem.colors.text.primary,
               }}
             >
-              商品選項
+              {isVibesCustomOrder ? 'VIBES 客訂商品' : '規格與庫存'}
             </h3>
-            <ProductOptionsEditor
-              value={optionConfig}
-              onChange={setOptionConfig}
-              disabled={saving || readOnly}
-              isMobile={isMobile}
-              defaultVariantFields={getSkuFields(category)}
-              productId={productId}
-              onImageUpload={trackUpload}
-            />
+            <Badge variant="info" size="small">
+              {drafts.filter((d) => !d.pendingDelete).length}
+            </Badge>
           </div>
-        )}
 
-        {!readOnly && optionAxes.length > 0 && (
-          <div
-            style={{
-              display: 'grid',
-              gap: 8,
-              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr auto',
-              alignItems: 'end',
-              marginBottom: designSystem.spacing.lg,
-              padding: 12,
-              border: `1px solid ${designSystem.colors.border.light}`,
-              borderRadius: designSystem.borderRadius.sm,
-            }}
-          >
-            <label>
-              <span style={labelStyle}>批次條件</span>
-              <select
+          {mobileCreateWizard && createStep === 3 && (
+            <div style={{ marginBottom: designSystem.spacing.lg }}>
+              <label style={labelStyle}>內部備註</label>
+              <input
                 style={inputStyle}
-                value={batchAxisKey}
-                disabled={saving}
-                onChange={(event) => {
-                  setBatchAxisKey(event.target.value)
-                  setBatchAxisValue('')
-                }}
-              >
-                <option value="">選擇規格軸</option>
-                {optionAxes.map((axis) => (
-                  <option key={axis.key} value={axis.key}>{axis.label}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span style={labelStyle}>等於</span>
-              {selectedBatchAxisValues.length > 0 ? (
-                <select
-                  style={inputStyle}
-                  value={batchAxisValue}
-                  disabled={saving || !selectedBatchAxis}
-                  onChange={(event) => setBatchAxisValue(event.target.value)}
-                >
-                  <option value="">選擇值</option>
-                  {selectedBatchAxisValues.map((axisValue) => (
-                    <option key={axisValue} value={axisValue}>{axisValue}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  style={inputStyle}
-                  value={batchAxisValue}
-                  disabled={saving || !selectedBatchAxis}
-                  placeholder="輸入條件值"
-                  onChange={(event) => setBatchAxisValue(event.target.value)}
-                />
-              )}
-            </label>
-            <label>
-              <span style={labelStyle}>套用售價</span>
-              <NumericTextInput
-                variant="course"
-                value={batchPrice}
-                onChange={setBatchPrice}
-                placeholder="留空表待補"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="備註"
                 disabled={saving}
               />
-            </label>
-            <Button variant="outline" size="small" onClick={handleBatchApplyPrice} disabled={saving}>
-              批次套價
-            </Button>
-            {missingAxisCombinations.length > 0 && (
-              <div style={{ gridColumn: '1 / -1' }}>
-                <Button
-                  variant="outline"
-                  size="small"
-                  onClick={handleGenerateMissingAxisCombinations}
-                  disabled={saving}
-                >
-                  產生缺少的軸組合（{missingAxisCombinations.length}）
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        {visibleDrafts.map((d, idx) => (
-          <VariantBlock
-            key={d.clientKey}
-            index={idx}
-            draft={d}
-            brand={brand}
-            model={model}
-            categoryId={category}
-            schemaFields={resolvedSkuFields}
-            isMobile={isMobile}
-            focused={focusVariantId != null && d.id === focusVariantId}
-            disabled={saving || readOnly}
-            readOnly={readOnly}
-            onChange={(patch) => updateDraft(idx, patch)}
-            onAttributeChange={(key, val) => updateDraftAttribute(idx, key, val)}
-            onRemove={() => handleRemoveVariant(idx)}
-            onRestore={() => handleRestoreVariant(idx)}
-            onImageUpload={trackUpload}
-            showSkuCovers={isMultiColorProduct}
-            otherSkuCount={drafts.filter((x, i) => i !== idx && !x.pendingDelete).length}
-            applyingImages={applyingImagesIdx === idx}
-            imagesBusy={applyingImagesIdx != null || duplicating}
-            onApplyImagesToAllSizes={
-              isMultiColorProduct ? () => void handleApplyImagesToAllSizes(idx) : undefined
-            }
-            discountPresets={discountPresets}
-            onApplyDiscountToAllSizes={() => handleApplyDiscountToAllSizes(idx)}
-            labelCodeGenerating={labelCodeGeneratingIdx === idx}
-            onGenerateLabelCode={() => void handleGenerateLabelCode(idx)}
-            sectionMode={mobileCreateWizard
-              ? createStep === 2
-                ? 'core'
-                : 'advanced'
-              : 'all'}
-            expanded={mobileCreateWizard ? activeSkuIndex === idx : undefined}
-            onToggleExpanded={mobileCreateWizard
-              ? () => setActiveSkuIndex(current => current === idx ? null : idx)
-              : undefined}
-          />
-        ))}
+          {(!mobileCreateWizard || createStep === 3) && useProductLevelCovers && (
+            <div
+              style={{
+                marginBottom: designSystem.spacing.lg,
+                paddingBottom: designSystem.spacing.lg,
+                borderBottom: `1px solid ${designSystem.colors.border.light}`,
+              }}
+            >
+              <h3
+                style={{
+                  margin: `0 0 ${designSystem.spacing.sm} 0`,
+                  fontSize: getFontSize('h3', isMobile),
+                  fontWeight: 700,
+                  color: designSystem.colors.text.primary,
+                }}
+              >
+                商品封面
+              </h3>
+              <CoverImageEditor
+                images={productCoverImages}
+                entityId={productEntityId}
+                storageFolder="covers"
+                brand={brand}
+                model={model}
+                disabled={saving || readOnly}
+                onChange={setProductCoverImages}
+                onUpload={trackUpload}
+              />
+            </div>
+          )}
 
-        {!readOnly && (!mobileCreateWizard || createStep === 2) && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button variant="outline" size="small" data-track="product_sku_add" onClick={handleAddVariant} disabled={saving}>
-              + 新增規格
-            </Button>
-            {drafts.some((d) => !d.pendingDelete) && (
-              <span title="以最後一筆有效規格為範本（含封面與實品照，庫存歸 0）">
-                <Button
-                  variant="outline"
-                  size="small"
-                  data-track="product_sku_duplicate"
-                  onClick={() => void handleDuplicateLast()}
-                  disabled={saving || duplicating || applyingImagesIdx != null}
+          {(!mobileCreateWizard || createStep === 3) && isMultiColorProduct && (
+            <p
+              style={{
+                margin: `0 0 ${designSystem.spacing.md} 0`,
+                fontSize: getFontSize('caption', isMobile),
+                color: designSystem.colors.text.secondary,
+                lineHeight: 1.4,
+              }}
+            >
+              多色舊卡：封面在各規格
+            </p>
+          )}
+
+          {(!mobileCreateWizard || createStep === 3) && !isVibesCustomOrder && (
+            <div
+              style={{
+                marginBottom: designSystem.spacing.lg,
+                paddingBottom: designSystem.spacing.lg,
+                borderBottom: `1px solid ${designSystem.colors.border.light}`,
+              }}
+            >
+              <h3
+                style={{
+                  margin: `0 0 ${designSystem.spacing.sm} 0`,
+                  fontSize: getFontSize('h3', isMobile),
+                  fontWeight: 700,
+                  color: designSystem.colors.text.primary,
+                }}
+              >
+                尺寸表
+              </h3>
+              <SizeChartPicker
+                value={sizeChartId}
+                brand={brand}
+                currentUserEmail={currentUserEmail}
+                disabled={saving || readOnly}
+                onChange={setSizeChartId}
+              />
+              {!readOnly && (
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginTop: designSystem.spacing.sm,
+                    fontSize: getFontSize('bodySmall', isMobile),
+                    color: designSystem.colors.text.secondary,
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                  }}
                 >
-                  {duplicating ? '複製中…' : '⎘ 複製上一筆'}
-                </Button>
+                  <input
+                    type="checkbox"
+                    checked={applySizeChartToModel}
+                    onChange={(event) => setApplySizeChartToModel(event.target.checked)}
+                    disabled={saving}
+                  />
+                  同步套用到同年份、同型號的所有顏色
+                </label>
+              )}
+            </div>
+          )}
+
+          {(!mobileCreateWizard || createStep === 3) && (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginBottom: designSystem.spacing.lg,
+                padding: isMobile ? '12px 0' : '4px 0',
+                cursor: readOnly || saving ? 'not-allowed' : 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                disabled={saving || readOnly}
+                style={{
+                  width: 18,
+                  height: 18,
+                  cursor: 'inherit',
+                  accentColor: designSystem.colors.primary[500],
+                }}
+              />
+              <span
+                style={{
+                  fontSize: getFontSize('body', isMobile),
+                  fontWeight: 600,
+                  color: isPublic ? designSystem.colors.text.primary : designSystem.colors.text.disabled,
+                }}
+              >
+                {isPublic ? '上架' : '未上架'}
               </span>
-            )}
-          </div>
-        )}
-      </section>}
+            </label>
+          )}
+
+          {(!mobileCreateWizard || createStep === 2) && (
+            <div
+              style={{
+                marginBottom: designSystem.spacing.lg,
+                paddingBottom: designSystem.spacing.lg,
+                borderBottom: `1px solid ${designSystem.colors.border.light}`,
+              }}
+            >
+              <h3
+                style={{
+                  margin: `0 0 ${designSystem.spacing.sm} 0`,
+                  fontSize: getFontSize('h3', isMobile),
+                  color: designSystem.colors.text.primary,
+                }}
+              >
+                {isVibesCustomOrder ? 'VIBES 客訂設定' : '商品選項'}
+              </h3>
+              {isVibesCustomOrder && optionConfig ? (
+                <>
+                  <VibesCustomOrderEditor
+                    value={optionConfig}
+                    onChange={handleVibesConfigChange}
+                    specs={visibleDrafts.map((draft, index) => ({
+                      index,
+                      key: draft.clientKey,
+                      size: draft.attributes.size ?? '',
+                      width: draft.attributes.width ?? '',
+                      thickness: draft.attributes.thickness ?? '',
+                      volume: draft.attributes.volume ?? '',
+                      pendingDelete: Boolean(draft.pendingDelete),
+                    }))}
+                    onSpecChange={handleVibesSpecChange}
+                    onAddSpec={handleAddVibesSpec}
+                    onRemoveSpec={handleRemoveVibesSpec}
+                    onRestoreSpec={handleRestoreVibesSpec}
+                    disabled={saving || readOnly}
+                    isMobile={isMobile}
+                    productId={productId}
+                    onImageUpload={trackUpload}
+                  />
+                  <details style={{ marginTop: 16 }}>
+                    <summary style={{ cursor: 'pointer', fontSize: 13, color: designSystem.colors.text.secondary }}>
+                      進階商品選項
+                    </summary>
+                    <div style={{ marginTop: 12 }}>
+                      <ProductOptionsEditor
+                        value={optionConfig}
+                        onChange={setOptionConfig}
+                        disabled={saving || readOnly}
+                        isMobile={isMobile}
+                        defaultVariantFields={getSkuFields(category)}
+                        productId={productId}
+                        onImageUpload={trackUpload}
+                      />
+                    </div>
+                  </details>
+                </>
+              ) : (
+                <ProductOptionsEditor
+                  value={optionConfig}
+                  onChange={setOptionConfig}
+                  disabled={saving || readOnly}
+                  isMobile={isMobile}
+                  defaultVariantFields={getSkuFields(category)}
+                  productId={productId}
+                  onImageUpload={trackUpload}
+                />
+              )}
+            </div>
+          )}
+
+          <details open={!isVibesCustomOrder}>
+            <summary
+              style={{
+                display: isVibesCustomOrder ? 'list-item' : 'none',
+                marginBottom: 12,
+                cursor: 'pointer',
+                fontSize: 13,
+                color: designSystem.colors.text.secondary,
+              }}
+            >
+              進階 SKU、庫存與折扣設定
+            </summary>
+            <div>
+              {!readOnly && optionAxes.length > 0 && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 8,
+                    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr auto',
+                    alignItems: 'end',
+                    marginBottom: designSystem.spacing.lg,
+                    padding: 12,
+                    border: `1px solid ${designSystem.colors.border.light}`,
+                    borderRadius: designSystem.borderRadius.sm,
+                  }}
+                >
+                  <label>
+                    <span style={labelStyle}>批次條件</span>
+                    <select
+                      style={inputStyle}
+                      value={batchAxisKey}
+                      disabled={saving}
+                      onChange={(event) => {
+                        setBatchAxisKey(event.target.value)
+                        setBatchAxisValue('')
+                      }}
+                    >
+                      <option value="">選擇規格軸</option>
+                      {optionAxes.map((axis) => (
+                        <option key={axis.key} value={axis.key}>
+                          {axis.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span style={labelStyle}>等於</span>
+                    {selectedBatchAxisValues.length > 0 ? (
+                      <select
+                        style={inputStyle}
+                        value={batchAxisValue}
+                        disabled={saving || !selectedBatchAxis}
+                        onChange={(event) => setBatchAxisValue(event.target.value)}
+                      >
+                        <option value="">選擇值</option>
+                        {selectedBatchAxisValues.map((axisValue) => (
+                          <option key={axisValue} value={axisValue}>
+                            {axisValue}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        style={inputStyle}
+                        value={batchAxisValue}
+                        disabled={saving || !selectedBatchAxis}
+                        placeholder="輸入條件值"
+                        onChange={(event) => setBatchAxisValue(event.target.value)}
+                      />
+                    )}
+                  </label>
+                  <label>
+                    <span style={labelStyle}>套用售價</span>
+                    <NumericTextInput
+                      variant="course"
+                      value={batchPrice}
+                      onChange={setBatchPrice}
+                      placeholder="留空表待補"
+                      disabled={saving}
+                    />
+                  </label>
+                  <Button variant="outline" size="small" onClick={handleBatchApplyPrice} disabled={saving}>
+                    批次套價
+                  </Button>
+                  {missingAxisCombinations.length > 0 && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <Button
+                        variant="outline"
+                        size="small"
+                        onClick={handleGenerateMissingAxisCombinations}
+                        disabled={saving}
+                      >
+                        產生缺少的軸組合（{missingAxisCombinations.length}）
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {visibleDrafts.map((d, idx) => (
+                <VariantBlock
+                  key={d.clientKey}
+                  index={idx}
+                  draft={d}
+                  brand={brand}
+                  model={model}
+                  categoryId={category}
+                  schemaFields={resolvedSkuFields}
+                  isMobile={isMobile}
+                  focused={focusVariantId != null && d.id === focusVariantId}
+                  disabled={saving || readOnly}
+                  readOnly={readOnly}
+                  onChange={(patch) => updateDraft(idx, patch)}
+                  onAttributeChange={(key, val) => updateDraftAttribute(idx, key, val)}
+                  onRemove={() => handleRemoveVariant(idx)}
+                  onRestore={() => handleRestoreVariant(idx)}
+                  onImageUpload={trackUpload}
+                  showSkuCovers={isMultiColorProduct}
+                  otherSkuCount={drafts.filter((x, i) => i !== idx && !x.pendingDelete).length}
+                  applyingImages={applyingImagesIdx === idx}
+                  imagesBusy={applyingImagesIdx != null || duplicating}
+                  onApplyImagesToAllSizes={
+                    isMultiColorProduct ? () => void handleApplyImagesToAllSizes(idx) : undefined
+                  }
+                  discountPresets={discountPresets}
+                  onApplyDiscountToAllSizes={() => handleApplyDiscountToAllSizes(idx)}
+                  labelCodeGenerating={labelCodeGeneratingIdx === idx}
+                  onGenerateLabelCode={() => void handleGenerateLabelCode(idx)}
+                  sectionMode={mobileCreateWizard ? (createStep === 2 ? 'core' : 'advanced') : 'all'}
+                  expanded={mobileCreateWizard ? activeSkuIndex === idx : undefined}
+                  onToggleExpanded={
+                    mobileCreateWizard
+                      ? () => setActiveSkuIndex((current) => (current === idx ? null : idx))
+                      : undefined
+                  }
+                />
+              ))}
+
+              {!readOnly && (!mobileCreateWizard || createStep === 2) && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outline"
+                    size="small"
+                    data-track="product_sku_add"
+                    onClick={handleAddVariant}
+                    disabled={saving}
+                  >
+                    + 新增規格
+                  </Button>
+                  {drafts.some((d) => !d.pendingDelete) && (
+                    <span title="以最後一筆有效規格為範本（含封面與實品照，庫存歸 0）">
+                      <Button
+                        variant="outline"
+                        size="small"
+                        data-track="product_sku_duplicate"
+                        onClick={() => void handleDuplicateLast()}
+                        disabled={saving || duplicating || applyingImagesIdx != null}
+                      >
+                        {duplicating ? '複製中…' : '⎘ 複製上一筆'}
+                      </Button>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </details>
+        </section>
+      )}
 
       {/* 危險區（編輯模式才有；唯讀模式隱藏） */}
       {!isNew && !readOnly && (
@@ -1868,7 +2002,13 @@ export function ProductEditView({
           >
             刪除
           </h3>
-          <Button variant="danger" size="small" data-track="product_edit_delete_open" onClick={() => setConfirmDelete(true)} disabled={saving}>
+          <Button
+            variant="danger"
+            size="small"
+            data-track="product_edit_delete_open"
+            onClick={() => setConfirmDelete(true)}
+            disabled={saving}
+          >
             刪除整個商品
           </Button>
         </section>
@@ -1909,9 +2049,7 @@ export function ProductEditView({
       <div
         ref={mobileScrollRef}
         style={{
-          paddingBottom: readOnly
-            ? 24
-            : 'calc(88px + env(safe-area-inset-bottom))',
+          paddingBottom: readOnly ? 24 : 'calc(88px + env(safe-area-inset-bottom))',
         }}
       >
         {mainContent}
@@ -2091,20 +2229,26 @@ function VariantBlock({
             const hasStock = digits !== '' && Number(digits) > 0
             onChange({
               stock: digits,
-              ...(hasStock && draft.saleMode === 'pre_order'
-                ? { saleMode: 'standard', pre_order_until: null }
-                : {}),
+              ...(hasStock && draft.saleMode === 'pre_order' ? { saleMode: 'standard', pre_order_until: null } : {}),
             })
           }}
         />
-        <span style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}>
+        <span
+          style={{ fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, flexShrink: 0 }}
+        >
           件
         </span>
       </div>
       {draft.reserved_qty > 0 && (
-        <p style={{ fontSize: getFontSize('caption', isMobile), color: designSystem.colors.secondary[700], margin: '4px 0 0' }}>
-          待結帳保留 {draft.reserved_qty} 件 · 可售現貨{' '}
-          {Math.max(0, (Number(draft.stock) || 0) - draft.reserved_qty)} 件
+        <p
+          style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.secondary[700],
+            margin: '4px 0 0',
+          }}
+        >
+          待結帳保留 {draft.reserved_qty} 件 · 可售現貨 {Math.max(0, (Number(draft.stock) || 0) - draft.reserved_qty)}{' '}
+          件
         </p>
       )}
       {draft.last_stock_in_at && (
@@ -2141,38 +2285,38 @@ function VariantBlock({
           }}
         >
           <option value="standard">一般</option>
-          <option value="pre_order" disabled={stockNum > 0}>預購（庫存為 0 時可選）</option>
+          <option value="pre_order" disabled={stockNum > 0}>
+            預購（庫存為 0 時可選）
+          </option>
           <option value="custom_order">客訂</option>
         </select>
         <ShopStatusPill status={shopStatus} isMobile={isMobile} />
       </div>
       {draft.saleMode === 'pre_order' && (
-          <label
+        <label
+          style={{
+            display: 'block',
+            marginTop: 8,
+            fontSize: getFontSize('caption', isMobile),
+            color: designSystem.colors.text.secondary,
+          }}
+        >
+          到期日
+          <input
+            type="date"
+            value={draft.pre_order_until ?? ''}
+            disabled={disabled || draft.pendingDelete}
+            onChange={(e) => onChange({ pre_order_until: e.target.value.trim() || null })}
             style={{
-              display: 'block',
-              marginTop: 8,
-              fontSize: getFontSize('caption', isMobile),
-              color: designSystem.colors.text.secondary,
+              ...inputStyle,
+              marginTop: 4,
+              minHeight: 44,
+              fontSize: 16,
+              width: '100%',
+              boxSizing: 'border-box',
             }}
-          >
-            到期日
-            <input
-              type="date"
-              value={draft.pre_order_until ?? ''}
-              disabled={disabled || draft.pendingDelete}
-              onChange={(e) =>
-                onChange({ pre_order_until: e.target.value.trim() || null })
-              }
-              style={{
-                ...inputStyle,
-                marginTop: 4,
-                minHeight: 44,
-                fontSize: 16,
-                width: '100%',
-                boxSizing: 'border-box',
-              }}
-            />
-          </label>
+          />
+        </label>
       )}
     </div>
   )
@@ -2182,11 +2326,7 @@ function VariantBlock({
       style={{
         display: 'grid',
         gap: 8,
-        gridTemplateColumns: isMobile
-          ? sectionMode === 'core'
-            ? '1fr'
-            : '1fr 1fr'
-          : 'repeat(3, 1fr)',
+        gridTemplateColumns: isMobile ? (sectionMode === 'core' ? '1fr' : '1fr 1fr') : 'repeat(3, 1fr)',
       }}
     >
       <div style={{ gridColumn: isMobile && sectionMode !== 'core' ? '1 / -1' : 'auto' }}>
@@ -2210,9 +2350,7 @@ function VariantBlock({
               style={inputStyle}
               value={
                 f.key === 'gender'
-                  ? (normalizeGenderValue(draft.attributes[f.key]) ??
-                    draft.attributes[f.key] ??
-                    '')
+                  ? (normalizeGenderValue(draft.attributes[f.key]) ?? draft.attributes[f.key] ?? '')
                   : (draft.attributes[f.key] ?? '')
               }
               onChange={(e) => onAttributeChange(f.key, e.target.value)}
@@ -2246,9 +2384,7 @@ function VariantBlock({
       stock: Number(draft.stock) || 0,
       availability: deriveVariantAvailability(Number(draft.stock) || 0, draft.saleMode),
       pre_order_until: draft.pre_order_until,
-      attributes: draft.preorderDiscountEligible
-        ? {}
-        : { [PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE]: 0 },
+      attributes: draft.preorderDiscountEligible ? {} : { [PREORDER_DISCOUNT_ELIGIBLE_ATTRIBUTE]: 0 },
     },
     discountPresets,
   )
@@ -2332,74 +2468,70 @@ function VariantBlock({
 
   const inventoryFieldsGrid = (
     <>
-    <div
-      style={{
-        display: 'grid',
-        gap: 8,
-        gridTemplateColumns: isMobile
-          ? sectionMode === 'core'
-            ? '1fr'
-            : '1fr 1fr'
-          : 'repeat(3, 1fr)',
-      }}
-    >
-      {isMobile ? (
-        <>
-          {saleModeField}
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label style={labelStyle}>售價</label>
-            <NumericTextInput
-              variant="course"
-              value={draft.price}
-              onChange={(price) => onChange({ price })}
-              placeholder="待補"
-              disabled={disabled || draft.pendingDelete}
-            />
-          </div>
-          {isEsSeriesCategory(categoryId) && (
+      <div
+        style={{
+          display: 'grid',
+          gap: 8,
+          gridTemplateColumns: isMobile ? (sectionMode === 'core' ? '1fr' : '1fr 1fr') : 'repeat(3, 1fr)',
+        }}
+      >
+        {isMobile ? (
+          <>
+            {saleModeField}
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>會員價</label>
+              <label style={labelStyle}>售價</label>
               <NumericTextInput
                 variant="course"
-                value={draft.member_price}
-                onChange={(member_price) => onChange({ member_price })}
-                placeholder="選填"
+                value={draft.price}
+                onChange={(price) => onChange({ price })}
+                placeholder="待補"
                 disabled={disabled || draft.pendingDelete}
               />
             </div>
-          )}
-          {stockField}
-        </>
-      ) : (
-        <>
-          {stockField}
-          {saleModeField}
-          <div>
-            <label style={labelStyle}>售價</label>
-            <NumericTextInput
-              variant="course"
-              value={draft.price}
-              onChange={(price) => onChange({ price })}
-              placeholder="待補"
-              disabled={disabled || draft.pendingDelete}
-            />
-          </div>
-          {isEsSeriesCategory(categoryId) && (
+            {isEsSeriesCategory(categoryId) && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>會員價</label>
+                <NumericTextInput
+                  variant="course"
+                  value={draft.member_price}
+                  onChange={(member_price) => onChange({ member_price })}
+                  placeholder="選填"
+                  disabled={disabled || draft.pendingDelete}
+                />
+              </div>
+            )}
+            {stockField}
+          </>
+        ) : (
+          <>
+            {stockField}
+            {saleModeField}
             <div>
-              <label style={labelStyle}>會員價</label>
+              <label style={labelStyle}>售價</label>
               <NumericTextInput
                 variant="course"
-                value={draft.member_price}
-                onChange={(member_price) => onChange({ member_price })}
-                placeholder="選填"
+                value={draft.price}
+                onChange={(price) => onChange({ price })}
+                placeholder="待補"
                 disabled={disabled || draft.pendingDelete}
               />
             </div>
-          )}
-        </>
-      )}
-    </div>
-    {discountField}
+            {isEsSeriesCategory(categoryId) && (
+              <div>
+                <label style={labelStyle}>會員價</label>
+                <NumericTextInput
+                  variant="course"
+                  value={draft.member_price}
+                  onChange={(member_price) => onChange({ member_price })}
+                  placeholder="選填"
+                  disabled={disabled || draft.pendingDelete}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      {discountField}
     </>
   )
 
@@ -2516,12 +2648,7 @@ function VariantBlock({
             type="button"
             data-track="product_label_code_generate"
             onClick={() => onGenerateLabelCode?.()}
-            disabled={
-              disabled ||
-              draft.pendingDelete ||
-              labelCodeGenerating ||
-              !categoryId
-            }
+            disabled={disabled || draft.pendingDelete || labelCodeGenerating || !categoryId}
             title="依 ES + 品牌 + 類別 自動產生流水號代碼"
             style={{
               flexShrink: 0,
@@ -2533,14 +2660,8 @@ function VariantBlock({
               fontSize: getFontSize('button', isMobile),
               fontWeight: 600,
               whiteSpace: 'nowrap',
-              cursor:
-                disabled || draft.pendingDelete || labelCodeGenerating || !categoryId
-                  ? 'not-allowed'
-                  : 'pointer',
-              opacity:
-                disabled || draft.pendingDelete || labelCodeGenerating || !categoryId
-                  ? 0.5
-                  : 1,
+              cursor: disabled || draft.pendingDelete || labelCodeGenerating || !categoryId ? 'not-allowed' : 'pointer',
+              opacity: disabled || draft.pendingDelete || labelCodeGenerating || !categoryId ? 0.5 : 1,
             }}
           >
             {labelCodeGenerating ? '產生中…' : '自動產生'}
@@ -2550,7 +2671,10 @@ function VariantBlock({
       <div style={{ marginTop: 10 }}>
         <ProductLabelPreview
           labelCode={draft.label_code}
-          productName={[brand, model].map((s) => s.trim()).filter(Boolean).join(' ')}
+          productName={[brand, model]
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .join(' ')}
           price={draft.price}
           size={labelSizeDisplay}
           isMobile={isMobile}
@@ -2666,7 +2790,9 @@ function VariantBlock({
           </div>
         )}
       </div>
-      <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.info[700], flexShrink: 0 }}>
+      <span
+        style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.info[700], flexShrink: 0 }}
+      >
         展開 ▾
       </span>
     </button>
@@ -2737,7 +2863,13 @@ function VariantBlock({
         )}
         {readOnly ? null : draft.pendingDelete ? (
           <span onClick={stop}>
-            <Button variant="outline" size="small" data-track="product_sku_restore" onClick={onRestore} disabled={disabled}>
+            <Button
+              variant="outline"
+              size="small"
+              data-track="product_sku_restore"
+              onClick={onRestore}
+              disabled={disabled}
+            >
               復原
             </Button>
           </span>

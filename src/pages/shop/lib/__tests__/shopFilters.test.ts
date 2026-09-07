@@ -21,10 +21,7 @@ import {
   isShopCatalogHome,
 } from '../shopFilters'
 
-function product(
-  category: string,
-  overrides: Partial<ProductWithVariants> = {},
-): ProductWithVariants {
+function product(category: string, overrides: Partial<ProductWithVariants> = {}): ProductWithVariants {
   return {
     id: category + Math.random(),
     category,
@@ -50,11 +47,7 @@ function product(
   } as ProductWithVariants
 }
 
-function sizedProduct(
-  category: string,
-  brand: string,
-  sizes: string[],
-): ProductWithVariants {
+function sizedProduct(category: string, brand: string, sizes: string[]): ProductWithVariants {
   return product(category, {
     brand,
     variants: sizes.map((size, i) => ({
@@ -133,15 +126,11 @@ describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
     const parsed = parseFiltersFromSearchParams(new URLSearchParams('group=ES'))
     expect(parsed.topLevel).toBe('ES')
     expect(parsed.subCat).toBe(ALL_SUBCATS)
-    expect(
-      parseFiltersFromSearchParams(new URLSearchParams('group=ES+SERIES')).topLevel,
-    ).toBe('ES')
+    expect(parseFiltersFromSearchParams(new URLSearchParams('group=ES+SERIES')).topLevel).toBe('ES')
   })
 
   it('round-trips wakeboarding group filter', () => {
-    const built = buildShopSearchParams(
-      { ...defaultFilterState(), topLevel: 'Wakeboarding', subCat: ALL_SUBCATS },
-    )
+    const built = buildShopSearchParams({ ...defaultFilterState(), topLevel: 'Wakeboarding', subCat: ALL_SUBCATS })
     expect(built.get('group')).toBe('Wakeboarding')
     expect(built.get('cat')).toBeNull()
 
@@ -167,9 +156,7 @@ describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
       preOrderOnly: true,
     })
     expect(built.toString()).toBe('custom=1')
-    const parsed = parseFiltersFromSearchParams(
-      new URLSearchParams('custom=1&preorder=1&stock=1&sale=1'),
-    )
+    const parsed = parseFiltersFromSearchParams(new URLSearchParams('custom=1&preorder=1&stock=1&sale=1'))
     expect(parsed.customOrderOnly).toBe(true)
     expect(parsed.preOrderOnly).toBe(false)
     expect(parsed.inStockOnly).toBe(false)
@@ -214,20 +201,14 @@ describe('parseFiltersFromSearchParams + buildShopSearchParams', () => {
   })
 
   it('prefers pre-order when both flags appear in the URL', () => {
-    const parsed = parseFiltersFromSearchParams(
-      new URLSearchParams('preorder=1&stock=1'),
-    )
+    const parsed = parseFiltersFromSearchParams(new URLSearchParams('preorder=1&stock=1'))
     expect(parsed.preOrderOnly).toBe(true)
     expect(parsed.inStockOnly).toBe(false)
   })
 })
 
 describe('filterAndSortProducts', () => {
-  const base = [
-    product('wb_board'),
-    product('lifejacket'),
-    product('ws_board'),
-  ]
+  const base = [product('wb_board'), product('lifejacket'), product('ws_board')]
 
   it('shows only wakeboarding products when group is Wakeboarding', () => {
     const filtered = filterAndSortProducts(base, {
@@ -380,10 +361,9 @@ describe('filterAndSortProducts', () => {
     }
 
     expect(
-      filterAndSortProducts(
-        [preOrder('low', 2_000), preOrder('high', 8_000), preOrder('mid', 5_000)],
-        filters,
-      ).map((p) => p.id),
+      filterAndSortProducts([preOrder('low', 2_000), preOrder('high', 8_000), preOrder('mid', 5_000)], filters).map(
+        (p) => p.id,
+      ),
     ).toEqual(['high', 'mid', 'low'])
   })
 })
@@ -400,9 +380,7 @@ describe('brand facets', () => {
       ...defaultFilterState(),
       topLevel: 'Wakeboarding' as const,
     }
-    const counts = computeBrandCounts(
-      filterProductsForBrandFacets(base, filters),
-    )
+    const counts = computeBrandCounts(filterProductsForBrandFacets(base, filters))
     expect([...counts.keys()].sort()).toEqual(['Hyperlite', 'Ronix'])
   })
 
@@ -428,27 +406,13 @@ describe('brand facets', () => {
 describe('isShopCatalogHome', () => {
   it('is true only on unfiltered catalog view', () => {
     expect(isShopCatalogHome(defaultFilterState())).toBe(true)
-    expect(
-      isShopCatalogHome({ ...defaultFilterState(), topLevel: 'Wakeboarding' }),
-    ).toBe(false)
-    expect(
-      isShopCatalogHome({ ...defaultFilterState(), preOrderOnly: true }),
-    ).toBe(false)
-    expect(
-      isShopCatalogHome({ ...defaultFilterState(), customOrderOnly: true }),
-    ).toBe(false)
-    expect(
-      isShopCatalogHome({ ...defaultFilterState(), inStockOnly: true }),
-    ).toBe(false)
-    expect(
-      isShopCatalogHome({ ...defaultFilterState(), saleOnly: true }),
-    ).toBe(false)
-    expect(
-      isShopCatalogHome({ ...defaultFilterState(), search: 'ronix' }),
-    ).toBe(false)
-    expect(
-      isShopCatalogHome({ ...defaultFilterState(), sizes: ['26'] }),
-    ).toBe(false)
+    expect(isShopCatalogHome({ ...defaultFilterState(), topLevel: 'Wakeboarding' })).toBe(false)
+    expect(isShopCatalogHome({ ...defaultFilterState(), preOrderOnly: true })).toBe(false)
+    expect(isShopCatalogHome({ ...defaultFilterState(), customOrderOnly: true })).toBe(false)
+    expect(isShopCatalogHome({ ...defaultFilterState(), inStockOnly: true })).toBe(false)
+    expect(isShopCatalogHome({ ...defaultFilterState(), saleOnly: true })).toBe(false)
+    expect(isShopCatalogHome({ ...defaultFilterState(), search: 'ronix' })).toBe(false)
+    expect(isShopCatalogHome({ ...defaultFilterState(), sizes: ['26'] })).toBe(false)
   })
 })
 
@@ -465,9 +429,7 @@ describe('getCollectionParentGroup', () => {
 describe('ES SERIES group', () => {
   it('shows ES and keeps Essentials as its own label', () => {
     expect(getHeroTitle({ ...defaultFilterState(), topLevel: 'ES' })).toBe('ES SERIES')
-    expect(getHeroTitle({ ...defaultFilterState(), topLevel: 'Essentials' })).toBe(
-      'Essentials',
-    )
+    expect(getHeroTitle({ ...defaultFilterState(), topLevel: 'Essentials' })).toBe('Essentials')
     expect(
       getShopFilterContextLabel({
         ...defaultFilterState(),
@@ -533,10 +495,8 @@ describe('ES SERIES group', () => {
       ],
     })
     expect(
-      filterAndSortProducts(
-        [taggedEs, vest],
-        { ...defaultFilterState(), saleOnly: true },
-        [{
+      filterAndSortProducts([taggedEs, vest], { ...defaultFilterState(), saleOnly: true }, [
+        {
           id: 'red',
           kind: 'tag',
           name: '紅標',
@@ -544,8 +504,8 @@ describe('ES SERIES group', () => {
           percent: 60,
           is_active: true,
           sort_order: 1,
-        }],
-      ).map((p) => p.category),
+        },
+      ]).map((p) => p.category),
     ).toEqual(['es_series'])
   })
 
@@ -557,6 +517,12 @@ describe('ES SERIES group', () => {
       topLevel: 'Essentials',
     })
     expect(filtered.map((p) => p.category)).toEqual(['lifejacket'])
+  })
+})
+
+describe('custom-order heading', () => {
+  it('uses the VIBES collection title', () => {
+    expect(getHeroTitle({ ...defaultFilterState(), customOrderOnly: true })).toBe('VIBES - Custom Order')
   })
 })
 
@@ -591,9 +557,7 @@ describe('size facets', () => {
       topLevel: 'Wakeboarding' as const,
       subCat: 'wb_boots',
     }
-    const counts = computeSizeCounts(
-      filterProductsForSizeFacets([boots26, boots28, vest], filters),
-    )
+    const counts = computeSizeCounts(filterProductsForSizeFacets([boots26, boots28, vest], filters))
     expect([...counts.keys()].sort()).toEqual(['26', '27', '28'])
   })
 
@@ -602,9 +566,7 @@ describe('size facets', () => {
       ...defaultFilterState(),
       topLevel: 'Wakeboarding' as const,
     }
-    expect(
-      filterProductsForSizeFacets([boots26, vest], filters),
-    ).toEqual([])
+    expect(filterProductsForSizeFacets([boots26, vest], filters)).toEqual([])
   })
 
   it('drops selected sizes that are unavailable in the new category', () => {
@@ -631,4 +593,3 @@ describe('size facets', () => {
     expect(formatSizeFacetLabel('lifejacket', 'M')).toBe('M')
   })
 })
-
