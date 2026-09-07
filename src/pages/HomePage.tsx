@@ -18,7 +18,7 @@ import { Footer } from '../components/Footer'
 import { ExternalNavLink } from '../components/ExternalNavLink'
 import { PageShell } from '../components/PageShell'
 import { designSystem, getFontSize } from '../styles/designSystem'
-import { BOAT_OPERATIONS_ALLOWED_EMAILS } from '../utils/boatOperationsAccess'
+// import { BOAT_OPERATIONS_ALLOWED_EMAILS } from '../utils/boatOperationsAccess'
 import { useState, useEffect, type CSSProperties } from 'react'
 
 /** 首頁導航 track id（去掉 query，避免 nav_coach-time-off?month=… 每次月份不同） */
@@ -241,12 +241,13 @@ export function HomePage() {
 
   /** 小胖橫線下方：船艇營運工具 */
   const menuItemsBelowDivider: HomeMenuItem[] = [
-    {
-      title: '區間時數合計',
-      icon: '⏱️',
-      link: '/boat-usage-hours',
-      visibleForEmails: BOAT_OPERATIONS_ALLOWED_EMAILS,
-    },
+    // 暫時隱藏，保留功能供日後重新啟用。
+    // {
+    //   title: '區間時數合計',
+    //   icon: '⏱️',
+    //   link: '/boat-usage-hours',
+    //   visibleForEmails: BOAT_OPERATIONS_ALLOWED_EMAILS,
+    // },
   ]
 
   const filterVisibleMenuItems = (items: HomeMenuItem[]) =>
