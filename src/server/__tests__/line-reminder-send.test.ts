@@ -218,6 +218,36 @@ describe('manual LINE reminder send API', () => {
     expect(lineFetch).not.toHaveBeenCalled()
   })
 
+  it('returns daily LINE Push counts from the configured start date', async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [
+        { sent_date: '2026-08-28', push_count: 3 },
+        { sent_date: '2026-08-29', push_count: '4' },
+      ],
+      error: null,
+    })
+    const response = responseMock()
+
+    await handler(
+      request({ action: 'load_push_stats', startDate: '2026-08-28' }),
+      response as unknown as VercelResponse,
+    )
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'get_line_reminder_push_daily_stats',
+      { p_start_date: '2026-08-28' },
+    )
+    expect(response.status).toHaveBeenCalledWith(200)
+    expect(response.json).toHaveBeenCalledWith({
+      startDate: '2026-08-28',
+      daily: [
+        { date: '2026-08-28', count: 3 },
+        { date: '2026-08-29', count: 4 },
+      ],
+      total: 7,
+    })
+  })
+
   it('returns only scoped mappings to view-only reminder users', async () => {
     setUser('viewer@example.com')
     queryResults.view_users = { data: [{ email: 'viewer@example.com' }], error: null }

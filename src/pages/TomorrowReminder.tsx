@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../contexts/AuthContext'
 import { PageHeader } from '../components/PageHeader'
@@ -67,7 +67,13 @@ type PushResult = {
   sentAt?: string
 }
 
+type PushDailyStat = {
+  date: string
+  count: number
+}
+
 const FISH_REMINDER_COPY_RECIPIENT = '澤澤'
+const PUSH_STATS_START_DATE = '2026-08-28'
 
 function formatSentTime(value?: string): string | null {
   if (!value) return null
@@ -144,6 +150,9 @@ export function TomorrowReminder() {
   const [pushStatusByMemberId, setPushStatusByMemberId] = useState<
     Record<string, { status: 'sent' | 'error'; error?: string; sentAt?: string }>
   >({})
+  const [pushStats, setPushStats] = useState<PushDailyStat[]>([])
+  const [pushStatsLoading, setPushStatsLoading] = useState(true)
+  const [pushStatsError, setPushStatsError] = useState(false)
   const [sending, setSending] = useState(false)
 
   const {
@@ -159,6 +168,54 @@ export function TomorrowReminder() {
     setEnglishWeatherWarning,
     saveStatus: templateSaveStatus,
   } = useTomorrowReminderTemplates(user?.id)
+
+  const fetchPushStats = useCallback(async () => {
+    setPushStatsLoading(true)
+    setPushStatsError(false)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (!token) throw new Error('登入已失效')
+
+      const response = await fetch('/api/line-reminder-send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'load_push_stats',
+          startDate: PUSH_STATS_START_DATE,
+        }),
+      })
+      const body = await response.json().catch(() => null) as
+        | { daily?: PushDailyStat[]; error?: string }
+        | null
+      if (!response.ok || !Array.isArray(body?.daily)) {
+        throw new Error(body?.error || '無法載入 LINE Push 統計')
+      }
+      setPushStats(
+        body.daily.filter(
+          (row) =>
+            typeof row?.date === 'string' &&
+            typeof row?.count === 'number' &&
+            Number.isFinite(row.count),
+        ),
+      )
+    } catch (error) {
+      console.error(
+        'Unable to load LINE Push stats:',
+        error instanceof Error ? error.message : error,
+      )
+      setPushStatsError(true)
+    } finally {
+      setPushStatsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void fetchPushStats()
+  }, [fetchPushStats])
 
   useLayoutEffect(() => {
     const fitTextareaToContent = (textarea: HTMLTextAreaElement | null) => {
@@ -647,6 +704,7 @@ export function TomorrowReminder() {
       } else {
         toast.success(`已傳送 ${successCount} 位聯絡人`)
       }
+      void fetchPushStats()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'LINE 傳送失敗'
       toast.error(message)
@@ -1006,6 +1064,12 @@ export function TomorrowReminder() {
     )
   }
 
+  const currentMonth = getVenueDateString().slice(0, 7)
+  const currentMonthPushCount = pushStats
+    .filter((stat) => stat.date.startsWith(currentMonth))
+    .reduce((sum, stat) => sum + stat.count, 0)
+  const totalPushCount = pushStats.reduce((sum, stat) => sum + stat.count, 0)
+
   return (
     <PageShell variant="focused" mobilePadding="12px" desktopPadding="20px">
         <PageHeader title="明日提醒" user={user} />
@@ -1052,6 +1116,84 @@ export function TomorrowReminder() {
               載入中...
             </div>
           )}
+        </div>
+
+        <div style={pageCardStyle}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: designSystem.spacing.md,
+          }}>
+            <h2 style={{ ...sectionTitleStyle, marginBottom: 0 }}>LINE Push 則數</h2>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{
+                color: designSystem.colors.text.primary,
+                fontSize: getFontSize('h2', isMobile),
+                fontWeight: 700,
+                lineHeight: 1.2,
+              }}>
+                {pushStatsLoading ? '—' : currentMonthPushCount}
+                <span style={{
+                  marginLeft: 4,
+                  fontSize: getFontSize('caption', isMobile),
+                  fontWeight: 500,
+                  color: designSystem.colors.text.secondary,
+                }}>
+                  則
+                </span>
+              </div>
+              <div style={{
+                marginTop: 2,
+                color: designSystem.colors.text.secondary,
+                fontSize: getFontSize('caption', isMobile),
+              }}>
+                本月已傳送
+              </div>
+            </div>
+          </div>
+
+          <details style={{ marginTop: designSystem.spacing.sm }}>
+            <summary style={{
+              cursor: 'pointer',
+              color: designSystem.colors.text.secondary,
+              fontSize: getFontSize('caption', isMobile),
+              userSelect: 'none',
+            }}>
+              {pushStatsError
+                ? '統計載入失敗，點日期切換或重新整理後再試'
+                : `查看 8/28 起每日紀錄（累計 ${totalPushCount} 則）`}
+            </summary>
+            {!pushStatsError && (
+              <div style={{
+                marginTop: designSystem.spacing.sm,
+                border: `1px solid ${designSystem.colors.border.light}`,
+                borderRadius: designSystem.borderRadius.md,
+                overflow: 'hidden',
+              }}>
+                {[...pushStats].reverse().map((stat, index) => (
+                  <div
+                    key={stat.date}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto',
+                      gap: designSystem.spacing.md,
+                      padding: isMobile ? '9px 11px' : '10px 12px',
+                      borderBottom:
+                        index < pushStats.length - 1
+                          ? `1px solid ${designSystem.colors.border.light}`
+                          : 'none',
+                      color: designSystem.colors.text.primary,
+                      fontSize: getFontSize('bodySmall', isMobile),
+                    }}
+                  >
+                    <span>{stat.date.replaceAll('-', '/')}</span>
+                    <strong>{stat.count} 則</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+          </details>
         </div>
 
         {/* Text Templates */}

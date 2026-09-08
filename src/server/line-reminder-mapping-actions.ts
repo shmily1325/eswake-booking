@@ -40,6 +40,29 @@ export async function handleLineReminderMappingAction(
 ) {
   const action = text(body.action)
   try {
+    if (action === 'load_push_stats') {
+      const startDate = text(body.startDate)
+      if (!isCalendarDate(startDate)) {
+        return res.status(400).json({ error: 'Invalid push stats start date' })
+      }
+
+      const { data, error } = await supabase.rpc(
+        'get_line_reminder_push_daily_stats',
+        { p_start_date: startDate },
+      )
+      if (error) throw error
+
+      const daily = (data ?? []).map((row: { sent_date?: unknown; push_count?: unknown }) => ({
+        date: String(row.sent_date ?? ''),
+        count: Number(row.push_count ?? 0),
+      }))
+      return res.status(200).json({
+        startDate,
+        daily,
+        total: daily.reduce((sum: number, row: { count: number }) => sum + row.count, 0),
+      })
+    }
+
     if (action === 'load_reminder_context' || action === 'load_reminder_page') {
       const loadFullPage = action === 'load_reminder_page'
       let bookingIds = Array.isArray(body.bookingIds) ? body.bookingIds : []
