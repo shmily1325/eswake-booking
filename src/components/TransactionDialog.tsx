@@ -1,7 +1,6 @@
 import { useState, useEffect, type MouseEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import {
-  fetchCurrentVoucherYear,
   isYearTrackedCategory,
   processManualMemberAdjust,
   processManualMemberAdjustDelete,
@@ -64,6 +63,86 @@ const CATEGORIES = [
 const isEditableCategory = (category: string) =>
   CATEGORIES.some((c) => c.value === category)
 
+function isValidVoucherYear(year: number | null): boolean {
+  return year == null || (Number.isInteger(year) && year >= 2020 && year <= 2100)
+}
+
+function VoucherYearPicker({
+  value,
+  currentYear,
+  onChange,
+  isMobile,
+  noneDisabled = false,
+}: {
+  value: number | null
+  currentYear: number
+  onChange: (year: number | null) => void
+  isMobile: boolean
+  noneDisabled?: boolean
+}) {
+  const presetYears = voucherYearOptions(currentYear)
+  const customValue = value != null && !presetYears.includes(value) ? String(value) : ''
+
+  return (
+    <div
+      role="group"
+      aria-label="入帳年選擇"
+      style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}
+    >
+      <button
+        type="button"
+        aria-pressed={value == null}
+        disabled={noneDisabled}
+        onClick={() => onChange(null)}
+        style={{
+          ...getBookingChoiceStyle(value == null),
+          padding: '10px 14px',
+          fontSize: getFontSize('body', isMobile),
+          fontWeight: 600,
+          cursor: noneDisabled ? 'not-allowed' : 'pointer',
+          opacity: noneDisabled ? 0.45 : 1,
+        }}
+      >
+        無
+      </button>
+      {presetYears.map((year) => (
+        <button
+          key={year}
+          type="button"
+          aria-pressed={value === year}
+          onClick={() => onChange(year)}
+          style={{
+            ...getBookingChoiceStyle(value === year),
+            padding: '10px 14px',
+            fontSize: getFontSize('body', isMobile),
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          {year}
+        </button>
+      ))}
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label="自訂入帳年"
+        value={customValue}
+        onChange={(event) => {
+          const digits = event.target.value.replace(/\D/g, '').slice(0, 4)
+          onChange(digits ? Number(digits) : null)
+        }}
+        placeholder="自訂年份"
+        style={{
+          ...getInputStyle(isMobile),
+          width: isMobile ? '100%' : '128px',
+          flex: isMobile ? '1 1 100%' : '0 0 128px',
+          padding: '10px 12px',
+        }}
+      />
+    </div>
+  )
+}
+
 export function TransactionDialog({
   open,
   member,
@@ -77,6 +156,7 @@ export function TransactionDialog({
 }: TransactionDialogProps) {
   const { isMobile } = useResponsive()
   const toast = useToast()
+  const calendarYear = Number(getVenueDateString().slice(0, 4))
   const [activeTab, setActiveTab] = useState<'transaction' | 'history'>(initialTab)
   const [loading, setLoading] = useState(false)
   
@@ -87,9 +167,8 @@ export function TransactionDialog({
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
   const [transactionDate, setTransactionDate] = useState(() => getLocalDateString())
-  const [currentVoucherYear, setCurrentVoucherYear] = useState(2026)
+  const [voucherYear, setVoucherYear] = useState<number | null>(() => calendarYear)
   /** null = 入帳年「無」 */
-  const [voucherYear, setVoucherYear] = useState<number | null>(2026)
   const [creditLots, setCreditLots] = useState<
     Array<{ category: string; voucher_year: number; remaining: number }>
   >([])
@@ -122,8 +201,6 @@ export function TransactionDialog({
   const showEditVoucherYearField =
     editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
 
-  const calendarYear = Number(getVenueDateString().slice(0, 4))
-
   const loadCreditLots = async () => {
     try {
       const { data, error } = await supabase
@@ -147,10 +224,10 @@ export function TransactionDialog({
     setDescription('')
     setNotes('')
     setTransactionDate(getLocalDateString())
-    setVoucherYear(currentVoucherYear)
+    setVoucherYear(calendarYear)
   }
 
-  // 當對話框開啟時，自動填入預約資訊，並讀取目前販售年／分年剩餘
+  // 當對話框開啟時，自動填入預約資訊，並讀取分年剩餘
   useEffect(() => {
     if (open) {
       // 明確設置，即使是空字串也要清空
@@ -165,13 +242,10 @@ export function TransactionDialog({
       if (initialTab === 'history' && initialVoucherYearFilter != null) {
         setSelectedMonth('')
       }
-      void fetchCurrentVoucherYear().then((year) => {
-        setCurrentVoucherYear(year)
-        setVoucherYear(year)
-      })
+      setVoucherYear(calendarYear)
       void loadCreditLots()
     }
-  }, [open, defaultDescription, defaultTransactionDate, member.id, initialTab, initialCategoryFilter, initialVoucherYearFilter])
+  }, [open, defaultDescription, defaultTransactionDate, member.id, initialTab, initialCategoryFilter, initialVoucherYearFilter, calendarYear])
 
   // 加載交易記錄
   const loadTransactions = async () => {
@@ -256,6 +330,17 @@ export function TransactionDialog({
       editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
         ? editVoucherYear
         : null
+    const editCategoryHasYearLots = creditLots.some(
+      (lot) => lot.category === editCategory,
+    )
+    if (nextVoucherYear == null && showEditVoucherYearField && editCategoryHasYearLots) {
+      toast.warning('此會員已有年度明細，請指定入帳年')
+      return
+    }
+    if (!isValidVoucherYear(nextVoucherYear)) {
+      toast.warning('入帳年請輸入 2020～2100')
+      return
+    }
 
     setSavingEdit(true)
     try {
@@ -288,7 +373,7 @@ export function TransactionDialog({
       setEditValue('')
       setEditDescription('')
       setEditNotes('')
-      setEditVoucherYear(currentVoucherYear)
+      setEditVoucherYear(calendarYear)
       toast.success('已更新')
       if (result.lots_auto_year != null) {
         toast.warning(
@@ -341,7 +426,7 @@ export function TransactionDialog({
     setEditValue('')
     setEditDescription('')
     setEditNotes('')
-    setEditVoucherYear(currentVoucherYear)
+    setEditVoucherYear(calendarYear)
   }
 
 
@@ -379,6 +464,22 @@ export function TransactionDialog({
       return
     }
 
+    const nextVoucherYear =
+      adjustType === 'increase' && isYearTrackedCategory(category)
+        ? voucherYear
+        : null
+    const selectedCategoryHasYearLots = creditLots.some(
+      (lot) => lot.category === category,
+    )
+    if (nextVoucherYear == null && showVoucherYearField && selectedCategoryHasYearLots) {
+      toast.warning('此會員已有年度明細，請指定入帳年')
+      return
+    }
+    if (!isValidVoucherYear(nextVoucherYear)) {
+      toast.warning('入帳年請輸入 2020～2100')
+      return
+    }
+
     setLoading(true)
     try {
       const result = await processManualMemberAdjust({
@@ -389,10 +490,7 @@ export function TransactionDialog({
         description: description.trim(),
         notes: notes.trim() || null,
         transactionDate: normalizeDate(transactionDate) || transactionDate,
-        voucherYear:
-          adjustType === 'increase' && isYearTrackedCategory(category)
-            ? voucherYear
-            : null,
+        voucherYear: nextVoucherYear,
       })
 
       const catConfig = CATEGORIES.find(c => c.value === category)
@@ -682,33 +780,27 @@ export function TransactionDialog({
                 />
               </div>
 
-              {/* 入帳年：僅 VIP／G23／G21 增加時；次要欄位，用一般 select */}
+              {/* 入帳年：僅 VIP／G23／G21 增加時 */}
               {showVoucherYearField && (
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                     入帳年
                   </label>
-                  <select
-                    value={voucherYear == null ? '' : String(voucherYear)}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setVoucherYear(v === '' ? null : Number(v))
-                    }}
-                    style={inputStyle}
-                  >
-                    <option value="">無（不標年）</option>
-                    {voucherYearOptions(currentVoucherYear).map((y) => (
-                      <option key={y} value={y}>
-                        {y}{y === currentVoucherYear ? '（目前販售）' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <VoucherYearPicker
+                    value={voucherYear}
+                    currentYear={calendarYear}
+                    onChange={setVoucherYear}
+                    isMobile={isMobile}
+                    noneDisabled={creditLots.some((lot) => lot.category === category)}
+                  />
                   <div style={{
                     marginTop: '6px',
                     fontSize: getFontSize('bodySmall', isMobile),
                     color: designSystem.colors.text.disabled,
                   }}>
-                    預設目前販售年
+                    {creditLots.some((lot) => lot.category === category)
+                      ? '此會員已有年度明細，必須指定入帳年'
+                      : '預設今年；未建立年度明細時可選「無」'}
                   </div>
                 </div>
               )}
@@ -1295,21 +1387,13 @@ export function TransactionDialog({
                                 <label style={{ display: 'block', marginBottom: '4px', fontSize: getFontSize('bodySmall', isMobile), fontWeight: '600' }}>
                                   入帳年
                                 </label>
-                                <select
-                                  value={editVoucherYear == null ? '' : String(editVoucherYear)}
-                                  onChange={(e) => {
-                                    const v = e.target.value
-                                    setEditVoucherYear(v === '' ? null : Number(v))
-                                  }}
-                                  style={inputStyle}
-                                >
-                                  <option value="">無（不標年）</option>
-                                  {voucherYearOptions(currentVoucherYear, editingTransaction.voucher_year).map((y) => (
-                                    <option key={y} value={y}>
-                                      {y}{y === currentVoucherYear ? '（目前販售）' : ''}
-                                    </option>
-                                  ))}
-                                </select>
+                                <VoucherYearPicker
+                                  value={editVoucherYear}
+                                  currentYear={calendarYear}
+                                  onChange={setEditVoucherYear}
+                                  isMobile={isMobile}
+                                  noneDisabled={creditLots.some((lot) => lot.category === editCategory)}
+                                />
                               </div>
                             )}
 

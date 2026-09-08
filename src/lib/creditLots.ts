@@ -13,33 +13,9 @@ export function isYearTrackedCategory(category: string): category is YearTracked
   return (YEAR_TRACKED_CATEGORIES as readonly string[]).includes(category)
 }
 
-/** 讀取 system_settings.current_voucher_year；失敗時退回 fallback */
-export async function fetchCurrentVoucherYear(fallback = 2026): Promise<number> {
-  const { data, error } = await supabase
-    .from('system_settings')
-    .select('setting_value')
-    .eq('setting_key', 'current_voucher_year')
-    .maybeSingle()
-
-  if (error) {
-    console.warn('讀取 current_voucher_year 失敗，使用預設', fallback, error)
-    return fallback
-  }
-
-  const parsed = Number.parseInt(String(data?.setting_value ?? ''), 10)
-  if (!Number.isFinite(parsed) || parsed < 2020 || parsed > 2100) {
-    return fallback
-  }
-  return parsed
-}
-
-/** 入帳年選項：前一年／目前販售年／下一年，並保留既有標年 */
-export function voucherYearOptions(currentYear: number, existingYear?: number | null): number[] {
-  const years = new Set([currentYear - 1, currentYear, currentYear + 1])
-  if (existingYear != null && existingYear >= 2020 && existingYear <= 2100) {
-    years.add(existingYear)
-  }
-  return [...years].sort((a, b) => a - b)
+/** 入帳年快捷選項：前一年／今年／下一年。其他年份由自訂欄位輸入。 */
+export function voucherYearOptions(currentYear: number): number[] {
+  return [currentYear - 1, currentYear, currentYear + 1]
 }
 
 type RpcResult = {
