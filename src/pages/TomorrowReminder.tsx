@@ -74,6 +74,151 @@ type PushDailyStat = {
 
 const FISH_REMINDER_COPY_RECIPIENT = '澤澤'
 const PUSH_STATS_START_DATE = '2026-08-28'
+const PUSH_STATS_START_MONTH = PUSH_STATS_START_DATE.slice(0, 7)
+
+function shiftMonth(value: string, amount: number): string {
+  const [year, month] = value.split('-').map(Number)
+  const shifted = new Date(Date.UTC(year, month - 1 + amount, 1))
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function formatMonth(value: string): string {
+  const [year, month] = value.split('-').map(Number)
+  return `${year} 年 ${month} 月`
+}
+
+function PushMonthlyChart({
+  stats,
+  isMobile,
+}: {
+  stats: PushDailyStat[]
+  isMobile: boolean
+}) {
+  const width = isMobile ? 340 : 680
+  const height = 210
+  const padding = { top: 18, right: 12, bottom: 34, left: 36 }
+  const chartWidth = width - padding.left - padding.right
+  const chartHeight = height - padding.top - padding.bottom
+  const chartBottom = padding.top + chartHeight
+  const maxCount = Math.max(1, ...stats.map((stat) => stat.count))
+  const yMax = Math.max(5, Math.ceil(maxCount / 5) * 5)
+  const xFor = (index: number) =>
+    padding.left + (stats.length <= 1 ? chartWidth / 2 : index * chartWidth / (stats.length - 1))
+  const yFor = (count: number) => padding.top + chartHeight - count / yMax * chartHeight
+  const points = stats.map((stat, index) => `${xFor(index)},${yFor(stat.count)}`).join(' ')
+  const areaPath = stats.length > 0
+    ? `M ${xFor(0)} ${chartBottom} L ${points.replaceAll(',', ' ')} L ${xFor(stats.length - 1)} ${chartBottom} Z`
+    : ''
+  const gridValues = [0, 0.25, 0.5, 0.75, 1].map((ratio) => Math.round(yMax * ratio))
+  const monthTotal = stats.reduce((sum, stat) => sum + stat.count, 0)
+
+  return (
+    <div style={{
+      padding: isMobile ? '10px 8px 4px' : '14px 12px 6px',
+      border: `1px solid ${designSystem.colors.border.light}`,
+      borderRadius: designSystem.borderRadius.md,
+      background: designSystem.colors.secondary[50],
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        gap: designSystem.spacing.sm,
+        padding: isMobile ? '0 4px 6px' : '0 6px 8px',
+      }}>
+        <span style={{
+          color: designSystem.colors.text.secondary,
+          fontSize: getFontSize('caption', isMobile),
+        }}>
+          每日 Push 走勢
+        </span>
+        <strong style={{
+          color: designSystem.colors.info[700],
+          fontSize: getFontSize('bodySmall', isMobile),
+        }}>
+          本月 {monthTotal} 則
+        </strong>
+      </div>
+      {stats.length > 0 ? (
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label={`${formatMonth(stats[0].date.slice(0, 7))} LINE Push 每日走勢`}
+          style={{ display: 'block', width: '100%', height: 'auto' }}
+        >
+          <defs>
+            <linearGradient id="line-push-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={designSystem.colors.info[500]} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={designSystem.colors.info[500]} stopOpacity="0.04" />
+            </linearGradient>
+          </defs>
+          {gridValues.map((value) => {
+            const y = yFor(value)
+            return (
+              <g key={value}>
+                <line
+                  x1={padding.left}
+                  x2={width - padding.right}
+                  y1={y}
+                  y2={y}
+                  stroke={designSystem.colors.border.main}
+                  strokeWidth="1"
+                />
+                <text
+                  x={padding.left - 8}
+                  y={y + 3}
+                  textAnchor="end"
+                  fill={designSystem.colors.text.secondary}
+                  fontSize="9"
+                >
+                  {value}
+                </text>
+              </g>
+            )
+          })}
+          <path d={areaPath} fill="url(#line-push-area)" />
+          <polyline
+            points={points}
+            fill="none"
+            stroke={designSystem.colors.info[500]}
+            strokeWidth={isMobile ? 2.25 : 2.5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          {stats.map((stat, index) => (
+            <g key={stat.date}>
+              <circle
+                cx={xFor(index)}
+                cy={yFor(stat.count)}
+                r={isMobile ? 2.5 : 3}
+                fill={designSystem.colors.background.card}
+                stroke={designSystem.colors.info[500]}
+                strokeWidth="1.5"
+              >
+                <title>{`${stat.date.replaceAll('-', '/')}：${stat.count} 則`}</title>
+              </circle>
+              {(index === 0 ||
+                index === stats.length - 1 ||
+                (Number(stat.date.slice(8)) - 1) % 5 === 0) && (
+                <text
+                  x={xFor(index)}
+                  y={height - 12}
+                  textAnchor="middle"
+                  fill={designSystem.colors.text.secondary}
+                  fontSize="9"
+                >
+                  {Number(stat.date.slice(8))}
+                </text>
+              )}
+            </g>
+          ))}
+        </svg>
+      ) : (
+        <div style={getEmptyStateStyle(isMobile)}>這個月份沒有 Push 紀錄</div>
+      )}
+    </div>
+  )
+}
 
 function formatSentTime(value?: string): string | null {
   if (!value) return null
@@ -153,6 +298,9 @@ export function TomorrowReminder() {
   const [pushStats, setPushStats] = useState<PushDailyStat[]>([])
   const [pushStatsLoading, setPushStatsLoading] = useState(true)
   const [pushStatsError, setPushStatsError] = useState(false)
+  const [selectedStatsMonth, setSelectedStatsMonth] = useState(
+    () => getVenueDateString().slice(0, 7),
+  )
   const [sending, setSending] = useState(false)
 
   const {
@@ -1068,7 +1216,11 @@ export function TomorrowReminder() {
   const currentMonthPushCount = pushStats
     .filter((stat) => stat.date.startsWith(currentMonth))
     .reduce((sum, stat) => sum + stat.count, 0)
-  const totalPushCount = pushStats.reduce((sum, stat) => sum + stat.count, 0)
+  const selectedMonthPushStats = pushStats.filter(
+    (stat) => stat.date.startsWith(selectedStatsMonth),
+  )
+  const canViewPreviousStatsMonth = selectedStatsMonth > PUSH_STATS_START_MONTH
+  const canViewNextStatsMonth = selectedStatsMonth < currentMonth
 
   return (
     <PageShell variant="focused" mobilePadding="12px" desktopPadding="20px">
@@ -1162,36 +1314,95 @@ export function TomorrowReminder() {
             }}>
               {pushStatsError
                 ? '統計載入失敗，點日期切換或重新整理後再試'
-                : `查看 8/28 起每日紀錄（累計 ${totalPushCount} 則）`}
+                : '查看每日紀錄'}
             </summary>
             {!pushStatsError && (
-              <div style={{
-                marginTop: designSystem.spacing.sm,
-                border: `1px solid ${designSystem.colors.border.light}`,
-                borderRadius: designSystem.borderRadius.md,
-                overflow: 'hidden',
-              }}>
-                {[...pushStats].reverse().map((stat, index) => (
-                  <div
-                    key={stat.date}
+              <>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '40px 1fr 40px',
+                  alignItems: 'center',
+                  gap: designSystem.spacing.sm,
+                  marginTop: designSystem.spacing.sm,
+                  marginBottom: designSystem.spacing.sm,
+                }}>
+                  <button
+                    type="button"
+                    aria-label="查看上個月 LINE Push 則數"
+                    disabled={!canViewPreviousStatsMonth}
+                    onClick={() => setSelectedStatsMonth((month) => shiftMonth(month, -1))}
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr auto',
-                      gap: designSystem.spacing.md,
-                      padding: isMobile ? '9px 11px' : '10px 12px',
-                      borderBottom:
-                        index < pushStats.length - 1
-                          ? `1px solid ${designSystem.colors.border.light}`
-                          : 'none',
-                      color: designSystem.colors.text.primary,
-                      fontSize: getFontSize('bodySmall', isMobile),
+                      ...getButtonStyle('outline', 'small', isMobile),
+                      minWidth: 40,
+                      padding: 0,
+                      opacity: canViewPreviousStatsMonth ? 1 : 0.45,
                     }}
                   >
-                    <span>{stat.date.replaceAll('-', '/')}</span>
-                    <strong>{stat.count} 則</strong>
-                  </div>
-                ))}
-              </div>
+                    ‹
+                  </button>
+                  <strong style={{
+                    textAlign: 'center',
+                    color: designSystem.colors.text.primary,
+                    fontSize: getFontSize('body', isMobile),
+                  }}>
+                    {formatMonth(selectedStatsMonth)}
+                  </strong>
+                  <button
+                    type="button"
+                    aria-label="查看下個月 LINE Push 則數"
+                    disabled={!canViewNextStatsMonth}
+                    onClick={() => setSelectedStatsMonth((month) => shiftMonth(month, 1))}
+                    style={{
+                      ...getButtonStyle('outline', 'small', isMobile),
+                      minWidth: 40,
+                      padding: 0,
+                      opacity: canViewNextStatsMonth ? 1 : 0.45,
+                    }}
+                  >
+                    ›
+                  </button>
+                </div>
+                <PushMonthlyChart stats={selectedMonthPushStats} isMobile={isMobile} />
+                {selectedMonthPushStats.length > 0 && (
+                  <details style={{ marginTop: designSystem.spacing.sm }}>
+                    <summary style={{
+                      cursor: 'pointer',
+                      color: designSystem.colors.text.secondary,
+                      fontSize: getFontSize('caption', isMobile),
+                      userSelect: 'none',
+                    }}>
+                      查看每日數字
+                    </summary>
+                    <div style={{
+                      marginTop: designSystem.spacing.sm,
+                      border: `1px solid ${designSystem.colors.border.light}`,
+                      borderRadius: designSystem.borderRadius.md,
+                      overflow: 'hidden',
+                    }}>
+                      {[...selectedMonthPushStats].reverse().map((stat, index) => (
+                        <div
+                          key={stat.date}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr auto',
+                            gap: designSystem.spacing.md,
+                            padding: isMobile ? '9px 11px' : '10px 12px',
+                            borderBottom:
+                              index < selectedMonthPushStats.length - 1
+                                ? `1px solid ${designSystem.colors.border.light}`
+                                : 'none',
+                            color: designSystem.colors.text.primary,
+                            fontSize: getFontSize('bodySmall', isMobile),
+                          }}
+                        >
+                          <span>{stat.date.replaceAll('-', '/')}</span>
+                          <strong>{stat.count} 則</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </>
             )}
           </details>
         </div>
