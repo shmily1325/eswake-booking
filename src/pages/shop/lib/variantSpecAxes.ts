@@ -69,8 +69,14 @@ export function collectSpecAxes(
       seen.add(value)
       values.push(value)
     }
+    const showSingleWeightedSize =
+      field.key === 'size' &&
+      variants.some((variant) => {
+        const weight = Number(specAttrValue(variant, 'max_rider_weight_kg'))
+        return Number.isInteger(weight) && weight > 0
+      })
     // 性別即使只有一個值也要顯示，讓單一男款／女款商品不會看不出版型。
-    if (values.length === 0 || (values.length < 2 && field.key !== 'gender')) continue
+    if (values.length === 0 || (values.length < 2 && field.key !== 'gender' && !showSingleWeightedSize)) continue
     axes.push({
       key: field.key,
       label: AXIS_LABEL[field.key] ?? field.label,

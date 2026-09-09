@@ -404,17 +404,11 @@ function ProductDetailBody({
   const configured = optionConfig && !isEmptyProductOptionConfig(optionConfig)
   const detailSpecs =
     configured && selectedVariant
-      ? [
-          selectedVariant.attributes.size == null || String(selectedVariant.attributes.size).trim() === ''
-            ? null
-            : {
-                key: 'length',
-                label: 'Length',
-                value: String(selectedVariant.attributes.size).trim(),
-              },
-          ...optionConfig.variantFields.detail.map((field) => {
+      ? optionConfig.variantFields.detail.map((field) => {
+            if (field.key === 'max_rider_weight_kg') return null
             const value = selectedVariant.attributes[field.key]
             if (value == null || String(value).trim() === '') return null
+            const suffix = field.suffix?.trim()
             const label =
               field.key === 'width'
                 ? 'Width'
@@ -422,19 +416,13 @@ function ProductDetailBody({
                   ? 'Thickness'
                   : field.key === 'volume'
                     ? 'Volume'
-                    : field.key === 'max_rider_weight_kg'
-                      ? 'Weight Limit'
                     : field.label
             return {
               key: field.key,
               label,
-              value:
-                field.key === 'max_rider_weight_kg'
-                  ? `Up to ${String(value).trim()}\u00a0kg`
-                  : `${String(value).trim()}${field.suffix ?? ''}`,
+              value: `${String(value).trim()}${suffix ? ` ${suffix}` : ''}`,
             }
-          }),
-        ].filter((spec): spec is { key: string; label: string; value: string } => spec !== null)
+          }).filter((spec): spec is { key: string; label: string; value: string } => spec !== null)
       : []
   const customFields = selectedVariant
     ? visibleCustomFields(optionConfig, selectedVariant.attributes, customValues)
@@ -573,17 +561,11 @@ function ProductDetailBody({
               <h2 id="board-specs" className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-700">
                 Board Specs
               </h2>
-              <dl className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-x-4 gap-y-3">
+              <dl className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
                 {detailSpecs.map((spec) => (
                   <div key={spec.key}>
                     <dt className="text-xs text-gray-500">{spec.label}</dt>
-                    <dd
-                      className={`mt-0.5 font-semibold tabular-nums text-zinc-900 ${
-                        spec.key === 'max_rider_weight_kg' ? 'whitespace-nowrap' : ''
-                      }`}
-                    >
-                      {spec.value}
-                    </dd>
+                    <dd className="mt-0.5 font-semibold tabular-nums text-zinc-900">{spec.value}</dd>
                   </div>
                 ))}
               </dl>

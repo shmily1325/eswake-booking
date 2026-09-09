@@ -32,6 +32,21 @@ describe('collectSpecAxes', () => {
     expect(collectSpecAxes('lifejacket', [v('only', { size: 'M' })])).toEqual([])
   })
 
+  it('shows a single weighted board size so its weight guidance remains visible', () => {
+    expect(
+      collectSpecAxes('ws_board', [
+        v('only', { size: "4'3", max_rider_weight_kg: '61' }),
+      ], {
+        version: 1,
+        variantFields: {
+          axis: [{ key: 'size', label: 'Size', inputType: 'select', values: ["4'3"] }],
+          detail: [],
+        },
+        customFields: [],
+      }),
+    ).toEqual([{ key: 'size', label: 'Size', values: ["4'3"] }])
+  })
+
   it('shows gender even when every variant has the same value', () => {
     expect(
       collectSpecAxes('lifejacket', [
