@@ -73,6 +73,7 @@ export function createVibesCustomOrderConfig(): ProductOptionConfig {
         { key: 'width', label: 'Width', inputType: 'text', suffix: 'in' },
         { key: 'thickness', label: 'Thickness', inputType: 'text', suffix: 'in' },
         { key: 'volume', label: 'Volume', inputType: 'text', suffix: 'L' },
+        { key: 'max_rider_weight_kg', label: '適用體重', inputType: 'text', suffix: ' kg 以下' },
       ],
     },
     customFields: [

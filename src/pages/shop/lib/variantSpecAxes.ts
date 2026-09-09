@@ -38,6 +38,17 @@ export function specAttrValue(variant: ProductVariantRow, key: string): string {
   return String(raw).trim()
 }
 
+export function formatSpecAxisOptionLabel(
+  key: string,
+  value: string,
+  variant: ProductVariantRow | undefined,
+): string {
+  if (key !== 'size' || !variant) return value
+  const weight = Number(specAttrValue(variant, 'max_rider_weight_kg'))
+  if (!Number.isInteger(weight) || weight <= 0) return value
+  return `${value}｜適用體重 ${weight} kg 以下`
+}
+
 export function collectSpecAxes(
   categoryId: string | null | undefined,
   variants: ProductVariantRow[],

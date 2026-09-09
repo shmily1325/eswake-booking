@@ -19,6 +19,7 @@ export interface VibesSpecRow {
   width: string
   thickness: string
   volume: string
+  maxRiderWeightKg: string
   pendingDelete: boolean
 }
 
@@ -26,7 +27,11 @@ interface VibesCustomOrderEditorProps {
   value: ProductOptionConfig
   onChange: (value: ProductOptionConfig) => void
   specs: readonly VibesSpecRow[]
-  onSpecChange: (index: number, key: 'size' | 'width' | 'thickness' | 'volume', value: string) => void
+  onSpecChange: (
+    index: number,
+    key: 'size' | 'width' | 'thickness' | 'volume' | 'max_rider_weight_kg',
+    value: string,
+  ) => void
   onAddSpec: () => void
   onRemoveSpec: (index: number) => void
   onRestoreSpec: (index: number) => void
@@ -179,7 +184,7 @@ export function VibesCustomOrderEditor({
               aria-hidden
               style={{
                 display: 'grid',
-                gridTemplateColumns: '110px 1fr 1fr 1fr 78px',
+                gridTemplateColumns: '100px 1fr 1fr 1fr 1fr 78px',
                 gap: 8,
                 padding: '0 10px',
                 color: designSystem.colors.text.secondary,
@@ -191,6 +196,7 @@ export function VibesCustomOrderEditor({
               <span>Width (in)</span>
               <span>Thickness (in)</span>
               <span>Volume (L)</span>
+              <span>適用體重 (kg 以下)</span>
               <span />
             </div>
             {specs.map((spec) => (
@@ -198,7 +204,7 @@ export function VibesCustomOrderEditor({
                 key={spec.key}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '110px 1fr 1fr 1fr 78px',
+                  gridTemplateColumns: '100px 1fr 1fr 1fr 1fr 78px',
                   gap: 8,
                   alignItems: 'center',
                   padding: 10,
@@ -210,12 +216,15 @@ export function VibesCustomOrderEditor({
                   opacity: spec.pendingDelete ? 0.65 : 1,
                 }}
               >
-                {(['size', 'width', 'thickness', 'volume'] as const).map((key) => (
+                {(['size', 'width', 'thickness', 'volume', 'max_rider_weight_kg'] as const).map((key) => (
                   <input
                     key={key}
                     aria-label={`${key} ${spec.size || spec.index + 1}`}
+                    type={key === 'max_rider_weight_kg' ? 'number' : 'text'}
+                    min={key === 'max_rider_weight_kg' ? 1 : undefined}
+                    step={key === 'max_rider_weight_kg' ? 1 : undefined}
                     style={inputStyle}
-                    value={spec[key]}
+                    value={key === 'max_rider_weight_kg' ? spec.maxRiderWeightKg : spec[key]}
                     disabled={disabled || spec.pendingDelete}
                     onChange={(event) => onSpecChange(spec.index, key, event.target.value)}
                   />

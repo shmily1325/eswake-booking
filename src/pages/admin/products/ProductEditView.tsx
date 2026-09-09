@@ -470,7 +470,11 @@ export function ProductEditView({
     )
   }
 
-  const handleVibesSpecChange = (index: number, key: 'size' | 'width' | 'thickness' | 'volume', value: string) => {
+  const handleVibesSpecChange = (
+    index: number,
+    key: 'size' | 'width' | 'thickness' | 'volume' | 'max_rider_weight_kg',
+    value: string,
+  ) => {
     const next = drafts.map((draft, draftIndex) =>
       draftIndex === index ? { ...draft, attributes: { ...draft.attributes, [key]: value } } : draft,
     )
@@ -847,6 +851,13 @@ export function ProductEditView({
       for (const draft of active) {
         if (!draft.attributes.width?.trim() || !draft.attributes.thickness?.trim()) {
           return `${draft.attributes.size}：Width 與 Thickness 不可空白`
+        }
+        const maxRiderWeightKg = draft.attributes.max_rider_weight_kg?.trim()
+        if (
+          maxRiderWeightKg &&
+          (!Number.isInteger(Number(maxRiderWeightKg)) || Number(maxRiderWeightKg) <= 0)
+        ) {
+          return `${draft.attributes.size}：適用體重需為大於 0 的整數 kg`
         }
       }
     }
@@ -1802,6 +1813,7 @@ export function ProductEditView({
                     width: draft.attributes.width ?? '',
                     thickness: draft.attributes.thickness ?? '',
                     volume: draft.attributes.volume ?? '',
+                    maxRiderWeightKg: draft.attributes.max_rider_weight_kg ?? '',
                     pendingDelete: Boolean(draft.pendingDelete),
                   }))}
                   onSpecChange={handleVibesSpecChange}

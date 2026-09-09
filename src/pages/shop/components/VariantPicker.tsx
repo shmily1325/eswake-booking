@@ -1,6 +1,11 @@
 import type { ProductVariantRow } from '../../admin/products/types'
 import { formatPrice, formatVariantAttributes } from '../lib/shopFormat'
-import { collectSpecAxes, findVariantForAxisValue, specAttrValue } from '../lib/variantSpecAxes'
+import {
+  collectSpecAxes,
+  findVariantForAxisValue,
+  formatSpecAxisOptionLabel,
+  specAttrValue,
+} from '../lib/variantSpecAxes'
 import { getShopVisibleVariants, getVariantAvailability, isVariantPurchasable } from '../lib/productAvailability'
 import { SHOP_DETAIL } from '../lib/shopCopy'
 
@@ -85,7 +90,7 @@ export function VariantPicker({ variants, selectedVariantId, categoryId, optionC
                         </span>
                       </>
                     ) : (
-                      value
+                      formatSpecAxisOptionLabel(axis.key, value, target)
                     )}
                   </button>
                 )

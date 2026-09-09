@@ -5,6 +5,7 @@ import {
   findVariantForAxisValue,
   formatCardGenderLabel,
   formatCardSpecLine,
+  formatSpecAxisOptionLabel,
 } from '../variantSpecAxes'
 
 function v(
@@ -95,6 +96,17 @@ describe('formatCardGenderLabel', () => {
 
   it('returns nothing when gender is absent', () => {
     expect(formatCardGenderLabel(vests)).toBe('')
+  })
+})
+
+describe('formatSpecAxisOptionLabel', () => {
+  it('adds the editable VIBES rider weight to a size', () => {
+    const variant = v('diamond-43', { size: "4'3", max_rider_weight_kg: '61' })
+    expect(formatSpecAxisOptionLabel('size', "4'3", variant)).toBe("4'3｜適用體重 61 kg 以下")
+  })
+
+  it('keeps the original label when no valid weight exists', () => {
+    expect(formatSpecAxisOptionLabel('size', "4'3", v('diamond-43', { size: "4'3" }))).toBe("4'3")
   })
 })
 
