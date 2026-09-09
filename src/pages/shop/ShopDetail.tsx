@@ -422,11 +422,16 @@ function ProductDetailBody({
                   ? 'Thickness'
                   : field.key === 'volume'
                     ? 'Volume'
+                    : field.key === 'max_rider_weight_kg'
+                      ? 'Max Rider Weight'
                     : field.label
             return {
               key: field.key,
               label,
-              value: `${String(value).trim()}${field.suffix ?? ''}`,
+              value:
+                field.key === 'max_rider_weight_kg'
+                  ? `Up to ${String(value).trim()} kg`
+                  : `${String(value).trim()}${field.suffix ?? ''}`,
             }
           }),
         ].filter((spec): spec is { key: string; label: string; value: string } => spec !== null)
@@ -569,7 +574,7 @@ function ProductDetailBody({
               <h2 id="board-specs" className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-700">
                 Board Specs
               </h2>
-              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-5">
                 {detailSpecs.map((spec) => (
                   <div key={spec.key}>
                     <dt className="text-xs text-gray-500">{spec.label}</dt>

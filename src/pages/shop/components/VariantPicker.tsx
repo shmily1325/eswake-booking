@@ -34,7 +34,15 @@ export function VariantPicker({ variants, selectedVariantId, categoryId, optionC
         {axes.map((axis) => (
           <div key={axis.key}>
             <div className="text-sm font-medium text-gray-700">{axis.label}</div>
-            <div className={axis.key === 'finish' ? 'mt-2 grid gap-2' : 'mt-2 flex flex-wrap gap-2'}>
+            <div
+              className={
+                axis.key === 'finish'
+                  ? 'mt-2 grid gap-2'
+                  : axis.key === 'size'
+                    ? 'mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3'
+                    : 'mt-2 flex flex-wrap gap-2'
+              }
+            >
               {axis.values.map((value) => {
                 const targetId = findVariantForAxisValue(visible, selected.id, axis.key, value, axisKeys)
                 const isSelected = specAttrValue(selected, axis.key) === value
@@ -61,7 +69,7 @@ export function VariantPicker({ variants, selectedVariantId, categoryId, optionC
                                 ? 'border-gray-200 bg-white text-zinc-800 hover:border-gray-500'
                                 : 'border-gray-200 bg-gray-50 text-gray-300 line-through'
                           }`
-                        : `min-h-11 min-w-14 rounded-lg border px-3 text-sm transition ${
+                        : `flex min-h-11 min-w-14 items-center justify-center rounded-lg border px-3 text-center text-sm transition ${
                             isSelected
                               ? 'border-zinc-900 bg-zinc-900 font-semibold text-white'
                               : purchasable

@@ -240,7 +240,7 @@ export function setVibesColorSettings(
 }
 
 export function setVibesSizeValues(config: ProductOptionConfig, sizes: readonly string[]): ProductOptionConfig {
-  const normalized = Array.from(new Set(sizes.map((size) => size.trim()).filter(Boolean)))
+  const normalized = Array.from(new Set(sizes.map((size) => size.trim()).filter(Boolean))).sort(compareBoardSizeValues)
   return {
     ...config,
     variantFields: {
@@ -248,6 +248,20 @@ export function setVibesSizeValues(config: ProductOptionConfig, sizes: readonly 
       axis: config.variantFields.axis.map((field) => (field.key === 'size' ? { ...field, values: normalized } : field)),
     },
   }
+}
+
+export function compareBoardSizeValues(a: string, b: string): number {
+  const lengthInches = (value: string): number | null => {
+    const match = value.trim().match(/^(\d+)\s*['’]\s*(\d+)(?:\s*["”])?$/)
+    if (!match) return null
+    return Number(match[1]) * 12 + Number(match[2])
+  }
+  const aInches = lengthInches(a)
+  const bInches = lengthInches(b)
+  if (aInches != null && bInches != null) return aInches - bInches
+  if (aInches != null) return -1
+  if (bInches != null) return 1
+  return a.localeCompare(b, undefined, { numeric: true })
 }
 
 export function validateVibesCustomOrderConfig(config: ProductOptionConfig): string[] {

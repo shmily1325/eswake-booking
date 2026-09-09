@@ -46,7 +46,7 @@ export function formatSpecAxisOptionLabel(
   if (key !== 'size' || !variant) return value
   const weight = Number(specAttrValue(variant, 'max_rider_weight_kg'))
   if (!Number.isInteger(weight) || weight <= 0) return value
-  return `${value}｜適用體重 ${weight} kg 以下`
+  return `${value} · Up to ${weight} kg`
 }
 
 export function collectSpecAxes(

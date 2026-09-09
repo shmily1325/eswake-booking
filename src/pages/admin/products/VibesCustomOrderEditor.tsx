@@ -3,6 +3,7 @@ import { Button } from '../../../components/ui'
 import { designSystem, getInputStyle } from '../../../styles/designSystem'
 import { ImageUploader } from './ImageUploader'
 import {
+  compareBoardSizeValues,
   getVibesBuildSettings,
   getVibesColorSettings,
   setVibesColorSettings,
@@ -78,6 +79,7 @@ export function VibesCustomOrderEditor({
   const builds = getVibesBuildSettings(value)
   const colors = getVibesColorSettings(value)
   const issues = validateVibesCustomOrderConfig(value)
+  const sortedSpecs = [...specs].sort((a, b) => compareBoardSizeValues(a.size, b.size))
 
   const updateColors = (next: VibesColorSetting[]) => onChange(setVibesColorSettings(value, next))
   const updateColor = (index: number, patch: Partial<VibesColorSetting>) => {
@@ -199,7 +201,7 @@ export function VibesCustomOrderEditor({
               <span>適用體重 (kg 以下)</span>
               <span />
             </div>
-            {specs.map((spec) => (
+            {sortedSpecs.map((spec) => (
               <div
                 key={spec.key}
                 style={{

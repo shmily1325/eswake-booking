@@ -82,6 +82,7 @@ describe('formatCardSpecLine', () => {
       ]),
     ).toBe('S · M')
   })
+
 })
 
 describe('formatCardGenderLabel', () => {
@@ -102,7 +103,7 @@ describe('formatCardGenderLabel', () => {
 describe('formatSpecAxisOptionLabel', () => {
   it('adds the editable VIBES rider weight to a size', () => {
     const variant = v('diamond-43', { size: "4'3", max_rider_weight_kg: '61' })
-    expect(formatSpecAxisOptionLabel('size', "4'3", variant)).toBe("4'3｜適用體重 61 kg 以下")
+    expect(formatSpecAxisOptionLabel('size', "4'3", variant)).toBe("4'3 · Up to 61 kg")
   })
 
   it('keeps the original label when no valid weight exists', () => {
