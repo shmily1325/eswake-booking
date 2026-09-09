@@ -61,6 +61,6 @@ export const SHOP_DETAIL = {
   noVariants: '此商品目前沒有可選規格',
   preOrder: '預購',
   customOrder: '客訂',
-  madeToOrder: 'Made to Order',
+  madeToOrder: '客訂 · Made to Order',
   memberPrice: '會員價',
 } as const

@@ -24,7 +24,7 @@ const vests = [
 describe('collectSpecAxes', () => {
   it('lists sizes when a vest has more than one', () => {
     expect(collectSpecAxes('lifejacket', vests)).toEqual([
-      { key: 'size', label: '尺寸', values: ['S', 'M', 'L'] },
+      { key: 'size', label: 'Size', values: ['S', 'M', 'L'] },
     ])
   })
 
@@ -40,7 +40,7 @@ describe('collectSpecAxes', () => {
       ]),
     ).toEqual([
       { key: 'gender', label: '性別', values: ["WOMEN'S"] },
-      { key: 'size', label: '尺寸', values: ['S', 'M'] },
+      { key: 'size', label: 'Size', values: ['S', 'M'] },
     ])
   })
 

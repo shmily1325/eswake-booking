@@ -26,7 +26,7 @@ import {
 } from '../admin/products/schema'
 import { normalizeVariantCoverImages } from '../admin/products/coverImages'
 import { getVariantAvailability, getVariantPurchaseLimit, isVariantPurchasable } from './lib/productAvailability'
-import { SHOP_DETAIL, SHOP_LABEL } from './lib/shopCopy'
+import { SHOP_DETAIL } from './lib/shopCopy'
 import { buildSingleInquiry, launchInquiry } from './lib/lineDeepLink'
 import { LineInquiryModal } from './components/LineInquiryModal'
 import { ShopDetailGallery } from './components/ShopDetailGallery'
@@ -423,7 +423,7 @@ function ProductDetailBody({
                   : field.key === 'volume'
                     ? 'Volume'
                     : field.key === 'max_rider_weight_kg'
-                      ? 'Max Weight'
+                      ? 'Weight Limit'
                     : field.label
             return {
               key: field.key,
@@ -554,8 +554,7 @@ function ProductDetailBody({
           )}
           {isCustomOrder && (
             <div className="mt-2 inline-flex self-start items-center gap-2 rounded bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800">
-              <span>{SHOP_LABEL.customOrder}</span>
-              <span className="font-normal text-zinc-500">{SHOP_DETAIL.madeToOrder}</span>
+              <span>{SHOP_DETAIL.madeToOrder}</span>
             </div>
           )}
 
@@ -574,7 +573,7 @@ function ProductDetailBody({
               <h2 id="board-specs" className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-700">
                 Board Specs
               </h2>
-              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-5">
+              <dl className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-x-4 gap-y-3">
                 {detailSpecs.map((spec) => (
                   <div key={spec.key}>
                     <dt className="text-xs text-gray-500">{spec.label}</dt>

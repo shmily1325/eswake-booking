@@ -20,7 +20,7 @@ export interface SpecAxis {
 }
 
 const AXIS_LABEL: Record<string, string> = {
-  size: '尺寸',
+  size: 'Size',
   gender: '性別',
   age_group: '年齡',
   thickness: '厚度',
