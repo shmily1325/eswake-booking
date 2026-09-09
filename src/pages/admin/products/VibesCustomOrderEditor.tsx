@@ -57,6 +57,14 @@ const labelStyle: CSSProperties = {
   fontWeight: 600,
 }
 
+const VIBES_SPEC_FIELDS = [
+  { key: 'size', label: 'Size' },
+  { key: 'width', label: 'Width (in)' },
+  { key: 'thickness', label: 'Thickness (in)' },
+  { key: 'volume', label: 'Volume (L)' },
+  { key: 'max_rider_weight_kg', label: '適用體重 (kg 以下)' },
+] as const
+
 export function VibesCustomOrderEditor({
   value,
   onChange,
@@ -180,36 +188,34 @@ export function VibesCustomOrderEditor({
             + 新增尺寸
           </Button>
         </div>
-        <div style={{ overflowX: 'auto', marginTop: 10 }}>
-          <div style={{ display: 'grid', gap: 8, minWidth: 650 }}>
-            <div
-              aria-hidden
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '100px 1fr 1fr 1fr 1fr 78px',
-                gap: 8,
-                padding: '0 10px',
-                color: designSystem.colors.text.secondary,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              <span>Size</span>
-              <span>Width (in)</span>
-              <span>Thickness (in)</span>
-              <span>Volume (L)</span>
-              <span>適用體重 (kg 以下)</span>
-              <span />
-            </div>
+        <div style={{ overflowX: isMobile ? 'visible' : 'auto', marginTop: 10 }}>
+          <div style={{ display: 'grid', gap: 8, minWidth: isMobile ? 0 : 650 }}>
+            {!isMobile && (
+              <div
+                aria-hidden
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '100px 1fr 1fr 1fr 1fr 78px',
+                  gap: 8,
+                  padding: '0 10px',
+                  color: designSystem.colors.text.secondary,
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {VIBES_SPEC_FIELDS.map((field) => <span key={field.key}>{field.label}</span>)}
+                <span />
+              </div>
+            )}
             {sortedSpecs.map((spec) => (
               <div
                 key={spec.key}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 1fr 1fr 1fr 1fr 78px',
-                  gap: 8,
-                  alignItems: 'center',
-                  padding: 10,
+                  gridTemplateColumns: isMobile ? 'minmax(0, 1fr) minmax(0, 1fr)' : '100px 1fr 1fr 1fr 1fr 78px',
+                  gap: isMobile ? 12 : 8,
+                  alignItems: isMobile ? 'end' : 'center',
+                  padding: isMobile ? 12 : 10,
                   border: `1px solid ${designSystem.colors.border.light}`,
                   borderRadius: designSystem.borderRadius.sm,
                   background: spec.pendingDelete
@@ -218,28 +224,43 @@ export function VibesCustomOrderEditor({
                   opacity: spec.pendingDelete ? 0.65 : 1,
                 }}
               >
-                {(['size', 'width', 'thickness', 'volume', 'max_rider_weight_kg'] as const).map((key) => (
-                  <input
-                    key={key}
-                    aria-label={`${key} ${spec.size || spec.index + 1}`}
-                    type={key === 'max_rider_weight_kg' ? 'number' : 'text'}
-                    min={key === 'max_rider_weight_kg' ? 1 : undefined}
-                    step={key === 'max_rider_weight_kg' ? 1 : undefined}
-                    style={inputStyle}
-                    value={key === 'max_rider_weight_kg' ? spec.maxRiderWeightKg : spec[key]}
-                    disabled={disabled || spec.pendingDelete}
-                    onChange={(event) => onSpecChange(spec.index, key, event.target.value)}
-                  />
-                ))}
-                {spec.pendingDelete ? (
-                  <Button variant="outline" size="small" disabled={disabled} onClick={() => onRestoreSpec(spec.index)}>
-                    復原
-                  </Button>
-                ) : (
-                  <Button variant="danger" size="small" disabled={disabled} onClick={() => onRemoveSpec(spec.index)}>
-                    停用
-                  </Button>
-                )}
+                {VIBES_SPEC_FIELDS.map(({ key, label }) => {
+                  const input = (
+                    <input
+                      aria-label={`${key} ${spec.size || spec.index + 1}`}
+                      type={key === 'max_rider_weight_kg' ? 'number' : 'text'}
+                      min={key === 'max_rider_weight_kg' ? 1 : undefined}
+                      step={key === 'max_rider_weight_kg' ? 1 : undefined}
+                      style={inputStyle}
+                      value={key === 'max_rider_weight_kg' ? spec.maxRiderWeightKg : spec[key]}
+                      disabled={disabled || spec.pendingDelete}
+                      onChange={(event) => onSpecChange(spec.index, key, event.target.value)}
+                    />
+                  )
+                  return isMobile ? (
+                    <label key={key}>
+                      <span style={labelStyle}>{label}</span>
+                      {input}
+                    </label>
+                  ) : (
+                    <div key={key}>{input}</div>
+                  )
+                })}
+                <div
+                  style={isMobile
+                    ? { display: 'grid', gridColumn: 2, gridRow: 1, alignSelf: 'end' }
+                    : { display: 'grid' }}
+                >
+                  {spec.pendingDelete ? (
+                    <Button variant="outline" size="small" disabled={disabled} onClick={() => onRestoreSpec(spec.index)}>
+                      復原
+                    </Button>
+                  ) : (
+                    <Button variant="danger" size="small" disabled={disabled} onClick={() => onRemoveSpec(spec.index)}>
+                      停用
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

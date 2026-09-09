@@ -423,14 +423,14 @@ function ProductDetailBody({
                   : field.key === 'volume'
                     ? 'Volume'
                     : field.key === 'max_rider_weight_kg'
-                      ? 'Max Rider Weight'
+                      ? 'Max Weight'
                     : field.label
             return {
               key: field.key,
               label,
               value:
                 field.key === 'max_rider_weight_kg'
-                  ? `Up to ${String(value).trim()} kg`
+                  ? `Up to ${String(value).trim()}\u00a0kg`
                   : `${String(value).trim()}${field.suffix ?? ''}`,
             }
           }),
@@ -578,7 +578,13 @@ function ProductDetailBody({
                 {detailSpecs.map((spec) => (
                   <div key={spec.key}>
                     <dt className="text-xs text-gray-500">{spec.label}</dt>
-                    <dd className="mt-0.5 font-semibold tabular-nums text-zinc-900">{spec.value}</dd>
+                    <dd
+                      className={`mt-0.5 font-semibold tabular-nums text-zinc-900 ${
+                        spec.key === 'max_rider_weight_kg' ? 'whitespace-nowrap' : ''
+                      }`}
+                    >
+                      {spec.value}
+                    </dd>
                   </div>
                 ))}
               </dl>

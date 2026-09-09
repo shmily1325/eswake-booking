@@ -39,7 +39,7 @@ export function VariantPicker({ variants, selectedVariantId, categoryId, optionC
                 axis.key === 'finish'
                   ? 'mt-2 grid gap-2'
                   : axis.key === 'size'
-                    ? 'mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3'
+                    ? 'mt-2 grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2'
                     : 'mt-2 flex flex-wrap gap-2'
               }
             >
@@ -69,7 +69,7 @@ export function VariantPicker({ variants, selectedVariantId, categoryId, optionC
                                 ? 'border-gray-200 bg-white text-zinc-800 hover:border-gray-500'
                                 : 'border-gray-200 bg-gray-50 text-gray-300 line-through'
                           }`
-                        : `flex min-h-11 min-w-14 items-center justify-center rounded-lg border px-3 text-center text-sm transition ${
+                        : `flex min-h-11 min-w-14 items-center justify-center whitespace-nowrap rounded-lg border px-2 text-center text-sm transition ${
                             isSelected
                               ? 'border-zinc-900 bg-zinc-900 font-semibold text-white'
                               : purchasable
