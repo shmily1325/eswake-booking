@@ -87,41 +87,62 @@ function VoucherYearPicker({
     <div
       role="group"
       aria-label="入帳年選擇"
-      style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}
+      style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        gap: isMobile ? '10px' : '8px',
+      }}
     >
-      <button
-        type="button"
-        aria-pressed={value == null}
-        disabled={noneDisabled}
-        onClick={() => onChange(null)}
+      <div
         style={{
-          ...getBookingChoiceStyle(value == null),
-          padding: '10px 14px',
-          fontSize: getFontSize('body', isMobile),
-          fontWeight: 600,
-          cursor: noneDisabled ? 'not-allowed' : 'pointer',
-          opacity: noneDisabled ? 0.45 : 1,
+          display: isMobile ? 'grid' : 'flex',
+          gridTemplateColumns: isMobile ? 'repeat(4, minmax(0, 1fr))' : undefined,
+          gap: '8px',
         }}
       >
-        無
-      </button>
-      {presetYears.map((year) => (
         <button
-          key={year}
           type="button"
-          aria-pressed={value === year}
-          onClick={() => onChange(year)}
+          aria-pressed={value == null}
+          disabled={noneDisabled}
+          onClick={() => onChange(null)}
           style={{
-            ...getBookingChoiceStyle(value === year),
-            padding: '10px 14px',
+            ...getBookingChoiceStyle(value == null),
+            minWidth: 0,
+            padding: isMobile ? '11px 8px' : '10px 14px',
             fontSize: getFontSize('body', isMobile),
             fontWeight: 600,
-            cursor: 'pointer',
+            cursor: noneDisabled ? 'not-allowed' : 'pointer',
+            opacity: noneDisabled ? 0.45 : 1,
+            boxShadow: value == null && !noneDisabled
+              ? `0 2px 8px ${designSystem.colors.info[500]}20`
+              : designSystem.shadows.none,
           }}
         >
-          {year}
+          無
         </button>
-      ))}
+        {presetYears.map((year) => (
+          <button
+            key={year}
+            type="button"
+            aria-pressed={value === year}
+            onClick={() => onChange(year)}
+            style={{
+              ...getBookingChoiceStyle(value === year),
+              minWidth: 0,
+              padding: isMobile ? '11px 8px' : '10px 14px',
+              fontSize: getFontSize('body', isMobile),
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: value === year
+                ? `0 2px 8px ${designSystem.colors.info[500]}20`
+                : designSystem.shadows.none,
+            }}
+          >
+            {year}
+          </button>
+        ))}
+      </div>
       <input
         type="text"
         inputMode="numeric"
@@ -131,12 +152,13 @@ function VoucherYearPicker({
           const digits = event.target.value.replace(/\D/g, '').slice(0, 4)
           onChange(digits ? Number(digits) : null)
         }}
-        placeholder="自訂年份"
+        placeholder={isMobile ? '其他年份（2020–2100）' : '自訂年份'}
         style={{
           ...getInputStyle(isMobile),
           width: isMobile ? '100%' : '128px',
-          flex: isMobile ? '1 1 100%' : '0 0 128px',
-          padding: '10px 12px',
+          flex: isMobile ? undefined : '0 0 128px',
+          padding: isMobile ? '11px 13px' : '10px 12px',
+          boxSizing: 'border-box',
         }}
       />
     </div>
@@ -793,15 +815,15 @@ export function TransactionDialog({
                     isMobile={isMobile}
                     noneDisabled={creditLots.some((lot) => lot.category === category)}
                   />
-                  <div style={{
-                    marginTop: '6px',
-                    fontSize: getFontSize('bodySmall', isMobile),
-                    color: designSystem.colors.text.disabled,
-                  }}>
-                    {creditLots.some((lot) => lot.category === category)
-                      ? '此會員已有年度明細，必須指定入帳年'
-                      : '預設今年；未建立年度明細時可選「無」'}
-                  </div>
+                  {creditLots.some((lot) => lot.category === category) && (
+                    <div style={{
+                      marginTop: '6px',
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      color: designSystem.colors.text.disabled,
+                    }}>
+                      已有年度明細，新增請指定年份
+                    </div>
+                  )}
                 </div>
               )}
 
