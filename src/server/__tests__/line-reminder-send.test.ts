@@ -330,6 +330,7 @@ describe('manual LINE reminder send API', () => {
         member_id: memberId,
         contact_name: 'Member',
         contact_phone: '0912345678',
+        actual_rider: 'Rider',
         start_at: '2026-08-28T09:00:00',
         duration_min: 60,
         activity_types: ['wakeboard'],
@@ -374,12 +375,14 @@ describe('manual LINE reminder send API', () => {
 
     expect(queryBuilders.bookings.gte)
       .toHaveBeenCalledWith('start_at', '2026-08-28T00:00:00')
+    expect(queryBuilders.bookings.select)
+      .toHaveBeenCalledWith(expect.stringContaining('actual_rider'))
     expect(queryBuilders.booking_coaches.in)
       .toHaveBeenCalledWith('booking_id', [101])
     expect(queryBuilders.booking_drivers.in)
       .toHaveBeenCalledWith('booking_id', [101])
     expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
-      bookings: [expect.objectContaining({ id: 101 })],
+      bookings: [expect.objectContaining({ id: 101, actual_rider: 'Rider' })],
       bookingCoaches: [{ booking_id: 101, coaches: { id: 'coach-1', name: 'Coach' } }],
       bookingDrivers: [{ booking_id: 101, coaches: { id: 'driver-1', name: 'Driver' } }],
       bookingMembers: [{

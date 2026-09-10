@@ -82,7 +82,7 @@ export async function handleLineReminderMappingAction(
         const { data, error } = await supabase
           .from('bookings')
           .select(
-            'id, boat_id, member_id, contact_name, contact_phone, start_at, duration_min, activity_types, notes, boats:boat_id(id, name, color)',
+            'id, boat_id, member_id, contact_name, contact_phone, actual_rider, start_at, duration_min, activity_types, notes, boats:boat_id(id, name, color)',
           )
           .gte('start_at', `${reminderDate}T00:00:00`)
           .lte('start_at', `${reminderDate}T23:59:59`)

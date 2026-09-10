@@ -47,6 +47,7 @@ interface Booking {
   boat_id: number
   contact_name: string
   contact_phone: string | null
+  actual_rider: string | null
   start_at: string
   duration_min: number
   activity_types: string[] | null
