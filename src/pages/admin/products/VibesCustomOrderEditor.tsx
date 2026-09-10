@@ -5,7 +5,9 @@ import { ImageUploader } from './ImageUploader'
 import {
   compareBoardSizeValues,
   getVibesBuildSettings,
+  getVibesCarbonImage,
   getVibesColorSettings,
+  setVibesCarbonImage,
   setVibesColorSettings,
   updateVibesBuildSetting,
   validateVibesCustomOrderConfig,
@@ -85,6 +87,7 @@ export function VibesCustomOrderEditor({
     background: designSystem.colors.background.card,
   }
   const builds = getVibesBuildSettings(value)
+  const carbonImage = getVibesCarbonImage(value)
   const colors = getVibesColorSettings(value)
   const issues = validateVibesCustomOrderConfig(value)
   const sortedSpecs = [...specs].sort((a, b) => compareBoardSizeValues(a.size, b.size))
@@ -133,7 +136,11 @@ export function VibesCustomOrderEditor({
               key={build.name}
               style={{
                 display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : '130px 140px minmax(180px, 1fr)',
+                gridTemplateColumns: isMobile
+                  ? '1fr'
+                  : build.name === 'Carbon'
+                    ? '130px 140px minmax(180px, 1fr) 76px'
+                    : '130px 140px minmax(180px, 1fr)',
                 gap: 10,
                 alignItems: 'end',
                 padding: 10,
@@ -176,6 +183,30 @@ export function VibesCustomOrderEditor({
                   }
                 />
               </label>
+              {build.name === 'Carbon' && (
+                <div>
+                  <span style={labelStyle}>圖片</span>
+                  <ImageUploader
+                    value={carbonImage?.url}
+                    path={carbonImage?.path}
+                    storageFolder="covers"
+                    entityId={`${productId ?? 'new'}-carbon`}
+                    disabled={disabled}
+                    size={48}
+                    square
+                    emptyLabel="上傳"
+                    onUpload={onImageUpload}
+                    onChange={(image) =>
+                      onChange(
+                        setVibesCarbonImage(
+                          value,
+                          image.url ? { url: image.url, ...(image.path ? { path: image.path } : {}) } : undefined,
+                        ),
+                      )
+                    }
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -5,6 +5,7 @@ import {
   findMissingAxisCombinations,
   formatOptionSelection,
   getVibesBuildSettings,
+  getVibesCarbonImage,
   getVibesColorSettings,
   isVibesCustomOrderConfig,
   normalizeProductOptionConfig,
@@ -12,6 +13,7 @@ import {
   resolveCustomPriceRange,
   resolveVariantFields,
   resolveCustomSelectionPrice,
+  setVibesCarbonImage,
   setVibesColorSettings,
   setVibesSizeValues,
   stableOptionIdentity,
@@ -339,7 +341,11 @@ describe('product options core', () => {
       { name: 'GREEN', hex: '#50D760', image: { url: 'https://example.com/green.jpg' } },
       { name: 'PINK', hex: '#FF4FA3' },
     ])
-    const resized = setVibesSizeValues(recolored, ["4'10", "4'8", "4'9", "4'8"])
+    const withCarbonImage = setVibesCarbonImage(recolored, {
+      url: 'https://example.com/carbon.jpg',
+      path: 'covers/carbon.jpg',
+    })
+    const resized = setVibesSizeValues(withCarbonImage, ["4'10", "4'8", "4'9", "4'8"])
 
     expect(getVibesBuildSettings(resized)[0]).toEqual({
       name: 'Standard',
@@ -347,9 +353,13 @@ describe('product options core', () => {
       note: '標準白色',
     })
     expect(getVibesColorSettings(resized).map((color) => color.name)).toEqual(['GREEN', 'PINK'])
+    expect(getVibesCarbonImage(resized)).toEqual({
+      url: 'https://example.com/carbon.jpg',
+      path: 'covers/carbon.jpg',
+    })
     expect(resized.variantFields.axis[0].values).toEqual(["4'8", "4'9", "4'10"])
     expect(resized.customFields.find((field) => field.key === 'standard_color')).toEqual(vibesConfig.customFields[2])
-    expect(resized.customFields.find((field) => field.key === 'carbon_color')).toEqual(vibesConfig.customFields[3])
+    expect(resized.customFields.find((field) => field.key === 'carbon_color')).toMatchObject(vibesConfig.customFields[3])
     expect(validateVibesCustomOrderConfig(resized)).toEqual([])
   })
 

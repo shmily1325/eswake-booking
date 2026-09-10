@@ -151,6 +151,8 @@ export interface VibesColorSetting {
   image?: { url: string; path?: string }
 }
 
+export type VibesOptionImage = { url: string; path?: string }
+
 function vibesStoredBuildName(name: VibesBuildName, field: ProductCustomField): string {
   if (name === 'Standard' && field.values?.includes('Standard Build')) return 'Standard Build'
   return name
@@ -236,6 +238,30 @@ export function setVibesColorSettings(
           }
         : field,
     ),
+  }
+}
+
+export function getVibesCarbonImage(config: ProductOptionConfig): VibesOptionImage | undefined {
+  return config.customFields.find((field) => field.key === 'carbon_color')?.swatchImages?.Black
+}
+
+export function setVibesCarbonImage(
+  config: ProductOptionConfig,
+  image: VibesOptionImage | undefined,
+): ProductOptionConfig {
+  return {
+    ...config,
+    customFields: config.customFields.map((field) => {
+      if (field.key !== 'carbon_color') return field
+      const swatchImages = { ...field.swatchImages }
+      if (image?.url) swatchImages.Black = image
+      else delete swatchImages.Black
+      return {
+        ...field,
+        swatches: { ...field.swatches, Black: '#000000' },
+        swatchImages,
+      }
+    }),
   }
 }
 

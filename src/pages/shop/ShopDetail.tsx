@@ -434,7 +434,10 @@ function ProductDetailBody({
     ? selectionValuesWithPendingColor(optionConfig, selectedVariant.attributes, customValues)
     : null
   const selectedSwatchImage = customFields
-    .map((field) => field.swatchImages?.[customValues[field.key] ?? ''])
+    .map((field) => {
+      const selectedValue = customValues[field.key]?.trim() || (field.readOnly ? field.defaultDisplay?.trim() : '')
+      return selectedValue ? field.swatchImages?.[selectedValue] : undefined
+    })
     .find((image) => Boolean(image?.url))
 
   /**
@@ -451,7 +454,7 @@ function ProductDetailBody({
     }
     const productCovers = getProductCoverImages(product)
     if (selectedSwatchImage?.url) {
-      add(selectedSwatchImage.url, 'Selected color reference')
+      add(selectedSwatchImage.url, 'Selected option')
     }
     if (productCovers.length > 0) {
       productCovers.forEach((img, i) => {
