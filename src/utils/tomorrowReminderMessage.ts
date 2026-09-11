@@ -181,21 +181,24 @@ export function generateTomorrowReminderMessage(params: {
   message += '\n'
 
   if (SPECIAL_MEMBERS_FOR_BOAT_INFO.includes(studentName) && studentBookings.length > 0) {
-    const firstBooking = studentBookings[0]
-    const boatName = firstBooking.boats?.name || ''
-    // 駕駛：優先使用 booking_drivers，沒有則退回教練
-    const driverNames = firstBooking.drivers && firstBooking.drivers.length > 0
-      ? firstBooking.drivers.map((d) => d.name).join('/')
-      : (firstBooking.coaches && firstBooking.coaches.length > 0
-          ? firstBooking.coaches.map((c) => c.name).join('/')
-          : '')
+    const boatAndDriverLines = Array.from(new Set(
+      studentBookings.flatMap((booking) => {
+        const boatName = booking.boats?.name || ''
+        if (!boatName) return []
 
-    if (boatName) {
-      if (driverNames) {
-        message += `船：${boatName} / 開船：${driverNames}\n`
-      } else {
-        message += `船：${boatName}\n`
-      }
+        // 駕駛：每筆預約優先使用 booking_drivers，沒有則退回該筆預約的教練
+        const driverNames = booking.drivers && booking.drivers.length > 0
+          ? booking.drivers.map((driver) => driver.name).join('/')
+          : (booking.coaches && booking.coaches.length > 0
+              ? booking.coaches.map((coach) => coach.name).join('/')
+              : '')
+        return [driverNames
+          ? `船：${boatName} / 開船：${driverNames}`
+          : `船：${boatName}`]
+      }),
+    ))
+    if (boatAndDriverLines.length > 0) {
+      message += `${boatAndDriverLines.join('\n')}\n`
     }
   }
 

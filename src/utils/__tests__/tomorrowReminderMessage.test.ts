@@ -116,6 +116,57 @@ describe('generateTomorrowReminderMessage', () => {
     expect(message).toBe('你好李伯\n明天有預約，請 09:30 抵達')
   })
 
+  it('特殊會員會列出所有不同的船與駕駛組合', () => {
+    const message = generateTomorrowReminderMessage({
+      studentName: 'Mandy',
+      bookings: [
+        booking('Mandy', '2026-05-15T10:00:00', {
+          boats: { name: '黑豹' },
+          drivers: [{ name: 'Jerry' }],
+        }),
+        booking('Mandy', '2026-05-15T11:00:00', {
+          boats: { name: '黑豹' },
+          drivers: [{ name: 'Jerry' }],
+        }),
+        booking('Mandy', '2026-05-15T14:00:00', {
+          boats: { name: '煙火船' },
+          drivers: [{ name: 'ED' }],
+        }),
+      ],
+      language: 'zh',
+      templates,
+    })
+
+    expect(message).toContain(
+      '船：黑豹 / 開船：Jerry\n船：煙火船 / 開船：ED'
+    )
+    expect(message.match(/船：黑豹 \/ 開船：Jerry/g)).toHaveLength(1)
+  })
+
+  it('特殊會員每筆預約缺少駕駛時，分別退回該筆預約的教練', () => {
+    const message = generateTomorrowReminderMessage({
+      studentName: 'Mandy',
+      bookings: [
+        booking('Mandy', '2026-05-15T10:00:00', {
+          boats: { name: '黑豹' },
+          coaches: [{ name: 'Jerry' }],
+          drivers: [],
+        }),
+        booking('Mandy', '2026-05-15T14:00:00', {
+          boats: { name: '煙火船' },
+          coaches: [{ name: 'ED' }],
+          drivers: [],
+        }),
+      ],
+      language: 'zh',
+      templates,
+    })
+
+    expect(message).toContain(
+      '船：黑豹 / 開船：Jerry\n船：煙火船 / 開船：ED'
+    )
+  })
+
   it('EHA綺搭配 ED 教練時使用一般教練名稱', () => {
     const message = generateTomorrowReminderMessage({
       studentName: 'EHA綺',
