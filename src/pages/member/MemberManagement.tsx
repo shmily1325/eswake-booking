@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { useNavigate } from 'react-router-dom'
@@ -109,6 +109,8 @@ interface Member {
   // LINE 綁定資訊（衍生欄位）
   line_binding_user_id?: string | null
   line_binding_can_push?: boolean
+  line_reminder_mapping_id?: string | null
+  line_reminder_mapping_can_push?: boolean
   last_liff_login_at?: string | null
   is_line_bound?: boolean
 }
@@ -151,6 +153,7 @@ export function MemberManagement() {
     board: '',
     combined: '',
   })
+  const memberListRef = useRef<HTMLDivElement>(null)
   /** 列表備忘錄展開的會員 id（預設收合，只顯示最近幾則） */
   const [expandedMemoMemberIds, setExpandedMemoMemberIds] = useState<Set<string>>(() => new Set())
   const {
@@ -289,6 +292,39 @@ export function MemberManagement() {
 
       // 依已載入會員 ID 分批 + 分頁抓備忘錄（排序與原先整表查詢相同）
       const memberIds = membersData.map((m: { id: string }) => m.id)
+      let reminderMappingsData: Array<{
+        id: string
+        member_id: string | null
+        line_contact?: { friend_status?: string } | Array<{ friend_status?: string }> | null
+      }> = []
+      if (memberIds.length > 0) {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData.session?.access_token
+        if (!token) throw new Error('登入已失效，請重新登入')
+        const mappingBatches = await Promise.all(
+          chunkArray(memberIds, 200).map(async (batch) => {
+            const response = await fetch('/api/line-reminder-send', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                action: 'list_reminder_mappings',
+                bookingIds: [],
+                memberIds: batch,
+              }),
+            })
+            const body = await response.json().catch(() => null) as {
+              mappings?: typeof reminderMappingsData
+              error?: string
+            } | null
+            if (!response.ok) throw new Error(body?.error || '載入 LINE 配對失敗')
+            return body?.mappings ?? []
+          }),
+        )
+        reminderMappingsData = mappingBatches.flat()
+      }
       let notesData: Array<{ id: number; member_id: string; event_date: string | null; event_type: string | null; description: string | null }> = []
       if (memberIds.length > 0) {
         const idBatches = chunkArray(memberIds, IN_FILTER_BATCH_SIZE)
@@ -365,6 +401,16 @@ export function MemberManagement() {
           }
         }
       })
+      const memberIdToReminderMapping: Record<string, string> = {}
+      reminderMappingsData.forEach((mapping) => {
+        if (!mapping.member_id || memberIdToReminderMapping[mapping.member_id]) return
+        const contact = Array.isArray(mapping.line_contact)
+          ? mapping.line_contact[0]
+          : mapping.line_contact
+        if (contact?.friend_status === 'friend') {
+          memberIdToReminderMapping[mapping.member_id] = mapping.id
+        }
+      })
 
       // 合併資料
       const membersWithBoards = membersData.map((member: any) => ({
@@ -375,6 +421,8 @@ export function MemberManagement() {
         member_notes: memberNotes[member.id] || [],
         line_binding_user_id: memberIdToLineBinding[member.id]?.lineUserId || null,
         line_binding_can_push: memberIdToLineBinding[member.id]?.canPush === true,
+        line_reminder_mapping_id: memberIdToReminderMapping[member.id] || null,
+        line_reminder_mapping_can_push: Boolean(memberIdToReminderMapping[member.id]),
         last_liff_login_at: memberIdToLineBinding[member.id]?.lastLiffLoginAt || null,
         is_line_bound: Boolean(memberIdToLineBinding[member.id])
       }))
@@ -468,11 +516,15 @@ export function MemberManagement() {
     }
 
     if (!isMobile && lineBindingFilter === 'bound') {
-      result = result.filter(m => m.is_line_bound && m.line_binding_can_push)
+      result = result.filter(m =>
+        (m.is_line_bound && m.line_binding_can_push) || m.line_reminder_mapping_can_push
+      )
     } else if (!isMobile && lineBindingFilter === 'rebind') {
-      result = result.filter(m => m.is_line_bound && !m.line_binding_can_push)
+      result = result.filter(m =>
+        m.is_line_bound && !m.line_binding_can_push && !m.line_reminder_mapping_can_push
+      )
     } else if (!isMobile && lineBindingFilter === 'unbound') {
-      result = result.filter(m => !m.is_line_bound)
+      result = result.filter(m => !m.is_line_bound && !m.line_reminder_mapping_can_push)
     }
 
     // 固定依最近更新排序；同時間或未更新時依暱稱穩定排列
@@ -594,7 +646,13 @@ export function MemberManagement() {
     if (!editingExpiryMemberId || !expiryNoticeDraft.trim() || sendingExpiryNotice) return
     const member = members.find((item) => item.id === editingExpiryMemberId)
     const notice = expiryNoticeByMemberId.get(editingExpiryMemberId)
-    if (!member?.is_line_bound || !member.line_binding_can_push || !notice) {
+    const canReceiveLine = Boolean(
+      member && (
+        (member.is_line_bound && member.line_binding_can_push) ||
+        member.line_reminder_mapping_can_push
+      )
+    )
+    if (!member || !canReceiveLine || !notice) {
       toast.error('這位會員目前無法接收 LINE 訊息')
       return
     }
@@ -620,6 +678,9 @@ export function MemberManagement() {
           recipients: [{
             recipientKey: `member-expiry:${member.id}:${expiryKey}`,
             memberId: member.id,
+            ...(member.line_reminder_mapping_id
+              ? { mappingId: member.line_reminder_mapping_id }
+              : {}),
             contactName: member.name,
             bookingIds: [],
             message: expiryNoticeDraft,
@@ -656,7 +717,43 @@ export function MemberManagement() {
     ? members.find((member) => member.id === editingExpiryMemberId)
     : null
   const canSendEditingExpiryNotice = Boolean(
-    editingExpiryMember?.is_line_bound && editingExpiryMember.line_binding_can_push,
+    editingExpiryMember && (
+      (editingExpiryMember.is_line_bound && editingExpiryMember.line_binding_can_push) ||
+      editingExpiryMember.line_reminder_mapping_can_push
+    ),
+  )
+
+  const handleSearchExpiryMember = (memberId: string, fallbackName: string) => {
+    const notice = expiryNoticeByMemberId.get(memberId)
+    const searchName = notice?.nickname?.trim() || notice?.name || fallbackName
+    setSearchTerm(searchName)
+    setMembershipTypeFilter('all')
+    setExpiringFilter('none')
+    setLineBindingFilter('all')
+    window.requestAnimationFrame(() => {
+      memberListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  const renderExpiryMemberSearch = (memberId: string, label: string) => (
+    <button
+      type="button"
+      onClick={() => handleSearchExpiryMember(memberId, label)}
+      title={`搜尋 ${label}`}
+      style={{
+        padding: isMobile ? '3px 2px' : '1px 2px',
+        border: 'none',
+        background: 'transparent',
+        color: 'inherit',
+        font: 'inherit',
+        cursor: 'pointer',
+        textDecoration: 'underline',
+        textDecorationStyle: 'dotted',
+        textUnderlineOffset: '3px',
+      }}
+    >
+      {label}
+    </button>
   )
 
   if (loading) {
@@ -923,7 +1020,9 @@ export function MemberManagement() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'bound'),
                 }}
               >
-                LINE 已綁定 ({members.filter(m => m.is_line_bound && m.line_binding_can_push).length})
+                LINE 可傳送 ({members.filter(m =>
+                  (m.is_line_bound && m.line_binding_can_push) || m.line_reminder_mapping_can_push
+                ).length})
               </button>
 
               <button
@@ -935,7 +1034,9 @@ export function MemberManagement() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'rebind', true),
                 }}
               >
-                需重新綁定 ({members.filter(m => m.is_line_bound && !m.line_binding_can_push).length})
+                需重新綁定 ({members.filter(m =>
+                  m.is_line_bound && !m.line_binding_can_push && !m.line_reminder_mapping_can_push
+                ).length})
               </button>
 
               <button
@@ -947,7 +1048,9 @@ export function MemberManagement() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'unbound'),
                 }}
               >
-                LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
+                LINE 未綁定 ({members.filter(m =>
+                  !m.is_line_bound && !m.line_reminder_mapping_can_push
+                ).length})
               </button>
 
               <label style={{
@@ -1037,7 +1140,15 @@ export function MemberManagement() {
                       <div style={{ marginBottom: '8px' }}>
                         <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.danger[700], fontWeight: '600' }}>已過期 ({expired.length})：</span>
                         <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
-                          {expired.map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
+                          {expired.map((m: any, index: number) => {
+                            const label = (m.nickname && m.nickname.trim()) || m.name
+                            return (
+                              <span key={m.id}>
+                                {index > 0 && '、'}
+                                {renderExpiryMemberSearch(m.id, label)}
+                              </span>
+                            )
+                          })}
                         </span>
                       </div>
                     )}
@@ -1045,7 +1156,15 @@ export function MemberManagement() {
                       <div>
                         <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.warning[700], fontWeight: '600' }}>即將到期 ({upcoming.length})：</span>
                         <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
-                          {upcoming.map((m: any) => (m.nickname && m.nickname.trim()) || m.name).join('、')}
+                          {upcoming.map((m: any, index: number) => {
+                            const label = (m.nickname && m.nickname.trim()) || m.name
+                            return (
+                              <span key={m.id}>
+                                {index > 0 && '、'}
+                                {renderExpiryMemberSearch(m.id, label)}
+                              </span>
+                            )
+                          })}
                         </span>
                       </div>
                     )}
@@ -1063,7 +1182,12 @@ export function MemberManagement() {
                       <div style={{ marginBottom: '8px' }}>
                         <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.danger[700], fontWeight: '600' }}>已過期置板 ({expiredBoards.length})：</span>
                         <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
-                          {expiredBoards.map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
+                          {expiredBoards.map((b: any, index: number) => (
+                            <span key={`${b.member_id}:${b.slot_number}`}>
+                              {index > 0 && '、'}
+                              #{b.slot_number} {renderExpiryMemberSearch(b.member_id, b.member_name)}
+                            </span>
+                          ))}
                         </span>
                       </div>
                     )}
@@ -1071,7 +1195,12 @@ export function MemberManagement() {
                       <div>
                         <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.info[700], fontWeight: '600' }}>即將到期置板 ({upcomingBoards.length})：</span>
                         <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
-                          {upcomingBoards.map((b: any) => `#${b.slot_number} ${b.member_name}`).join('、')}
+                          {upcomingBoards.map((b: any, index: number) => (
+                            <span key={`${b.member_id}:${b.slot_number}`}>
+                              {index > 0 && '、'}
+                              #{b.slot_number} {renderExpiryMemberSearch(b.member_id, b.member_name)}
+                            </span>
+                          ))}
                         </span>
                       </div>
                     )}
@@ -1084,7 +1213,7 @@ export function MemberManagement() {
       )}
 
       {/* 會員列表 */}
-      <div style={{
+      <div ref={memberListRef} style={{
         display: 'grid',
         gap: '20px'
       }}>
@@ -1123,6 +1252,11 @@ export function MemberManagement() {
             const cardBg = member.status === 'inactive'
               ? designSystem.colors.background.main
               : designSystem.colors.background.card
+            const canReceiveLine =
+              (member.is_line_bound && member.line_binding_can_push) ||
+              member.line_reminder_mapping_can_push
+            const hasReminderMapping =
+              member.line_reminder_mapping_can_push && !member.line_binding_can_push
             return (
             <div
               key={member.id}
@@ -1243,26 +1377,22 @@ export function MemberManagement() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span
                         title={
-                          !member.is_line_bound
+                          canReceiveLine
+                            ? (hasReminderMapping ? 'LINE 已配對，可傳送' : 'LINE 已綁定')
+                            : !member.is_line_bound
                             ? 'LINE 未綁定'
-                            : member.line_binding_can_push
-                              ? 'LINE 已綁定'
-                              : '需重新綁定'
+                            : '需重新綁定'
                         }
                         style={getBadgeStyle(
-                          !member.is_line_bound
-                            ? 'default'
-                            : member.line_binding_can_push
-                              ? 'success'
-                              : 'warning',
+                          canReceiveLine ? 'success' : !member.is_line_bound ? 'default' : 'warning',
                           'small',
                         )}
                       >
-                        {!member.is_line_bound
+                        {canReceiveLine
+                          ? (hasReminderMapping ? 'LINE 已配對' : 'LINE 已綁定')
+                          : !member.is_line_bound
                           ? 'LINE 未綁定'
-                          : member.line_binding_can_push
-                            ? 'LINE 已綁定'
-                            : '需重新綁定'}
+                          : '需重新綁定'}
                       </span>
                       {member.is_line_bound && member.last_liff_login_at && (
                         <span style={{
@@ -1499,7 +1629,7 @@ export function MemberManagement() {
                 flex: isMobile ? '1 1 0' : undefined,
               }}
             >
-              複製通知
+              複製
             </button>
             {canSendEditingExpiryNotice && (
               <button
@@ -1512,7 +1642,7 @@ export function MemberManagement() {
                   flex: isMobile ? '1 1 0' : undefined,
                 }}
               >
-                {sendingExpiryNotice ? '傳送中…' : 'LINE 傳送'}
+                {sendingExpiryNotice ? '傳送中…' : 'LINE傳送'}
               </button>
             )}
           </>
