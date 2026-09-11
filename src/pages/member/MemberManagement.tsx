@@ -143,6 +143,7 @@ export function MemberManagement() {
   const [copiedExpiryMemberId, setCopiedExpiryMemberId] = useState<string | null>(null)
   const [editingExpiryMemberId, setEditingExpiryMemberId] = useState<string | null>(null)
   const [expiryNoticeDraft, setExpiryNoticeDraft] = useState('')
+  const [sendingExpiryNotice, setSendingExpiryNotice] = useState(false)
   const [showExpiryTemplateEditor, setShowExpiryTemplateEditor] = useState(false)
   const [expiryTemplateType, setExpiryTemplateType] = useState<ExpiryTemplateType>('combined')
   const [expiryTemplateDrafts, setExpiryTemplateDrafts] = useState<MemberExpiryNoticeTemplates>({
@@ -588,6 +589,75 @@ export function MemberManagement() {
       toast.error('複製失敗，請確認瀏覽器已允許剪貼簿權限')
     }
   }
+
+  const handleSendExpiryNotice = async () => {
+    if (!editingExpiryMemberId || !expiryNoticeDraft.trim() || sendingExpiryNotice) return
+    const member = members.find((item) => item.id === editingExpiryMemberId)
+    const notice = expiryNoticeByMemberId.get(editingExpiryMemberId)
+    if (!member?.is_line_bound || !member.line_binding_can_push || !notice) {
+      toast.error('這位會員目前無法接收 LINE 訊息')
+      return
+    }
+    if (!window.confirm(`確定直接傳送到期通知給「${member.nickname || member.name}」嗎？`)) return
+
+    setSendingExpiryNotice(true)
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (!token) throw new Error('登入已失效，請重新登入')
+      const expiryKey = [
+        notice.membershipExpiresAt || 'no-membership',
+        ...notice.boards.map((board) => `${board.slotNumber}-${board.expiresAt}`),
+      ].join(':')
+      const response = await fetch('/api/line-reminder-send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date: getVenueDateString(),
+          recipients: [{
+            recipientKey: `member-expiry:${member.id}:${expiryKey}`,
+            memberId: member.id,
+            contactName: member.name,
+            bookingIds: [],
+            message: expiryNoticeDraft,
+          }],
+        }),
+      })
+      const body = await response.json().catch(() => null) as {
+        results?: Array<{ ok: boolean; alreadySent?: boolean; error?: string }>
+        error?: string
+      } | null
+      const result = body?.results?.[0]
+      if (!result) throw new Error(body?.error || 'LINE 傳送失敗')
+      if (result.alreadySent) {
+        toast.warning('今天已傳送過這份到期通知，本次未重複傳送')
+        return
+      }
+      if (!result.ok) throw new Error(result.error || body?.error || 'LINE 傳送失敗')
+
+      if (response.ok) {
+        toast.success(`已傳送給 ${member.nickname || member.name}`)
+      } else {
+        toast.warning('訊息已傳送，但傳送紀錄儲存失敗；請勿重複傳送')
+      }
+      setEditingExpiryMemberId(null)
+      setExpiryNoticeDraft('')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'LINE 傳送失敗')
+    } finally {
+      setSendingExpiryNotice(false)
+    }
+  }
+
+  const editingExpiryMember = editingExpiryMemberId
+    ? members.find((member) => member.id === editingExpiryMemberId)
+    : null
+  const canSendEditingExpiryNotice = Boolean(
+    editingExpiryMember?.is_line_bound && editingExpiryMember.line_binding_can_push,
+  )
 
   if (loading) {
     return (
@@ -1392,6 +1462,7 @@ export function MemberManagement() {
       <Modal
         isOpen={editingExpiryMemberId !== null}
         onClose={() => {
+          if (sendingExpiryNotice) return
           setEditingExpiryMemberId(null)
           setExpiryNoticeDraft('')
         }}
@@ -1405,10 +1476,11 @@ export function MemberManagement() {
                 setEditingExpiryMemberId(null)
                 setExpiryNoticeDraft('')
               }}
+              disabled={sendingExpiryNotice}
               style={{
                 ...getButtonStyle('outline', 'medium', isMobile),
                 minHeight: isMobile ? '44px' : undefined,
-                width: isMobile ? 'calc(50% - 4px)' : undefined,
+                flex: isMobile ? '1 1 0' : undefined,
               }}
             >
               取消
@@ -1416,15 +1488,33 @@ export function MemberManagement() {
             <button
               type="button"
               onClick={() => void handleCopyExpiryNotice()}
-              disabled={!expiryNoticeDraft.trim()}
+              disabled={!expiryNoticeDraft.trim() || sendingExpiryNotice}
               style={{
-                ...getButtonStyle('primary', 'medium', isMobile),
+                ...getButtonStyle(
+                  canSendEditingExpiryNotice ? 'outline' : 'primary',
+                  'medium',
+                  isMobile,
+                ),
                 minHeight: isMobile ? '44px' : undefined,
-                width: isMobile ? 'calc(50% - 4px)' : undefined,
+                flex: isMobile ? '1 1 0' : undefined,
               }}
             >
               複製通知
             </button>
+            {canSendEditingExpiryNotice && (
+              <button
+                type="button"
+                onClick={() => void handleSendExpiryNotice()}
+                disabled={!expiryNoticeDraft.trim() || sendingExpiryNotice}
+                style={{
+                  ...getButtonStyle('primary', 'medium', isMobile),
+                  minHeight: isMobile ? '44px' : undefined,
+                  flex: isMobile ? '1 1 0' : undefined,
+                }}
+              >
+                {sendingExpiryNotice ? '傳送中…' : 'LINE 傳送'}
+              </button>
+            )}
           </>
         }
       >
@@ -1437,7 +1527,9 @@ export function MemberManagement() {
             fontSize: getFontSize('bodySmall', isMobile),
           }}
         >
-          可直接修改本次通知內容，修改不會影響其他會員。
+          {canSendEditingExpiryNotice
+            ? '可修改本次通知，再選擇複製或直接傳送 LINE。'
+            : '可修改本次通知內容，再複製到 LINE 傳送。'}
         </label>
         <textarea
           id="expiry-notice-draft"
