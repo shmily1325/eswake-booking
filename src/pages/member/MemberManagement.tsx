@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { AddMemberDialog } from '../../components/AddMemberDialog'
 import { MemberDetailDialog } from '../../components/MemberDetailDialog'
+import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -20,6 +21,11 @@ import { isAdmin } from '../../utils/auth'
 import { chunkArray, fetchAllPaginated, IN_FILTER_BATCH_SIZE } from '../../utils/supabasePaginate'
 import { setMemberActiveStatus } from '../../services/memberLifecycle'
 import { membershipCountsAsActive } from '../../utils/membership'
+import {
+  generateMemberExpiryNotice,
+  type MemberExpiryNoticeTemplates,
+} from '../../utils/memberExpiryNotice'
+import { useMemberExpiryNoticeTemplates } from '../../hooks/useMemberExpiryNoticeTemplates'
 import { MemberStatusBadges } from '../../components/MemberStatusBadges'
 import {
   designSystem,
@@ -37,6 +43,32 @@ const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
 const cardShadow = designSystem.shadows.elevation[1]
 const cardShadowHover = designSystem.shadows.elevation[2]
+type ExpiryTemplateType = 'membership' | 'board' | 'combined'
+const EXPIRY_TEMPLATE_LABELS: Record<ExpiryTemplateType, string> = {
+  membership: '只有會員',
+  board: '只有置板',
+  combined: '會員＋置板',
+}
+const EXPIRY_TEMPLATE_TOKENS = {
+  year: '[年份]',
+  recipient: '[會員名稱]',
+  expiry_lines: '[到期資訊]',
+  combined_price: '[合計金額]',
+} as const
+
+function toFriendlyExpiryTemplate(value: string): string {
+  return Object.entries(EXPIRY_TEMPLATE_TOKENS).reduce(
+    (template, [key, label]) => template.replaceAll(`{{${key}}}`, label),
+    value,
+  )
+}
+
+function toStoredExpiryTemplate(value: string): string {
+  return Object.entries(EXPIRY_TEMPLATE_TOKENS).reduce(
+    (template, [key, label]) => template.replaceAll(label, `{{${key}}}`),
+    value,
+  )
+}
 
 /** 備忘錄事件色（僅顯示；value 與 DB event_type 對齊） */
 const NOTE_EVENT_COLORS: Record<string, string> = {
@@ -108,8 +140,23 @@ export function MemberManagement() {
   const [expiringFilter, setExpiringFilter] = useState<string>('none') // 'none', 'membership', 'board'
   const [lineBindingFilter, setLineBindingFilter] = useState<'all' | 'bound' | 'rebind' | 'unbound'>('all')
   const [showExpiringDetails, setShowExpiringDetails] = useState(false) // 收合/展開到期詳情
+  const [copiedExpiryMemberId, setCopiedExpiryMemberId] = useState<string | null>(null)
+  const [editingExpiryMemberId, setEditingExpiryMemberId] = useState<string | null>(null)
+  const [expiryNoticeDraft, setExpiryNoticeDraft] = useState('')
+  const [showExpiryTemplateEditor, setShowExpiryTemplateEditor] = useState(false)
+  const [expiryTemplateType, setExpiryTemplateType] = useState<ExpiryTemplateType>('combined')
+  const [expiryTemplateDrafts, setExpiryTemplateDrafts] = useState<MemberExpiryNoticeTemplates>({
+    membership: '',
+    board: '',
+    combined: '',
+  })
   /** 列表備忘錄展開的會員 id（預設收合，只顯示最近幾則） */
   const [expandedMemoMemberIds, setExpandedMemoMemberIds] = useState<Set<string>>(() => new Set())
+  const {
+    templates: expiryNoticeTemplates,
+    saveTemplates: saveExpiryNoticeTemplates,
+    saveStatus: expiryTemplateSaveStatus,
+  } = useMemberExpiryNoticeTemplates(user?.id)
 
   useEffect(() => {
     if (!user || !userIsAdmin) return
@@ -188,6 +235,8 @@ export function MemberManagement() {
           member_id: b.member_id,
           slot_number: b.slot_number,
           member_name: displayName,
+          member_full_name: member?.name || displayName,
+          member_nickname: member?.nickname || null,
           expires_at: b.expires_at
         }
       })
@@ -441,6 +490,104 @@ export function MemberManagement() {
     return result
   }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards, isMobile])
 
+  const expiryNoticeByMemberId = useMemo(() => {
+    const notices = new Map<string, {
+      name: string
+      nickname: string | null
+      membershipExpiresAt: string | null
+      boards: Array<{ slotNumber: number; expiresAt: string }>
+    }>()
+
+    expiringMemberships.forEach((member: any) => {
+      notices.set(member.id, {
+        name: member.name,
+        nickname: member.nickname,
+        membershipExpiresAt: member.membership_end_date,
+        boards: [],
+      })
+    })
+    expiringBoards.forEach((board: any) => {
+      const current = notices.get(board.member_id)
+      const notice: {
+        name: string
+        nickname: string | null
+        membershipExpiresAt: string | null
+        boards: Array<{ slotNumber: number; expiresAt: string }>
+      } = current ?? {
+        name: board.member_full_name || board.member_name,
+        nickname: board.member_nickname,
+        membershipExpiresAt: null,
+        boards: [],
+      }
+      notice.boards.push({
+        slotNumber: board.slot_number,
+        expiresAt: board.expires_at,
+      })
+      notices.set(board.member_id, notice)
+    })
+    return notices
+  }, [expiringMemberships, expiringBoards])
+
+  const handleOpenExpiryNotice = (memberId: string) => {
+    const notice = expiryNoticeByMemberId.get(memberId)
+    if (!notice) {
+      toast.error('找不到這位會員的到期資料')
+      return
+    }
+    setEditingExpiryMemberId(memberId)
+    setExpiryNoticeDraft(generateMemberExpiryNotice(notice, expiryNoticeTemplates))
+  }
+
+  const handleOpenExpiryTemplateEditor = () => {
+    setExpiryTemplateDrafts({
+      membership: toFriendlyExpiryTemplate(expiryNoticeTemplates.membership),
+      board: toFriendlyExpiryTemplate(expiryNoticeTemplates.board),
+      combined: toFriendlyExpiryTemplate(expiryNoticeTemplates.combined),
+    })
+    setShowExpiryTemplateEditor(true)
+  }
+
+  const handleSaveExpiryTemplates = async () => {
+    const invalidType = (Object.keys(expiryTemplateDrafts) as ExpiryTemplateType[]).find((type) => {
+      const template = expiryTemplateDrafts[type]
+      return !template.includes(EXPIRY_TEMPLATE_TOKENS.recipient) ||
+        !template.includes(EXPIRY_TEMPLATE_TOKENS.expiry_lines)
+    })
+    if (invalidType) {
+      setExpiryTemplateType(invalidType)
+      toast.warning(`${EXPIRY_TEMPLATE_LABELS[invalidType]}範本需保留「[會員名稱]」和「[到期資訊]」`)
+      return
+    }
+
+    const saved = await saveExpiryNoticeTemplates({
+      membership: toStoredExpiryTemplate(expiryTemplateDrafts.membership),
+      board: toStoredExpiryTemplate(expiryTemplateDrafts.board),
+      combined: toStoredExpiryTemplate(expiryTemplateDrafts.combined),
+    })
+    if (!saved) {
+      toast.error('通知範本儲存失敗')
+      return
+    }
+    setShowExpiryTemplateEditor(false)
+    toast.success('通知範本已儲存')
+  }
+
+  const handleCopyExpiryNotice = async () => {
+    if (!editingExpiryMemberId || !expiryNoticeDraft.trim()) return
+    try {
+      await navigator.clipboard.writeText(expiryNoticeDraft)
+      setCopiedExpiryMemberId(editingExpiryMemberId)
+      toast.success('到期通知已複製')
+      const copiedMemberId = editingExpiryMemberId
+      setEditingExpiryMemberId(null)
+      setExpiryNoticeDraft('')
+      window.setTimeout(() => {
+        setCopiedExpiryMemberId((current) => current === copiedMemberId ? null : current)
+      }, 2000)
+    } catch {
+      toast.error('複製失敗，請確認瀏覽器已允許剪貼簿權限')
+    }
+  }
 
   if (loading) {
     return (
@@ -799,6 +946,18 @@ export function MemberManagement() {
 
           {showExpiringDetails && (
             <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${designSystem.colors.border.light}` }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={handleOpenExpiryTemplateEditor}
+                  style={{
+                    ...getButtonStyle('outline', 'small', isMobile),
+                    minHeight: isMobile ? '40px' : undefined,
+                  }}
+                >
+                  通知範本設定
+                </button>
+              </div>
               {expiringMemberships.length > 0 && (() => {
                 const expired = expiringMemberships.filter((m: any) => isDateExpired(m.membership_end_date))
                 const upcoming = expiringMemberships.filter((m: any) => !isDateExpired(m.membership_end_date))
@@ -957,6 +1116,23 @@ export function MemberManagement() {
                       <span style={{ ...getBadgeStyle('warning', 'small'), fontWeight: 500 }}>
                         本月壽星
                       </span>
+                    )}
+                    {expiryNoticeByMemberId.has(member.id) && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleOpenExpiryNotice(member.id)
+                        }}
+                        aria-label={`預覽 ${(member.nickname && member.nickname.trim()) || member.name} 的到期通知`}
+                        style={{
+                          ...getButtonStyle('outline', 'small', isMobile),
+                          minHeight: isMobile ? '40px' : '30px',
+                          marginLeft: 'auto',
+                        }}
+                      >
+                        {copiedExpiryMemberId === member.id ? '已複製' : '預覽通知'}
+                      </button>
                     )}
                   </div>
 
@@ -1212,6 +1388,161 @@ export function MemberManagement() {
         onArchiveMember={handleArchiveMember}
         onRestoreMember={handleRestoreMember}
       />
+
+      <Modal
+        isOpen={editingExpiryMemberId !== null}
+        onClose={() => {
+          setEditingExpiryMemberId(null)
+          setExpiryNoticeDraft('')
+        }}
+        title="到期通知預覽"
+        size="large"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingExpiryMemberId(null)
+                setExpiryNoticeDraft('')
+              }}
+              style={{
+                ...getButtonStyle('outline', 'medium', isMobile),
+                minHeight: isMobile ? '44px' : undefined,
+                width: isMobile ? 'calc(50% - 4px)' : undefined,
+              }}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleCopyExpiryNotice()}
+              disabled={!expiryNoticeDraft.trim()}
+              style={{
+                ...getButtonStyle('primary', 'medium', isMobile),
+                minHeight: isMobile ? '44px' : undefined,
+                width: isMobile ? 'calc(50% - 4px)' : undefined,
+              }}
+            >
+              複製通知
+            </button>
+          </>
+        }
+      >
+        <label
+          htmlFor="expiry-notice-draft"
+          style={{
+            display: 'block',
+            marginBottom: '8px',
+            color: designSystem.colors.text.secondary,
+            fontSize: getFontSize('bodySmall', isMobile),
+          }}
+        >
+          可直接修改本次通知內容，修改不會影響其他會員。
+        </label>
+        <textarea
+          id="expiry-notice-draft"
+          value={expiryNoticeDraft}
+          onChange={(event) => setExpiryNoticeDraft(event.target.value)}
+          rows={isMobile ? 15 : 22}
+          style={{
+            ...getInputStyle(isMobile),
+            width: '100%',
+            boxSizing: 'border-box',
+            resize: 'vertical',
+            lineHeight: '1.55',
+            fontFamily: 'inherit',
+          }}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={showExpiryTemplateEditor}
+        onClose={() => setShowExpiryTemplateEditor(false)}
+        title="設定到期通知範本"
+        size="large"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowExpiryTemplateEditor(false)}
+              disabled={expiryTemplateSaveStatus === 'saving'}
+              style={{
+                ...getButtonStyle('outline', 'medium', isMobile),
+                minHeight: isMobile ? '44px' : undefined,
+                width: isMobile ? 'calc(50% - 4px)' : undefined,
+              }}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSaveExpiryTemplates()}
+              disabled={expiryTemplateSaveStatus === 'saving'}
+              style={{
+                ...getButtonStyle('primary', 'medium', isMobile),
+                minHeight: isMobile ? '44px' : undefined,
+                width: isMobile ? 'calc(50% - 4px)' : undefined,
+              }}
+            >
+              {expiryTemplateSaveStatus === 'saving' ? '儲存中…' : '儲存範本'}
+            </button>
+          </>
+        }
+      >
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          marginBottom: '12px',
+        }}>
+          {(Object.keys(EXPIRY_TEMPLATE_LABELS) as ExpiryTemplateType[]).map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setExpiryTemplateType(type)}
+              style={{
+                ...getButtonStyle(
+                  expiryTemplateType === type ? 'primary' : 'outline',
+                  'small',
+                  isMobile,
+                ),
+                minHeight: isMobile ? '40px' : undefined,
+                flex: isMobile ? '1 1 88px' : undefined,
+              }}
+            >
+              {EXPIRY_TEMPLATE_LABELS[type]}
+            </button>
+          ))}
+        </div>
+        <p style={{
+          margin: '0 0 8px',
+          color: designSystem.colors.text.secondary,
+          fontSize: getFontSize('bodySmall', isMobile),
+          lineHeight: '1.5',
+        }}>
+          方括號內的內容會由系統自動帶入。請保留「[會員名稱]」和「[到期資訊]」，其他文字可直接修改。
+        </p>
+        <textarea
+          value={expiryTemplateDrafts[expiryTemplateType]}
+          onChange={(event) => {
+            const value = event.target.value
+            setExpiryTemplateDrafts((current) => ({
+              ...current,
+              [expiryTemplateType]: value,
+            }))
+          }}
+          rows={isMobile ? 16 : 25}
+          aria-label={`${EXPIRY_TEMPLATE_LABELS[expiryTemplateType]}通知範本`}
+          style={{
+            ...getInputStyle(isMobile),
+            width: '100%',
+            boxSizing: 'border-box',
+            resize: 'vertical',
+            lineHeight: '1.55',
+            fontFamily: 'inherit',
+          }}
+        />
+      </Modal>
 
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
