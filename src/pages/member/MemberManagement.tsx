@@ -1330,12 +1330,14 @@ export function MemberManagement() {
                         }}
                         aria-label={`預覽 ${(member.nickname && member.nickname.trim()) || member.name} 的到期通知`}
                         style={{
-                          ...getButtonStyle('outline', 'small', isMobile),
-                          minHeight: isMobile ? '40px' : '30px',
-                          marginLeft: 'auto',
+                          ...getButtonStyle('primary', 'small', isMobile),
+                          minHeight: isMobile ? '44px' : '34px',
+                          marginLeft: isMobile ? 0 : 'auto',
+                          marginTop: isMobile ? '4px' : 0,
+                          width: isMobile ? '100%' : undefined,
                         }}
                       >
-                        {copiedExpiryMemberId === member.id ? '已複製' : '預覽通知'}
+                        {copiedExpiryMemberId === member.id ? '已複製' : '處理到期通知'}
                       </button>
                     )}
                   </div>
