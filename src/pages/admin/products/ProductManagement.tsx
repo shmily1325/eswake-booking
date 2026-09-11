@@ -446,6 +446,53 @@ export function ProductManagement({
   }
 
   const allItems: VariantListItem[] = useMemo(() => flattenToVariantItems(products), [products])
+  const categories = useMemo(() => getAllCategories(), [])
+  const searchQuery = search.trim()
+  const hasSearch = searchQuery !== ''
+
+  /** 上方篩選後的全集，供系列／分類／品牌同步縮減選項。 */
+  const operationalItems = useMemo(
+    () => filterOperationalItems(allItems, {
+      searchQuery,
+      onlyUnlisted,
+      onlyMissingPrice,
+      onlyMissingImage,
+      onlyMissingCover,
+      onlyMissingLabel,
+      onlyInStock,
+      onlyPreOrder,
+      onlyCustomOrder,
+      onlySoldOut,
+      discountPresetFilter,
+    }),
+    [
+      allItems,
+      searchQuery,
+      onlyUnlisted,
+      onlyMissingPrice,
+      onlyMissingImage,
+      onlyMissingCover,
+      onlyMissingLabel,
+      onlyInStock,
+      onlyPreOrder,
+      onlyCustomOrder,
+      onlySoldOut,
+      discountPresetFilter,
+    ],
+  )
+  const availableCategoryIds = useMemo(
+    () => new Set(operationalItems.map((item) => item.product.category ?? '')),
+    [operationalItems],
+  )
+  const availableGroups = useMemo(() => {
+    const result = new Set<ShopGroup>()
+    for (const category of categories) {
+      if (availableCategoryIds.has(category.id) && category.shopGroup) {
+        result.add(category.shopGroup)
+      }
+    }
+    return result
+  }, [availableCategoryIds, categories])
 
   /**
    * 屬於目前 tab 的 items（在套 filter 之前），給儀表板算「全庫總數」用。
@@ -479,17 +526,52 @@ export function ProductManagement({
     setActiveBrand('all')
   }, [activeSubCat])
 
-  /** 品牌直接由目前分組／分類下的商品產生；新增品牌後不需另外維護清單。 */
+  /** 上方條件改變後，若目前系列／分類已無結果，就回到「全部」。 */
+  useEffect(() => {
+    if (activeGroup !== 'all' && !availableGroups.has(activeGroup)) {
+      setActiveGroup('all')
+    }
+  }, [activeGroup, availableGroups])
+
+  useEffect(() => {
+    if (activeSubCat !== 'all' && !availableCategoryIds.has(activeSubCat)) {
+      setActiveSubCat('all')
+    }
+  }, [activeSubCat, availableCategoryIds])
+
+  const operationalTabItems = useMemo(() => {
+    if (activeGroup === 'all') return operationalItems
+    if (activeSubCat !== 'all') {
+      return operationalItems.filter((item) => item.product.category === activeSubCat)
+    }
+    const idsInGroup = new Set(
+      categories
+        .filter((category) => category.shopGroup === activeGroup)
+        .map((category) => category.id),
+    )
+    return operationalItems.filter((item) => idsInGroup.has(item.product.category ?? ''))
+  }, [operationalItems, activeGroup, activeSubCat, categories])
+
+  /** 品牌由目前上方條件及系列／分類的結果產生。 */
   const brandOptions = useMemo(() => {
     const byNormalizedName = new Map<string, string>()
-    for (const item of tabItems) {
+    for (const item of operationalTabItems) {
       const brand = item.product.brand.trim()
       if (brand) byNormalizedName.set(brand.toLocaleLowerCase(), brand)
     }
     return Array.from(byNormalizedName.values()).sort((a, b) =>
       a.localeCompare(b, undefined, { sensitivity: 'base' }),
     )
-  }, [tabItems])
+  }, [operationalTabItems])
+
+  useEffect(() => {
+    if (
+      activeBrand !== 'all' &&
+      !brandOptions.some((brand) => brand.toLocaleLowerCase() === activeBrand.toLocaleLowerCase())
+    ) {
+      setActiveBrand('all')
+    }
+  }, [activeBrand, brandOptions])
 
   const brandItems = useMemo(() => {
     if (activeBrand === 'all') return tabItems
@@ -499,69 +581,16 @@ export function ProductManagement({
     )
   }, [tabItems, activeBrand])
 
-  const searchQuery = search.trim()
-  const hasSearch = searchQuery !== ''
-
   const filteredItems: VariantListItem[] = useMemo(() => {
-    let items = brandItems
-
-    // 庫存狀態：現貨／預購／已售完互斥；未選時預設隱藏已售完（搜尋時仍顯示）
-    if (onlySoldOut) {
-      items = items.filter(isVariantSoldOut)
-    } else if (onlyInStock) {
-      items = items.filter(isVariantInStock)
-    } else if (onlyPreOrder) {
-      items = items.filter(isVariantPreOrder)
-    } else if (onlyCustomOrder) {
-      items = items.filter(isVariantCustomOrder)
-    } else if (!hasSearch) {
-      items = items.filter((it) => !isVariantSoldOut(it))
+    let items = operationalTabItems
+    if (activeBrand !== 'all') {
+      const normalizedBrand = activeBrand.toLocaleLowerCase()
+      items = items.filter(
+        (item) => item.product.brand.trim().toLocaleLowerCase() === normalizedBrand,
+      )
     }
-
-    // 資料問題同組採 OR；與分類、品牌、庫存、檔期、搜尋等其他組採 AND。
-    items = items.filter((it) =>
-      matchesSelectedDataIssues(
-        {
-          unlisted: isVariantUnlisted(it),
-          missingPrice: it.variant.price == null,
-          missingImage: !it.variant.image_url,
-          missingCover: !hasCoverImage(it.variant, it.product),
-          missingLabel: isVariantMissingLabel(it),
-        },
-        {
-          unlisted: onlyUnlisted,
-          missingPrice: onlyMissingPrice,
-          missingImage: onlyMissingImage,
-          missingCover: onlyMissingCover,
-          missingLabel: onlyMissingLabel,
-        },
-      ),
-    )
-    if (discountPresetFilter) {
-      items = items.filter((it) => it.variant.discount_preset_id === discountPresetFilter)
-    }
-
-    // 搜尋：多關鍵字（空白分隔）AND
-    if (hasSearch) {
-      items = items.filter((it) => variantMatchesSearchTokens(it, searchQuery))
-    }
-
     return sortItemsByUpdated(items)
-  }, [
-    brandItems,
-    searchQuery,
-    hasSearch,
-    onlyUnlisted,
-    onlyMissingPrice,
-    onlyMissingImage,
-    onlyMissingCover,
-    onlyMissingLabel,
-    onlyInStock,
-    onlyPreOrder,
-    onlyCustomOrder,
-    onlySoldOut,
-    discountPresetFilter,
-  ])
+  }, [operationalTabItems, activeBrand])
   const filteredProductCount = useMemo(
     () => new Set(filteredItems.map((item) => item.product.id)).size,
     [filteredItems],
@@ -582,7 +611,6 @@ export function ProductManagement({
     [baseForCounts],
   )
 
-  const categories = useMemo(() => getAllCategories(), [])
   const activeFilterItems: ActiveFilterItem[] = [
     ...(activeGroup !== 'all'
       ? [{
@@ -1105,7 +1133,7 @@ export function ProductManagement({
                   trackId="product_tab_all"
                   isMobile={isMobile}
                 />
-                {SHOP_GROUPS.map((g) => (
+                {SHOP_GROUPS.filter((group) => availableGroups.has(group)).map((g) => (
                   <CategoryTab
                     key={g}
                     label={getShopGroupLabel(g)}
@@ -1130,7 +1158,11 @@ export function ProductManagement({
                     isMobile={isMobile}
                   />
                   {categories
-                    .filter((cat) => cat.shopGroup === activeGroup)
+                    .filter(
+                      (cat) =>
+                        cat.shopGroup === activeGroup &&
+                        availableCategoryIds.has(cat.id),
+                    )
                     .map((cat) => (
                       <CategoryTab
                         key={cat.id}
@@ -1619,6 +1651,70 @@ function ActiveFilterSummary({
 // ============================================================
 //  排序：商品清單固定依最近更新優先
 // ============================================================
+interface OperationalFilterOptions {
+  searchQuery: string
+  onlyUnlisted: boolean
+  onlyMissingPrice: boolean
+  onlyMissingImage: boolean
+  onlyMissingCover: boolean
+  onlyMissingLabel: boolean
+  onlyInStock: boolean
+  onlyPreOrder: boolean
+  onlyCustomOrder: boolean
+  onlySoldOut: boolean
+  discountPresetFilter: string | null
+}
+
+/** 套用系列／分類／品牌以外的條件，讓結果與可選 facet 使用同一套規則。 */
+function filterOperationalItems(
+  source: VariantListItem[],
+  options: OperationalFilterOptions,
+): VariantListItem[] {
+  let items = source
+  if (options.onlySoldOut) {
+    items = items.filter(isVariantSoldOut)
+  } else if (options.onlyInStock) {
+    items = items.filter(isVariantInStock)
+  } else if (options.onlyPreOrder) {
+    items = items.filter(isVariantPreOrder)
+  } else if (options.onlyCustomOrder) {
+    items = items.filter(isVariantCustomOrder)
+  } else if (!options.searchQuery) {
+    items = items.filter((item) => !isVariantSoldOut(item))
+  }
+
+  items = items.filter((item) =>
+    matchesSelectedDataIssues(
+      {
+        unlisted: isVariantUnlisted(item),
+        missingPrice: item.variant.price == null,
+        missingImage: !item.variant.image_url,
+        missingCover: !hasCoverImage(item.variant, item.product),
+        missingLabel: isVariantMissingLabel(item),
+      },
+      {
+        unlisted: options.onlyUnlisted,
+        missingPrice: options.onlyMissingPrice,
+        missingImage: options.onlyMissingImage,
+        missingCover: options.onlyMissingCover,
+        missingLabel: options.onlyMissingLabel,
+      },
+    ),
+  )
+
+  if (options.discountPresetFilter) {
+    items = items.filter(
+      (item) => item.variant.discount_preset_id === options.discountPresetFilter,
+    )
+  }
+  if (options.searchQuery) {
+    items = items.filter((item) =>
+      variantMatchesSearchTokens(item, options.searchQuery),
+    )
+  }
+  return items
+}
+
 function sortItemsByUpdated(items: VariantListItem[]): VariantListItem[] {
   return [...items].sort((a, b) => {
     const ta = new Date(a.variant.updated_at ?? a.product.updated_at ?? 0).getTime()
