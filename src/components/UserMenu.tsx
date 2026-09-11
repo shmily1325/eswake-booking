@@ -20,6 +20,7 @@ export function UserMenu({ user }: UserMenuProps) {
   return (
     <div style={{ position: 'relative' }}>
       <button
+        data-track={`user_menu_${isOpen ? 'close' : 'open'}`}
         onClick={() => setIsOpen(!isOpen)}
         style={{
           display: 'flex',
@@ -78,6 +79,7 @@ export function UserMenu({ user }: UserMenuProps) {
           </div>
 
           <button
+            data-track="user_menu_logout"
             onClick={handleLogout}
             disabled={loading}
             style={{

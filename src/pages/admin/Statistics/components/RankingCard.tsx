@@ -24,6 +24,7 @@ interface RankingCardProps {
   renderDetail?: (item: RankingItem) => ReactNode
   emptyText?: string
   showRank?: boolean
+  trackId?: string
 }
 
 export function RankingCard({
@@ -34,7 +35,8 @@ export function RankingCard({
   warningColor = designSystem.colors.warning[500],
   renderDetail,
   emptyText = '暫無資料',
-  showRank = true
+  showRank = true,
+  trackId,
 }: RankingCardProps) {
   const { isMobile } = useResponsive()
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -87,6 +89,9 @@ export function RankingCard({
             return (
               <div key={item.id}>
                 <div
+                  data-track={hasDetail && trackId
+                    ? `${trackId}_${isExpanded ? 'collapse' : 'expand'}`
+                    : undefined}
                   onClick={() => hasDetail && setExpandedId(isExpanded ? null : item.id)}
                   onMouseEnter={() => setHoveredId(item.id)}
                   onMouseLeave={() => setHoveredId(null)}

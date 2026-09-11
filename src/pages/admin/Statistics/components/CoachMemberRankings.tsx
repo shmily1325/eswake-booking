@@ -27,6 +27,7 @@ export function CoachMemberRankings({
       <>
         <RankingCard
           title="教學時數排行"
+          trackId="dashboard_teaching_ranking"
           subtitle="點擊查看指定學生"
           items={coachStats
             .filter(c => c.teachingMinutes > 0)
@@ -122,6 +123,7 @@ export function CoachMemberRankings({
   return (
     <RankingCard
       title="會員時數排行"
+      trackId="dashboard_member_ranking"
       subtitle="點擊查看常用教練/船"
       items={memberStats.slice(0, 20).map(m => ({
         id: m.memberId,

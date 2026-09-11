@@ -237,6 +237,7 @@ export function DailyAnnouncement() {
       border: `1px solid ${designSystem.colors.border.light}`,
     }}>
       <div 
+        data-track={`home_announcement_${isExpanded ? 'collapse' : 'expand'}`}
         style={{
           display: 'flex',
           justifyContent: 'space-between',

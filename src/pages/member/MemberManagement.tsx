@@ -738,6 +738,7 @@ export function MemberManagement() {
   const renderExpiryMemberSearch = (memberId: string, label: string) => (
     <button
       type="button"
+      data-track="member_expiry_search"
       onClick={() => handleSearchExpiryMember(memberId, label)}
       title={`搜尋 ${label}`}
       style={{
@@ -899,6 +900,7 @@ export function MemberManagement() {
             />
             {searchTerm && (
               <button
+                data-track="member_search_clear"
                 onClick={() => setSearchTerm('')}
                 style={{
                   position: 'absolute',
@@ -952,6 +954,7 @@ export function MemberManagement() {
                 <button
                   key={type.value}
                   type="button"
+                  data-track={`member_filter_type_${type.value}`}
                   onClick={() => {
                     setMembershipTypeFilter(type.value)
                     setExpiringFilter('none')
@@ -977,6 +980,7 @@ export function MemberManagement() {
             }}>
               <button
                 type="button"
+                data-track="member_filter_expiring_membership"
                 onClick={() => {
                   setExpiringFilter(expiringFilter === 'membership' ? 'none' : 'membership')
                   if (expiringFilter !== 'membership') setMembershipTypeFilter('all')
@@ -994,6 +998,7 @@ export function MemberManagement() {
 
               <button
                 type="button"
+                data-track="member_filter_expiring_board"
                 onClick={() => {
                   setExpiringFilter(expiringFilter === 'board' ? 'none' : 'board')
                   if (expiringFilter !== 'board') setMembershipTypeFilter('all')
@@ -1064,6 +1069,7 @@ export function MemberManagement() {
               }}>
                 <input
                   type="checkbox"
+                  data-track="member_filter_show_inactive"
                   checked={showInactive}
                   onChange={(e) => setShowInactive(e.target.checked)}
                   style={{ width: '16px', height: '16px', cursor: 'pointer' }}
@@ -1096,41 +1102,58 @@ export function MemberManagement() {
           boxShadow: cardShadow,
           overflow: 'hidden'
         }}>
-          <button
-            onClick={() => setShowExpiringDetails(!showExpiringDetails)}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              fontSize: getFontSize('button', isMobile),
-              color: designSystem.colors.text.secondary
-            }}
-          >
-            <span>
+          <div style={{ display: 'flex', alignItems: 'center', minHeight: '48px' }}>
+            <button
+              type="button"
+              data-track={`member_expiring_${showExpiringDetails ? 'collapse' : 'expand'}`}
+              onClick={() => setShowExpiringDetails(!showExpiringDetails)}
+              style={{
+                alignSelf: 'stretch',
+                flex: 1,
+                padding: '12px 16px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontSize: getFontSize('button', isMobile),
+                color: designSystem.colors.text.secondary,
+              }}
+            >
               到期詳情：會籍 {expiringMemberships.length} 位、置板 {expiringBoards.length} 位
-            </span>
-            <span>{showExpiringDetails ? '收合' : '展開'}</span>
-          </button>
+            </button>
+            {!isMobile && showExpiringDetails && (
+              <button
+                type="button"
+                data-track="member_expiry_template_open"
+                onClick={handleOpenExpiryTemplateEditor}
+                style={{
+                  ...getButtonStyle('secondary', 'small', false),
+                  minHeight: '32px',
+                }}
+              >
+                通知範本設定
+              </button>
+            )}
+            <button
+              type="button"
+              data-track={`member_expiring_${showExpiringDetails ? 'collapse' : 'expand'}`}
+              onClick={() => setShowExpiringDetails(!showExpiringDetails)}
+              style={{
+                alignSelf: 'stretch',
+                padding: '12px 16px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: getFontSize('button', isMobile),
+                color: designSystem.colors.text.secondary,
+              }}
+            >
+              {showExpiringDetails ? '收合' : '展開'}
+            </button>
+          </div>
 
           {showExpiringDetails && (
             <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${designSystem.colors.border.light}` }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  onClick={handleOpenExpiryTemplateEditor}
-                  style={{
-                    ...getButtonStyle('outline', 'small', isMobile),
-                    minHeight: isMobile ? '40px' : undefined,
-                  }}
-                >
-                  通知範本設定
-                </button>
-              </div>
               {expiringMemberships.length > 0 && (() => {
                 const expired = expiringMemberships.filter((m: any) => isDateExpired(m.membership_end_date))
                 const upcoming = expiringMemberships.filter((m: any) => !isDateExpired(m.membership_end_date))
@@ -1235,6 +1258,7 @@ export function MemberManagement() {
             ))) && (
               <button
                 type="button"
+                data-track="member_filter_clear"
                 onClick={() => {
                   setSearchTerm('')
                   setMembershipTypeFilter('all')
@@ -1324,6 +1348,7 @@ export function MemberManagement() {
                     {expiryNoticeByMemberId.has(member.id) && (
                       <button
                         type="button"
+                        data-track="member_expiry_notice_open"
                         onClick={(event) => {
                           event.stopPropagation()
                           handleOpenExpiryNotice(member.id)
@@ -1356,6 +1381,7 @@ export function MemberManagement() {
                       )}
                       {member.partner && (
                         <div
+                          data-track="member_open_partner"
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedMemberId(member.partner!.id)
@@ -1404,6 +1430,7 @@ export function MemberManagement() {
                       )}
                       {member.is_line_bound && (
                         <button
+                          data-track="member_unbind_line"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleUnbindLine(member.id, member.nickname || member.name)
@@ -1495,6 +1522,7 @@ export function MemberManagement() {
                       {allNotes.length > previewCount && (
                         <button
                           type="button"
+                          data-track={`member_memo_${isExpanded ? 'collapse' : 'expand'}`}
                           onClick={(e) => {
                             e.stopPropagation()
                             setExpandedMemoMemberIds((prev) => {
@@ -1602,6 +1630,7 @@ export function MemberManagement() {
           <>
             <button
               type="button"
+              data-track="member_expiry_notice_cancel"
               onClick={() => {
                 setEditingExpiryMemberId(null)
                 setExpiryNoticeDraft('')
@@ -1617,6 +1646,7 @@ export function MemberManagement() {
             </button>
             <button
               type="button"
+              data-track="member_expiry_notice_copy"
               onClick={() => void handleCopyExpiryNotice()}
               disabled={!expiryNoticeDraft.trim() || sendingExpiryNotice}
               style={{
@@ -1634,6 +1664,7 @@ export function MemberManagement() {
             {canSendEditingExpiryNotice && (
               <button
                 type="button"
+                data-track="member_expiry_notice_send"
                 onClick={() => void handleSendExpiryNotice()}
                 disabled={!expiryNoticeDraft.trim() || sendingExpiryNotice}
                 style={{
@@ -1686,6 +1717,7 @@ export function MemberManagement() {
           <>
             <button
               type="button"
+              data-track="member_expiry_template_cancel"
               onClick={() => setShowExpiryTemplateEditor(false)}
               disabled={expiryTemplateSaveStatus === 'saving'}
               style={{
@@ -1698,6 +1730,7 @@ export function MemberManagement() {
             </button>
             <button
               type="button"
+              data-track="member_expiry_template_save"
               onClick={() => void handleSaveExpiryTemplates()}
               disabled={expiryTemplateSaveStatus === 'saving'}
               style={{
@@ -1721,6 +1754,7 @@ export function MemberManagement() {
             <button
               key={type}
               type="button"
+              data-track={`member_expiry_template_type_${type}`}
               onClick={() => setExpiryTemplateType(type)}
               style={{
                 ...getButtonStyle(

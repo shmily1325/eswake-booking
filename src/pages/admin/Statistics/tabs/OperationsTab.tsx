@@ -248,6 +248,7 @@ export function OperationsTab({
                 <button
                   key={month.value}
                   type="button"
+                  data-track={`dashboard_period_month_${month.value}`}
                   onClick={() => setSelectedPeriod(month.value)}
                   style={{
                     padding: '9px 14px',
@@ -273,6 +274,7 @@ export function OperationsTab({
               ))}
               <select
                 aria-label="選擇月份"
+                data-track="dashboard_period_month_select"
                 value={selectedPeriod}
                 onChange={(event) => setSelectedPeriod(event.target.value)}
                 style={{
@@ -301,6 +303,7 @@ export function OperationsTab({
               <button
                 key={year}
                 type="button"
+                data-track={`dashboard_period_year_${year}`}
                 onClick={() => setSelectedYear(year)}
                 style={{
                   padding: '9px 16px',
@@ -364,6 +367,7 @@ export function OperationsTab({
             }}>
               <button
                 type="button"
+                data-track="dashboard_operations_subtab_coach"
                 onClick={() => setSubTab('coach')}
                 style={getCoachMemberSubTabStyle(subTab === 'coach', isMobile)}
               >
@@ -371,6 +375,7 @@ export function OperationsTab({
               </button>
               <button
                 type="button"
+                data-track="dashboard_operations_subtab_member"
                 onClick={() => setSubTab('member')}
                 style={getCoachMemberSubTabStyle(subTab === 'member', isMobile)}
               >

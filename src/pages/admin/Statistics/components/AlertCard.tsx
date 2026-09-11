@@ -24,6 +24,7 @@ interface AlertCardProps {
   expandable?: boolean
   expandedContent?: ReactNode
   contactStats?: ContactStat[]
+  trackId?: string
 }
 
 const variantStyles = {
@@ -49,7 +50,8 @@ export function AlertCard({
   children,
   expandable = false,
   expandedContent,
-  contactStats
+  contactStats,
+  trackId,
 }: AlertCardProps) {
   const { isMobile } = useResponsive()
   const [expanded, setExpanded] = useState(false)
@@ -68,6 +70,9 @@ export function AlertCard({
       overflow: 'hidden'
     }}>
       <div 
+        data-track={hasExpandableContent && trackId
+          ? `${trackId}_${expanded ? 'collapse' : 'expand'}`
+          : undefined}
         onClick={() => hasExpandableContent && setExpanded(!expanded)}
         style={{
           display: 'flex',

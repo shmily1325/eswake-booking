@@ -140,6 +140,7 @@ export function FutureTab({ futureBookings }: FutureTabProps) {
       {unassignedCount > 0 && unassigned && (
         <AlertCard
           variant="warning"
+          trackId="dashboard_alert_unassigned"
           title={`有 ${unassignedCount} 筆預約尚未指派教練`}
           count={unassignedCount}
           minutes={unassignedMinutes}
@@ -154,6 +155,7 @@ export function FutureTab({ futureBookings }: FutureTabProps) {
 
       <RankingCard
         title="教練時數排行"
+        trackId="dashboard_future_coach_ranking"
         subtitle="點擊查看會員時數分布 (依時數高→低)"
         items={sortedCoaches.map(coach => ({
           id: coach.coachId,
