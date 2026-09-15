@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useResponsive } from '../../hooks/useResponsive'
 import { useToast } from '../../components/ui'
 import { Modal } from '../../components/ui/Modal'
+import { isCurrentReminderMapping } from '../../utils/lineReminderMappingStatus'
 import {
   designSystem,
   getBadgeStyle,
@@ -191,20 +192,24 @@ export function LineReminderMappingPanel({ members }: Props) {
     }
   }, [bookingSearch, selectedContact, targetType, toast])
 
+  const guestByLineUser = useMemo(
+    () => new Map(guests.map((guest) => [guest.line_user_id, guest])),
+    [guests],
+  )
+
   const mappingsByLineUser = useMemo(() => {
     const map = new Map<string, ReminderMapping[]>()
     mappings.forEach((mapping) => {
+      if (!isCurrentReminderMapping(
+        mapping,
+        guestByLineUser.has(mapping.line_user_id),
+      )) return
       const rows = map.get(mapping.line_user_id) ?? []
       rows.push(mapping)
       map.set(mapping.line_user_id, rows)
     })
     return map
-  }, [mappings])
-
-  const guestByLineUser = useMemo(
-    () => new Map(guests.map((guest) => [guest.line_user_id, guest])),
-    [guests],
-  )
+  }, [guestByLineUser, mappings])
   const availableGuestContacts = useMemo(
     () => contacts.filter((contact) => {
       if (contact.friend_status !== 'friend' || contact.formal_binding?.can_push) return false
