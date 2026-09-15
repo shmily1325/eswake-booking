@@ -44,6 +44,8 @@ import { PAYMENT_METHOD_LABELS } from './types'
 interface Props {
   isMobile: boolean
   rankingOnly?: boolean
+  hideSettlementDetails?: boolean
+  onLoadComplete?: () => void
 }
 
 const { colors, borderRadius, shadows, spacing } = designSystem
@@ -86,7 +88,12 @@ interface VariantSalesMeta {
   productName: string
 }
 
-export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: Props) {
+export function ShopSettlementStatisticsTab({
+  isMobile,
+  rankingOnly = false,
+  hideSettlementDetails = false,
+  onLoadComplete,
+}: Props) {
   const toast = useToast()
   const user = useAuthUser()
   const [selectedDate, setSelectedDate] = useState(() => getVenueDateString().slice(0, 4))
@@ -116,6 +123,8 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
   const loadedSalesDate = useRef('')
   const loadedPreorderDate = useRef('')
   const loadedDetailDate = useRef('')
+  const onLoadCompleteRef = useRef(onLoadComplete)
+  onLoadCompleteRef.current = onLoadComplete
 
   useEffect(() => {
     if (rankingOnly) return
@@ -446,6 +455,14 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
       : activeSubtab === 'preorder'
         ? preorderLines.length > 0
         : detailRows.length > 0
+  const subtabs: ReadonlyArray<readonly [StatisticsSubtab, string]> =
+    hideSettlementDetails
+      ? [['sales', '銷售分析'], ['preorder', '預購進度']]
+      : [['sales', '銷售分析'], ['preorder', '預購進度'], ['details', '結帳明細']]
+
+  useEffect(() => {
+    if (!activeLoading) onLoadCompleteRef.current?.()
+  }, [activeLoading])
 
   return (
     <div
@@ -461,16 +478,12 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
           aria-label="商品訂單統計"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gridTemplateColumns: `repeat(${subtabs.length}, minmax(0, 1fr))`,
             gap: isMobile ? 6 : spacing.sm,
             marginBottom: spacing.md,
           }}
         >
-          {([
-            ['sales', '銷售分析'],
-            ['preorder', '預購進度'],
-            ['details', '結帳明細'],
-          ] as const).map(([value, label]) => (
+          {subtabs.map(([value, label]) => (
             <button
               key={value}
               type="button"

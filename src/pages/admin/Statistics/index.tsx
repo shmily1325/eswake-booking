@@ -886,7 +886,7 @@ export function Statistics() {
 
             {activeTab === 'product' && (
               <ProductTab
-                refreshToken={productRefreshToken}
+                key={productRefreshToken}
                 onLoadComplete={() => {
                   setLastUpdated(new Date())
                   setRefreshing(false)
