@@ -381,7 +381,7 @@ export async function fetchPreorderReportInRange(
       shop_orders!inner(order_no, contact_name, created_at, cancelled_at),
       variant:product_variants(
         id, vendor_code, attributes,
-        product:products(brand, model, model_year, category)
+        product:products(id, brand, model, model_year, category)
       )
     `,
     )
@@ -406,6 +406,7 @@ export async function fetchPreorderReportInRange(
         vendor_code: string | null
         attributes: Record<string, string | number | null> | null
         product: {
+          id: string
           brand: string
           model: string
           model_year: number | null
@@ -432,6 +433,7 @@ export async function fetchPreorderReportInRange(
       contact_name: row.shop_orders.contact_name,
       order_created_at: row.shop_orders.created_at,
       brand: row.brand_snapshot?.trim() || product?.brand.trim() || '其他品牌',
+      product_id: product?.id || row.variant?.id || row.id,
       variant_id: row.variant?.id || row.id,
       item_title: itemTitle,
       item_subtitle: [specification, formatSelectedOptions(row.selected_options), row.variant?.vendor_code]

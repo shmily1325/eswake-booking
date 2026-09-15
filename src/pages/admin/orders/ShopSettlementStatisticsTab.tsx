@@ -1,23 +1,32 @@
 /**
  * Design thinking:
- * Current feel: sparse monthly data split into category cards reads like raw report output.
- * Hierarchy: period first, quiet totals second, then a ranked grouped list before settlement detail.
- * Primary task: understand which brands/categories drive sales, then audit individual settlements.
+ * Current dashboard feel:
+ * 1. Too many equally weighted controls make sparse first-year data feel operationally dense.
+ * 2. Nested brand → product panels organize around data structure instead of quick comparison.
+ * 3. Decorative ranking treatments and repeated frames compete with the actual amounts and progress.
+ * Information hierarchy: period and scope first, quiet totals second, compact brand context third,
+ * then one product ranking with order-level detail available only on demand.
+ * Primary task: compare sales or preorder progress quickly, then audit a specific product or settlement.
+ * Visual direction: premium, calm grouped lists; restrained color, numeric ranks, generous touch targets,
+ * and shallow expansion that stays readable on mobile.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DateRangePicker } from '../../../components/DateRangePicker'
 import { useToast } from '../../../components/ui'
+import { useAuthUser } from '../../../contexts/AuthContext'
 import { getVenueDateString } from '../../../utils/date'
 import { formatCurrency, formatDateTime, extractDate, extractTime } from '../../../utils/formatters'
+import { trackClickDedupedWithin } from '../../../utils/trackClick'
 import { supabase } from '../../../lib/supabase'
 import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
 import { getCategory, getCategoryShopName } from '../products/schema'
 import { fetchPreorderReportInRange, fetchSettlementsInRange } from './api'
 import {
   summarizePreorderReport,
-  type PreorderReportSummary,
+  type PreorderReportScope,
 } from './preorderReport'
+import { allocateSettlementAmount } from './settlementAllocation'
 import {
   filterSettlementsBySearch,
   formatSettlementLineDisplay,
@@ -67,6 +76,8 @@ function formatSalesCategoryName(categoryId: string): string {
 }
 
 type SalesGroupBy = 'brand' | 'category'
+type StatisticsSubtab = 'sales' | 'preorder' | 'details'
+type DetailPaymentFilter = 'all' | OrderPaymentMethod
 
 interface VariantSalesMeta {
   brand: string
@@ -77,12 +88,22 @@ interface VariantSalesMeta {
 
 export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: Props) {
   const toast = useToast()
+  const user = useAuthUser()
   const [selectedDate, setSelectedDate] = useState(() => getVenueDateString().slice(0, 4))
+  const [preorderDate, setPreorderDate] = useState(() => getVenueDateString().slice(0, 4))
+  const [detailDate, setDetailDate] = useState(() => getVenueDateString().slice(0, 4))
+  const [activeSubtab, setActiveSubtab] = useState<StatisticsSubtab>('sales')
   const [salesGroupBy, setSalesGroupBy] = useState<SalesGroupBy>('brand')
-  const [loading, setLoading] = useState(false)
+  const [salesLoading, setSalesLoading] = useState(false)
+  const [preorderLoading, setPreorderLoading] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
+  const [detailRows, setDetailRows] = useState<ShopOrderSettlementWithDetails[]>([])
   const [preorderLines, setPreorderLines] = useState<ShopPreorderReportLine[]>([])
   const [detailSearch, setDetailSearch] = useState('')
+  const [detailPaymentMethod, setDetailPaymentMethod] =
+    useState<DetailPaymentFilter>('all')
+  const [detailBrand, setDetailBrand] = useState('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedSalesGroupIds, setExpandedSalesGroupIds] = useState<Set<string>>(
     () => new Set(),
@@ -92,29 +113,111 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
   )
   const [variantDisplay, setVariantDisplay] = useState<Record<string, SettlementLineDisplay>>({})
   const [variantSalesMeta, setVariantSalesMeta] = useState<Record<string, VariantSalesMeta>>({})
+  const loadedSalesDate = useRef('')
+  const loadedPreorderDate = useRef('')
+  const loadedDetailDate = useRef('')
 
   useEffect(() => {
-    setSettlements([])
-    setPreorderLines([])
-    void loadData()
-    // 僅在統計期間改變時重新查詢；toast identity 不應觸發資料重載。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate])
+    if (rankingOnly) return
+    trackClickDedupedWithin(
+      `product_order_settle_stat_view_${activeSubtab}`,
+      user?.email,
+      1_000,
+    )
+  }, [activeSubtab, rankingOnly, user?.email])
 
-  const loadData = async () => {
-    if (!selectedDate) return
-    setLoading(true)
-    try {
-      const { start, end } = dateRangeFromSelection(selectedDate)
-      const [rows, preorderRows] = await Promise.all([
-        fetchSettlementsInRange(start, end),
-        fetchPreorderReportInRange(start, end),
-      ])
-      setSettlements(rows)
-      setPreorderLines(preorderRows)
-      const variantIds = [
-        ...new Set(rows.flatMap((r) => r.items_snapshot.map((l) => l.variant_id))),
-      ]
+  useEffect(() => {
+    if (!rankingOnly && activeSubtab !== 'sales') return
+    if (loadedSalesDate.current === selectedDate) return
+    let active = true
+    setSalesLoading(true)
+    const { start, end } = dateRangeFromSelection(selectedDate)
+    void fetchSettlementsInRange(start, end)
+      .then((rows) => {
+        if (active) {
+          setSettlements(rows)
+          loadedSalesDate.current = selectedDate
+        }
+      })
+      .catch((e: unknown) => {
+        if (!active) return
+        toast.error(e instanceof Error ? e.message : '載入銷售分析失敗')
+        setSettlements([])
+        loadedSalesDate.current = selectedDate
+      })
+      .finally(() => {
+        if (active) setSalesLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [activeSubtab, rankingOnly, selectedDate, toast])
+
+  useEffect(() => {
+    if (!rankingOnly && activeSubtab !== 'preorder') return
+    const reportDate = rankingOnly ? selectedDate : preorderDate
+    if (loadedPreorderDate.current === reportDate) return
+    let active = true
+    setPreorderLoading(true)
+    const { start, end } = dateRangeFromSelection(reportDate)
+    void fetchPreorderReportInRange(start, end)
+      .then((rows) => {
+        if (active) {
+          setPreorderLines(rows)
+          loadedPreorderDate.current = reportDate
+        }
+      })
+      .catch((e: unknown) => {
+        if (!active) return
+        toast.error(e instanceof Error ? e.message : '載入預購進度失敗')
+        setPreorderLines([])
+        loadedPreorderDate.current = reportDate
+      })
+      .finally(() => {
+        if (active) setPreorderLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [activeSubtab, preorderDate, rankingOnly, selectedDate, toast])
+
+  useEffect(() => {
+    if (rankingOnly || activeSubtab !== 'details') return
+    if (loadedDetailDate.current === detailDate) return
+    let active = true
+    setDetailLoading(true)
+    const { start, end } = dateRangeFromSelection(detailDate)
+    void fetchSettlementsInRange(start, end)
+      .then((rows) => {
+        if (active) {
+          setDetailRows(rows)
+          loadedDetailDate.current = detailDate
+        }
+      })
+      .catch((e: unknown) => {
+        if (!active) return
+        toast.error(e instanceof Error ? e.message : '載入結帳明細失敗')
+        setDetailRows([])
+        loadedDetailDate.current = detailDate
+      })
+      .finally(() => {
+        if (active) setDetailLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [activeSubtab, detailDate, rankingOnly, toast])
+
+  useEffect(() => {
+    let active = true
+    const variantIds = [
+      ...new Set(
+        [...settlements, ...detailRows].flatMap((row) =>
+          row.items_snapshot.map((line) => line.variant_id),
+        ),
+      ),
+    ]
+    const loadVariantMetadata = async () => {
       if (variantIds.length > 0) {
         const { data: variants, error: variantErr } = await supabase
           .from('product_variants')
@@ -145,21 +248,22 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
             }
           }
         })
-        setVariantDisplay(labels)
-        setVariantSalesMeta(salesMeta)
+        if (active) {
+          setVariantDisplay(labels)
+          setVariantSalesMeta(salesMeta)
+        }
       } else {
         setVariantDisplay({})
         setVariantSalesMeta({})
       }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '載入失敗'
-      toast.error(msg)
-      setSettlements([])
-      setPreorderLines([])
-    } finally {
-      setLoading(false)
     }
-  }
+    void loadVariantMetadata().catch((e: unknown) => {
+      if (active) toast.error(e instanceof Error ? e.message : '載入商品資料失敗')
+    })
+    return () => {
+      active = false
+    }
+  }, [detailRows, settlements, toast])
 
   const summary = useMemo(() => {
     const byMethod: Record<OrderPaymentMethod, { count: number; total: number }> = {
@@ -168,12 +272,23 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
       cash: { count: 0, total: 0 },
     }
     let grandTotal = 0
+    let qty = 0
+    const orderIds = new Set<string>()
     for (const s of settlements) {
       grandTotal += s.amount_total
+      orderIds.add(s.order_id)
+      qty += s.items_snapshot.reduce((sum, line) => sum + line.qty, 0)
       byMethod[s.payment_method].count += 1
       byMethod[s.payment_method].total += s.amount_total
     }
-    return { count: settlements.length, grandTotal, byMethod }
+    const orderCount = orderIds.size
+    return {
+      orderCount,
+      qty,
+      grandTotal,
+      averagePerOrder: orderCount > 0 ? grandTotal / orderCount : 0,
+      byMethod,
+    }
   }, [settlements])
 
   const salesGroups = useMemo(() => {
@@ -200,7 +315,12 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
     >()
 
     for (const settlement of settlements) {
-      for (const line of settlement.items_snapshot) {
+      const allocatedTotals = allocateSettlementAmount(
+        settlement.items_snapshot,
+        settlement.amount_total,
+      )
+      for (const [lineIndex, line] of settlement.items_snapshot.entries()) {
+        const allocatedTotal = allocatedTotals[lineIndex]
         const meta = variantSalesMeta[line.variant_id]
         const display =
           variantDisplay[line.variant_id] ?? formatSettlementLineDisplay(line, null)
@@ -250,11 +370,11 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
         }
 
         group.qty += line.qty
-        group.total += line.line_total
+        group.total += allocatedTotal
         item.qty += line.qty
-        item.total += line.line_total
+        item.total += allocatedTotal
         detail.qty += line.qty
-        detail.total += line.line_total
+        detail.total += allocatedTotal
         item.details.set(detailKey, detail)
         group.items.set(itemKey, item)
         grouped.set(groupId, group)
@@ -276,18 +396,56 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
       }))
   }, [salesGroupBy, settlements, variantDisplay, variantSalesMeta])
 
-  const preorderSummary = useMemo(
-    () => summarizePreorderReport(preorderLines),
-    [preorderLines],
-  )
-
   const allSalesGroupsExpanded =
     salesGroups.length > 0 && salesGroups.every((group) => expandedSalesGroupIds.has(group.id))
-  const detailSettlements = useMemo(
-    () => filterSettlementsBySearch(settlements, detailSearch),
-    [detailSearch, settlements],
+  const detailBrandOptions = useMemo(
+    () => Array.from(new Set(
+      detailRows.flatMap((row) =>
+        row.items_snapshot.flatMap((line) => {
+          const brand = variantSalesMeta[line.variant_id]?.brand
+          return brand ? [brand] : []
+        }),
+      ),
+    )).sort((a, b) => a.localeCompare(b)),
+    [detailRows, variantSalesMeta],
   )
-  const batchMeta = useMemo(() => settlementBatchMeta(settlements), [settlements])
+  const detailSettlements = useMemo(
+    () => filterSettlementsBySearch(detailRows, detailSearch).filter((row) => {
+      if (detailPaymentMethod !== 'all' && row.payment_method !== detailPaymentMethod) {
+        return false
+      }
+      if (
+        detailBrand !== 'all' &&
+        !row.items_snapshot.some(
+          (line) => variantSalesMeta[line.variant_id]?.brand === detailBrand,
+        )
+      ) {
+        return false
+      }
+      return true
+    }),
+    [detailBrand, detailPaymentMethod, detailRows, detailSearch, variantSalesMeta],
+  )
+  const batchMeta = useMemo(() => settlementBatchMeta(detailRows), [detailRows])
+  const activeDate =
+    activeSubtab === 'preorder' ? preorderDate : activeSubtab === 'details' ? detailDate : selectedDate
+  const activeLoading = rankingOnly
+    ? salesLoading ||
+      preorderLoading ||
+      loadedSalesDate.current !== selectedDate ||
+      loadedPreorderDate.current !== selectedDate
+    : activeSubtab === 'sales'
+      ? salesLoading || loadedSalesDate.current !== selectedDate
+      : activeSubtab === 'preorder'
+        ? preorderLoading || loadedPreorderDate.current !== preorderDate
+        : detailLoading || loadedDetailDate.current !== detailDate
+  const activeHasData = rankingOnly
+    ? settlements.length > 0 || preorderLines.length > 0
+    : activeSubtab === 'sales'
+      ? settlements.length > 0
+      : activeSubtab === 'preorder'
+        ? preorderLines.length > 0
+        : detailRows.length > 0
 
   return (
     <div
@@ -297,6 +455,46 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
         lineHeight: 1.45,
       }}
     >
+      {!rankingOnly && (
+        <div
+          role="tablist"
+          aria-label="商品訂單統計"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: isMobile ? 6 : spacing.sm,
+            marginBottom: spacing.md,
+          }}
+        >
+          {([
+            ['sales', '銷售分析'],
+            ['preorder', '預購進度'],
+            ['details', '結帳明細'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              data-track={`product_order_settle_stat_tab_${value}`}
+              aria-selected={activeSubtab === value}
+              aria-controls={`product-order-stat-panel-${value}`}
+              onClick={() => setActiveSubtab(value)}
+              style={{
+                ...getButtonStyle(
+                  activeSubtab === value ? 'primary' : 'secondary',
+                  isMobile ? 'small' : 'medium',
+                  isMobile,
+                ),
+                minWidth: 0,
+                paddingInline: isMobile ? 6 : undefined,
+                boxShadow: 'none',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       <div
         style={{
           background: colors.background.card,
@@ -308,70 +506,100 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
         }}
       >
         <DateRangePicker
-          selectedDate={selectedDate}
-          onDateChange={setSelectedDate}
+          selectedDate={rankingOnly ? selectedDate : activeDate}
+          onDateChange={
+            rankingOnly || activeSubtab === 'sales'
+              ? setSelectedDate
+              : activeSubtab === 'preorder'
+                ? setPreorderDate
+                : setDetailDate
+          }
           isMobile={isMobile}
           showTodayButton={!isMobile}
           label=""
           simplified
           showYearButtons
-          trackPrefix="product_order_settle_stat_period"
+          trackPrefix={
+            rankingOnly
+              ? 'product_order_settle_stat_ranking_period'
+              : activeSubtab === 'sales'
+                ? 'product_order_settle_stat_sales_period'
+                : activeSubtab === 'preorder'
+                  ? 'product_order_settle_stat_preorder_period'
+                  : 'product_order_settle_stat_details_period'
+          }
         />
       </div>
 
-      {loading ? (
+      {activeLoading ? (
         <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>載入中…</div>
-      ) : settlements.length === 0 && preorderLines.length === 0 ? (
+      ) : !activeHasData ? (
         <div style={{ textAlign: 'center', padding: 40, color: colors.text.disabled }}>
-          {selectedDate.length === 10
-            ? '當日無銷售或預購紀錄'
-            : selectedDate.length === 4
-              ? '此年度尚無銷售或預購紀錄'
-              : '當月無銷售或預購紀錄'}
+          {activeDate.length === 10 ? '當日沒有紀錄' : activeDate.length === 4 ? '此年度尚無紀錄' : '當月沒有紀錄'}
         </div>
       ) : (
         <>
-          {!rankingOnly && settlements.length > 0 && (
+          {!rankingOnly && activeSubtab === 'sales' && settlements.length > 0 && (
             <div
+              id="product-order-stat-panel-sales"
+              role="tabpanel"
               style={{
-                background: colors.background.card,
-                borderRadius: borderRadius.lg,
-                border: `1px solid ${colors.border.light}`,
-                padding: isMobile ? `${spacing.md} ${spacing.lg}` : `${spacing.lg} ${spacing.xl}`,
                 marginBottom: 24,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: spacing.sm,
               }}
             >
-              <SummaryRow
-                label="結帳筆數"
-                value={`${summary.count} 筆`}
-                isMobile={isMobile}
-              />
-              <SummaryRow
-                label="結帳總額"
-                value={formatCurrency(summary.grandTotal, false)}
-                isMobile={isMobile}
-                emphasize
-              />
-              <SummaryRow
-                label="扣儲值"
-                value={`${formatCurrency(summary.byMethod.balance.total, false)} · ${summary.byMethod.balance.count} 筆`}
-                isMobile={isMobile}
-              />
-              <SummaryRow
-                label="匯款＋現金"
-                value={`${formatCurrency(
-                  summary.byMethod.transfer.total + summary.byMethod.cash.total,
-                  false,
-                )} · ${summary.byMethod.transfer.count + summary.byMethod.cash.count} 筆`}
-                isMobile={isMobile}
-              />
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile
+                    ? 'repeat(2, minmax(0, 1fr))'
+                    : 'repeat(4, minmax(0, 1fr))',
+                  gap: isMobile ? 8 : spacing.md,
+                }}
+              >
+                <MetricCard
+                  label="實收總額"
+                  value={formatCurrency(summary.grandTotal, false)}
+                  isMobile={isMobile}
+                  emphasize
+                />
+                <MetricCard label="訂單數" value={`${summary.orderCount} 筆`} isMobile={isMobile} />
+                <MetricCard label="售出件數" value={`${summary.qty} 件`} isMobile={isMobile} />
+                <MetricCard
+                  label="平均每單"
+                  value={formatCurrency(summary.averagePerOrder, false)}
+                  isMobile={isMobile}
+                />
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                  gap: isMobile ? 6 : spacing.md,
+                  marginTop: spacing.sm,
+                  padding: isMobile ? '10px 12px' : '11px 16px',
+                  border: `1px solid ${colors.border.light}`,
+                  borderRadius: borderRadius.md,
+                  background: colors.secondary[50],
+                  color: colors.text.secondary,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                }}
+              >
+                <span>
+                  扣儲值：{formatCurrency(summary.byMethod.balance.total, false)}
+                  {' · '}{summary.byMethod.balance.count} 批
+                </span>
+                <span>
+                  匯款＋現金：{formatCurrency(
+                    summary.byMethod.transfer.total + summary.byMethod.cash.total,
+                    false,
+                  )}
+                  {' · '}{summary.byMethod.transfer.count + summary.byMethod.cash.count} 批
+                </span>
+              </div>
             </div>
           )}
 
-          {settlements.length > 0 && (
+          {(rankingOnly || activeSubtab === 'sales') && settlements.length > 0 && (
           <div
             style={{
               background: colors.background.card,
@@ -412,7 +640,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                     color: colors.text.secondary,
                   }}
                 >
-                  依銷售金額排序
+                  依實收金額排序；折扣按每次結帳的品項原價小計比例分攤
                 </p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
@@ -775,11 +1003,20 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
           </div>
           )}
 
-          <PreorderReportCard summary={preorderSummary} isMobile={isMobile} />
+          {(rankingOnly || activeSubtab === 'preorder') && (
+            <div
+              id="product-order-stat-panel-preorder"
+              role={rankingOnly ? undefined : 'tabpanel'}
+            >
+              <PreorderReportCard lines={preorderLines} isMobile={isMobile} />
+            </div>
+          )}
 
-          {!rankingOnly && settlements.length > 0 && (
+          {!rankingOnly && activeSubtab === 'details' && detailRows.length > 0 && (
             <>
               <div
+                id="product-order-stat-panel-details"
+                role="tabpanel"
                 style={{
                   display: 'flex',
                   flexDirection: isMobile ? 'column' : 'row',
@@ -799,7 +1036,7 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                       color: colors.text.primary,
                     }}
                   >
-                    結帳細帳
+                    結帳明細
                   </h2>
                   {detailSearch.trim() && (
                     <div
@@ -813,26 +1050,52 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
                     </div>
                   )}
                 </div>
-                <input
-                  type="search"
-                  value={detailSearch}
-                  onChange={(event) => setDetailSearch(event.target.value)}
-                  placeholder="搜尋訂單號或訂購人"
-                  aria-label="搜尋結帳細帳"
-                  data-track="product_order_settle_stat_search"
+                <div
                   style={{
-                    width: isMobile ? '100%' : 280,
-                    boxSizing: 'border-box',
-                    minHeight: 40,
-                    padding: '9px 12px',
-                    border: `1px solid ${colors.border.main}`,
-                    borderRadius: borderRadius.md,
-                    background: colors.background.card,
-                    color: colors.text.primary,
-                    fontSize: getFontSize('bodySmall', isMobile),
-                    outline: 'none',
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr 1fr' : '140px 140px minmax(220px, 280px)',
+                    gap: 8,
+                    width: isMobile ? '100%' : 'auto',
                   }}
-                />
+                >
+                  <select
+                    value={detailPaymentMethod}
+                    onChange={(event) =>
+                      setDetailPaymentMethod(event.target.value as DetailPaymentFilter)}
+                    aria-label="付款方式"
+                    data-track="product_order_settle_stat_detail_payment"
+                    style={detailControlStyle(isMobile)}
+                  >
+                    <option value="all">全部付款</option>
+                    {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={detailBrand}
+                    onChange={(event) => setDetailBrand(event.target.value)}
+                    aria-label="商品品牌"
+                    data-track="product_order_settle_stat_detail_brand"
+                    style={detailControlStyle(isMobile)}
+                  >
+                    <option value="all">全部品牌</option>
+                    {detailBrandOptions.map((brand) => (
+                      <option key={brand} value={brand}>{brand}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="search"
+                    value={detailSearch}
+                    onChange={(event) => setDetailSearch(event.target.value)}
+                    placeholder="搜尋訂單號或訂購人"
+                    aria-label="搜尋結帳明細"
+                    data-track="product_order_settle_stat_detail_search"
+                    style={{
+                      ...detailControlStyle(isMobile),
+                      gridColumn: isMobile ? '1 / -1' : undefined,
+                    }}
+                  />
+                </div>
               </div>
 
               {detailSettlements.length === 0 ? (
@@ -1242,21 +1505,18 @@ export function ShopSettlementStatisticsTab({ isMobile, rankingOnly = false }: P
 }
 
 function PreorderReportCard({
-  summary,
+  lines,
   isMobile,
 }: {
-  summary: PreorderReportSummary
+  lines: readonly ShopPreorderReportLine[]
   isMobile: boolean
 }) {
-  const [expandedBrands, setExpandedBrands] = useState<Set<string>>(() => new Set())
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set())
-  const allExpanded =
-    summary.brands.length > 0 &&
-    summary.brands.every(
-      (row) =>
-        expandedBrands.has(row.brand) &&
-        row.items.every((item) => expandedItems.has(`${row.brand}\u0000${item.id}`)),
-    )
+  const [scope, setScope] = useState<PreorderReportScope>('unfinished')
+  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(() => new Set())
+  const summary = useMemo(
+    () => summarizePreorderReport(lines, { scope }),
+    [lines, scope],
+  )
 
   return (
     <section
@@ -1278,9 +1538,9 @@ function PreorderReportCard({
           style={{
             display: 'flex',
             flexDirection: isMobile ? 'column' : 'row',
-            alignItems: isMobile ? 'flex-start' : 'baseline',
+            alignItems: isMobile ? 'stretch' : 'flex-start',
             justifyContent: 'space-between',
-            gap: 8,
+            gap: spacing.md,
           }}
         >
           <div>
@@ -1292,7 +1552,7 @@ function PreorderReportCard({
                 lineHeight: 1.35,
               }}
             >
-              預購總表
+              預購進度
             </h2>
             <p
               style={{
@@ -1301,172 +1561,141 @@ function PreorderReportCard({
                 fontSize: getFontSize('caption', isMobile),
               }}
             >
-              依開單日期統計，包含等貨、待付款與已完成；不含作廢訂單
+              依開單日期統計；金額為訂單金額，不是實收金額；不含作廢訂單
             </p>
           </div>
-          {summary.orderCount > 0 && (
-            <strong
+          <div
+            role="group"
+            aria-label="預購顯示範圍"
+            style={{ display: 'flex', gap: 6, minWidth: isMobile ? 0 : 176 }}
+          >
+            {([
+              ['unfinished', '未完成'],
+              ['all', '全部'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                data-track={`product_order_settle_stat_preorder_scope_${value}`}
+                aria-pressed={scope === value}
+                onClick={() => setScope(value)}
+                style={{
+                  ...getButtonStyle(scope === value ? 'primary' : 'secondary', 'small', isMobile),
+                  flex: 1,
+                  minHeight: 44,
+                  boxShadow: 'none',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {summary.orderCount > 0 && (
+          <>
+            <div
               style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: isMobile ? '4px 12px' : '4px 18px',
+                marginTop: spacing.md,
                 color: colors.text.primary,
                 fontSize: getFontSize('body', isMobile),
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
-              {summary.orderCount} 筆 · {summary.qty} 件 · {formatCurrency(summary.amount, false)}
-            </strong>
-          )}
-        </div>
-        {summary.orderCount > 0 && (
-          <div
-            style={{
-              marginTop: 10,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-              color: colors.text.secondary,
-              fontSize: getFontSize('bodySmall', isMobile),
-            }}
-          >
-            <span>等貨 {summary.waiting} 件</span>
-            <span>·</span>
-            <span>待付款 {summary.pending} 件</span>
-            <span>·</span>
-            <span>已完成 {summary.paid} 件</span>
-          </div>
-        )}
-      </div>
-
-      {summary.brands.length === 0 ? (
-        <div style={{ padding: 28, textAlign: 'center', color: colors.text.disabled }}>
-          此期間沒有預購訂單
-        </div>
-      ) : (
-        <>
-          {summary.brands.length > 1 && (
+              <strong>{summary.orderCount} 筆訂單</strong>
+              <strong>{summary.qty} 件</strong>
+              <strong>{formatCurrency(summary.amount, false)} 訂單金額</strong>
+            </div>
             <div
               style={{
                 display: 'flex',
-                justifyContent: 'flex-end',
-                padding: isMobile ? '10px 14px' : '10px 20px',
-                borderBottom: `1px solid ${colors.border.light}`,
+                flexWrap: 'wrap',
+                gap: '4px 12px',
+                marginTop: spacing.sm,
+                color: colors.text.secondary,
+                fontSize: getFontSize('bodySmall', isMobile),
               }}
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setExpandedBrands(
-                    allExpanded ? new Set() : new Set(summary.brands.map((row) => row.brand)),
-                  )
-                  setExpandedItems(
-                    allExpanded
-                      ? new Set()
-                      : new Set(
-                          summary.brands.flatMap((row) =>
-                            row.items.map((item) => `${row.brand}\u0000${item.id}`),
-                          ),
-                        ),
-                  )
-                }}
-                style={{ ...getButtonStyle('secondary', 'small', isMobile), boxShadow: 'none' }}
-              >
-                {allExpanded ? '全部收合' : '全部展開'}
-              </button>
+              <span>等貨 {summary.waiting} 件</span>
+              <span>待付款 {summary.pending} 件</span>
+              <span>已完成 {summary.paid} 件</span>
             </div>
-          )}
-          {summary.brands.map((row, index) => {
-            const expanded = expandedBrands.has(row.brand)
-            const share = summary.qty > 0 ? Math.round((row.qty / summary.qty) * 100) : 0
-            const rankMark = ['🥇', '🥈', '🥉'][index]
-            const rankBackground = ['#fff8e8', '#f5f7fa', '#fff3eb'][index]
-            return (
-              <div
-                key={row.brand}
-                style={{
-                  borderTop: index > 0 ? `1px solid ${colors.border.main}` : 'none',
-                }}
-              >
-                <button
-                  type="button"
-                  aria-expanded={expanded}
-                  onClick={() =>
-                    setExpandedBrands((current) => {
-                      const next = new Set(current)
-                      if (next.has(row.brand)) next.delete(row.brand)
-                      else next.add(row.brand)
-                      return next
-                    })
-                  }
+          </>
+        )}
+      </div>
+
+      {summary.products.length === 0 ? (
+        <div style={{ padding: 28, textAlign: 'center', color: colors.text.disabled }}>
+          {scope === 'unfinished' ? '此期間沒有未完成預購' : '此期間沒有預購訂單'}
+        </div>
+      ) : (
+        <>
+          <div style={{ padding: isMobile ? '16px 14px 10px' : '18px 20px 10px' }}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: getFontSize('body', isMobile),
+                fontWeight: 700,
+                color: colors.text.primary,
+              }}
+            >
+              品牌排行
+            </h3>
+            <p
+              style={{
+                margin: `${spacing.xs} 0 0`,
+                color: colors.text.disabled,
+                fontSize: getFontSize('caption', isMobile),
+              }}
+            >
+              依訂單金額排序
+            </p>
+          </div>
+          <div style={{ padding: isMobile ? '0 14px 16px' : '0 20px 18px' }}>
+            {summary.brands.map((brand, index) => {
+              const share = summary.amount > 0
+                ? Math.round((brand.amount / summary.amount) * 100)
+                : 0
+              return (
+                <div
+                  key={brand.brand}
                   style={{
-                    width: '100%',
                     display: 'grid',
                     gridTemplateColumns: 'minmax(0, 1fr) auto',
-                    alignItems: 'center',
-                    gap: spacing.md,
-                    padding: isMobile ? '11px 14px' : '13px 20px',
-                    background: rankBackground || colors.background.card,
-                    border: 0,
-                    color: 'inherit',
-                    cursor: 'pointer',
-                    textAlign: 'left',
+                    gap: '6px 12px',
+                    padding: '9px 0',
+                    borderTop: index > 0 ? `1px solid ${colors.border.light}` : 'none',
                   }}
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: spacing.sm }}>
-                      <span
-                        style={{
-                          flexShrink: 0,
-                          color: colors.text.disabled,
-                          fontSize: getFontSize('caption', isMobile),
-                        }}
-                      >
-                        {rankMark || String(index + 1).padStart(2, '0')}
-                      </span>
-                      <strong style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{row.brand}</strong>
-                    </div>
-                    {isMobile && (
-                      <div
-                        style={{
-                          marginTop: 4,
-                          paddingLeft: 25,
-                          color: colors.text.secondary,
-                          fontSize: getFontSize('bodySmall', true),
-                        }}
-                      >
-                        {row.qty} 件 · <strong>{formatCurrency(row.amount, false)}</strong> · {share}%
-                      </div>
-                    )}
-                  </div>
-                  <div
+                  <span
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: spacing.sm,
+                      minWidth: 0,
+                      color: colors.text.primary,
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      fontWeight: 600,
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {brand.brand}
+                  </span>
+                  <span
+                    style={{
                       color: colors.text.secondary,
                       fontSize: getFontSize('bodySmall', isMobile),
+                      fontVariantNumeric: 'tabular-nums',
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {!isMobile && (
-                      <span>
-                        {row.qty} 件 · <strong>{formatCurrency(row.amount, false)}</strong> · {share}%
-                      </span>
-                    )}
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        color: colors.text.disabled,
-                        transform: expanded ? 'rotate(180deg)' : 'none',
-                        transition: 'transform 160ms ease',
-                      }}
-                    >
-                      ▼
-                    </span>
-                  </div>
+                    {brand.qty} 件 · {formatCurrency(brand.amount, false)} · {share}%
+                  </span>
                   <span
                     aria-hidden="true"
                     style={{
                       gridColumn: '1 / -1',
-                      height: isMobile ? 4 : 5,
+                      height: 3,
                       overflow: 'hidden',
                       borderRadius: borderRadius.full,
                       background: colors.secondary[100],
@@ -1478,163 +1707,218 @@ function PreorderReportCard({
                         width: `${share}%`,
                         height: '100%',
                         borderRadius: 'inherit',
-                        background: colors.secondary[800],
+                        background: colors.secondary[600],
                       }}
                     />
                   </span>
-                </button>
-                {expanded && (
-                  <div style={{ padding: isMobile ? '4px 14px 10px 39px' : '5px 20px 12px 52px' }}>
+                </div>
+              )
+            })}
+          </div>
+
+          <div
+            style={{
+              padding: isMobile ? '14px 14px 8px' : '16px 20px 8px',
+              borderTop: `1px solid ${colors.border.light}`,
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                fontSize: getFontSize('body', isMobile),
+                fontWeight: 700,
+                color: colors.text.primary,
+              }}
+            >
+              貨品排行
+            </h3>
+            <p
+              style={{
+                margin: `${spacing.xs} 0 0`,
+                color: colors.text.disabled,
+                fontSize: getFontSize('caption', isMobile),
+              }}
+            >
+              相同商品款式合併，依訂單金額排序
+            </p>
+          </div>
+
+          {summary.products.map((product, index) => {
+            const expanded = expandedProducts.has(product.id)
+            const share = summary.amount > 0
+              ? Math.round((product.amount / summary.amount) * 100)
+              : 0
+            return (
+              <div
+                key={product.id}
+                style={{
+                  borderTop: index > 0 ? `1px solid ${colors.border.light}` : 'none',
+                }}
+              >
+                <button
+                  type="button"
+                  data-track="product_order_settle_stat_preorder_product_expand"
+                  aria-expanded={expanded}
+                  aria-label={`${expanded ? '收合' : '展開'} ${product.title} 規格與訂單`}
+                  onClick={() =>
+                    setExpandedProducts((current) => {
+                      const next = new Set(current)
+                      if (next.has(product.id)) next.delete(product.id)
+                      else next.add(product.id)
+                      return next
+                    })
+                  }
+                  style={{
+                    width: '100%',
+                    minHeight: 56,
+                    display: 'grid',
+                    gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+                    alignItems: 'center',
+                    gap: isMobile ? 9 : 12,
+                    padding: isMobile ? '11px 14px' : '12px 20px',
+                    background: colors.background.card,
+                    border: 0,
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span
+                    style={{
+                      color: colors.text.disabled,
+                      fontSize: getFontSize('caption', isMobile),
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
                     <div
                       style={{
-                        marginBottom: 4,
-                        color: colors.text.disabled,
+                        color: colors.text.primary,
+                        fontSize: getFontSize('body', isMobile),
+                        fontWeight: 600,
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {product.title}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 3,
+                        color: colors.text.secondary,
                         fontSize: getFontSize('caption', isMobile),
                       }}
                     >
-                      等貨 {row.waiting} · 待付款 {row.pending} · 已完成 {row.paid}
+                      等貨 {product.waiting} · 待付款 {product.pending} · 已完成 {product.paid}
                     </div>
-                    {row.items.map((item) => {
-                      const itemExpansionId = `${row.brand}\u0000${item.id}`
-                      const itemExpanded = expandedItems.has(itemExpansionId)
-                      return (
-                        <div key={item.id} style={{ marginTop: 6 }}>
-                          <button
-                            type="button"
-                            aria-expanded={itemExpanded}
-                            onClick={() =>
-                              setExpandedItems((current) => {
-                                const next = new Set(current)
-                                if (next.has(itemExpansionId)) next.delete(itemExpansionId)
-                                else next.add(itemExpansionId)
-                                return next
-                              })
-                            }
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      color: colors.text.secondary,
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span>
+                      {product.qty} 件 · <strong>{formatCurrency(product.amount, false)}</strong> · {share}%
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        color: colors.text.disabled,
+                        transform: expanded ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 160ms ease',
+                      }}
+                    >
+                      ▾
+                    </span>
+                  </div>
+                </button>
+
+                {expanded && (
+                  <div
+                    style={{
+                      padding: isMobile ? '0 14px 10px' : '0 20px 12px 52px',
+                      background: colors.secondary[50],
+                    }}
+                  >
+                    {product.variants.map((variant, variantIndex) => (
+                      <div
+                        key={variant.id}
+                        style={{
+                          padding: '10px 0 6px',
+                          borderTop:
+                            variantIndex > 0 ? `1px solid ${colors.border.light}` : 'none',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            gap: 10,
+                            color: colors.text.secondary,
+                            fontSize: getFontSize('bodySmall', isMobile),
+                          }}
+                        >
+                          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                            {variant.subtitle || '一般規格'}
+                          </span>
+                          <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+                            {variant.qty} 件 · {formatCurrency(variant.amount, false)}
+                          </span>
+                        </div>
+                        {variant.orders.map((order) => (
+                          <div
+                            key={order.orderId}
                             style={{
-                              width: '100%',
+                              minHeight: 44,
                               display: 'grid',
                               gridTemplateColumns: 'minmax(0, 1fr) auto',
-                              gap: 10,
                               alignItems: 'center',
-                              padding: isMobile ? '9px 10px' : '10px 12px',
-                              border: 0,
-                              borderRadius: borderRadius.md,
-                              background: colors.secondary[100],
-                              color: 'inherit',
-                              cursor: 'pointer',
-                              textAlign: 'left',
+                              gap: 10,
+                              padding: isMobile ? '6px 0' : '6px 0 6px 12px',
                             }}
                           >
                             <div style={{ minWidth: 0 }}>
-                              <div
+                              <Link
+                                to={`/products/orders?q=${encodeURIComponent(order.orderNo)}`}
+                                data-track="product_order_settle_stat_preorder_order_link"
                                 style={{
                                   color: colors.text.primary,
                                   fontWeight: 600,
-                                  overflowWrap: 'anywhere',
+                                  textDecoration: 'none',
                                 }}
                               >
-                                {item.title}
-                              </div>
-                              {item.subtitle && (
-                                <div
-                                  style={{
-                                    marginTop: 2,
-                                    color: colors.text.disabled,
-                                    fontSize: getFontSize('caption', isMobile),
-                                  }}
-                                >
-                                  {item.subtitle}
-                                </div>
-                              )}
+                                {order.orderNo}
+                              </Link>
                               <div
                                 style={{
-                                  marginTop: 3,
+                                  marginTop: 2,
                                   color: colors.text.secondary,
                                   fontSize: getFontSize('caption', isMobile),
                                 }}
                               >
-                                等貨 {item.waiting} · 待付款 {item.pending} · 已完成 {item.paid}
+                                {order.contactName} · {extractDate(order.createdAt)}
                               </div>
                             </div>
-                            <div
+                            <span
                               style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
+                                color: colors.text.secondary,
+                                fontSize: getFontSize('caption', isMobile),
                                 whiteSpace: 'nowrap',
-                                textAlign: 'right',
-                                fontSize: getFontSize('bodySmall', isMobile),
                               }}
                             >
-                              <span>
-                                <strong>{item.qty} 件</strong> · {formatCurrency(item.amount, false)}
-                              </span>
-                              <span
-                                aria-hidden="true"
-                                style={{
-                                  color: colors.text.disabled,
-                                  transform: itemExpanded ? 'rotate(180deg)' : 'none',
-                                  transition: 'transform 160ms ease',
-                                }}
-                              >
-                                ▾
-                              </span>
-                            </div>
-                          </button>
-                          {itemExpanded && (
-                            <div style={{ padding: isMobile ? '2px 8px 4px' : '3px 10px 5px' }}>
-                              {item.orders.map((order, orderIndex) => (
-                                <div
-                                  key={order.orderId}
-                                  style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'minmax(0, 1fr) auto',
-                                    gap: 10,
-                                    padding: '7px 2px',
-                                    borderTop:
-                                      orderIndex > 0
-                                        ? `1px solid ${colors.border.light}`
-                                        : 'none',
-                                  }}
-                                >
-                                  <div style={{ minWidth: 0 }}>
-                                    <Link
-                                      to={`/products/orders?q=${encodeURIComponent(order.orderNo)}`}
-                                      style={{
-                                        color: colors.text.primary,
-                                        fontWeight: 600,
-                                        textDecoration: 'none',
-                                      }}
-                                    >
-                                      {order.orderNo}
-                                    </Link>
-                                    <div
-                                      style={{
-                                        marginTop: 2,
-                                        color: colors.text.secondary,
-                                        fontSize: getFontSize('caption', isMobile),
-                                      }}
-                                    >
-                                      {order.contactName} · {extractDate(order.createdAt)}
-                                    </div>
-                                  </div>
-                                  <div
-                                    style={{
-                                      textAlign: 'right',
-                                      whiteSpace: 'nowrap',
-                                      color: colors.text.secondary,
-                                      fontSize: getFontSize('caption', isMobile),
-                                    }}
-                                  >
-                                    {order.qty} 件 · {formatCurrency(order.amount, false)}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
+                              {order.qty} 件 · {formatCurrency(order.amount, false)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1646,7 +1930,7 @@ function PreorderReportCard({
   )
 }
 
-function SummaryRow({
+function MetricCard({
   label,
   value,
   isMobile,
@@ -1661,16 +1945,20 @@ function SummaryRow({
     <div
       style={{
         display: 'flex',
+        minWidth: 0,
+        minHeight: isMobile ? 86 : 96,
+        flexDirection: 'column',
         justifyContent: 'space-between',
-        alignItems: 'baseline',
-        gap: 12,
-        padding: `${spacing.xs} 0`,
-        borderBottom: `1px solid ${colors.border.light}`,
+        gap: spacing.sm,
+        padding: isMobile ? '12px' : '15px 16px',
+        border: `1px solid ${emphasize ? colors.secondary[300] : colors.border.light}`,
+        borderRadius: borderRadius.md,
+        background: emphasize ? colors.secondary[100] : colors.background.card,
       }}
     >
       <span
         style={{
-          fontSize: getFontSize('body', isMobile),
+          fontSize: getFontSize('bodySmall', isMobile),
           color: colors.text.secondary,
           fontWeight: 500,
           lineHeight: 1.4,
@@ -1680,12 +1968,15 @@ function SummaryRow({
       </span>
       <span
         style={{
-          fontSize: getFontSize('body', isMobile),
-          fontWeight: emphasize ? 700 : 600,
+          minWidth: 0,
+          fontSize: emphasize
+            ? getFontSize(isMobile ? 'body' : 'h3', isMobile)
+            : getFontSize('body', isMobile),
+          fontWeight: 700,
           color: colors.text.primary,
-          textAlign: 'right',
           lineHeight: 1.4,
           fontVariantNumeric: 'tabular-nums',
+          overflowWrap: 'anywhere',
         }}
       >
         {value}
@@ -1706,4 +1997,20 @@ function thStyle(align: 'left' | 'center' | 'right' = 'left') {
 
 function tdStyle(align: 'left' | 'center' | 'right' = 'left') {
   return { padding: 10, textAlign: align, color: colors.text.primary } as const
+}
+
+function detailControlStyle(isMobile: boolean) {
+  return {
+    width: '100%',
+    minWidth: 0,
+    minHeight: isMobile ? 44 : 40,
+    boxSizing: 'border-box',
+    padding: '9px 10px',
+    border: `1px solid ${colors.border.main}`,
+    borderRadius: borderRadius.md,
+    background: colors.background.card,
+    color: colors.text.primary,
+    fontSize: getFontSize('bodySmall', isMobile),
+    outline: 'none',
+  } as const
 }

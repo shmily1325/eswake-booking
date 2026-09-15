@@ -89,6 +89,8 @@ export interface ShopPreorderReportLine {
   contact_name: string
   order_created_at: string
   brand: string
+  /** 商品款式識別；舊資料查不到商品時以 variant_id 回退。 */
+  product_id: string
   variant_id: string
   item_title: string
   item_subtitle: string

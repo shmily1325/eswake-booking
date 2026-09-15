@@ -13,6 +13,7 @@ function line(
     contact_name: 'Member',
     order_created_at: '2026-09-01T10:00:00',
     brand: 'Follow',
+    product_id: `product-${id}`,
     variant_id: `variant-${id}`,
     item_title: `Item ${id}`,
     item_subtitle: `Spec ${id}`,
@@ -47,77 +48,32 @@ describe('summarizePreorderReport', () => {
       paid: 1,
       amount: 13000,
     })
-    expect(summary.brands).toEqual(expect.arrayContaining([
-      {
-        brand: 'FOLLOW',
-        orderCount: 1,
-        qty: 5,
-        waiting: 2,
-        pending: 2,
-        paid: 1,
-        amount: 5000,
-        items: [
-          {
-            id: 'variant-1',
-            title: 'Item 1',
-            subtitle: 'Spec 1',
-            qty: 5,
-            waiting: 2,
-            pending: 2,
-            paid: 1,
-            amount: 5000,
-            orders: [
-              {
-                orderId: 'order-a',
-                orderNo: 'SO-1',
-                contactName: 'Member',
-                createdAt: '2026-09-01T10:00:00',
-                qty: 5,
-                waiting: 2,
-                pending: 2,
-                paid: 1,
-                amount: 5000,
-              },
-            ],
-          },
-        ],
-      },
-      {
-        brand: 'RONIX',
-        orderCount: 1,
-        qty: 4,
-        waiting: 4,
-        pending: 0,
-        paid: 0,
-        amount: 8000,
-        items: [
-          {
-            id: 'variant-3',
-            title: 'Item 3',
-            subtitle: 'Spec 3',
-            qty: 4,
-            waiting: 4,
-            pending: 0,
-            paid: 0,
-            amount: 8000,
-            orders: [
-              {
-                orderId: 'order-b',
-                orderNo: 'SO-3',
-                contactName: 'Member',
-                createdAt: '2026-09-01T10:00:00',
-                qty: 4,
-                waiting: 4,
-                pending: 0,
-                paid: 0,
-                amount: 8000,
-              },
-            ],
-          },
-        ],
-      },
-    ]))
     expect(summary.brands.map((brand) => brand.brand)).toEqual(['RONIX', 'FOLLOW'])
+    expect(summary.products).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'product-1',
+        title: 'Item 1',
+        qty: 3,
+        variants: [
+          expect.objectContaining({
+            id: 'variant-1',
+            subtitle: 'Spec 1',
+            qty: 3,
+            orders: [expect.objectContaining({ orderId: 'order-a', qty: 3 })],
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        id: 'product-2',
+        qty: 2,
+        variants: [expect.objectContaining({ id: 'variant-1', qty: 2 })],
+      }),
+    ]))
+    expect(summary.brands[1]).toMatchObject({
+      brand: 'FOLLOW',
+      qty: 5,
+      amount: 5000,
+    })
   })
 
   it('merges historical brand snapshots regardless of casing', () => {
@@ -134,5 +90,55 @@ describe('summarizePreorderReport', () => {
       line('1', { qty: 1, qty_pending_bill: 2, qty_paid: 3 }),
     ])
     expect(summary).toMatchObject({ qty: 1, waiting: 0, pending: 1, paid: 0 })
+  })
+
+  it('groups product styles before variants and falls back for historical rows', () => {
+    const summary = summarizePreorderReport([
+      line('1', { product_id: 'product-a', variant_id: 'variant-a', item_title: 'Style A' }),
+      line('2', { product_id: 'product-a', variant_id: 'variant-b', item_title: 'Style A' }),
+      line('3', { product_id: '', variant_id: 'legacy-variant', item_title: 'Legacy' }),
+    ])
+
+    expect(summary.products).toHaveLength(2)
+    expect(summary.products[0]).toMatchObject({
+      id: 'product-a',
+      variants: [{ id: 'variant-a' }, { id: 'variant-b' }],
+    })
+    expect(summary.products[1].id).toBe('legacy-variant')
+  })
+
+  it('filters completed quantities and always sorts by amount', () => {
+    const lines = [
+      line('1', { product_id: 'product-a', qty: 10, qty_paid: 9, unit_price: 100 }),
+      line('2', { brand: 'Ronix', product_id: 'product-b', qty: 2, unit_price: 1000 }),
+    ]
+    const unfinished = summarizePreorderReport(lines, {
+      scope: 'unfinished',
+    })
+
+    expect(unfinished).toMatchObject({
+      orderCount: 2,
+      qty: 3,
+      paid: 0,
+      amount: 2100,
+    })
+    expect(unfinished.brands.map((brand) => brand.brand)).toEqual(['RONIX', 'FOLLOW'])
+    expect(unfinished.products.map((product) => product.id)).toEqual(['product-b', 'product-a'])
+  })
+
+  it('merges one product across historical brand snapshots', () => {
+    const summary = summarizePreorderReport([
+      line('1', { brand: 'Follow', product_id: 'shared-product', variant_id: 'variant-a' }),
+      line('2', { brand: 'Ronix', product_id: 'shared-product', variant_id: 'variant-b' }),
+    ])
+
+    expect(summary.brands).toHaveLength(2)
+    expect(summary.products).toHaveLength(1)
+    expect(summary.products[0]).toMatchObject({
+      id: 'shared-product',
+      qty: 2,
+      amount: 2000,
+      variants: [{ id: 'variant-a' }, { id: 'variant-b' }],
+    })
   })
 })

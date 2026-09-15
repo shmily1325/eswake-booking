@@ -51,4 +51,31 @@ describe('admin click tracking coverage', () => {
       'home_announcement_',
     )
   })
+
+  it('covers product order settlement statistics interactions', () => {
+    const statisticsSource = source(
+      'src/pages/admin/orders/ShopSettlementStatisticsTab.tsx',
+    )
+    const expectedEvents = [
+      'product_order_settle_stat_view_',
+      'product_order_settle_stat_tab_',
+      'product_order_settle_stat_sales_period',
+      'product_order_settle_stat_preorder_period',
+      'product_order_settle_stat_details_period',
+      'product_order_settle_stat_group_',
+      'product_order_settle_stat_expand_all',
+      'product_order_settle_stat_rank_group_expand',
+      'product_order_settle_stat_rank_item_expand',
+      'product_order_settle_stat_preorder_scope_',
+      'product_order_settle_stat_preorder_product_expand',
+      'product_order_settle_stat_preorder_order_link',
+      'product_order_settle_stat_detail_search',
+      'product_order_settle_stat_detail_payment',
+      'product_order_settle_stat_detail_brand',
+      'product_order_settle_stat_expand',
+      'product_order_settle_stat_order_link',
+    ]
+
+    expectedEvents.forEach((event) => expect(statisticsSource).toContain(event))
+  })
 })
