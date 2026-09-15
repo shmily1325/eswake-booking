@@ -17,7 +17,7 @@ import { splitMinutesEqually } from '../../../utils/teachingMinutesAllocation'
 import { fetchAllInBatches, fetchAllPaginated } from '../../../utils/supabasePaginate'
 
 import { LoadingSkeleton, LastUpdated } from './components'
-import { FutureTab, OperationsTab, type OperationsPeriodMode } from './tabs'
+import { FutureTab, OperationsTab, ProductTab, type OperationsPeriodMode } from './tabs'
 import { designSystem, getFontSize } from '../../../styles/designSystem'
 import {
   getYearDateRange,
@@ -31,7 +31,7 @@ import type {
   WeekdayStats,
 } from './types'
 
-type TabType = 'operations' | 'future'
+type TabType = 'operations' | 'future' | 'product'
 
 export function Statistics() {
   const user = useAuthUser()
@@ -49,6 +49,7 @@ export function Statistics() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [activeTab, setActiveTab] = useState<TabType>('operations')
   const [operationsPeriod, setOperationsPeriod] = useState<OperationsPeriodMode>('monthly')
+  const [productRefreshToken, setProductRefreshToken] = useState(0)
 
   // 未來預約數據
   const [futureBookings, setFutureBookings] = useState<CoachFutureBooking[]>([])
@@ -70,9 +71,10 @@ export function Statistics() {
   const [annualMemberStats, setAnnualMemberStats] = useState<MemberStats[]>([])
   const [annualBoatUsage, setAnnualBoatUsage] = useState<BoatUsageRangeRow[]>([])
 
-  // 主導覽只區分已發生的營運數據與未來排程。
+  // 主導覽區分場上營運、商品實收與未來排程。
   const tabs: { key: TabType; label: string; shortLabel?: string }[] = [
     { key: 'operations', label: '營運報表' },
+    { key: 'product', label: '商品營運' },
     { key: 'future', label: '未來排程' },
   ]
 
@@ -761,6 +763,12 @@ export function Statistics() {
 
   // 重新整理
   const handleRefresh = async () => {
+    if (activeTab === 'product') {
+      setRefreshing(true)
+      setProductRefreshToken((token) => token + 1)
+      return
+    }
+
     setRefreshing(true)
     try {
       if (activeTab === 'operations' && operationsPeriod === 'annual') {
@@ -829,7 +837,10 @@ export function Statistics() {
               <button
                 key={tab.key}
                 data-track={`dashboard_tab_${tab.key}`}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => {
+                  setRefreshing(false)
+                  setActiveTab(tab.key)
+                }}
                 style={tabStyle(activeTab === tab.key)}
               >
                 {tab.label}
@@ -870,6 +881,16 @@ export function Statistics() {
             {activeTab === 'future' && (
               <FutureTab
                 futureBookings={futureBookings}
+              />
+            )}
+
+            {activeTab === 'product' && (
+              <ProductTab
+                refreshToken={productRefreshToken}
+                onLoadComplete={() => {
+                  setLastUpdated(new Date())
+                  setRefreshing(false)
+                }}
               />
             )}
 
