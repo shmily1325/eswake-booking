@@ -8,6 +8,14 @@ export interface PreorderBrandSummary {
   pending: number
   paid: number
   amount: number
+  products: PreorderBrandProductSummary[]
+}
+
+export interface PreorderBrandProductSummary {
+  id: string
+  title: string
+  qty: number
+  amount: number
 }
 
 export interface PreorderProductSummary {
@@ -70,7 +78,12 @@ export function summarizePreorderReport(
 ): PreorderReportSummary {
   const scope = options.scope ?? 'all'
   const orderIds = new Set<string>()
-  const brandRows = new Map<string, PreorderBrandSummary>()
+  const brandRows = new Map<
+    string,
+    Omit<PreorderBrandSummary, 'products'> & {
+      products: Map<string, PreorderBrandProductSummary>
+    }
+  >()
   const productRows = new Map<
     string,
     Omit<PreorderProductSummary, 'variants'> & {
@@ -105,8 +118,15 @@ export function summarizePreorderReport(
       pending: 0,
       paid: 0,
       amount: 0,
+      products: new Map(),
     }
     const productId = line.product_id || line.variant_id
+    const brandProduct = brand.products.get(productId) ?? {
+      id: productId,
+      title: line.item_title,
+      qty: 0,
+      amount: 0,
+    }
     const product = productRows.get(productId) ?? {
       id: productId,
       title: line.item_title,
@@ -145,6 +165,9 @@ export function summarizePreorderReport(
     brand.pending += linePending
     brand.paid += includedPaid
     brand.amount += lineAmount
+    brandProduct.qty += includedQty
+    brandProduct.amount += lineAmount
+    brand.products.set(productId, brandProduct)
     brandRows.set(brandName, brand)
     product.qty += includedQty
     product.waiting += lineWaiting
@@ -179,12 +202,22 @@ export function summarizePreorderReport(
     pending,
     paid,
     amount,
-    brands: Array.from(brandRows.values()).sort(
-      (a, b) =>
-        b.amount - a.amount ||
-        b.qty - a.qty ||
-        a.brand.localeCompare(b.brand),
-    ),
+    brands: Array.from(brandRows.values())
+      .map(({ products, ...brand }) => ({
+        ...brand,
+        products: Array.from(products.values()).sort(
+          (a, b) =>
+            b.amount - a.amount ||
+            b.qty - a.qty ||
+            a.title.localeCompare(b.title),
+        ),
+      }))
+      .sort(
+        (a, b) =>
+          b.amount - a.amount ||
+          b.qty - a.qty ||
+          a.brand.localeCompare(b.brand),
+      ),
     products: Array.from(productRows.values())
       .map(({ variants, ...product }) => ({
         ...product,

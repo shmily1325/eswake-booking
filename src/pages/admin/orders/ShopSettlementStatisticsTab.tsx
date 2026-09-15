@@ -1512,26 +1512,31 @@ function PreorderReportCard({
   isMobile: boolean
 }) {
   const [scope, setScope] = useState<PreorderReportScope>('unfinished')
+  const [expandedBrands, setExpandedBrands] = useState<Set<string>>(() => new Set())
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(() => new Set())
+  const [hoveredBrand, setHoveredBrand] = useState<string | null>(null)
+  const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
   const summary = useMemo(
     () => summarizePreorderReport(lines, { scope }),
     [lines, scope],
   )
 
   return (
-    <section
+    <div
       style={{
-        background: colors.background.card,
-        border: `1px solid ${colors.border.light}`,
-        borderRadius: borderRadius.lg,
-        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? 16 : 24,
         marginBottom: 24,
       }}
     >
-      <div
+      <section
         style={{
+          background: colors.background.card,
+          border: `1px solid ${colors.border.light}`,
+          borderRadius: borderRadius.lg,
           padding: isMobile ? 16 : '18px 20px',
-          borderBottom: `1px solid ${colors.border.light}`,
+          overflow: 'hidden',
         }}
       >
         <div
@@ -1625,37 +1630,54 @@ function PreorderReportCard({
             </div>
           </>
         )}
-      </div>
+      </section>
 
       {summary.products.length === 0 ? (
-        <div style={{ padding: 28, textAlign: 'center', color: colors.text.disabled }}>
+        <div
+          style={{
+            padding: 28,
+            textAlign: 'center',
+            color: colors.text.disabled,
+            background: colors.background.card,
+            border: `1px solid ${colors.border.light}`,
+            borderRadius: borderRadius.lg,
+          }}
+        >
           {scope === 'unfinished' ? '此期間沒有未完成預購' : '此期間沒有預購訂單'}
         </div>
       ) : (
         <>
-          <div style={{ padding: isMobile ? '16px 14px 10px' : '18px 20px 10px' }}>
-            <h3
-              style={{
-                margin: 0,
-                fontSize: getFontSize('body', isMobile),
-                fontWeight: 700,
-                color: colors.text.primary,
-              }}
-            >
-              品牌排行
-            </h3>
-            <p
-              style={{
-                margin: `${spacing.xs} 0 0`,
-                color: colors.text.disabled,
-                fontSize: getFontSize('caption', isMobile),
-              }}
-            >
-              依訂單金額排序
-            </p>
-          </div>
-          <div style={{ padding: isMobile ? '0 14px 16px' : '0 20px 18px' }}>
+          <section
+            style={{
+              background: colors.background.card,
+              border: `1px solid ${colors.border.light}`,
+              borderRadius: borderRadius.lg,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ padding: isMobile ? '16px 14px 10px' : '18px 20px 10px' }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: getFontSize('body', isMobile),
+                  fontWeight: 700,
+                  color: colors.text.primary,
+                }}
+              >
+                品牌排行
+              </h3>
+              <p
+                style={{
+                  margin: `${spacing.xs} 0 0`,
+                  color: colors.text.disabled,
+                  fontSize: getFontSize('caption', isMobile),
+                }}
+              >
+                依訂單金額排序；點品牌查看商品
+              </p>
+            </div>
             {summary.brands.map((brand, index) => {
+              const expanded = expandedBrands.has(brand.brand)
               const share = summary.amount > 0
                 ? Math.round((brand.amount / summary.amount) * 100)
                 : 0
@@ -1663,63 +1685,174 @@ function PreorderReportCard({
                 <div
                   key={brand.brand}
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) auto',
-                    gap: '6px 12px',
-                    padding: '9px 0',
                     borderTop: index > 0 ? `1px solid ${colors.border.light}` : 'none',
                   }}
                 >
-                  <span
+                  <button
+                    type="button"
+                    data-track="product_order_settle_stat_preorder_brand_expand"
+                    aria-expanded={expanded}
+                    aria-label={`${expanded ? '收合' : '展開'} ${brand.brand} 商品`}
+                    onMouseEnter={() => setHoveredBrand(brand.brand)}
+                    onMouseLeave={() => setHoveredBrand(null)}
+                    onClick={() =>
+                      setExpandedBrands((current) => {
+                        const next = new Set(current)
+                        if (next.has(brand.brand)) next.delete(brand.brand)
+                        else next.add(brand.brand)
+                        return next
+                      })
+                    }
                     style={{
-                      minWidth: 0,
-                      color: colors.text.primary,
-                      fontSize: getFontSize('bodySmall', isMobile),
-                      fontWeight: 600,
-                      overflowWrap: 'anywhere',
+                      width: '100%',
+                      minHeight: 52,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr) auto',
+                      alignItems: 'center',
+                      gap: '6px 12px',
+                      padding: isMobile ? '10px 14px' : '11px 20px',
+                      background:
+                        expanded || hoveredBrand === brand.brand
+                          ? colors.secondary[50]
+                          : colors.background.card,
+                      border: 0,
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 140ms ease',
                     }}
                   >
-                    {brand.brand}
-                  </span>
-                  <span
-                    style={{
-                      color: colors.text.secondary,
-                      fontSize: getFontSize('bodySmall', isMobile),
-                      fontVariantNumeric: 'tabular-nums',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {brand.qty} 件 · {formatCurrency(brand.amount, false)} · {share}%
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      gridColumn: '1 / -1',
-                      height: 3,
-                      overflow: 'hidden',
-                      borderRadius: borderRadius.full,
-                      background: colors.secondary[100],
-                    }}
-                  >
-                    <span
+                    <div style={{ minWidth: 0 }}>
+                      <strong
+                        style={{
+                          color: colors.text.primary,
+                          fontSize: getFontSize('bodySmall', isMobile),
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        {brand.brand}
+                      </strong>
+                      {isMobile && (
+                        <div
+                          style={{
+                            marginTop: 3,
+                            color: colors.text.secondary,
+                            fontSize: getFontSize('caption', true),
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {brand.qty} 件 · {formatCurrency(brand.amount, false)} · {share}%
+                        </div>
+                      )}
+                    </div>
+                    <div
                       style={{
-                        display: 'block',
-                        width: `${share}%`,
-                        height: '100%',
-                        borderRadius: 'inherit',
-                        background: colors.secondary[600],
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        color: colors.text.secondary,
+                        fontSize: getFontSize('bodySmall', isMobile),
+                        fontVariantNumeric: 'tabular-nums',
+                        whiteSpace: 'nowrap',
                       }}
-                    />
-                  </span>
+                    >
+                      {!isMobile && (
+                        <span>{brand.qty} 件 · {formatCurrency(brand.amount, false)} · {share}%</span>
+                      )}
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          color: colors.text.disabled,
+                          transform: expanded ? 'rotate(180deg)' : 'none',
+                          transition: 'transform 160ms ease',
+                        }}
+                      >
+                        ▾
+                      </span>
+                    </div>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        gridColumn: '1 / -1',
+                        height: 3,
+                        overflow: 'hidden',
+                        borderRadius: borderRadius.full,
+                        background: colors.secondary[100],
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: 'block',
+                          width: `${share}%`,
+                          height: '100%',
+                          borderRadius: 'inherit',
+                          background: colors.secondary[600],
+                        }}
+                      />
+                    </span>
+                  </button>
+                  {expanded && (
+                    <div
+                      style={{
+                        padding: isMobile ? '4px 14px 10px' : '4px 20px 12px',
+                        background: colors.secondary[50],
+                      }}
+                    >
+                      {brand.products.map((product, productIndex) => (
+                        <div
+                          key={product.id}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'minmax(0, 1fr) auto',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '8px 0',
+                            borderTop:
+                              productIndex > 0
+                                ? `1px solid ${colors.border.light}`
+                                : 'none',
+                          }}
+                        >
+                          <span
+                            style={{
+                              minWidth: 0,
+                              color: colors.text.primary,
+                              fontSize: getFontSize('bodySmall', isMobile),
+                              overflowWrap: 'anywhere',
+                            }}
+                          >
+                            {product.title}
+                          </span>
+                          <span
+                            style={{
+                              color: colors.text.secondary,
+                              fontSize: getFontSize('caption', isMobile),
+                              fontVariantNumeric: 'tabular-nums',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {product.qty} 件 · {formatCurrency(product.amount, false)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })}
-          </div>
+          </section>
 
+          <section
+            style={{
+              background: colors.background.card,
+              border: `1px solid ${colors.border.light}`,
+              borderRadius: borderRadius.lg,
+              overflow: 'hidden',
+            }}
+          >
           <div
             style={{
-              padding: isMobile ? '14px 14px 8px' : '16px 20px 8px',
-              borderTop: `1px solid ${colors.border.light}`,
+              padding: isMobile ? '16px 14px 8px' : '18px 20px 8px',
             }}
           >
             <h3
@@ -1739,7 +1872,7 @@ function PreorderReportCard({
                 fontSize: getFontSize('caption', isMobile),
               }}
             >
-              相同商品款式合併，依訂單金額排序
+              相同商品款式合併，依訂單金額排序；點貨品查看規格與訂單
             </p>
           </div>
 
@@ -1760,6 +1893,8 @@ function PreorderReportCard({
                   data-track="product_order_settle_stat_preorder_product_expand"
                   aria-expanded={expanded}
                   aria-label={`${expanded ? '收合' : '展開'} ${product.title} 規格與訂單`}
+                  onMouseEnter={() => setHoveredProduct(product.id)}
+                  onMouseLeave={() => setHoveredProduct(null)}
                   onClick={() =>
                     setExpandedProducts((current) => {
                       const next = new Set(current)
@@ -1772,15 +1907,21 @@ function PreorderReportCard({
                     width: '100%',
                     minHeight: 56,
                     display: 'grid',
-                    gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+                    gridTemplateColumns: isMobile
+                      ? 'auto minmax(0, 1fr)'
+                      : 'auto minmax(0, 1fr) auto',
                     alignItems: 'center',
                     gap: isMobile ? 9 : 12,
                     padding: isMobile ? '11px 14px' : '12px 20px',
-                    background: colors.background.card,
+                    background:
+                      expanded || hoveredProduct === product.id
+                        ? colors.secondary[50]
+                        : colors.background.card,
                     border: 0,
                     color: 'inherit',
                     cursor: 'pointer',
                     textAlign: 'left',
+                    transition: 'background 140ms ease',
                   }}
                 >
                   <span
@@ -1815,13 +1956,17 @@ function PreorderReportCard({
                   </div>
                   <div
                     style={{
+                      gridColumn: isMobile ? '2' : undefined,
                       display: 'flex',
+                      minWidth: 0,
+                      flexWrap: isMobile ? 'wrap' : 'nowrap',
                       alignItems: 'center',
+                      justifyContent: isMobile ? 'space-between' : undefined,
                       gap: 7,
                       color: colors.text.secondary,
-                      fontSize: getFontSize('bodySmall', isMobile),
+                      fontSize: getFontSize(isMobile ? 'caption' : 'bodySmall', isMobile),
                       fontVariantNumeric: 'tabular-nums',
-                      whiteSpace: 'nowrap',
+                      whiteSpace: isMobile ? 'normal' : 'nowrap',
                     }}
                   >
                     <span>
@@ -1923,10 +2068,11 @@ function PreorderReportCard({
                 )}
               </div>
             )
-          })}
+            })}
+          </section>
         </>
       )}
-    </section>
+    </div>
   )
 }
 

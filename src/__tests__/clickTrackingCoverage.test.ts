@@ -67,6 +67,7 @@ describe('admin click tracking coverage', () => {
       'product_order_settle_stat_rank_group_expand',
       'product_order_settle_stat_rank_item_expand',
       'product_order_settle_stat_preorder_scope_',
+      'product_order_settle_stat_preorder_brand_expand',
       'product_order_settle_stat_preorder_product_expand',
       'product_order_settle_stat_preorder_order_link',
       'product_order_settle_stat_detail_search',

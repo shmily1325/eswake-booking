@@ -73,16 +73,25 @@ describe('summarizePreorderReport', () => {
       brand: 'FOLLOW',
       qty: 5,
       amount: 5000,
+      products: [
+        { id: 'product-1', title: 'Item 1', qty: 3, amount: 3000 },
+        { id: 'product-2', title: 'Item 1', qty: 2, amount: 2000 },
+      ],
     })
   })
 
   it('merges historical brand snapshots regardless of casing', () => {
     const summary = summarizePreorderReport([
-      line('1', { brand: 'Follow' }),
-      line('2', { brand: ' FOLLOW ' }),
+      line('1', { brand: 'Follow', product_id: 'shared-product', item_title: 'Shared' }),
+      line('2', { brand: ' FOLLOW ', product_id: 'shared-product', item_title: 'Shared' }),
     ])
     expect(summary.brands).toHaveLength(1)
-    expect(summary.brands[0]).toMatchObject({ brand: 'FOLLOW', qty: 2, amount: 2000 })
+    expect(summary.brands[0]).toMatchObject({
+      brand: 'FOLLOW',
+      qty: 2,
+      amount: 2000,
+      products: [{ id: 'shared-product', title: 'Shared', qty: 2, amount: 2000 }],
+    })
   })
 
   it('does not produce negative progress from malformed values', () => {
