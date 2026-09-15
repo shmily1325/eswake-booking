@@ -2405,7 +2405,7 @@ function GalleryCard({
     0,
   )
   const visibleItems = expanded ? items : items.slice(0, 3)
-  const canExpand = !canEdit && items.length > 3
+  const canExpand = items.length > 3
 
   return (
     <div

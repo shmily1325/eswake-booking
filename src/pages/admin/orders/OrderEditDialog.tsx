@@ -31,9 +31,11 @@ import { formatPrice } from '../../shop/lib/shopFormat'
 import {
   countOrderTransactions,
   createShopOrder,
+  fetchSalespersonCoaches,
   shopOrderErrorMessage,
   updateShopOrder,
   voidShopOrder,
+  type SalespersonCoach,
 } from './api'
 import { formatDateTime } from '../../../utils/formatters'
 import { confirmVoidOrder } from './orderUtils'
@@ -58,6 +60,8 @@ interface DraftLine {
   was_preorder?: boolean
   brand_snapshot?: string | null
   sale_mode_snapshot?: string | null
+  salesperson_coach_id?: string | null
+  salesperson_name_snapshot?: string | null
   suggested_original_price?: number | null
   suggested_discount_caption?: string | null
   selected_options: SelectedOptionSnapshot
@@ -158,6 +162,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   const [variantSearch, setVariantSearch] = useState('')
   const [variants, setVariants] = useState<VariantListItem[]>([])
   const [discountPresets, setDiscountPresets] = useState<DiscountPreset[]>([])
+  const [salespersonCoaches, setSalespersonCoaches] = useState<SalespersonCoach[]>([])
   const [pricingReady, setPricingReady] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -177,13 +182,14 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   useEffect(() => {
     if (!open) return
     setPricingReady(false)
-    Promise.all([fetchAllProductsWithVariants(), fetchDiscountPresets()])
-      .then(([list, presets]) => {
+    Promise.all([fetchAllProductsWithVariants(), fetchDiscountPresets(), fetchSalespersonCoaches()])
+      .then(([list, presets, coaches]) => {
         setVariants(flattenToVariantItems(list))
         setDiscountPresets(presets)
+        setSalespersonCoaches(coaches)
         setPricingReady(true)
       })
-      .catch(() => setSaveError('載入商品與折扣失敗，請稍後再試'))
+      .catch(() => setSaveError('載入商品、折扣或銷售人員失敗，請稍後再試'))
   }, [open])
 
   useEffect(() => {
@@ -205,6 +211,8 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           was_preorder: it.was_preorder,
           brand_snapshot: it.brand_snapshot,
           sale_mode_snapshot: it.sale_mode_snapshot,
+          salesperson_coach_id: it.salesperson_coach_id,
+          salesperson_name_snapshot: it.salesperson_name_snapshot,
           selected_options: it.selected_options ?? {},
         })),
       )
@@ -515,13 +523,15 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             shipping_info: shippingInfo,
             customer_note: customerNote,
             internal_notes: internalNotes,
-            lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, sale_mode_snapshot, selected_options }) => ({
+            lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, sale_mode_snapshot, salesperson_coach_id, salesperson_name_snapshot, selected_options }) => ({
               variant_id,
               unit_price,
               qty,
               was_preorder,
               brand_snapshot,
               sale_mode_snapshot,
+              salesperson_coach_id,
+              salesperson_name_snapshot,
               selected_options,
             })),
             updated_by: userEmail ?? null,
@@ -542,13 +552,15 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           shipping_info: shippingInfo,
           customer_note: customerNote,
           internal_notes: internalNotes,
-          lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, sale_mode_snapshot, selected_options }) => ({
+          lines: payloadLines.map(({ variant_id, unit_price, qty, was_preorder, brand_snapshot, sale_mode_snapshot, salesperson_coach_id, salesperson_name_snapshot, selected_options }) => ({
             variant_id,
             unit_price,
             qty,
             was_preorder,
             brand_snapshot,
             sale_mode_snapshot,
+            salesperson_coach_id,
+            salesperson_name_snapshot,
             selected_options,
           })),
           created_by: userEmail ?? null,
@@ -1005,6 +1017,76 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                   )}
                 </div>
               </div>
+              <div style={{ marginTop: 12, maxWidth: isMobile ? 'none' : 428 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  marginBottom: 6,
+                }}>
+                  <div style={{ ...mutedLabel, marginBottom: 0 }}>銷售人員</div>
+                  {!locked && lines.length > 1 && line.salesperson_coach_id && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLines((current) =>
+                          current.map((candidate) => ({
+                            ...candidate,
+                            salesperson_coach_id: line.salesperson_coach_id,
+                            salesperson_name_snapshot: line.salesperson_name_snapshot,
+                          })),
+                        )
+                      }
+                      style={{
+                        border: 'none',
+                        padding: 0,
+                        background: 'transparent',
+                        color: designSystem.colors.primary[600],
+                        fontSize: getFontSize('caption', isMobile),
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      套用至全部商品
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={line.salesperson_coach_id ?? ''}
+                  disabled={locked}
+                  onChange={(event) => {
+                    const coach = salespersonCoaches.find(
+                      (candidate) => candidate.id === event.target.value,
+                    )
+                    setLines((current) =>
+                      current.map((candidate, i) =>
+                        i === idx
+                          ? {
+                              ...candidate,
+                              salesperson_coach_id: coach?.id ?? null,
+                              salesperson_name_snapshot: coach?.name ?? null,
+                            }
+                          : candidate,
+                      ),
+                    )
+                  }}
+                  style={{ ...inputStyle, width: '100%' }}
+                >
+                  <option value="">未指定</option>
+                  {line.salesperson_coach_id &&
+                    !salespersonCoaches.some((coach) => coach.id === line.salesperson_coach_id) && (
+                      <option value={line.salesperson_coach_id}>
+                        {line.salesperson_name_snapshot || '已停用教練'}
+                      </option>
+                    )}
+                  {salespersonCoaches.map((coach) => (
+                    <option key={coach.id} value={coach.id}>
+                      {coach.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           ))}
         </div>
@@ -1012,7 +1094,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         <textarea
           value={customerNote}
           onChange={(e) => setCustomerNote(e.target.value)}
-          placeholder="給客人看的備註（LIFF 後用）"
+          placeholder="給客人看的備註"
           rows={2}
           style={{ ...inputStyle, marginBottom: 8, resize: 'vertical' as const }}
         />

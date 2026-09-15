@@ -13,6 +13,8 @@ import { extractDate, extractTime, getLocalDateString } from '../utils/formatter
 import { useToast } from './ui'
 import { DateRangePicker } from './DateRangePicker'
 import { designSystem, getCardStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
+import { AdminPillButton, AdminPillRow } from './AdminPageLayout'
+import { ProductSalesStatistics } from './ProductSalesStatistics'
 
 interface CoachStats {
   coachId: string
@@ -50,6 +52,7 @@ interface StatisticsTabProps {
 
 export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProps) {
   const toast = useToast()
+  const [reportKind, setReportKind] = useState<'service' | 'product-sales'>('service')
   // 如果是教練專用模式，預設顯示本月；否則顯示今天
   const [selectedDate, setSelectedDate] = useState(() => {
     if (autoFilterCoachId) {
@@ -271,9 +274,35 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   const totalTeachingMinutes = coachStats.reduce((sum, s) => sum + s.teachingMinutes, 0)
   const totalDrivingMinutes = coachStats.reduce((sum, s) => sum + s.drivingMinutes, 0)
   const totalBookings = new Set(coachStats.flatMap(s => s.details.map(d => d.bookingId))).size
+  const reportKindToggle = (
+    <AdminPillRow style={{ marginBottom: isMobile ? 16 : 20 }}>
+      <AdminPillButton
+        active={reportKind === 'service'}
+        onClick={() => setReportKind('service')}
+      >
+        教學／駕駛
+      </AdminPillButton>
+      <AdminPillButton
+        active={reportKind === 'product-sales'}
+        onClick={() => setReportKind('product-sales')}
+      >
+        商品銷售
+      </AdminPillButton>
+    </AdminPillRow>
+  )
+
+  if (reportKind === 'product-sales') {
+    return (
+      <div>
+        {reportKindToggle}
+        <ProductSalesStatistics isMobile={isMobile} coachId={autoFilterCoachId} />
+      </div>
+    )
+  }
 
   return (
     <div>
+      {reportKindToggle}
       {/* 篩選區 */}
       <div style={{
         ...getCardStyle(isMobile),

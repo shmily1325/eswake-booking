@@ -13,7 +13,12 @@ import { useAuthUser } from '../../../contexts/AuthContext'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { designSystem, getButtonStyle, getBookingChoiceStyle, getFontSize } from '../../../styles/designSystem'
 import { formatAttributes, formatProductTitle } from '../products/schema'
-import { settleShopOrder, shopOrderErrorMessage } from './api'
+import {
+  fetchSalespersonCoaches,
+  settleShopOrder,
+  shopOrderErrorMessage,
+  type SalespersonCoach,
+} from './api'
 import {
   applyDiscountToSubtotal,
   buildDefaultSettleDescription,
@@ -34,6 +39,9 @@ interface SettleLineState {
   thumb_src: string | null
   description: string
   discountInput: string
+  salesperson_coach_id: string | null
+  salesperson_name_snapshot: string | null
+  salesperson_locked: boolean
 }
 
 interface Props {
@@ -71,6 +79,9 @@ function buildLineStates(order: ShopOrderWithItems): SettleLineState[] {
         thumb_src: getOrderItemImageUrl(it),
         description: buildDefaultSettleDescription(label, order.order_no),
         discountInput: '',
+        salesperson_coach_id: it.salesperson_coach_id ?? null,
+        salesperson_name_snapshot: it.salesperson_name_snapshot ?? null,
+        salesperson_locked: it.qty_paid > 0,
       }
     })
 }
@@ -93,6 +104,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
   const [hasCheckedBillingRelation, setHasCheckedBillingRelation] = useState(false)
   const [showSettleConfirmation, setShowSettleConfirmation] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
+  const [salespersonCoaches, setSalespersonCoaches] = useState<SalespersonCoach[]>([])
   const proxySearch = useMemberSearch()
 
   const pendingLines = useMemo(() => buildLineStates(order), [order])
@@ -110,6 +122,20 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
     setLines(pendingLines)
     setGlobalDiscountInput('')
   }, [pendingLines])
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchSalespersonCoaches()
+      .then((coaches) => {
+        if (!cancelled) setSalespersonCoaches(coaches)
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('載入銷售人員失敗')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [toast])
 
   useEffect(() => {
     if (!order.member_id || proxySearch.members.length === 0) return
@@ -273,7 +299,9 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
       : []),
     '',
     '結帳品項：',
-    ...lines.map((line) => `• ${line.label} × ${line.qty}　$${line.line_total.toLocaleString()}`),
+    ...lines.map((line) =>
+      `• ${line.label} × ${line.qty} · $${line.line_total.toLocaleString()} · 銷售：${line.salesperson_name_snapshot || '未指定'}`,
+    ),
     '',
     `結帳金額：$${total.toLocaleString()}`,
   ].join('\n')
@@ -303,6 +331,8 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
           unit_price: l.unit_price,
           line_total: l.line_total,
           description: l.description.trim(),
+          salesperson_coach_id: l.salesperson_coach_id,
+          salesperson_name_snapshot: l.salesperson_name_snapshot,
         })),
         paymentMethod,
         paymentMethod === 'balance' ? chargeMemberId : null,
@@ -685,6 +715,7 @@ export function PendingOrderSettleItem({ order, isMobile, onComplete }: Props) {
               line={line}
               isMobile={isMobile}
               showDescription={paymentMethod === 'balance'}
+              salespersonCoaches={salespersonCoaches}
               onUpdate={(patch) => updateLine(idx, patch)}
               onApplyDiscount={() => applyDiscountToLine(idx)}
               onOpenPreview={(src) => setPreviewSrc(src)}
@@ -956,6 +987,7 @@ function SettleLineRow({
   line,
   isMobile,
   showDescription,
+  salespersonCoaches,
   onUpdate,
   onApplyDiscount,
   onOpenPreview,
@@ -964,6 +996,7 @@ function SettleLineRow({
   line: SettleLineState
   isMobile: boolean
   showDescription: boolean
+  salespersonCoaches: SalespersonCoach[]
   onUpdate: (patch: Partial<SettleLineState>) => void
   onApplyDiscount: () => void
   onOpenPreview: (src: string) => void
@@ -1130,6 +1163,56 @@ function SettleLineRow({
             </button>
           </div>
         </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <div
+          style={{
+            fontSize: getFontSize('bodySmall', isMobile),
+            color: colors.text.secondary,
+            marginBottom: 8,
+            fontWeight: 500,
+          }}
+        >
+          銷售人員：
+        </div>
+        <select
+          value={line.salesperson_coach_id ?? ''}
+          disabled={line.salesperson_locked}
+          title={line.salesperson_locked ? '此商品已有結帳紀錄，銷售人員已鎖定' : undefined}
+          onChange={(event) => {
+            const coach = salespersonCoaches.find(
+              (candidate) => candidate.id === event.target.value,
+            )
+            onUpdate({
+              salesperson_coach_id: coach?.id ?? null,
+              salesperson_name_snapshot: coach?.name ?? null,
+            })
+          }}
+          style={{
+            width: '100%',
+            minHeight: 42,
+            padding: '9px 12px',
+            border: `1px solid ${colors.border.main}`,
+            borderRadius: borderRadius.md,
+            background: colors.background.card,
+            color: colors.text.primary,
+            fontSize: getFontSize('body', isMobile),
+          }}
+        >
+          <option value="">未指定</option>
+          {line.salesperson_coach_id &&
+            !salespersonCoaches.some((coach) => coach.id === line.salesperson_coach_id) && (
+              <option value={line.salesperson_coach_id}>
+                {line.salesperson_name_snapshot || '已停用教練'}
+              </option>
+            )}
+          {salespersonCoaches.map((coach) => (
+            <option key={coach.id} value={coach.id}>
+              {coach.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {showDescription && (

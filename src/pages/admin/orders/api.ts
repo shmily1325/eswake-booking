@@ -119,6 +119,24 @@ export async function generateOrderNo(): Promise<string> {
   return String(data)
 }
 
+export interface SalespersonCoach {
+  id: string
+  name: string
+}
+
+const EXCLUDED_SALESPERSON_NAMES = new Set(['火隆', '侑曄'])
+
+/** 內部商品銷售用教練名單；不包含停用及明確排除的人員。 */
+export async function fetchSalespersonCoaches(): Promise<SalespersonCoach[]> {
+  const { data, error } = await supabase
+    .from('coaches')
+    .select('id, name')
+    .eq('status', 'active')
+    .order('name')
+  if (error) throw new Error(error.message)
+  return (data ?? []).filter((coach) => !EXCLUDED_SALESPERSON_NAMES.has(coach.name.trim()))
+}
+
 export async function createShopOrder(input: CreateOrderInput): Promise<string> {
   const orderNo = await generateOrderNo()
   const { data, error } = await supabase
@@ -148,6 +166,8 @@ export async function createShopOrder(input: CreateOrderInput): Promise<string> 
         was_preorder: line.was_preorder,
         brand_snapshot: line.brand_snapshot,
         sale_mode_snapshot: line.sale_mode_snapshot,
+        salesperson_coach_id: line.salesperson_coach_id ?? null,
+        salesperson_name_snapshot: line.salesperson_name_snapshot?.trim() || null,
         selected_options: line.selected_options ?? {},
       })),
     )
@@ -184,6 +204,8 @@ export async function updateShopOrder(orderId: string, input: UpdateOrderInput):
           was_preorder: line.was_preorder,
           brand_snapshot: line.brand_snapshot,
           sale_mode_snapshot: line.sale_mode_snapshot,
+          salesperson_coach_id: line.salesperson_coach_id ?? null,
+          salesperson_name_snapshot: line.salesperson_name_snapshot?.trim() || null,
           selected_options: line.selected_options ?? {},
         })),
       )
@@ -264,6 +286,8 @@ export interface SettleLineInput {
   unit_price: number
   line_total: number
   description?: string | null
+  salesperson_coach_id?: string | null
+  salesperson_name_snapshot?: string | null
 }
 
 export async function settleShopOrder(
@@ -275,6 +299,18 @@ export async function settleShopOrder(
   notes?: string | null,
   operatorEmail?: string | null,
 ): Promise<void> {
+  for (const item of items) {
+    const { error } = await supabase
+      .from('shop_order_items')
+      .update({
+        salesperson_coach_id: item.salesperson_coach_id ?? null,
+        salesperson_name_snapshot: item.salesperson_name_snapshot?.trim() || null,
+      })
+      .eq('id', item.item_id)
+      .eq('order_id', orderId)
+      .eq('qty_paid', 0)
+    if (error) throw new Error(error.message)
+  }
   const result = await supabase.rpc('settle_shop_order', {
     p_order_id: orderId,
     p_items: items as unknown as Json,

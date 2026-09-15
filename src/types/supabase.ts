@@ -1596,6 +1596,8 @@ export type Database = {
           was_preorder: boolean
           brand_snapshot: string | null
           sale_mode_snapshot: string | null
+          salesperson_coach_id: string | null
+          salesperson_name_snapshot: string | null
           custom_order_confirmed_at: string | null
           custom_order_arrived_at: string | null
           selected_options: Json
@@ -1613,6 +1615,8 @@ export type Database = {
           was_preorder?: boolean
           brand_snapshot?: string | null
           sale_mode_snapshot?: string | null
+          salesperson_coach_id?: string | null
+          salesperson_name_snapshot?: string | null
           custom_order_confirmed_at?: string | null
           custom_order_arrived_at?: string | null
           selected_options?: Json
@@ -1630,6 +1634,8 @@ export type Database = {
           was_preorder?: boolean
           brand_snapshot?: string | null
           sale_mode_snapshot?: string | null
+          salesperson_coach_id?: string | null
+          salesperson_name_snapshot?: string | null
           custom_order_confirmed_at?: string | null
           custom_order_arrived_at?: string | null
           selected_options?: Json
@@ -1642,6 +1648,13 @@ export type Database = {
             columns: ['order_id']
             isOneToOne: false
             referencedRelation: 'shop_orders'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'shop_order_items_salesperson_coach_id_fkey'
+            columns: ['salesperson_coach_id']
+            isOneToOne: false
+            referencedRelation: 'coaches'
             referencedColumns: ['id']
           },
           {

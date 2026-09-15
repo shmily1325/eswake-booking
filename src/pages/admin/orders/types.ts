@@ -39,6 +39,10 @@ export interface ShopOrderItemRow {
   brand_snapshot?: string | null
   /** 開單當下販售方式；客訂與預購報表分開。 */
   sale_mode_snapshot?: string | null
+  /** 內部商品銷售歸屬；不提供給 LIFF 客戶畫面。 */
+  salesperson_coach_id?: string | null
+  /** 教練姓名快照，避免改名影響歷史統計。 */
+  salesperson_name_snapshot?: string | null
   /** 客服已和客人確認 Build、尺寸、顏色與成交價。 */
   custom_order_confirmed_at?: string | null
   /** 此筆客訂實品已到貨，並已轉為待付款。 */
@@ -117,6 +121,8 @@ export interface OrderLineInput {
   was_preorder?: boolean
   brand_snapshot?: string | null
   sale_mode_snapshot?: string | null
+  salesperson_coach_id?: string | null
+  salesperson_name_snapshot?: string | null
   selected_options?: Record<string, { label: string; value: string }>
 }
 
