@@ -26,6 +26,7 @@ import {
   tryParseDiscountFactor,
 } from './settleUtils'
 import { deliveryMethodLabel, formatSelectedOptions, getOrderItemImageUrl } from './orderUtils'
+import { SalespersonPicker } from './SalespersonPicker'
 import type { OrderPaymentMethod, ShopOrderWithItems } from './types'
 
 const { colors, borderRadius, shadows, spacing } = designSystem
@@ -1165,54 +1166,27 @@ function SettleLineRow({
         </div>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <div
-          style={{
-            fontSize: getFontSize('bodySmall', isMobile),
-            color: colors.text.secondary,
-            marginBottom: 8,
-            fontWeight: 500,
-          }}
-        >
-          銷售人員：
-        </div>
-        <select
-          value={line.salesperson_coach_id ?? ''}
+      <div
+        title={line.salesperson_locked ? '此商品已有結帳紀錄，銷售人員已鎖定' : undefined}
+        style={{
+          marginBottom: 12,
+          paddingTop: 12,
+          borderTop: `1px solid ${colors.border.light}`,
+        }}
+      >
+        <SalespersonPicker
+          coaches={salespersonCoaches}
+          selectedCoachId={line.salesperson_coach_id}
+          selectedName={line.salesperson_name_snapshot}
           disabled={line.salesperson_locked}
-          title={line.salesperson_locked ? '此商品已有結帳紀錄，銷售人員已鎖定' : undefined}
-          onChange={(event) => {
-            const coach = salespersonCoaches.find(
-              (candidate) => candidate.id === event.target.value,
-            )
+          isMobile={isMobile}
+          onChange={(coach) =>
             onUpdate({
               salesperson_coach_id: coach?.id ?? null,
               salesperson_name_snapshot: coach?.name ?? null,
             })
-          }}
-          style={{
-            width: '100%',
-            minHeight: 42,
-            padding: '9px 12px',
-            border: `1px solid ${colors.border.main}`,
-            borderRadius: borderRadius.md,
-            background: colors.background.card,
-            color: colors.text.primary,
-            fontSize: getFontSize('body', isMobile),
-          }}
-        >
-          <option value="">未指定</option>
-          {line.salesperson_coach_id &&
-            !salespersonCoaches.some((coach) => coach.id === line.salesperson_coach_id) && (
-              <option value={line.salesperson_coach_id}>
-                {line.salesperson_name_snapshot || '已停用教練'}
-              </option>
-            )}
-          {salespersonCoaches.map((coach) => (
-            <option key={coach.id} value={coach.id}>
-              {coach.name}
-            </option>
-          ))}
-        </select>
+          }
+        />
       </div>
 
       {showDescription && (

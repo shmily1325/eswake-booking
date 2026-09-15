@@ -41,6 +41,7 @@ import { formatDateTime } from '../../../utils/formatters'
 import { confirmVoidOrder } from './orderUtils'
 import { resolveOrderLinePrice } from './orderLinePricing'
 import { OrderMemberPicker, resolveContactName } from './OrderMemberPicker'
+import { SalespersonPicker } from './SalespersonPicker'
 import type { DeliveryMethod, ShopOrderWithItems } from './types'
 import {
   buildSelectedOptionSnapshot,
@@ -1017,48 +1018,18 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                   )}
                 </div>
               </div>
-              <div style={{ marginTop: 12, maxWidth: isMobile ? 'none' : 428 }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  marginBottom: 6,
-                }}>
-                  <div style={{ ...mutedLabel, marginBottom: 0 }}>銷售人員</div>
-                  {!locked && lines.length > 1 && line.salesperson_coach_id && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLines((current) =>
-                          current.map((candidate) => ({
-                            ...candidate,
-                            salesperson_coach_id: line.salesperson_coach_id,
-                            salesperson_name_snapshot: line.salesperson_name_snapshot,
-                          })),
-                        )
-                      }
-                      style={{
-                        border: 'none',
-                        padding: 0,
-                        background: 'transparent',
-                        color: designSystem.colors.primary[600],
-                        fontSize: getFontSize('caption', isMobile),
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      套用至全部商品
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={line.salesperson_coach_id ?? ''}
+              <div style={{
+                marginTop: 14,
+                paddingTop: 12,
+                borderTop: `1px solid ${designSystem.colors.border.light}`,
+              }}>
+                <SalespersonPicker
+                  coaches={salespersonCoaches}
+                  selectedCoachId={line.salesperson_coach_id}
+                  selectedName={line.salesperson_name_snapshot}
                   disabled={locked}
-                  onChange={(event) => {
-                    const coach = salespersonCoaches.find(
-                      (candidate) => candidate.id === event.target.value,
-                    )
+                  isMobile={isMobile}
+                  onChange={(coach) =>
                     setLines((current) =>
                       current.map((candidate, i) =>
                         i === idx
@@ -1070,22 +1041,18 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                           : candidate,
                       ),
                     )
-                  }}
-                  style={{ ...inputStyle, width: '100%' }}
-                >
-                  <option value="">未指定</option>
-                  {line.salesperson_coach_id &&
-                    !salespersonCoaches.some((coach) => coach.id === line.salesperson_coach_id) && (
-                      <option value={line.salesperson_coach_id}>
-                        {line.salesperson_name_snapshot || '已停用教練'}
-                      </option>
-                    )}
-                  {salespersonCoaches.map((coach) => (
-                    <option key={coach.id} value={coach.id}>
-                      {coach.name}
-                    </option>
-                  ))}
-                </select>
+                  }
+                  onApplyAll={lines.length > 1
+                    ? () =>
+                        setLines((current) =>
+                          current.map((candidate) => ({
+                            ...candidate,
+                            salesperson_coach_id: line.salesperson_coach_id,
+                            salesperson_name_snapshot: line.salesperson_name_snapshot,
+                          })),
+                        )
+                    : undefined}
+                />
               </div>
             </div>
           ))}
