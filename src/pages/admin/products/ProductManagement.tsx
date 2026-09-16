@@ -55,6 +55,10 @@ import { normalizeVariantCoverImages } from './coverImages'
 import { designSystem, getFontSize, getInputStyle, getPageContentShellStyle, PAGE_MAX_WIDTHS } from '../../../styles/designSystem'
 import { ProductBatchBar, SelectCheck } from './ProductBatchBar'
 import {
+  matchesPreOrderDeadlineFilter,
+  type PreOrderDeadlineFilter,
+} from './availabilityHelpers'
+import {
   formatBatchToast,
   partitionPreOrderOnly,
   partitionPreOrderToggle,
@@ -223,6 +227,8 @@ export function ProductManagement({
   const [onlyInStock, setOnlyInStock] = useState(false)
   /** 預購：只顯示 pre_order；可跟待補資料疊加 */
   const [onlyPreOrder, setOnlyPreOrder] = useState(false)
+  const [preOrderDeadlineFilter, setPreOrderDeadlineFilter] =
+    useState<PreOrderDeadlineFilter>('all')
   /** 客訂：只顯示 custom_order；可跟待補資料疊加 */
   const [onlyCustomOrder, setOnlyCustomOrder] = useState(false)
   /** 已售完 archive：active 時只顯示 sold_out；預設隱藏已售完（搜尋時仍會找到） */
@@ -242,6 +248,7 @@ export function ProductManagement({
     setOnlyMissingLabel(false)
     setOnlyInStock(false)
     setOnlyPreOrder(false)
+    setPreOrderDeadlineFilter('all')
     setOnlyCustomOrder(false)
     setOnlySoldOut(false)
     setDiscountPresetFilter(null)
@@ -264,6 +271,7 @@ export function ProductManagement({
     onlyMissingLabel ||
     onlyInStock ||
     onlyPreOrder ||
+    (onlyPreOrder && preOrderDeadlineFilter !== 'all') ||
     onlyCustomOrder ||
     onlySoldOut ||
     discountPresetFilter != null ||
@@ -283,6 +291,7 @@ export function ProductManagement({
       const next = !v
       if (next) {
         setOnlyPreOrder(false)
+        setPreOrderDeadlineFilter('all')
         setOnlyCustomOrder(false)
         setOnlySoldOut(false)
       }
@@ -292,6 +301,7 @@ export function ProductManagement({
   const togglePreOrder = () => {
     setOnlyPreOrder((v) => {
       const next = !v
+      setPreOrderDeadlineFilter('all')
       if (next) {
         setOnlyInStock(false)
         setOnlyCustomOrder(false)
@@ -306,6 +316,7 @@ export function ProductManagement({
       if (next) {
         setOnlyInStock(false)
         setOnlyPreOrder(false)
+        setPreOrderDeadlineFilter('all')
         setOnlySoldOut(false)
       }
       return next
@@ -317,6 +328,7 @@ export function ProductManagement({
       if (next) {
         setOnlyInStock(false)
         setOnlyPreOrder(false)
+        setPreOrderDeadlineFilter('all')
         setOnlyCustomOrder(false)
       }
       return next
@@ -461,6 +473,7 @@ export function ProductManagement({
       onlyMissingLabel,
       onlyInStock,
       onlyPreOrder,
+      preOrderDeadlineFilter,
       onlyCustomOrder,
       onlySoldOut,
       discountPresetFilter,
@@ -475,6 +488,7 @@ export function ProductManagement({
       onlyMissingLabel,
       onlyInStock,
       onlyPreOrder,
+      preOrderDeadlineFilter,
       onlyCustomOrder,
       onlySoldOut,
       discountPresetFilter,
@@ -632,7 +646,18 @@ export function ProductManagement({
     ...(onlyInStock
       ? [{ id: 'stock', label: '現貨', onRemove: () => setOnlyInStock(false) }]
       : onlyPreOrder
-        ? [{ id: 'stock', label: '預購', onRemove: () => setOnlyPreOrder(false) }]
+        ? [{
+            id: 'stock',
+            label: preOrderDeadlineFilter === 'open'
+              ? '預購：進行中'
+              : preOrderDeadlineFilter === 'expired'
+                ? '預購：已到期'
+                : '預購',
+            onRemove: () => {
+              setOnlyPreOrder(false)
+              setPreOrderDeadlineFilter('all')
+            },
+          }]
         : onlyCustomOrder
           ? [{ id: 'stock', label: '客訂', onRemove: () => setOnlyCustomOrder(false) }]
           : onlySoldOut
@@ -1040,6 +1065,7 @@ export function ProductManagement({
             onlyMissingLabel={onlyMissingLabel}
             onlyInStock={onlyInStock}
             onlyPreOrder={onlyPreOrder}
+            preOrderDeadlineFilter={preOrderDeadlineFilter}
             onlyCustomOrder={onlyCustomOrder}
             onlySoldOut={onlySoldOut}
             discountPresetFilter={discountPresetFilter}
@@ -1053,11 +1079,13 @@ export function ProductManagement({
             onShowActive={() => {
               setOnlyInStock(false)
               setOnlyPreOrder(false)
+              setPreOrderDeadlineFilter('all')
               setOnlyCustomOrder(false)
               setOnlySoldOut(false)
             }}
             onToggleInStock={toggleInStock}
             onTogglePreOrder={togglePreOrder}
+            onSetPreOrderDeadlineFilter={setPreOrderDeadlineFilter}
             onToggleCustomOrder={toggleCustomOrder}
             onToggleSoldOut={toggleSoldOut}
             onToggleDiscountPreset={(id) =>
@@ -1660,6 +1688,7 @@ interface OperationalFilterOptions {
   onlyMissingLabel: boolean
   onlyInStock: boolean
   onlyPreOrder: boolean
+  preOrderDeadlineFilter: PreOrderDeadlineFilter
   onlyCustomOrder: boolean
   onlySoldOut: boolean
   discountPresetFilter: string | null
@@ -1677,6 +1706,11 @@ function filterOperationalItems(
     items = items.filter(isVariantInStock)
   } else if (options.onlyPreOrder) {
     items = items.filter(isVariantPreOrder)
+    if (options.preOrderDeadlineFilter !== 'all') {
+      items = items.filter((item) =>
+        matchesPreOrderDeadlineFilter(item.variant, options.preOrderDeadlineFilter),
+      )
+    }
   } else if (options.onlyCustomOrder) {
     items = items.filter(isVariantCustomOrder)
   } else if (!options.searchQuery) {
@@ -1768,6 +1802,7 @@ interface InventoryDashboardProps {
   onlyMissingLabel: boolean
   onlyInStock: boolean
   onlyPreOrder: boolean
+  preOrderDeadlineFilter: PreOrderDeadlineFilter
   onlyCustomOrder: boolean
   onlySoldOut: boolean
   discountPresetFilter: string | null
@@ -1781,6 +1816,7 @@ interface InventoryDashboardProps {
   onShowActive: () => void
   onToggleInStock: () => void
   onTogglePreOrder: () => void
+  onSetPreOrderDeadlineFilter: (filter: PreOrderDeadlineFilter) => void
   onToggleCustomOrder: () => void
   onToggleSoldOut: () => void
   onToggleDiscountPreset: (id: string) => void
@@ -1801,6 +1837,7 @@ function InventoryDashboard({
   onlyMissingLabel,
   onlyInStock,
   onlyPreOrder,
+  preOrderDeadlineFilter,
   onlyCustomOrder,
   onlySoldOut,
   discountPresetFilter,
@@ -1814,6 +1851,7 @@ function InventoryDashboard({
   onShowActive,
   onToggleInStock,
   onTogglePreOrder,
+  onSetPreOrderDeadlineFilter,
   onToggleCustomOrder,
   onToggleSoldOut,
   onToggleDiscountPreset,
@@ -1826,10 +1864,22 @@ function InventoryDashboard({
   const qualityBase = useMemo(() => {
     if (onlySoldOut) return base.filter(isVariantSoldOut)
     if (onlyInStock) return base.filter(isVariantInStock)
-    if (onlyPreOrder) return base.filter(isVariantPreOrder)
+    if (onlyPreOrder) {
+      return base.filter((item) =>
+        matchesPreOrderDeadlineFilter(item.variant, preOrderDeadlineFilter),
+      )
+    }
     if (onlyCustomOrder) return base.filter(isVariantCustomOrder)
     return activeBase
-  }, [base, activeBase, onlyInStock, onlyPreOrder, onlyCustomOrder, onlySoldOut])
+  }, [
+    base,
+    activeBase,
+    onlyInStock,
+    onlyPreOrder,
+    preOrderDeadlineFilter,
+    onlyCustomOrder,
+    onlySoldOut,
+  ])
 
   const missingPriceCount = qualityBase.filter((it) => it.variant.price == null).length
   const missingImageCount = qualityBase.filter((it) => !it.variant.image_url).length
@@ -1840,6 +1890,12 @@ function InventoryDashboard({
   const unlistedCount = qualityBase.filter(isVariantUnlisted).length
   const inStockCount = activeBase.filter(isVariantInStock).length
   const preOrderCount = activeBase.filter(isVariantPreOrder).length
+  const openPreOrderCount = activeBase.filter((item) =>
+    matchesPreOrderDeadlineFilter(item.variant, 'open'),
+  ).length
+  const expiredPreOrderCount = activeBase.filter((item) =>
+    matchesPreOrderDeadlineFilter(item.variant, 'expired'),
+  ).length
   const customOrderCount = activeBase.filter(isVariantCustomOrder).length
 
   const stockStatusChips = (
@@ -2004,6 +2060,36 @@ function InventoryDashboard({
       <FilterGroup label="供貨" isMobile={isMobile}>
         <ChipRow ariaLabel="供貨狀態">{stockStatusChips}</ChipRow>
       </FilterGroup>
+      {onlyPreOrder && (
+        <FilterGroup label="預購" isMobile={isMobile}>
+          <ChipRow ariaLabel="預購狀態">
+            <DashboardStatChip
+              label="全部"
+              count={preOrderCount}
+              active={preOrderDeadlineFilter === 'all'}
+              onClick={() => onSetPreOrderDeadlineFilter('all')}
+              trackId="product_filter_pre_order_all"
+              isMobile={isMobile}
+            />
+            <DashboardStatChip
+              label="進行中"
+              count={openPreOrderCount}
+              active={preOrderDeadlineFilter === 'open'}
+              onClick={() => onSetPreOrderDeadlineFilter('open')}
+              trackId="product_filter_pre_order_open"
+              isMobile={isMobile}
+            />
+            <DashboardStatChip
+              label="已到期"
+              count={expiredPreOrderCount}
+              active={preOrderDeadlineFilter === 'expired'}
+              onClick={() => onSetPreOrderDeadlineFilter('expired')}
+              trackId="product_filter_pre_order_expired"
+              isMobile={isMobile}
+            />
+          </ChipRow>
+        </FilterGroup>
+      )}
       {showDataFilters && (
         <>
           <FilterGroup label="資料" isMobile={isMobile}>

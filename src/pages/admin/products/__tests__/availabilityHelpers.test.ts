@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   acceptPreOrderFromVariant,
   deriveVariantAvailability,
+  matchesPreOrderDeadlineFilter,
   saleModeFromVariant,
 } from '../availabilityHelpers'
 import type { ProductVariantRow } from '../types'
@@ -46,5 +47,44 @@ describe('saleModeFromVariant', () => {
   it('falls back to stock for legacy rows without availability', () => {
     expect(saleModeFromVariant({ stock: 2, availability: null } as ProductVariantRow))
       .toBe('standard')
+  })
+})
+
+describe('matchesPreOrderDeadlineFilter', () => {
+  const variant = (preOrderUntil: string | null) => ({
+    stock: 0,
+    availability: 'pre_order',
+    pre_order_until: preOrderUntil,
+  }) as ProductVariantRow
+
+  it('includes every preorder when all is selected', () => {
+    expect(matchesPreOrderDeadlineFilter(variant('2026-09-14'), 'all', '2026-09-15'))
+      .toBe(true)
+    expect(matchesPreOrderDeadlineFilter(variant('2026-09-15'), 'all', '2026-09-15'))
+      .toBe(true)
+  })
+
+  it('treats no deadline and the deadline day as open', () => {
+    expect(matchesPreOrderDeadlineFilter(variant(null), 'open', '2026-09-15'))
+      .toBe(true)
+    expect(matchesPreOrderDeadlineFilter(variant('2026-09-15'), 'open', '2026-09-15'))
+      .toBe(true)
+  })
+
+  it('only includes dates before today as expired', () => {
+    expect(matchesPreOrderDeadlineFilter(variant('2026-09-14'), 'expired', '2026-09-15'))
+      .toBe(true)
+    expect(matchesPreOrderDeadlineFilter(variant('2026-09-16'), 'expired', '2026-09-15'))
+      .toBe(false)
+  })
+
+  it('does not classify non-preorder variants', () => {
+    const inStock = {
+      stock: 1,
+      availability: 'in_stock',
+      pre_order_until: null,
+    } as ProductVariantRow
+
+    expect(matchesPreOrderDeadlineFilter(inStock, 'all', '2026-09-15')).toBe(false)
   })
 })

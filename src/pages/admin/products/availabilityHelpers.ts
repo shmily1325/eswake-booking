@@ -1,10 +1,14 @@
 /** 後台選擇販售方式；一般商品再由庫存推導現貨／缺貨。 */
 
 import type { VariantAvailability } from '../../shop/lib/productAvailability'
-import { getVariantAvailability } from '../../shop/lib/productAvailability'
+import {
+  getVariantAvailability,
+  isPreOrderDeadlinePassed,
+} from '../../shop/lib/productAvailability'
 import type { ProductVariantRow } from './types'
 
 export type VariantSaleMode = 'standard' | 'pre_order' | 'custom_order'
+export type PreOrderDeadlineFilter = 'all' | 'open' | 'expired'
 
 export function deriveVariantAvailability(
   stock: number,
@@ -26,4 +30,15 @@ export function saleModeFromVariant(v: ProductVariantRow): VariantSaleMode {
 /** @deprecated 舊呼叫端相容；新編輯器請使用 saleModeFromVariant。 */
 export function acceptPreOrderFromVariant(v: ProductVariantRow): boolean {
   return saleModeFromVariant(v) === 'pre_order'
+}
+
+export function matchesPreOrderDeadlineFilter(
+  variant: ProductVariantRow,
+  filter: PreOrderDeadlineFilter,
+  today?: string,
+): boolean {
+  if (getVariantAvailability(variant) !== 'pre_order') return false
+  if (filter === 'all') return true
+  const expired = isPreOrderDeadlinePassed(variant.pre_order_until, today)
+  return filter === 'expired' ? expired : !expired
 }
