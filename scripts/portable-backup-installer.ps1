@@ -234,16 +234,25 @@ function Parse-BackupDateTime {
         return $null
     }
 
-    $parsed = $null
+    # Windows PowerShell 5.1 rejects [DateTime]::TryParse when the [ref] target starts as $null.
     $culture = [System.Globalization.CultureInfo]::InvariantCulture
     $styles = [System.Globalization.DateTimeStyles]::RoundtripKind
-    if ([DateTime]::TryParse($Text, $culture, $styles, [ref]$parsed)) {
-        return $parsed
+    try {
+        return [DateTimeOffset]::Parse($Text, $culture, $styles).UtcDateTime
     }
-    if ([DateTime]::TryParse($Text, [ref]$parsed)) {
-        return $parsed
+    catch {
+        try {
+            return [DateTime]::Parse($Text, $culture, $styles)
+        }
+        catch {
+            try {
+                return [DateTime]::Parse($Text)
+            }
+            catch {
+                return $null
+            }
+        }
     }
-    return $null
 }
 
 function Sync-StorageBackup {
