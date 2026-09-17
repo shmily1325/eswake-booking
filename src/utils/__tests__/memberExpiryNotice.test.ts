@@ -10,20 +10,22 @@ describe('generateMemberExpiryNotice', () => {
     })
 
     expect(message).toContain('■2026 會員到期通知')
-    expect(message).toContain('吳昌諭（阿寶bao）您好')
+    expect(message).toContain('阿寶bao您好')
+    expect(message).not.toContain('吳昌諭')
     expect(message).toContain("您的會員於『2026/09/30』到期")
     expect(message).toContain('會員續約／入會：$9,000')
     expect(message).not.toContain('您的置板')
     expect(message).not.toContain('置板位續租')
   })
 
-  it('generates a board-only notice', () => {
+  it('falls back to the full name when there is no nickname', () => {
     const message = generateMemberExpiryNotice({
       name: '吳昌諭',
       boards: [{ slotNumber: 23, expiresAt: '2026-10-15' }],
     })
 
     expect(message).toContain('■2026 置板到期通知')
+    expect(message).toContain('吳昌諭您好')
     expect(message).toContain("您的置板 #23 於『2026/10/15』到期")
     expect(message).toContain('置板位續租：每板 $4,000')
     expect(message).not.toContain('您的會員')
@@ -66,7 +68,7 @@ describe('generateMemberExpiryNotice', () => {
     )
 
     expect(message).toBe(
-      "吳昌諭（阿寶bao）｜2026\n您的會員於『2026/09/30』到期，麻煩撥空回覆『是、否』繼續",
+      "阿寶bao｜2026\n您的會員於『2026/09/30』到期，麻煩撥空回覆『是、否』繼續",
     )
   })
 })

@@ -104,7 +104,7 @@ export function generateMemberExpiryNotice(
   const noticeYear = getNoticeYear(input)
 
   const nickname = input.nickname?.trim()
-  const recipient = nickname ? `${input.name}（${nickname}）` : input.name
+  const recipient = nickname || input.name
   const expiryLines: string[] = []
 
   if (input.membershipExpiresAt) {
