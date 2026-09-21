@@ -173,6 +173,28 @@ describe('coachTimeOff', () => {
         end_time: null,
       })).toEqual({ mode: 'afternoon', customStartTime: '', customEndTime: '' })
     })
+
+    it('統一將時間值正規化為 HH:mm', () => {
+      expect(inferTimeOffModeFromRow({
+        coach_id: 'c1',
+        start_date: '2025-07-01',
+        end_date: '2025-07-01',
+        start_time: '00:00:00',
+        end_time: '12:00:00',
+      })).toEqual({ mode: 'morning', customStartTime: '', customEndTime: '' })
+
+      expect(inferTimeOffModeFromRow({
+        coach_id: 'c1',
+        start_date: '2025-07-01',
+        end_date: '2025-07-01',
+        start_time: '9:30',
+        end_time: '11:30:00',
+      })).toEqual({
+        mode: 'custom',
+        customStartTime: '09:30',
+        customEndTime: '11:30',
+      })
+    })
   })
 
   describe('buildTimeOffPreviewText', () => {

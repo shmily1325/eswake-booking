@@ -10,6 +10,8 @@ import { getEventStartDate, getEventDateLabel, parseForEdit, formatDateShort, co
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { validateRequired } from '../../utils/errorHandler'
 import { filterStandardCoachList } from '../../utils/coachSelection'
+import { bookingOverlapsRestriction } from '../../utils/restrictionSchedule'
+import { normalizeTimeHm } from '../../utils/timeValue'
 import { useToast, ToastContainer } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
 import {
@@ -156,9 +158,10 @@ function RestrictionTimeSelect({
   isMobile: boolean
   onChange: (value: string) => void
 }) {
-  const options = RESTRICTION_TIME_OPTIONS.includes(value)
+  const normalizedValue = normalizeTimeHm(value, '00:00')
+  const options = RESTRICTION_TIME_OPTIONS.includes(normalizedValue)
     ? RESTRICTION_TIME_OPTIONS
-    : [...RESTRICTION_TIME_OPTIONS, value].filter(Boolean).sort()
+    : [...RESTRICTION_TIME_OPTIONS, normalizedValue].filter(Boolean).sort()
 
   return (
     <label style={{ display: 'grid', gap: '4px', minWidth: 0 }}>
@@ -169,7 +172,7 @@ function RestrictionTimeSelect({
         {label}
       </span>
       <select
-        value={value}
+        value={normalizedValue}
         onChange={(event) => onChange(event.target.value)}
         style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
       >
@@ -571,12 +574,6 @@ export function AnnouncementManagement() {
   }): Promise<boolean> => {
     if (input.scope !== 'coaches' || input.coachIds.length === 0) return true
 
-    const rangeStart = new Date(`${input.startDate}T${input.allDay ? '00:00' : input.startTime}:00`)
-    const rangeEnd = input.allDay
-      ? new Date(`${input.endDate}T00:00:00`)
-      : new Date(`${input.endDate}T${input.endTime}:00`)
-    if (input.allDay) rangeEnd.setDate(rangeEnd.getDate() + 1)
-
     const [coachResult, driverResult] = await Promise.all([
       supabase
         .from('booking_coaches')
@@ -604,9 +601,11 @@ export function AnnouncementManagement() {
     for (const row of [...(coachResult.data ?? []), ...(driverResult.data ?? [])] as any[]) {
       const booking = Array.isArray(row.bookings) ? row.bookings[0] : row.bookings
       if (!booking) continue
-      const bookingStart = new Date(booking.start_at)
-      const bookingEnd = new Date(bookingStart.getTime() + booking.duration_min * 60_000)
-      if (bookingEnd <= rangeStart || bookingStart >= rangeEnd) continue
+      if (!bookingOverlapsRestriction({
+        ...input,
+        bookingStartAt: booking.start_at,
+        bookingDurationMin: booking.duration_min,
+      })) continue
       const personName = row.coaches?.name || '人員'
       const key = `${booking.id}:${row.coach_id || row.driver_id}`
       conflicts.set(
@@ -877,9 +876,9 @@ export function AnnouncementManagement() {
           setEditRestrictEnabled(true)
           setEditRestrictAllDay(!data.start_time && !data.end_time)
           setEditRestrictStartDate(data.start_date)
-          setEditRestrictStartTime(data.start_time || '00:00')
+          setEditRestrictStartTime(normalizeTimeHm(data.start_time, '00:00'))
           setEditRestrictEndDate(data.end_date)
-          setEditRestrictEndTime(data.end_time || '23:59')
+          setEditRestrictEndTime(normalizeTimeHm(data.end_time, '23:59'))
           setEditRestrictScope(data.scope === 'coaches' ? 'coaches' : 'all')
           setEditRestrictedCoachIds(
             ((data as any).reservation_restriction_coaches ?? [])

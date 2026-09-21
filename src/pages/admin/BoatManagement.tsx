@@ -16,6 +16,7 @@ import {
 import { hasEditorFeatureAsync, isAdmin } from '../../utils/auth'
 import { sortBoatsByDisplayOrder } from '../../utils/boatUtils'
 import { isFacility, isLandCourse } from '../../utils/facility'
+import { normalizeTimeHm } from '../../utils/timeValue'
 import {
   AdminModal,
   AdminModalHeader,
@@ -279,13 +280,6 @@ export function BoatManagement() {
         }
     }
 
-    const unavailableTimeToForm = (t: string | null | undefined): string => {
-        if (!t) return ''
-        const m = t.match(/^(\d{1,2}):(\d{2})/)
-        if (!m) return ''
-        return `${m[1].padStart(2, '0')}:${m[2]}`
-    }
-
     const openUnavailableDialog = (boat: Boat) => {
         setEditingUnavailableId(null)
         setSelectedBoat(boat)
@@ -306,8 +300,8 @@ export function BoatManagement() {
         setUnavailableMultiDay(record.start_date !== record.end_date)
         setStartDate(record.start_date)
         setEndDate(record.end_date)
-        setStartTime(unavailableTimeToForm(record.start_time))
-        setEndTime(unavailableTimeToForm(record.end_time))
+        setStartTime(normalizeTimeHm(record.start_time))
+        setEndTime(normalizeTimeHm(record.end_time))
         setUnavailableTimeMode(record.start_time && record.end_time ? 'custom' : 'allDay')
         setReason(record.reason || '')
         setUnavailableDialogOpen(true)

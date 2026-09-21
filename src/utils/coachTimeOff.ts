@@ -1,4 +1,6 @@
 /** 教練休假列（coach_time_off）；offline.html 內嵌同邏輯，改此檔時請一併對齊 */
+import { normalizeTimeHm } from './timeValue'
+
 export type CoachTimeOffRow = {
   coach_id: string
   start_date: string
@@ -112,10 +114,12 @@ export function canMergeTimeOffRecords(a: CoachTimeOffRow, b: CoachTimeOffRow): 
 
 /** 判斷是否為上午快捷（00:00–12:00 單日） */
 export function isMorningPreset(row: CoachTimeOffRow): boolean {
+  const startTime = normalizeTimeHm(row.start_time)
+  const endTime = normalizeTimeHm(row.end_time)
   return (
     row.start_date === row.end_date &&
-    (row.start_time === TIME_OFF_MORNING_START || !row.start_time) &&
-    row.end_time === TIME_OFF_MORNING_END
+    (startTime === TIME_OFF_MORNING_START || !row.start_time) &&
+    endTime === TIME_OFF_MORNING_END
   )
 }
 
@@ -123,7 +127,7 @@ export function isMorningPreset(row: CoachTimeOffRow): boolean {
 export function isAfternoonPreset(row: CoachTimeOffRow): boolean {
   return (
     row.start_date === row.end_date &&
-    row.start_time === TIME_OFF_AFTERNOON_START &&
+    normalizeTimeHm(row.start_time) === TIME_OFF_AFTERNOON_START &&
     !row.end_time
   )
 }
@@ -398,8 +402,8 @@ export function inferTimeOffModeFromRow(row: CoachTimeOffRow): {
   }
   return {
     mode: 'custom',
-    customStartTime: row.start_time || '',
-    customEndTime: row.end_time || '',
+    customStartTime: normalizeTimeHm(row.start_time),
+    customEndTime: normalizeTimeHm(row.end_time),
   }
 }
 
