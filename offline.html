@@ -3298,9 +3298,11 @@
             if (!db) await initDatabase();
             const month = monthParam || getVenueDateString().slice(0, 7);
             offlineAnnouncementMonth = month;
-            const [announcements, restrictions] = await Promise.all([
+            const [announcements, restrictions, restrictionCoaches, coaches] = await Promise.all([
                 safeGetAllFromStore('daily_announcements'),
-                safeGetAllFromStore('reservation_restrictions')
+                safeGetAllFromStore('reservation_restrictions'),
+                safeGetAllFromStore('reservation_restriction_coaches'),
+                safeGetAllFromStore('coaches')
             ]);
             const rows = announcements
                 .filter(row => {
@@ -3332,8 +3334,8 @@
                     <article class="es-record" style="border:0;border-bottom:1px solid var(--es-border-light);border-radius:0;box-shadow:none;">
                         <h3 class="es-record-title">${escapeHtml(row.content || '未填公告內容')}</h3>
                         <div class="es-record-meta">${escapeHtml(dateLabel)}${row.show_one_day_early ? ' · 提前一天顯示' : ''}</div>
-                        ${linked.length ? `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-                            ${linked.map(item => `<span class="es-badge warning">預約限制 ${escapeHtml(formatRestrictionTimeWindow(item))}</span>`).join('')}
+                        ${linked.length ? `<div class="es-record-meta" style="margin-top:6px;">
+                            ${linked.map(item => `<span style="display:block;">${escapeHtml(formatOfflineRestrictionDisplay(item, restrictionCoaches, coaches, true, true))}</span>`).join('')}
                         </div>` : ''}
                     </article>
                 `;
@@ -3969,6 +3971,38 @@
                 : timeRange;
         }
 
+        function formatOfflineRestrictionDisplay(row, restrictionCoaches, coaches, includeLabel, includeDate) {
+            const startDate = String(row.start_date || '').slice(0, 10);
+            const endDate = String(row.end_date || startDate).slice(0, 10);
+            const startTime = String(row.start_time || '').slice(0, 5);
+            const endTime = String(row.end_time || '').slice(0, 5);
+            const shortDate = value => {
+                const parts = String(value || '').split('-');
+                return parts.length === 3 ? `${Number(parts[1])}/${Number(parts[2])}` : value;
+            };
+            let period;
+            if (startDate === endDate) {
+                const datePrefix = includeDate ? `${shortDate(startDate)} ` : '';
+                period = !startTime && !endTime
+                    ? `${datePrefix}全天`
+                    : `${datePrefix}${startTime || '00:00'}–${endTime || '23:59'}`;
+            } else if (!startTime && !endTime) {
+                period = includeDate ? `${shortDate(startDate)}–${shortDate(endDate)} 全天` : '全天';
+            } else {
+                period = includeDate
+                    ? `${shortDate(startDate)} ${startTime || '00:00'}–${shortDate(endDate)} ${endTime || '23:59'}`
+                    : `${startTime || '00:00'}–${endTime || '23:59'}`;
+            }
+            const audience = row.scope === 'coaches'
+                ? `教練：${restrictionCoaches
+                    .filter(item => String(item.restriction_id) === String(row.id))
+                    .map(item => coaches.find(coach => String(coach.id) === String(item.coach_id))?.name)
+                    .filter(Boolean)
+                    .join('、') || '未指定'}`
+                : '全部預約';
+            return `${includeLabel ? '預約限制：' : ''}${period}｜${audience}`;
+        }
+
         function offlineMinutesFromTime(value, fallback) {
             const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
             return match ? Number(match[1]) * 60 + Number(match[2]) : fallback;
@@ -4066,7 +4100,7 @@
             return `${toTime(range.start)}–${toTime(range.end)}`;
         }
 
-        function renderOfflineDaySummary(date, boats, unavailableRows, restrictionRows, announcements, allActiveRestrictions = restrictionRows) {
+        function renderOfflineDaySummary(date, boats, unavailableRows, restrictionRows, announcements, allActiveRestrictions = restrictionRows, restrictionCoaches = [], coaches = []) {
             const restrictedIds = new Set(allActiveRestrictions
                 .filter(row => row.is_active !== false)
                 .map(row => String(row.announcement_id)));
@@ -4095,7 +4129,7 @@
             });
             const restrictionLines = restrictionRows.map(row => {
                 const announcement = announcements.find(item => String(item.id) === String(row.announcement_id));
-                return `<div><span style="color:var(--es-danger);">●</span> ${escapeHtml(formatOfflineDayRange(row, date))}：${escapeHtml(announcement?.content || '受理受限')}</div>`;
+                return `<div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:var(--es-danger);">●</span><span><strong>${escapeHtml(announcement?.content || '受理受限')}</strong><span style="display:block;color:var(--es-muted);font-size:12px;line-height:1.5;">${escapeHtml(formatOfflineRestrictionDisplay(row, restrictionCoaches, coaches, false, false))}</span></span></div>`;
             });
             return `<div style="margin-bottom:16px;padding:14px 18px;border-radius:12px;background:#fff5f5;border:1px solid #dc354533;border-left:4px solid var(--es-danger);box-shadow:var(--es-shadow);">
                 ${section('交辦事項', assignmentLines)}
@@ -4148,7 +4182,9 @@
                 dayUnavailable,
                 dayRestrictions,
                 announcements,
-                restrictions
+                restrictions,
+                restrictionCoaches,
+                coaches
             );
             const conflictReasons = getOfflineBookingConflictReasons(
                 enriched,
@@ -4425,6 +4461,7 @@
                     unavailableRows: dayUnavailableRows,
                     restrictionRows: dayRestrictionRows,
                     allRestrictionRows: restrictionRows,
+                    restrictionCoachRows: restrictionCoachRows,
                     announcementRows: announcementRows,
                     conflictReasons: conflictReasons,
                 });
@@ -5142,7 +5179,7 @@
         }
         
         // 渲染今日預約頁面（時間軸表格視圖，與線上版電腦版一致）
-        function renderCoachDailyView({ boats, coaches, bookings, timeSlots, date, staffData, unavailableRows = [], restrictionRows = [], allRestrictionRows = restrictionRows, announcementRows = [], conflictReasons = new Map() }) {
+        function renderCoachDailyView({ boats, coaches, bookings, timeSlots, date, staffData, unavailableRows = [], restrictionRows = [], allRestrictionRows = restrictionRows, restrictionCoachRows = [], announcementRows = [], conflictReasons = new Map() }) {
             const content = document.getElementById('coach-daily-content');
             const today = getVenueDateString();
             const dateDisplay = formatDisplayDate(date);
@@ -5161,7 +5198,9 @@
                 unavailableRows,
                 restrictionRows,
                 announcementRows,
-                allRestrictionRows
+                allRestrictionRows,
+                restrictionCoachRows,
+                coaches
             );
             const mobileCoachListHtml = selectedCoachId ? bookings
                 .slice()

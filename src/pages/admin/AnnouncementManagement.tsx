@@ -14,6 +14,7 @@ import {
   bookingOverlapsRestriction,
   restrictionUsesCustomDates,
 } from '../../utils/restrictionSchedule'
+import { formatRestrictionDisplay } from '../../utils/restrictionDisplay'
 import { normalizeTimeHm } from '../../utils/timeValue'
 import { useToast, ToastContainer } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
@@ -1002,8 +1003,7 @@ export function AnnouncementManagement() {
     return { text: isRange ? label : `單日 ${label}`, isRange }
   }
 
-  // 格式化限制小字
-  const formatRestrictionNote = (todayStr: string, r: {
+  const formatRestrictionNote = (r: {
     start_date: string
     start_time: string | null
     end_date: string
@@ -1011,38 +1011,18 @@ export function AnnouncementManagement() {
     scope?: RestrictionScope
     coach_ids?: string[]
   }): string => {
-    const sameDay = r.start_date === r.end_date
-    const fmtDate = (d: string) => {
-      const [, m, dd] = d.split('-')
-      return `${parseInt(m)}/${parseInt(dd)}`
-    }
-    const fmtTime = (t: string | null, fallback: string) => {
-      if (!t) return fallback
-      const [h, m] = t.split(':')
-      return `${parseInt(h)}:${m}`
-    }
-    let period: string
-    if (!sameDay) {
-      const left = `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}`
-      const right = `${fmtDate(r.end_date)} ${fmtTime(r.end_time, '23:59')}`
-      period = `${left} – ${right}`
-    } else if (todayStr === r.start_date) {
-      period = !r.start_time && !r.end_time
-        ? '全天'
-        : `${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')}`
-    } else {
-      period = !r.start_time && !r.end_time
-        ? `${fmtDate(r.start_date)} 全天`
-        : `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')}`
-    }
-    if (r.scope === 'coaches') {
-      const selected = new Set(r.coach_ids ?? [])
-      const names = coachOptions
-        .filter((coach) => selected.has(coach.id))
-        .map((coach) => coach.name)
-      return `${period} 限制教練預約：${names.join('、') || '未指定'}`
-    }
-    return `${period} 不約船`
+    const selected = new Set(r.coach_ids ?? [])
+    const names = coachOptions
+      .filter((coach) => selected.has(coach.id))
+      .map((coach) => coach.name)
+    return formatRestrictionDisplay({
+      startDate: r.start_date,
+      startTime: r.start_time,
+      endDate: r.end_date,
+      endTime: r.end_time,
+      scope: r.scope,
+      coachNames: names,
+    })
   }
 
   return (
@@ -1738,7 +1718,7 @@ export function AnnouncementManagement() {
                                   fontSize: getFontSize('bodySmall', isMobile),
                                   color: designSystem.colors.text.secondary,
                                 }}>
-                                  {formatRestrictionNote(getLocalDateString(), restrictionsMap[announcement.id])}
+                                  {formatRestrictionNote(restrictionsMap[announcement.id])}
                                 </span>
                               )}
                               {parseForEdit(announcement).showOneDayEarly && (

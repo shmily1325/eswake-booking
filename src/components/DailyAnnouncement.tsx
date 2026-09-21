@@ -9,6 +9,7 @@ import {
   getMaintenanceAnnouncementsForDate,
   type BoatMaintenanceAnnouncement,
 } from '../utils/boatUnavailableDay'
+import { formatRestrictionDisplay } from '../utils/restrictionDisplay'
 import { designSystem } from '../styles/designSystem'
 
 interface Announcement {
@@ -205,46 +206,21 @@ export function DailyAnnouncement() {
 
   if (!hasAnyData) return null
 
-  // 小字：格式化預約限制提示
-  const formatRestrictionNote = (today: string, r: {
+  const formatRestrictionNote = (r: {
     start_date: string
     start_time: string | null
     end_date: string
     end_time: string | null
     scope: 'all' | 'coaches'
     coach_names: string[]
-  }): string => {
-    const sameDay = r.start_date === r.end_date
-    const fmtDate = (d: string) => {
-      const [, m, dd] = d.split('-')
-      return `${parseInt(m)}/${parseInt(dd)}`
-    }
-    const fmtTime = (t: string | null, fallback: string) => {
-      if (!t) return fallback
-      const [h, m] = t.split(':')
-      return `${parseInt(h)}:${m}`
-    }
-
-    let period: string
-    if (!sameDay) {
-      const left = `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}`
-      const right = `${fmtDate(r.end_date)} ${fmtTime(r.end_time, '23:59')}`
-      period = `${left} – ${right}`
-    } else if (today === r.start_date) {
-      // 當天：僅顯示時間或「全天」
-      period = !r.start_time && !r.end_time
-        ? '全天'
-        : `${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')}`
-    } else {
-      // 提前顯示日或其他日：顯示絕對日期 + 時間/全天
-      period = !r.start_time && !r.end_time
-        ? `${fmtDate(r.start_date)} 全天`
-        : `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')}`
-    }
-    return r.scope === 'coaches'
-      ? `${period} 限制教練預約：${r.coach_names.join('、') || '未指定'}`
-      : `${period} 不約船`
-  }
+  }): string => formatRestrictionDisplay({
+    startDate: r.start_date,
+    startTime: r.start_time,
+    endDate: r.end_date,
+    endTime: r.end_time,
+    scope: r.scope,
+    coachNames: r.coach_names,
+  })
 
   return (
     <div style={{
@@ -360,7 +336,7 @@ export function DailyAnnouncement() {
                     {content}
                     {r ? (
                       <span style={restrictionNoteStyle}>
-                        {formatRestrictionNote(today, r)}
+                        {formatRestrictionNote(r)}
                       </span>
                     ) : null}
                   </div>
@@ -396,7 +372,7 @@ export function DailyAnnouncement() {
                         [{label}] {a.content}
                         {r ? (
                           <span style={restrictionNoteStyle}>
-                            {formatRestrictionNote(today, r)}
+                            {formatRestrictionNote(r)}
                           </span>
                         ) : null}
                       </div>

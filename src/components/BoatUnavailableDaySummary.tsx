@@ -7,6 +7,7 @@ import {
   normalizeAnnouncementContent,
   type DayViewAssignmentAnnouncement,
 } from '../utils/announcement'
+import { formatRestrictionAudience } from '../utils/restrictionDisplay'
 import { designSystem } from '../styles/designSystem'
 
 interface BoatRef {
@@ -96,10 +97,11 @@ export function BoatUnavailableDaySummary({
     const sorted = [...restrictionBlocks].sort((a, b) => a.startMin - b.startMin)
     return sorted.map((r, idx) => ({
       key: `restriction-${r.startMin}-${r.endMin}-${idx}`,
-      range: formatUnavailableRange(r.startMin, r.endMin),
-      detail: r.scope === 'coaches'
-        ? `${r.content?.trim() || '受理受限'}（限制教練預約：${r.coachNames.join('、') || '未指定'}）`
-        : r.content?.trim() || '受理受限',
+      content: r.content?.trim() || '受理受限',
+      metadata: `${formatUnavailableRange(r.startMin, r.endMin)}｜${formatRestrictionAudience(
+        r.scope,
+        r.coachNames,
+      )}`,
     }))
   }, [restrictionBlocks])
 
@@ -191,7 +193,20 @@ export function BoatUnavailableDaySummary({
           <div style={bodyStyle}>
             {restrictionLines.map((row) => (
               <MarkerLine key={row.key} color={designSystem.colors.danger[500]}>
-                {row.range}：{row.detail}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>
+                    {row.content}
+                  </div>
+                  <div style={{
+                    marginTop: '2px',
+                    color: designSystem.colors.text.disabled,
+                    fontSize: isMobile ? '11px' : '12px',
+                    lineHeight: 1.5,
+                    overflowWrap: 'anywhere',
+                  }}>
+                    {row.metadata}
+                  </div>
+                </div>
               </MarkerLine>
             ))}
           </div>
