@@ -97,8 +97,7 @@ export function collectHomeGalleryPool(
           : kind === 'custom-order'
             ? isProductInCustomOrderSection(product.variants)
           : kind === 'in-stock'
-            ? isProductInStockSection(product.variants) &&
-              !productHasTagSale(product, presets)
+            ? isProductInStockSection(product.variants)
             : productHasTagSale(product, presets)
     if (!matches) continue
     const focused = focusedVariants(product, kind, presets)

@@ -12,6 +12,7 @@ import {
   defaultFilterState,
   filterAndSortProducts,
   filterProductsForBrandFacets,
+  filterProductsForNavigationFacets,
   filterProductsForSizeFacets,
   getShopBaseProducts,
   hasNonDefaultFilters,
@@ -47,13 +48,15 @@ export function useShopFilters(
   )
 
   const facets = useMemo(() => {
-    // 分類計數永遠用全站可見商品，避免勾預購後 chips 憑空消失
-    const navFacets = computeFacets(baseProducts)
+    // 分類數字與可見性要反映目前模式／搜尋／refine，避免角標與列表不一致。
+    const navFacets = computeFacets(
+      filterProductsForNavigationFacets(baseProducts, filters, presets),
+    )
     const brandCounts = computeBrandCounts(
-      filterProductsForBrandFacets(baseProducts, filters),
+      filterProductsForBrandFacets(baseProducts, filters, presets),
     )
     const sizeCounts = computeSizeCounts(
-      filterProductsForSizeFacets(baseProducts, filters),
+      filterProductsForSizeFacets(baseProducts, filters, presets),
     )
     const preOrderNavProducts = filterProductsForBrandFacets(baseProducts, {
       ...filters,
@@ -83,7 +86,7 @@ export function useShopFilters(
       preOrderCount: catalogFacets.preOrderCount,
       customOrderCount: catalogFacets.customOrderCount,
     }
-  }, [baseProducts, filters, catalogFacets.preOrderCount, catalogFacets.customOrderCount])
+  }, [baseProducts, filters, presets, catalogFacets.preOrderCount, catalogFacets.customOrderCount])
 
   const filteredProducts = useMemo(
     () => filterAndSortProducts(baseProducts, filters, presets),
@@ -111,14 +114,14 @@ export function useShopFilters(
           const withBrands = pruneUnavailableBrands(
             next,
             computeBrandCounts(
-              filterProductsForBrandFacets(baseProducts, next),
+              filterProductsForBrandFacets(baseProducts, next, presets),
             ),
           )
           return buildShopSearchParams(
             pruneUnavailableSizes(
               withBrands,
               computeSizeCounts(
-                filterProductsForSizeFacets(baseProducts, withBrands),
+                filterProductsForSizeFacets(baseProducts, withBrands, presets),
               ),
             ),
           )
@@ -126,7 +129,7 @@ export function useShopFilters(
         { replace },
       )
     },
-    [baseProducts, setSearchParams],
+    [baseProducts, presets, setSearchParams],
   )
 
   const selectAll = useCallback(() => {
@@ -201,8 +204,6 @@ export function useShopFilters(
         customOrderOnly: false,
         inStockOnly: prev.inStockOnly,
         saleOnly: prev.saleOnly,
-        brands: [],
-        sizes: [],
       }))
     },
     [writeFilters],

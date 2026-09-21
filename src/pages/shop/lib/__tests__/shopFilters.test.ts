@@ -5,10 +5,12 @@ import {
   ALL_SUBCATS,
   buildShopSearchParams,
   computeBrandCounts,
+  computeFacets,
   computeSizeCounts,
   defaultFilterState,
   filterAndSortProducts,
   filterProductsForBrandFacets,
+  filterProductsForNavigationFacets,
   filterProductsForSizeFacets,
   formatSizeFacetLabel,
   normalizeFilterState,
@@ -400,6 +402,69 @@ describe('brand facets', () => {
       computeBrandCounts(filterProductsForBrandFacets(base, wakeboarding)),
     )
     expect(pruned.brands).toEqual([])
+  })
+})
+
+describe('contextual facet counts', () => {
+  it('counts navigation categories from the active stock and search filters', () => {
+    const stockBoard = product('wb_board', { brand: 'Ronix', model: 'One' })
+    const preorderBoard = product('wb_board', {
+      brand: 'Ronix',
+      model: 'Two',
+      variants: [{
+        ...product('wb_board').variants[0],
+        stock: 0,
+        availability: 'pre_order',
+      }],
+    })
+    const stockBoots = product('wb_boots', { brand: 'Liquid Force', model: 'One' })
+    const filters = {
+      ...defaultFilterState(),
+      inStockOnly: true,
+      search: 'Ronix',
+    }
+
+    const counts = computeFacets(
+      filterProductsForNavigationFacets(
+        [stockBoard, preorderBoard, stockBoots],
+        filters,
+      ),
+    ).categoryCounts
+
+    expect(counts.get('wb_board')).toBe(1)
+    expect(counts.has('wb_boots')).toBe(false)
+  })
+
+  it('limits brand and size counts to sale products in sale mode', () => {
+    const red = {
+      id: 'red',
+      kind: 'tag' as const,
+      name: '紅標',
+      label: '紅標',
+      percent: 60,
+      is_active: true,
+      sort_order: 1,
+    }
+    const tagged = sizedProduct('wb_board', 'Ronix', ['140'])
+    tagged.variants[0].discount_preset_id = 'red'
+    const regular = sizedProduct('wb_board', 'Liquid Force', ['142'])
+    const filters = {
+      ...defaultFilterState(),
+      topLevel: 'Wakeboarding' as const,
+      subCat: 'wb_board',
+      saleOnly: true,
+    }
+
+    expect(
+      [...computeBrandCounts(
+        filterProductsForBrandFacets([tagged, regular], filters, [red]),
+      ).entries()],
+    ).toEqual([['Ronix', 1]])
+    expect(
+      [...computeSizeCounts(
+        filterProductsForSizeFacets([tagged, regular], filters, [red]),
+      ).entries()],
+    ).toEqual([['140', 1]])
   })
 })
 

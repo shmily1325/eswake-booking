@@ -227,6 +227,8 @@ export function getFacetProductPool(
   preOrderOnly: boolean,
   inStockOnly = false,
   customOrderOnly = false,
+  saleOnly = false,
+  presets: readonly DiscountPreset[] = [],
 ): ProductWithVariants[] {
   if (customOrderOnly) {
     return baseProducts.filter((p) => isProductInCustomOrderSection(p.variants))
@@ -236,6 +238,9 @@ export function getFacetProductPool(
   }
   if (inStockOnly) {
     return baseProducts.filter((p) => isProductInStockSection(p.variants))
+  }
+  if (saleOnly) {
+    return baseProducts.filter((p) => productHasTagSale(p, presets))
   }
   return baseProducts
 }
@@ -277,8 +282,16 @@ export function computeFacets(baseProducts: ProductWithVariants[]): ShopFacets {
 export function filterProductsForBrandFacets(
   baseProducts: ProductWithVariants[],
   filters: ShopFilterState,
+  presets: readonly DiscountPreset[] = [],
 ): ProductWithVariants[] {
-  const pool = getFacetProductPool(baseProducts, filters.preOrderOnly, filters.inStockOnly, filters.customOrderOnly)
+  const pool = getFacetProductPool(
+    baseProducts,
+    filters.preOrderOnly,
+    filters.inStockOnly,
+    filters.customOrderOnly,
+    filters.saleOnly,
+    presets,
+  )
   return pool.filter(
     (p) =>
       productMatchesCategory(p, filters) && productMatchesSearch(p, filters.search) && productMatchesSize(p, filters),
@@ -289,12 +302,42 @@ export function filterProductsForBrandFacets(
 export function filterProductsForSizeFacets(
   baseProducts: ProductWithVariants[],
   filters: ShopFilterState,
+  presets: readonly DiscountPreset[] = [],
 ): ProductWithVariants[] {
   if (filters.subCat === ALL_SUBCATS) return []
-  const pool = getFacetProductPool(baseProducts, filters.preOrderOnly, filters.inStockOnly, filters.customOrderOnly)
+  const pool = getFacetProductPool(
+    baseProducts,
+    filters.preOrderOnly,
+    filters.inStockOnly,
+    filters.customOrderOnly,
+    filters.saleOnly,
+    presets,
+  )
   return pool.filter(
     (p) =>
       productMatchesCategory(p, filters) && productMatchesSearch(p, filters.search) && productMatchesBrand(p, filters),
+  )
+}
+
+/** 分類列 facet：套用目前供貨、搜尋、品牌與尺碼，但放寬分類本身。 */
+export function filterProductsForNavigationFacets(
+  baseProducts: ProductWithVariants[],
+  filters: ShopFilterState,
+  presets: readonly DiscountPreset[] = [],
+): ProductWithVariants[] {
+  const pool = getFacetProductPool(
+    baseProducts,
+    filters.preOrderOnly,
+    filters.inStockOnly,
+    filters.customOrderOnly,
+    filters.saleOnly,
+    presets,
+  )
+  return pool.filter(
+    (p) =>
+      productMatchesSearch(p, filters.search) &&
+      productMatchesBrand(p, filters) &&
+      productMatchesSize(p, filters),
   )
 }
 

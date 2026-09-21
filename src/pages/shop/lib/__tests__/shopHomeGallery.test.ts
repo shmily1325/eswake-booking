@@ -106,7 +106,7 @@ describe('collectHomeGalleryPool', () => {
     ])
   })
 
-  it('keeps tagged leftovers in the sale pool and skips untagged stock', () => {
+  it('keeps tagged stock in both the in-stock and sale pools', () => {
     const red = {
       id: 'red',
       kind: 'tag' as const,
@@ -129,7 +129,7 @@ describe('collectHomeGalleryPool', () => {
     ])
     expect(
       collectHomeGalleryPool(withTagged, 'in-stock', [red]).map((p) => p.productId),
-    ).toEqual(['es-photo', 'stock-photo'])
+    ).toEqual(['es-photo', 'stock-photo', 'red-tag'])
     expect(
       collectHomeGalleryPool(withTagged, 'es-series', [red]).map((p) => p.productId),
     ).toEqual(['es-photo', 'es-pre'])

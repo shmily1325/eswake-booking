@@ -117,6 +117,7 @@ export function ShopCategoryBar({
             onClick={onSelectPreOrder}
             onDark={onDark}
             count={preOrderCount}
+            countSuffix="total"
           >
             {SHOP_LABEL.preOrder}
           </CategoryChip>
@@ -128,6 +129,7 @@ export function ShopCategoryBar({
             onClick={onSelectCustomOrder}
             onDark={onDark}
             count={customOrderCount}
+            countSuffix="total"
           >
             {SHOP_LABEL.customOrder}
           </CategoryChip>
@@ -199,6 +201,7 @@ function CategoryChip({
   subdued = false,
   onDark = false,
   count,
+  countSuffix,
   onClick,
   onWarmHover,
   children,
@@ -208,6 +211,7 @@ function CategoryChip({
   subdued?: boolean
   onDark?: boolean
   count?: number
+  countSuffix?: string
   onClick: () => void
   onWarmHover?: () => void
   children: React.ReactNode
@@ -253,7 +257,7 @@ function CategoryChip({
             (active && onDark ? 'text-zinc-500' : onDark ? 'text-white/55' : 'text-gray-400')
           }
         >
-          {count}
+          {count}{countSuffix ? ` ${countSuffix}` : ''}
         </span>
       ) : null}
     </button>
