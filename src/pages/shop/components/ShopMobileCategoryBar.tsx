@@ -30,7 +30,7 @@ interface ShopCategoryBarProps {
   fadeFromHero?: boolean
 }
 
-/** 桌機單排含子分類；手機選大類後第二排只列子分類（無 All） */
+/** 主分類固定第一排；選取大類後，子分類顯示在第二排。 */
 export function ShopCategoryBar({
   filters,
   groupCounts,
@@ -135,41 +135,14 @@ export function ShopCategoryBar({
           </CategoryChip>
         )}
 
-        {/* 桌機：子分類接在同一列 */}
-        {!filters.preOrderOnly && !filters.customOrderOnly && showSubRow && (
-          <div className="hidden lg:contents">
-            <span
-              className={
-                'shrink-0 w-px h-5 self-center ' +
-                (onDark ? 'bg-zinc-700' : 'bg-gray-300')
-              }
-              aria-hidden
-            />
-            {subs.map((cat) => (
-              <CategoryChip
-                key={cat.id}
-                active={filters.subCat === cat.id}
-                onClick={() => onSelectCategory(activeGroup!, cat.id)}
-                onWarmHover={() =>
-                  void preloadShopHeroForCategory(activeGroup!, cat.id)
-                }
-                subdued
-                onDark={onDark}
-                count={cat.count}
-              >
-                {getCategoryShopName(cat)}
-              </CategoryChip>
-            ))}
-          </div>
-        )}
       </div>
       </div>
 
-      {/* 手機：子分類（回到大類全選 → 再點上方 Wakeboarding） */}
+      {/* 子分類：桌機完整換行顯示；手機保留橫向滑動。 */}
       {!filters.preOrderOnly && !filters.customOrderOnly && showSubRow && activeGroup && (
-        <div className="relative lg:hidden">
+        <div className="relative">
           <div
-            className="relative z-21 max-w-7xl mx-auto flex gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="relative z-21 max-w-7xl mx-auto flex gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory px-4 sm:px-6 pb-2.5 lg:flex-wrap lg:overflow-visible lg:snap-none lg:pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="tablist"
             aria-label={`${activeGroup} subcategories`}
           >
