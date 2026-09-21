@@ -140,8 +140,8 @@ function RestrictionScopePicker({
   )
 }
 
-const RESTRICTION_TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
-  const minutes = index * 30
+const RESTRICTION_TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
+  const minutes = index * 15
   const hour = Math.floor(minutes / 60)
   const minute = minutes % 60
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
