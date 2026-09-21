@@ -426,7 +426,7 @@ describe('manual LINE reminder send API', () => {
     expect(fromMock).not.toHaveBeenCalledWith('line_reminder_guests')
   })
 
-  it('does not let view-only staff change booking guest mappings', async () => {
+  it('allows general staff who can create bookings to sync booking guests', async () => {
     setUser('viewer@example.com')
     queryResults.view_users = { data: [{ email: 'viewer@example.com' }], error: null }
     queryResults.editor_users = { data: [], error: null }
@@ -437,12 +437,13 @@ describe('manual LINE reminder send API', () => {
       response as unknown as VercelResponse,
     )
 
-    expect(response.status).toHaveBeenCalledWith(403)
-    expect(response.json).toHaveBeenCalledWith({
-      error: 'Booking editor permission required',
+    expect(response.status).toHaveBeenCalledWith(200)
+    expect(response.json).toHaveBeenCalledWith({ ok: true })
+    expect(rpcMock).toHaveBeenCalledWith('sync_line_reminder_booking_guests', {
+      p_booking_id: 101,
+      p_guests: [],
+      p_operator_email: 'viewer@example.com',
     })
-    expect(queryBuilders.editor_users.eq).toHaveBeenCalledWith('can_schedule', true)
-    expect(rpcMock).not.toHaveBeenCalled()
   })
 
   it('searches reusable non-members without exposing formally bound LINE accounts', async () => {

@@ -600,6 +600,7 @@ export function CoachAssignment() {
 
   useEffect(() => {
     let cancelled = false
+    setAssignmentRestrictions([])
     void (supabase as any)
       .from('reservation_restrictions_with_announcement_view')
       .select('start_date, start_time, end_date, end_time, content, scope, coach_ids')

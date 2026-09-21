@@ -3,7 +3,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   authenticateStaff,
   canManageLineReminderMappings,
-  hasStaffEditPermission,
 } from '../src/server/staff-api-auth.js'
 import { handleLineReminderMappingAction } from '../src/server/line-reminder-mapping-actions.js'
 
@@ -193,12 +192,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         !canManageLineReminderMappings(auth.user.email)
       ) {
         return sendError(res, 403, 'LINE reminder manager permission required')
-      }
-      if (
-        requestBody.action === 'sync_booking_guests' &&
-        !(await hasStaffEditPermission(supabase, auth.user.email))
-      ) {
-        return sendError(res, 403, 'Booking editor permission required')
       }
       return handleLineReminderMappingAction(requestBody, res, supabase, auth.user.email)
     }

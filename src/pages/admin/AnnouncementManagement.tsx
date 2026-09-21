@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { getLocalDateString, getWeekdayText } from '../../utils/date'
+import { addDaysToDate, getLocalDateString, getWeekdayText } from '../../utils/date'
 import { getEventStartDate, getEventDateLabel, parseForEdit, formatDateShort, computeDisplayDate } from '../../utils/announcement'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { validateRequired } from '../../utils/errorHandler'
@@ -193,6 +193,7 @@ export function AnnouncementManagement() {
   const [editRestrictEndTime, setEditRestrictEndTime] = useState('14:00')
   const [editRestrictScope, setEditRestrictScope] = useState<RestrictionScope>('all')
   const [editRestrictedCoachIds, setEditRestrictedCoachIds] = useState<string[]>([])
+  const [editRestrictionLoading, setEditRestrictionLoading] = useState(false)
   const [coachOptions, setCoachOptions] = useState<CoachOption[]>([])
   
   // 搜尋和過濾
@@ -374,14 +375,14 @@ export function AnnouncementManagement() {
         .select('coach_id, coaches:coach_id(name), bookings!inner(id, contact_name, start_at, duration_min, status)')
         .in('coach_id', input.coachIds)
         .neq('bookings.status', 'cancelled')
-        .gte('bookings.start_at', `${input.startDate}T00:00:00`)
+        .gte('bookings.start_at', `${addDaysToDate(input.startDate, -1)}T00:00:00`)
         .lte('bookings.start_at', `${input.endDate}T23:59:59`),
       supabase
         .from('booking_drivers')
         .select('driver_id, coaches:driver_id(name), bookings!inner(id, contact_name, start_at, duration_min, status)')
         .in('driver_id', input.coachIds)
         .neq('bookings.status', 'cancelled')
-        .gte('bookings.start_at', `${input.startDate}T00:00:00`)
+        .gte('bookings.start_at', `${addDaysToDate(input.startDate, -1)}T00:00:00`)
         .lte('bookings.start_at', `${input.endDate}T23:59:59`),
     ])
     const queryError = coachResult.error || driverResult.error
@@ -519,6 +520,10 @@ export function AnnouncementManagement() {
   }
 
   const handleEdit = async (id: number) => {
+    if (editRestrictionLoading) {
+      toast.info('限制設定仍在載入，請稍候')
+      return
+    }
     if (editEndDate < editStartDate) {
       toast.warning('結束日期不能早於開始日期')
       return
@@ -629,43 +634,54 @@ export function AnnouncementManagement() {
     setEditStartDate(eventStartDate)
     setEditEndDate(eventEndDate)
     setEditShowOneDayEarly(showOneDayEarly)
+    setEditRestrictEnabled(false)
+    setEditRestrictAllDay(true)
+    setEditRestrictStartDate(eventStartDate)
+    setEditRestrictStartTime('13:00')
+    setEditRestrictEndDate(eventEndDate)
+    setEditRestrictEndTime('14:00')
+    setEditRestrictScope('all')
+    setEditRestrictedCoachIds([])
+    setEditRestrictionLoading(true)
     // 載入限制（若有）
     ;(async () => {
-      const { data } = await supabase
-        .from('reservation_restrictions')
-        .select('*, reservation_restriction_coaches(coach_id)')
-        .eq('announcement_id', announcement.id)
-        .limit(1)
-        .maybeSingle()
-      if (requestId !== editRestrictionRequestRef.current) return
-      if (data) {
-        setEditRestrictEnabled(true)
-        setEditRestrictAllDay(!data.start_time && !data.end_time)
-        setEditRestrictStartDate(data.start_date)
-        setEditRestrictStartTime(data.start_time || '00:00')
-        setEditRestrictEndDate(data.end_date)
-        setEditRestrictEndTime(data.end_time || '23:59')
-        setEditRestrictScope(data.scope === 'coaches' ? 'coaches' : 'all')
-        setEditRestrictedCoachIds(
-          ((data as any).reservation_restriction_coaches ?? [])
-            .map((item: any) => item.coach_id)
-            .filter(Boolean),
-        )
-      } else {
-        setEditRestrictEnabled(false)
-        setEditRestrictAllDay(true)
-        setEditRestrictStartDate(eventStartDate)
-        setEditRestrictStartTime('13:00')
-        setEditRestrictEndDate(eventEndDate)
-        setEditRestrictEndTime('14:00')
-        setEditRestrictScope('all')
-        setEditRestrictedCoachIds([])
+      try {
+        const { data, error } = await supabase
+          .from('reservation_restrictions')
+          .select('*, reservation_restriction_coaches(coach_id)')
+          .eq('announcement_id', announcement.id)
+          .limit(1)
+          .maybeSingle()
+        if (requestId !== editRestrictionRequestRef.current) return
+        if (error) {
+          toast.error('載入限制設定失敗')
+          return
+        }
+        if (data) {
+          setEditRestrictEnabled(true)
+          setEditRestrictAllDay(!data.start_time && !data.end_time)
+          setEditRestrictStartDate(data.start_date)
+          setEditRestrictStartTime(data.start_time || '00:00')
+          setEditRestrictEndDate(data.end_date)
+          setEditRestrictEndTime(data.end_time || '23:59')
+          setEditRestrictScope(data.scope === 'coaches' ? 'coaches' : 'all')
+          setEditRestrictedCoachIds(
+            ((data as any).reservation_restriction_coaches ?? [])
+              .map((item: any) => item.coach_id)
+              .filter(Boolean),
+          )
+        }
+      } finally {
+        if (requestId === editRestrictionRequestRef.current) {
+          setEditRestrictionLoading(false)
+        }
       }
     })()
   }
 
   const cancelEdit = () => {
     editRestrictionRequestRef.current += 1
+    setEditRestrictionLoading(false)
     setEditingId(null)
   }
 
@@ -1443,13 +1459,15 @@ export function AnnouncementManagement() {
                           <button
                             data-track="announcement_edit"
                             onClick={() => handleEdit(announcement.id)}
+                            disabled={editRestrictionLoading}
                             style={{
                               ...getButtonStyle('primary', 'medium', isMobile),
                               flex: 1,
                               minHeight: isMobile ? 44 : undefined,
+                              opacity: editRestrictionLoading ? 0.6 : 1,
                             }}
                           >
-                            儲存
+                            {editRestrictionLoading ? '載入限制中…' : '儲存'}
                           </button>
                           <button
                             data-track="announcement_edit_cancel"
