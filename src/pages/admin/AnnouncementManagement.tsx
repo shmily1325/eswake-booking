@@ -41,25 +41,64 @@ interface Announcement {
 }
 
 type RestrictionScope = 'all' | 'coaches'
+type RestrictionMode = 'none' | RestrictionScope
 
 interface CoachOption {
   id: string
   name: string
 }
 
-function RestrictionScopePicker({
+function RestrictionModePicker({
+  enabled,
   scope,
+  isMobile,
+  onChange,
+}: {
+  enabled: boolean
+  scope: RestrictionScope
+  isMobile: boolean
+  onChange: (mode: RestrictionMode) => void
+}) {
+  const currentMode: RestrictionMode = enabled ? scope : 'none'
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: '8px',
+    }}>
+      {([
+        ['none', '不限制'],
+        ['all', '全部預約'],
+        ['coaches', '指定教練'],
+      ] as const).map(([mode, label]) => (
+        <button
+          key={mode}
+          type="button"
+          aria-pressed={currentMode === mode}
+          onClick={() => onChange(mode)}
+          style={{
+            ...getButtonStyle(currentMode === mode ? 'primary' : 'outline', 'small', isMobile),
+            minWidth: 0,
+            minHeight: isMobile ? 44 : undefined,
+            paddingInline: isMobile ? 8 : undefined,
+          }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function RestrictionCoachPicker({
   coachIds,
   coaches,
   isMobile,
-  onScopeChange,
   onCoachIdsChange,
 }: {
-  scope: RestrictionScope
   coachIds: string[]
   coaches: CoachOption[]
   isMobile: boolean
-  onScopeChange: (scope: RestrictionScope) => void
   onCoachIdsChange: (ids: string[]) => void
 }) {
   const visibleCoachIds = new Set(coaches.map((coach) => coach.id))
@@ -67,33 +106,13 @@ function RestrictionScopePicker({
   const selected = new Set(visibleSelectedIds)
 
   return (
-    <div style={{ display: 'grid', gap: '8px' }}>
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        {([
-          ['all', '全部預約'],
-          ['coaches', '指定教練'],
-        ] as const).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onScopeChange(value)}
-            style={{
-              ...getButtonStyle(scope === value ? 'primary' : 'outline', 'small', isMobile),
-              minHeight: isMobile ? 42 : undefined,
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {scope === 'coaches' && (
-        <div style={{
-          padding: '10px',
-          border: `1px solid ${designSystem.colors.border.light}`,
-          borderRadius: designSystem.borderRadius.md,
-          display: 'grid',
-          gap: '8px',
-        }}>
+    <div style={{
+      padding: '10px',
+      border: `1px solid ${designSystem.colors.border.light}`,
+      borderRadius: designSystem.borderRadius.md,
+      display: 'grid',
+      gap: '8px',
+    }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {coaches.map((coach) => {
               const active = selected.has(coach.id)
@@ -137,8 +156,6 @@ function RestrictionScopePicker({
               </button>
             )}
           </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -425,7 +442,6 @@ export function AnnouncementManagement() {
   const [newStartDate, setNewStartDate] = useState(getLocalDateString())
   const [newEndDate, setNewEndDate] = useState(getLocalDateString())
   const [newShowOneDayEarly, setNewShowOneDayEarly] = useState(false)
-  const [showNewAdvanced, setShowNewAdvanced] = useState(false)
   // 預約限制（新增）
   const [newRestrictEnabled, setNewRestrictEnabled] = useState(false)
   const [newRestrictAllDay, setNewRestrictAllDay] = useState(true)
@@ -761,7 +777,6 @@ export function AnnouncementManagement() {
           setNewStartDate(today)
           setNewEndDate(today)
           setNewShowOneDayEarly(false)
-          setShowNewAdvanced(false)
           // reset 限制欄位
           setNewRestrictEnabled(false)
           setNewRestrictAllDay(true)
@@ -1196,88 +1211,58 @@ export function AnnouncementManagement() {
             </label>
           </div>
 
-          <button
-            type="button"
-            data-track="announcement_advanced_toggle"
-            aria-expanded={showNewAdvanced}
-            onClick={() => setShowNewAdvanced((current) => !current)}
-            style={{
-              ...getButtonStyle('outline', 'small', isMobile),
-              width: isMobile ? '100%' : 'auto',
-              marginBottom: '12px',
-            }}
-          >
-            {showNewAdvanced
-              ? '收起更多設定'
-              : newShowOneDayEarly
-                ? '更多設定（已設定）'
-                : '更多設定'}
-          </button>
-
-          {showNewAdvanced && (
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              cursor: 'pointer',
-              fontSize: getFontSize('body', isMobile),
-              color: designSystem.colors.text.secondary,
-              padding: isMobile ? '6px 0 10px' : '0 0 10px',
-              minHeight: isMobile ? 44 : undefined,
-            }}>
-              <input
-                type="checkbox"
-                data-track="announcement_one_day_early"
-                checked={newShowOneDayEarly}
-                onChange={(e) => setNewShowOneDayEarly(e.target.checked)}
-                style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
-              />
-              <span>提前一天顯示</span>
-            </label>
-          )}
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            cursor: 'pointer',
+            fontSize: getFontSize('body', isMobile),
+            color: designSystem.colors.text.secondary,
+            padding: isMobile ? '4px 0 12px' : '0 0 12px',
+            minHeight: isMobile ? 44 : undefined,
+          }}>
+            <input
+              type="checkbox"
+              data-track="announcement_one_day_early"
+              checked={newShowOneDayEarly}
+              onChange={(e) => setNewShowOneDayEarly(e.target.checked)}
+              style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
+            />
+            <span>提前一天顯示</span>
+          </label>
 
           {/* 預約限制（簡易） */}
           <div style={{ marginBottom: '12px', borderTop: `1px dashed ${designSystem.colors.border.light}`, paddingTop: '12px' }}>
-            <div style={{ display: 'grid', gap: '4px' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                cursor: 'pointer',
-                fontSize: getFontSize('body', isMobile),
-                color: designSystem.colors.text.primary,
-                padding: isMobile ? '8px 0' : 0,
-                minHeight: isMobile ? 44 : undefined,
-                fontWeight: 600
-              }}>
-                <input
-                  type="checkbox"
-                  data-track="announcement_restriction_toggle"
-                  checked={newRestrictEnabled}
-                  onChange={(e) => {
-                    const enabled = e.target.checked
-                    setNewRestrictEnabled(enabled)
-                    setNewRestrictCustomDates(false)
-                    if (enabled) {
-                      // 預設直接帶入公告日期
-                      setNewRestrictStartDate(newStartDate)
-                      setNewRestrictEndDate(newEndDate)
-                    }
-                  }}
-                  style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
-                />
-                <span>啟用預約限制</span>
-              </label>
+            <div style={{
+              fontSize: getFontSize('bodySmall', isMobile),
+              color: designSystem.colors.text.secondary,
+              fontWeight: 600,
+              marginBottom: '8px',
+            }}>
+              預約規則
             </div>
+            <RestrictionModePicker
+              enabled={newRestrictEnabled}
+              scope={newRestrictScope}
+              isMobile={isMobile}
+              onChange={(mode) => {
+                const enabled = mode !== 'none'
+                if (enabled && !newRestrictEnabled) {
+                    setNewRestrictCustomDates(false)
+                  setNewRestrictStartDate(newStartDate)
+                  setNewRestrictEndDate(newEndDate)
+                }
+                setNewRestrictEnabled(enabled)
+                if (mode !== 'none') setNewRestrictScope(mode)
+              }}
+            />
 
-            {newRestrictEnabled && (
+            {newRestrictEnabled && newRestrictScope === 'coaches' && (
               <div style={{ marginTop: '8px' }}>
-                <RestrictionScopePicker
-                  scope={newRestrictScope}
+                <RestrictionCoachPicker
                   coachIds={newRestrictedCoachIds}
                   coaches={coachOptions}
                   isMobile={isMobile}
-                  onScopeChange={setNewRestrictScope}
                   onCoachIdsChange={setNewRestrictedCoachIds}
                 />
               </div>
@@ -1317,6 +1302,10 @@ export function AnnouncementManagement() {
               ...getButtonStyle('primary', 'large', isMobile),
               width: '100%',
               minHeight: isMobile ? 48 : undefined,
+              position: isMobile ? 'sticky' : undefined,
+              bottom: isMobile ? 'max(8px, env(safe-area-inset-bottom))' : undefined,
+              zIndex: isMobile ? 5 : undefined,
+              boxShadow: isMobile ? designSystem.shadows.md : undefined,
             }}
           >
             建立公告
@@ -1586,64 +1575,59 @@ export function AnnouncementManagement() {
                             <span>跨日事項</span>
                           </label>
                         </div>
-                        <details style={{ marginBottom: '8px' }}>
-                          <summary style={{
-                            cursor: 'pointer',
-                            fontSize: getFontSize('bodySmall', isMobile),
-                            fontWeight: 600,
-                            color: designSystem.colors.text.secondary,
-                            padding: '6px 0',
-                          }}>
-                            更多設定{editShowOneDayEarly ? '（已設定）' : ''}
-                          </summary>
-                          <label style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            cursor: 'pointer',
-                            fontSize: getFontSize('body', isMobile),
-                            color: designSystem.colors.text.secondary,
-                            padding: isMobile ? '8px 0' : 0,
-                            minHeight: isMobile ? 44 : undefined
-                          }}>
-                            <input
-                              type="checkbox"
-                              checked={editShowOneDayEarly}
-                              onChange={(e) => setEditShowOneDayEarly(e.target.checked)}
-                              style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
-                            />
-                            <span>提前一天顯示</span>
-                          </label>
-                        </details>
+                        <label style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          cursor: 'pointer',
+                          fontSize: getFontSize('body', isMobile),
+                          color: designSystem.colors.text.secondary,
+                          padding: isMobile ? '4px 0 10px' : '0 0 10px',
+                          minHeight: isMobile ? 44 : undefined
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={editShowOneDayEarly}
+                            onChange={(e) => setEditShowOneDayEarly(e.target.checked)}
+                            style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
+                          />
+                          <span>提前一天顯示</span>
+                        </label>
                         {/* 預約限制（編輯） */}
                         <div style={{ marginBottom: '10px', borderTop: `1px dashed ${designSystem.colors.border.light}`, paddingTop: '10px' }}>
-                          <label style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            cursor: 'pointer',
-                            fontSize: getFontSize('body', isMobile),
-                            color: designSystem.colors.text.primary,
-                            fontWeight: 600
+                          <div style={{
+                            fontSize: getFontSize('bodySmall', isMobile),
+                            color: designSystem.colors.text.secondary,
+                            fontWeight: 600,
+                            marginBottom: '8px',
                           }}>
-                            <input
-                              type="checkbox"
-                              checked={editRestrictEnabled}
-                              onChange={(e) => setEditRestrictEnabled(e.target.checked)}
-                              style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
-                            />
-                            <span>啟用預約限制</span>
-                          </label>
+                            預約規則
+                          </div>
+                          <RestrictionModePicker
+                            enabled={editRestrictEnabled}
+                            scope={editRestrictScope}
+                            isMobile={isMobile}
+                            onChange={(mode) => {
+                              const enabled = mode !== 'none'
+                              if (enabled && !editRestrictEnabled) {
+                                setEditRestrictCustomDates(false)
+                                setEditRestrictStartDate(editStartDate)
+                                setEditRestrictEndDate(editEndDate)
+                              }
+                              setEditRestrictEnabled(enabled)
+                              if (mode !== 'none') setEditRestrictScope(mode)
+                            }}
+                          />
                           {editRestrictEnabled && (
                             <div style={{ marginTop: '8px', display: 'grid', gap: '10px' }}>
-                              <RestrictionScopePicker
-                                scope={editRestrictScope}
-                                coachIds={editRestrictedCoachIds}
-                                coaches={coachOptions}
-                                isMobile={isMobile}
-                                onScopeChange={setEditRestrictScope}
-                                onCoachIdsChange={setEditRestrictedCoachIds}
-                              />
+                              {editRestrictScope === 'coaches' && (
+                                <RestrictionCoachPicker
+                                  coachIds={editRestrictedCoachIds}
+                                  coaches={coachOptions}
+                                  isMobile={isMobile}
+                                  onCoachIdsChange={setEditRestrictedCoachIds}
+                                />
+                              )}
                               <RestrictionSchedulePicker
                                 allDay={editRestrictAllDay}
                                 customDates={editRestrictCustomDates}
@@ -1668,7 +1652,18 @@ export function AnnouncementManagement() {
                             </div>
                           )}
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{
+                          display: 'flex',
+                          gap: '8px',
+                          position: isMobile ? 'sticky' : undefined,
+                          bottom: isMobile ? 'max(8px, env(safe-area-inset-bottom))' : undefined,
+                          zIndex: isMobile ? 5 : undefined,
+                          padding: isMobile ? '8px' : 0,
+                          margin: isMobile ? '0 -8px -8px' : 0,
+                          background: isMobile ? designSystem.colors.background.main : undefined,
+                          borderRadius: isMobile ? designSystem.borderRadius.md : undefined,
+                          boxShadow: isMobile ? designSystem.shadows.md : undefined,
+                        }}>
                           <button
                             data-track="announcement_edit"
                             onClick={() => handleEdit(announcement.id)}
