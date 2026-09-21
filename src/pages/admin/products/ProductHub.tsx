@@ -150,7 +150,7 @@ export function ProductHub() {
           <AdminPillLink to="/products/orders" active={onOrders}>
             訂單
           </AdminPillLink>
-          {userIsAdmin && (
+          {canEdit && (
             <AdminPillLink to="/products/sales" active={onSales}>
               銷售
             </AdminPillLink>
@@ -195,7 +195,7 @@ export function ProductHub() {
         {canEdit && (
           <Route path="size-charts" element={<SizeChartSettings embedded />} />
         )}
-        {userIsAdmin && (
+        {canEdit && (
           <Route
             path="sales"
             element={<ShopSettlementStatisticsTab isMobile={isMobile} rankingOnly />}
