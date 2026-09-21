@@ -5,8 +5,9 @@
  * - DailyAnnouncement：🏖️ 休假
  * - offline.html：內嵌同名規則，改此檔時請一併對齊
  */
+import { STANDARD_COACH_LIST_EXCLUDED_NAMES } from './coachSelection'
 
-const WORKING_DISPLAY_HIDDEN_NAME_PARTS = ['火隆', '侑曄'] as const
+const WORKING_DISPLAY_HIDDEN_NAME_PARTS = STANDARD_COACH_LIST_EXCLUDED_NAMES
 const TIMEOFF_DISPLAY_HIDDEN_NAME_PARTS = ['義揚', '許書源'] as const
 
 function nameMatchesAny(name: string, parts: readonly string[]): boolean {

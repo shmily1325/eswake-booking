@@ -22,6 +22,10 @@ import { scheduleCoachTimeOffReminderToast } from '../utils/coachTimeOffWarning'
 import { designSystem, getButtonStyle } from '../styles/designSystem'
 import { useBookingAlternatives } from '../hooks/useBookingAlternatives'
 import { syncBookingSavedLineReminderGuests } from '../utils/lineReminderGuests'
+import {
+  bookingEditDriverIds,
+  shouldClearBookingEditAssignments,
+} from '../utils/bookingEditAssignments'
 
 interface EditBookingDialogProps {
   isOpen: boolean
@@ -174,6 +178,11 @@ export function EditBookingDialog({
     }
   }, [isOpen, isSelectedBoatFacility, requiresDriver, setRequiresDriver, toast])
 
+  const originalBookingCoachIdsKey = (booking?.coaches ?? [])
+    .map((coach) => coach.id)
+    .sort()
+    .join(',')
+
   // 即時衝突檢查 Effect（編輯預約用）
   useEffect(() => {
     if (!isOpen || !startDate || !startTime || !selectedBoatId || !booking || !booking.id) {
@@ -186,7 +195,9 @@ export function EditBookingDialog({
       const scheduleChanged =
         `${startDate}T${startTime}` !== booking.start_at.substring(0, 16) ||
         durationMin !== booking.duration_min
-      const originalCoachIds = new Set((booking.coaches ?? []).map((coach) => coach.id))
+      const originalCoachIds = new Set(
+        originalBookingCoachIdsKey ? originalBookingCoachIdsKey.split(',') : [],
+      )
       const result = await performConflictCheck(booking.id, {
         restrictionPersonIds: scheduleChanged
           ? selectedCoaches
@@ -203,7 +214,19 @@ export function EditBookingDialog({
 
     const timer = setTimeout(check, 500) // Debounce
     return () => clearTimeout(timer)
-  }, [isOpen, startDate, startTime, durationMin, selectedBoatId, selectedCoaches, performConflictCheck, booking?.id])
+  }, [
+    isOpen,
+    startDate,
+    startTime,
+    durationMin,
+    selectedBoatId,
+    selectedCoaches,
+    performConflictCheck,
+    booking?.id,
+    booking?.start_at,
+    booking?.duration_min,
+    originalBookingCoachIdsKey,
+  ])
 
 
   if (!isOpen) return null
@@ -283,14 +306,22 @@ export function EditBookingDialog({
       // 進一步檢查：以新時段（含+15分緩衝）檢查「已排教練/駕駛」是否與當天其他單重疊（同船豁免）
       let mustClearByPersonConflict = false
       let personConflictDetails: string[] = []
+      let assignedDriverIdsForSave: string[] = []
       {
         // 1) 取得此預約目前資料庫中的已排教練與駕駛（以 DB 為準）
         const [dbCoachesRes, dbDriversRes] = await Promise.all([
           supabase.from('booking_coaches').select('coach_id').eq('booking_id', booking.id),
           supabase.from('booking_drivers').select('driver_id').eq('booking_id', booking.id)
         ])
+        if (dbCoachesRes.error) {
+          throw new Error(`讀取既有教練排班失敗: ${dbCoachesRes.error.message}`)
+        }
+        if (dbDriversRes.error) {
+          throw new Error(`讀取既有駕駛排班失敗: ${dbDriversRes.error.message}`)
+        }
         const assignedCoachIds: string[] = (dbCoachesRes.data || []).map((r: any) => r.coach_id)
         const assignedDriverIds: string[] = (dbDriversRes.data || []).map((r: any) => r.driver_id)
+        assignedDriverIdsForSave = assignedDriverIds
         const assignedPersonIds = Array.from(new Set([...assignedCoachIds, ...assignedDriverIds]))
 
         if (assignedPersonIds.length > 0) {
@@ -441,12 +472,20 @@ export function EditBookingDialog({
       const finalRequiresDriver = isSelectedBoatFacility ? false : requiresDriver
 
       // 是否需要合併彈窗確認
-      // 需求：只有「真的需要清掉既有排班/回報/參與者」時才跳出
-      // - 若偵測到已排人員時間重疊（mustClearByPersonConflict）一定需要清除 → 跳出
-      // - 若資料庫中確實存在任何「排班/回報/參與者」將被刪除，才跳出
-      //   （無論是因為關鍵欄位變動或最終不需要駕駛）
+      // 只有關鍵欄位變動、不再需要駕駛或發生人員衝突，且確實有
+      // 排班／回報／參與者會被清除時才提示；只改備註等欄位須保留既有資料。
       const hasRecordsToBeCleared = hasDriverAssignment || hasCoachReports || hasParticipants
-      const needConfirm = mustClearByPersonConflict || hasRecordsToBeCleared
+      const shouldClearAssignments = shouldClearBookingEditAssignments({
+        scheduleChanged,
+        boatChanged,
+        contactNameChanged,
+        coachesChanged,
+        requiresDriver: finalRequiresDriver,
+        hasPersonConflict: mustClearByPersonConflict,
+      })
+      const needConfirm =
+        mustClearByPersonConflict ||
+        (shouldClearAssignments && hasRecordsToBeCleared)
 
       if (needConfirm) {
         const changedFields = []
@@ -505,7 +544,10 @@ export function EditBookingDialog({
           p_duration_min: durationMin,
           p_cleanup_minutes: isSelectedBoatFacility ? 0 : 15,
           p_coach_ids: selectedCoaches,
-          p_driver_ids: [],
+          p_driver_ids: bookingEditDriverIds(
+            assignedDriverIdsForSave,
+            shouldClearAssignments,
+          ),
         },
       )
       if (scheduleSaveError) {

@@ -9,6 +9,7 @@ import { addDaysToDate, getLocalDateString, getWeekdayText } from '../../utils/d
 import { getEventStartDate, getEventDateLabel, parseForEdit, formatDateShort, computeDisplayDate } from '../../utils/announcement'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { validateRequired } from '../../utils/errorHandler'
+import { filterStandardCoachList } from '../../utils/coachSelection'
 import { useToast, ToastContainer } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
 import {
@@ -56,11 +57,9 @@ function RestrictionScopePicker({
   onScopeChange: (scope: RestrictionScope) => void
   onCoachIdsChange: (ids: string[]) => void
 }) {
-  const [search, setSearch] = useState('')
-  const selected = new Set(coachIds)
-  const visibleCoaches = coaches.filter((coach) =>
-    coach.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
-  )
+  const visibleCoachIds = new Set(coaches.map((coach) => coach.id))
+  const visibleSelectedIds = coachIds.filter((id) => visibleCoachIds.has(id))
+  const selected = new Set(visibleSelectedIds)
 
   return (
     <div style={{ display: 'grid', gap: '8px' }}>
@@ -90,17 +89,8 @@ function RestrictionScopePicker({
           display: 'grid',
           gap: '8px',
         }}>
-          {coaches.length > 8 && (
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="搜尋教練"
-              style={getInputStyle(isMobile)}
-            />
-          )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {visibleCoaches.map((coach) => {
+            {coaches.map((coach) => {
               const active = selected.has(coach.id)
               return (
                 <button
@@ -108,7 +98,7 @@ function RestrictionScopePicker({
                   type="button"
                   aria-pressed={active}
                   onClick={() => {
-                    const next = new Set(coachIds)
+                    const next = new Set(visibleSelectedIds)
                     if (active) next.delete(coach.id)
                     else next.add(coach.id)
                     onCoachIdsChange([...next])
@@ -131,8 +121,8 @@ function RestrictionScopePicker({
             color: designSystem.colors.text.secondary,
             fontSize: getFontSize('bodySmall', isMobile),
           }}>
-            <span>已選 {coachIds.length} 位</span>
-            {coachIds.length > 0 && (
+            <span>已選 {visibleSelectedIds.length} 位</span>
+            {visibleSelectedIds.length > 0 && (
               <button
                 type="button"
                 onClick={() => onCoachIdsChange([])}
@@ -144,6 +134,224 @@ function RestrictionScopePicker({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+const RESTRICTION_TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
+  const minutes = index * 30
+  const hour = Math.floor(minutes / 60)
+  const minute = minutes % 60
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+})
+
+function RestrictionTimeSelect({
+  label,
+  value,
+  isMobile,
+  onChange,
+}: {
+  label: string
+  value: string
+  isMobile: boolean
+  onChange: (value: string) => void
+}) {
+  const options = RESTRICTION_TIME_OPTIONS.includes(value)
+    ? RESTRICTION_TIME_OPTIONS
+    : [...RESTRICTION_TIME_OPTIONS, value].filter(Boolean).sort()
+
+  return (
+    <label style={{ display: 'grid', gap: '4px', minWidth: 0 }}>
+      <span style={{
+        color: designSystem.colors.text.secondary,
+        fontSize: getFontSize('caption', isMobile),
+      }}>
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
+      >
+        {options.map((time) => (
+          <option key={time} value={time}>{time}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function RestrictionSchedulePicker({
+  allDay,
+  startDate,
+  startTime,
+  endDate,
+  endTime,
+  isMobile,
+  onAllDayChange,
+  onStartDateChange,
+  onStartTimeChange,
+  onEndDateChange,
+  onEndTimeChange,
+}: {
+  allDay: boolean
+  startDate: string
+  startTime: string
+  endDate: string
+  endTime: string
+  isMobile: boolean
+  onAllDayChange: (value: boolean) => void
+  onStartDateChange: (value: string) => void
+  onStartTimeChange: (value: string) => void
+  onEndDateChange: (value: string) => void
+  onEndTimeChange: (value: string) => void
+}) {
+  const crossDay = startDate !== endDate
+  const invalidTime = !allDay && !crossDay && endTime <= startTime
+
+  const updateStartDate = (value: string) => {
+    const keepSingleDay = !crossDay
+    onStartDateChange(value)
+    if (keepSingleDay || value > endDate) onEndDateChange(value)
+  }
+
+  return (
+    <div style={{
+      display: 'grid',
+      gap: '10px',
+      padding: '12px',
+      border: `1px solid ${designSystem.colors.border.light}`,
+      borderRadius: designSystem.borderRadius.md,
+      background: designSystem.colors.background.card,
+    }}>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => onAllDayChange(true)}
+          style={getButtonStyle(allDay ? 'primary' : 'outline', 'small', isMobile)}
+        >
+          全天
+        </button>
+        <button
+          type="button"
+          onClick={() => onAllDayChange(false)}
+          style={getButtonStyle(!allDay ? 'primary' : 'outline', 'small', isMobile)}
+        >
+          指定時段
+        </button>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile
+          ? '1fr'
+          : allDay
+            ? crossDay
+              ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
+              : 'minmax(0, 1fr)'
+            : crossDay
+              ? 'minmax(0, 1fr) 120px auto minmax(0, 1fr) 120px'
+              : 'minmax(0, 1fr) 120px auto 120px',
+        alignItems: 'end',
+        gap: '8px',
+      }}>
+        <label style={{ display: 'grid', gap: '4px', minWidth: 0 }}>
+          <span style={{
+            color: designSystem.colors.text.secondary,
+            fontSize: getFontSize('caption', isMobile),
+          }}>
+            {crossDay ? '開始日期' : '限制日期'}
+          </span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(event) => updateStartDate(event.target.value)}
+            style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
+          />
+        </label>
+
+        {!allDay && (
+          <RestrictionTimeSelect
+            label="開始時間"
+            value={startTime}
+            isMobile={isMobile}
+            onChange={onStartTimeChange}
+          />
+        )}
+
+        {(crossDay || (!isMobile && !allDay)) && (
+          <span style={{
+            alignSelf: 'center',
+            color: designSystem.colors.text.disabled,
+            textAlign: 'center',
+          }}>
+            ～
+          </span>
+        )}
+
+        {crossDay && (
+          <label style={{ display: 'grid', gap: '4px', minWidth: 0 }}>
+            <span style={{
+              color: designSystem.colors.text.secondary,
+              fontSize: getFontSize('caption', isMobile),
+            }}>
+              結束日期
+            </span>
+            <input
+              type="date"
+              value={endDate}
+              min={startDate}
+              onChange={(event) => onEndDateChange(event.target.value)}
+              style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
+            />
+          </label>
+        )}
+
+        {!allDay && (
+          <RestrictionTimeSelect
+            label="結束時間"
+            value={endTime}
+            isMobile={isMobile}
+            onChange={onEndTimeChange}
+          />
+        )}
+      </div>
+
+      <label style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        minHeight: isMobile ? 40 : undefined,
+        color: designSystem.colors.text.secondary,
+        fontSize: getFontSize('bodySmall', isMobile),
+        cursor: 'pointer',
+      }}>
+        <input
+          type="checkbox"
+          checked={crossDay}
+          onChange={(event) => {
+            onEndDateChange(
+              event.target.checked ? addDaysToDate(startDate, 1) : startDate,
+            )
+          }}
+          style={{ accentColor: checkboxAccent }}
+        />
+        跨日限制
+      </label>
+
+      <div style={{
+        padding: '8px 10px',
+        borderRadius: designSystem.borderRadius.md,
+        background: designSystem.colors.background.main,
+        color: invalidTime
+          ? designSystem.colors.danger[700]
+          : designSystem.colors.text.primary,
+        fontSize: getFontSize('bodySmall', isMobile),
+      }}>
+        {invalidTime
+          ? '結束時間必須晚於開始時間'
+          : `限制時段：${startDate}${allDay ? ' 全天' : ` ${startTime}`}${crossDay ? ` ～ ${endDate}` : ' ～'}${allDay ? (crossDay ? ' 全天' : '') : ` ${endTime}`}`}
+      </div>
     </div>
   )
 }
@@ -229,7 +437,7 @@ export function AnnouncementManagement() {
           console.error('載入教練失敗:', error)
           return
         }
-        setCoachOptions((data ?? []) as CoachOption[])
+        setCoachOptions(filterStandardCoachList((data ?? []) as CoachOption[]))
       })
   }, [])
 
@@ -429,10 +637,14 @@ export function AnnouncementManagement() {
       toast.warning('結束日期不能早於開始日期')
       return
     }
+    const selectableCoachIds = new Set(coachOptions.map((coach) => coach.id))
+    const restrictedCoachIds = newRestrictedCoachIds.filter((id) =>
+      selectableCoachIds.has(id)
+    )
     if (
       newRestrictEnabled &&
       newRestrictScope === 'coaches' &&
-      newRestrictedCoachIds.length === 0
+      restrictedCoachIds.length === 0
     ) {
       toast.warning('請至少選擇一位限制教練')
       return
@@ -455,7 +667,7 @@ export function AnnouncementManagement() {
         endDate: newRestrictEndDate,
         endTime: newRestrictEndTime,
         scope: newRestrictScope,
-        coachIds: newRestrictedCoachIds,
+        coachIds: restrictedCoachIds,
       }))
     ) {
       return
@@ -487,7 +699,7 @@ export function AnnouncementManagement() {
               endDate: newRestrictEndDate,
               endTime: newRestrictEndTime,
               scope: newRestrictScope,
-              coachIds: newRestrictedCoachIds,
+              coachIds: restrictedCoachIds,
             })
           } catch (restrictionError) {
             await supabase.from('daily_announcements').delete().eq('id', inserted.id)
@@ -528,10 +740,14 @@ export function AnnouncementManagement() {
       toast.warning('結束日期不能早於開始日期')
       return
     }
+    const selectableCoachIds = new Set(coachOptions.map((coach) => coach.id))
+    const restrictedCoachIds = editRestrictedCoachIds.filter((id) =>
+      selectableCoachIds.has(id)
+    )
     if (
       editRestrictEnabled &&
       editRestrictScope === 'coaches' &&
-      editRestrictedCoachIds.length === 0
+      restrictedCoachIds.length === 0
     ) {
       toast.warning('請至少選擇一位限制教練')
       return
@@ -554,7 +770,7 @@ export function AnnouncementManagement() {
         endDate: editRestrictEndDate || editEndDate,
         endTime: editRestrictEndTime,
         scope: editRestrictScope,
-        coachIds: editRestrictedCoachIds,
+        coachIds: restrictedCoachIds,
       }))
     ) {
       return
@@ -583,7 +799,7 @@ export function AnnouncementManagement() {
             endDate: editRestrictEndDate || editEndDate,
             endTime: editRestrictEndTime,
             scope: editRestrictScope,
-            coachIds: editRestrictedCoachIds,
+            coachIds: restrictedCoachIds,
           })
         } else {
           // 若關閉限制，直接刪除綁定
@@ -1021,79 +1237,20 @@ export function AnnouncementManagement() {
             )}
 
             {newRestrictEnabled && showNewRestrictionCustom && (
-              <div style={{ marginTop: '8px', display: 'grid', gap: '10px' }}>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile
-                    ? '1fr'
-                    : newRestrictAllDay
-                      ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
-                      : 'minmax(0, 1fr) 120px auto minmax(0, 1fr) 120px',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}>
-                  <input
-                    type="date"
-                    value={newRestrictStartDate}
-                    onChange={(e) => {
-                      setNewRestrictStartDate(e.target.value)
-                      if (e.target.value > newRestrictEndDate) setNewRestrictEndDate(e.target.value)
-                    }}
-                    style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-                  />
-                  {!newRestrictAllDay && (
-                    <input
-                      type="time"
-                      value={newRestrictStartTime}
-                      onChange={(e) => setNewRestrictStartTime(e.target.value)}
-                      style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-                    />
-                  )}
-                  {!isMobile && (
-                    <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', false) }}>～</span>
-                  )}
-                  <input
-                    type="date"
-                    value={newRestrictEndDate}
-                    onChange={(e) => setNewRestrictEndDate(e.target.value)}
-                    min={newRestrictStartDate}
-                    style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-                  />
-                  {!newRestrictAllDay && (
-                    <input
-                      type="time"
-                      value={newRestrictEndTime}
-                      onChange={(e) => setNewRestrictEndTime(e.target.value)}
-                      style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-                    />
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    cursor: 'pointer',
-                    fontSize: getFontSize('body', isMobile),
-                    color: designSystem.colors.text.secondary,
-                    whiteSpace: 'nowrap'
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={newRestrictAllDay}
-                      onChange={(e) => setNewRestrictAllDay(e.target.checked)}
-                      style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', accentColor: checkboxAccent }}
-                    />
-                    <span>全天</span>
-                  </label>
-                </div>
-
-                {/* 即時摘要 */}
-                <div style={{ width: '100%', boxSizing: 'border-box', overflowWrap: 'anywhere', background: designSystem.colors.background.main, color: designSystem.colors.text.primary, padding: '8px 10px', borderRadius: designSystem.borderRadius.md, fontSize: getFontSize('bodySmall', isMobile) }}>
-                  限制時段：{newRestrictStartDate}
-                  {!newRestrictAllDay && ` ${newRestrictStartTime}`} ～ {newRestrictEndDate}
-                  {!newRestrictAllDay && ` ${newRestrictEndTime}`}{newRestrictAllDay && ' 全天'}
-                </div>
+              <div style={{ marginTop: '8px' }}>
+                <RestrictionSchedulePicker
+                  allDay={newRestrictAllDay}
+                  startDate={newRestrictStartDate}
+                  startTime={newRestrictStartTime}
+                  endDate={newRestrictEndDate}
+                  endTime={newRestrictEndTime}
+                  isMobile={isMobile}
+                  onAllDayChange={setNewRestrictAllDay}
+                  onStartDateChange={setNewRestrictStartDate}
+                  onStartTimeChange={setNewRestrictStartTime}
+                  onEndDateChange={setNewRestrictEndDate}
+                  onEndTimeChange={setNewRestrictEndTime}
+                />
               </div>
             )}
           </div>
@@ -1398,59 +1555,19 @@ export function AnnouncementManagement() {
                                 onScopeChange={setEditRestrictScope}
                                 onCoachIdsChange={setEditRestrictedCoachIds}
                               />
-                              <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: isMobile
-                                  ? '1fr'
-                                  : editRestrictAllDay
-                                    ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
-                                    : 'minmax(0, 1fr) 120px auto minmax(0, 1fr) 120px',
-                                alignItems: 'center',
-                                gap: '8px',
-                              }}>
-                                <input
-                                  type="date"
-                                  value={editRestrictStartDate || editStartDate}
-                                  onChange={(e) => setEditRestrictStartDate(e.target.value)}
-                                  style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-                                />
-                                {!editRestrictAllDay && (
-                                  <input
-                                    type="time"
-                                    value={editRestrictStartTime}
-                                    onChange={(e) => setEditRestrictStartTime(e.target.value)}
-                                    style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-                                  />
-                                )}
-                                {!isMobile && (
-                                  <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', false) }}>～</span>
-                                )}
-                                <input
-                                  type="date"
-                                  value={editRestrictEndDate || editEndDate}
-                                  onChange={(e) => setEditRestrictEndDate(e.target.value)}
-                                  style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-                                />
-                                {!editRestrictAllDay && (
-                                  <input
-                                    type="time"
-                                    value={editRestrictEndTime}
-                                    onChange={(e) => setEditRestrictEndTime(e.target.value)}
-                                    style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-                                  />
-                                )}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: getFontSize('body', isMobile), color: designSystem.colors.text.secondary, whiteSpace: 'nowrap' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={editRestrictAllDay}
-                                    onChange={(e) => setEditRestrictAllDay(e.target.checked)}
-                                    style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', accentColor: checkboxAccent }}
-                                  />
-                                  <span>全天</span>
-                                </label>
-                              </div>
+                              <RestrictionSchedulePicker
+                                allDay={editRestrictAllDay}
+                                startDate={editRestrictStartDate || editStartDate}
+                                startTime={editRestrictStartTime}
+                                endDate={editRestrictEndDate || editEndDate}
+                                endTime={editRestrictEndTime}
+                                isMobile={isMobile}
+                                onAllDayChange={setEditRestrictAllDay}
+                                onStartDateChange={setEditRestrictStartDate}
+                                onStartTimeChange={setEditRestrictStartTime}
+                                onEndDateChange={setEditRestrictEndDate}
+                                onEndTimeChange={setEditRestrictEndTime}
+                              />
                             </div>
                           )}
                         </div>

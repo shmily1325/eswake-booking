@@ -1,4 +1,5 @@
 import { supabase } from '../../../lib/supabase'
+import { filterStandardCoachList } from '../../../utils/coachSelection'
 import { getLocalDateString } from '../../../utils/date'
 import { formatAttributes } from '../products/schema'
 import { formatSelectedOptions, sortPendingBillOrders } from './orderUtils'
@@ -124,8 +125,6 @@ export interface SalespersonCoach {
   name: string
 }
 
-const EXCLUDED_SALESPERSON_NAMES = new Set(['火隆', '侑曄'])
-
 /** 內部商品銷售用教練名單；不包含停用及明確排除的人員。 */
 export async function fetchSalespersonCoaches(): Promise<SalespersonCoach[]> {
   const { data, error } = await supabase
@@ -134,7 +133,7 @@ export async function fetchSalespersonCoaches(): Promise<SalespersonCoach[]> {
     .eq('status', 'active')
     .order('name')
   if (error) throw new Error(error.message)
-  return (data ?? []).filter((coach) => !EXCLUDED_SALESPERSON_NAMES.has(coach.name.trim()))
+  return filterStandardCoachList(data ?? [])
 }
 
 export async function createShopOrder(input: CreateOrderInput): Promise<string> {

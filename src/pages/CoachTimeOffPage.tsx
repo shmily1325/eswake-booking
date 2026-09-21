@@ -16,10 +16,9 @@ import {
   groupTimeOffByCoach,
   type CoachTimeOffRow,
 } from '../utils/coachTimeOff'
+import { filterStandardCoachList } from '../utils/coachSelection'
 
 type CoachRow = { id: string; name: string }
-
-const HIDDEN_COACH_NAMES = new Set(['侑曄', '火隆'])
 
 function monthRange(ym: string): { start: string; end: string; year: number; monthIndex: number } {
   const [year, monthNum] = ym.split('-').map(Number)
@@ -317,7 +316,7 @@ export function CoachTimeOffPage() {
       if (coachesResult.error) throw coachesResult.error
       if (timeOffResult.error) throw timeOffResult.error
 
-      setCoaches((coachesResult.data || []).filter(coach => !HIDDEN_COACH_NAMES.has(coach.name.trim())))
+      setCoaches(filterStandardCoachList(coachesResult.data || []))
       setTimeOffByCoach(groupTimeOffByCoach((timeOffResult.data || []) as CoachTimeOffRow[]))
     } catch (err) {
       console.error('載入月排班表失敗:', err)
