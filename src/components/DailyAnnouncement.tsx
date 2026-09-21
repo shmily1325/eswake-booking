@@ -242,7 +242,7 @@ export function DailyAnnouncement() {
         : `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')}`
     }
     return r.scope === 'coaches'
-      ? `${period} 限制教練：${r.coach_names.join('、') || '未指定'}`
+      ? `${period} 限制教練預約：${r.coach_names.join('、') || '未指定'}`
       : `${period} 不約船`
   }
 
@@ -317,6 +317,15 @@ export function DailyAnnouncement() {
               paddingLeft: '1.5em',
               marginBottom: '4px'
             }
+            const restrictionNoteStyle = {
+              display: 'block',
+              marginTop: '2px',
+              fontSize: '12px',
+              fontWeight: '400' as const,
+              lineHeight: '1.5',
+              color: designSystem.colors.text.disabled,
+              overflowWrap: 'anywhere' as const,
+            }
 
             /** 前有「 - 」：一筆公告一條；換行／空行皆為同條接續，與正文左緣對齊 */
             const renderBulletAnnouncement = (a: Announcement) => {
@@ -350,7 +359,7 @@ export function DailyAnnouncement() {
                   >
                     {content}
                     {r ? (
-                      <span style={{ marginLeft: 8, fontSize: '12px', color: designSystem.colors.text.disabled }}>
+                      <span style={restrictionNoteStyle}>
                         {formatRestrictionNote(today, r)}
                       </span>
                     ) : null}
@@ -386,7 +395,7 @@ export function DailyAnnouncement() {
                       <div key={a.id} style={itemStyle}>
                         [{label}] {a.content}
                         {r ? (
-                          <span style={{ marginLeft: 8, fontSize: '12px', color: designSystem.colors.text.disabled }}>
+                          <span style={restrictionNoteStyle}>
                             {formatRestrictionNote(today, r)}
                           </span>
                         ) : null}

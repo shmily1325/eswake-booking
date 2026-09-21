@@ -1040,7 +1040,7 @@ export function AnnouncementManagement() {
       const names = coachOptions
         .filter((coach) => selected.has(coach.id))
         .map((coach) => coach.name)
-      return `${period} 限制教練：${names.join('、') || '未指定'}`
+      return `${period} 限制教練預約：${names.join('、') || '未指定'}`
     }
     return `${period} 不約船`
   }
