@@ -33,6 +33,7 @@ export const BACKUP_TABLES = [
   'shop_order_no_seq',
   'daily_announcements',
   'reservation_restrictions',
+  'reservation_restriction_coaches',
   'audit_log',
   'system_settings',
   'line_bindings',
@@ -48,6 +49,7 @@ export const BACKUP_FORMAT_VERSION = 4
 
 export const TABLE_ORDER_COLUMN: Partial<Record<BackupTable, string>> = {
   shop_order_no_seq: 'seq_date',
+  reservation_restriction_coaches: 'restriction_id',
 }
 
 /** Columns returned as objects/arrays by Supabase that must be restored as JSONB. */

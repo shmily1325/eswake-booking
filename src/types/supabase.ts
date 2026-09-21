@@ -1553,6 +1553,7 @@ export type Database = {
           end_time: string | null
           is_active: boolean
           created_at: string
+          scope: string
         }
         Insert: {
           id?: number
@@ -1563,6 +1564,7 @@ export type Database = {
           end_time?: string | null
           is_active?: boolean
           created_at?: string
+          scope?: string
         }
         Update: {
           id?: number
@@ -1573,6 +1575,7 @@ export type Database = {
           end_time?: string | null
           is_active?: boolean
           created_at?: string
+          scope?: string
         }
         Relationships: [
           {
@@ -1580,6 +1583,39 @@ export type Database = {
             columns: ['announcement_id']
             isOneToOne: true
             referencedRelation: 'daily_announcements'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      reservation_restriction_coaches: {
+        Row: {
+          restriction_id: number
+          coach_id: string
+          created_at: string
+        }
+        Insert: {
+          restriction_id: number
+          coach_id: string
+          created_at?: string
+        }
+        Update: {
+          restriction_id?: number
+          coach_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'reservation_restriction_coaches_restriction_id_fkey'
+            columns: ['restriction_id']
+            isOneToOne: false
+            referencedRelation: 'reservation_restrictions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'reservation_restriction_coaches_coach_id_fkey'
+            columns: ['coach_id']
+            isOneToOne: false
+            referencedRelation: 'coaches'
             referencedColumns: ['id']
           },
         ]
@@ -2014,6 +2050,38 @@ export type Database = {
           p_b_new_boat_id: number
           p_b_new_start_at: string
           p_b_new_cleanup_minutes: number
+        }
+        Returns: undefined
+      }
+      save_reservation_restriction: {
+        Args: {
+          p_announcement_id: number
+          p_start_date: string
+          p_start_time: string | null
+          p_end_date: string
+          p_end_time: string | null
+          p_scope: string
+          p_coach_ids?: string[]
+        }
+        Returns: number
+      }
+      save_booking_people: {
+        Args: {
+          p_booking_id: number
+          p_coach_ids?: string[]
+          p_driver_ids?: string[]
+        }
+        Returns: undefined
+      }
+      save_booking_schedule_and_people: {
+        Args: {
+          p_booking_id: number
+          p_boat_id: number
+          p_start_at: string
+          p_duration_min: number
+          p_cleanup_minutes: number
+          p_coach_ids?: string[]
+          p_driver_ids?: string[]
         }
         Returns: undefined
       }

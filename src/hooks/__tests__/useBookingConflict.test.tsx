@@ -16,9 +16,17 @@ vi.mock('../../utils/facility', () => ({
   isFacility: vi.fn()
 }))
 
+vi.mock('../../utils/restriction', () => ({
+  checkGlobalRestriction: vi.fn(),
+  formatRestrictionTimeLabel: vi.fn((start: string | null, end: string | null) =>
+    start && end ? `${start.slice(0, 5)}–${end.slice(0, 5)}` : '全天',
+  ),
+}))
+
 import { checkBoatConflict, checkCoachesConflictBatch } from '../../utils/bookingConflict'
 import { checkBoatUnavailable } from '../../utils/availability'
 import { isFacility } from '../../utils/facility'
+import { checkGlobalRestriction } from '../../utils/restriction'
 
 describe('useBookingConflict', () => {
   const defaultProps = {
@@ -51,6 +59,9 @@ describe('useBookingConflict', () => {
     vi.mocked(checkCoachesConflictBatch).mockResolvedValue({
       hasConflict: false,
       conflictCoaches: []
+    })
+    vi.mocked(checkGlobalRestriction).mockResolvedValue({
+      isRestricted: false,
     })
   })
 
@@ -172,6 +183,36 @@ describe('useBookingConflict', () => {
       // 不應該繼續檢查船隻衝突和教練衝突
       expect(checkBoatConflict).not.toHaveBeenCalled()
       expect(checkCoachesConflictBatch).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('指定教練限制', () => {
+    it('在其他衝突檢查前阻擋並顯示人員、時段與原因', async () => {
+      vi.mocked(checkGlobalRestriction).mockResolvedValue({
+        isRestricted: true,
+        reason: '開會',
+        startDate: defaultProps.date,
+        startTime: '11:30:00',
+        endDate: defaultProps.date,
+        endTime: '12:30:00',
+        restrictedPersonIds: ['coach1'],
+      })
+      const { result } = renderHook(() => useBookingConflict())
+
+      let conflictResult: any
+      await act(async () => {
+        conflictResult = await result.current.checkConflict(defaultProps)
+      })
+
+      expect(checkGlobalRestriction).toHaveBeenCalledWith(
+        defaultProps.date,
+        defaultProps.startTime,
+        undefined,
+        defaultProps.durationMin,
+        defaultProps.coachIds,
+      )
+      expect(conflictResult.reason).toBe('Papa教練 11:30–12:30 開會，無法安排')
+      expect(checkBoatUnavailable).not.toHaveBeenCalled()
     })
   })
 

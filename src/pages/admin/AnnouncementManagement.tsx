@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -34,6 +34,120 @@ interface Announcement {
   created_at: string | null
 }
 
+type RestrictionScope = 'all' | 'coaches'
+
+interface CoachOption {
+  id: string
+  name: string
+}
+
+function RestrictionScopePicker({
+  scope,
+  coachIds,
+  coaches,
+  isMobile,
+  onScopeChange,
+  onCoachIdsChange,
+}: {
+  scope: RestrictionScope
+  coachIds: string[]
+  coaches: CoachOption[]
+  isMobile: boolean
+  onScopeChange: (scope: RestrictionScope) => void
+  onCoachIdsChange: (ids: string[]) => void
+}) {
+  const [search, setSearch] = useState('')
+  const selected = new Set(coachIds)
+  const visibleCoaches = coaches.filter((coach) =>
+    coach.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
+  )
+
+  return (
+    <div style={{ display: 'grid', gap: '8px' }}>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {([
+          ['all', '全部預約'],
+          ['coaches', '指定教練'],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onScopeChange(value)}
+            style={{
+              ...getButtonStyle(scope === value ? 'primary' : 'outline', 'small', isMobile),
+              minHeight: isMobile ? 42 : undefined,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {scope === 'coaches' && (
+        <div style={{
+          padding: '10px',
+          border: `1px solid ${designSystem.colors.border.light}`,
+          borderRadius: designSystem.borderRadius.md,
+          display: 'grid',
+          gap: '8px',
+        }}>
+          {coaches.length > 8 && (
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="搜尋教練"
+              style={getInputStyle(isMobile)}
+            />
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {visibleCoaches.map((coach) => {
+              const active = selected.has(coach.id)
+              return (
+                <button
+                  key={coach.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    const next = new Set(coachIds)
+                    if (active) next.delete(coach.id)
+                    else next.add(coach.id)
+                    onCoachIdsChange([...next])
+                  }}
+                  style={{
+                    ...getButtonStyle(active ? 'primary' : 'outline', 'small', isMobile),
+                    minHeight: isMobile ? 42 : undefined,
+                  }}
+                >
+                  {coach.name}{active ? ' ✓' : ''}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px',
+            color: designSystem.colors.text.secondary,
+            fontSize: getFontSize('bodySmall', isMobile),
+          }}>
+            <span>已選 {coachIds.length} 位</span>
+            {coachIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onCoachIdsChange([])}
+                style={getButtonStyle('ghost', 'small', isMobile)}
+              >
+                清除全部
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function AnnouncementManagement() {
   const user = useAuthUser()
   const navigate = useNavigate()
@@ -50,6 +164,7 @@ export function AnnouncementManagement() {
     }
   }, [user, navigate, toast])
   const [editingId, setEditingId] = useState<number | null>(null)
+  const editRestrictionRequestRef = useRef(0)
   const [newContent, setNewContent] = useState('')
   const [newStartDate, setNewStartDate] = useState(getLocalDateString())
   const [newEndDate, setNewEndDate] = useState(getLocalDateString())
@@ -63,6 +178,8 @@ export function AnnouncementManagement() {
   const [newRestrictStartTime, setNewRestrictStartTime] = useState('13:00')
   const [newRestrictEndDate, setNewRestrictEndDate] = useState(newEndDate)
   const [newRestrictEndTime, setNewRestrictEndTime] = useState('14:00')
+  const [newRestrictScope, setNewRestrictScope] = useState<RestrictionScope>('all')
+  const [newRestrictedCoachIds, setNewRestrictedCoachIds] = useState<string[]>([])
   const [editContent, setEditContent] = useState('')
   const [editStartDate, setEditStartDate] = useState('')
   const [editEndDate, setEditEndDate] = useState('')
@@ -74,6 +191,9 @@ export function AnnouncementManagement() {
   const [editRestrictStartTime, setEditRestrictStartTime] = useState('13:00')
   const [editRestrictEndDate, setEditRestrictEndDate] = useState('')
   const [editRestrictEndTime, setEditRestrictEndTime] = useState('14:00')
+  const [editRestrictScope, setEditRestrictScope] = useState<RestrictionScope>('all')
+  const [editRestrictedCoachIds, setEditRestrictedCoachIds] = useState<string[]>([])
+  const [coachOptions, setCoachOptions] = useState<CoachOption[]>([])
   
   // 搜尋和過濾
   const [searchText, setSearchText] = useState('')
@@ -87,12 +207,30 @@ export function AnnouncementManagement() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   // 限制資料快取（announcement_id -> restriction row）
   const [restrictionsMap, setRestrictionsMap] = useState<Record<number, {
+    id: number
     start_date: string
     start_time: string | null
     end_date: string
     end_time: string | null
     is_active: boolean
+    scope: RestrictionScope
+    coach_ids: string[]
   }>>({})
+
+  useEffect(() => {
+    void supabase
+      .from('coaches')
+      .select('id, name')
+      .eq('status', 'active')
+      .order('name')
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('載入教練失敗:', error)
+          return
+        }
+        setCoachOptions((data ?? []) as CoachOption[])
+      })
+  }, [])
 
   useEffect(() => {
     // 換月/換排序時先清空，避免新資料載入前畫面殘留前條件的清單
@@ -165,11 +303,19 @@ export function AnnouncementManagement() {
       if (ids.length > 0) {
         const { data: rData } = await supabase
           .from('reservation_restrictions')
-          .select('announcement_id, start_date, start_time, end_date, end_time, is_active')
+          .select('id, announcement_id, start_date, start_time, end_date, end_time, is_active, scope, reservation_restriction_coaches(coach_id)')
           .in('announcement_id', ids)
           .eq('is_active', true)
         const map: Record<number, any> = {}
-        ;(rData || []).forEach((r: any) => { map[r.announcement_id] = r })
+        ;(rData || []).forEach((r: any) => {
+          map[r.announcement_id] = {
+            ...r,
+            scope: r.scope === 'coaches' ? 'coaches' : 'all',
+            coach_ids: (r.reservation_restriction_coaches ?? [])
+              .map((item: any) => item.coach_id)
+              .filter(Boolean),
+          }
+        })
         setRestrictionsMap(map)
       } else {
         setRestrictionsMap({})
@@ -179,6 +325,92 @@ export function AnnouncementManagement() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const saveRestriction = async (
+    announcementId: number,
+    input: {
+      allDay: boolean
+      startDate: string
+      startTime: string
+      endDate: string
+      endTime: string
+      scope: RestrictionScope
+      coachIds: string[]
+    },
+  ) => {
+    const { error } = await supabase.rpc('save_reservation_restriction', {
+      p_announcement_id: announcementId,
+      p_start_date: input.startDate,
+      p_start_time: input.allDay ? null : input.startTime,
+      p_end_date: input.endDate,
+      p_end_time: input.allDay ? null : input.endTime,
+      p_scope: input.scope,
+      p_coach_ids: input.scope === 'coaches' ? input.coachIds : [],
+    })
+    if (error) throw error
+  }
+
+  const confirmExistingAssignments = async (input: {
+    allDay: boolean
+    startDate: string
+    startTime: string
+    endDate: string
+    endTime: string
+    scope: RestrictionScope
+    coachIds: string[]
+  }): Promise<boolean> => {
+    if (input.scope !== 'coaches' || input.coachIds.length === 0) return true
+
+    const rangeStart = new Date(`${input.startDate}T${input.allDay ? '00:00' : input.startTime}:00`)
+    const rangeEnd = input.allDay
+      ? new Date(`${input.endDate}T00:00:00`)
+      : new Date(`${input.endDate}T${input.endTime}:00`)
+    if (input.allDay) rangeEnd.setDate(rangeEnd.getDate() + 1)
+
+    const [coachResult, driverResult] = await Promise.all([
+      supabase
+        .from('booking_coaches')
+        .select('coach_id, coaches:coach_id(name), bookings!inner(id, contact_name, start_at, duration_min, status)')
+        .in('coach_id', input.coachIds)
+        .neq('bookings.status', 'cancelled')
+        .gte('bookings.start_at', `${input.startDate}T00:00:00`)
+        .lte('bookings.start_at', `${input.endDate}T23:59:59`),
+      supabase
+        .from('booking_drivers')
+        .select('driver_id, coaches:driver_id(name), bookings!inner(id, contact_name, start_at, duration_min, status)')
+        .in('driver_id', input.coachIds)
+        .neq('bookings.status', 'cancelled')
+        .gte('bookings.start_at', `${input.startDate}T00:00:00`)
+        .lte('bookings.start_at', `${input.endDate}T23:59:59`),
+    ])
+    const queryError = coachResult.error || driverResult.error
+    if (queryError) {
+      console.error('檢查既有排班失敗:', queryError)
+      toast.error('無法確認既有排班，請稍後再試')
+      return false
+    }
+
+    const conflicts = new Map<string, string>()
+    for (const row of [...(coachResult.data ?? []), ...(driverResult.data ?? [])] as any[]) {
+      const booking = Array.isArray(row.bookings) ? row.bookings[0] : row.bookings
+      if (!booking) continue
+      const bookingStart = new Date(booking.start_at)
+      const bookingEnd = new Date(bookingStart.getTime() + booking.duration_min * 60_000)
+      if (bookingEnd <= rangeStart || bookingStart >= rangeEnd) continue
+      const personName = row.coaches?.name || '人員'
+      const key = `${booking.id}:${row.coach_id || row.driver_id}`
+      conflicts.set(
+        key,
+        `${personName}｜${booking.start_at.slice(5, 16).replace('T', ' ')}｜${booking.contact_name}`,
+      )
+    }
+    if (conflicts.size === 0) return true
+    return window.confirm(
+      `下列既有排班與限制時段重疊，儲存後會標示衝突，但不會自動移除：\n\n${[
+        ...conflicts.values(),
+      ].join('\n')}\n\n仍要儲存嗎？`,
+    )
   }
 
   const handleAdd = async () => {
@@ -194,6 +426,37 @@ export function AnnouncementManagement() {
 
     if (newEndDate < newStartDate) {
       toast.warning('結束日期不能早於開始日期')
+      return
+    }
+    if (
+      newRestrictEnabled &&
+      newRestrictScope === 'coaches' &&
+      newRestrictedCoachIds.length === 0
+    ) {
+      toast.warning('請至少選擇一位限制教練')
+      return
+    }
+    if (
+      newRestrictEnabled &&
+      !newRestrictAllDay &&
+      newRestrictStartDate === newRestrictEndDate &&
+      newRestrictEndTime <= newRestrictStartTime
+    ) {
+      toast.warning('限制結束時間必須晚於開始時間')
+      return
+    }
+    if (
+      newRestrictEnabled &&
+      !(await confirmExistingAssignments({
+        allDay: newRestrictAllDay,
+        startDate: newRestrictStartDate,
+        startTime: newRestrictStartTime,
+        endDate: newRestrictEndDate,
+        endTime: newRestrictEndTime,
+        scope: newRestrictScope,
+        coachIds: newRestrictedCoachIds,
+      }))
+    ) {
       return
     }
 
@@ -215,17 +478,20 @@ export function AnnouncementManagement() {
         // 若啟用預約限制，同步建立 restriction（與公告關聯）
         const inserted = Array.isArray(data) ? (data[0] as any) : null
         if (inserted && newRestrictEnabled) {
-          const { error: rerr } = await supabase
-            .from('reservation_restrictions')
-            .upsert({
-              announcement_id: inserted.id,
-              start_date: newRestrictStartDate,
-              start_time: newRestrictAllDay ? null : newRestrictStartTime,
-              end_date: newRestrictEndDate,
-              end_time: newRestrictAllDay ? null : newRestrictEndTime,
-              is_active: true
-            }, { onConflict: 'announcement_id' })
-          if (rerr) throw rerr
+          try {
+            await saveRestriction(inserted.id, {
+              allDay: newRestrictAllDay,
+              startDate: newRestrictStartDate,
+              startTime: newRestrictStartTime,
+              endDate: newRestrictEndDate,
+              endTime: newRestrictEndTime,
+              scope: newRestrictScope,
+              coachIds: newRestrictedCoachIds,
+            })
+          } catch (restrictionError) {
+            await supabase.from('daily_announcements').delete().eq('id', inserted.id)
+            throw restrictionError
+          }
         }
       },
       {
@@ -242,6 +508,8 @@ export function AnnouncementManagement() {
           // reset 限制欄位
           setNewRestrictEnabled(false)
           setNewRestrictAllDay(true)
+          setNewRestrictScope('all')
+          setNewRestrictedCoachIds([])
           setNewRestrictStartDate(today)
           setNewRestrictEndDate(today)
           loadAnnouncements()
@@ -253,6 +521,37 @@ export function AnnouncementManagement() {
   const handleEdit = async (id: number) => {
     if (editEndDate < editStartDate) {
       toast.warning('結束日期不能早於開始日期')
+      return
+    }
+    if (
+      editRestrictEnabled &&
+      editRestrictScope === 'coaches' &&
+      editRestrictedCoachIds.length === 0
+    ) {
+      toast.warning('請至少選擇一位限制教練')
+      return
+    }
+    if (
+      editRestrictEnabled &&
+      !editRestrictAllDay &&
+      (editRestrictStartDate || editStartDate) === (editRestrictEndDate || editEndDate) &&
+      editRestrictEndTime <= editRestrictStartTime
+    ) {
+      toast.warning('限制結束時間必須晚於開始時間')
+      return
+    }
+    if (
+      editRestrictEnabled &&
+      !(await confirmExistingAssignments({
+        allDay: editRestrictAllDay,
+        startDate: editRestrictStartDate || editStartDate,
+        startTime: editRestrictStartTime,
+        endDate: editRestrictEndDate || editEndDate,
+        endTime: editRestrictEndTime,
+        scope: editRestrictScope,
+        coachIds: editRestrictedCoachIds,
+      }))
+    ) {
       return
     }
 
@@ -272,17 +571,15 @@ export function AnnouncementManagement() {
 
         // 同步更新或刪除限制
         if (editRestrictEnabled) {
-          const { error: rerr } = await supabase
-            .from('reservation_restrictions')
-            .upsert({
-              announcement_id: id,
-              start_date: editRestrictStartDate || editStartDate,
-              start_time: editRestrictAllDay ? null : editRestrictStartTime,
-              end_date: editRestrictEndDate || editEndDate,
-              end_time: editRestrictAllDay ? null : editRestrictEndTime,
-              is_active: true
-            }, { onConflict: 'announcement_id' })
-          if (rerr) throw rerr
+          await saveRestriction(id, {
+            allDay: editRestrictAllDay,
+            startDate: editRestrictStartDate || editStartDate,
+            startTime: editRestrictStartTime,
+            endDate: editRestrictEndDate || editEndDate,
+            endTime: editRestrictEndTime,
+            scope: editRestrictScope,
+            coachIds: editRestrictedCoachIds,
+          })
         } else {
           // 若關閉限制，直接刪除綁定
           await supabase
@@ -325,6 +622,7 @@ export function AnnouncementManagement() {
   }
 
   const startEdit = (announcement: Announcement) => {
+    const requestId = ++editRestrictionRequestRef.current
     setEditingId(announcement.id)
     setEditContent(announcement.content)
     const { eventStartDate, eventEndDate, showOneDayEarly } = parseForEdit(announcement)
@@ -335,10 +633,11 @@ export function AnnouncementManagement() {
     ;(async () => {
       const { data } = await supabase
         .from('reservation_restrictions')
-        .select('*')
+        .select('*, reservation_restriction_coaches(coach_id)')
         .eq('announcement_id', announcement.id)
         .limit(1)
         .maybeSingle()
+      if (requestId !== editRestrictionRequestRef.current) return
       if (data) {
         setEditRestrictEnabled(true)
         setEditRestrictAllDay(!data.start_time && !data.end_time)
@@ -346,6 +645,12 @@ export function AnnouncementManagement() {
         setEditRestrictStartTime(data.start_time || '00:00')
         setEditRestrictEndDate(data.end_date)
         setEditRestrictEndTime(data.end_time || '23:59')
+        setEditRestrictScope(data.scope === 'coaches' ? 'coaches' : 'all')
+        setEditRestrictedCoachIds(
+          ((data as any).reservation_restriction_coaches ?? [])
+            .map((item: any) => item.coach_id)
+            .filter(Boolean),
+        )
       } else {
         setEditRestrictEnabled(false)
         setEditRestrictAllDay(true)
@@ -353,11 +658,16 @@ export function AnnouncementManagement() {
         setEditRestrictStartTime('13:00')
         setEditRestrictEndDate(eventEndDate)
         setEditRestrictEndTime('14:00')
+        setEditRestrictScope('all')
+        setEditRestrictedCoachIds([])
       }
     })()
   }
 
-  const cancelEdit = () => setEditingId(null)
+  const cancelEdit = () => {
+    editRestrictionRequestRef.current += 1
+    setEditingId(null)
+  }
 
   // 按事項開始日分組
   const groupAnnouncementsByDate = (announcements: Announcement[]) => {
@@ -394,7 +704,14 @@ export function AnnouncementManagement() {
   }
 
   // 格式化限制小字
-  const formatRestrictionNote = (todayStr: string, r: { start_date: string; start_time: string | null; end_date: string; end_time: string | null }): string => {
+  const formatRestrictionNote = (todayStr: string, r: {
+    start_date: string
+    start_time: string | null
+    end_date: string
+    end_time: string | null
+    scope?: RestrictionScope
+    coach_ids?: string[]
+  }): string => {
     const sameDay = r.start_date === r.end_date
     const fmtDate = (d: string) => {
       const [, m, dd] = d.split('-')
@@ -405,18 +722,28 @@ export function AnnouncementManagement() {
       const [h, m] = t.split(':')
       return `${parseInt(h)}:${m}`
     }
+    let period: string
     if (!sameDay) {
       const left = `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}`
       const right = `${fmtDate(r.end_date)} ${fmtTime(r.end_time, '23:59')}`
-      return `${left} – ${right} 不約船`
+      period = `${left} – ${right}`
+    } else if (todayStr === r.start_date) {
+      period = !r.start_time && !r.end_time
+        ? '全天'
+        : `${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')}`
+    } else {
+      period = !r.start_time && !r.end_time
+        ? `${fmtDate(r.start_date)} 全天`
+        : `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')}`
     }
-    // 同日
-    if (todayStr === r.start_date) {
-      if (!r.start_time && !r.end_time) return '全天不約船'
-      return `${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')} 不約船`
+    if (r.scope === 'coaches') {
+      const selected = new Set(r.coach_ids ?? [])
+      const names = coachOptions
+        .filter((coach) => selected.has(coach.id))
+        .map((coach) => coach.name)
+      return `${period} 限制教練：${names.join('、') || '未指定'}`
     }
-    if (!r.start_time && !r.end_time) return `${fmtDate(r.start_date)} 全天不約船`
-    return `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')} 不約船`
+    return `${period} 不約船`
   }
 
   return (
@@ -636,6 +963,19 @@ export function AnnouncementManagement() {
                 <span>啟用預約限制</span>
               </label>
             </div>
+
+            {newRestrictEnabled && (
+              <div style={{ marginTop: '8px' }}>
+                <RestrictionScopePicker
+                  scope={newRestrictScope}
+                  coachIds={newRestrictedCoachIds}
+                  coaches={coachOptions}
+                  isMobile={isMobile}
+                  onScopeChange={setNewRestrictScope}
+                  onCoachIdsChange={setNewRestrictedCoachIds}
+                />
+              </div>
+            )}
 
             {newRestrictEnabled && (
               <div style={{
@@ -1034,6 +1374,14 @@ export function AnnouncementManagement() {
                           </label>
                           {editRestrictEnabled && (
                             <div style={{ marginTop: '8px', display: 'grid', gap: '10px' }}>
+                              <RestrictionScopePicker
+                                scope={editRestrictScope}
+                                coachIds={editRestrictedCoachIds}
+                                coaches={coachOptions}
+                                isMobile={isMobile}
+                                onScopeChange={setEditRestrictScope}
+                                onCoachIdsChange={setEditRestrictedCoachIds}
+                              />
                               <div style={{
                                 display: 'grid',
                                 gridTemplateColumns: isMobile

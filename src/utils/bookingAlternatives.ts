@@ -5,6 +5,7 @@ import {
   minutesToTime,
   timeToMinutes,
 } from './bookingConflict'
+import { restrictionAppliesToPeople } from './restriction'
 
 /** 可用時段超過此數，收合標題顯示「充足」 */
 export const ABUNDANT_AVAILABLE_SLOT_THRESHOLD = 20
@@ -35,6 +36,8 @@ interface AlternativeRestriction {
   start_time: string | null
   end_date: string
   end_time: string | null
+  scope?: 'all' | 'coaches' | null
+  coach_ids?: string[] | null
 }
 
 interface PersonBooking {
@@ -116,9 +119,9 @@ export async function fetchBookingAlternativeContext({
       .eq('is_active', true)
       .lte('start_date', date)
       .gte('end_date', date),
-    supabase
-      .from('reservation_restrictions')
-      .select('start_date, start_time, end_date, end_time')
+    (supabase as any)
+      .from('reservation_restrictions_with_announcement_view')
+      .select('start_date, start_time, end_date, end_time, scope, coach_ids')
       .eq('is_active', true)
       .lte('start_date', date)
       .gte('end_date', date),
@@ -184,9 +187,13 @@ function hasRestriction(
   startMinutes: number,
   endMinutes: number,
   restrictions: AlternativeRestriction[],
+  personIds: string[],
 ): boolean {
   return restrictions.some((restriction) => {
     if (restriction.start_date > date || restriction.end_date < date) return false
+    if (!restrictionAppliesToPeople(restriction.scope, restriction.coach_ids, personIds)) {
+      return false
+    }
     const range = getRecordRange(restriction, date)
     return overlapsRange(startMinutes, endMinutes, range.start, range.end)
   })
@@ -259,7 +266,13 @@ function isCandidateAvailable(
   if (startMinutes < 0 || endMinutes > MINUTES_PER_DAY) return false
 
   return !(
-    hasRestriction(input.date, startMinutes, endMinutes, context.restrictions) ||
+    hasRestriction(
+      input.date,
+      startMinutes,
+      endMinutes,
+      context.restrictions,
+      input.coachIds,
+    ) ||
     isBoatUnavailable(
       boatId,
       input.date,

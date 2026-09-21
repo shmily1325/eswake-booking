@@ -11,6 +11,7 @@ import {
 } from './bookingConflict'
 import { isFacility, isOverlapAllowed } from './facility'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
+import { restrictionAppliesToPeople } from './restriction'
 
 /** 互換＝兩筆整組對調（船＋時間都換，時長各自保留） */
 export type SwapMode = 'swap'
@@ -69,6 +70,8 @@ interface RestrictionRecord {
   start_time: string | null
   end_time: string | null
   content?: string | null
+  scope?: 'all' | 'coaches' | null
+  coach_ids?: string[] | null
 }
 
 /**
@@ -341,7 +344,8 @@ function checkRestrictionLocal(
   dateStr: string,
   startTime: string,
   durationMin: number,
-  records: RestrictionRecord[]
+  records: RestrictionRecord[],
+  personIds: string[],
 ): SwapValidationResult {
   const [sh, sm] = startTime.split(':').map(Number)
   const startMinutes = sh * 60 + sm
@@ -349,6 +353,7 @@ function checkRestrictionLocal(
 
   for (const record of records) {
     if (!(record.start_date <= dateStr && record.end_date >= dateStr)) continue
+    if (!restrictionAppliesToPeople(record.scope, record.coach_ids, personIds)) continue
 
     let rStart = 0
     let rEnd = 24 * 60
@@ -429,7 +434,8 @@ function validateOneSide(
     dateStr,
     startTime,
     hypo.duration_min,
-    ctx.restrictions
+    ctx.restrictions,
+    personIdsOf(hypo),
   )
   if (!restriction.ok) return restriction
 

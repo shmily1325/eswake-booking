@@ -8,7 +8,7 @@ import { normalizeFilledByForSave } from '../utils/filledByHelper'
 import { normalizeActualRiderForSave } from '../utils/riderDisplay'
 import { EARLY_BOOKING_HOUR_LIMIT } from '../constants/booking'
 import { isFacility } from '../utils/facility'
-import { checkGlobalRestriction } from '../utils/restriction'
+import { checkGlobalRestriction, formatRestrictionTimeLabel } from '../utils/restriction'
 import {
   prefetchConflictData,
   checkBoatUnavailableFromCache,
@@ -290,7 +290,13 @@ export function RepeatBookingDialog({
         const key = `${d}\u0000${t}\u0000${dur}`
         let cached = globalRestrictionCache.get(key)
         if (!cached) {
-          cached = await checkGlobalRestriction(d, t, undefined, dur)
+          cached = await checkGlobalRestriction(
+            d,
+            t,
+            undefined,
+            dur,
+            selectedCoaches,
+          )
           globalRestrictionCache.set(key, cached)
         }
         return cached
@@ -311,9 +317,17 @@ export function RepeatBookingDialog({
         // 0. 全站預約限制（與 useBookingConflict 相同）
         const restriction = await getCachedGlobalRestriction(dateStr, timeStr, durationMin)
         if (restriction.isRestricted) {
+          const affectedNames = (restriction.restrictedPersonIds ?? [])
+            .filter((id) => selectedCoaches.includes(id))
+            .map((id) => coachesMap.get(id)?.name)
+            .filter(Boolean)
+          const period = formatRestrictionTimeLabel(
+            restriction.startDate === dateStr ? restriction.startTime : null,
+            restriction.endDate === dateStr ? restriction.endTime : null,
+          )
           results.skipped.push({
             date: displayDate,
-            reason: restriction.reason?.trim() ? restriction.reason : '此時段暫停受理預約',
+            reason: `${affectedNames.length > 0 ? `${affectedNames.join('、')} ` : ''}${period} ${restriction.reason?.trim() || '暫停受理預約'}`,
           })
           continue
         }
@@ -451,7 +465,24 @@ export function RepeatBookingDialog({
           insertPromises.push(supabase.from('booking_members').insert(bookingMembersToInsert))
         }
 
-        await Promise.all(insertPromises)
+        const writeResults = await Promise.all(insertPromises)
+        const writeError = writeResults
+          .map((result: any) => result?.error)
+          .find(Boolean)
+        if (writeError) {
+          await supabase.from('bookings').delete().eq('id', newBooking.id)
+          conflictData.boatBookings = conflictData.boatBookings.filter(
+            (item) => item.id !== newBooking.id,
+          )
+          conflictData.coachBookings = conflictData.coachBookings.filter(
+            (item) => item.bookings.id !== newBooking.id,
+          )
+          results.skipped.push({
+            date: displayDate,
+            reason: writeError.message || '建立預約關聯失敗',
+          })
+          continue
+        }
 
         if (selectedSavedGuests.length > 0) {
           try {

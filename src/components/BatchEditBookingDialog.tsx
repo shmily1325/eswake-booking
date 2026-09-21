@@ -19,7 +19,7 @@ import {
   collectCoachTimeOffReminderLines,
   scheduleCoachTimeOffLinesToast,
 } from '../utils/coachTimeOffWarning'
-import { checkGlobalRestriction } from '../utils/restriction'
+import { checkGlobalRestriction, formatRestrictionTimeLabel } from '../utils/restriction'
 import { designSystem, getBookingChoiceStyle, getBookingFlagBoxStyle, getButtonStyle } from '../styles/designSystem'
 
 const { colors: ds } = designSystem
@@ -359,11 +359,22 @@ export function BatchEditBookingDialog({
       }
 
       const globalRestrictionCache = new Map<string, Awaited<ReturnType<typeof checkGlobalRestriction>>>()
-      const getCachedGlobalRestriction = async (d: string, t: string, dur: number) => {
-        const key = `${d}\u0000${t}\u0000${dur}`
+      const getCachedGlobalRestriction = async (
+        d: string,
+        t: string,
+        dur: number,
+        personIds: string[],
+      ) => {
+        const key = `${d}\u0000${t}\u0000${dur}\u0000${[...personIds].sort().join(',')}`
         let cached = globalRestrictionCache.get(key)
         if (!cached) {
-          cached = await checkGlobalRestriction(d, t, undefined, dur)
+          cached = await checkGlobalRestriction(
+            d,
+            t,
+            undefined,
+            dur,
+            personIds,
+          )
           globalRestrictionCache.set(key, cached)
         }
         return cached
@@ -382,11 +393,29 @@ export function BatchEditBookingDialog({
         bookingLabel += ')'
 
         // 0. 全站預約限制（與 useBookingConflict 相同，優先於船／教練衝突）
-        const restriction = await getCachedGlobalRestriction(dateStr, startTime, actualDuration)
+        const restrictionPersonIds = fieldsToEdit.has('duration')
+          ? actualCoachIds
+          : fieldsToEdit.has('coaches')
+            ? actualCoachIds.filter((id) => !originalCoachIds.includes(id))
+            : []
+        const restriction = await getCachedGlobalRestriction(
+          dateStr,
+          startTime,
+          actualDuration,
+          restrictionPersonIds,
+        )
         if (restriction.isRestricted) {
+          const affectedNames = (restriction.restrictedPersonIds ?? [])
+            .filter((id) => actualCoachIds.includes(id))
+            .map((id) => coachesMap.get(id)?.name)
+            .filter(Boolean)
+          const period = formatRestrictionTimeLabel(
+            restriction.startDate === dateStr ? restriction.startTime : null,
+            restriction.endDate === dateStr ? restriction.endTime : null,
+          )
           skippedItems.push({
             label: bookingLabel,
-            reason: restriction.reason?.trim() ? restriction.reason : '此時段暫停受理預約',
+            reason: `${affectedNames.length > 0 ? `${affectedNames.join('、')} ` : ''}${period} ${restriction.reason?.trim() || '暫停受理預約'}`,
           })
           continue
         }
@@ -469,16 +498,27 @@ export function BatchEditBookingDialog({
         // ✅ 通過所有檢查，執行更新
         try {
           const updateData: Record<string, any> = {}
-          
-          if (fieldsToEdit.has('boat') && selectedBoatId && targetBoat) {
-            updateData.boat_id = selectedBoatId
-            updateData.cleanup_minutes = isFacility(targetBoat.name) ? 0 : 15
+
+          if (keyFieldsChanged) {
+            const { error: scheduleSaveError } = await supabase.rpc(
+              'save_booking_schedule_and_people',
+              {
+                p_booking_id: id,
+                p_boat_id: actualBoatId,
+                p_start_at: `${dateStr}T${startTime}:00`,
+                p_duration_min: actualDuration,
+                p_cleanup_minutes: isFacility(actualBoatName) ? 0 : 15,
+                p_coach_ids: actualCoachIds,
+                p_driver_ids: [],
+              },
+            )
+            if (scheduleSaveError) {
+              throw new Error(`更新時段與排班失敗: ${scheduleSaveError.message}`)
+            }
           }
+
           if (fieldsToEdit.has('notes')) {
             updateData.notes = notes.trim() || null
-          }
-          if (fieldsToEdit.has('duration')) {
-            updateData.duration_min = durationMin!
           }
           
           if (Object.keys(updateData).length > 0) {
@@ -490,40 +530,12 @@ export function BatchEditBookingDialog({
             if (error) throw error
           }
           
-          // 更新教練 — 檢查 delete/insert 錯誤，並用 .select() 驗證寫入筆數
-          if (fieldsToEdit.has('coaches')) {
-            const { error: coachDelErr } = await supabase
-              .from('booking_coaches')
-              .delete()
-              .eq('booking_id', id)
-            if (coachDelErr) throw new Error(`清除教練分配失敗: ${coachDelErr.message}`)
-            
-            if (selectedCoaches.length > 0) {
-              const coachInserts = selectedCoaches.map(coachId => ({
-                booking_id: id,
-                coach_id: coachId,
-              }))
-              const { data: insertedCoaches, error: coachInsErr } = await supabase
-                .from('booking_coaches')
-                .insert(coachInserts)
-                .select('booking_id, coach_id')
-              if (coachInsErr) throw new Error(`插入教練分配失敗: ${coachInsErr.message}`)
-              if (!insertedCoaches || insertedCoaches.length !== coachInserts.length) {
-                throw new Error(
-                  `教練分配儲存驗證失敗：預期 ${coachInserts.length} 筆、實際 ${insertedCoaches?.length ?? 0} 筆`
-                )
-              }
-            }
-          }
-          
           // 🔴 修改關鍵欄位後清除排班和回報記錄（與單一編輯一致）— 檢查每個錯誤
           if (keyFieldsChanged) {
-            const [drvDel, repDel, partDel] = await Promise.all([
-              supabase.from('booking_drivers').delete().eq('booking_id', id),
+            const [repDel, partDel] = await Promise.all([
               supabase.from('coach_reports').delete().eq('booking_id', id),
               supabase.from('booking_participants').delete().eq('booking_id', id).eq('is_deleted', false)
             ])
-            if (drvDel.error) throw new Error(`清除駕駛分配失敗: ${drvDel.error.message}`)
             if (repDel.error) throw new Error(`清除回報記錄失敗: ${repDel.error.message}`)
             if (partDel.error) throw new Error(`清除參與者失敗: ${partDel.error.message}`)
           }

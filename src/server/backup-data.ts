@@ -190,7 +190,9 @@ function sqlLiteral(value: unknown, table: BackupTable, column: string): string 
 }
 
 function sequenceResetSql(): string {
-  const tables = BACKUP_TABLES.filter((table) => table !== 'shop_order_no_seq')
+  const tables = BACKUP_TABLES.filter(
+    (table) => table !== 'shop_order_no_seq' && table !== 'reservation_restriction_coaches',
+  )
     .map((table) => `'${table}'`)
     .join(', ')
 

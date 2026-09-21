@@ -40,6 +40,7 @@ describe('offline disaster-recovery artifact', () => {
 
   it('matches the current backup manifest contract', () => {
     expect(html).toContain(`const BACKUP_FORMAT_VERSION = ${BACKUP_FORMAT_VERSION}`)
+    expect(html).toContain("OPTIONAL_BACKUP_TABLES = new Set(['reservation_restriction_coaches'])")
     for (const table of BACKUP_TABLES) {
       expect(html).toContain(`${table}: {`)
     }

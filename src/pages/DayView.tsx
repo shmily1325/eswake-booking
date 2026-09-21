@@ -486,14 +486,26 @@ export function DayView() {
           const start = new Date(bk.start_at)
           const startMin = start.getHours() * 60 + start.getMinutes()
           const endMin = startMin + bk.duration_min
-          const hit = resBlocks.find(r => !(endMin <= r.startMin || startMin >= r.endMin))
+          const personIds = new Set([
+            ...(bk.coaches ?? []).map((coach) => coach.id),
+            ...(bk.drivers ?? []).map((driver) => driver.id),
+          ])
+          const hit = resBlocks.find((r) =>
+            !(endMin <= r.startMin || startMin >= r.endMin) &&
+            (r.scope === 'all' || r.coachIds.some((id) => personIds.has(id))),
+          )
           if (hit) {
             conflictSet.add(bk.id)
             const msg = hit.content?.trim()
+            const toTime = (minutes: number) =>
+              `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+            const restrictionLabel = `${hit.scope === 'coaches' && hit.coachNames.length > 0
+              ? `${hit.coachNames.join('、')} `
+              : ''}${toTime(hit.startMin)}–${toTime(hit.endMin)}`
             if (msg && !reasons.has(bk.id)) {
-              reasons.set(bk.id, msg)
+              reasons.set(bk.id, `${restrictionLabel} ${msg}`)
             } else if (!reasons.has(bk.id)) {
-              reasons.set(bk.id, '受公告限制')
+              reasons.set(bk.id, `${restrictionLabel} 受公告限制`)
             }
           }
         }

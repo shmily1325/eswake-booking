@@ -8,12 +8,40 @@ export interface ReservationRestriction {
 	end_date: string
 	end_time: string | null
 	is_active: boolean
+	scope: 'all' | 'coaches'
+	coach_ids?: string[]
 	created_at?: string
 }
 
 export interface RestrictionCheckResult {
 	isRestricted: boolean
 	reason?: string
+	startDate?: string
+	startTime?: string | null
+	endDate?: string
+	endTime?: string | null
+	restrictedPersonIds?: string[]
+}
+
+export function restrictionAppliesToPeople(
+	scope: unknown,
+	restrictedPersonIds: readonly string[] | null | undefined,
+	personIds: readonly string[],
+): boolean {
+	if (scope !== 'coaches') return true
+	if (personIds.length === 0) return false
+	const restricted = new Set(restrictedPersonIds ?? [])
+	return personIds.some((id) => restricted.has(id))
+}
+
+export function formatRestrictionTimeLabel(
+	startTime: string | null | undefined,
+	endTime: string | null | undefined,
+): string {
+	if (!startTime && !endTime) return '全天'
+	const short = (value: string | null | undefined, fallback: string) =>
+		value ? value.slice(0, 5) : fallback
+	return `${short(startTime, '00:00')}–${short(endTime, '23:59')}`
 }
 
 /** 取得某公告綁定的限制設定（若有） */
@@ -42,7 +70,8 @@ export async function upsertRestriction(payload: Omit<ReservationRestriction, 'i
 			start_time: payload.start_time,
 			end_date: payload.end_date,
 			end_time: payload.end_time,
-			is_active: payload.is_active
+			is_active: payload.is_active,
+			scope: payload.scope,
 		}, { onConflict: 'announcement_id' })
 	if (error) throw error
 }
@@ -64,7 +93,8 @@ export async function checkGlobalRestriction(
 	date: string,
 	startTime: string,
 	endTime?: string,
-	durationMin?: number
+	durationMin?: number,
+	personIds: string[] = [],
 ): Promise<RestrictionCheckResult> {
 	try {
 		const [h, m] = startTime.split(':').map(Number)
@@ -92,6 +122,12 @@ export async function checkGlobalRestriction(
 		if (!data || data.length === 0) return { isRestricted: false }
 
 		for (const record of data as any[]) {
+			const restrictedPersonIds = Array.isArray(record.coach_ids)
+				? record.coach_ids.map(String)
+				: []
+			if (!restrictionAppliesToPeople(record.scope, restrictedPersonIds, personIds)) {
+				continue
+			}
 			// 如果當天在中間日，視為全天
 			let rStart = 0
 			let rEnd = 24 * 60
@@ -104,7 +140,15 @@ export async function checkGlobalRestriction(
 				rEnd = eh2 * 60 + em2
 			}
 			if (!(endMinutes <= rStart || startMinutes >= rEnd)) {
-				return { isRestricted: true, reason: record.content as string | undefined }
+				return {
+					isRestricted: true,
+					reason: record.content as string | undefined,
+					startDate: record.start_date,
+					startTime: record.start_time,
+					endDate: record.end_date,
+					endTime: record.end_time,
+					restrictedPersonIds,
+				}
 			}
 		}
 		return { isRestricted: false }

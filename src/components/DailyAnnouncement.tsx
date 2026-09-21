@@ -33,6 +33,8 @@ export function DailyAnnouncement() {
     end_date: string
     end_time: string | null
     is_active: boolean
+    scope: 'all' | 'coaches'
+    coach_names: string[]
   }>>({})
   const [timeOffCoaches, setTimeOffCoaches] = useState<string[]>([])
   const [birthdays, setBirthdays] = useState<Birthday[]>([])
@@ -109,7 +111,7 @@ export function DailyAnnouncement() {
       // 讀取所有啟用中的預約限制（與公告關聯）
       supabase
         .from('reservation_restrictions')
-        .select('announcement_id, start_date, start_time, end_date, end_time, is_active')
+        .select('announcement_id, start_date, start_time, end_date, end_time, is_active, scope, reservation_restriction_coaches(coaches(name))')
         .eq('is_active', true),
       
       // 獲取今日休假教練（排除已隱藏的教練）
@@ -139,7 +141,13 @@ export function DailyAnnouncement() {
     if (restrictionResult.data) {
       const map: Record<number, any> = {}
       for (const r of restrictionResult.data as any[]) {
-        map[r.announcement_id] = r
+        map[r.announcement_id] = {
+          ...r,
+          scope: r.scope === 'coaches' ? 'coaches' : 'all',
+          coach_names: (r.reservation_restriction_coaches ?? [])
+            .map((item: any) => item.coaches?.name)
+            .filter(Boolean),
+        }
       }
       setRestrictionsByAnnouncementId(map)
     }
@@ -198,7 +206,14 @@ export function DailyAnnouncement() {
   if (!hasAnyData) return null
 
   // 小字：格式化預約限制提示
-  const formatRestrictionNote = (today: string, r: { start_date: string; start_time: string | null; end_date: string; end_time: string | null }): string => {
+  const formatRestrictionNote = (today: string, r: {
+    start_date: string
+    start_time: string | null
+    end_date: string
+    end_time: string | null
+    scope: 'all' | 'coaches'
+    coach_names: string[]
+  }): string => {
     const sameDay = r.start_date === r.end_date
     const fmtDate = (d: string) => {
       const [, m, dd] = d.split('-')
@@ -210,21 +225,25 @@ export function DailyAnnouncement() {
       return `${parseInt(h)}:${m}`
     }
 
+    let period: string
     if (!sameDay) {
       const left = `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}`
       const right = `${fmtDate(r.end_date)} ${fmtTime(r.end_time, '23:59')}`
-      return `${left} – ${right} 不約船`
-    }
-
-    if (today === r.start_date) {
+      period = `${left} – ${right}`
+    } else if (today === r.start_date) {
       // 當天：僅顯示時間或「全天」
-      if (!r.start_time && !r.end_time) return '全天不約船'
-      return `${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')} 不約船`
+      period = !r.start_time && !r.end_time
+        ? '全天'
+        : `${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')}`
+    } else {
+      // 提前顯示日或其他日：顯示絕對日期 + 時間/全天
+      period = !r.start_time && !r.end_time
+        ? `${fmtDate(r.start_date)} 全天`
+        : `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')}`
     }
-
-    // 提前顯示日或其他日：顯示絕對日期 + 時間/全天
-    if (!r.start_time && !r.end_time) return `${fmtDate(r.start_date)} 全天不約船`
-    return `${fmtDate(r.start_date)} ${fmtTime(r.start_time, '0:00')}–${fmtTime(r.end_time, '23:59')} 不約船`
+    return r.scope === 'coaches'
+      ? `${period} 限制教練：${r.coach_names.join('、') || '未指定'}`
+      : `${period} 不約船`
   }
 
   return (

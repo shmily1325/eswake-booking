@@ -575,7 +575,10 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
         }, SAVED_GUEST_SEARCH_DEBOUNCE_MS)
     }
 
-    const performConflictCheck = useCallback(async (excludeBookingId?: number) => {
+    const performConflictCheck = useCallback(async (
+        excludeBookingId?: number,
+        options?: { restrictionPersonIds?: string[] },
+    ) => {
         const boat = boats.find(b => b.id === selectedBoatId)
         const boatName = boat?.name || '未知船隻'
         const coachesMap = new Map(coaches.map(c => [c.id, { name: c.name }]))
@@ -587,6 +590,7 @@ export function useBookingForm({ initialBooking, defaultDate, defaultBoatId, use
             startTime,
             durationMin,
             coachIds: selectedCoaches,
+            restrictionPersonIds: options?.restrictionPersonIds,
             coachesMap,
             excludeBookingId
         })

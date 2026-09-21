@@ -68,11 +68,16 @@ describe('generateSqlBackup', () => {
 
   it('keeps required operational tables in restorable parent-first order', () => {
     expect(BACKUP_TABLES).toContain('reservation_restrictions')
+    expect(BACKUP_TABLES).toContain('reservation_restriction_coaches')
     expect(BACKUP_TABLES).toContain('size_charts')
     expect(BACKUP_TABLES).toContain('shop_discount_presets')
     expect(BACKUP_TABLES).toContain('credit_lots')
     expect(BACKUP_TABLES.indexOf('daily_announcements'))
       .toBeLessThan(BACKUP_TABLES.indexOf('reservation_restrictions'))
+    expect(BACKUP_TABLES.indexOf('reservation_restrictions'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('reservation_restriction_coaches'))
+    expect(BACKUP_TABLES.indexOf('coaches'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('reservation_restriction_coaches'))
     expect(BACKUP_TABLES.indexOf('size_charts'))
       .toBeLessThan(BACKUP_TABLES.indexOf('products'))
     expect(BACKUP_TABLES.indexOf('shop_discount_presets'))
@@ -93,6 +98,7 @@ describe('generateSqlBackup', () => {
     expect(sql.match(/^BEGIN;$/gm)).toHaveLength(1)
     expect(sql.match(/^COMMIT;$/gm)).toHaveLength(1)
     expect(sql).toContain('-- 表: reservation_restrictions (0 筆記錄)')
+    expect(sql).toContain('-- 表: reservation_restriction_coaches (0 筆記錄)')
   })
 
   it('writes size charts and discount presets before the rows that reference them', () => {

@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { buildAllDayBlockedDates } from './liffBookingDates'
+import {
+  buildAllDayBlockedDates,
+  type RestrictionDateRow,
+} from './liffBookingDates'
 import { triggerHaptic } from '../../../utils/haptic'
 import { LiffStyles } from '../components/LiffStyles'
 import { BookPageStyles } from './BookPageStyles'
@@ -159,7 +162,14 @@ export function BookWizardCore({
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<LiffBookingFormState>(INITIAL_STATE)
   const [coaches, setCoaches] = useState<CoachOption[]>([])
-  const [blockedDates, setBlockedDates] = useState<Set<string>>(new Set())
+  const [restrictionDates, setRestrictionDates] = useState<RestrictionDateRow[]>([])
+  const blockedDates = useMemo(
+    () => buildAllDayBlockedDates(
+      restrictionDates,
+      form.coachChoice === 'designated' && form.coachId ? [form.coachId] : [],
+    ),
+    [form.coachChoice, form.coachId, restrictionDates],
+  )
   const [desktopMessage, setDesktopMessage] = useState<string | null>(null)
   const [showCoachSection, setShowCoachSection] = useState(false)
   const [showAlternateDates, setShowAlternateDates] = useState(false)
@@ -169,6 +179,18 @@ export function BookWizardCore({
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [step])
+
+  useEffect(() => {
+    if (pickDate && blockedDates.has(pickDate)) setPickDate('')
+    setForm((previous) => {
+      const allowedDates = previous.preferredDates.filter(
+        (item) => !blockedDates.has(item.date),
+      )
+      return allowedDates.length === previous.preferredDates.length
+        ? previous
+        : { ...previous, preferredDates: allowedDates }
+    })
+  }, [blockedDates, pickDate])
 
   useEffect(() => {
     const name = member?.nickname?.trim() || member?.name?.trim() || lineDisplayName?.trim() || ''
@@ -206,11 +228,14 @@ export function BookWizardCore({
         const { supabase } = await import('../../../lib/supabase')
         const [coachRes, restrictRes] = await Promise.all([
           supabase.from('coaches').select('id, name, designated_lesson_price_30min').eq('status', 'active').order('name'),
-          supabase.from('reservation_restrictions').select('start_date, end_date, start_time, end_time, is_active').eq('is_active', true),
+          (supabase as any)
+            .from('reservation_restrictions_with_announcement_view')
+            .select('start_date, end_date, start_time, end_time, scope, coach_ids')
+            .eq('is_active', true),
         ])
         if (cancelled) return
         setCoaches(coachRes.data ?? [])
-        setBlockedDates(buildAllDayBlockedDates(restrictRes.data ?? []))
+        setRestrictionDates((restrictRes.data ?? []) as RestrictionDateRow[])
       } catch {
         // 估算可 fallback，不阻擋流程
       }
@@ -310,6 +335,8 @@ export function BookWizardCore({
         return true
       case 3: {
         if (!pickDate && form.preferredDates.length === 0) return false
+        if (pickDate && blockedDates.has(pickDate)) return false
+        if (form.preferredDates.some((item) => blockedDates.has(item.date))) return false
         if (form.coachChoice === 'designated' && !form.coachId) return false
         return true
       }

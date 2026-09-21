@@ -4,7 +4,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { checkGlobalRestriction } from '../restriction'
+import {
+  checkGlobalRestriction,
+  formatRestrictionTimeLabel,
+  restrictionAppliesToPeople,
+} from '../restriction'
 
 // Mock Supabase
 vi.mock('../../lib/supabase', () => ({
@@ -138,6 +142,48 @@ describe('restriction.ts - 全域預約限制檢查', () => {
     expect(result.isRestricted).toBe(true)
   })
 
+  it('指定教練限制只阻擋名單內的人員', async () => {
+    mockSupabaseChain.gte = vi.fn(() => Promise.resolve({
+      data: [{
+        announcement_id: 2,
+        start_date: '2026-04-15',
+        start_time: '11:30',
+        end_date: '2026-04-15',
+        end_time: '12:30',
+        is_active: true,
+        scope: 'coaches',
+        coach_ids: ['coach-a', 'coach-b'],
+        content: '開會',
+      }],
+      error: null,
+    }))
+    vi.mocked(supabase.from).mockReturnValue({
+      select: vi.fn(() => mockSupabaseChain),
+    } as any)
+
+    const blocked = await checkGlobalRestriction(
+      '2026-04-15',
+      '12:00',
+      '13:00',
+      undefined,
+      ['coach-a'],
+    )
+    const allowed = await checkGlobalRestriction(
+      '2026-04-15',
+      '12:00',
+      '13:00',
+      undefined,
+      ['coach-c'],
+    )
+
+    expect(blocked).toMatchObject({
+      isRestricted: true,
+      reason: '開會',
+      restrictedPersonIds: ['coach-a', 'coach-b'],
+    })
+    expect(allowed.isRestricted).toBe(false)
+  })
+
   it('⚠️ 資料庫錯誤時應該返回不受限並記錄錯誤', async () => {
     mockSupabaseChain.gte = vi.fn(() => Promise.resolve({
       data: null,
@@ -161,6 +207,24 @@ describe('restriction.ts - 全域預約限制檢查', () => {
     const result = await checkGlobalRestriction('2026-04-15', '10:00', '11:00')
     expect(result.isRestricted).toBe(false)
     expect(consoleErrorSpy).toHaveBeenCalledWith('Unexpected error in checkGlobalRestriction:', expect.any(Error))
+  })
+})
+
+describe('restriction helpers', () => {
+  it('keeps legacy and all-scope restrictions global', () => {
+    expect(restrictionAppliesToPeople(undefined, [], [])).toBe(true)
+    expect(restrictionAppliesToPeople('all', [], ['coach-a'])).toBe(true)
+  })
+
+  it('requires an intersection for coach-scoped restrictions', () => {
+    expect(restrictionAppliesToPeople('coaches', ['coach-a'], [])).toBe(false)
+    expect(restrictionAppliesToPeople('coaches', ['coach-a'], ['coach-b'])).toBe(false)
+    expect(restrictionAppliesToPeople('coaches', ['coach-a'], ['coach-a'])).toBe(true)
+  })
+
+  it('formats compact restriction time labels', () => {
+    expect(formatRestrictionTimeLabel('11:30:00', '12:30:00')).toBe('11:30–12:30')
+    expect(formatRestrictionTimeLabel(null, null)).toBe('全天')
   })
 })
 

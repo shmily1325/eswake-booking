@@ -5,12 +5,23 @@ export interface RestrictionDateRow {
   end_date: string
   start_time: string | null
   end_time: string | null
+  scope?: string | null
+  coach_ids?: string[] | null
 }
 
 /** 僅「全天不約船」公告（start_time／end_time 皆空）才擋日期；部分時段不擋 */
-export function buildAllDayBlockedDates(restrictions: RestrictionDateRow[]): Set<string> {
+export function buildAllDayBlockedDates(
+  restrictions: RestrictionDateRow[],
+  personIds: string[] = [],
+): Set<string> {
   const blocked = new Set<string>()
   for (const r of restrictions) {
+    if (
+      r.scope === 'coaches' &&
+      !(r.coach_ids ?? []).some((id) => personIds.includes(id))
+    ) {
+      continue
+    }
     if (r.start_time || r.end_time) continue
     let d = r.start_date
     while (d <= r.end_date) {

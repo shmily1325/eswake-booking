@@ -2,7 +2,10 @@ import { useState, useCallback } from 'react'
 import { checkBoatConflict, checkCoachesConflictBatch } from '../utils/bookingConflict'
 import { checkBoatUnavailable } from '../utils/availability'
 import { isFacility } from '../utils/facility'
-import { checkGlobalRestriction } from '../utils/restriction'
+import {
+    checkGlobalRestriction,
+    formatRestrictionTimeLabel,
+} from '../utils/restriction'
 
 interface UseBookingConflictProps {
     boatId: number
@@ -11,6 +14,7 @@ interface UseBookingConflictProps {
     startTime: string
     durationMin: number
     coachIds: string[]
+    restrictionPersonIds?: string[]
     coachesMap: Map<string, { name: string }>
     excludeBookingId?: number
 }
@@ -31,6 +35,7 @@ export function useBookingConflict() {
         startTime,
         durationMin,
         coachIds,
+        restrictionPersonIds,
         coachesMap,
         excludeBookingId
     }: UseBookingConflictProps): Promise<ConflictCheckResult> => {
@@ -43,12 +48,21 @@ export function useBookingConflict() {
                 date,
                 startTime,
                 undefined,
-                durationMin
+                durationMin,
+                restrictionPersonIds ?? coachIds,
             )
             if (restriction.isRestricted) {
-                const reason = restriction.reason
-                    ? `${restriction.reason}`
-                    : '此時段暫停受理預約'
+                const affectedNames = (restriction.restrictedPersonIds ?? [])
+                    .filter((id) => coachIds.includes(id))
+                    .map((id) => coachesMap.get(id)?.name)
+                    .filter((name): name is string => Boolean(name))
+                const period = formatRestrictionTimeLabel(
+                    restriction.startDate === date ? restriction.startTime : null,
+                    restriction.endDate === date ? restriction.endTime : null,
+                )
+                const reason = `${affectedNames.length > 0
+                    ? `${affectedNames.join('、')} `
+                    : ''}${period} ${restriction.reason || '暫停受理預約'}，無法安排`
                 setError(reason)
                 return { hasConflict: true, reason }
             }

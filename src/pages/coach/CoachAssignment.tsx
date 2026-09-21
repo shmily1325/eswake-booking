@@ -38,6 +38,10 @@ import {
   type DbAssignmentMaps,
 } from '../../utils/coachAssignmentSaveUtils'
 import { coachHasTimeOffOverlap, getTimeOffDayDisplayLabel } from '../../utils/coachTimeOff'
+import {
+  formatRestrictionTimeLabel,
+  restrictionAppliesToPeople,
+} from '../../utils/restriction'
 
 interface Booking {
   id: number
@@ -63,6 +67,16 @@ interface MonthlyWorkloadStat {
   coachName: string
   teachingMinutes: number
   drivingMinutes: number
+}
+
+interface AssignmentRestriction {
+  start_date: string
+  start_time: string | null
+  end_date: string
+  end_time: string | null
+  content?: string | null
+  scope?: 'all' | 'coaches' | null
+  coach_ids?: string[] | null
 }
 
 function AssignmentReferencePanel({
@@ -330,6 +344,7 @@ export function CoachAssignment() {
   const [monthlyWorkload, setMonthlyWorkload] = useState<MonthlyWorkloadStat[]>([])
   const [monthlyWorkloadLoading, setMonthlyWorkloadLoading] = useState(true)
   const [monthlyWorkloadError, setMonthlyWorkloadError] = useState('')
+  const [assignmentRestrictions, setAssignmentRestrictions] = useState<AssignmentRestriction[]>([])
   
   // 儲存每個預約的配置（key: booking_id）
   const [assignments, setAssignments] = useState<Record<number, {
@@ -583,6 +598,57 @@ export function CoachAssignment() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate])
 
+  useEffect(() => {
+    let cancelled = false
+    void (supabase as any)
+      .from('reservation_restrictions_with_announcement_view')
+      .select('start_date, start_time, end_date, end_time, content, scope, coach_ids')
+      .eq('is_active', true)
+      .lte('start_date', selectedDate)
+      .gte('end_date', selectedDate)
+      .then(({ data, error: restrictionError }: any) => {
+        if (cancelled) return
+        if (restrictionError) {
+          console.error('載入排班限制失敗:', restrictionError)
+          setAssignmentRestrictions([])
+          return
+        }
+        setAssignmentRestrictions((data ?? []) as AssignmentRestriction[])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedDate])
+
+  const getPersonRestriction = (personId: string, booking: Booking): AssignmentRestriction | null => {
+    const startTime = booking.start_at.substring(11, 16)
+    const [hour, minute] = startTime.split(':').map(Number)
+    const startMin = hour * 60 + minute
+    const endMin = startMin + booking.duration_min
+    return assignmentRestrictions.find((restriction) => {
+      if (!restrictionAppliesToPeople(
+        restriction.scope,
+        restriction.coach_ids,
+        [personId],
+      )) {
+        return false
+      }
+      const restrictionStart = restriction.start_date === selectedDate && restriction.start_time
+        ? Number(restriction.start_time.slice(0, 2)) * 60 + Number(restriction.start_time.slice(3, 5))
+        : 0
+      const restrictionEnd = restriction.end_date === selectedDate && restriction.end_time
+        ? Number(restriction.end_time.slice(0, 2)) * 60 + Number(restriction.end_time.slice(3, 5))
+        : 24 * 60
+      return !(endMin <= restrictionStart || startMin >= restrictionEnd)
+    }) ?? null
+  }
+
+  const getRestrictionMessage = (restriction: AssignmentRestriction): string =>
+    `${formatRestrictionTimeLabel(
+      restriction.start_date === selectedDate ? restriction.start_time : null,
+      restriction.end_date === selectedDate ? restriction.end_time : null,
+    )} ${restriction.content?.trim() || '無法排班'}`
+
   const updateAssignment = (bookingId: number, field: 'coachIds' | 'driverIds' | 'notes' | 'requiresDriver', value: any) => {
     // 清除錯誤訊息（當用戶修改配置時）
     if (error) {
@@ -636,6 +702,13 @@ export function CoachAssignment() {
     const conflicts: string[] = []
     const currentBooking = bookings.find(b => b.id === bookingId)
     if (!currentBooking) return conflicts
+
+    for (const personId of new Set([...newCoachIds, ...newDriverIds])) {
+      const restriction = getPersonRestriction(personId, currentBooking)
+      if (!restriction) continue
+      const personName = coaches.find((coach) => coach.id === personId)?.name || '人員'
+      conflicts.push(`${personName} ${getRestrictionMessage(restriction)}，無法安排`)
+    }
 
     const currentStart = new Date(currentBooking.start_at)
     // 教練可用時間：一律卡結束+15分鐘（場地不需整理，但教練需緩衝時間）
@@ -705,6 +778,7 @@ export function CoachAssignment() {
   const isCoachAvailable = (coachId: string, bookingId: number): boolean => {
     const currentBooking = bookings.find(b => b.id === bookingId)
     if (!currentBooking) return true
+    if (getPersonRestriction(coachId, currentBooking)) return false
 
     const currentStart = new Date(currentBooking.start_at)
     // 教練可用時間：一律卡結束+15分鐘
@@ -776,6 +850,35 @@ export function CoachAssignment() {
           '以下預約尚未指定駕駛：\n\n' +
           missingPersonnel.map(m => `• ${m}`).join('\n') +
           '\n\n今天先不想排這幾筆？點該預約 → 駕駛區下方有「偷懶」按鈕'
+        )
+        return
+      }
+
+      const restrictionIssues: string[] = []
+      for (const booking of bookings) {
+        const assignment = assignments[booking.id]
+        if (!assignment || assignment.skipped) continue
+        const newlyAssignedPersonIds = new Set([
+          ...assignment.coachIds.filter((id) => !booking.currentCoaches.includes(id)),
+          ...assignment.driverIds.filter((id) => !booking.currentDrivers.includes(id)),
+        ])
+        for (const personId of newlyAssignedPersonIds) {
+          const restriction = getPersonRestriction(personId, booking)
+          if (!restriction) continue
+          const personName = coaches.find((coach) => coach.id === personId)?.name || '人員'
+          restrictionIssues.push(
+            `${personName} ${getRestrictionMessage(restriction)}（${formatTimeRange(
+              booking.start_at,
+              booking.duration_min,
+              booking.boats?.name,
+            )}）`,
+          )
+        }
+      }
+      if (restrictionIssues.length > 0) {
+        setError(
+          '以下人員在限制時段內，無法儲存排班：\n\n' +
+          restrictionIssues.map((issue) => `• ${issue}`).join('\n'),
         )
         return
       }
@@ -1245,21 +1348,22 @@ export function CoachAssignment() {
           changes: item.changes,
         }))
         .filter(item => item.changes.length > 0)
-      const allCoachesToInsert: Array<{ booking_id: number; coach_id: string }> = []
-      const allDriversToInsert: Array<{ booking_id: number; driver_id: string }> = []
+      const coachChangedBookingIds: number[] = []
+      const driverChangedBookingIds: number[] = []
 
       for (const item of toSave) {
-        for (const coachId of item.assignment.coachIds) {
-          allCoachesToInsert.push({
-            booking_id: item.booking.id,
-            coach_id: coachId,
-          })
+        const dbState = getDbSnapshot(item.booking.id, dbAssignmentMaps)
+        const coachChanged =
+          assignmentSnapshotKey({ ...dbState, driverIds: [] }) !==
+          assignmentSnapshotKey({ ...dbState, coachIds: item.assignment.coachIds, driverIds: [] })
+        const driverChanged =
+          assignmentSnapshotKey({ ...dbState, coachIds: [] }) !==
+          assignmentSnapshotKey({ ...dbState, coachIds: [], driverIds: item.assignment.driverIds })
+        if (coachChanged) {
+          coachChangedBookingIds.push(item.booking.id)
         }
-        for (const driverId of item.assignment.driverIds) {
-          allDriversToInsert.push({
-            booking_id: item.booking.id,
-            driver_id: driverId,
-          })
+        if (driverChanged) {
+          driverChangedBookingIds.push(item.booking.id)
         }
       }
 
@@ -1387,7 +1491,24 @@ export function CoachAssignment() {
         }
       }
 
-      // 如果有需要清除的回報記錄，先清除
+      // 每筆預約的人員異動在 DB 交易內完成；限制競態失敗時不會先刪掉舊排班。
+      const peopleChangedIdSet = new Set([
+        ...coachChangedBookingIds,
+        ...driverChangedBookingIds,
+      ])
+      for (const item of toSave) {
+        if (!peopleChangedIdSet.has(item.booking.id)) continue
+        const { error: peopleSaveError } = await supabase.rpc('save_booking_people', {
+          p_booking_id: item.booking.id,
+          p_coach_ids: item.assignment.coachIds,
+          p_driver_ids: item.assignment.driverIds,
+        })
+        if (peopleSaveError) {
+          throw new Error(`更新教練／駕駛分配失敗: ${peopleSaveError.message}`)
+        }
+      }
+
+      // 如果有需要清除的回報記錄，再清除
       if (bookingsWithReports.size > 0) {
         // 清除回報記錄（全部硬刪除）
         const [partDel, repDel] = await Promise.all([
@@ -1403,58 +1524,6 @@ export function CoachAssignment() {
         ])
         if (partDel.error) throw new Error(`刪除參與者失敗: ${partDel.error.message}`)
         if (repDel.error) throw new Error(`刪除回報失敗: ${repDel.error.message}`)
-      }
-
-      // 批量刪除有變動預約的舊分配（檢查每個 delete 的錯誤）
-      const [coachDelRes, driverDelRes] = await Promise.all([
-        supabase.from('booking_coaches').delete().in('booking_id', changedBookingIds),
-        supabase.from('booking_drivers').delete().in('booking_id', changedBookingIds)
-      ])
-      if (coachDelRes.error) throw new Error(`刪除舊教練分配失敗: ${coachDelRes.error.message}`)
-      if (driverDelRes.error) throw new Error(`刪除舊駕駛分配失敗: ${driverDelRes.error.message}`)
-
-      // 批量插入新的分配
-      // 用 .select() 讓 insert 回傳實際寫入的 rows，順便當作 verification（不用多一次 round-trip）
-      if (allCoachesToInsert.length > 0) {
-        const { data: insertedCoaches, error: coachInsertError } = await supabase
-          .from('booking_coaches')
-          .insert(allCoachesToInsert)
-          .select('booking_id, coach_id')
-        
-        if (coachInsertError) {
-          console.error('批量插入教練失敗:', coachInsertError)
-          throw new Error(`插入教練分配失敗: ${coachInsertError.message}`)
-        }
-        if (!insertedCoaches || insertedCoaches.length !== allCoachesToInsert.length) {
-          console.error('教練插入筆數對不上', {
-            expected: allCoachesToInsert.length,
-            actual: insertedCoaches?.length ?? 0,
-          })
-          throw new Error(
-            `教練分配儲存驗證失敗：預期 ${allCoachesToInsert.length} 筆、實際 ${insertedCoaches?.length ?? 0} 筆，請重試`
-          )
-        }
-      }
-      
-      if (allDriversToInsert.length > 0) {
-        const { data: insertedDrivers, error: driverInsertError } = await supabase
-          .from('booking_drivers')
-          .insert(allDriversToInsert)
-          .select('booking_id, driver_id')
-        
-        if (driverInsertError) {
-          console.error('批量插入駕駛失敗:', driverInsertError)
-          throw new Error(`插入駕駛分配失敗: ${driverInsertError.message}`)
-        }
-        if (!insertedDrivers || insertedDrivers.length !== allDriversToInsert.length) {
-          console.error('駕駛插入筆數對不上', {
-            expected: allDriversToInsert.length,
-            actual: insertedDrivers?.length ?? 0,
-          })
-          throw new Error(
-            `駕駛分配儲存驗證失敗：預期 ${allDriversToInsert.length} 筆、實際 ${insertedDrivers?.length ?? 0} 筆，請重試`
-          )
-        }
       }
 
       // 記錄 audit log（非阻塞）— 以 booking 維度去重，避免偶發重複
@@ -1776,6 +1845,13 @@ export function CoachAssignment() {
                 const partialOffLabel = !coach.isOnTimeOff && coach.timeOffRecords.length > 0
                   ? getTimeOffDayDisplayLabel(coach.timeOffRecords, selectedDate)
                   : null
+                const coachRestrictions = assignmentRestrictions.filter((restriction) =>
+                  restrictionAppliesToPeople(
+                    restriction.scope,
+                    restriction.coach_ids,
+                    [coach.id],
+                  ),
+                )
                 
                 return (
                   <div key={coach.id} style={{
@@ -1832,6 +1908,20 @@ export function CoachAssignment() {
                           🏖️ {partialOffLabel}休假
                         </div>
                       )}
+                      {coachRestrictions.map((restriction, index) => (
+                        <div
+                          key={`${restriction.start_date}-${restriction.start_time}-${index}`}
+                          style={{
+                            fontSize: getFontSize('caption', isMobile),
+                            color: designSystem.colors.danger[700],
+                            fontWeight: 600,
+                            padding: isMobile ? '0 16px 8px' : '0 20px 10px',
+                            borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                          }}
+                        >
+                          {getRestrictionMessage(restriction)}
+                        </div>
+                      ))}
                     </div>
                     
                     {/* 該教練的所有預約 */}
@@ -1858,6 +1948,7 @@ export function CoachAssignment() {
                         const isCoach = assignment.coachIds.includes(coach.id)
                         const isDriver = assignment.driverIds.includes(coach.id)
                         const isCoachPractice = booking.is_coach_practice === true
+                        const activeRestriction = getPersonRestriction(coach.id, booking)
                         
                         return (
                           <div key={booking.id} style={{
@@ -1978,7 +2069,7 @@ export function CoachAssignment() {
                                 </div>
                               )}
                               {/* 衝突警告 */}
-                              {assignment.conflicts.length > 0 && (
+                              {(assignment.conflicts.length > 0 || activeRestriction) && (
                                 <div style={{ 
                                   marginTop: '6px',
                                   padding: '6px 8px',
@@ -1988,7 +2079,12 @@ export function CoachAssignment() {
                                   color: designSystem.colors.danger[700],
                                   lineHeight: '1.4'
                                 }}>
-                                  {assignment.conflicts.join(' / ')}
+                                  {[
+                                    ...(activeRestriction
+                                      ? [`${coach.name} ${getRestrictionMessage(activeRestriction)}，無法安排`]
+                                      : []),
+                                    ...assignment.conflicts,
+                                  ].join(' / ')}
                                 </div>
                               )}
                             </div>
@@ -2149,6 +2245,7 @@ export function CoachAssignment() {
                                     const isCoachInThisBooking = currentAssignment.coachIds.includes(c.id)
                                     // 檢查該人在其他預約是否有時間衝突（作為教練或駕駛）
                                     const isAvailable = isCoachAvailable(c.id, booking.id)
+                                    const activeRestriction = getPersonRestriction(c.id, booking)
                                     // 檢查是否休假
                                     const bookingDate = booking.start_at.substring(0, 10)
                                     const bookingTime = booking.start_at.substring(11, 16)
@@ -2170,6 +2267,10 @@ export function CoachAssignment() {
                                           }
                                           if (isOnTimeOff && !isSelected) {
                                             toast.warning('該教練此時段休假')
+                                            return
+                                          }
+                                          if (activeRestriction && !isSelected) {
+                                            toast.warning(`${c.name} ${getRestrictionMessage(activeRestriction)}，無法安排`)
                                             return
                                           }
                                           if (isUnavailable) {

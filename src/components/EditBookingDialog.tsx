@@ -183,7 +183,15 @@ export function EditBookingDialog({
 
     const check = async () => {
       setConflictStatus('checking')
-      const result = await performConflictCheck(booking.id)
+      const scheduleChanged =
+        `${startDate}T${startTime}` !== booking.start_at.substring(0, 16) ||
+        durationMin !== booking.duration_min
+      const originalCoachIds = new Set((booking.coaches ?? []).map((coach) => coach.id))
+      const result = await performConflictCheck(booking.id, {
+        restrictionPersonIds: scheduleChanged
+          ? selectedCoaches
+          : selectedCoaches.filter((id) => !originalCoachIds.has(id)),
+      })
       if (result.hasConflict) {
         setConflictStatus('conflict')
         setConflictMessage(result.reason || '此時段已被預約')
@@ -254,7 +262,15 @@ export function EditBookingDialog({
       const newStartAt = `${startDate}T${startTime}:00`
 
       // 使用 Hook 檢查衝突
-      const conflictResult = await performConflictCheck(booking.id)
+      const scheduleChanged =
+        `${startDate}T${startTime}` !== booking.start_at.substring(0, 16) ||
+        durationMin !== booking.duration_min
+      const originalCoachIds = new Set((booking.coaches ?? []).map((coach) => coach.id))
+      const conflictResult = await performConflictCheck(booking.id, {
+        restrictionPersonIds: scheduleChanged
+          ? selectedCoaches
+          : selectedCoaches.filter((id) => !originalCoachIds.has(id)),
+      })
 
       if (conflictResult.hasConflict) {
         setError(conflictResult.reason)
@@ -477,35 +493,31 @@ export function EditBookingDialog({
           return
         }
 
-        // 統一刪除（在任何寫入前）— 檢查每個錯誤，避免靜默失敗
-        const [coachDelRes, driverDelRes, reportDelRes, partDelRes] = await Promise.all([
-          supabase.from('booking_coaches').delete().eq('booking_id', booking.id),
-          supabase.from('booking_drivers').delete().eq('booking_id', booking.id),
-          supabase.from('coach_reports').delete().eq('booking_id', booking.id),
-          supabase.from('booking_participants').delete().eq('booking_id', booking.id).eq('is_deleted', false)
-        ])
-        if (coachDelRes.error) throw new Error(`清除教練分配失敗: ${coachDelRes.error.message}`)
-        if (driverDelRes.error) throw new Error(`清除駕駛分配失敗: ${driverDelRes.error.message}`)
-        if (reportDelRes.error) throw new Error(`清除回報記錄失敗: ${reportDelRes.error.message}`)
-        if (partDelRes.error) throw new Error(`清除參與者失敗: ${partDelRes.error.message}`)
-      } else {
-        // 不需要彈窗仍保險性確保：若最終不需要駕駛，清空駕駛排班
-        if (!finalRequiresDriver) {
-          const { error: silentDelError } = await supabase.from('booking_drivers').delete().eq('booking_id', booking.id)
-          if (silentDelError) throw new Error(`清除駕駛分配失敗: ${silentDelError.message}`)
-        }
       }
 
-      // 實際開始寫入：更新預約（設施不需清理時間，船隻需要15分鐘）
+      // 船／時間／人員在同一 DB 交易內更新，限制失敗時不會留下部分變更。
+      const { error: scheduleSaveError } = await supabase.rpc(
+        'save_booking_schedule_and_people',
+        {
+          p_booking_id: booking.id,
+          p_boat_id: selectedBoatId,
+          p_start_at: newStartAt,
+          p_duration_min: durationMin,
+          p_cleanup_minutes: isSelectedBoatFacility ? 0 : 15,
+          p_coach_ids: selectedCoaches,
+          p_driver_ids: [],
+        },
+      )
+      if (scheduleSaveError) {
+        throw new Error(`更新時段與排班失敗: ${scheduleSaveError.message}`)
+      }
+
+      // 更新其餘預約欄位
       const { error: updateError } = await supabase
         .from('bookings')
         .update({
-          boat_id: selectedBoatId,
           member_id: selectedMemberIds.length > 0 ? selectedMemberIds[0] : null,
           contact_name: finalStudentName,
-          start_at: newStartAt,
-          duration_min: durationMin,
-          cleanup_minutes: isSelectedBoatFacility ? 0 : 15,
           activity_types: activityTypes.length > 0 ? activityTypes : null,
           actual_rider: normalizeActualRiderForSave(actualRider),
           notes: notes || null,
@@ -523,34 +535,14 @@ export function EditBookingDialog({
         return
       }
 
-      // 重寫教練關聯（先刪再插）— 全部檢查錯誤
-      const { error: coachDelError2 } = await supabase
-        .from('booking_coaches')
-        .delete()
-        .eq('booking_id', booking.id)
-      if (coachDelError2) throw new Error(`清除教練關聯失敗: ${coachDelError2.message}`)
-
-      if (selectedCoaches.length > 0) {
-        const bookingCoachesToInsert = selectedCoaches.map(coachId => ({
-          booking_id: booking.id,
-          coach_id: coachId,
-        }))
-
-        // 用 .select() 取回實際寫入的 rows 做驗證，少一筆就 throw
-        const { data: insertedCoaches, error: coachInsertError } = await supabase
-          .from('booking_coaches')
-          .insert(bookingCoachesToInsert)
-          .select('booking_id, coach_id')
-
-        if (coachInsertError) {
-          console.error('插入教練關聯失敗:', coachInsertError)
-          throw new Error(`插入教練關聯失敗: ${coachInsertError.message}`)
-        }
-        if (!insertedCoaches || insertedCoaches.length !== bookingCoachesToInsert.length) {
-          throw new Error(
-            `教練關聯儲存驗證失敗：預期 ${bookingCoachesToInsert.length} 筆、實際 ${insertedCoaches?.length ?? 0} 筆，請重試`
-          )
-        }
+      // 排班與預約都成功後才清除下游回報，避免限制失敗造成資料先被刪除。
+      if (needConfirm) {
+        const [reportDelRes, partDelRes] = await Promise.all([
+          supabase.from('coach_reports').delete().eq('booking_id', booking.id),
+          supabase.from('booking_participants').delete().eq('booking_id', booking.id).eq('is_deleted', false),
+        ])
+        if (reportDelRes.error) throw new Error(`清除回報記錄失敗: ${reportDelRes.error.message}`)
+        if (partDelRes.error) throw new Error(`清除參與者失敗: ${partDelRes.error.message}`)
       }
 
       // 更新 booking_members（多會員支援）：先刪後插

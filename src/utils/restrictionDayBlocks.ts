@@ -3,6 +3,9 @@ export type RestrictionDayBlock = {
   startMin: number
   endMin: number
   content?: string | null
+  scope: 'all' | 'coaches'
+  coachIds: string[]
+  coachNames: string[]
 }
 
 export type RestrictionViewRow = {
@@ -11,6 +14,9 @@ export type RestrictionViewRow = {
   end_date: string
   end_time: string | null
   content?: string | null
+  scope?: 'all' | 'coaches' | null
+  coach_ids?: string[] | null
+  coach_names?: string[] | null
 }
 
 export function mapRestrictionViewRowsToBlocks(
@@ -28,6 +34,13 @@ export function mapRestrictionViewRowsToBlocks(
       const [eh, em] = String(rec.end_time).split(':').map(Number)
       rEnd = eh * 60 + em
     }
-    return { startMin: rStart, endMin: rEnd, content: rec.content }
+    return {
+      startMin: rStart,
+      endMin: rEnd,
+      content: rec.content,
+      scope: rec.scope === 'coaches' ? 'coaches' : 'all',
+      coachIds: rec.coach_ids ?? [],
+      coachNames: rec.coach_names ?? [],
+    }
   })
 }

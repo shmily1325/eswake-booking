@@ -97,7 +97,9 @@ export function BoatUnavailableDaySummary({
     return sorted.map((r, idx) => ({
       key: `restriction-${r.startMin}-${r.endMin}-${idx}`,
       range: formatUnavailableRange(r.startMin, r.endMin),
-      detail: r.content?.trim() || '受理受限',
+      detail: r.scope === 'coaches'
+        ? `${r.content?.trim() || '受理受限'}（限制教練：${r.coachNames.join('、') || '未指定'}）`
+        : r.content?.trim() || '受理受限',
     }))
   }, [restrictionBlocks])
 

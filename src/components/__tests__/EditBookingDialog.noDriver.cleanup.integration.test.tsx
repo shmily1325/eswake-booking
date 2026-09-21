@@ -53,6 +53,15 @@ vi.mock('../../lib/supabase', () => {
   return {
     supabase: {
       from: vi.fn((table: string) => makeChain(table)),
+      rpc: vi.fn(async (name: string, args: { p_driver_ids?: string[] }) => {
+        if (
+          name === 'save_booking_schedule_and_people' &&
+          args.p_driver_ids?.length === 0
+        ) {
+          deleteInvoked.booking_drivers++
+        }
+        return { data: null, error: null }
+      }),
     },
   }
 })
