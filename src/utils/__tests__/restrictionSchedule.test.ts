@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { bookingOverlapsRestriction } from '../restrictionSchedule'
+import {
+  bookingOverlapsRestriction,
+  restrictionUsesCustomDates,
+} from '../restrictionSchedule'
 import { normalizeTimeHm } from '../timeValue'
 
 const restriction = {
@@ -15,6 +18,22 @@ describe('restriction schedule', () => {
     expect(normalizeTimeHm('11:30:00', '00:00')).toBe('11:30')
     expect(normalizeTimeHm('9:05', '00:00')).toBe('09:05')
     expect(normalizeTimeHm('bad', '13:00')).toBe('13:00')
+  })
+
+  it('only exposes separate restriction dates when they differ from the event', () => {
+    expect(restrictionUsesCustomDates({
+      eventStartDate: '2026-09-23',
+      eventEndDate: '2026-09-23',
+      restrictionStartDate: '2026-09-23',
+      restrictionEndDate: '2026-09-23',
+    })).toBe(false)
+
+    expect(restrictionUsesCustomDates({
+      eventStartDate: '2026-09-23',
+      eventEndDate: '2026-09-23',
+      restrictionStartDate: '2026-09-24',
+      restrictionEndDate: '2026-09-24',
+    })).toBe(true)
   })
 
   it.each([

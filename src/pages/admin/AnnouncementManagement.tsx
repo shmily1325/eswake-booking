@@ -5,12 +5,15 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { addDaysToDate, getLocalDateString, getWeekdayText } from '../../utils/date'
+import { addDaysToDate, getLocalDateString } from '../../utils/date'
 import { getEventStartDate, getEventDateLabel, parseForEdit, formatDateShort, computeDisplayDate } from '../../utils/announcement'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { validateRequired } from '../../utils/errorHandler'
 import { filterStandardCoachList } from '../../utils/coachSelection'
-import { bookingOverlapsRestriction } from '../../utils/restrictionSchedule'
+import {
+  bookingOverlapsRestriction,
+  restrictionUsesCustomDates,
+} from '../../utils/restrictionSchedule'
 import { normalizeTimeHm } from '../../utils/timeValue'
 import { useToast, ToastContainer } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
@@ -164,7 +167,7 @@ function RestrictionTimeSelect({
     : [...RESTRICTION_TIME_OPTIONS, normalizedValue].filter(Boolean).sort()
 
   return (
-    <label style={{ display: 'grid', gap: '4px', minWidth: 0 }}>
+    <label style={{ display: 'grid', gap: '4px', minWidth: 0, maxWidth: '100%' }}>
       <span style={{
         color: designSystem.colors.text.secondary,
         fontSize: getFontSize('caption', isMobile),
@@ -174,7 +177,14 @@ function RestrictionTimeSelect({
       <select
         value={normalizedValue}
         onChange={(event) => onChange(event.target.value)}
-        style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
+        style={{
+          ...getInputStyle(isMobile),
+          display: 'block',
+          width: '100%',
+          minWidth: 0,
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+        }}
       >
         {options.map((time) => (
           <option key={time} value={time}>{time}</option>
@@ -186,24 +196,28 @@ function RestrictionTimeSelect({
 
 function RestrictionSchedulePicker({
   allDay,
+  customDates,
   startDate,
   startTime,
   endDate,
   endTime,
   isMobile,
   onAllDayChange,
+  onCustomDatesChange,
   onStartDateChange,
   onStartTimeChange,
   onEndDateChange,
   onEndTimeChange,
 }: {
   allDay: boolean
+  customDates: boolean
   startDate: string
   startTime: string
   endDate: string
   endTime: string
   isMobile: boolean
   onAllDayChange: (value: boolean) => void
+  onCustomDatesChange: (value: boolean) => void
   onStartDateChange: (value: string) => void
   onStartTimeChange: (value: string) => void
   onEndDateChange: (value: string) => void
@@ -211,6 +225,14 @@ function RestrictionSchedulePicker({
 }) {
   const crossDay = startDate !== endDate
   const invalidTime = !allDay && !crossDay && endTime <= startTime
+  const fieldStyle = {
+    ...getInputStyle(isMobile),
+    display: 'block',
+    width: '100%',
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box' as const,
+  }
 
   const updateStartDate = (value: string) => {
     const keepSingleDay = !crossDay
@@ -222,10 +244,6 @@ function RestrictionSchedulePicker({
     <div style={{
       display: 'grid',
       gap: '10px',
-      padding: '12px',
-      border: `1px solid ${designSystem.colors.border.light}`,
-      borderRadius: designSystem.borderRadius.md,
-      background: designSystem.colors.background.card,
     }}>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button
@@ -244,82 +262,6 @@ function RestrictionSchedulePicker({
         </button>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile
-          ? '1fr'
-          : allDay
-            ? crossDay
-              ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
-              : 'minmax(0, 1fr)'
-            : crossDay
-              ? 'minmax(0, 1fr) 120px auto minmax(0, 1fr) 120px'
-              : 'minmax(0, 1fr) 120px auto 120px',
-        alignItems: 'end',
-        gap: '8px',
-      }}>
-        <label style={{ display: 'grid', gap: '4px', minWidth: 0 }}>
-          <span style={{
-            color: designSystem.colors.text.secondary,
-            fontSize: getFontSize('caption', isMobile),
-          }}>
-            {crossDay ? '開始日期' : '限制日期'}
-          </span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(event) => updateStartDate(event.target.value)}
-            style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-          />
-        </label>
-
-        {!allDay && (
-          <RestrictionTimeSelect
-            label="開始時間"
-            value={startTime}
-            isMobile={isMobile}
-            onChange={onStartTimeChange}
-          />
-        )}
-
-        {(crossDay || (!isMobile && !allDay)) && (
-          <span style={{
-            alignSelf: 'center',
-            color: designSystem.colors.text.disabled,
-            textAlign: 'center',
-          }}>
-            ～
-          </span>
-        )}
-
-        {crossDay && (
-          <label style={{ display: 'grid', gap: '4px', minWidth: 0 }}>
-            <span style={{
-              color: designSystem.colors.text.secondary,
-              fontSize: getFontSize('caption', isMobile),
-            }}>
-              結束日期
-            </span>
-            <input
-              type="date"
-              value={endDate}
-              min={startDate}
-              onChange={(event) => onEndDateChange(event.target.value)}
-              style={{ ...getInputStyle(isMobile), width: '100%', minWidth: 0 }}
-            />
-          </label>
-        )}
-
-        {!allDay && (
-          <RestrictionTimeSelect
-            label="結束時間"
-            value={endTime}
-            isMobile={isMobile}
-            onChange={onEndTimeChange}
-          />
-        )}
-      </div>
-
       <label style={{
         display: 'flex',
         alignItems: 'center',
@@ -331,30 +273,133 @@ function RestrictionSchedulePicker({
       }}>
         <input
           type="checkbox"
-          checked={crossDay}
-          onChange={(event) => {
-            onEndDateChange(
-              event.target.checked ? addDaysToDate(startDate, 1) : startDate,
-            )
-          }}
+          checked={customDates}
+          onChange={(event) => onCustomDatesChange(event.target.checked)}
           style={{ accentColor: checkboxAccent }}
         />
-        跨日限制
+        限制日期不同
       </label>
 
-      <div style={{
-        padding: '8px 10px',
-        borderRadius: designSystem.borderRadius.md,
-        background: designSystem.colors.background.main,
-        color: invalidTime
-          ? designSystem.colors.danger[700]
-          : designSystem.colors.text.primary,
-        fontSize: getFontSize('bodySmall', isMobile),
-      }}>
-        {invalidTime
-          ? '結束時間必須晚於開始時間'
-          : `限制時段：${startDate}${allDay ? ' 全天' : ` ${startTime}`}${crossDay ? ` ～ ${endDate}` : ' ～'}${allDay ? (crossDay ? ' 全天' : '') : ` ${endTime}`}`}
-      </div>
+      {customDates && (
+        <>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: crossDay && !isMobile
+              ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
+              : 'minmax(0, 1fr)',
+            alignItems: 'end',
+            gap: '8px',
+            minWidth: 0,
+          }}>
+            <label style={{ display: 'grid', gap: '4px', minWidth: 0, maxWidth: '100%' }}>
+              <span style={{
+                color: designSystem.colors.text.secondary,
+                fontSize: getFontSize('caption', isMobile),
+              }}>
+                {crossDay ? '開始日期' : '限制日期'}
+              </span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(event) => updateStartDate(event.target.value)}
+                style={fieldStyle}
+              />
+            </label>
+
+            {crossDay && !isMobile && (
+              <span style={{
+                alignSelf: 'center',
+                color: designSystem.colors.text.disabled,
+                textAlign: 'center',
+              }}>
+                ～
+              </span>
+            )}
+
+            {crossDay && (
+              <label style={{ display: 'grid', gap: '4px', minWidth: 0, maxWidth: '100%' }}>
+                <span style={{
+                  color: designSystem.colors.text.secondary,
+                  fontSize: getFontSize('caption', isMobile),
+                }}>
+                  結束日期
+                </span>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={(event) => onEndDateChange(event.target.value)}
+                  style={fieldStyle}
+                />
+              </label>
+            )}
+          </div>
+
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            minHeight: isMobile ? 40 : undefined,
+            color: designSystem.colors.text.secondary,
+            fontSize: getFontSize('bodySmall', isMobile),
+            cursor: 'pointer',
+          }}>
+            <input
+              type="checkbox"
+              checked={crossDay}
+              onChange={(event) => {
+                onEndDateChange(
+                  event.target.checked ? addDaysToDate(startDate, 1) : startDate,
+                )
+              }}
+              style={{ accentColor: checkboxAccent }}
+            />
+            跨日限制
+          </label>
+        </>
+      )}
+
+      {!allDay && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+          alignItems: 'end',
+          gap: '8px',
+          minWidth: 0,
+        }}>
+          <RestrictionTimeSelect
+            label="開始時間"
+            value={startTime}
+            isMobile={isMobile}
+            onChange={onStartTimeChange}
+          />
+          <span style={{
+            alignSelf: 'center',
+            color: designSystem.colors.text.disabled,
+            paddingBottom: isMobile ? 14 : 12,
+          }}>
+            ～
+          </span>
+          <RestrictionTimeSelect
+            label="結束時間"
+            value={endTime}
+            isMobile={isMobile}
+            onChange={onEndTimeChange}
+          />
+        </div>
+      )}
+
+      {invalidTime && (
+        <div style={{
+          padding: '8px 10px',
+          borderRadius: designSystem.borderRadius.md,
+          background: designSystem.colors.danger[50],
+          color: designSystem.colors.danger[700],
+          fontSize: getFontSize('bodySmall', isMobile),
+        }}>
+          結束時間必須晚於開始時間
+        </div>
+      )}
     </div>
   )
 }
@@ -381,10 +426,10 @@ export function AnnouncementManagement() {
   const [newEndDate, setNewEndDate] = useState(getLocalDateString())
   const [newShowOneDayEarly, setNewShowOneDayEarly] = useState(false)
   const [showNewAdvanced, setShowNewAdvanced] = useState(false)
-  const [showNewRestrictionCustom, setShowNewRestrictionCustom] = useState(false)
   // 預約限制（新增）
   const [newRestrictEnabled, setNewRestrictEnabled] = useState(false)
   const [newRestrictAllDay, setNewRestrictAllDay] = useState(true)
+  const [newRestrictCustomDates, setNewRestrictCustomDates] = useState(false)
   const [newRestrictStartDate, setNewRestrictStartDate] = useState(newStartDate)
   const [newRestrictStartTime, setNewRestrictStartTime] = useState('13:00')
   const [newRestrictEndDate, setNewRestrictEndDate] = useState(newEndDate)
@@ -398,6 +443,7 @@ export function AnnouncementManagement() {
   // 預約限制（編輯）
   const [editRestrictEnabled, setEditRestrictEnabled] = useState(false)
   const [editRestrictAllDay, setEditRestrictAllDay] = useState(true)
+  const [editRestrictCustomDates, setEditRestrictCustomDates] = useState(false)
   const [editRestrictStartDate, setEditRestrictStartDate] = useState('')
   const [editRestrictStartTime, setEditRestrictStartTime] = useState('13:00')
   const [editRestrictEndDate, setEditRestrictEndDate] = useState('')
@@ -716,10 +762,10 @@ export function AnnouncementManagement() {
           setNewEndDate(today)
           setNewShowOneDayEarly(false)
           setShowNewAdvanced(false)
-          setShowNewRestrictionCustom(false)
           // reset 限制欄位
           setNewRestrictEnabled(false)
           setNewRestrictAllDay(true)
+          setNewRestrictCustomDates(false)
           setNewRestrictScope('all')
           setNewRestrictedCoachIds([])
           setNewRestrictStartDate(today)
@@ -851,6 +897,7 @@ export function AnnouncementManagement() {
     setEditShowOneDayEarly(showOneDayEarly)
     setEditRestrictEnabled(false)
     setEditRestrictAllDay(true)
+    setEditRestrictCustomDates(false)
     setEditRestrictStartDate(eventStartDate)
     setEditRestrictStartTime('13:00')
     setEditRestrictEndDate(eventEndDate)
@@ -875,6 +922,12 @@ export function AnnouncementManagement() {
         if (data) {
           setEditRestrictEnabled(true)
           setEditRestrictAllDay(!data.start_time && !data.end_time)
+          setEditRestrictCustomDates(restrictionUsesCustomDates({
+            eventStartDate,
+            eventEndDate,
+            restrictionStartDate: data.start_date,
+            restrictionEndDate: data.end_date,
+          }))
           setEditRestrictStartDate(data.start_date)
           setEditRestrictStartTime(normalizeTimeHm(data.start_time, '00:00'))
           setEditRestrictEndDate(data.end_date)
@@ -1041,19 +1094,18 @@ export function AnnouncementManagement() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: isMobile
-                  ? '1fr'
-                  : showNewAdvanced
-                    ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
-                    : 'minmax(0, 1fr) auto',
+                gridTemplateColumns: newEndDate !== newStartDate && !isMobile
+                  ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
+                  : 'minmax(0, 1fr)',
                 alignItems: 'end',
                 gap: '8px',
+                minWidth: 0,
               }}
             >
-              <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
+              <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%' }}>
                 {isMobile && (
                   <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
-                    {showNewAdvanced ? '開始日期' : '日期'}
+                    {newEndDate !== newStartDate ? '開始日期' : '日期'}
                   </span>
                 )}
                 <input
@@ -1061,23 +1113,33 @@ export function AnnouncementManagement() {
                   data-track="announcement_start_date"
                   value={newStartDate}
                   onChange={(e) => {
+                    const wasSingleDay = newEndDate === newStartDate
                     setNewStartDate(e.target.value)
-                    if (!showNewAdvanced || e.target.value > newEndDate) setNewEndDate(e.target.value)
-                    if (newRestrictEnabled && !showNewRestrictionCustom) {
+                    if (wasSingleDay || e.target.value > newEndDate) setNewEndDate(e.target.value)
+                    if (newRestrictEnabled && !newRestrictCustomDates) {
                       setNewRestrictStartDate(e.target.value)
-                      setNewRestrictEndDate(e.target.value)
+                      if (wasSingleDay || e.target.value > newEndDate) {
+                        setNewRestrictEndDate(e.target.value)
+                      }
                     }
                   }}
-                  style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
+                  style={{
+                    ...getInputStyle(isMobile),
+                    display: 'block',
+                    minWidth: 0,
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                  }}
                 />
               </label>
-              {showNewAdvanced && !isMobile && (
+              {newEndDate !== newStartDate && !isMobile && (
                 <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', false), paddingBottom: 13 }}>
                   ～
                 </span>
               )}
-              {showNewAdvanced && (
-                <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
+              {newEndDate !== newStartDate && (
+                <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%' }}>
                 {isMobile && (
                   <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                     結束日期
@@ -1089,55 +1151,48 @@ export function AnnouncementManagement() {
                   value={newEndDate}
                   onChange={(e) => {
                     setNewEndDate(e.target.value)
-                    if (newRestrictEnabled && !showNewRestrictionCustom) {
+                    if (newRestrictEnabled && !newRestrictCustomDates) {
                       setNewRestrictEndDate(e.target.value)
                     }
                   }}
                   min={newStartDate}
-                  style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
+                  style={{
+                    ...getInputStyle(isMobile),
+                    display: 'block',
+                    minWidth: 0,
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                  }}
                 />
               </label>
               )}
-              <span style={{
-                gridColumn: showNewAdvanced || isMobile ? '1 / -1' : undefined,
-                width: showNewAdvanced || isMobile ? '100%' : 'auto',
-                boxSizing: 'border-box',
-                padding: '8px 12px',
-                borderRadius: designSystem.borderRadius.md,
-                background: designSystem.colors.background.main,
-                color: designSystem.colors.text.secondary,
-                fontSize: getFontSize('bodySmall', isMobile),
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                textAlign: showNewAdvanced ? 'center' : 'left',
-              }}>
-                {newStartDate === newEndDate 
-                  ? getWeekdayText(newStartDate)
-                  : `${getWeekdayText(newStartDate)} ~ ${getWeekdayText(newEndDate)}`
-                }
-              </span>
             </div>
-          </div>
-
-          <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
+              gap: '8px',
               cursor: 'pointer',
-              fontSize: getFontSize('body', isMobile),
+              fontSize: getFontSize('bodySmall', isMobile),
               color: designSystem.colors.text.secondary,
-              padding: isMobile ? '8px 0' : 0,
-              minHeight: isMobile ? 44 : undefined
+              minHeight: isMobile ? 40 : undefined,
+              marginTop: '6px',
             }}>
               <input
                 type="checkbox"
-                data-track="announcement_one_day_early"
-                checked={newShowOneDayEarly}
-                onChange={(e) => setNewShowOneDayEarly(e.target.checked)}
-                style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
+                checked={newEndDate !== newStartDate}
+                onChange={(e) => {
+                  const nextEndDate = e.target.checked
+                    ? addDaysToDate(newStartDate, 1)
+                    : newStartDate
+                  setNewEndDate(nextEndDate)
+                  if (newRestrictEnabled && !newRestrictCustomDates) {
+                    setNewRestrictEndDate(nextEndDate)
+                  }
+                }}
+                style={{ cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
               />
-              <span>提前一天顯示</span>
+              <span>跨日事項</span>
             </label>
           </div>
 
@@ -1149,18 +1204,38 @@ export function AnnouncementManagement() {
             style={{
               ...getButtonStyle('outline', 'small', isMobile),
               width: isMobile ? '100%' : 'auto',
-              marginBottom: showNewAdvanced ? '12px' : '16px',
+              marginBottom: '12px',
             }}
           >
             {showNewAdvanced
               ? '收起更多設定'
-              : newEndDate !== newStartDate || newRestrictEnabled
+              : newShowOneDayEarly
                 ? '更多設定（已設定）'
                 : '更多設定'}
           </button>
 
           {showNewAdvanced && (
-            <>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
+              fontSize: getFontSize('body', isMobile),
+              color: designSystem.colors.text.secondary,
+              padding: isMobile ? '6px 0 10px' : '0 0 10px',
+              minHeight: isMobile ? 44 : undefined,
+            }}>
+              <input
+                type="checkbox"
+                data-track="announcement_one_day_early"
+                checked={newShowOneDayEarly}
+                onChange={(e) => setNewShowOneDayEarly(e.target.checked)}
+                style={{ width: isMobile ? '22px' : '18px', height: isMobile ? '22px' : '18px', cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
+              />
+              <span>提前一天顯示</span>
+            </label>
+          )}
+
           {/* 預約限制（簡易） */}
           <div style={{ marginBottom: '12px', borderTop: `1px dashed ${designSystem.colors.border.light}`, paddingTop: '12px' }}>
             <div style={{ display: 'grid', gap: '4px' }}>
@@ -1182,7 +1257,7 @@ export function AnnouncementManagement() {
                   onChange={(e) => {
                     const enabled = e.target.checked
                     setNewRestrictEnabled(enabled)
-                    setShowNewRestrictionCustom(false)
+                    setNewRestrictCustomDates(false)
                     if (enabled) {
                       // 預設直接帶入公告日期
                       setNewRestrictStartDate(newStartDate)
@@ -1209,42 +1284,23 @@ export function AnnouncementManagement() {
             )}
 
             {newRestrictEnabled && (
-              <div style={{
-                marginTop: '8px',
-                display: 'flex',
-                alignItems: isMobile ? 'stretch' : 'center',
-                flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between',
-                gap: '8px',
-                padding: '8px 10px',
-                background: designSystem.colors.background.main,
-                borderRadius: designSystem.borderRadius.md,
-              }}>
-                <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary }}>
-                  {newRestrictAllDay ? '全天' : '指定時段'} · {newRestrictStartDate}
-                  {newRestrictStartDate !== newRestrictEndDate ? ` ～ ${newRestrictEndDate}` : ''}
-                </span>
-                <button
-                  type="button"
-                  data-track="announcement_restriction_custom_toggle"
-                  onClick={() => setShowNewRestrictionCustom((current) => !current)}
-                  style={getButtonStyle('outline', 'small', isMobile)}
-                >
-                  {showNewRestrictionCustom ? '收起自訂時段' : '自訂限制時段'}
-                </button>
-              </div>
-            )}
-
-            {newRestrictEnabled && showNewRestrictionCustom && (
               <div style={{ marginTop: '8px' }}>
                 <RestrictionSchedulePicker
                   allDay={newRestrictAllDay}
+                  customDates={newRestrictCustomDates}
                   startDate={newRestrictStartDate}
                   startTime={newRestrictStartTime}
                   endDate={newRestrictEndDate}
                   endTime={newRestrictEndTime}
                   isMobile={isMobile}
                   onAllDayChange={setNewRestrictAllDay}
+                  onCustomDatesChange={(custom) => {
+                    setNewRestrictCustomDates(custom)
+                    if (!custom) {
+                      setNewRestrictStartDate(newStartDate)
+                      setNewRestrictEndDate(newEndDate)
+                    }
+                  }}
                   onStartDateChange={setNewRestrictStartDate}
                   onStartTimeChange={setNewRestrictStartTime}
                   onEndDateChange={setNewRestrictEndDate}
@@ -1253,9 +1309,6 @@ export function AnnouncementManagement() {
               </div>
             )}
           </div>
-
-            </>
-          )}
 
           <button
             data-track="announcement_add"
@@ -1430,15 +1483,18 @@ export function AnnouncementManagement() {
                           <div
                             style={{
                               display: 'grid',
-                              gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                              gridTemplateColumns: editEndDate !== editStartDate && !isMobile
+                                ? 'minmax(0, 1fr) auto minmax(0, 1fr)'
+                                : 'minmax(0, 1fr)',
                               alignItems: 'end',
                               gap: '8px',
+                              minWidth: 0,
                             }}
                           >
-                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
+                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%' }}>
                               {isMobile && (
                                 <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
-                                  開始日期
+                                  {editEndDate !== editStartDate ? '開始日期' : '日期'}
                                 </span>
                               )}
                               <input
@@ -1446,18 +1502,35 @@ export function AnnouncementManagement() {
                                 data-track="announcement_edit_start_date"
                                 value={editStartDate}
                                 onChange={(e) => {
+                                  const wasSingleDay = editEndDate === editStartDate
                                   setEditStartDate(e.target.value)
-                                  if (e.target.value > editEndDate) setEditEndDate(e.target.value)
+                                  if (wasSingleDay || e.target.value > editEndDate) {
+                                    setEditEndDate(e.target.value)
+                                  }
+                                  if (editRestrictEnabled && !editRestrictCustomDates) {
+                                    setEditRestrictStartDate(e.target.value)
+                                    if (wasSingleDay || e.target.value > editEndDate) {
+                                      setEditRestrictEndDate(e.target.value)
+                                    }
+                                  }
                                 }}
-                                style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
+                                style={{
+                                  ...getInputStyle(isMobile),
+                                  display: 'block',
+                                  minWidth: 0,
+                                  width: '100%',
+                                  maxWidth: '100%',
+                                  boxSizing: 'border-box',
+                                }}
                               />
                             </label>
-                            {!isMobile && (
+                            {editEndDate !== editStartDate && !isMobile && (
                               <span style={{ color: designSystem.colors.text.disabled, fontSize: getFontSize('body', false), paddingBottom: 13 }}>
                                 ～
                               </span>
                             )}
-                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0 }}>
+                            {editEndDate !== editStartDate && (
+                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%' }}>
                               {isMobile && (
                                 <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                                   結束日期
@@ -1467,30 +1540,62 @@ export function AnnouncementManagement() {
                                 type="date"
                                 data-track="announcement_edit_end_date"
                                 value={editEndDate}
-                                onChange={(e) => setEditEndDate(e.target.value)}
+                                onChange={(e) => {
+                                  setEditEndDate(e.target.value)
+                                  if (editRestrictEnabled && !editRestrictCustomDates) {
+                                    setEditRestrictEndDate(e.target.value)
+                                  }
+                                }}
                                 min={editStartDate}
-                                style={{ ...getInputStyle(isMobile), minWidth: 0, width: '100%' }}
+                                style={{
+                                  ...getInputStyle(isMobile),
+                                  display: 'block',
+                                  minWidth: 0,
+                                  width: '100%',
+                                  maxWidth: '100%',
+                                  boxSizing: 'border-box',
+                                }}
                               />
                             </label>
-                            <span style={{
-                              gridColumn: '1 / -1',
-                              width: '100%',
-                              boxSizing: 'border-box',
-                              padding: '8px 12px',
-                              borderRadius: designSystem.borderRadius.md,
-                              background: designSystem.colors.background.card,
-                              color: designSystem.colors.text.secondary,
-                              fontSize: getFontSize('bodySmall', isMobile),
-                              fontWeight: 600,
-                              textAlign: isMobile ? 'left' : 'center',
-                            }}>
-                              {editStartDate === editEndDate
-                                ? getWeekdayText(editStartDate)
-                                : `${getWeekdayText(editStartDate)} ~ ${getWeekdayText(editEndDate)}`}
-                            </span>
+                            )}
                           </div>
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            fontSize: getFontSize('bodySmall', isMobile),
+                            color: designSystem.colors.text.secondary,
+                            minHeight: isMobile ? 40 : undefined,
+                            marginTop: '6px',
+                          }}>
+                            <input
+                              type="checkbox"
+                              checked={editEndDate !== editStartDate}
+                              onChange={(e) => {
+                                const nextEndDate = e.target.checked
+                                  ? addDaysToDate(editStartDate, 1)
+                                  : editStartDate
+                                setEditEndDate(nextEndDate)
+                                if (editRestrictEnabled && !editRestrictCustomDates) {
+                                  setEditRestrictEndDate(nextEndDate)
+                                }
+                              }}
+                              style={{ cursor: 'pointer', flexShrink: 0, accentColor: checkboxAccent }}
+                            />
+                            <span>跨日事項</span>
+                          </label>
                         </div>
-                        <div style={{ marginBottom: '10px' }}>
+                        <details style={{ marginBottom: '8px' }}>
+                          <summary style={{
+                            cursor: 'pointer',
+                            fontSize: getFontSize('bodySmall', isMobile),
+                            fontWeight: 600,
+                            color: designSystem.colors.text.secondary,
+                            padding: '6px 0',
+                          }}>
+                            更多設定{editShowOneDayEarly ? '（已設定）' : ''}
+                          </summary>
                           <label style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -1509,22 +1614,7 @@ export function AnnouncementManagement() {
                             />
                             <span>提前一天顯示</span>
                           </label>
-                        </div>
-                        <details
-                          open={editRestrictEnabled ? true : undefined}
-                          style={{ marginBottom: '10px' }}
-                        >
-                          <summary
-                            style={{
-                              cursor: 'pointer',
-                              fontSize: getFontSize('bodySmall', isMobile),
-                              fontWeight: 600,
-                              color: designSystem.colors.text.secondary,
-                              padding: '8px 0',
-                            }}
-                          >
-                            預約限制
-                          </summary>
+                        </details>
                         {/* 預約限制（編輯） */}
                         <div style={{ marginBottom: '10px', borderTop: `1px dashed ${designSystem.colors.border.light}`, paddingTop: '10px' }}>
                           <label style={{
@@ -1556,12 +1646,20 @@ export function AnnouncementManagement() {
                               />
                               <RestrictionSchedulePicker
                                 allDay={editRestrictAllDay}
+                                customDates={editRestrictCustomDates}
                                 startDate={editRestrictStartDate || editStartDate}
                                 startTime={editRestrictStartTime}
                                 endDate={editRestrictEndDate || editEndDate}
                                 endTime={editRestrictEndTime}
                                 isMobile={isMobile}
                                 onAllDayChange={setEditRestrictAllDay}
+                                onCustomDatesChange={(custom) => {
+                                  setEditRestrictCustomDates(custom)
+                                  if (!custom) {
+                                    setEditRestrictStartDate(editStartDate)
+                                    setEditRestrictEndDate(editEndDate)
+                                  }
+                                }}
                                 onStartDateChange={setEditRestrictStartDate}
                                 onStartTimeChange={setEditRestrictStartTime}
                                 onEndDateChange={setEditRestrictEndDate}
@@ -1570,7 +1668,6 @@ export function AnnouncementManagement() {
                             </div>
                           )}
                         </div>
-                        </details>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             data-track="announcement_edit"

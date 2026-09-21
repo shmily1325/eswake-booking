@@ -5,6 +5,18 @@ function localDateTimeMs(date: string, time: string): number | null {
   return Number.isFinite(value) ? value : null
 }
 
+export function restrictionUsesCustomDates(input: {
+  eventStartDate: string
+  eventEndDate: string
+  restrictionStartDate: string
+  restrictionEndDate: string
+}): boolean {
+  return (
+    input.restrictionStartDate !== input.eventStartDate ||
+    input.restrictionEndDate !== input.eventEndDate
+  )
+}
+
 export function bookingOverlapsRestriction(input: {
   allDay: boolean
   startDate: string
