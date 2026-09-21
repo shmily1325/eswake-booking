@@ -67,10 +67,10 @@ function RestrictionModePicker({
       gap: '8px',
     }}>
       {([
-        ['none', '不限制'],
-        ['all', '全部預約'],
-        ['coaches', '指定教練'],
-      ] as const).map(([mode, label]) => (
+        ['none', '僅公告', '僅公告'],
+        ['all', '限制全部預約', '限制全部'],
+        ['coaches', '限制特定教練', '限制教練'],
+      ] as const).map(([mode, desktopLabel, mobileLabel]) => (
         <button
           key={mode}
           type="button"
@@ -83,7 +83,7 @@ function RestrictionModePicker({
             paddingInline: isMobile ? 8 : undefined,
           }}
         >
-          {label}
+          {isMobile ? mobileLabel : desktopLabel}
         </button>
       ))}
     </div>
@@ -1239,7 +1239,7 @@ export function AnnouncementManagement() {
               fontWeight: 600,
               marginBottom: '8px',
             }}>
-              預約規則
+              預約限制
             </div>
             <RestrictionModePicker
               enabled={newRestrictEnabled}
@@ -1601,7 +1601,7 @@ export function AnnouncementManagement() {
                             fontWeight: 600,
                             marginBottom: '8px',
                           }}>
-                            預約規則
+                            預約限制
                           </div>
                           <RestrictionModePicker
                             enabled={editRestrictEnabled}
