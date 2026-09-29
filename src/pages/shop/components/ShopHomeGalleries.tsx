@@ -30,7 +30,6 @@ import { computeFacets, getShopBaseProducts } from '../lib/shopFilters'
 import { SHOP_HERO_IMAGES } from '../lib/shopHeroImages'
 import {
   SHOP_HOME_GALLERY_GRID,
-  SHOP_HOME_GALLERY_SLOT_EMPTY,
   SHOP_HOME_PRODUCT_FRAME,
   SHOP_HOME_PRODUCT_IMG,
   SHOP_HOME_STRIP_BODY,
@@ -74,7 +73,7 @@ interface ShopHomeGalleriesProps {
 
 /**
  * 目錄首頁依序：Pre-Order / ES Series / In-Stock / Sale / Custom Order。
- * 沒貨的區不畫，桌機仍佔原格。卡片寬高固定。
+ * 沒貨的區不畫，其餘區塊依序往前補位。卡片寬高固定。
  */
 export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
   const [seed] = useState(readVisitSeed)
@@ -181,8 +180,9 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-8">
       {hasGallery && (
         <div className={SHOP_HOME_GALLERY_GRID}>
-          {slots.map((slot) =>
-            slot.items.length > 0 ? (
+          {slots
+            .filter((slot) => slot.items.length > 0)
+            .map((slot) => (
               <HomeGalleryRow
                 key={slot.key}
                 galleryKey={slot.key}
@@ -191,14 +191,7 @@ export function ShopHomeGalleries({ products }: ShopHomeGalleriesProps) {
                 viewAllTo={slot.viewAllTo}
                 accent={slot.accent}
               />
-            ) : (
-              <div
-                key={slot.key}
-                className={SHOP_HOME_GALLERY_SLOT_EMPTY}
-                aria-hidden
-              />
-            ),
-          )}
+            ))}
         </div>
       )}
 

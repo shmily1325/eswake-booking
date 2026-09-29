@@ -99,12 +99,9 @@ export const SHOP_HOME_STRIP_CARD = 'w-[min(68vw,228px)] md:w-60 flex flex-col'
 /** 品牌 + 兩行名 + 副標 + 售價 + 會員價，空也留位 */
 export const SHOP_HOME_STRIP_BODY = 'px-2.5 py-2 h-[8.25rem] flex flex-col'
 
-/** 首頁 2×2：手機一欄只排有貨的區；桌機四格位置固定 */
+/** 首頁 gallery：只排有貨的區，桌機自動補滿每列兩格 */
 export const SHOP_HOME_GALLERY_GRID =
   'grid grid-cols-1 gap-y-10 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-10'
-
-/** 桌機佔住空格，避免後面的區往前補、卡片跟著變寬 */
-export const SHOP_HOME_GALLERY_SLOT_EMPTY = 'hidden lg:block min-w-0'
 
 /** 單品主圖：手機不要吃半屏，桌機不要撐到 500px */
 export const SHOP_DETAIL_FRAME =
