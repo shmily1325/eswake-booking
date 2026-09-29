@@ -70,4 +70,11 @@ describe('buildVariantSearchHaystack', () => {
   it('matches the product model year', () => {
     expect(variantMatchesSearchTokens(mockItem(null), '2025')).toBe(true)
   })
+
+  it('matches multiple terms across brand and variant attributes', () => {
+    const item = mockItem(null)
+    item.product.brand = 'Ronix'
+    item.variant.attributes = { length: '140' }
+    expect(variantMatchesSearchTokens(item, 'ronix 140')).toBe(true)
+  })
 })

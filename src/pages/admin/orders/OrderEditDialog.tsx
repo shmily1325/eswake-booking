@@ -23,7 +23,7 @@ import {
 } from '../products/api'
 import { LabelCodeCameraScanner } from '../products/LabelCodeCameraScanner'
 import { formatAttributes, formatProductTitle, getSkuFields } from '../products/schema'
-import { buildVariantSearchHaystack } from '../products/productSearchHaystack'
+import { variantMatchesSearchTokens } from '../products/productSearchHaystack'
 import type { VariantListItem } from '../products/types'
 import { fetchDiscountPresets } from '../products/discountApi'
 import type { DiscountPreset } from '../../shop/lib/shopPricing'
@@ -89,7 +89,6 @@ interface CreateOrderDraftSnapshot {
   customerNote: string
   internalNotes: string
   lines: DraftLine[]
-  variantSearch: string
   guestNameInput: string
   confirmedGuestName: string | null
   selectedMemberId: string | null
@@ -104,8 +103,24 @@ interface StoredCreateOrderDraft {
 const CREATE_ORDER_DRAFT_KEY = 'order_edit_dialog_create_draft_v1'
 const CREATE_ORDER_DRAFT_TTL_MS = 2 * 60 * 60 * 1000
 
+function hasMeaningfulCreateOrderDraft(snapshot: CreateOrderDraftSnapshot): boolean {
+  return Boolean(
+    snapshot.lines.length > 0 ||
+    snapshot.shippingInfo.trim() ||
+    snapshot.customerNote.trim() ||
+    snapshot.internalNotes.trim() ||
+    snapshot.guestNameInput.trim() ||
+    snapshot.confirmedGuestName ||
+    snapshot.selectedMemberId,
+  )
+}
+
 function saveCreateOrderDraft(snapshot: CreateOrderDraftSnapshot): void {
   try {
+    if (!hasMeaningfulCreateOrderDraft(snapshot)) {
+      window.sessionStorage.removeItem(CREATE_ORDER_DRAFT_KEY)
+      return
+    }
     const payload: StoredCreateOrderDraft = {
       version: 1,
       savedAt: Date.now(),
@@ -124,6 +139,10 @@ function loadCreateOrderDraft(): CreateOrderDraftSnapshot | null {
     const parsed = JSON.parse(raw) as StoredCreateOrderDraft
     if (!parsed || parsed.version !== 1 || !parsed.snapshot) return null
     if (Date.now() - parsed.savedAt > CREATE_ORDER_DRAFT_TTL_MS) {
+      window.sessionStorage.removeItem(CREATE_ORDER_DRAFT_KEY)
+      return null
+    }
+    if (!hasMeaningfulCreateOrderDraft(parsed.snapshot)) {
       window.sessionStorage.removeItem(CREATE_ORDER_DRAFT_KEY)
       return null
     }
@@ -170,6 +189,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
   const [scanOpen, setScanOpen] = useState(false)
   const [scanBusy, setScanBusy] = useState(false)
   const [scanStatus, setScanStatus] = useState<string | null>(null)
+  const [draftRestored, setDraftRestored] = useState(false)
 
   const isVoided = Boolean(order?.cancelled_at)
 
@@ -197,6 +217,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     if (!open) return
     setSaveError(null)
     if (order) {
+      setDraftRestored(false)
       clearCreateOrderDraft()
       setDeliveryMethod(order.delivery_method)
       setShippingInfo(order.shipping_info || '')
@@ -230,6 +251,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     } else {
       const restored = loadCreateOrderDraft()
       if (restored) {
+        setDraftRestored(true)
         setDeliveryMethod(restored.deliveryMethod)
         setShippingInfo(restored.shippingInfo)
         setCustomerNote(restored.customerNote)
@@ -238,7 +260,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           ...line,
           selected_options: line.selected_options ?? {},
         })))
-        setVariantSearch(restored.variantSearch)
+        setVariantSearch('')
         setConfirmedGuestName(restored.confirmedGuestName)
         setGuestNameInput(restored.guestNameInput)
         if (restored.selectedMemberId) {
@@ -252,6 +274,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
           memberSearch.reset()
         }
       } else {
+        setDraftRestored(false)
         setDeliveryMethod('pickup_es')
         setShippingInfo('')
         setCustomerNote('')
@@ -274,7 +297,6 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       customerNote,
       internalNotes,
       lines,
-      variantSearch,
       guestNameInput,
       confirmedGuestName,
       selectedMemberId: memberSearch.selectedMemberId,
@@ -287,7 +309,6 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     customerNote,
     internalNotes,
     lines,
-    variantSearch,
     guestNameInput,
     confirmedGuestName,
     memberSearch.selectedMemberId,
@@ -316,13 +337,13 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
     })
   }, [open, order, pricingReady, prefillVariantId, variants, discountPresets])
 
-  const filteredVariants = useMemo(() => {
-    const q = variantSearch.trim().toLowerCase()
+  const matchingVariants = useMemo(() => {
+    const q = variantSearch.trim()
     if (!q) return []
     return variants
-      .filter((v) => buildVariantSearchHaystack(v).includes(q))
-      .slice(0, 12)
+      .filter((v) => variantMatchesSearchTokens(v, q))
   }, [variants, variantSearch])
+  const filteredVariants = useMemo(() => matchingVariants.slice(0, 12), [matchingVariants])
 
   const labelCodeVariantMap = useMemo(() => {
     const map = new Map<string, VariantListItem>()
@@ -693,6 +714,53 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
             WebkitOverflowScrolling: 'touch',
           }}
         >
+        {draftRestored && !order && (
+          <div
+            role="status"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              marginBottom: 14,
+              padding: '10px 12px',
+              border: `1px solid ${designSystem.colors.info[500]}`,
+              borderRadius: designSystem.borderRadius.md,
+              background: designSystem.colors.info[50],
+              color: designSystem.colors.info[700],
+              fontSize: getFontSize('bodySmall', isMobile),
+            }}
+          >
+            <span>已恢復未完成訂單</span>
+            <button
+              type="button"
+              onClick={() => {
+                clearCreateOrderDraft()
+                setDeliveryMethod('pickup_es')
+                setShippingInfo('')
+                setCustomerNote('')
+                setInternalNotes('')
+                setLines([])
+                setVariantSearch('')
+                setConfirmedGuestName(null)
+                setGuestNameInput('')
+                memberSearch.reset()
+                setDraftRestored(false)
+              }}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: designSystem.colors.info[700],
+                fontWeight: 650,
+                cursor: 'pointer',
+                padding: '4px 0',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              捨棄草稿
+            </button>
+          </div>
+        )}
         <OrderMemberPicker
           selectedMemberId={memberSearch.selectedMemberId}
           selectedMemberLabel={selectedMemberLabel}
@@ -788,12 +856,17 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                 gridTemplateColumns: 'minmax(0, 1fr) auto',
                 gap: 8,
                 marginBottom: 14,
+                position: 'relative',
               }}
             >
               <input
                 value={variantSearch}
                 onChange={(e) => setVariantSearch(e.target.value)}
-                placeholder="搜尋品牌、型號、規格、貨號、標籤代碼"
+                placeholder={
+                  pricingReady
+                    ? '搜尋品牌、型號、規格、貨號、標籤代碼'
+                    : '商品載入中…'
+                }
                 disabled={!pricingReady}
                 style={{
                   ...inputStyle,
@@ -818,15 +891,40 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
               >
                 掃碼
               </button>
-            </div>
-            {filteredVariants.length > 0 && (
-              <div style={{
-                border: `1px solid ${designSystem.colors.border.light}`,
-                borderRadius: designSystem.borderRadius.md,
-                marginBottom: 12,
-                maxHeight: 200,
-                overflow: 'auto',
-              }}>
+              {variantSearch.trim() && pricingReady && (
+                <div style={{
+                  position: 'absolute',
+                  zIndex: 30,
+                  top: 'calc(100% + 6px)',
+                  left: 0,
+                  right: 0,
+                  border: `1px solid ${designSystem.colors.border.light}`,
+                  borderRadius: designSystem.borderRadius.md,
+                  maxHeight: isMobile ? 'min(42dvh, 280px)' : 240,
+                  overflow: 'auto',
+                  background: designSystem.colors.background.card,
+                  boxShadow: designSystem.shadows.elevation[2],
+                }}>
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    style={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1,
+                      padding: '7px 12px',
+                      borderBottom: filteredVariants.length > 0
+                        ? `1px solid ${designSystem.colors.border.light}`
+                        : 'none',
+                      background: designSystem.colors.background.card,
+                      color: designSystem.colors.text.secondary,
+                      fontSize: getFontSize('caption', isMobile),
+                    }}
+                  >
+                    {matchingVariants.length > 0
+                      ? `找到 ${matchingVariants.length} 項${matchingVariants.length > 12 ? '，顯示前 12 項' : ''}`
+                      : '找不到符合的商品'}
+                  </div>
                 {filteredVariants.map((v) => {
                   const meta = variantMetaLine(v.variant)
                   return (
@@ -868,7 +966,8 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                   )
                 })}
               </div>
-            )}
+              )}
+            </div>
           </>
         )}
 
