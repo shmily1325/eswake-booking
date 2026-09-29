@@ -285,6 +285,9 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       <AdminPillButton
         active={reportKind === 'product-sales'}
         onClick={() => setReportKind('product-sales')}
+        data-track={autoFilterCoachId
+          ? 'coach_report_product_sales_open'
+          : 'admin_statistics_product_sales_open'}
       >
         商品銷售
       </AdminPillButton>
