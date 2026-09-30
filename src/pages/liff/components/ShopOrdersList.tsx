@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { usePullToRefresh } from '../../../hooks/usePullToRefresh'
 import { getFontSizePx } from '../../../styles/designSystem'
 import { liffContentPanel, LIFF_THEME } from '../liffUiStyles'
@@ -12,6 +12,7 @@ import {
   liffOrderQuotedTotal,
   liffOrderSettledTotal,
   liffOrderStatus,
+  sortLiffShopOrdersOpenFirst,
 } from '../liffShopOrders'
 import { LiffEmptyState } from './LiffEmptyState'
 import { LiffPageHint } from './LiffPageHint'
@@ -355,6 +356,7 @@ interface ShopOrdersListProps {
 }
 
 export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListProps) {
+  const sortedOrders = useMemo(() => sortLiffShopOrdersOpenFirst(orders), [orders])
   const { pullDistance, refreshing, pullHandlers, pullReady } = usePullToRefresh(
     onRefresh ?? (async () => {}),
     !onRefresh || loading,
@@ -406,8 +408,8 @@ export function ShopOrdersList({ orders, loading, onRefresh }: ShopOrdersListPro
       {pullIndicator}
       <div style={liffContentPanel}>
         <div>
-          {orders.map((order, index) => (
-            <ShopOrderRow key={order.id} order={order} isLast={index === orders.length - 1} />
+          {sortedOrders.map((order, index) => (
+            <ShopOrderRow key={order.id} order={order} isLast={index === sortedOrders.length - 1} />
           ))}
         </div>
         <LiffPageHint>{ORDERS_PAGE_HINT}</LiffPageHint>

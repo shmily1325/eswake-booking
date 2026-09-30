@@ -9,6 +9,7 @@ import {
   liffOrderQuotedTotal,
   liffOrderSettledTotal,
   liffOrderStatus,
+  sortLiffShopOrdersOpenFirst,
 } from '../liffShopOrders'
 
 function mockItem(
@@ -167,6 +168,26 @@ describe('liffOrderStatus', () => {
     const item = mockItem({ id: 'a', qty: 2 })
     item.variant!.stock = undefined as unknown as number
     expect(liffOrderStatus(mockOrder([item]))).toBe('waiting')
+  })
+})
+
+describe('sortLiffShopOrdersOpenFirst', () => {
+  it('places unfinished orders first and preserves order within each group', () => {
+    const done = mockOrder([mockItem({ id: 'done', qty: 1, qty_paid: 1 })])
+    done.id = 'done'
+    const cancelled = mockOrder([mockItem({ id: 'cancelled', qty: 1 })])
+    cancelled.id = 'cancelled'
+    cancelled.cancelled_at = '2026-09-30T00:00:00Z'
+    const waiting = mockOrder([mockItem({ id: 'waiting', qty: 1, stock: 0 })])
+    waiting.id = 'waiting'
+    const pending = mockOrder([
+      mockItem({ id: 'pending', qty: 1, qty_pending_bill: 1, stock: 1, reserved_qty: 1 }),
+    ])
+    pending.id = 'pending'
+
+    expect(
+      sortLiffShopOrdersOpenFirst([done, waiting, cancelled, pending]).map((order) => order.id),
+    ).toEqual(['waiting', 'pending', 'done', 'cancelled'])
   })
 })
 

@@ -74,6 +74,20 @@ export function liffOrderStatus(order: LiffShopOrder): LiffOrderStatusKey {
   return 'waiting'
 }
 
+/** 未結案訂單優先；同一組內保留 API 原本的排序。 */
+export function sortLiffShopOrdersOpenFirst(
+  orders: readonly LiffShopOrder[],
+): LiffShopOrder[] {
+  return orders
+    .map((order, index) => ({
+      order,
+      index,
+      closed: ['done', 'cancelled'].includes(liffOrderStatus(order)),
+    }))
+    .sort((a, b) => Number(a.closed) - Number(b.closed) || a.index - b.index)
+    .map(({ order }) => order)
+}
+
 /** 已完成訂單的實際結帳總額；沒有結帳紀錄時不顯示金額。 */
 export function liffOrderSettledTotal(order: LiffShopOrder): number | null {
   return settlementAmountTotal(order.settlements)
