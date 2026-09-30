@@ -152,7 +152,7 @@ export function ProductHub() {
           </AdminPillLink>
           {canEdit && (
             <AdminPillLink to="/products/sales" active={onSales}>
-              銷售
+              統計
             </AdminPillLink>
           )}
           {canEdit && (
@@ -198,7 +198,7 @@ export function ProductHub() {
         {canEdit && (
           <Route
             path="sales"
-            element={<ShopSettlementStatisticsTab isMobile={isMobile} rankingOnly />}
+            element={<ShopSettlementStatisticsTab isMobile={isMobile} />}
           />
         )}
 

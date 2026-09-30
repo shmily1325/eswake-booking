@@ -28,6 +28,12 @@ import {
 } from './preorderReport'
 import { allocateSettlementAmount } from './settlementAllocation'
 import {
+  previousSalesDateRange,
+  salesComparisonLabel,
+  salesDateRangeFromSelection,
+  summarizeSales,
+} from './salesStatistics'
+import {
   filterSettlementsBySearch,
   formatSettlementLineDisplay,
   settlementBatchMeta,
@@ -49,25 +55,6 @@ interface Props {
 }
 
 const { colors, borderRadius, shadows, spacing } = designSystem
-
-function dateRangeFromSelection(selectedDate: string): { start: string; end: string } {
-  if (selectedDate.length === 4) {
-    const currentYear = getVenueDateString().slice(0, 4)
-    return {
-      start: `${selectedDate}-01-01`,
-      end: selectedDate === currentYear ? getVenueDateString() : `${selectedDate}-12-31`,
-    }
-  }
-  if (selectedDate.length === 10) {
-    return { start: selectedDate, end: selectedDate }
-  }
-  const [year, month] = selectedDate.split('-')
-  const lastDay = new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate()
-  return {
-    start: `${year}-${month}-01`,
-    end: `${year}-${month}-${String(lastDay).padStart(2, '0')}`,
-  }
-}
 
 function formatSalesCategoryName(categoryId: string): string {
   const category = getCategory(categoryId)
@@ -99,12 +86,16 @@ export function ShopSettlementStatisticsTab({
   const [selectedDate, setSelectedDate] = useState(() => getVenueDateString().slice(0, 4))
   const [preorderDate, setPreorderDate] = useState(() => getVenueDateString().slice(0, 4))
   const [detailDate, setDetailDate] = useState(() => getVenueDateString().slice(0, 4))
-  const [activeSubtab, setActiveSubtab] = useState<StatisticsSubtab>('sales')
+  const [activeSubtab, setActiveSubtab] = useState<StatisticsSubtab>(
+    hideSettlementDetails ? 'sales' : 'details',
+  )
   const [salesGroupBy, setSalesGroupBy] = useState<SalesGroupBy>('brand')
   const [salesLoading, setSalesLoading] = useState(false)
   const [preorderLoading, setPreorderLoading] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
   const [settlements, setSettlements] = useState<ShopOrderSettlementWithDetails[]>([])
+  const [previousSettlements, setPreviousSettlements] =
+    useState<ShopOrderSettlementWithDetails[]>([])
   const [detailRows, setDetailRows] = useState<ShopOrderSettlementWithDetails[]>([])
   const [preorderLines, setPreorderLines] = useState<ShopPreorderReportLine[]>([])
   const [detailSearch, setDetailSearch] = useState('')
@@ -140,11 +131,17 @@ export function ShopSettlementStatisticsTab({
     if (loadedSalesDate.current === selectedDate) return
     let active = true
     setSalesLoading(true)
-    const { start, end } = dateRangeFromSelection(selectedDate)
-    void fetchSettlementsInRange(start, end)
-      .then((rows) => {
+    const today = getVenueDateString()
+    const { start, end } = salesDateRangeFromSelection(selectedDate, today)
+    const previousRange = previousSalesDateRange(selectedDate, today)
+    void Promise.all([
+      fetchSettlementsInRange(start, end),
+      fetchSettlementsInRange(previousRange.start, previousRange.end),
+    ])
+      .then(([rows, previousRows]) => {
         if (active) {
           setSettlements(rows)
+          setPreviousSettlements(previousRows)
           loadedSalesDate.current = selectedDate
         }
       })
@@ -152,6 +149,7 @@ export function ShopSettlementStatisticsTab({
         if (!active) return
         toast.error(e instanceof Error ? e.message : '載入銷售分析失敗')
         setSettlements([])
+        setPreviousSettlements([])
         loadedSalesDate.current = selectedDate
       })
       .finally(() => {
@@ -168,7 +166,7 @@ export function ShopSettlementStatisticsTab({
     if (loadedPreorderDate.current === reportDate) return
     let active = true
     setPreorderLoading(true)
-    const { start, end } = dateRangeFromSelection(reportDate)
+    const { start, end } = salesDateRangeFromSelection(reportDate, getVenueDateString())
     void fetchPreorderReportInRange(start, end)
       .then((rows) => {
         if (active) {
@@ -195,7 +193,7 @@ export function ShopSettlementStatisticsTab({
     if (loadedDetailDate.current === detailDate) return
     let active = true
     setDetailLoading(true)
-    const { start, end } = dateRangeFromSelection(detailDate)
+    const { start, end } = salesDateRangeFromSelection(detailDate, getVenueDateString())
     void fetchSettlementsInRange(start, end)
       .then((rows) => {
         if (active) {
@@ -274,31 +272,21 @@ export function ShopSettlementStatisticsTab({
     }
   }, [detailRows, settlements, toast])
 
-  const summary = useMemo(() => {
-    const byMethod: Record<OrderPaymentMethod, { count: number; total: number }> = {
-      balance: { count: 0, total: 0 },
-      transfer: { count: 0, total: 0 },
-      cash: { count: 0, total: 0 },
+  const summary = useMemo(() => summarizeSales(settlements), [settlements])
+  const previousSummary = useMemo(
+    () => summarizeSales(previousSettlements),
+    [previousSettlements],
+  )
+  const comparisonText = useMemo(() => {
+    const label = salesComparisonLabel(selectedDate, getVenueDateString())
+    if (previousSummary.grandTotal === 0) {
+      return summary.grandTotal > 0 ? `${label}：上期無銷售` : `${label}：持平`
     }
-    let grandTotal = 0
-    let qty = 0
-    const orderIds = new Set<string>()
-    for (const s of settlements) {
-      grandTotal += s.amount_total
-      orderIds.add(s.order_id)
-      qty += s.items_snapshot.reduce((sum, line) => sum + line.qty, 0)
-      byMethod[s.payment_method].count += 1
-      byMethod[s.payment_method].total += s.amount_total
-    }
-    const orderCount = orderIds.size
-    return {
-      orderCount,
-      qty,
-      grandTotal,
-      averagePerOrder: orderCount > 0 ? grandTotal / orderCount : 0,
-      byMethod,
-    }
-  }, [settlements])
+    const percent = Math.round(
+      ((summary.grandTotal - previousSummary.grandTotal) / previousSummary.grandTotal) * 100,
+    )
+    return `${label} ${percent > 0 ? '+' : ''}${percent}%`
+  }, [previousSummary.grandTotal, selectedDate, summary.grandTotal])
 
   const salesGroups = useMemo(() => {
     const grouped = new Map<
@@ -316,7 +304,22 @@ export function ShopSettlementStatisticsTab({
             total: number
             details: Map<
               string,
-              SettlementLineDisplay & { id: string; qty: number; total: number }
+              SettlementLineDisplay & {
+                id: string
+                qty: number
+                total: number
+                orders: Map<
+                  string,
+                  {
+                    id: string
+                    orderNo: string
+                    contactName: string
+                    settledAt: string
+                    qty: number
+                    total: number
+                  }
+                >
+              }
             >
           }
         >
@@ -376,6 +379,15 @@ export function ShopSettlementStatisticsTab({
           id: detailKey,
           qty: 0,
           total: 0,
+          orders: new Map(),
+        }
+        const order = detail.orders.get(settlement.id) ?? {
+          id: settlement.id,
+          orderNo: settlement.order_no,
+          contactName: settlement.contact_name,
+          settledAt: settlement.settled_at,
+          qty: 0,
+          total: 0,
         }
 
         group.qty += line.qty
@@ -384,6 +396,9 @@ export function ShopSettlementStatisticsTab({
         item.total += allocatedTotal
         detail.qty += line.qty
         detail.total += allocatedTotal
+        order.qty += line.qty
+        order.total += allocatedTotal
+        detail.orders.set(settlement.id, order)
         item.details.set(detailKey, detail)
         group.items.set(itemKey, item)
         grouped.set(groupId, group)
@@ -398,9 +413,16 @@ export function ShopSettlementStatisticsTab({
           .sort((a, b) => b.total - a.total || b.qty - a.qty || a.title.localeCompare(b.title))
           .map((item) => ({
             ...item,
-            details: Array.from(item.details.values()).sort(
-              (a, b) => b.total - a.total || b.qty - a.qty || a.title.localeCompare(b.title),
-            ),
+            details: Array.from(item.details.values())
+              .sort(
+                (a, b) => b.total - a.total || b.qty - a.qty || a.title.localeCompare(b.title),
+              )
+              .map((detail) => ({
+                ...detail,
+                orders: Array.from(detail.orders.values()).sort(
+                  (a, b) => b.settledAt.localeCompare(a.settledAt),
+                ),
+              })),
           })),
       }))
   }, [salesGroupBy, settlements, variantDisplay, variantSalesMeta])
@@ -458,7 +480,7 @@ export function ShopSettlementStatisticsTab({
   const subtabs: ReadonlyArray<readonly [StatisticsSubtab, string]> =
     hideSettlementDetails
       ? [['sales', '銷售分析'], ['preorder', '預購進度']]
-      : [['sales', '銷售分析'], ['preorder', '預購進度'], ['details', '結帳明細']]
+      : [['details', '結帳明細'], ['sales', '銷售分析'], ['preorder', '預購進度']]
 
   useEffect(() => {
     if (!activeLoading) onLoadCompleteRef.current?.()
@@ -552,10 +574,10 @@ export function ShopSettlementStatisticsTab({
         </div>
       ) : (
         <>
-          {!rankingOnly && activeSubtab === 'sales' && settlements.length > 0 && (
+          {(rankingOnly || activeSubtab === 'sales') && settlements.length > 0 && (
             <div
               id="product-order-stat-panel-sales"
-              role="tabpanel"
+              role={rankingOnly ? undefined : 'tabpanel'}
               style={{
                 marginBottom: 24,
               }}
@@ -565,23 +587,21 @@ export function ShopSettlementStatisticsTab({
                   display: 'grid',
                   gridTemplateColumns: isMobile
                     ? 'repeat(2, minmax(0, 1fr))'
-                    : 'repeat(4, minmax(0, 1fr))',
+                    : 'repeat(3, minmax(0, 1fr))',
                   gap: isMobile ? 8 : spacing.md,
                 }}
               >
-                <MetricCard
-                  label="實收總額"
-                  value={formatCurrency(summary.grandTotal, false)}
-                  isMobile={isMobile}
-                  emphasize
-                />
+                <div style={{ gridColumn: isMobile ? '1 / -1' : undefined }}>
+                  <MetricCard
+                    label="實收總額"
+                    value={formatCurrency(summary.grandTotal, false)}
+                    caption={comparisonText}
+                    isMobile={isMobile}
+                    emphasize
+                  />
+                </div>
                 <MetricCard label="訂單數" value={`${summary.orderCount} 筆`} isMobile={isMobile} />
                 <MetricCard label="售出件數" value={`${summary.qty} 件`} isMobile={isMobile} />
-                <MetricCard
-                  label="平均每單"
-                  value={formatCurrency(summary.averagePerOrder, false)}
-                  isMobile={isMobile}
-                />
               </div>
               <div
                 style={{
@@ -609,6 +629,30 @@ export function ShopSettlementStatisticsTab({
                   {' · '}{summary.byMethod.transfer.count + summary.byMethod.cash.count} 批
                 </span>
               </div>
+              {salesGroups[0] && (
+                <div
+                  style={{
+                    marginTop: spacing.sm,
+                    padding: isMobile ? '10px 12px' : '11px 16px',
+                    borderLeft: `3px solid ${colors.secondary[700]}`,
+                    borderRadius: borderRadius.sm,
+                    background: colors.secondary[50],
+                    color: colors.text.secondary,
+                    fontSize: getFontSize('bodySmall', isMobile),
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <strong style={{ color: colors.text.primary }}>
+                    {salesGroups[0].name}
+                  </strong>
+                  {' '}為本期{salesGroupBy === 'brand' ? '品牌' : '品項'}第一名，
+                  貢獻{' '}
+                  {summary.grandTotal > 0
+                    ? Math.round((salesGroups[0].total / summary.grandTotal) * 100)
+                    : 0}
+                  %，共售出 {salesGroups[0].qty} 件。
+                </div>
+              )}
             </div>
           )}
 
@@ -980,9 +1024,6 @@ export function ShopSettlementStatisticsTab({
                               <div
                                 key={detail.id}
                                 style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'minmax(0, 1fr) auto',
-                                  gap: spacing.sm,
                                   padding: '4px 2px',
                                   borderTop:
                                     detailIndex > 0 ? `1px solid ${colors.border.light}` : 'none',
@@ -991,18 +1032,51 @@ export function ShopSettlementStatisticsTab({
                                   lineHeight: 1.35,
                                 }}
                               >
-                                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                                  {detail.title}
-                                </span>
-                                <span
+                                <div
                                   style={{
-                                    flexShrink: 0,
-                                    fontVariantNumeric: 'tabular-nums',
-                                    whiteSpace: 'nowrap',
+                                    display: 'grid',
+                                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                                    gap: spacing.sm,
                                   }}
                                 >
-                                  {detail.qty} 件 · {formatCurrency(detail.total, false)}
-                                </span>
+                                  <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                                    {detail.title}
+                                  </span>
+                                  <span
+                                    style={{
+                                      flexShrink: 0,
+                                      fontVariantNumeric: 'tabular-nums',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {detail.qty} 件 · {formatCurrency(detail.total, false)}
+                                  </span>
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '4px 10px',
+                                    marginTop: 4,
+                                    paddingLeft: 10,
+                                  }}
+                                >
+                                  {detail.orders.map((order) => (
+                                    <Link
+                                      key={order.id}
+                                      to={`/products/orders?q=${encodeURIComponent(order.orderNo)}`}
+                                      data-track="product_order_settle_stat_rank_order_open"
+                                      style={{
+                                        color: colors.text.secondary,
+                                        textDecoration: 'underline',
+                                        textUnderlineOffset: 2,
+                                      }}
+                                    >
+                                      {order.orderNo} · {order.contactName} · {order.qty} 件 ·{' '}
+                                      {formatCurrency(order.total, false)}
+                                    </Link>
+                                  ))}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -2092,11 +2166,13 @@ function PreorderReportCard({
 function MetricCard({
   label,
   value,
+  caption,
   isMobile,
   emphasize,
 }: {
   label: string
   value: string
+  caption?: string
   isMobile: boolean
   emphasize?: boolean
 }) {
@@ -2140,6 +2216,19 @@ function MetricCard({
       >
         {value}
       </span>
+      {caption && (
+        <span
+          style={{
+            fontSize: getFontSize('caption', isMobile),
+            color: colors.text.secondary,
+            fontWeight: 550,
+            lineHeight: 1.35,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {caption}
+        </span>
+      )}
     </div>
   )
 }

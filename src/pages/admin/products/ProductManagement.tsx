@@ -141,10 +141,12 @@ function FilterGroup({
   label,
   children,
   isMobile,
+  hint,
 }: {
   label: string
   children: ReactNode
   isMobile: boolean
+  hint?: string
 }) {
   return (
     <div style={{
@@ -162,6 +164,17 @@ function FilterGroup({
         }}
       >
         <span style={{ color: colors.text.primary, fontWeight: 650 }}>{label}</span>
+        {hint && (
+          <span
+            style={{
+              marginLeft: 'auto',
+              color: colors.text.disabled,
+              fontWeight: 500,
+            }}
+          >
+            {hint}
+          </span>
+        )}
       </div>
       <div style={{ minWidth: 0 }}>{children}</div>
     </div>
@@ -240,7 +253,7 @@ export function ProductManagement({
     if (filterId) setDiscountPresetFilter(filterId)
   }, [filterId])
 
-  const clearAllFilters = () => {
+  const clearNonSearchFilters = () => {
     setOnlyUnlisted(false)
     setOnlyMissingPrice(false)
     setOnlyMissingImage(false)
@@ -255,7 +268,6 @@ export function ProductManagement({
     setActiveGroup('all')
     setActiveSubCat('all')
     setActiveBrand('all')
-    setSearch('')
     const next = new URLSearchParams(searchParams)
     next.delete(FILTER_DISCOUNT_PARAM)
     next.delete(SELECT_PARAM)
@@ -263,7 +275,7 @@ export function ProductManagement({
       setSearchParams(next, { replace: true })
     }
   }
-  const hasAnyFilter =
+  const hasNonSearchFilter =
     onlyUnlisted ||
     onlyMissingPrice ||
     onlyMissingImage ||
@@ -277,9 +289,7 @@ export function ProductManagement({
     discountPresetFilter != null ||
     activeGroup !== 'all' ||
     activeSubCat !== 'all' ||
-    activeBrand !== 'all' ||
-    search.trim() !== ''
-
+    activeBrand !== 'all'
   const toggleUnlisted = () => setOnlyUnlisted((v) => !v)
   const toggleMissingPrice = () => setOnlyMissingPrice((v) => !v)
   const toggleMissingImage = () => setOnlyMissingImage((v) => !v)
@@ -542,16 +552,18 @@ export function ProductManagement({
 
   /** 上方條件改變後，若目前系列／分類已無結果，就回到「全部」。 */
   useEffect(() => {
+    if (hasSearch) return
     if (activeGroup !== 'all' && !availableGroups.has(activeGroup)) {
       setActiveGroup('all')
     }
-  }, [activeGroup, availableGroups])
+  }, [activeGroup, availableGroups, hasSearch])
 
   useEffect(() => {
+    if (hasSearch) return
     if (activeSubCat !== 'all' && !availableCategoryIds.has(activeSubCat)) {
       setActiveSubCat('all')
     }
-  }, [activeSubCat, availableCategoryIds])
+  }, [activeSubCat, availableCategoryIds, hasSearch])
 
   const operationalTabItems = useMemo(() => {
     if (activeGroup === 'all') return operationalItems
@@ -579,13 +591,14 @@ export function ProductManagement({
   }, [operationalTabItems])
 
   useEffect(() => {
+    if (hasSearch) return
     if (
       activeBrand !== 'all' &&
       !brandOptions.some((brand) => brand.toLocaleLowerCase() === activeBrand.toLocaleLowerCase())
     ) {
       setActiveBrand('all')
     }
-  }, [activeBrand, brandOptions])
+  }, [activeBrand, brandOptions, hasSearch])
 
   const brandItems = useMemo(() => {
     if (activeBrand === 'all') return tabItems
@@ -613,6 +626,15 @@ export function ProductManagement({
     () => filteredItems.reduce((sum, item) => sum + getVariantSellableStock(item.variant), 0),
     [filteredItems],
   )
+  const allSearchMatches = useMemo(
+    () => hasSearch
+      ? allItems.filter((item) => variantMatchesSearchTokens(item, searchQuery))
+      : [],
+    [allItems, hasSearch, searchQuery],
+  )
+  const hiddenSearchSkuCount = hasSearch
+    ? Math.max(0, allSearchMatches.length - filteredItems.length)
+    : 0
 
   /** tab + 搜尋，用來算儀表板數字與 chip 計數（含已售完） */
   const baseForCounts: VariantListItem[] = useMemo(() => {
@@ -685,10 +707,8 @@ export function ProductManagement({
           onRemove: () => setDiscountPresetFilter(null),
         }]
       : []),
-    ...(searchQuery
-      ? [{ id: 'search', label: `搜尋：${searchQuery}`, onRemove: () => setSearch('') }]
-      : []),
   ]
+  const activeFilterCount = activeFilterItems.length
 
   /**
    * 「新增商品」按鈕點下去時，新建商品要預填的 category：
@@ -933,6 +953,54 @@ export function ProductManagement({
     )
   }
 
+  const productActions = (
+    <div
+      style={{
+        display: 'flex',
+        gap: 8,
+        alignItems: 'center',
+        flexShrink: 0,
+        width: isMobile ? '100%' : undefined,
+      }}
+    >
+      <Button
+        variant="outline"
+        data-track="product_stock_scan_open"
+        style={isMobile ? { flex: 1 } : undefined}
+        onClick={() => {
+          setStockScannerStatus(null)
+          setStockScannerOpen(true)
+        }}
+      >
+        {isMobile ? '掃碼' : '掃碼查庫存'}
+      </Button>
+      {canEdit && (
+        <Button
+          variant="outline"
+          data-track="product_add_vibes_custom"
+          style={isMobile ? { flex: 1 } : undefined}
+          onClick={() => {
+            setView({ kind: 'create', defaultCategory: 'ws_board', vibesCustomOrder: true })
+          }}
+        >
+          {isMobile ? 'VIBES 客製' : '+ VIBES 客製'}
+        </Button>
+      )}
+      {canEdit && (
+        <Button
+          variant="primary"
+          data-track="product_add"
+          style={isMobile ? { flex: 1 } : undefined}
+          onClick={() => {
+            setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
+          }}
+        >
+          {isMobile ? '新增' : '+ 新增商品'}
+        </Button>
+      )}
+    </div>
+  )
+
   return (
     <DiscountPresetsContext.Provider value={discountPresets}>
     <div
@@ -959,101 +1027,136 @@ export function ProductManagement({
       <div style={embedded ? { maxWidth: PAGE_MAX_WIDTHS.content, margin: '0 auto' } : getPageContentShellStyle(isMobile)}>
         {!embedded && <PageHeader user={user} title="商品管理" showBaoLink={isAdmin(user)} />}
 
-        {/* 主要操作：搜尋與新增商品 */}
+        {/* 主要操作：搜尋保持可見；手機上的高頻篩選仍維持常開。 */}
         <div
           style={{
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: 10,
-            marginBottom: 14,
-            alignItems: isMobile ? 'stretch' : 'center',
+            position: 'sticky',
+            top: 0,
+            zIndex: 20,
+            margin: isMobile ? '-4px -4px 10px' : '-8px -8px 10px',
+            padding: isMobile ? '4px' : '8px',
+            background: pageBg,
           }}
         >
-          <div style={{ flex: 1, minWidth: isMobile ? 0 : 200, position: 'relative' }}>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={isMobile ? '搜尋' : '搜尋品牌、型號、貨號、標籤、規格'}
-              style={{
-                ...getInputStyle(isMobile),
-                paddingRight: search ? 36 : undefined,
-              }}
-            />
-            {search && (
-              <button
-                type="button"
-                aria-label="清除搜尋"
-                onClick={() => setSearch('')}
-                style={{
-                  position: 'absolute',
-                  right: 8,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  color: designSystem.colors.text.secondary,
-                  fontSize: 16,
-                  cursor: 'pointer',
-                  padding: 4,
-                  lineHeight: 1,
-                }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
           <div
             style={{
               display: 'flex',
-              gap: 8,
+              gap: 10,
               alignItems: 'center',
-              flexShrink: 0,
-              width: isMobile ? '100%' : undefined,
             }}
           >
-            <Button
-              variant="outline"
-              data-track="product_stock_scan_open"
-              style={isMobile ? { flex: 1 } : undefined}
-              onClick={() => {
-                setStockScannerStatus(null)
-                setStockScannerOpen(true)
+            <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: 14,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: colors.text.secondary,
+                  pointerEvents: 'none',
+                  lineHeight: 0,
+                }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+                  <path d="m16.5 16.5 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                inputMode="search"
+                enterKeyHint="search"
+                aria-label="搜尋商品"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={
+                  isMobile
+                    ? '搜尋商品，例如 RONIX 140'
+                    : '搜尋商品，例如 RONIX 140、貨號或標籤'
+                }
+                style={{
+                  ...getInputStyle(isMobile),
+                  paddingLeft: 42,
+                  paddingRight: search ? 40 : 14,
+                }}
+              />
+              {search && (
+                <button
+                  type="button"
+                  aria-label="清除搜尋"
+                  onClick={() => setSearch('')}
+                  style={{
+                    position: 'absolute',
+                    right: 9,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 28,
+                    height: 28,
+                    border: 'none',
+                    borderRadius: borderRadius.full,
+                    background: colors.background.main,
+                    color: colors.text.secondary,
+                    fontSize: 15,
+                    cursor: 'pointer',
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {!isMobile && productActions}
+          </div>
+          {hasSearch && (
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '4px 10px',
+                padding: '7px 4px 0',
+                color: colors.text.secondary,
+                fontSize: getFontSize('caption', isMobile),
               }}
             >
-              {isMobile ? '掃碼' : '掃碼查庫存'}
-            </Button>
-            {canEdit && (
-              <Button
-                variant="outline"
-                data-track="product_add_vibes_custom"
-                style={isMobile ? { flex: 1 } : undefined}
-                onClick={() => {
-                  setView({ kind: 'create', defaultCategory: 'ws_board', vibesCustomOrder: true })
-                }}
+              <span>
+                {loading
+                  ? '搜尋中…'
+                  : `找到 ${filteredProductCount} 個商品 · ${filteredItems.length} 個 SKU`}
+                {activeFilterCount > 0 ? ` · ${activeFilterCount} 個篩選` : ''}
+              </span>
+              {hiddenSearchSkuCount > 0 && hasNonSearchFilter && (
+                <button
+                  type="button"
+                  onClick={clearNonSearchFilters}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: colors.text.primary,
+                    font: 'inherit',
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline',
+                    textUnderlineOffset: 2,
+                  }}
               >
-                {isMobile ? 'VIBES 客製' : '+ VIBES 客製'}
-              </Button>
-            )}
-            {canEdit && (
-              <Button
-                variant="primary"
-                data-track="product_add"
-                style={isMobile ? { flex: 1 } : undefined}
-                onClick={() => {
-                  setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
-                }}
-              >
-                {isMobile ? '新增' : '+ 新增商品'}
-              </Button>
-            )}
-          </div>
+                  另有 {hiddenSearchSkuCount} 個 SKU 被篩選隱藏，清除篩選
+                </button>
+              )}
+            </div>
+          )}
         </div>
+        {isMobile && <div style={{ marginBottom: 14 }}>{productActions}</div>}
 
         {/* 商品查詢保留供貨篩選；資料問題與檔期只在可編輯的管理頁顯示。 */}
         <InventoryDashboard
             base={baseForCounts}
-            isFiltered={hasAnyFilter}
+            isFiltered={hasNonSearchFilter}
             showDataFilters={canEdit}
             resultProductCount={filteredProductCount}
             resultSkuCount={filteredItems.length}
@@ -1091,7 +1194,7 @@ export function ProductManagement({
             onToggleDiscountPreset={(id) =>
               setDiscountPresetFilter((prev) => (prev === id ? null : id))
             }
-            onClearAll={clearAllFilters}
+            onClearAll={clearNonSearchFilters}
             isMobile={isMobile}
           />
 
@@ -1152,7 +1255,7 @@ export function ProductManagement({
           }}
         >
             {/* Row 1：上層分組 */}
-            <FilterGroup label="系列" isMobile={isMobile}>
+            <FilterGroup label="系列" isMobile={isMobile} hint={isMobile ? '左右滑動 →' : undefined}>
               <ChipRow ariaLabel="商品系列">
                 <CategoryTab
                   label="全部"
@@ -1176,7 +1279,7 @@ export function ProductManagement({
 
             {/* Row 2：子分類（依當前 group 動態切，'all' group 時不顯示） */}
             {activeGroup !== 'all' && activeGroup !== 'ES' && (
-              <FilterGroup label="分類" isMobile={isMobile}>
+              <FilterGroup label="分類" isMobile={isMobile} hint={isMobile ? '左右滑動 →' : undefined}>
                 <ChipRow ariaLabel="子分類">
                   <CategoryTab
                     label="全部"
@@ -1207,7 +1310,7 @@ export function ProductManagement({
 
             {/* Row 3：品牌由目前商品資料自動產生 */}
             {brandOptions.length > 0 && (
-              <FilterGroup label="品牌" isMobile={isMobile}>
+              <FilterGroup label="品牌" isMobile={isMobile} hint={isMobile ? '左右滑動 →' : undefined}>
                 <ChipRow ariaLabel="品牌">
                   <CategoryTab
                     label="全部品牌"
@@ -1235,7 +1338,7 @@ export function ProductManagement({
         {activeFilterItems.length > 0 && (
           <ActiveFilterSummary
             items={activeFilterItems}
-            onClearAll={clearAllFilters}
+            onClearAll={clearNonSearchFilters}
             isMobile={isMobile}
           />
         )}
@@ -1313,6 +1416,10 @@ export function ProductManagement({
             hasAnyProduct={products.length > 0}
             canCreate={canEdit}
             isMobile={isMobile}
+            searchQuery={searchQuery}
+            hasFilters={hasNonSearchFilter}
+            onClearSearch={() => setSearch('')}
+            onClearFilters={clearNonSearchFilters}
             onCreate={() => {
               setView({ kind: 'create', defaultCategory: resolveDefaultCategoryForCreate() })
             }}
@@ -2057,7 +2164,7 @@ function InventoryDashboard({
           </button>
         )}
       </div>
-      <FilterGroup label="供貨" isMobile={isMobile}>
+      <FilterGroup label="供貨" isMobile={isMobile} hint={isMobile ? '左右滑動 →' : undefined}>
         <ChipRow ariaLabel="供貨狀態">{stockStatusChips}</ChipRow>
       </FilterGroup>
       {onlyPreOrder && (
@@ -3448,9 +3555,28 @@ interface EmptyStateProps {
   hasAnyProduct: boolean
   canCreate: boolean
   isMobile: boolean
+  searchQuery: string
+  hasFilters: boolean
+  onClearSearch: () => void
+  onClearFilters: () => void
   onCreate: () => void
 }
-function EmptyState({ hasAnyProduct, canCreate, isMobile, onCreate }: EmptyStateProps) {
+function EmptyState({
+  hasAnyProduct,
+  canCreate,
+  isMobile,
+  searchQuery,
+  hasFilters,
+  onClearSearch,
+  onClearFilters,
+  onCreate,
+}: EmptyStateProps) {
+  const hasSearch = searchQuery !== ''
+  const title = !hasAnyProduct
+    ? '還沒有任何商品'
+    : hasSearch
+      ? `找不到「${searchQuery}」`
+      : '沒有符合目前條件的商品'
   return (
     <div
       style={{
@@ -3470,11 +3596,33 @@ function EmptyState({ hasAnyProduct, canCreate, isMobile, onCreate }: EmptyState
           color: colors.text.primary,
         }}
       >
-        {hasAnyProduct ? '沒有符合的商品' : '還沒有任何商品'}
+        {title}
       </div>
       {hasAnyProduct && (
-        <div style={{ fontSize: getFontSize('bodySmall', isMobile), marginBottom: 18 }}>
-          試試清除篩選
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 8,
+            fontSize: getFontSize('bodySmall', isMobile),
+            marginBottom: 18,
+          }}
+        >
+          <span>
+            {hasSearch ? '試試品牌、型號或規格關鍵字' : '目前的篩選沒有結果'}
+          </span>
+          {hasSearch && (
+            <button type="button" onClick={onClearSearch} style={emptyStateTextButtonStyle()}>
+              清除搜尋
+            </button>
+          )}
+          {hasFilters && (
+            <button type="button" onClick={onClearFilters} style={emptyStateTextButtonStyle()}>
+              清除篩選
+            </button>
+          )}
         </div>
       )}
       {canCreate && (
@@ -3484,4 +3632,18 @@ function EmptyState({ hasAnyProduct, canCreate, isMobile, onCreate }: EmptyState
       )}
     </div>
   )
+}
+
+function emptyStateTextButtonStyle(): CSSProperties {
+  return {
+    border: 'none',
+    background: 'transparent',
+    color: colors.text.primary,
+    font: 'inherit',
+    fontWeight: 650,
+    cursor: 'pointer',
+    padding: 0,
+    textDecoration: 'underline',
+    textUnderlineOffset: 2,
+  }
 }
