@@ -202,13 +202,9 @@ export function getBackupHealth(
     if (failedDays >= 2) {
       return result('warning', `圖片同步已連續 ${failedDays} 天失敗`)
     }
-    if (failedDays === 1) {
-      return result('info', '完整圖片備份正常（最近同步失敗）')
-    }
-    if (hasRunning) {
-      return result('info', '完整圖片備份正常（同步中）')
-    }
-    return result('ok', '圖片備份正常')
+    // A recent valid snapshot remains healthy during a retry or a normal
+    // resumable run. Escalate only sustained failures or stale snapshots.
+    return result('ok', isDesktop ? '桌機檔案備份正常' : '圖片備份正常')
   }
 
   if (elapsed > 50 * HOUR_MS) {

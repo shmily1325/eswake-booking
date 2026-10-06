@@ -151,20 +151,29 @@ describe('getBackupHealth', () => {
     ).status).toBe('error')
   })
 
-  it('keeps one image failure or running row informational', () => {
+  it('keeps one image failure or a normal running row healthy', () => {
     expect(getBackupHealth([
       imageLog({ status: 'failed', created_at: '2026-07-24T01:00:00.000Z' }),
       imageLog({ created_at: '2026-07-23T02:00:00.000Z' }),
     ], 'cloud-image', now)).toMatchObject({
-      status: 'info',
-      message: '完整圖片備份正常（最近同步失敗）',
+      status: 'ok',
+      message: '圖片備份正常',
     })
     expect(getBackupHealth([
       imageLog({ status: 'running', created_at: '2026-07-24T01:00:00.000Z' }),
       imageLog({ created_at: '2026-07-23T02:00:00.000Z' }),
     ], 'cloud-image', now)).toMatchObject({
-      status: 'info',
-      message: '完整圖片備份正常（同步中）',
+      status: 'ok',
+      message: '圖片備份正常',
+    })
+  })
+
+  it('describes a healthy desktop image backup without claiming source freshness', () => {
+    expect(getBackupHealth([
+      imageLog({ created_at: '2026-07-23T02:00:00.000Z' }),
+    ], 'desktop-image', now)).toMatchObject({
+      status: 'ok',
+      message: '桌機檔案備份正常',
     })
   })
 

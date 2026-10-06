@@ -45,9 +45,6 @@ export function storageEntryChanged(
   if (state.source_deleted_at) return true
   if (!state.drive_file_id || !state.last_backed_up_at) return true
   if (!state.checksum?.match(/^[a-f0-9]{64}$/)) return true
-  if (Date.now() - new Date(state.last_backed_up_at).getTime() > 30 * 24 * 60 * 60 * 1000) {
-    return true
-  }
   return (state.source_updated_at || null) !== entry.updatedAt
     || Number(state.source_size || 0) !== entry.size
 }

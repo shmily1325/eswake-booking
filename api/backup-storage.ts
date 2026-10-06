@@ -90,9 +90,9 @@ function deadlineSignal(deadline: number, maximumMs: number = 30_000): AbortSign
   return AbortSignal.timeout(Math.min(maximumMs, remainingMs))
 }
 
-function requestMode(req: VercelRequest): 'manifest' | 'cloud' {
+function requestMode(req: VercelRequest): 'manifest' | 'cloud' | 'resume' {
   const mode = Array.isArray(req.query.mode) ? req.query.mode[0] : req.query.mode
-  return mode === 'cloud' ? 'cloud' : 'manifest'
+  return mode === 'cloud' || mode === 'resume' ? mode : 'manifest'
 }
 
 function queryInteger(
@@ -490,26 +490,59 @@ async function renewRunLease(
 async function processResumableStorageBackup(
   supabase: SupabaseClient,
   startedAt: number,
-): Promise<{
-  busy: boolean
-  complete: boolean
-  phase: StorageBackupPhase
-  scanned: number
-  processed: number
-  remaining: number
-  run: StorageBackupRun
-  manifest?: StorageBackupManifest
-}> {
+  resumeOnly: boolean = false,
+): Promise<
+  | {
+    idle: true
+    busy: false
+    complete: true
+    phase: 'complete'
+    scanned: 0
+    processed: 0
+    remaining: 0
+    run: null
+  }
+  | {
+    idle: false
+    busy: boolean
+    complete: boolean
+    phase: StorageBackupPhase
+    scanned: number
+    processed: number
+    remaining: number
+    run: StorageBackupRun
+    manifest?: StorageBackupManifest
+  }
+> {
   const leaseToken = randomUUID()
   const { data: acquiredData, error: acquireError } = await supabase.rpc(
-    'acquire_storage_backup_inventory_run',
+    resumeOnly
+      ? 'acquire_active_storage_backup_inventory_run'
+      : 'acquire_storage_backup_inventory_run',
     { p_lease_token: leaseToken, p_lease_seconds: 120 },
   )
   if (acquireError) throw new Error(`取得 Storage 備份工作失敗：${acquireError.message}`)
-  const acquire = acquiredData as { acquired: boolean; run: StorageBackupRun }
+  const acquire = acquiredData as {
+    acquired: boolean
+    idle?: boolean
+    run?: StorageBackupRun
+  }
+  if (resumeOnly && acquire.idle) {
+    return {
+      idle: true,
+      busy: false,
+      complete: true,
+      phase: 'complete',
+      scanned: 0,
+      processed: 0,
+      remaining: 0,
+      run: null,
+    }
+  }
   let run = rpcRun(acquire.run)
   if (!acquire.acquired) {
     return {
+      idle: false,
       busy: true,
       complete: false,
       phase: run.phase,
@@ -871,6 +904,7 @@ async function processResumableStorageBackup(
   }
 
   return {
+    idle: false,
     busy: false,
     complete: run.phase === 'complete',
     phase: run.phase,
@@ -902,7 +936,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabase = createClient(supabaseUrl, serviceKey)
 
   try {
-    if (requestMode(req) === 'manifest') {
+    const mode = requestMode(req)
+    if (mode === 'manifest') {
       const requestedSnapshot = queryString(req, 'snapshot')
       let snapshotToken = requestedSnapshot
       let snapshot: {
@@ -995,8 +1030,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const result = await processResumableStorageBackup(supabase, startedAt)
+    const result = await processResumableStorageBackup(
+      supabase,
+      startedAt,
+      mode === 'resume',
+    )
     const executionTime = Date.now() - startedAt
+    if (result.idle) {
+      return res.status(200).json({
+        success: true,
+        complete: true,
+        idle: true,
+        message: '目前沒有未完成的商品圖片備份',
+        executionTime,
+      })
+    }
     if (result.busy) {
       return res.status(202).json({
         success: false,

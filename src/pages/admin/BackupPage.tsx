@@ -212,7 +212,7 @@ export function BackupPage() {
       schedule: '每天 10:00，未登入則略過',
       items: [
         { label: '資料庫', logs: wdLogs, profile: 'desktop-database' as BackupHealthProfile },
-        { label: '商品圖片', logs: wdStorageLogs, profile: 'desktop-image' as BackupHealthProfile },
+        { label: '圖片檔案', logs: wdStorageLogs, profile: 'desktop-image' as BackupHealthProfile },
       ],
     },
   ].map((destination) => ({
@@ -676,7 +676,7 @@ export function BackupPage() {
                           background: ok || recovered
                             ? designSystem.colors.success[500]
                             : running
-                              ? designSystem.colors.warning[500]
+                              ? designSystem.colors.success[500]
                               : designSystem.colors.danger[500],
                         }}
                       />

@@ -21,6 +21,17 @@ describe('storageEntryChanged', () => {
     })).toBe(false)
   })
 
+  it('does not re-upload an unchanged checkpoint just because it is old', () => {
+    expect(storageEntryChanged(entry, {
+      source_updated_at: entry.updatedAt,
+      source_size: 10,
+      drive_file_id: 'drive-file-1',
+      checksum: 'a'.repeat(64),
+      last_backed_up_at: '2020-01-01T00:00:00.000Z',
+      status: 'success',
+    })).toBe(false)
+  })
+
   it('retries failed or changed checkpoints', () => {
     expect(storageEntryChanged(entry, {
       source_updated_at: entry.updatedAt,

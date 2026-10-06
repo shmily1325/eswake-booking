@@ -93,6 +93,28 @@ describe('batched Storage checkpoint migration', () => {
   })
 })
 
+describe('incremental Storage resume migration', () => {
+  const sql = fs.readFileSync(
+    path.join(root, 'migrations/245_make_storage_backup_incremental_and_resumable.sql'),
+    'utf8',
+  )
+
+  it('keeps unchanged checkpoints without forcing a periodic upload', () => {
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.ack_storage_backup_inventory_entries')
+    expect(sql).not.toContain("last_backed_up_at < now() - interval '30 days'")
+    expect(sql).toContain('checkpoint.source_updated_at IS DISTINCT FROM entry.source_updated_at')
+    expect(sql).toContain('checkpoint.source_size IS DISTINCT FROM entry.source_size')
+  })
+
+  it('acquires only an existing active run for resume cron ticks', () => {
+    expect(sql).toContain('acquire_active_storage_backup_inventory_run')
+    expect(sql).toContain("'idle', true")
+    expect(sql).not.toContain('INSERT INTO public.storage_backup_inventory_runs')
+    expect(sql).toContain('pg_advisory_xact_lock')
+    expect(sql).toContain('TO service_role')
+  })
+})
+
 describe('Vercel backup limits', () => {
   const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'))
   const apiFiles = fs.readdirSync(path.join(root, 'api')).filter((file) => file.endsWith('.ts'))
@@ -109,11 +131,14 @@ describe('Vercel backup limits', () => {
     expect(vercel.functions['api/cron.ts'].maxDuration).toBe(300)
   })
 
-  it('schedules SQL and Storage without adding a third cron', () => {
+  it('schedules daily backups and frequent resume-only Storage ticks', () => {
     expect(vercel.crons).toEqual([
       { path: '/api/backup-to-cloud-drive', schedule: '0 18 * * *' },
       { path: '/api/backup-storage?mode=cloud', schedule: '30 18 * * *' },
+      { path: '/api/backup-storage?mode=resume', schedule: '*/15 * * * *' },
     ])
+    expect(storageApi).toContain('acquire_active_storage_backup_inventory_run')
+    expect(storageApi).toContain("mode === 'resume'")
   })
 
   it('returns the completion flag used by the automatic UI loop', () => {

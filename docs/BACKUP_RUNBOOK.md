@@ -3,7 +3,8 @@
 ## Backup layers
 
 1. Google Drive database SQL at 02:00 Taiwan time.
-2. Google Drive `product-images` incremental sync at 02:30.
+2. Google Drive `product-images` incremental sync starts at 02:30; a
+   resume-only Cron continues an unfinished run every 15 minutes.
 3. Windows database SQL plus `product-images` mirror at 10:00 when the user is logged in.
 4. Supabase Pro daily physical backups (seven days) are an extra safety layer only.
 
@@ -18,14 +19,18 @@ points replace the old health status.
 
 The product-image cloud job is resumable. A `202 running` result is expected
 while it advances through inventory, sync, deletion reconciliation, and
-manifest phases. Repeating the manual action or the next Cron invocation resumes
-the same run from its saved cursor. Migration 155 must be applied before this
-endpoint is deployed.
+manifest phases. Repeating the manual action or the resume-only Cron continues
+the same run from its saved cursor. Resume ticks are no-ops when no run is
+active, so they never create extra snapshots.
 
 Migration 156 extends the fenced worker lease for five-minute Vercel
 invocations. Apply it before deploying the 300-second Storage backup settings.
 The worker stops starting new transfers early enough to preserve time for lease
 release and health logging.
+
+Migration 245 removes the old 30-day forced image re-upload and adds the
+service-only active-run acquisition RPC. Apply migrations 155, 156, 157, then
+245 before deploying the resume-only Cron.
 
 ## Required secrets
 
@@ -52,7 +57,8 @@ count as failures and do not break a failure streak.
 
 Google Drive product images (`google_drive_storage`) appear separately in muted
 text on the BAO hub. A complete verified success at most seven days old is
-normal. One failed or running resumable step is informational. More than seven
+normal. One failed or running resumable step remains healthy while the previous
+verified snapshot is current. More than seven
 days without a complete success or sustained failures is yellow; more than 30
 days, no complete success, or invalid integrity metadata is red. Image status
 never changes the primary database badge and never triggers the database
