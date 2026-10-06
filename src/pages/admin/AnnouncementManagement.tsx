@@ -16,7 +16,12 @@ import {
 } from '../../utils/restrictionSchedule'
 import { formatRestrictionDisplay } from '../../utils/restrictionDisplay'
 import { normalizeTimeHm } from '../../utils/timeValue'
-import { useToast, ToastContainer } from '../../components/ui'
+import {
+  ClearableSearchInput,
+  HighlightedText,
+  useToast,
+  ToastContainer,
+} from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
 import {
   designSystem,
@@ -1342,17 +1347,15 @@ export function AnnouncementManagement() {
             gap: '10px',
           }}>
             {/* 搜尋框 */}
-            <div style={{ minWidth: 0 }}>
-              <input
-                type="text"
-                placeholder="搜尋內容..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{
-                  ...getInputStyle(isMobile),
-                }}
-              />
-            </div>
+            <ClearableSearchInput
+              value={searchText}
+              onValueChange={setSearchText}
+              isMobile={isMobile}
+              placeholder="搜尋內容..."
+              aria-label="搜尋公告內容"
+              dataTrack="announcement_search"
+              clearDataTrack="announcement_search_clear"
+            />
 
             {/* 排序按鈕 */}
             <button
@@ -1709,7 +1712,9 @@ export function AnnouncementManagement() {
                               wordBreak: 'break-word',
                               display: 'block',
                             }}>
-                              <span style={{ display: 'block' }}>{announcement.content}</span>
+                              <span style={{ display: 'block' }}>
+                                <HighlightedText text={announcement.content} query={searchText} />
+                              </span>
                               {/* 若此公告有啟用中的限制，顯示小字 */}
                               {restrictionsMap[announcement.id] && (
                                 <span style={{

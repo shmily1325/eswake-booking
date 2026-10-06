@@ -7,7 +7,7 @@ import { Footer } from '../../components/Footer'
 import { TransactionDialog } from '../../components/TransactionDialog'
 import { useResponsive } from '../../hooks/useResponsive'
 import type { Member } from '../../types/booking'
-import { useToast } from '../../components/ui'
+import { ClearableSearchInput, HighlightedText, useToast } from '../../components/ui'
 import { isAdmin } from '../../utils/auth'
 import { formatDbTimestampDisplay, getVenueDateString } from '../../utils/date'
 import { MemberStatusBadges } from '../../components/MemberStatusBadges'
@@ -22,7 +22,6 @@ import {
   getEmptyStateStyle,
   getFilterChipStyle,
   getFontSize,
-  getInputStyle,
   getPageContentShellStyle,
   getSingleSelectFilterChipStyle,
 } from '../../styles/designSystem'
@@ -317,6 +316,55 @@ export function MemberTransaction() {
     return result
   }, [members, searchTerm, sortBy, membershipTypeFilter, lineBindingFilter, isMobile])
 
+  const filterCounts = useMemo(() => {
+    const lowerSearch = searchTerm.toLowerCase()
+    const matchesSearch = (member: MemberWithLastTransaction) =>
+      !searchTerm.trim() ||
+      (member.name || '').toLowerCase().includes(lowerSearch) ||
+      member.nickname?.toLowerCase().includes(lowerSearch) ||
+      member.phone?.includes(searchTerm)
+    const matchesMembershipType = (member: MemberWithLastTransaction) => {
+      if (isMobile || membershipTypeFilter === 'all') return true
+      if (membershipTypeFilter === 'member') {
+        return member.membership_type === 'general' || member.membership_type === 'dual'
+      }
+      return member.membership_type === membershipTypeFilter
+    }
+    const matchesLineBinding = (member: MemberWithLastTransaction) => {
+      if (lineBindingFilter === 'bound') {
+        return Boolean(member.is_line_bound && member.line_binding_can_push)
+      }
+      if (lineBindingFilter === 'rebind') {
+        return Boolean(member.is_line_bound && !member.line_binding_can_push)
+      }
+      if (lineBindingFilter === 'unbound') return !member.is_line_bound
+      return true
+    }
+
+    const membershipBase = members.filter(member =>
+      matchesSearch(member) && matchesLineBinding(member)
+    )
+    const lineBase = members.filter(member =>
+      matchesSearch(member) && matchesMembershipType(member)
+    )
+
+    return {
+      all: membershipBase.length,
+      member: membershipBase.filter(member =>
+        member.membership_type === 'general' || member.membership_type === 'dual'
+      ).length,
+      guest: membershipBase.filter(member => member.membership_type === 'guest').length,
+      es: membershipBase.filter(member => member.membership_type === 'es').length,
+      lineBound: lineBase.filter(member =>
+        member.is_line_bound && member.line_binding_can_push
+      ).length,
+      lineRebind: lineBase.filter(member =>
+        member.is_line_bound && !member.line_binding_can_push
+      ).length,
+      lineUnbound: lineBase.filter(member => !member.is_line_bound).length,
+    }
+  }, [members, searchTerm, membershipTypeFilter, lineBindingFilter, isMobile])
+
   const handleTransactionSuccess = () => {
     loadMembers()
     setYearPanelRefreshKey((k) => k + 1)
@@ -388,49 +436,16 @@ export function MemberTransaction() {
             borderBottom: `1px solid ${designSystem.colors.border.light}`,
           } : {}),
         }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <input
-              type="text"
-              placeholder="搜尋會員（姓名、暱稱）"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                if (e.target.value && membershipTypeFilter !== 'all') {
-                  setMembershipTypeFilter('all')
-                }
-              }}
-              style={{
-                ...getInputStyle(isMobile),
-                width: '100%',
-                paddingRight: searchTerm ? '40px' : undefined,
-                boxSizing: 'border-box',
-              }}
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: designSystem.colors.text.secondary,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '24px',
-                  height: '24px',
-                  fontSize: getFontSize('body', isMobile),
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <ClearableSearchInput
+            value={searchTerm}
+            onValueChange={setSearchTerm}
+            isMobile={isMobile}
+            placeholder="搜尋會員（姓名、暱稱）"
+            aria-label="搜尋會員"
+            dataTrack="member_transaction_search"
+            clearDataTrack="member_transaction_search_clear"
+            containerStyle={{ flex: 1 }}
+          />
         </div>
 
         {/* 篩選列 - 手機版用下拉選單，桌面版用按鈕 */}
@@ -448,7 +463,7 @@ export function MemberTransaction() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'bound'),
                 }}
               >
-                LINE 已綁定 ({members.filter(m => m.is_line_bound && m.line_binding_can_push).length})
+                LINE 已綁定 ({filterCounts.lineBound})
               </button>
               <button
                 type="button"
@@ -460,7 +475,7 @@ export function MemberTransaction() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'rebind', true),
                 }}
               >
-                需重新綁定 ({members.filter(m => m.is_line_bound && !m.line_binding_can_push).length})
+                需重新綁定 ({filterCounts.lineRebind})
               </button>
               <button
                 type="button"
@@ -472,7 +487,7 @@ export function MemberTransaction() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'unbound'),
                 }}
               >
-                LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
+                LINE 未綁定 ({filterCounts.lineUnbound})
               </button>
             </div>
 
@@ -498,10 +513,10 @@ export function MemberTransaction() {
               alignItems: 'center',
             }}>
               {[
-                { value: 'all', label: '全部', count: members.length },
-                { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
-                { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
-                { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
+                { value: 'all', label: '全部', count: filterCounts.all },
+                { value: 'member', label: '會員', count: filterCounts.member },
+                { value: 'guest', label: '非會員', count: filterCounts.guest },
+                { value: 'es', label: 'ES', count: filterCounts.es }
               ].map(type => (
                 <button
                   key={type.value}
@@ -532,7 +547,7 @@ export function MemberTransaction() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'bound'),
                 }}
               >
-                LINE 已綁定 ({members.filter(m => m.is_line_bound && m.line_binding_can_push).length})
+                LINE 已綁定 ({filterCounts.lineBound})
               </button>
 
               <button
@@ -544,7 +559,7 @@ export function MemberTransaction() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'rebind', true),
                 }}
               >
-                需重新綁定 ({members.filter(m => m.is_line_bound && !m.line_binding_can_push).length})
+                需重新綁定 ({filterCounts.lineRebind})
               </button>
 
               <button
@@ -556,7 +571,7 @@ export function MemberTransaction() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'unbound'),
                 }}
               >
-                LINE 未綁定 ({members.filter(m => !m.is_line_bound).length})
+                LINE 未綁定 ({filterCounts.lineUnbound})
               </button>
 
               <div style={{ width: '1px', height: '22px', background: designSystem.colors.border.light, margin: '0 2px' }} />
@@ -714,14 +729,14 @@ export function MemberTransaction() {
                       color: designSystem.colors.text.primary,
                       letterSpacing: '-0.025em',
                     }}>
-                      {member.nickname || member.name}
+                      <HighlightedText text={member.nickname || member.name} query={searchTerm} />
                     </h3>
                     {member.nickname && (
                       <span style={{
                         fontSize: getFontSize('bodySmall', isMobile),
                         color: designSystem.colors.text.disabled
                       }}>
-                        ({member.name})
+                        (<HighlightedText text={member.name} query={searchTerm} />)
                       </span>
                     )}
                     <MemberStatusBadges

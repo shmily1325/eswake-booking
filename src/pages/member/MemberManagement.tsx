@@ -8,7 +8,12 @@ import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { useToast, ToastContainer } from '../../components/ui'
+import {
+  ClearableSearchInput,
+  HighlightedText,
+  useToast,
+  ToastContainer,
+} from '../../components/ui'
 import {
   formatDbTimestampDisplay,
   getVenueDateString,
@@ -543,6 +548,104 @@ export function MemberManagement() {
     return result
   }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards, isMobile])
 
+  // 各篩選籤顯示「搜尋文字 + 其他篩選條件」套用後的數量。
+  // 計算某一組時排除該組本身，讓使用者仍可比較同組的其他選項。
+  const filterCounts = useMemo(() => {
+    const lowerSearch = searchTerm.toLowerCase()
+    const expiringMemberIds = new Set(expiringMemberships.map(member => member.id))
+    const expiringBoardMemberIds = new Set(expiringBoards.map(board => board.member_id))
+
+    const matchesSearch = (member: Member) =>
+      !lowerSearch ||
+      member.name.toLowerCase().includes(lowerSearch) ||
+      member.nickname?.toLowerCase().includes(lowerSearch)
+
+    const matchesMembershipType = (member: Member) => {
+      if (membershipTypeFilter === 'all') return true
+      if (membershipTypeFilter === 'member') {
+        return member.membership_type === 'general' || member.membership_type === 'dual'
+      }
+      return member.membership_type === membershipTypeFilter
+    }
+
+    const matchesExpiry = (member: Member) => {
+      if (expiringFilter === 'membership') return expiringMemberIds.has(member.id)
+      if (expiringFilter === 'board') return expiringBoardMemberIds.has(member.id)
+      return true
+    }
+
+    const matchesLineBinding = (member: Member) => {
+      if (lineBindingFilter === 'bound') {
+        return Boolean(
+          (member.is_line_bound && member.line_binding_can_push) ||
+          member.line_reminder_mapping_can_push
+        )
+      }
+      if (lineBindingFilter === 'rebind') {
+        return Boolean(
+          member.is_line_bound &&
+          !member.line_binding_can_push &&
+          !member.line_reminder_mapping_can_push
+        )
+      }
+      if (lineBindingFilter === 'unbound') {
+        return Boolean(!member.is_line_bound && !member.line_reminder_mapping_can_push)
+      }
+      return true
+    }
+
+    const membershipBase = members.filter(member =>
+      matchesSearch(member) && matchesExpiry(member) && matchesLineBinding(member)
+    )
+    const expiryBaseIds = new Set(
+      members
+        .filter(member =>
+          matchesSearch(member) &&
+          matchesMembershipType(member) &&
+          matchesLineBinding(member)
+        )
+        .map(member => member.id)
+    )
+    const lineBase = members.filter(member =>
+      matchesSearch(member) && matchesMembershipType(member) && matchesExpiry(member)
+    )
+
+    return {
+      all: membershipBase.length,
+      member: membershipBase.filter(member =>
+        member.membership_type === 'general' || member.membership_type === 'dual'
+      ).length,
+      guest: membershipBase.filter(member => member.membership_type === 'guest').length,
+      es: membershipBase.filter(member => member.membership_type === 'es').length,
+      expiringMembership: expiringMemberships.filter(member =>
+        expiryBaseIds.has(member.id)
+      ).length,
+      expiringBoard: expiringBoards.filter(board =>
+        expiryBaseIds.has(board.member_id)
+      ).length,
+      lineBound: lineBase.filter(member =>
+        (member.is_line_bound && member.line_binding_can_push) ||
+        member.line_reminder_mapping_can_push
+      ).length,
+      lineRebind: lineBase.filter(member =>
+        member.is_line_bound &&
+        !member.line_binding_can_push &&
+        !member.line_reminder_mapping_can_push
+      ).length,
+      lineUnbound: lineBase.filter(member =>
+        !member.is_line_bound && !member.line_reminder_mapping_can_push
+      ).length,
+    }
+  }, [
+    members,
+    searchTerm,
+    membershipTypeFilter,
+    expiringFilter,
+    lineBindingFilter,
+    expiringMemberships,
+    expiringBoards,
+  ])
+
   const expiryNoticeByMemberId = useMemo(() => {
     const notices = new Map<string, {
       name: string
@@ -880,50 +983,16 @@ export function MemberManagement() {
             borderBottom: `1px solid ${designSystem.colors.border.light}`,
           } : {}),
         }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <input
-              type="text"
-              placeholder="搜尋會員（姓名、暱稱）"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                if (e.target.value && membershipTypeFilter !== 'all') {
-                  setMembershipTypeFilter('all')
-                }
-              }}
-              style={{
-                ...getInputStyle(isMobile),
-                width: '100%',
-                paddingRight: searchTerm ? '40px' : undefined,
-                boxSizing: 'border-box',
-              }}
-            />
-            {searchTerm && (
-              <button
-                data-track="member_search_clear"
-                onClick={() => setSearchTerm('')}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: designSystem.colors.text.secondary,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '24px',
-                  height: '24px',
-                  fontSize: getFontSize('body', isMobile),
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <ClearableSearchInput
+            value={searchTerm}
+            onValueChange={setSearchTerm}
+            isMobile={isMobile}
+            placeholder="搜尋會員（姓名、暱稱）"
+            aria-label="搜尋會員"
+            dataTrack="member_search"
+            clearDataTrack="member_search_clear"
+            containerStyle={{ flex: 1 }}
+          />
           <button
             data-track="member_add"
             onClick={() => setAddDialogOpen(true)}
@@ -946,10 +1015,10 @@ export function MemberManagement() {
               alignItems: 'center',
             }}>
               {[
-                { value: 'all', label: '全部', count: members.length },
-                { value: 'member', label: '會員', count: members.filter(m => m.membership_type === 'general' || m.membership_type === 'dual').length },
-                { value: 'guest', label: '非會員', count: members.filter(m => m.membership_type === 'guest').length },
-                { value: 'es', label: 'ES', count: members.filter(m => m.membership_type === 'es').length }
+                { value: 'all', label: '全部', count: filterCounts.all },
+                { value: 'member', label: '會員', count: filterCounts.member },
+                { value: 'guest', label: '非會員', count: filterCounts.guest },
+                { value: 'es', label: 'ES', count: filterCounts.es }
               ].map(type => (
                 <button
                   key={type.value}
@@ -993,7 +1062,7 @@ export function MemberManagement() {
                   cursor: expiringMemberships.length > 0 ? 'pointer' : 'default',
                 }}
               >
-                會籍到期 ({expiringMemberships.length})
+                會籍到期 ({filterCounts.expiringMembership})
               </button>
 
               <button
@@ -1011,7 +1080,7 @@ export function MemberManagement() {
                   cursor: expiringBoards.length > 0 ? 'pointer' : 'default',
                 }}
               >
-                置板到期 ({expiringBoards.length})
+                置板到期 ({filterCounts.expiringBoard})
               </button>
 
               <div style={{ width: '1px', height: '22px', background: designSystem.colors.border.light, margin: '0 2px' }} />
@@ -1025,9 +1094,7 @@ export function MemberManagement() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'bound'),
                 }}
               >
-                LINE 可傳送 ({members.filter(m =>
-                  (m.is_line_bound && m.line_binding_can_push) || m.line_reminder_mapping_can_push
-                ).length})
+                LINE 可傳送 ({filterCounts.lineBound})
               </button>
 
               <button
@@ -1039,9 +1106,7 @@ export function MemberManagement() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'rebind', true),
                 }}
               >
-                需重新綁定 ({members.filter(m =>
-                  m.is_line_bound && !m.line_binding_can_push && !m.line_reminder_mapping_can_push
-                ).length})
+                需重新綁定 ({filterCounts.lineRebind})
               </button>
 
               <button
@@ -1053,9 +1118,7 @@ export function MemberManagement() {
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'unbound'),
                 }}
               >
-                LINE 未綁定 ({members.filter(m =>
-                  !m.is_line_bound && !m.line_reminder_mapping_can_push
-                ).length})
+                LINE 未綁定 ({filterCounts.lineUnbound})
               </button>
 
               <label style={{
@@ -1321,11 +1384,14 @@ export function MemberManagement() {
               <div style={{ position: 'relative', minWidth: 0, maxWidth: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0, fontSize: getFontSize('h3', isMobile), fontWeight: 700, color: designSystem.colors.text.primary, letterSpacing: '-0.025em' }}>
-                      {member.nickname && member.nickname.trim() ? member.nickname : member.name}
+                      <HighlightedText
+                        text={member.nickname && member.nickname.trim() ? member.nickname : member.name}
+                        query={searchTerm}
+                      />
                     </h3>
                     {member.nickname && member.nickname.trim() && (
                       <span style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.disabled }}>
-                        ({member.name})
+                        (<HighlightedText text={member.name} query={searchTerm} />)
                       </span>
                     )}
                     <MemberStatusBadges

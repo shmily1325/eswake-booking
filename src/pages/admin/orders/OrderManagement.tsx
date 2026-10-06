@@ -10,7 +10,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { Footer } from '../../../components/Footer'
 import { adminContentCardStyle, adminLoadingStyle, adminStatsBarStyle } from '../../../components/AdminPageLayout'
-import { Button, ToastContainer, useToast } from '../../../components/ui'
+import {
+  Button,
+  ClearableSearchInput,
+  HighlightedText,
+  ToastContainer,
+  useToast,
+} from '../../../components/ui'
 import { ConfirmModal } from '../../../components/ui/Modal'
 import { toast as globalToast } from '../../../utils/toast'
 import { useResponsive } from '../../../hooks/useResponsive'
@@ -221,7 +227,14 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
     )
   }, [searchParams, canEdit, setSearchParams])
 
-  const activeOrders = useMemo(() => orders.filter((o) => !o.cancelled_at), [orders])
+  const searchMatchedOrders = useMemo(
+    () => filterOrdersBySearch(orders, search),
+    [orders, search],
+  )
+  const activeOrders = useMemo(
+    () => searchMatchedOrders.filter((o) => !o.cancelled_at),
+    [searchMatchedOrders],
+  )
 
   const tabCounts = useMemo(
     () => ({
@@ -230,10 +243,10 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
       ready: activeOrders.filter(orderHasReadyToBill).length,
       pending: activeOrders.filter(orderHasPendingBill).length,
       settled: activeOrders.filter(orderIsFullySettled).length,
-      cancelled: orders.filter((o) => o.cancelled_at).length,
+      cancelled: searchMatchedOrders.filter((o) => o.cancelled_at).length,
       all: activeOrders.length,
     }),
-    [activeOrders, orders],
+    [activeOrders, searchMatchedOrders],
   )
 
   const visible = useMemo(() => {
@@ -436,15 +449,18 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
           alignItems: 'stretch',
         }}
       >
-        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
-          <input
-            type="search"
+        <ClearableSearchInput
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onValueChange={setSearch}
+            isMobile={isMobile}
             placeholder={
               isMobile ? '搜尋姓名、品名、訂單號、標籤碼…' : '搜尋訂單號、訂購人、品牌、品名、貨號、標籤碼、規格…'
             }
-            style={{
+            aria-label="搜尋商品訂單"
+            dataTrack="product_order_search"
+            clearDataTrack="product_order_search_clear"
+            containerStyle={{ flex: 1 }}
+            inputStyle={{
               width: '100%',
               padding: isMobile ? '12px 14px' : '10px 14px',
               fontSize: isMobile ? '16px' : getFontSize('body', false),
@@ -454,29 +470,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
               background: colors.background.card,
               color: colors.text.primary,
             }}
-          />
-          {search && (
-            <button
-              type="button"
-              aria-label="清除搜尋"
-              data-track="product_order_search_clear"
-              onClick={() => setSearch('')}
-              style={{
-                position: 'absolute',
-                right: 8,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                border: 'none',
-                background: 'transparent',
-                color: colors.text.disabled,
-                cursor: 'pointer',
-                fontSize: getFontSize('bodyLarge', isMobile),
-              }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
+        />
         {(!includeOlderOrders || canEdit) && (
           <div
             style={{
@@ -578,6 +572,7 @@ export function OrderManagement({ embedded = false }: { embedded?: boolean } = {
             order={order}
             isMobile={isMobile}
             canEdit={canEdit}
+            searchQuery={search}
             highlighted={highlightOrderId === order.id}
             onEdit={() => {
               setEditOrder(order)
@@ -659,6 +654,7 @@ function OrderCard({
   order,
   isMobile,
   canEdit,
+  searchQuery,
   billingBusy,
   highlighted,
   onEdit,
@@ -673,6 +669,7 @@ function OrderCard({
   order: ShopOrderWithItems
   isMobile: boolean
   canEdit: boolean
+  searchQuery: string
   billingBusy: boolean
   highlighted?: boolean
   onEdit: () => void
@@ -729,7 +726,7 @@ function OrderCard({
                 wordBreak: 'break-word',
               }}
             >
-              {order.contact_name}
+              <HighlightedText text={order.contact_name} query={searchQuery} />
               <span
                 style={{
                   fontSize: getFontSize('caption', isMobile),
@@ -740,7 +737,7 @@ function OrderCard({
                 }}
               >
                 {' · '}
-                {order.order_no}
+                <HighlightedText text={order.order_no} query={searchQuery} />
               </span>
             </div>
             <div

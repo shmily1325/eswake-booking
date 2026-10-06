@@ -9,12 +9,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useResponsive } from '../../hooks/useResponsive'
+import { ClearableSearchInput, HighlightedText } from '../../components/ui'
 import {
   designSystem,
   getBookingChoiceStyle,
   getEmptyStateStyle,
   getFontSize,
-  getInputStyle,
 } from '../../styles/designSystem'
 
 type LotCategory =
@@ -268,43 +268,14 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
           marginBottom: designSystem.spacing.lg,
         }}
       >
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            placeholder="搜尋會員（姓名、暱稱）"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              ...getInputStyle(isMobile),
-              width: '100%',
-              boxSizing: 'border-box',
-              paddingRight: searchTerm ? 40 : undefined,
-            }}
-          />
-          {searchTerm ? (
-            <button
-              type="button"
-              aria-label="清除搜尋"
-              onClick={() => setSearchTerm('')}
-              style={{
-                position: 'absolute',
-                right: 10,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                border: 'none',
-                background: designSystem.colors.text.secondary,
-                color: '#fff',
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                cursor: 'pointer',
-                fontSize: getFontSize('caption', isMobile),
-              }}
-            >
-              ✕
-            </button>
-          ) : null}
-        </div>
+        <ClearableSearchInput
+          value={searchTerm}
+          onValueChange={setSearchTerm}
+          isMobile={isMobile}
+          placeholder="搜尋會員（姓名、暱稱）"
+          aria-label="搜尋會員餘額"
+          clearDataTrack="voucher_year_search_clear"
+        />
         <button
           type="button"
           data-track="voucher_year_toggle_sort"
@@ -510,7 +481,7 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                           color: designSystem.colors.text.primary,
                         }}
                       >
-                        {person.nickname}
+                        <HighlightedText text={person.nickname} query={searchTerm} />
                       </div>
                       {person.name && person.name !== person.nickname ? (
                         <div
@@ -520,7 +491,7 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                             marginTop: 2,
                           }}
                         >
-                          {person.name}
+                          <HighlightedText text={person.name} query={searchTerm} />
                         </div>
                       ) : null}
                     </div>

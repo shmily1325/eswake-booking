@@ -7,7 +7,12 @@ import { PageHeader } from '../../components/PageHeader'
 import { PageShell } from '../../components/PageShell'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
-import { useToast, ToastContainer } from '../../components/ui'
+import {
+  ClearableSearchInput,
+  HighlightedText,
+  useToast,
+  ToastContainer,
+} from '../../components/ui'
 import { isMemberPhoneOnlyEditor } from '../../utils/auth'
 import { normalizeDate } from '../../utils/date'
 import { trackClickDedupedWithin } from '../../utils/trackClick'
@@ -246,9 +251,9 @@ export function MemberPhoneEditPage() {
     return null
   }
 
-  const lineBoundCount = members.filter((m) => m.is_line_bound && m.line_binding_can_push).length
-  const lineRebindCount = members.filter((m) => m.is_line_bound && !m.line_binding_can_push).length
-  const lineUnboundCount = members.filter((m) => !m.is_line_bound).length
+  const lineBoundCount = searchFiltered.filter((m) => m.is_line_bound && m.line_binding_can_push).length
+  const lineRebindCount = searchFiltered.filter((m) => m.is_line_bound && !m.line_binding_can_push).length
+  const lineUnboundCount = searchFiltered.filter((m) => !m.is_line_bound).length
   const memberMetaRowStyle: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: isMobile ? '64px minmax(0, 1fr)' : '72px minmax(0, 1fr)',
@@ -327,18 +332,15 @@ export function MemberPhoneEditPage() {
           alignItems: isMobile ? 'stretch' : 'center',
         }}
       >
-        <input
-          type="text"
-          data-track="member_phone_search"
-          placeholder="搜尋（姓名、暱稱、手機）"
+        <ClearableSearchInput
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            ...getInputStyle(isMobile),
-            flex: 1,
-            minWidth: 0,
-            boxSizing: 'border-box',
-          }}
+          onValueChange={setSearchTerm}
+          isMobile={isMobile}
+          placeholder="搜尋（姓名、暱稱、手機）"
+          aria-label="搜尋會員"
+          dataTrack="member_phone_search"
+          clearDataTrack="member_phone_search_clear"
+          containerStyle={{ flex: 1 }}
         />
         <div
           data-track="member_phone_line_filter"
@@ -361,7 +363,7 @@ export function MemberPhoneEditPage() {
               padding: '8px 10px',
             }}
           >
-            全部 ({members.length})
+            全部 ({searchFiltered.length})
           </button>
           <button
             type="button"
@@ -441,11 +443,15 @@ export function MemberPhoneEditPage() {
                 >
                   <div style={memberMetaRowStyle}>
                     <span style={memberMetaLabelStyle}>姓名</span>
-                    <span style={memberMetaValueStyle}>{m.name}</span>
+                    <span style={memberMetaValueStyle}>
+                      <HighlightedText text={m.name} query={searchTerm} />
+                    </span>
                   </div>
                   <div style={memberMetaRowStyle}>
                     <span style={memberMetaLabelStyle}>暱稱</span>
-                    <span style={memberMetaValueStyle}>{m.nickname?.trim() || '—'}</span>
+                    <span style={memberMetaValueStyle}>
+                      <HighlightedText text={m.nickname?.trim() || '—'} query={searchTerm} />
+                    </span>
                   </div>
                   <div style={memberMetaRowStyle}>
                     <span style={memberMetaLabelStyle}>生日</span>

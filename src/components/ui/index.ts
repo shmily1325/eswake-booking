@@ -5,6 +5,7 @@ export { Button } from '../Button'
 export { Badge } from './Badge'
 
 // 表單組件
+export { ClearableSearchInput } from './ClearableSearchInput'
 export {
   PrimaryNumericInput,
   MoneyInput,
@@ -16,3 +17,4 @@ export {
 export { ConfirmModal } from './Modal'
 export { ToastContainer, useToast, type ToastType, type ToastMessage } from './Toast'
 export { BookingListSkeleton } from './Loading'
+export { HighlightedText } from './HighlightedText'

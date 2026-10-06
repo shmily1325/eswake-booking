@@ -20,7 +20,12 @@ import {
   getDisplayContactName,
 } from '../utils/bookingFormat'
 import { formatActualRider } from '../utils/riderDisplay'
-import { useToast, ToastContainer } from '../components/ui'
+import {
+  ClearableSearchInput,
+  HighlightedText,
+  useToast,
+  ToastContainer,
+} from '../components/ui'
 import { EditBookingDialog } from '../components/EditBookingDialog'
 import { BatchEditBookingDialog } from '../components/BatchEditBookingDialog'
 import { BatchDeleteConfirmDialog } from '../components/BatchDeleteConfirmDialog'
@@ -857,15 +862,15 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
             <label style={{ ...getLabelStyle(isMobile), color: designSystem.colors.text.secondary }}>
               預約人
             </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
+            <ClearableSearchInput
                 value={searchName}
-                onChange={(e) => {
-                  setSearchName(e.target.value)
+                onValueChange={(value) => {
+                  setSearchName(value)
                   setSelectedMemberId(null)
                   setSelectedLineGuest(null)
                 }}
+                onClear={handleClearSearch}
+                isMobile={isMobile}
                 onFocus={(e) => {
                   if (filteredMembers.length > 0 || filteredLineGuests.length > 0) {
                     setShowMemberDropdown(true)
@@ -878,43 +883,9 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                 }}
                 placeholder="搜尋會員、預約人或 RIDER"
                 required
-                style={{
-                  ...getInputStyle(isMobile),
-                  paddingRight: searchName ? '44px' : '16px',
-                  boxSizing: 'border-box',
-                }}
-              />
-              {/* 清除按鈕 */}
-              {searchName && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '24px',
-                    height: '24px',
-                    padding: 0,
-                    border: 'none',
-                    background: designSystem.colors.background.hover,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: getFontSize('body', isMobile),
-                    color: designSystem.colors.text.secondary,
-                    transition: 'background 0.2s',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = designSystem.colors.secondary[200]}
-                  onMouseLeave={(e) => e.currentTarget.style.background = designSystem.colors.background.hover}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
+                aria-label="搜尋預約"
+                clearDataTrack="booking_search_clear"
+            />
 
             {selectedMember && (
               <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: '6px' }}>
@@ -969,8 +940,8 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                       <span style={{ color: designSystem.colors.info[700], marginRight: 6 }}>
                         {getSimplifiedMembershipTypeLabel(member.membership_type)}｜
                       </span>
-                      {member.nickname || member.name}
-                      {member.nickname && <span style={{ color: designSystem.colors.text.disabled, fontWeight: 'normal', marginLeft: '6px' }}>({member.name})</span>}
+                      <HighlightedText text={member.nickname || member.name} query={searchName} />
+                      {member.nickname && <span style={{ color: designSystem.colors.text.disabled, fontWeight: 'normal', marginLeft: '6px' }}>(<HighlightedText text={member.name} query={searchName} />)</span>}
                     </div>
                     {member.phone && (
                       <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.text.secondary, marginTop: '2px' }}>
@@ -1245,7 +1216,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                     fontSize: getFontSize('body', isMobile),
                     color: designSystem.colors.text.secondary,
                   }}>
-                    找到 <strong style={{ color: designSystem.colors.text.primary }}>{bookings.length}</strong> 筆預約
+                    找到 <strong style={{ color: designSystem.colors.text.primary }}>{displayedBookings.length}</strong> 筆預約
                   </div>
 
                   {/* 第二行/右側：操作按鈕 */}
@@ -1509,7 +1480,7 @@ export function SearchBookings({ isEmbedded = false }: SearchBookingsProps) {
                             color: designSystem.colors.text.primary,
                             marginBottom: '4px',
                           }}>
-                            {getDisplayContactName(booking)}
+                            <HighlightedText text={getDisplayContactName(booking)} query={searchName} />
                             {formatActualRider(booking.actual_rider) && (
                               <span style={{
                                 display: 'inline-flex',

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useResponsive } from '../../hooks/useResponsive'
-import { useToast } from '../../components/ui'
+import { ClearableSearchInput, HighlightedText, useToast } from '../../components/ui'
 import { Modal } from '../../components/ui/Modal'
 import { isCurrentReminderMapping } from '../../utils/lineReminderMappingStatus'
 import {
@@ -219,9 +219,27 @@ export function LineReminderMappingPanel({ members }: Props) {
     [contacts, editingGuest?.id, guestByLineUser],
   )
 
-  const filteredContacts = useMemo(() => {
+  const searchMatchedContacts = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('zh-TW')
     return contacts.filter((contact) => {
+      if (!term) return true
+      const savedGuest = guestByLineUser.get(contact.line_user_id)
+      const mappingText = (mappingsByLineUser.get(contact.line_user_id) ?? [])
+        .map((mapping) => [
+          mapping.contact_name,
+          mapping.contact_phone,
+          mapping.members?.name,
+          mapping.members?.nickname,
+        ].filter(Boolean).join(' '))
+        .join(' ')
+      return `${contact.display_name} ${savedGuest?.name ?? ''} ${mappingText}`
+        .toLocaleLowerCase('zh-TW')
+        .includes(term)
+    })
+  }, [contacts, guestByLineUser, mappingsByLineUser, search])
+
+  const filteredContacts = useMemo(() => {
+    return searchMatchedContacts.filter((contact) => {
       const hasReminderMapping = (mappingsByLineUser.get(contact.line_user_id) ?? []).length > 0
       const savedGuest = guestByLineUser.get(contact.line_user_id)
       const isMatched = hasReminderMapping || Boolean(savedGuest) || contact.formal_binding?.can_push === true
@@ -239,44 +257,32 @@ export function LineReminderMappingPanel({ members }: Props) {
           (processedFilter === 'bound' && contact.formal_binding?.can_push === true)
         if (!matchesProcessedFilter) return false
       }
-      if (!term) return true
-      const mappingText = (mappingsByLineUser.get(contact.line_user_id) ?? [])
-        .map((mapping) => [
-          mapping.contact_name,
-          mapping.contact_phone,
-          mapping.members?.name,
-          mapping.members?.nickname,
-        ].filter(Boolean).join(' '))
-        .join(' ')
-      return `${contact.display_name} ${savedGuest?.name ?? ''} ${mappingText}`
-        .toLocaleLowerCase('zh-TW')
-        .includes(term)
+      return true
     })
   }, [
-    contacts,
     filter,
     guestByLineUser,
     mappingsByLineUser,
     processedFilter,
-    search,
+    searchMatchedContacts,
   ])
 
   const matchedCount = useMemo(
-    () => contacts.filter((contact) =>
+    () => searchMatchedContacts.filter((contact) =>
       (mappingsByLineUser.get(contact.line_user_id) ?? []).length > 0 ||
       guestByLineUser.has(contact.line_user_id) ||
       contact.formal_binding?.can_push === true,
     ).length,
-    [contacts, guestByLineUser, mappingsByLineUser],
+    [searchMatchedContacts, guestByLineUser, mappingsByLineUser],
   )
   const unmatchedCount = useMemo(
-    () => contacts.filter((contact) =>
+    () => searchMatchedContacts.filter((contact) =>
       contact.friend_status === 'friend' &&
       (mappingsByLineUser.get(contact.line_user_id) ?? []).length === 0 &&
       !guestByLineUser.has(contact.line_user_id) &&
       contact.formal_binding?.can_push !== true,
     ).length,
-    [contacts, guestByLineUser, mappingsByLineUser],
+    [searchMatchedContacts, guestByLineUser, mappingsByLineUser],
   )
   const memberCandidates = useMemo(() => {
     const term = memberSearch.trim().toLocaleLowerCase('zh-TW')
@@ -535,12 +541,15 @@ export function LineReminderMappingPanel({ members }: Props) {
       >
         配對後可傳送預約提醒，不影響會員專區。
       </div>
-      <input
-        data-track="line_reminder_search"
+      <ClearableSearchInput
         value={search}
-        onChange={(event) => setSearch(event.target.value)}
+        onValueChange={setSearch}
+        isMobile={isMobile}
         placeholder="搜尋 LINE、會員、姓名或電話"
-        style={{ ...getInputStyle(isMobile), width: '100%', boxSizing: 'border-box', marginBottom: 12 }}
+        aria-label="搜尋 LINE 聯絡人"
+        dataTrack="line_reminder_search"
+        clearDataTrack="line_reminder_search_clear"
+        containerStyle={{ marginBottom: 12 }}
       />
       <div
         role="group"
@@ -555,7 +564,7 @@ export function LineReminderMappingPanel({ members }: Props) {
         {([
           { value: 'unmatched', label: `待配對 ${unmatchedCount}` },
           { value: 'matched', label: `已處理 ${matchedCount}` },
-          { value: 'all', label: `全部 ${contacts.length}` },
+          { value: 'all', label: `全部 ${searchMatchedContacts.length}` },
         ] as const).map((option) => (
           <button
             key={option.value}
@@ -697,7 +706,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}>
-                        {contact.display_name}
+                        <HighlightedText text={contact.display_name} query={search} />
                       </strong>
                       {savedGuest && (
                         <button
@@ -739,7 +748,7 @@ export function LineReminderMappingPanel({ members }: Props) {
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
                             }}>
-                              建檔：{savedGuest.name}
+                              建檔：<HighlightedText text={savedGuest.name} query={search} />
                             </span>
                             <span aria-hidden="true" style={{ flexShrink: 0 }}>›</span>
                           </span>

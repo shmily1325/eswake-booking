@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { useResponsive } from '../../../hooks/useResponsive'
+import { ClearableSearchInput, HighlightedText } from '../../../components/ui'
 import { MoneyInput, PrimaryNumericInput } from '../../../components/ui/numericInputs'
 import { toast as globalToast } from '../../../utils/toast'
 import {
@@ -859,20 +860,19 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                 position: 'relative',
               }}
             >
-              <input
+              <ClearableSearchInput
                 value={variantSearch}
-                onChange={(e) => setVariantSearch(e.target.value)}
+                onValueChange={setVariantSearch}
+                isMobile={isMobile}
                 placeholder={
                   pricingReady
                     ? '搜尋品牌、型號、規格、貨號、標籤代碼'
                     : '商品載入中…'
                 }
+                aria-label="搜尋商品規格"
                 disabled={!pricingReady}
-                style={{
-                  ...inputStyle,
-                  flex: 1,
-                  minWidth: 0,
-                }}
+                clearDataTrack="product_order_variant_search_clear"
+                inputStyle={inputStyle}
               />
               <button
                 type="button"
@@ -950,8 +950,10 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                         lineHeight: 1.35,
                         color: designSystem.colors.text.primary,
                       }}>
-                        {formatProductTitle(v.product)} ·{' '}
-                        {formatAttributes(v.product.category, v.variant.attributes)}
+                        <HighlightedText
+                          text={`${formatProductTitle(v.product)} · ${formatAttributes(v.product.category, v.variant.attributes)}`}
+                          query={variantSearch}
+                        />
                       </div>
                       {meta && (
                         <div style={{
@@ -959,7 +961,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
                           color: designSystem.colors.text.secondary,
                           marginTop: 3,
                         }}>
-                          {meta}
+                          <HighlightedText text={meta} query={variantSearch} />
                         </div>
                       )}
                     </button>

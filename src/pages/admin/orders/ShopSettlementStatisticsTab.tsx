@@ -13,7 +13,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DateRangePicker } from '../../../components/DateRangePicker'
-import { useToast } from '../../../components/ui'
+import {
+  ClearableSearchInput,
+  HighlightedText,
+  useToast,
+} from '../../../components/ui'
 import { useAuthUser } from '../../../contexts/AuthContext'
 import { getVenueDateString } from '../../../utils/date'
 import { formatCurrency, formatDateTime, extractDate, extractTime } from '../../../utils/formatters'
@@ -1170,17 +1174,16 @@ export function ShopSettlementStatisticsTab({
                       <option key={brand} value={brand}>{brand}</option>
                     ))}
                   </select>
-                  <input
-                    type="search"
+                  <ClearableSearchInput
                     value={detailSearch}
-                    onChange={(event) => setDetailSearch(event.target.value)}
+                    onValueChange={setDetailSearch}
+                    isMobile={isMobile}
                     placeholder="搜尋訂單號或訂購人"
                     aria-label="搜尋結帳明細"
-                    data-track="product_order_settle_stat_detail_search"
-                    style={{
-                      ...detailControlStyle(isMobile),
-                      gridColumn: isMobile ? '1 / -1' : undefined,
-                    }}
+                    dataTrack="product_order_settle_stat_detail_search"
+                    clearDataTrack="product_order_settle_stat_detail_search_clear"
+                    containerStyle={{ gridColumn: isMobile ? '1 / -1' : undefined }}
+                    inputStyle={detailControlStyle(isMobile)}
                   />
                 </div>
               </div>
@@ -1257,7 +1260,7 @@ export function ShopSettlementStatisticsTab({
                             textDecoration: 'none',
                           }}
                         >
-                          {row.order_no}
+                          <HighlightedText text={row.order_no} query={detailSearch} />
                         </Link>
                         <span
                           style={{
@@ -1297,7 +1300,9 @@ export function ShopSettlementStatisticsTab({
                           lineHeight: 1.45,
                         }}
                       >
-                        <span>{row.contact_name}</span>
+                        <span>
+                          <HighlightedText text={row.contact_name} query={detailSearch} />
+                        </span>
                         {row.charge_member_name && row.payment_method === 'balance' && (
                           <span style={{ color: colors.text.disabled }}>
                             扣款：{row.charge_member_name}

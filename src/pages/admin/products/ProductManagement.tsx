@@ -11,7 +11,12 @@ import { useAuthUser } from '../../../contexts/AuthContext'
 import { PageHeader } from '../../../components/PageHeader'
 import { Footer } from '../../../components/Footer'
 import { useResponsive } from '../../../hooks/useResponsive'
-import { Button, useToast, ToastContainer } from '../../../components/ui'
+import {
+  Button,
+  ClearableSearchInput,
+  useToast,
+  ToastContainer,
+} from '../../../components/ui'
 import { hasEditorFeatureAsync, hasProductsAccessAsync, isAdmin } from '../../../utils/auth'
 import { trackClick, trackClickDedupedWithin } from '../../../utils/trackClick'
 import { formatDateTime } from '../../../utils/formatters'
@@ -1045,68 +1050,21 @@ export function ProductManagement({
               alignItems: 'center',
             }}
           >
-            <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
-              <span
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  left: 14,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: colors.text.secondary,
-                  pointerEvents: 'none',
-                  lineHeight: 0,
-                }}
-              >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-                  <path d="m16.5 16.5 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                inputMode="search"
-                enterKeyHint="search"
-                aria-label="搜尋商品"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={
-                  isMobile
-                    ? '搜尋商品，例如 RONIX 140'
-                    : '搜尋商品，例如 RONIX 140、貨號或標籤'
-                }
-                style={{
-                  ...getInputStyle(isMobile),
-                  paddingLeft: 42,
-                  paddingRight: search ? 40 : 14,
-                }}
-              />
-              {search && (
-                <button
-                  type="button"
-                  aria-label="清除搜尋"
-                  onClick={() => setSearch('')}
-                  style={{
-                    position: 'absolute',
-                    right: 9,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: 28,
-                    height: 28,
-                    border: 'none',
-                    borderRadius: borderRadius.full,
-                    background: colors.background.main,
-                    color: colors.text.secondary,
-                    fontSize: 15,
-                    cursor: 'pointer',
-                    padding: 0,
-                    lineHeight: 1,
-                  }}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
+            <ClearableSearchInput
+              value={search}
+              onValueChange={setSearch}
+              isMobile={isMobile}
+              inputMode="search"
+              enterKeyHint="search"
+              aria-label="搜尋商品"
+              placeholder={
+                isMobile
+                  ? '搜尋商品，例如 RONIX 140'
+                  : '搜尋商品，例如 RONIX 140、貨號或標籤'
+              }
+              clearDataTrack="product_search_clear"
+              containerStyle={{ flex: 1 }}
+            />
             {!isMobile && productActions}
           </div>
           {hasSearch && (

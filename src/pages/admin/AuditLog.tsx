@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { PageShell } from '../../components/PageShell'
 import { useResponsive } from '../../hooks/useResponsive'
+import { ClearableSearchInput } from '../../components/ui'
 import { getLocalDateString } from '../../utils/date'
 import { hasViewAccess, SUPER_ADMIN_DISPLAY_LABELS } from '../../utils/auth'
 import {
@@ -776,20 +777,19 @@ export function AuditLog() {
         border: `1px solid ${designSystem.colors.border.light}`,
       }}>
         {/* 搜尋框 */}
-        <div style={{ marginBottom: '12px' }}>
-          <input
-            type="text"
-            placeholder="搜尋會員、船隻、填表人..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              ...getInputStyle(isMobile),
-              boxSizing: 'border-box',
-            }}
+        <ClearableSearchInput
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+          isMobile={isMobile}
+          placeholder="搜尋會員、船隻、填表人..."
+          aria-label="搜尋操作紀錄"
+          dataTrack="audit_search"
+          clearDataTrack="audit_search_clear"
+          containerStyle={{ marginBottom: '12px' }}
+          inputStyle={{ boxSizing: 'border-box' }}
             onFocus={(e) => e.currentTarget.style.borderColor = designSystem.colors.primary[500]}
             onBlur={(e) => e.currentTarget.style.borderColor = designSystem.colors.border.main}
-          />
-        </div>
+        />
 
         {/* 預約日期篩選 - 放最外面 */}
         <div style={{ marginBottom: '12px' }}>
