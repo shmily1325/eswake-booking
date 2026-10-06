@@ -1853,6 +1853,14 @@ export type Database = {
         }
         Returns: Json
       }
+      get_member_last_transactions: {
+        Args: Record<string, never>
+        Returns: {
+          member_id: string
+          transaction_date: string
+          created_at: string | null
+        }[]
+      }
       get_liff_member_profile: {
         Args: {
           p_line_user_id: string

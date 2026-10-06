@@ -137,17 +137,14 @@ export function MemberTransaction() {
   const loadMembers = async () => {
     setLoading(true)
     try {
-      const [membersResult, transactionsResult, lineBindingsResult, boardResult, lotsResult] =
+      const [membersResult, lastTransactionsResult, lineBindingsResult, boardResult, lotsResult] =
         await Promise.all([
           supabase
             .from('members')
             .select('*')
             .eq('status', 'active')
             .order('name'),
-          supabase
-            .from('transactions')
-            .select('member_id, transaction_date, created_at')
-            .order('created_at', { ascending: false }),
+          supabase.rpc('get_member_last_transactions'),
           supabase
             .from('line_bindings')
             .select('member_id, line_user_id, last_liff_login_at, can_push')
@@ -164,6 +161,7 @@ export function MemberTransaction() {
         ])
 
       if (membersResult.error) throw membersResult.error
+      if (lastTransactionsResult.error) throw lastTransactionsResult.error
       if (lineBindingsResult.error) {
         console.error('載入 LINE 綁定失敗:', lineBindingsResult.error)
       }
@@ -176,13 +174,11 @@ export function MemberTransaction() {
 
       // 整理每個會員的最後交易日期和 created_at
       const lastTransactionMap: Record<string, { date: string; createdAt: string }> = {}
-      if (transactionsResult.data) {
-        for (const t of transactionsResult.data) {
-          if (t.member_id && !lastTransactionMap[t.member_id]) {
-            lastTransactionMap[t.member_id] = {
-              date: t.transaction_date,
-              createdAt: t.created_at || t.transaction_date
-            }
+      if (lastTransactionsResult.data) {
+        for (const t of lastTransactionsResult.data) {
+          lastTransactionMap[t.member_id] = {
+            date: t.transaction_date,
+            createdAt: t.created_at || t.transaction_date
           }
         }
       }

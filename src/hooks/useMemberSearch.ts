@@ -57,6 +57,14 @@ export function useMemberSearch() {
     setShowDropdown(false)
   }
 
+  // 還原既有選擇時不必等待會員清單載入，避免清單載入後重設整份表單。
+  const selectMemberById = (memberId: string, fallbackLabel: string) => {
+    setSearchTerm(fallbackLabel)
+    setSelectedMemberId(memberId)
+    setManualName('')
+    setShowDropdown(false)
+  }
+
   // 處理手動輸入
   const handleSearchChange = (value: string) => {
     setSearchTerm(value)
@@ -92,6 +100,7 @@ export function useMemberSearch() {
     manualName,
     filteredMembers,
     selectMember,
+    selectMemberById,
     handleSearchChange,
     setShowDropdown,
     reset,

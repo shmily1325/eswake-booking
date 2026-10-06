@@ -207,6 +207,24 @@ describe('useMemberSearch', () => {
       expect(result.current.searchTerm).toBe('李四') // 使用 name
       expect(result.current.selectedMemberId).toBe('2')
     })
+
+    it('應該能在會員清單載入前還原既有會員且不被載入結果清除', async () => {
+      const { result } = renderHook(() => useMemberSearch())
+
+      act(() => {
+        result.current.selectMemberById('2', '李四')
+      })
+
+      expect(result.current.selectedMemberId).toBe('2')
+      expect(result.current.searchTerm).toBe('李四')
+
+      await waitFor(() => {
+        expect(result.current.members).toEqual(mockMembersData)
+      })
+
+      expect(result.current.selectedMemberId).toBe('2')
+      expect(result.current.searchTerm).toBe('李四')
+    })
   })
 
   describe('手動輸入', () => {

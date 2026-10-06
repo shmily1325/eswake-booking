@@ -93,6 +93,7 @@ interface CreateOrderDraftSnapshot {
   guestNameInput: string
   confirmedGuestName: string | null
   selectedMemberId: string | null
+  selectedMemberLabel?: string | null
 }
 
 interface StoredCreateOrderDraft {
@@ -241,9 +242,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       )
       setGuestNameInput('')
       if (order.member_id) {
-        const m = memberSearch.members.find((x) => x.id === order.member_id)
-        if (m) memberSearch.selectMember(m)
-        else memberSearch.handleSearchChange(order.contact_name)
+        memberSearch.selectMemberById(order.member_id, order.contact_name)
         setConfirmedGuestName(null)
       } else {
         memberSearch.reset()
@@ -265,12 +264,10 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
         setConfirmedGuestName(restored.confirmedGuestName)
         setGuestNameInput(restored.guestNameInput)
         if (restored.selectedMemberId) {
-          const m = memberSearch.members.find((x) => x.id === restored.selectedMemberId)
-          if (m) {
-            memberSearch.selectMember(m)
-          } else {
-            memberSearch.reset()
-          }
+          memberSearch.selectMemberById(
+            restored.selectedMemberId,
+            restored.selectedMemberLabel || '',
+          )
         } else {
           memberSearch.reset()
         }
@@ -288,7 +285,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, order?.id, memberSearch.members])
+  }, [open, order?.id])
 
   useEffect(() => {
     if (!open || order) return
@@ -301,6 +298,7 @@ export function OrderEditDialog({ open, order, prefillVariantId, userEmail, onCl
       guestNameInput,
       confirmedGuestName,
       selectedMemberId: memberSearch.selectedMemberId,
+      selectedMemberLabel: memberSearch.selectedMemberId ? memberSearch.searchTerm : null,
     })
   }, [
     open,
