@@ -114,10 +114,17 @@ export async function createCoachDesignatedShareImages(
       y += 106
     })
 
+    context.strokeStyle = '#e5e7eb'
+    context.lineWidth = 2
+    context.beginPath()
+    context.moveTo(112, height - 170)
+    context.lineTo(WIDTH - 112, height - 170)
+    context.stroke()
+
     context.fillStyle = '#1d1d1f'
-    context.font = '700 48px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+    context.font = '700 44px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
     context.textAlign = 'right'
-    context.fillText(`剩餘 ${input.remainingMinutes} 分鐘`, WIDTH - 64, height - 105)
+    context.fillText(`剩餘 ${input.remainingMinutes} 分鐘`, WIDTH - 112, height - 105)
     context.textAlign = 'left'
 
     context.fillStyle = '#8b919b'
