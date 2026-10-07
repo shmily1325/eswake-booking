@@ -1,0 +1,49 @@
+export interface CoachDesignatedStudent {
+  member_id: string
+  name: string
+  nickname: string | null
+  membership_type: string | null
+  balance: number
+  last_activity_at: string
+  entry_count: number
+}
+
+export interface CoachDesignatedEntry {
+  id: number
+  entry_type: 'credit' | 'report_deduction'
+  minutes: number
+  delta_minutes: number
+  occurred_at: string
+  note: string | null
+  booking_participant_id: number | null
+  booking_id?: number | null
+  booking_start_at?: string | null
+  boat_name?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CoachDesignatedEligibleReport {
+  participant_id: number
+  duration_min: number
+  booking_start_at: string
+  boat_name: string | null
+}
+
+export interface CoachDesignatedBatchAllocation {
+  entry: CoachDesignatedEntry
+  minutes: number
+}
+
+export interface CoachDesignatedBatch {
+  credit: CoachDesignatedEntry
+  allocations: CoachDesignatedBatchAllocation[]
+  remaining: number
+}
+
+export interface CoachDesignatedBatches {
+  batches: CoachDesignatedBatch[]
+  unallocatedDeductions: CoachDesignatedBatchAllocation[]
+}
+
+export type CoachDesignatedViewMode = 'ledger' | 'batches'

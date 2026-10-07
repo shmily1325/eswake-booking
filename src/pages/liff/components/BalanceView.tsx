@@ -11,10 +11,12 @@ import { getVenueDateString } from '../../../utils/date'
 import { buildBalanceYearParts } from '../liffBalanceYears'
 import { liffContentPanel, LIFF_THEME } from '../liffUiStyles'
 import type { Member } from '../types'
+import type { LiffCoachDesignatedBalance } from '../liffMemberShared'
 import { BalanceCard, type BalanceTone } from './BalanceCard'
 
 interface BalanceViewProps {
   member: Member
+  coachDesignatedBalances?: LiffCoachDesignatedBalance[]
   onCategoryClick: (category: string) => void
 }
 
@@ -69,7 +71,11 @@ const CARDS: {
   },
 ]
 
-export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
+export function BalanceView({
+  member,
+  coachDesignatedBalances = [],
+  onCategoryClick,
+}: BalanceViewProps) {
   const calendarYear = Number(getVenueDateString().slice(0, 4))
 
   return (
@@ -104,6 +110,17 @@ export function BalanceView({ member, onCategoryClick }: BalanceViewProps) {
               card.category,
               calendarYear,
             )}
+            onClick={onCategoryClick}
+          />
+        ))}
+        {coachDesignatedBalances.map((balance) => (
+          <BalanceCard
+            key={`coach-designated:${balance.coach_id}`}
+            label={`${balance.coach_name} 指定課`}
+            value={balance.balance}
+            unit="分"
+            tone={TONES.lesson}
+            category={`coach-designated:${balance.coach_id}`}
             onClick={onCategoryClick}
           />
         ))}

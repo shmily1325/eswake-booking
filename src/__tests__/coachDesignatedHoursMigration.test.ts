@@ -1,0 +1,60 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+const schemaSql = readFileSync(
+  resolve(process.cwd(), 'migrations/247_create_coach_designated_hours.sql'),
+  'utf8',
+)
+const rpcSql = readFileSync(
+  resolve(process.cwd(), 'migrations/248_coach_designated_hours_rpcs.sql'),
+  'utf8',
+)
+const combined = `${schemaSql}\n${rpcSql}`.toLowerCase()
+
+describe('coach designated-hour migrations', () => {
+  it('keeps the new ledger isolated from existing financial storage', () => {
+    expect(combined).not.toMatch(/\b(insert\s+into|update|delete\s+from)\s+public\.transactions\b/)
+    expect(combined).not.toMatch(/\bupdate\s+public\.members\b/)
+    expect(combined).not.toContain('create or replace function public.process_deduction_transaction')
+  })
+
+  it('deduplicates report deductions and clears only new sidecar rows on report deletion', () => {
+    expect(schemaSql).toContain('uq_coach_designated_hour_active_report_deduction')
+    expect(schemaSql).toMatch(/booking_participants\(id\)\s+ON DELETE CASCADE/i)
+    expect(schemaSql).toContain('coach_designated_hour_report_skips')
+  })
+
+  it('creates a credit and selected same-member report deductions atomically', () => {
+    expect(rpcSql).toContain('create_coach_designated_credit_with_reports')
+    expect(rpcSql).toContain('選取的回報不屬於同一位學生')
+    expect(rpcSql).not.toContain('不能用本次回報時數扣除更早的課程')
+    expect(rpcSql).toMatch(
+      /create_coach_designated_credit\([\s\S]*sync_coach_designated_report_deductions\(/i,
+    )
+  })
+
+  it('deduplicates a retried credit request', () => {
+    expect(schemaSql).toContain('uq_coach_designated_hour_credit_request')
+    expect(rpcSql).toMatch(
+      /ON CONFLICT \(request_key\) WHERE request_key IS NOT NULL DO NOTHING/i,
+    )
+  })
+
+  it('persists an explicit no-deduction decision separately from the ledger', () => {
+    expect(rpcSql).toMatch(/INSERT INTO public\.coach_designated_hour_report_skips/i)
+    expect(rpcSql).toContain("'explicit_no_deduction', v_skipped")
+    expect(rpcSql).toMatch(
+      /void_coach_designated_entry[\s\S]*entry_type = 'report_deduction'[\s\S]*coach_designated_hour_report_skips/i,
+    )
+  })
+
+  it('keeps LIFF reads behind service role', () => {
+    expect(rpcSql).toMatch(
+      /get_liff_coach_designated_balances\(TEXT\)[\s\S]*FROM PUBLIC, anon, authenticated/i,
+    )
+    expect(rpcSql).toMatch(
+      /get_liff_coach_designated_history\(TEXT, UUID, INTEGER, INTEGER\)[\s\S]*TO service_role/i,
+    )
+  })
+})

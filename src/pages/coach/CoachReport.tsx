@@ -38,6 +38,7 @@ import type {
   Participant
 } from '../../types/booking'
 import type { Database } from '../../types/supabase'
+import { syncCoachDesignatedReportDeductions } from './designatedHours/api'
 
 const PAYMENT_METHODS = [
   { value: 'cash', label: '現金' },
@@ -45,6 +46,18 @@ const PAYMENT_METHODS = [
   { value: 'balance', label: '扣儲值' },
   { value: 'voucher', label: '票券' }
 ]
+
+type DesignatedSyncItem = {
+  participant_id: number
+  deduct: boolean
+  minutes: number
+}
+
+type PendingDesignatedSync = {
+  bookingId: number
+  coachId: string
+  items: DesignatedSyncItem[]
+}
 
 const LESSON_TYPES = [
   { value: 'undesignated', label: '不指定' },
@@ -110,6 +123,7 @@ export function CoachReport({
   
   // 提交狀態
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pendingDesignatedSync, setPendingDesignatedSync] = useState<PendingDesignatedSync | null>(null)
 
   // 載入教練列表
   useEffect(() => {
@@ -556,6 +570,26 @@ export function CoachReport({
     }
   }
 
+  const retryDesignatedSync = async () => {
+    if (!pendingDesignatedSync || isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await syncCoachDesignatedReportDeductions(
+        pendingDesignatedSync.coachId,
+        pendingDesignatedSync.items,
+      )
+      setPendingDesignatedSync(null)
+      toast.success('指定課已同步')
+      setReportingBookingId(null)
+      void loadBookings()
+    } catch (error) {
+      console.error('重新同步指定課失敗:', error)
+      toast.error('指定課仍未同步，請再試一次')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const submitDriverReport = async () => {
     if (!reportingBookingId || !reportingCoachId) {
       throw new Error('缺少必要資訊')
@@ -707,6 +741,7 @@ export function CoachReport({
       
       const participantsToUpdate: ParticipantUpdate[] = []
       const participantsToInsert: ParticipantInsert[] = []
+      const insertedParticipantIds: number[] = []
 
       // 取得船隻名稱（彈簧床特殊處理：不管指定不指定都算教學時數）
       const currentBooking = bookings.find(b => b.id === reportingBookingId)
@@ -812,18 +847,20 @@ export function CoachReport({
 
       // 執行插入
       if (participantsToInsert.length > 0) {
-        const { error: insertError } = await supabase
+        const { data: inserted, error: insertError } = await supabase
           .from('booking_participants')
           .insert(participantsToInsert)
+          .select('id')
 
-        if (insertError) {
+        if (insertError || !inserted || inserted.length !== participantsToInsert.length) {
           console.error('插入新記錄失敗:', insertError)
           throw userFacingError(
             '插入參與者失敗',
-            insertError.message,
+            insertError?.message || '無法取得完整的新增回報識別',
             COACH_REPORT_USER_ERRORS.insertParticipant
           )
         }
+        insertedParticipantIds.push(...inserted.map((participant) => participant.id))
       }
 
       // 確保 coach_reports 有戳章（未回報列表與 ✓ 依此判斷；失敗須告知，不可靜默成功）
@@ -842,6 +879,47 @@ export function CoachReport({
         if (upsertError) {
           throw reportStampSaveError(upsertError.message, { participantsAlreadySaved: true })
         }
+      }
+
+      // 新指定課流水是獨立 sidecar；既有回報完成後才以冪等 RPC 同步。
+      let insertedIndex = 0
+      const designatedItems = validParticipants.map((participant) => {
+        const participantId = participant.id > 0
+          ? participant.id
+          : insertedParticipantIds[insertedIndex++]
+        return {
+          participant_id: participantId,
+          deduct:
+            participant.lesson_type === 'designated_free'
+            && !!participant.member_id
+            && participant.designated_hours_deduct === true,
+          minutes: participant.designated_hours_minutes ?? participant.duration_min,
+        }
+      })
+      if (designatedItems.length > 0) {
+        setPendingDesignatedSync({
+          bookingId: reportingBookingId,
+          coachId: reportingCoachId,
+          items: designatedItems,
+        })
+        try {
+          await syncCoachDesignatedReportDeductions(reportingCoachId, designatedItems)
+          setPendingDesignatedSync(null)
+        } catch (designatedError) {
+          console.error('同步指定課時數失敗:', designatedError)
+          throw userFacingError(
+            '回報已儲存，但指定課時數尚未同步',
+            designatedError instanceof Error ? designatedError.message : String(designatedError),
+            '回報已儲存，請按「重新同步指定課」完成同步'
+          )
+        }
+      } else {
+        setPendingDesignatedSync((current) =>
+          current?.bookingId === reportingBookingId
+          && current.coachId === reportingCoachId
+            ? null
+            : current
+        )
       }
     } catch (error) {
       console.error('提交教練回報失敗:', error)
@@ -1277,6 +1355,7 @@ export function CoachReport({
       <CoachReportFormDialog
         booking={reportingBooking}
         reportType={reportType}
+        coachId={reportingCoachId || ''}
         coachName={reportingCoachName}
         driverDuration={driverDuration}
         participants={participants}
@@ -1287,6 +1366,10 @@ export function CoachReport({
         lessonTypes={LESSON_TYPES}
         paymentMethods={PAYMENT_METHODS}
         isSubmitting={isSubmitting}
+        designatedSyncPending={
+          pendingDesignatedSync?.bookingId === reportingBookingId
+          && pendingDesignatedSync?.coachId === reportingCoachId
+        }
         activeSearchIndex={activeSearchIndex}
         onDriverDurationChange={setDriverDuration}
         onParticipantUpdate={updateParticipant}
@@ -1299,7 +1382,14 @@ export function CoachReport({
         }}
         onMemberSelect={selectMember}
         onSubmit={submitReport}
-        onCancel={() => setReportingBookingId(null)}
+        onRetryDesignatedSync={() => void retryDesignatedSync()}
+        onCancel={() => {
+          const hasPendingSync =
+            pendingDesignatedSync?.bookingId === reportingBookingId
+            && pendingDesignatedSync?.coachId === reportingCoachId
+          if (hasPendingSync && !confirm('指定課尚未同步，仍要離開嗎？')) return
+          setReportingBookingId(null)
+        }}
         onSearchFocus={(index) => setActiveSearchIndex(index)}
         onSearchBlur={() => setActiveSearchIndex(null)}
       />

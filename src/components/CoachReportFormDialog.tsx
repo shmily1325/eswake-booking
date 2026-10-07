@@ -18,6 +18,7 @@ import type { MemberSearchResult } from '../hooks/useMemberSearch'
 interface CoachReportFormDialogProps {
   booking: Booking | undefined
   reportType: 'coach' | 'driver' | 'both'
+  coachId: string
   coachName: string
   driverDuration: number
   participants: Participant[]
@@ -28,6 +29,7 @@ interface CoachReportFormDialogProps {
   lessonTypes: Array<{ value: string; label: string }>
   paymentMethods: Array<{ value: string; label: string }>
   isSubmitting?: boolean  // 新增：提交中狀態
+  designatedSyncPending?: boolean
   activeSearchIndex?: number | null  // 正在搜尋的參與者索引
   onDriverDurationChange: (value: number) => void
   onParticipantUpdate: (index: number, field: keyof Participant, value: any) => void
@@ -37,6 +39,7 @@ interface CoachReportFormDialogProps {
   onMemberSearch: (value: string, index: number) => void
   onMemberSelect: (index: number, member: MemberSearchResult) => void
   onSubmit: () => void
+  onRetryDesignatedSync?: () => void
   onCancel: () => void
   onSearchFocus?: (index: number) => void
   onSearchBlur?: (index: number) => void
@@ -45,6 +48,7 @@ interface CoachReportFormDialogProps {
 export function CoachReportFormDialog({
   booking,
   reportType,
+  coachId,
   coachName,
   driverDuration,
   participants,
@@ -55,6 +59,7 @@ export function CoachReportFormDialog({
   lessonTypes,
   paymentMethods,
   isSubmitting = false,  // 新增：預設為 false
+  designatedSyncPending = false,
   activeSearchIndex = null,  // 正在搜尋的參與者索引
   onDriverDurationChange,
   onParticipantUpdate,
@@ -64,6 +69,7 @@ export function CoachReportFormDialog({
   onMemberSearch,
   onMemberSelect,
   onSubmit,
+  onRetryDesignatedSync,
   onCancel,
   onSearchFocus,
   onSearchBlur
@@ -246,6 +252,7 @@ export function CoachReportFormDialog({
                     {participants.map((participant, index) => (
                       <ParticipantFormItem
                         key={index}
+                        coachId={coachId}
                         participant={participant}
                         index={index}
                         isMobile={isMobile}
@@ -271,6 +278,30 @@ export function CoachReportFormDialog({
             </div>
           )}
         </div>
+
+        {designatedSyncPending && (
+          <div
+            style={{
+              margin: '0 20px 12px',
+              padding: 14,
+              borderRadius: designSystem.borderRadius.lg,
+              background: designSystem.colors.warning[50],
+              border: `1px solid ${designSystem.colors.warning[500]}`,
+            }}
+          >
+            <div style={{ marginBottom: 10, color: designSystem.colors.warning[700] }}>
+              回報已儲存，指定課尚未同步。
+            </div>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={onRetryDesignatedSync}
+              style={{ ...getButtonStyle('primary', 'medium', isMobile), width: '100%' }}
+            >
+              {isSubmitting ? '同步中...' : '重新同步指定課'}
+            </button>
+          </div>
+        )}
 
         {/* 底部按钮 - 不使用 sticky 避免手機鍵盤問題 */}
         <div
@@ -301,12 +332,12 @@ export function CoachReportFormDialog({
           <button
             data-track="coach_report_submit"
             onClick={onSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || designatedSyncPending}
             style={{
               ...getButtonStyle('primary', 'medium', isMobile),
               flex: 2,
-              opacity: isSubmitting ? 0.7 : 1,
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting || designatedSyncPending ? 0.7 : 1,
+              cursor: isSubmitting || designatedSyncPending ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -328,6 +359,8 @@ export function CoachReportFormDialog({
                 />
                 提交中...
               </>
+            ) : designatedSyncPending ? (
+              '請先同步指定課'
             ) : (
               '提交回報'
             )}

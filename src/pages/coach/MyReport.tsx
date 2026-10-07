@@ -11,13 +11,14 @@ import { CoachRecords } from './CoachRecords'
 import { AdminPillRow, AdminPillButton } from '../../components/AdminPageLayout'
 import { designSystem, getFontSize } from '../../styles/designSystem'
 import { PageShell } from '../../components/PageShell'
+import { CoachDesignatedHours } from './designatedHours/CoachDesignatedHours'
 
 export function MyReport() {
   const user = useAuthUser()
   const { isMobile } = useResponsive()
   const toast = useToast()
   
-  const [activeTab, setActiveTab] = useState<'report' | 'history' | 'schedule' | 'records'>('report')
+  const [activeTab, setActiveTab] = useState<'report' | 'history' | 'schedule' | 'records' | 'designated'>('report')
   const [coachId, setCoachId] = useState<string | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
 
@@ -46,7 +47,7 @@ export function MyReport() {
     }
 
     loadCoachInfo()
-  }, [user?.email])
+  }, [toast, user?.email])
 
 
   // 檢查權限中
@@ -110,6 +111,13 @@ export function MyReport() {
           >
             紀錄
           </AdminPillButton>
+          <AdminPillButton
+            data-track="my_report_tab_designated"
+            active={activeTab === 'designated'}
+            onClick={() => setActiveTab('designated')}
+          >
+            指定課
+          </AdminPillButton>
         </AdminPillRow>
 
         {/* Tab 內容區 */}
@@ -137,6 +145,10 @@ export function MyReport() {
           {/* 紀錄 Tab：dashboard 教練統計個人版 */}
           {activeTab === 'records' && coachId && (
             <CoachRecords coachId={coachId} isMobile={isMobile} />
+          )}
+
+          {activeTab === 'designated' && coachId && (
+            <CoachDesignatedHours coachId={coachId} isMobile={isMobile} />
           )}
         </div>
     </PageShell>

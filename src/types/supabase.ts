@@ -723,6 +723,170 @@ export type Database = {
           },
         ]
       }
+      coach_designated_hour_entries: {
+        Row: {
+          booking_participant_id: number | null
+          coach_id: string
+          created_at: string
+          created_by_email: string
+          entry_type: string
+          id: number
+          member_id: string
+          minutes: number
+          note: string | null
+          occurred_at: string
+          request_key: string | null
+          updated_at: string
+          updated_by_email: string
+          voided_at: string | null
+          voided_by_email: string | null
+        }
+        Insert: {
+          booking_participant_id?: number | null
+          coach_id: string
+          created_at?: string
+          created_by_email: string
+          entry_type: string
+          id?: number
+          member_id: string
+          minutes: number
+          note?: string | null
+          occurred_at?: string
+          request_key?: string | null
+          updated_at?: string
+          updated_by_email: string
+          voided_at?: string | null
+          voided_by_email?: string | null
+        }
+        Update: {
+          booking_participant_id?: number | null
+          coach_id?: string
+          created_at?: string
+          created_by_email?: string
+          entry_type?: string
+          id?: number
+          member_id?: string
+          minutes?: number
+          note?: string | null
+          occurred_at?: string
+          request_key?: string | null
+          updated_at?: string
+          updated_by_email?: string
+          voided_at?: string | null
+          voided_by_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'coach_designated_hour_entries_booking_participant_id_fkey'
+            columns: ['booking_participant_id']
+            isOneToOne: false
+            referencedRelation: 'booking_participants'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'coach_designated_hour_entries_coach_id_fkey'
+            columns: ['coach_id']
+            isOneToOne: false
+            referencedRelation: 'coaches'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'coach_designated_hour_entries_member_id_fkey'
+            columns: ['member_id']
+            isOneToOne: false
+            referencedRelation: 'members'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      coach_designated_hour_revisions: {
+        Row: {
+          action: string
+          actor_email: string
+          after_data: Json | null
+          before_data: Json
+          coach_id: string
+          created_at: string
+          entry_id: number | null
+          id: number
+          member_id: string
+        }
+        Insert: {
+          action: string
+          actor_email: string
+          after_data?: Json | null
+          before_data: Json
+          coach_id: string
+          created_at?: string
+          entry_id?: number | null
+          id?: number
+          member_id: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string
+          after_data?: Json | null
+          before_data?: Json
+          coach_id?: string
+          created_at?: string
+          entry_id?: number | null
+          id?: number
+          member_id?: string
+        }
+        Relationships: []
+      }
+      coach_designated_hour_report_skips: {
+        Row: {
+          booking_participant_id: number
+          coach_id: string
+          created_at: string
+          created_by_email: string
+          member_id: string
+          updated_at: string
+          updated_by_email: string
+        }
+        Insert: {
+          booking_participant_id: number
+          coach_id: string
+          created_at?: string
+          created_by_email: string
+          member_id: string
+          updated_at?: string
+          updated_by_email: string
+        }
+        Update: {
+          booking_participant_id?: number
+          coach_id?: string
+          created_at?: string
+          created_by_email?: string
+          member_id?: string
+          updated_at?: string
+          updated_by_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'coach_designated_hour_report_skips_booking_participant_id_fkey'
+            columns: ['booking_participant_id']
+            isOneToOne: true
+            referencedRelation: 'booking_participants'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'coach_designated_hour_report_skips_coach_id_fkey'
+            columns: ['coach_id']
+            isOneToOne: false
+            referencedRelation: 'coaches'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'coach_designated_hour_report_skips_member_id_fkey'
+            columns: ['member_id']
+            isOneToOne: false
+            referencedRelation: 'members'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       coach_time_off: {
         Row: {
           coach_id: string
@@ -1845,6 +2009,62 @@ export type Database = {
         Args: Record<string, never>
         Returns: undefined
       }
+      create_coach_designated_credit: {
+        Args: {
+          p_coach_id: string
+          p_member_id: string
+          p_minutes: number
+          p_note?: string | null
+          p_occurred_at: string
+          p_request_key?: string | null
+        }
+        Returns: Json
+      }
+      create_coach_designated_credit_with_reports: {
+        Args: {
+          p_coach_id: string
+          p_items?: Json
+          p_member_id: string
+          p_minutes: number
+          p_note?: string | null
+          p_occurred_at: string
+          p_request_key?: string | null
+        }
+        Returns: Json
+      }
+      get_coach_designated_eligible_reports: {
+        Args: { p_coach_id: string; p_member_id: string }
+        Returns: Json
+      }
+      get_coach_designated_member_context: {
+        Args: {
+          p_booking_participant_id?: number | null
+          p_coach_id: string
+          p_member_id: string
+        }
+        Returns: Json
+      }
+      get_coach_designated_student_detail: {
+        Args: { p_coach_id: string; p_member_id: string }
+        Returns: Json
+      }
+      get_coach_designated_students: {
+        Args: { p_coach_id: string }
+        Returns: Json
+      }
+      get_liff_coach_designated_balances: {
+        Args: { p_line_user_id: string }
+        Returns: Json
+      }
+      get_liff_coach_designated_history: {
+        Args: {
+          p_coach_id: string
+          p_limit?: number
+          p_line_user_id: string
+          p_offset?: number
+        }
+        Returns: Json
+      }
       get_liff_member_transactions: {
         Args: {
           p_category: string
@@ -1926,6 +2146,23 @@ export type Database = {
           p_operator_id: string
           p_participant_id: number
         }
+        Returns: Json
+      }
+      sync_coach_designated_report_deductions: {
+        Args: { p_coach_id: string; p_items: Json }
+        Returns: Json
+      }
+      update_coach_designated_entry: {
+        Args: {
+          p_entry_id: number
+          p_minutes: number
+          p_note?: string | null
+          p_occurred_at?: string | null
+        }
+        Returns: Json
+      }
+      void_coach_designated_entry: {
+        Args: { p_entry_id: number }
         Returns: Json
       }
       credit_lot_member_total: {

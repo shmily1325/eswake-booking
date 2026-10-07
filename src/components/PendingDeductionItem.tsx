@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from './ui'
+import { AdminCoachDesignatedDeductionControl } from './AdminCoachDesignatedDeductionControl'
 import { useAuthUser } from '../contexts/AuthContext'
 import { useResponsive } from '../hooks/useResponsive'
 import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../styles/designSystem'
@@ -968,6 +969,14 @@ export function PendingDeductionItem({ report, onComplete, submitterInfo, onExpa
       {/* 展開內容 */}
       {isExpanded && (
         <div style={{ marginTop: '14px', paddingTop: '16px', borderTop: `1px solid ${designSystem.colors.border.light}` }}>
+          <AdminCoachDesignatedDeductionControl
+            participantId={report.id}
+            coachId={report.coaches?.id ?? null}
+            memberId={report.member_id}
+            lessonType={report.lesson_type}
+            durationMin={report.duration_min}
+            isMobile={isMobile}
+          />
           {/* 結清提示（現金/匯款/設施指定課不收費） */}
           {showSettlementButton && (
             <div style={{ 

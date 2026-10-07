@@ -302,3 +302,49 @@ export async function fetchLiffMemberTransactions(
   }
   return Array.isArray(result.transactions) ? result.transactions : []
 }
+
+export interface LiffCoachDesignatedBalance {
+  coach_id: string
+  coach_name: string
+  balance: number
+  last_activity_at: string
+}
+
+export interface LiffCoachDesignatedEntry {
+  id: number
+  entry_type: 'credit' | 'report_deduction'
+  minutes: number
+  delta_minutes: number
+  occurred_at: string
+  note: string | null
+  booking_start_at: string | null
+  boat_name: string | null
+}
+
+export async function fetchLiffCoachDesignatedBalances(): Promise<LiffCoachDesignatedBalance[]> {
+  const result = await callLiffMemberApi<{
+    success?: boolean
+    error?: string
+    balances?: LiffCoachDesignatedBalance[]
+  }>('coachDesignatedBalances')
+  if (!result?.success) throw new Error(result?.error || '指定課時數載入失敗')
+  return Array.isArray(result.balances) ? result.balances : []
+}
+
+export async function fetchLiffCoachDesignatedHistory(
+  coachId: string,
+  limit = 10,
+  offset = 0,
+): Promise<{ entries: LiffCoachDesignatedEntry[]; total: number }> {
+  const result = await callLiffMemberApi<{
+    success?: boolean
+    error?: string
+    entries?: LiffCoachDesignatedEntry[]
+    total?: number
+  }>('coachDesignatedHistory', { coachId, limit, offset })
+  if (!result?.success) throw new Error(result?.error || '指定課明細載入失敗')
+  return {
+    entries: Array.isArray(result.entries) ? result.entries : [],
+    total: Number(result.total) || 0,
+  }
+}

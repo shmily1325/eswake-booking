@@ -7,6 +7,8 @@ type Action =
   | 'bind'
   | 'orders'
   | 'transactions'
+  | 'coachDesignatedBalances'
+  | 'coachDesignatedHistory'
   | 'birthday'
 
 type LineProfile = {
@@ -223,6 +225,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           p_line_user_id: lineUserId,
           p_category: category,
           p_since_date: typeof sinceDate === 'string' ? sinceDate : null,
+        })
+        break
+      }
+      case 'coachDesignatedBalances':
+        rpc = await supabase.rpc('get_liff_coach_designated_balances', {
+          p_line_user_id: lineUserId,
+        })
+        break
+      case 'coachDesignatedHistory': {
+        const coachId = bodyValue(req, 'coachId')
+        const limit = bodyValue(req, 'limit')
+        const offset = bodyValue(req, 'offset')
+        if (typeof coachId !== 'string') {
+          return res.status(400).json({ success: false, error: '缺少教練識別' })
+        }
+        rpc = await supabase.rpc('get_liff_coach_designated_history', {
+          p_line_user_id: lineUserId,
+          p_coach_id: coachId,
+          p_limit: typeof limit === 'number' ? limit : 10,
+          p_offset: typeof offset === 'number' ? offset : 0,
         })
         break
       }

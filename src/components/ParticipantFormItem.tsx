@@ -14,8 +14,10 @@ import {
 import { getSimplifiedMembershipTypeLabel } from '../utils/membership'
 import type { Participant } from '../types/booking'
 import type { MemberSearchResult } from '../hooks/useMemberSearch'
+import { CoachDesignatedDeductionControl } from './CoachDesignatedDeductionControl'
 
 interface ParticipantFormItemProps {
+  coachId: string
   participant: Participant
   index: number
   isMobile: boolean
@@ -49,6 +51,7 @@ function getPaymentChoiceStyle(selected: boolean): CSSProperties {
 }
 
 export function ParticipantFormItem({
+  coachId,
   participant,
   index,
   isMobile,
@@ -291,6 +294,14 @@ export function ParticipantFormItem({
           ))}
         </div>
       </div>
+
+      <CoachDesignatedDeductionControl
+        coachId={coachId}
+        participant={participant}
+        participantIndex={index}
+        isMobile={isMobile}
+        onUpdate={onUpdate}
+      />
 
       {/* 收费方式 */}
       <div>

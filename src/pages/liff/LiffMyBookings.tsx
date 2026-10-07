@@ -20,6 +20,7 @@ import {
   BalanceView,
   MemberProfileView,
   TransactionModal,
+  CoachDesignatedHistoryModal,
   LiffStyles,
   LiffExpiryBanner,
   TabPanelSkeleton,
@@ -44,6 +45,10 @@ import {
   fetchLiffMemberBootstrap,
   initLiffSdk,
   fetchLiffMemberTransactions,
+  fetchLiffCoachDesignatedBalances,
+  fetchLiffCoachDesignatedHistory,
+  type LiffCoachDesignatedBalance,
+  type LiffCoachDesignatedEntry,
   unknownErrorMessage,
 } from './liffMemberShared'
 
@@ -108,6 +113,11 @@ export function LiffMyBookings() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loadingTransactions, setLoadingTransactions] = useState(false)
   const [transactionCache, setTransactionCache] = useState<Record<string, Transaction[]>>({})
+  const [coachDesignatedBalances, setCoachDesignatedBalances] = useState<LiffCoachDesignatedBalance[]>([])
+  const [selectedCoachDesignated, setSelectedCoachDesignated] = useState<LiffCoachDesignatedBalance | null>(null)
+  const [coachDesignatedEntries, setCoachDesignatedEntries] = useState<LiffCoachDesignatedEntry[]>([])
+  const [coachDesignatedTotal, setCoachDesignatedTotal] = useState(0)
+  const [loadingCoachDesignated, setLoadingCoachDesignated] = useState(false)
   
   // 刷新狀態
   const [refreshing, setRefreshing] = useState(false)
@@ -126,6 +136,18 @@ export function LiffMyBookings() {
   }
 
   const expiryBannerLines = useMemo(() => buildLiffExpiryBannerLines(member), [member])
+
+  useEffect(() => {
+    if (activeTab !== 'balance' || !member) return
+    setLoadingCoachDesignated(true)
+    fetchLiffCoachDesignatedBalances()
+      .then(setCoachDesignatedBalances)
+      .catch((err) => {
+        console.error('載入教練指定課餘額失敗:', err)
+        setCoachDesignatedBalances([])
+      })
+      .finally(() => setLoadingCoachDesignated(false))
+  }, [activeTab, member])
 
   const loadShopOrders = useCallback(async (userId: string, silent = false): Promise<boolean> => {
     setLoadingShopOrders(true)
@@ -304,6 +326,7 @@ export function LiffMyBookings() {
     
     // 清除交易記錄快取
     setTransactionCache({})
+    setCoachDesignatedBalances([])
     
     try {
       const bootstrap = await fetchLiffMemberBootstrap<LiffShopOrder>()
@@ -357,6 +380,26 @@ export function LiffMyBookings() {
     if (!member) return
     triggerHaptic('light')
     liffTrack({ icon_id: `liff_category_click:${category}`, line_user_id: lineUserId, member_id: member.id })
+    if (category.startsWith('coach-designated:')) {
+      const coachId = category.slice('coach-designated:'.length)
+      const selected = coachDesignatedBalances.find((item) => item.coach_id === coachId)
+      if (!selected) return
+      setSelectedCoachDesignated(selected)
+      setCoachDesignatedEntries([])
+      setCoachDesignatedTotal(0)
+      setLoadingCoachDesignated(true)
+      fetchLiffCoachDesignatedHistory(coachId, 10, 0)
+        .then((result) => {
+          setCoachDesignatedEntries(result.entries)
+          setCoachDesignatedTotal(result.total)
+        })
+        .catch((err) => {
+          console.error('載入教練指定課明細失敗:', err)
+          toast.error('載入指定課明細失敗')
+        })
+        .finally(() => setLoadingCoachDesignated(false))
+      return
+    }
     setSelectedCategory(category)
     setShowTransactions(true)
     loadTransactions(member.id, category)
@@ -514,6 +557,7 @@ export function LiffMyBookings() {
           {activeTab === 'balance' && member && (
             <BalanceView
               member={member}
+              coachDesignatedBalances={coachDesignatedBalances}
               onCategoryClick={handleCategoryClick}
             />
           )}
@@ -535,6 +579,29 @@ export function LiffMyBookings() {
         transactions={transactions}
         loading={loadingTransactions}
         formatFriendlyDate={formatFriendlyDate}
+      />
+
+      <CoachDesignatedHistoryModal
+        show={!!selectedCoachDesignated}
+        coachName={selectedCoachDesignated?.coach_name || ''}
+        entries={coachDesignatedEntries}
+        total={coachDesignatedTotal}
+        loading={loadingCoachDesignated}
+        onClose={() => setSelectedCoachDesignated(null)}
+        onLoadAll={() => {
+          if (!selectedCoachDesignated) return
+          setLoadingCoachDesignated(true)
+          fetchLiffCoachDesignatedHistory(selectedCoachDesignated.coach_id, 100, 0)
+            .then((result) => {
+              setCoachDesignatedEntries(result.entries)
+              setCoachDesignatedTotal(result.total)
+            })
+            .catch((err) => {
+              console.error('載入全部指定課明細失敗:', err)
+              toast.error('載入全部指定課明細失敗')
+            })
+            .finally(() => setLoadingCoachDesignated(false))
+        }}
       />
 
       {/* Footer */}

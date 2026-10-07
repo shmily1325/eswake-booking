@@ -15,10 +15,10 @@ export type Coach = Database['public']['Tables']['coaches']['Row']
 export type CoachReport = Database['public']['Tables']['coach_reports']['Row']
 
 export type Participant = Database['public']['Tables']['booking_participants']['Row'] & {
-  // 擴展欄位 (如果有的話，目前看起來主要是 Supabase 類型已經包含了大部分)
-  // 注意：Supabase 生成的類型可能包含 null，而前端可能預期是 undefined 或必填
-  // 這裡我們可能需要根據實際使用情況做一些調整，或者直接使用 Row
-  // 為了兼容現有代碼，我們暫時保持一些可選屬性
+  /** 僅供教練回報表單使用，不寫入 booking_participants。 */
+  designated_hours_deduct?: boolean
+  designated_hours_minutes?: number
+  designated_hours_initialized?: boolean
 }
 
 // 為了兼容性，我們重新定義 Booking 接口，繼承自 Row 並添加關聯屬性
