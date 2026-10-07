@@ -216,7 +216,9 @@ describe('generateTomorrowReminderMessage', () => {
       templates,
     })
 
-    expect(message).toContain('火隆教練－澤＋甯\n09:30 抵達\n10:00 下水\n11:00 下水')
+    expect(message).toContain(
+      '火隆教練－澤＋甯\n09:30 抵達\n10:00 下水\n\n第二船\n11:00 下水'
+    )
     expect(message.match(/抵達/g)).toHaveLength(1)
   })
 
@@ -238,9 +240,31 @@ describe('generateTomorrowReminderMessage', () => {
     })
 
     expect(message).toContain(
-      '澤\n09:30 抵達\nED教練\n10:00 下水\nJerry教練\n14:00 下水'
+      'ED教練－澤\n09:30 抵達\n10:00 下水\n\n第二船\nJerry教練\n14:00 下水'
     )
     expect(message.match(/抵達/g)).toHaveLength(1)
+  })
+
+  it('同一 RIDER 的第二次下水會標示第二船', () => {
+    const message = generateTomorrowReminderMessage({
+      studentName: 'Fish',
+      bookings: [
+        booking('Fish', '2026-10-08T10:00:00', {
+          actual_rider: '澤澤',
+          coaches: [{ name: '火隆' }],
+        }),
+        booking('Fish', '2026-10-08T13:30:00', {
+          actual_rider: '澤澤',
+          coaches: [{ name: 'ED' }],
+        }),
+      ],
+      language: 'zh',
+      templates,
+    })
+
+    expect(message).toContain(
+      '火隆教練－澤澤\n09:30 抵達\n10:00 下水\n\n第二船\nED教練\n13:30 下水'
+    )
   })
 
   it('沒有 RIDER 與教練的單筆預約使用船名標題', () => {

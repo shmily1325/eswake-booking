@@ -214,19 +214,26 @@ export function generateTomorrowReminderMessage(params: {
             .join('/')
         : ''
     )
-    const uniqueCoachNames = Array.from(new Set(coachNamesByBooking.filter(Boolean)))
     const distinctCoachAssignments = new Set(coachNamesByBooking)
 
     if (group.rider) {
-      const heading = distinctCoachAssignments.size === 1 && uniqueCoachNames.length === 1
-        ? `${uniqueCoachNames[0]}教練－${group.rider}`
+      const firstCoachNames = coachNamesByBooking[0]
+      const heading = firstCoachNames
+        ? `${firstCoachNames}教練－${group.rider}`
         : group.rider
       message += `${heading}\n`
       message += `${getArrivalTimeWithColon(group.bookings[0].start_at)} 抵達\n`
 
-      let previousCoachNames = ''
+      let previousCoachNames = firstCoachNames
+      let boatCount = 0
       group.bookings.forEach((booking, index) => {
         const coachNames = coachNamesByBooking[index]
+        const facilityLabel = getFacilityMessageLabel(booking.boats?.name || '')
+        if (!facilityLabel) boatCount++
+        if (boatCount >= 2 && !facilityLabel) {
+          const shipLabel = boatCount === 2 ? '第二船' : boatCount === 3 ? '第三船' : `第${boatCount}船`
+          message += `\n${shipLabel}\n`
+        }
         if (
           distinctCoachAssignments.size > 1
           && coachNames
@@ -234,7 +241,6 @@ export function generateTomorrowReminderMessage(params: {
         ) {
           message += `${coachNames}教練\n`
         }
-        const facilityLabel = getFacilityMessageLabel(booking.boats?.name || '')
         message += `${formatTimeWithColon(booking.start_at)} ${facilityLabel || '下水'}\n`
         previousCoachNames = coachNames
       })
