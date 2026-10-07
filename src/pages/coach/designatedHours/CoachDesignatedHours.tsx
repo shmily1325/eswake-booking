@@ -108,6 +108,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   const [creditNote, setCreditNote] = useState('')
   const [creditRequestKey, setCreditRequestKey] = useState(createRequestKey)
   const [eligibleReports, setEligibleReports] = useState<CoachDesignatedEligibleReport[]>([])
+  const [eligibleReportLimit, setEligibleReportLimit] = useState(5)
   const [selectedReportIds, setSelectedReportIds] = useState<Set<number>>(new Set())
   const [selectedReportMinutes, setSelectedReportMinutes] = useState<Record<number, string>>({})
   const [saving, setSaving] = useState(false)
@@ -173,8 +174,10 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   useEffect(() => {
     if (!creditMemberId) {
       setEligibleReports([])
+      setEligibleReportLimit(5)
       return
     }
+    setEligibleReportLimit(5)
     fetchCoachDesignatedEligibleReports(coachId, creditMemberId)
       .then(setEligibleReports)
       .catch((error) => {
@@ -194,7 +197,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     })
   }, [students, query, filter])
 
-  const visibleEligibleReports = eligibleReports
+  const visibleEligibleReports = eligibleReports.slice(0, eligibleReportLimit)
 
   const resetCreditDialog = () => {
     setCreditOpen(false)
@@ -204,6 +207,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     setCreditNote('')
     setCreditRequestKey(createRequestKey())
     setEligibleReports([])
+    setEligibleReportLimit(5)
     setSelectedReportIds(new Set())
     setSelectedReportMinutes({})
     memberSearch.reset()
@@ -791,6 +795,20 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                       </div>
                     )
                   })}
+                  {eligibleReportLimit < eligibleReports.length && (
+                    <button
+                      type="button"
+                      data-track="coach_designated_load_older_reports"
+                      onClick={() => setEligibleReportLimit((current) => current + 5)}
+                      style={{
+                        ...getButtonStyle('outline', 'medium', isMobile),
+                        width: '100%',
+                        minHeight: 44,
+                      }}
+                    >
+                      顯示更早回報（尚有 {eligibleReports.length - eligibleReportLimit} 筆）
+                    </button>
+                  )}
                 </div>
               </div>
             )}
