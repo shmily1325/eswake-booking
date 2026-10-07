@@ -26,6 +26,46 @@ import {
   bookingEditDriverIds,
   shouldClearBookingEditAssignments,
 } from '../utils/bookingEditAssignments'
+import { fetchCoachDesignatedMemberContext } from '../pages/coach/designatedHours/api'
+
+interface DesignatedParticipantReference {
+  id: number
+  coach_id: string | null
+  member_id: string | null
+  lesson_type: string | null
+}
+
+async function getDesignatedDeductionCleanup(
+  participants: DesignatedParticipantReference[],
+): Promise<{ minutes: number; lookupFailed: boolean }> {
+  const eligible = participants.filter(
+    (participant) =>
+      participant.lesson_type === 'designated_free'
+      && !!participant.coach_id
+      && !!participant.member_id,
+  )
+  if (eligible.length === 0) return { minutes: 0, lookupFailed: false }
+
+  try {
+    const contexts = await Promise.all(eligible.map((participant) =>
+      fetchCoachDesignatedMemberContext(
+        participant.coach_id!,
+        participant.member_id!,
+        participant.id,
+      ),
+    ))
+    return {
+      minutes: contexts.reduce(
+        (total, context) => total + (context.deduction_minutes ?? 0),
+        0,
+      ),
+      lookupFailed: false,
+    }
+  } catch (error) {
+    console.error('查詢指定課扣除失敗，沿用原本預約修改／刪除流程:', error)
+    return { minutes: 0, lookupFailed: true }
+  }
+}
 
 interface EditBookingDialogProps {
   isOpen: boolean
@@ -441,7 +481,7 @@ export function EditBookingDialog({
           .eq('booking_id', booking.id),
         supabase
           .from('booking_participants')
-          .select('id, participant_name')
+          .select('id, participant_name, coach_id, member_id, lesson_type')
           .eq('booking_id', booking.id)
           .eq('is_deleted', false)
       ])
@@ -488,6 +528,9 @@ export function EditBookingDialog({
         (shouldClearAssignments && hasRecordsToBeCleared)
 
       if (needConfirm) {
+        const designatedCleanup = await getDesignatedDeductionCleanup(
+          (participantsResult.data || []) as DesignatedParticipantReference[],
+        )
         const changedFields = []
         if (timeChanged) changedFields.push('時間')
         if (boatChanged) changedFields.push('船')
@@ -521,6 +564,11 @@ export function EditBookingDialog({
         if (hasDriverAssignment) confirmMessage += `• 所有排班記錄（教練＋駕駛）\n`
         if (hasCoachReports) confirmMessage += `• 所有回報記錄\n`
         if (hasParticipants) confirmMessage += `• 所有參與者記錄\n`
+        if (designatedCleanup.minutes > 0) {
+          confirmMessage += `• 指定課扣除合計 ${designatedCleanup.minutes} 分鐘（將全數退回）\n`
+        } else if (designatedCleanup.lookupFailed) {
+          confirmMessage += `• 相關指定課扣除（將一併取消並退回）\n`
+        }
         if (participantsWithTransactions.length > 0) {
           const names = participantsWithTransactions.map((p: any) => p.participant_name).join('、')
           confirmMessage += `\n💰 ${names} 有交易記錄\n（交易記錄會保留，請到「會員儲值」檢查並處理）\n`
@@ -769,7 +817,7 @@ export function EditBookingDialog({
           .eq('booking_id', booking.id),
         supabase
           .from('booking_participants')
-          .select('id, participant_name')
+          .select('id, participant_name, coach_id, member_id, lesson_type')
           .eq('booking_id', booking.id)
           .eq('is_deleted', false),
         supabase
@@ -819,6 +867,9 @@ export function EditBookingDialog({
           )
         }
       }
+      const designatedCleanup = await getDesignatedDeductionCleanup(
+        (participantsResult.data || []) as DesignatedParticipantReference[],
+      )
 
       // 根據是否有回報給予不同的提示
       let confirmMessage = '確定要刪除這個預約嗎？'
@@ -833,6 +884,11 @@ export function EditBookingDialog({
         if (hasDriverReports) warnings.push(`駕駛回報 ${reportsResult.count} 筆`)
 
         confirmMessage = `⚠️ 此預約已有後續記錄：\n${warnings.join('、')}\n\n刪除預約將會同時刪除：\n• 所有排班記錄\n• 所有回報記錄\n`
+        if (designatedCleanup.minutes > 0) {
+          confirmMessage += `• 指定課扣除合計 ${designatedCleanup.minutes} 分鐘（將全數退回）\n`
+        } else if (designatedCleanup.lookupFailed) {
+          confirmMessage += `• 相關指定課扣除（將一併取消並退回）\n`
+        }
 
         if (participantsWithTransactions.length > 0) {
           const names = participantsWithTransactions.map((p: any) => p.participant_name).join('、')
