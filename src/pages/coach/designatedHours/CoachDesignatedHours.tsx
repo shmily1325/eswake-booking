@@ -464,10 +464,15 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       {isMobile && (
         <button
           type="button"
+          data-track="coach_designated_back_to_students"
           onClick={() => setSelectedMemberId(null)}
-          style={{ ...getButtonStyle('ghost', 'small', true), marginBottom: 8 }}
+          style={{
+            ...getButtonStyle('outline', 'small', true),
+            minHeight: 44,
+            marginBottom: 12,
+          }}
         >
-          返回學生
+          ← 返回學生列表
         </button>
       )}
       <div style={{ marginBottom: 18 }}>

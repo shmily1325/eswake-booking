@@ -95,6 +95,13 @@ export function MyReport() {
             回報
           </AdminPillButton>
           <AdminPillButton
+            data-track="my_report_tab_designated"
+            active={activeTab === 'designated'}
+            onClick={() => setActiveTab('designated')}
+          >
+            指定課
+          </AdminPillButton>
+          <AdminPillButton
             data-track="my_report_tab_history"
             active={activeTab === 'history'}
             onClick={() => setActiveTab('history')}
@@ -114,13 +121,6 @@ export function MyReport() {
             onClick={() => setActiveTab('records')}
           >
             紀錄
-          </AdminPillButton>
-          <AdminPillButton
-            data-track="my_report_tab_designated"
-            active={activeTab === 'designated'}
-            onClick={() => setActiveTab('designated')}
-          >
-            指定課
           </AdminPillButton>
         </AdminPillRow>
 
