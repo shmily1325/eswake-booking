@@ -113,6 +113,7 @@ export function AdminCoachDesignatedDeductionControl({
           : '指定課扣除'}
         <button
           type="button"
+          data-track="admin_coach_designated_correction_toggle"
           onClick={() => setExpanded((value) => !value)}
           style={{
             marginLeft: 8,
@@ -151,6 +152,7 @@ export function AdminCoachDesignatedDeductionControl({
         )}
         <button
           type="button"
+          data-track="admin_coach_designated_correction_save"
           disabled={loading}
           onClick={() => void save()}
           style={getButtonStyle('outline', 'small', isMobile)}

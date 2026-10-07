@@ -590,6 +590,11 @@ export function LiffMyBookings() {
         onClose={() => setSelectedCoachDesignated(null)}
         onLoadAll={() => {
           if (!selectedCoachDesignated) return
+          liffTrack({
+            icon_id: 'liff_coach_designated_history_all',
+            line_user_id: lineUserId,
+            member_id: member?.id,
+          })
           setLoadingCoachDesignated(true)
           fetchLiffCoachDesignatedHistory(selectedCoachDesignated.coach_id, 100, 0)
             .then((result) => {

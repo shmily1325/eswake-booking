@@ -294,6 +294,7 @@ export function CoachReportFormDialog({
             </div>
             <button
               type="button"
+              data-track="coach_designated_sync_retry"
               disabled={isSubmitting}
               onClick={onRetryDesignatedSync}
               style={{ ...getButtonStyle('primary', 'medium', isMobile), width: '100%' }}

@@ -350,6 +350,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         />
         <button
           type="button"
+          data-track="coach_designated_add_open"
           onClick={() => setCreditOpen(true)}
           style={getButtonStyle('primary', 'medium', isMobile)}
         >
@@ -365,6 +366,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           <button
             key={value}
             type="button"
+            data-track={`coach_designated_filter_${value}`}
             onClick={() => setFilter(value)}
             style={{
               ...getButtonStyle(filter === value ? 'primary' : 'outline', 'small', isMobile),
@@ -391,6 +393,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           <button
             key={student.member_id}
             type="button"
+            data-track="coach_designated_student_open"
             onClick={() => setSelectedMemberId(student.member_id)}
             style={{
               width: '100%',
@@ -463,7 +466,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => {
+        <button type="button" data-track="coach_designated_add_open" onClick={() => {
           setCreditMemberId(selectedStudent.member_id)
           memberSearch.selectMemberById(selectedStudent.member_id, displayName(selectedStudent))
           setCreditOpen(true)
@@ -472,6 +475,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         </button>
         <button
           type="button"
+          data-track="coach_designated_save_ledger_image"
           disabled={saving || entries.length === 0}
           onClick={() => void saveImages('指定課流水', ledgerRows, balance)}
           style={getButtonStyle('outline', 'medium', isMobile)}
@@ -487,6 +491,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           <button
             key={mode}
             type="button"
+            data-track={`coach_designated_view_${mode}`}
             onClick={() => setViewMode(mode)}
             style={{
               ...getButtonStyle(viewMode === mode ? 'primary' : 'outline', 'medium', isMobile),
@@ -541,6 +546,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                   </div>
                   <button
                     type="button"
+                    data-track="coach_designated_save_batch_image"
                     onClick={() => void saveImages(
                       `${batch.credit.occurred_at.slice(0, 10)} 時數回報`,
                       rows,
@@ -694,7 +700,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
               <button type="button" onClick={resetCreditDialog} style={{ ...getButtonStyle('outline', 'medium', isMobile), flex: 1 }}>取消</button>
-              <button type="button" disabled={saving} onClick={() => void submitCredit()} style={{ ...getButtonStyle('primary', 'medium', isMobile), flex: 1 }}>
+              <button type="button" data-track="coach_designated_add_submit" disabled={saving} onClick={() => void submitCredit()} style={{ ...getButtonStyle('primary', 'medium', isMobile), flex: 1 }}>
                 {saving ? '儲存中...' : '確認新增'}
               </button>
             </div>
@@ -739,10 +745,10 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => void voidEntry()} style={getButtonStyle('danger', 'medium', isMobile)}>取消此筆</button>
+              <button type="button" data-track="coach_designated_entry_void" onClick={() => void voidEntry()} style={getButtonStyle('danger', 'medium', isMobile)}>取消此筆</button>
               <div style={{ flex: 1 }} />
               <button type="button" onClick={() => setEditingEntry(null)} style={getButtonStyle('outline', 'medium', isMobile)}>返回</button>
-              <button type="button" disabled={saving} onClick={() => void saveEdit()} style={getButtonStyle('primary', 'medium', isMobile)}>儲存</button>
+              <button type="button" data-track="coach_designated_entry_save" disabled={saving} onClick={() => void saveEdit()} style={getButtonStyle('primary', 'medium', isMobile)}>儲存</button>
             </div>
           </div>
         </div>
@@ -775,6 +781,7 @@ function EntryList({
         <button
           key={entry.id}
           type="button"
+          data-track="coach_designated_entry_open"
           onClick={() => onEdit(entry)}
           style={{
             width: '100%',

@@ -116,6 +116,7 @@ export function CoachDesignatedDeductionControl({
     >
       <button
         type="button"
+        data-track="coach_designated_report_toggle"
         onClick={() => setExpanded((value) => !value)}
         aria-expanded={expanded}
         style={{
@@ -163,6 +164,7 @@ export function CoachDesignatedDeductionControl({
           >
             <input
               type="checkbox"
+              data-track="coach_designated_report_deduct_toggle"
               checked={deduct}
               onChange={(event) => {
                 onUpdate(participantIndex, 'designated_hours_deduct', event.target.checked)
