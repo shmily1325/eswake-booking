@@ -219,23 +219,23 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       toast.warning('請選擇會員並輸入正確分鐘')
       return
     }
+    const selectedReports = eligibleReports.filter((report) =>
+      selectedReportIds.has(report.participant_id),
+    )
+    const invalidReport = selectedReports.find((report) => {
+      const deductionMinutes = Number(
+        selectedReportMinutes[report.participant_id] ?? report.duration_min,
+      )
+      return !Number.isFinite(deductionMinutes)
+        || deductionMinutes <= 0
+        || deductionMinutes > report.duration_min
+    })
+    if (invalidReport) {
+      toast.warning(`扣除分鐘需介於 1～${invalidReport.duration_min} 分`)
+      return
+    }
     setSaving(true)
     try {
-      const selectedReports = eligibleReports.filter((report) =>
-        selectedReportIds.has(report.participant_id),
-      )
-      const invalidReport = selectedReports.find((report) => {
-        const deductionMinutes = Number(
-          selectedReportMinutes[report.participant_id] ?? report.duration_min,
-        )
-        return !Number.isFinite(deductionMinutes)
-          || deductionMinutes <= 0
-          || deductionMinutes > report.duration_min
-      })
-      if (invalidReport) {
-        toast.warning(`扣除分鐘需介於 1～${invalidReport.duration_min} 分`)
-        return
-      }
       await createCoachDesignatedCredit({
         coachId,
         memberId: creditMemberId,
@@ -374,7 +374,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           onClick={() => setCreditOpen(true)}
           style={getButtonStyle('primary', 'medium', isMobile)}
         >
-          增加時數
+          新增指定課
         </button>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -491,7 +491,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           memberSearch.selectMemberById(selectedStudent.member_id, displayName(selectedStudent))
           setCreditOpen(true)
         }} style={getButtonStyle('primary', 'medium', isMobile)}>
-          增加時數
+          新增指定課
         </button>
         <button
           type="button"
@@ -626,7 +626,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       {creditOpen && (
         <div style={dialogBackdrop(isMobile)} onClick={resetCreditDialog}>
           <div style={dialogSurface(isMobile)} onClick={(event) => event.stopPropagation()}>
-            <h2 style={{ margin: '0 0 18px', fontSize: getFontSize('h2', isMobile) }}>增加指定課時數</h2>
+            <h2 style={{ margin: '0 0 18px', fontSize: getFontSize('h2', isMobile) }}>新增指定課時數</h2>
             {!creditMemberId && (
               <div style={{ marginBottom: 14, position: 'relative' }}>
                 <label style={getLabelStyle(isMobile)}>選擇學生</label>
