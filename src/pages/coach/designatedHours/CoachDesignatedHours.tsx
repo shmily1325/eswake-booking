@@ -354,7 +354,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     .sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime())
     .map((entry) => ({
       date: compactDate(entry.occurred_at),
-      detail: entry.entry_type === 'credit' ? (entry.note || '增加時數') : (entry.boat_name || '上課'),
+      detail: entry.entry_type === 'credit' ? (entry.note || '購買指定課') : (entry.boat_name || '上課'),
       minutes: entry.delta_minutes,
     }))
 
@@ -559,7 +559,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                   <div>
-                    <div style={{ fontWeight: 700 }}>{batch.credit.occurred_at.slice(0, 10)} 增加時數</div>
+                    <div style={{ fontWeight: 700 }}>{batch.credit.occurred_at.slice(0, 10)} 購買指定課</div>
                     <div style={{ color: designSystem.colors.text.secondary, marginTop: 4 }}>
                       起始 {batch.credit.minutes} 分｜剩餘 {batch.remaining} 分
                     </div>
@@ -568,7 +568,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                     type="button"
                     data-track="coach_designated_save_batch_image"
                     onClick={() => void saveImages(
-                      `${batch.credit.occurred_at.slice(0, 10)} 增加時數`,
+                      `${batch.credit.occurred_at.slice(0, 10)} 購買指定課`,
                       rows,
                       batch.remaining,
                       batch.credit.minutes,
@@ -929,7 +929,7 @@ function EntryList({
             <span style={{ display: 'block', color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
               {compactDate(entry.occurred_at)}
             </span>
-            <span>{entry.entry_type === 'credit' ? (entry.note || '增加時數') : (entry.boat_name || '上課')}</span>
+            <span>{entry.entry_type === 'credit' ? (entry.note || '購買指定課') : (entry.boat_name || '上課')}</span>
           </span>
           <span
             style={{
