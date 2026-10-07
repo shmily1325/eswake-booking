@@ -106,7 +106,7 @@ export function CoachDesignatedHistoryModal({
                   </div>
                   <div style={{ marginTop: 5, color: LIFF_THEME.inkSoft }}>
                     {entry.entry_type === 'credit'
-                      ? (entry.note || '時數回報')
+                      ? (entry.note || '增加時數')
                       : (entry.boat_name || '上課')}
                   </div>
                 </div>
