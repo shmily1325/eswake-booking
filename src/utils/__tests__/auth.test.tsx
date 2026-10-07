@@ -15,6 +15,7 @@ import {
   canPreviewProductsReadOnly,
   getEditorFeatureFlags,
   isMemberPhoneOnlyEditor,
+  getTemporaryCoachReportPreviewName,
 } from '../auth'
 import { supabase } from '../../lib/supabase'
 
@@ -88,6 +89,13 @@ describe('auth.ts - 權限驗證', () => {
       expect(SUPER_ADMINS).toContain('callumbao1122@gmail.com')
       expect(SUPER_ADMINS).toContain('pjpan0511@gmail.com')
       expect(SUPER_ADMINS).toContain('minlin1325@gmail.com')
+    })
+  })
+
+  describe('temporary coach report preview', () => {
+    it('maps Ming to Jerry without changing normal accounts', () => {
+      expect(getTemporaryCoachReportPreviewName('minlin1325@gmail.com')).toBe('Jerry')
+      expect(getTemporaryCoachReportPreviewName('other@example.com')).toBeNull()
     })
   })
 

@@ -40,6 +40,16 @@ export const SUPER_ADMIN_DISPLAY_LABELS: Record<string, string> = {
   'minlin1325@gmail.com': 'Ming',
 }
 
+/** 暫時讓指定管理員以教練身分驗證個人回報；不修改 coaches.user_email。 */
+const TEMP_COACH_REPORT_PREVIEW_NAMES: Readonly<Record<string, string>> = {
+  'minlin1325@gmail.com': 'Jerry',
+}
+
+export function getTemporaryCoachReportPreviewName(email: string | null | undefined): string | null {
+  if (!email) return null
+  return TEMP_COACH_REPORT_PREVIEW_NAMES[email.trim().toLowerCase()] || null
+}
+
 /** 可從首頁切換至商品唯讀模式，方便管理員驗證一般員工畫面。 */
 export const PRODUCT_READONLY_PREVIEW_EMAILS = [
   'pjpan0511@gmail.com',

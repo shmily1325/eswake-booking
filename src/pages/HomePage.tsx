@@ -9,6 +9,7 @@ import {
   getEditorFeatureFlags,
   hasViewAccess,
   isMemberPhoneOnlyEditor,
+  getTemporaryCoachReportPreviewName,
   type EditorFeatureKey
 } from '../utils/auth'
 import { supabase } from '../lib/supabase'
@@ -108,7 +109,10 @@ export function HomePage() {
           hasViewAccess(user)
         ])
 
-        setIsCoach(!coachResult.error && !!coachResult.data)
+        setIsCoach(
+          (!coachResult.error && !!coachResult.data)
+          || !!getTemporaryCoachReportPreviewName(user.email)
+        )
         setEditorFeatureFlags(featureFlags)
         setHasViewPermission(viewAccessResult)
       } catch (error) {

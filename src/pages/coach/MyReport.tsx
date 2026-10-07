@@ -12,6 +12,7 @@ import { AdminPillRow, AdminPillButton } from '../../components/AdminPageLayout'
 import { designSystem, getFontSize } from '../../styles/designSystem'
 import { PageShell } from '../../components/PageShell'
 import { CoachDesignatedHours } from './designatedHours/CoachDesignatedHours'
+import { getTemporaryCoachReportPreviewName } from '../../utils/auth'
 
 export function MyReport() {
   const user = useAuthUser()
@@ -29,11 +30,14 @@ export function MyReport() {
       
       setCheckingAuth(true)
 
-      const { data, error } = await supabase
+      const previewCoachName = getTemporaryCoachReportPreviewName(user.email)
+      let query = supabase
         .from('coaches')
         .select('id, name')
-        .eq('user_email', user.email)
-        .single()
+      query = previewCoachName
+        ? query.eq('name', previewCoachName)
+        : query.eq('user_email', user.email)
+      const { data, error } = await query.single()
 
       if (error || !data) {
         console.error('載入教練資訊失敗:', error)
@@ -126,6 +130,7 @@ export function MyReport() {
           {activeTab === 'report' && coachId && (
             <CoachReport 
               autoFilterByUser={true} 
+              forcedCoachId={coachId}
               embedded={true} 
               defaultViewMode="unreported"
               hideInternalTabs={true}
