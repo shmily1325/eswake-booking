@@ -46,6 +46,26 @@ describe('validateCoachReportSubmission', () => {
     })
   })
 
+  it('waits for designated-hour context before submitting a free designated lesson', () => {
+    expect(validateCoachReportSubmission('coach', [{
+      ...participant,
+      lesson_type: 'designated_free',
+      designated_hours_initialized: false,
+    }])).toEqual({
+      valid: false,
+      message: '指定課資料仍在載入，請稍候再送出',
+    })
+
+    expect(validateCoachReportSubmission('coach', [{
+      ...participant,
+      lesson_type: 'designated_free',
+      designated_hours_initialized: true,
+    }])).toEqual({
+      valid: true,
+      emptyParticipantCount: 0,
+    })
+  })
+
   it.each(['driver', 'both'] as const)(
     'accepts %s reports without requiring positive driver minutes',
     (reportType) => {

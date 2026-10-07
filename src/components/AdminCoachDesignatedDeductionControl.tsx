@@ -35,6 +35,13 @@ export function AdminCoachDesignatedDeductionControl({
   const eligible = !!coachId && !!memberId && lessonType === 'designated_free'
 
   useEffect(() => {
+    setBalance(0)
+    setDeduct(false)
+    setMinutes(durationMin)
+    setLoaded(false)
+  }, [coachId, durationMin, lessonType, memberId, participantId])
+
+  useEffect(() => {
     if (!expanded || loaded || !eligible || !coachId || !memberId) return
     let cancelled = false
     setLoading(true)

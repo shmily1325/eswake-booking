@@ -5,6 +5,8 @@ interface ReportParticipantInput {
   duration_min: number
   status: string | null
   member_id: string | null
+  lesson_type?: string | null
+  designated_hours_initialized?: boolean
 }
 
 export type CoachReportSubmissionValidation =
@@ -53,6 +55,18 @@ export function validateCoachReportSubmission(
     return {
       valid: false,
       message: `以下參與者標記為會員但尚未選擇：${names}。請點擊該參與者從會員列表選擇，或刪除後改用「新增客人」`,
+    }
+  }
+
+  const pendingDesignatedHours = validParticipants.find((participant) =>
+    participant.lesson_type === 'designated_free'
+    && !!participant.member_id
+    && participant.designated_hours_initialized !== true,
+  )
+  if (pendingDesignatedHours) {
+    return {
+      valid: false,
+      message: '指定課資料仍在載入，請稍候再送出',
     }
   }
 

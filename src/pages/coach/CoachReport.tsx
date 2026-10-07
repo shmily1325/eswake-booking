@@ -977,7 +977,10 @@ export function CoachReport({
       ...current,
       member_id: null,
       // 只有清除會員時才改付款方式
-      payment_method: hadMember ? 'cash' : current.payment_method
+      payment_method: hadMember ? 'cash' : current.payment_method,
+      designated_hours_deduct: undefined,
+      designated_hours_minutes: undefined,
+      designated_hours_initialized: false,
       // 不再強制設定 status，讓 submitCoachReport 計算
     }
     setParticipants(updated)
@@ -1007,7 +1010,14 @@ export function CoachReport({
       member_id: member.id,
       participant_name: member.nickname || member.name,
       // 只有換成不同會員時才改付款方式
-      payment_method: isSameMember ? current.payment_method : 'balance'
+      payment_method: isSameMember ? current.payment_method : 'balance',
+      ...(isSameMember
+        ? {}
+        : {
+            designated_hours_deduct: undefined,
+            designated_hours_minutes: undefined,
+            designated_hours_initialized: false,
+          }),
       // 不再強制設定 status，讓 submitCoachReport 計算
     }
     setParticipants(updated)

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { designSystem, getFontSize, getInputStyle } from '../styles/designSystem'
+import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../styles/designSystem'
 import type { Participant } from '../types/booking'
 import { fetchCoachDesignatedMemberContext } from '../pages/coach/designatedHours/api'
 import {
@@ -27,6 +27,7 @@ export function CoachDesignatedDeductionControl({
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [shouldShow, setShouldShow] = useState(false)
+  const [reloadToken, setReloadToken] = useState(0)
   const loadedKeyRef = useRef<string | null>(null)
   const onUpdateRef = useRef(onUpdate)
   onUpdateRef.current = onUpdate
@@ -39,7 +40,7 @@ export function CoachDesignatedDeductionControl({
     const loadKey = `${coachId}:${memberId}:${participant.id}`
     if (loadedKeyRef.current === loadKey) return
     loadedKeyRef.current = loadKey
-    setShouldShow(false)
+    setShouldShow(true)
     let cancelled = false
 
     const load = async () => {
@@ -96,6 +97,7 @@ export function CoachDesignatedDeductionControl({
     participant.id,
     participant.duration_min,
     participantIndex,
+    reloadToken,
   ])
 
   if (!eligible || !shouldShow) return null
@@ -204,6 +206,26 @@ export function CoachDesignatedDeductionControl({
               </div>
             </div>
           )}
+        </div>
+      )}
+      {loadError && (
+        <div
+          style={{
+            padding: 12,
+            borderTop: `1px solid ${designSystem.colors.border.light}`,
+          }}
+        >
+          <button
+            type="button"
+            data-track="coach_designated_report_retry_load"
+            onClick={() => {
+              loadedKeyRef.current = null
+              setReloadToken((value) => value + 1)
+            }}
+            style={getButtonStyle('outline', 'small', isMobile)}
+          >
+            重新載入
+          </button>
         </div>
       )}
     </div>
