@@ -37,6 +37,7 @@ interface CoachDesignatedHoursProps {
 }
 
 type ListFilter = 'active' | 'used' | 'all'
+type ImageView = 'menu' | 'ledger' | 'regular' | 'gift'
 
 function displayName(student: CoachDesignatedStudent): string {
   return student.nickname || student.name
@@ -189,8 +190,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   const [editExpiresOn, setEditExpiresOn] = useState('')
   const [editNote, setEditNote] = useState('')
   const [imageMenuOpen, setImageMenuOpen] = useState(false)
-  const [batchImageSource, setBatchImageSource] = useState<'regular' | 'gift' | null>(null)
-  const [ledgerImageRangeOpen, setLedgerImageRangeOpen] = useState(false)
+  const [imageView, setImageView] = useState<ImageView>('menu')
   const [ledgerImageStartDate, setLedgerImageStartDate] = useState(getDaysAgoDateString(30))
   const [ledgerImageEndDate, setLedgerImageEndDate] = useState(getLocalDateString())
   const [ledgerImageError, setLedgerImageError] = useState<string | null>(null)
@@ -209,7 +209,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     () => buildCoachDesignatedBatches(entries, 'gift'),
     [entries],
   )
-  const imageBatches = batchImageSource === 'gift' ? giftBatches : regularBatches
+  const imageBatches = imageView === 'gift' ? giftBatches : regularBatches
   const parsedEditRegular = Number(editRegularMinutes || 0)
   const parsedEditGift = Number(editGiftMinutes || 0)
   const parsedEditMinutes = parsedEditRegular + parsedEditGift
@@ -423,8 +423,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   const openEdit = (entry: CoachDesignatedEntry) => {
     setCreditOpen(false)
     setImageMenuOpen(false)
-    setBatchImageSource(null)
-    setLedgerImageRangeOpen(false)
+    setImageView('menu')
     setEditingEntry(entry)
     setEditRegularMinutes(String(entry.regular_minutes ?? entry.minutes))
     setEditGiftMinutes(String(entry.gift_minutes ?? 0))
@@ -582,7 +581,10 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       rangeRows,
       range.balanceAtEnd,
     )
-    if (saved) setLedgerImageRangeOpen(false)
+    if (saved) {
+      setImageMenuOpen(false)
+      setImageView('menu')
+    }
   }
 
   const saveBatchImage = async (
@@ -609,7 +611,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     )
     if (saved) {
       setImageMenuOpen(false)
-      setBatchImageSource(null)
+      setImageView('menu')
     }
   }
 
@@ -629,8 +631,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           onClick={() => {
             setEditingEntry(null)
             setImageMenuOpen(false)
-            setBatchImageSource(null)
-            setLedgerImageRangeOpen(false)
+            setImageView('menu')
             setCreditOpen(true)
           }}
           style={getButtonStyle('primary', 'medium', isMobile)}
@@ -809,8 +810,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         <button type="button" data-track="coach_designated_add_open" onClick={() => {
           setEditingEntry(null)
           setImageMenuOpen(false)
-          setBatchImageSource(null)
-          setLedgerImageRangeOpen(false)
+          setImageView('menu')
           setCreditMemberId(selectedStudent.member_id)
           memberSearch.selectMemberById(selectedStudent.member_id, displayName(selectedStudent))
           setCreditOpen(true)
@@ -824,8 +824,10 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           onClick={() => {
             setCreditOpen(false)
             setEditingEntry(null)
-            setLedgerImageRangeOpen(false)
-            setBatchImageSource(null)
+            setLedgerImageStartDate(getDaysAgoDateString(30))
+            setLedgerImageEndDate(getLocalDateString())
+            setLedgerImageError(null)
+            setImageView('menu')
             setImageMenuOpen(true)
           }}
           style={{
@@ -869,7 +871,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           style={dialogBackdrop(isMobile)}
           onClick={() => {
             setImageMenuOpen(false)
-            setBatchImageSource(null)
+            setImageView('menu')
           }}
         >
           <div
@@ -881,11 +883,16 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
             }}
             onClick={(event) => event.stopPropagation()}
           >
-            {batchImageSource === null ? (
+            {imageView === 'menu' ? (
               <>
-                <h2 style={{ margin: '0 0 8px', fontSize: getFontSize('h2', isMobile) }}>
-                  儲存圖片
-                </h2>
+                <ImageDialogHeader
+                  title="儲存圖片"
+                  isMobile={isMobile}
+                  onClose={() => {
+                    setImageMenuOpen(false)
+                    setImageView('menu')
+                  }}
+                />
                 <div
                   style={{
                     marginBottom: 16,
@@ -899,13 +906,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                   <button
                     type="button"
                     data-track="coach_designated_image_mode_ledger"
-                    onClick={() => {
-                      setImageMenuOpen(false)
-                      setLedgerImageStartDate(getDaysAgoDateString(30))
-                      setLedgerImageEndDate(getLocalDateString())
-                      setLedgerImageError(null)
-                      setLedgerImageRangeOpen(true)
-                    }}
+                    onClick={() => setImageView('ledger')}
                     style={{
                       ...getButtonStyle('outline', 'medium', isMobile),
                       minHeight: 58,
@@ -919,7 +920,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                     <button
                       type="button"
                       data-track="coach_designated_image_mode_regular_batch"
-                      onClick={() => setBatchImageSource('regular')}
+                      onClick={() => setImageView('regular')}
                       style={{
                         ...getButtonStyle('outline', 'medium', isMobile),
                         minHeight: 58,
@@ -938,7 +939,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                     <button
                       type="button"
                       data-track="coach_designated_image_mode_gift_batch"
-                      onClick={() => setBatchImageSource('gift')}
+                      onClick={() => setImageView('gift')}
                       style={{
                         ...getButtonStyle('outline', 'medium', isMobile),
                         minHeight: 58,
@@ -953,38 +954,101 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                     </button>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setImageMenuOpen(false)}
+              </>
+            ) : imageView === 'ledger' ? (
+              <>
+                <ImageDialogHeader
+                  title="流水明細"
+                  isMobile={isMobile}
+                  onBack={() => setImageView('menu')}
+                  onClose={() => {
+                    setImageMenuOpen(false)
+                    setImageView('menu')
+                  }}
+                />
+                <div
                   style={{
-                    ...getButtonStyle('outline', 'medium', isMobile),
-                    width: '100%',
-                    marginTop: 16,
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    marginBottom: 14,
                   }}
                 >
-                  取消
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLedgerImageStartDate(getDaysAgoDateString(30))
+                      setLedgerImageEndDate(getLocalDateString())
+                      setLedgerImageError(null)
+                    }}
+                    style={getButtonStyle('outline', 'small', isMobile)}
+                  >
+                    重設近 30 天
+                  </button>
+                </div>
+                <label style={getLabelStyle(isMobile)}>開始日期</label>
+                <input
+                  type="date"
+                  value={ledgerImageStartDate}
+                  max={ledgerImageEndDate || getLocalDateString()}
+                  onChange={(event) => {
+                    setLedgerImageStartDate(event.target.value)
+                    setLedgerImageError(null)
+                  }}
+                  style={getInputStyle(isMobile)}
+                />
+                <div style={{ height: 14 }} />
+                <label style={getLabelStyle(isMobile)}>結束日期</label>
+                <input
+                  type="date"
+                  value={ledgerImageEndDate}
+                  min={ledgerImageStartDate}
+                  max={getLocalDateString()}
+                  onChange={(event) => {
+                    setLedgerImageEndDate(event.target.value)
+                    setLedgerImageError(null)
+                  }}
+                  style={getInputStyle(isMobile)}
+                />
+                {ledgerImageError && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: 12,
+                      color: designSystem.colors.danger[700],
+                      fontSize: getFontSize('bodySmall', isMobile),
+                    }}
+                  >
+                    {ledgerImageError}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  data-track="coach_designated_save_ledger_range"
+                  disabled={saving}
+                  onClick={() => void saveLedgerRangeImage()}
+                  style={{
+                    ...getButtonStyle('primary', 'medium', isMobile),
+                    width: '100%',
+                    minHeight: isMobile ? 50 : 44,
+                    marginTop: 22,
+                    opacity: saving ? 0.65 : 1,
+                    cursor: saving ? 'wait' : 'pointer',
+                  }}
+                >
+                  {saving ? '產生中...' : '產生圖片'}
                 </button>
               </>
             ) : (
               <>
-                <button
-                  type="button"
-                  onClick={() => setBatchImageSource(null)}
-                  style={{
-                    border: 0,
-                    padding: '8px 0',
-                    marginBottom: 6,
-                    background: 'transparent',
-                    color: designSystem.colors.primary[600],
-                    fontSize: getFontSize('body', isMobile),
-                    cursor: 'pointer',
+                <ImageDialogHeader
+                  title={imageView === 'gift' ? '贈送指定課分批' : '一般指定課分批'}
+                  isMobile={isMobile}
+                  onBack={() => setImageView('menu')}
+                  onClose={() => {
+                    setImageMenuOpen(false)
+                    setImageView('menu')
                   }}
-                >
-                  ← 返回格式
-                </button>
-                <h2 style={{ margin: '0 0 14px', fontSize: getFontSize('h2', isMobile) }}>
-                  {batchImageSource === 'gift' ? '贈送指定課分批' : '一般指定課分批'}
-                </h2>
+                />
                 {imageBatches.unallocatedDeductions.length > 0 && (
                   <div
                     style={{
@@ -1011,20 +1075,20 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                     <button
                       key={batch.credit.id}
                       type="button"
-                      data-track={`coach_designated_save_${batchImageSource}_batch_image`}
+                      data-track={`coach_designated_save_${imageView}_batch_image`}
                       disabled={saving}
-                      onClick={() => void saveBatchImage(batch, batchImageSource)}
+                      onClick={() => void saveBatchImage(batch, imageView)}
                       style={{
                         width: '100%',
                         minHeight: 72,
                         padding: '13px 14px',
                         border: `1px solid ${
-                          batchImageSource === 'gift'
+                          imageView === 'gift'
                             ? designSystem.colors.warning[500]
                             : designSystem.colors.info[500]
                         }`,
                         borderRadius: designSystem.borderRadius.xl,
-                        background: batchImageSource === 'gift'
+                        background: imageView === 'gift'
                           ? designSystem.colors.warning[50]
                           : designSystem.colors.info[50],
                         display: 'flex',
@@ -1077,7 +1141,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                       <span
                         style={{
                           flexShrink: 0,
-                          color: batchImageSource === 'gift'
+                          color: imageView === 'gift'
                             ? designSystem.colors.warning[700]
                             : designSystem.colors.info[700],
                           fontWeight: 600,
@@ -1090,114 +1154,6 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
-
-      {ledgerImageRangeOpen && (
-        <div style={dialogBackdrop(isMobile)} onClick={() => setLedgerImageRangeOpen(false)}>
-          <div
-            style={{
-              ...dialogSurface(isMobile),
-              paddingBottom: isMobile
-                ? 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px))'
-                : 24,
-            }}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-                marginBottom: 18,
-              }}
-            >
-              <h2 style={{ margin: 0, fontSize: getFontSize('h2', isMobile) }}>
-                選擇流水期間
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setLedgerImageStartDate(getDaysAgoDateString(30))
-                  setLedgerImageEndDate(getLocalDateString())
-                  setLedgerImageError(null)
-                }}
-                style={getButtonStyle('outline', 'small', isMobile)}
-              >
-                重設近 30 天
-              </button>
-            </div>
-            <label style={getLabelStyle(isMobile)}>開始日期</label>
-            <input
-              type="date"
-              value={ledgerImageStartDate}
-              max={ledgerImageEndDate || getLocalDateString()}
-              onChange={(event) => {
-                setLedgerImageStartDate(event.target.value)
-                setLedgerImageError(null)
-              }}
-              style={{
-                ...getInputStyle(isMobile),
-                boxSizing: 'border-box',
-                minWidth: 0,
-                maxWidth: '100%',
-              }}
-            />
-            <div style={{ height: 14 }} />
-            <label style={getLabelStyle(isMobile)}>結束日期</label>
-            <input
-              type="date"
-              value={ledgerImageEndDate}
-              min={ledgerImageStartDate}
-              max={getLocalDateString()}
-              onChange={(event) => {
-                setLedgerImageEndDate(event.target.value)
-                setLedgerImageError(null)
-              }}
-              style={{
-                ...getInputStyle(isMobile),
-                boxSizing: 'border-box',
-                minWidth: 0,
-                maxWidth: '100%',
-              }}
-            />
-            {ledgerImageError && (
-              <div
-                role="alert"
-                style={{
-                  marginTop: 12,
-                  color: designSystem.colors.danger[700],
-                  fontSize: getFontSize('bodySmall', isMobile),
-                }}
-              >
-                {ledgerImageError}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
-              <button
-                type="button"
-                onClick={() => setLedgerImageRangeOpen(false)}
-                style={{ ...getButtonStyle('outline', 'medium', isMobile), flex: 1 }}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                data-track="coach_designated_save_ledger_range"
-                disabled={saving}
-                onClick={() => void saveLedgerRangeImage()}
-                style={{
-                  ...getButtonStyle('primary', 'medium', isMobile),
-                  flex: 1,
-                  opacity: saving ? 0.65 : 1,
-                  cursor: saving ? 'wait' : 'pointer',
-                }}
-              >
-                {saving ? '產生中...' : '產生圖片'}
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -1622,6 +1578,75 @@ function OptionalDateField({
         style={getInputStyle(isMobile)}
       />
     </>
+  )
+}
+
+function ImageDialogHeader({
+  title,
+  isMobile,
+  onBack,
+  onClose,
+}: {
+  title: string
+  isMobile: boolean
+  onBack?: () => void
+  onClose: () => void
+}) {
+  const controlStyle: React.CSSProperties = {
+    height: 44,
+    padding: 0,
+    border: `1px solid ${designSystem.colors.border.light}`,
+    borderRadius: designSystem.borderRadius.lg,
+    background: designSystem.colors.background.card,
+    color: designSystem.colors.text.secondary,
+    cursor: 'pointer',
+    fontSize: getFontSize('bodyLarge', isMobile),
+  }
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: onBack
+          ? '72px minmax(0, 1fr) 44px'
+          : '44px minmax(0, 1fr) 44px',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 16,
+      }}
+    >
+      {onBack ? (
+        <button
+          type="button"
+          aria-label="返回選擇格式"
+          data-track="coach_designated_image_back"
+          onClick={onBack}
+          style={{ ...controlStyle, width: 72 }}
+        >
+          ← 返回
+        </button>
+      ) : <span />}
+      <h2
+        style={{
+          margin: 0,
+          textAlign: 'center',
+          fontSize: getFontSize('h2', isMobile),
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {title}
+      </h2>
+      <button
+        type="button"
+        aria-label="關閉"
+        data-track="coach_designated_image_close"
+        onClick={onClose}
+        style={{ ...controlStyle, width: 44 }}
+      >
+        ×
+      </button>
+    </div>
   )
 }
 
