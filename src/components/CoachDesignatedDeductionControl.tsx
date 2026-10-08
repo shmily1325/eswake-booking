@@ -24,6 +24,9 @@ export function CoachDesignatedDeductionControl({
 }: CoachDesignatedDeductionControlProps) {
   const [expanded, setExpanded] = useState(false)
   const [balance, setBalance] = useState(0)
+  const [regularBalance, setRegularBalance] = useState(0)
+  const [giftBalance, setGiftBalance] = useState(0)
+  const [hasGiftEntries, setHasGiftEntries] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [shouldShow, setShouldShow] = useState(false)
@@ -54,15 +57,27 @@ export function CoachDesignatedDeductionControl({
         )
         if (cancelled) return
         setBalance(context.balance)
+        setRegularBalance(context.regular_balance)
+        setGiftBalance(context.gift_balance)
+        setHasGiftEntries(context.has_gift_entries)
         setShouldShow(shouldShowCoachDesignatedControl(context.has_entries, false))
 
         if (!participant.designated_hours_initialized) {
           const existingDeduction = context.deduction_minutes
+          const defaultToGift = existingDeduction == null
+            && context.regular_balance === 0
+            && context.gift_balance !== 0
+          const regularMinutes = context.deduction_regular_minutes
+            ?? (defaultToGift ? 0 : participant.duration_min)
+          const giftMinutes = context.deduction_gift_minutes
+            ?? (defaultToGift ? participant.duration_min : 0)
           onUpdateRef.current(
             participantIndex,
             'designated_hours_deduct',
             defaultCoachDesignatedDeduction(
-              context.balance,
+              context.regular_balance !== 0 || context.gift_balance !== 0
+                ? (context.balance || 1)
+                : 0,
               existingDeduction,
               context.deduction_decided,
             ),
@@ -71,6 +86,16 @@ export function CoachDesignatedDeductionControl({
             participantIndex,
             'designated_hours_minutes',
             existingDeduction ?? participant.duration_min,
+          )
+          onUpdateRef.current(
+            participantIndex,
+            'designated_hours_regular_minutes',
+            regularMinutes,
+          )
+          onUpdateRef.current(
+            participantIndex,
+            'designated_hours_gift_minutes',
+            giftMinutes,
           )
           onUpdateRef.current(participantIndex, 'designated_hours_initialized', true)
         }
@@ -103,8 +128,20 @@ export function CoachDesignatedDeductionControl({
   if (!eligible || !shouldShow) return null
 
   const deduct = participant.designated_hours_deduct === true
-  const minutes = participant.designated_hours_minutes ?? participant.duration_min
+  const regularMinutes = participant.designated_hours_regular_minutes
+    ?? participant.designated_hours_minutes
+    ?? participant.duration_min
+  const giftMinutes = participant.designated_hours_gift_minutes ?? 0
+  const minutes = regularMinutes + giftMinutes
   const after = balance - (deduct ? minutes : 0)
+  const showGift = hasGiftEntries || giftBalance !== 0 || giftMinutes > 0
+  const split = regularMinutes > 0 && giftMinutes > 0
+
+  const setAllocation = (regular: number, gift: number) => {
+    onUpdate(participantIndex, 'designated_hours_regular_minutes', regular)
+    onUpdate(participantIndex, 'designated_hours_gift_minutes', gift)
+    onUpdate(participantIndex, 'designated_hours_minutes', regular + gift)
+  }
 
   return (
     <div
@@ -138,12 +175,21 @@ export function CoachDesignatedDeductionControl({
         }}
       >
         <span style={{ fontWeight: 600 }}>指定課時數</span>
-        <span style={{ color: loadError ? designSystem.colors.danger[700] : designSystem.colors.text.secondary }}>
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            textAlign: 'right',
+            lineHeight: 1.4,
+            fontSize: getFontSize('bodySmall', isMobile),
+            color: loadError ? designSystem.colors.danger[700] : designSystem.colors.text.secondary,
+          }}
+        >
           {loading
             ? '載入中'
             : loadError
               ? '無法載入'
-              : `剩 ${balance} 分｜${deduct ? `本次扣 ${minutes} 分` : '本次不扣'} ${expanded ? '收合' : '展開'}`}
+              : `剩 ${balance} 分${giftBalance !== 0 ? `（一般 ${regularBalance}・贈送 ${giftBalance}）` : ''}｜${deduct ? `本次扣 ${minutes} 分` : '本次不扣'} ${expanded ? '收合' : '展開'}`}
         </span>
       </button>
 
@@ -178,21 +224,99 @@ export function CoachDesignatedDeductionControl({
 
           {deduct && (
             <div style={{ marginTop: 8 }}>
-              <input
-                type="text"
-                inputMode="numeric"
-                aria-label="本次扣除分鐘"
-                value={minutes || ''}
-                onChange={(event) => {
-                  const value = event.target.value.replace(/\D/g, '')
-                  onUpdate(
-                    participantIndex,
-                    'designated_hours_minutes',
-                    value === '' ? 0 : Number(value),
-                  )
-                }}
-                style={getInputStyle(isMobile)}
-              />
+              {showGift && (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  <button
+                    type="button"
+                    data-track="coach_designated_source_regular"
+                    onClick={() => setAllocation(minutes || participant.duration_min, 0)}
+                    style={{
+                      ...getButtonStyle(!split && giftMinutes === 0 ? 'primary' : 'outline', 'small', isMobile),
+                      flex: 1,
+                    }}
+                  >
+                    一般 {regularBalance} 分
+                  </button>
+                  <button
+                    type="button"
+                    data-track="coach_designated_source_gift"
+                    onClick={() => setAllocation(0, minutes || participant.duration_min)}
+                    style={{
+                      ...getButtonStyle(!split && giftMinutes > 0 ? 'primary' : 'outline', 'small', isMobile),
+                      flex: 1,
+                    }}
+                  >
+                    贈送 {giftBalance} 分
+                  </button>
+                </div>
+              )}
+              {split ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <label style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
+                    一般
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      aria-label="一般指定課扣除分鐘"
+                      value={regularMinutes || ''}
+                      onChange={(event) => setAllocation(
+                        Number(event.target.value.replace(/\D/g, '')) || 0,
+                        giftMinutes,
+                      )}
+                      style={{ ...getInputStyle(isMobile), marginTop: 5 }}
+                    />
+                  </label>
+                  <label style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
+                    贈送
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      aria-label="贈送指定課扣除分鐘"
+                      value={giftMinutes || ''}
+                      onChange={(event) => setAllocation(
+                        regularMinutes,
+                        Number(event.target.value.replace(/\D/g, '')) || 0,
+                      )}
+                      style={{ ...getInputStyle(isMobile), marginTop: 5 }}
+                    />
+                  </label>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  aria-label="本次扣除分鐘"
+                  value={minutes || ''}
+                  onChange={(event) => {
+                    const next = Number(event.target.value.replace(/\D/g, '')) || 0
+                    setAllocation(giftMinutes > 0 ? 0 : next, giftMinutes > 0 ? next : 0)
+                  }}
+                  style={getInputStyle(isMobile)}
+                />
+              )}
+              {showGift && !split && minutes > 1 && (
+                <button
+                  type="button"
+                  data-track="coach_designated_source_split"
+                  onClick={() => {
+                    const gift = Math.max(
+                      1,
+                      Math.min(Math.max(giftBalance, 0), Math.floor(minutes / 2)),
+                    )
+                    setAllocation(minutes - gift, gift)
+                  }}
+                  style={{
+                    border: 0,
+                    background: 'transparent',
+                    color: designSystem.colors.primary[600],
+                    padding: '8px 0 0',
+                    cursor: 'pointer',
+                    fontSize: getFontSize('bodySmall', isMobile),
+                  }}
+                >
+                  分開扣
+                </button>
+              )}
               <div
                 style={{
                   marginTop: 8,
@@ -202,8 +326,24 @@ export function CoachDesignatedDeductionControl({
                     : designSystem.colors.text.secondary,
                 }}
               >
-                扣除後 {after} 分鐘
+                扣除後總剩餘 {after} 分鐘
+                {showGift && (
+                  <span>
+                    {' '}（一般 {regularBalance - regularMinutes}・贈送 {giftBalance - giftMinutes}）
+                  </span>
+                )}
               </div>
+              {minutes > participant.duration_min && (
+                <div
+                  style={{
+                    marginTop: 5,
+                    color: designSystem.colors.warning[700],
+                    fontSize: getFontSize('bodySmall', isMobile),
+                  }}
+                >
+                  預約 {participant.duration_min} 分，本次扣除 {minutes} 分
+                </div>
+              )}
             </div>
           )}
         </div>

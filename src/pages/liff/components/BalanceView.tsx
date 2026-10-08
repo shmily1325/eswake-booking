@@ -30,6 +30,8 @@ const TONES = {
   g23: { color: c.info[700], bg: c.info[50], border: c.info[500] },
   g21: { color: c.secondary[800], bg: c.secondary[100], border: c.secondary[400] },
   gift: { color: c.danger[700], bg: c.danger[50], border: c.danger[500] },
+  coachDesignated: { color: c.info[700], bg: c.info[50], border: c.info[500] },
+  coachDesignatedInactive: { color: c.secondary[700], bg: c.secondary[50], border: c.secondary[300] },
 } as const satisfies Record<string, BalanceTone>
 
 const CARDS: {
@@ -119,8 +121,19 @@ export function BalanceView({
             label={`${balance.coach_name} 指定課`}
             value={balance.balance}
             unit="分"
-            tone={TONES.lesson}
+            tone={
+              (balance.regular_balance ?? balance.balance) === 0
+              && (balance.gift_balance ?? 0) === 0
+                ? TONES.coachDesignatedInactive
+                : TONES.coachDesignated
+            }
             category={`coach-designated:${balance.coach_id}`}
+            meta={[
+              `一般 ${balance.regular_balance ?? balance.balance}`,
+              (balance.has_gift_entries || (balance.gift_balance ?? 0) !== 0)
+                ? `贈送 ${balance.gift_balance ?? 0}`
+                : null,
+            ].filter(Boolean).join('・')}
             onClick={onCategoryClick}
           />
         ))}

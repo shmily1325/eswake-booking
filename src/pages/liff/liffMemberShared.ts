@@ -307,6 +307,11 @@ export interface LiffCoachDesignatedBalance {
   coach_id: string
   coach_name: string
   balance: number
+  regular_balance?: number
+  gift_balance?: number
+  has_gift_entries?: boolean
+  regular_expires_on?: string | null
+  gift_expires_on?: string | null
   last_activity_at: string
 }
 
@@ -314,8 +319,11 @@ export interface LiffCoachDesignatedEntry {
   id: number
   entry_type: 'credit' | 'report_deduction'
   minutes: number
+  regular_minutes?: number
+  gift_minutes?: number
   delta_minutes: number
   occurred_at: string
+  expires_on?: string | null
   note: string | null
   booking_start_at: string | null
   boat_name: string | null
@@ -335,16 +343,37 @@ export async function fetchLiffCoachDesignatedHistory(
   coachId: string,
   limit = 10,
   offset = 0,
-): Promise<{ entries: LiffCoachDesignatedEntry[]; total: number }> {
+): Promise<{
+  entries: LiffCoachDesignatedEntry[]
+  total: number
+  balance: number
+  regular_balance: number
+  gift_balance: number
+  has_gift_entries: boolean
+  regular_expires_on: string | null
+  gift_expires_on: string | null
+}> {
   const result = await callLiffMemberApi<{
     success?: boolean
     error?: string
     entries?: LiffCoachDesignatedEntry[]
     total?: number
+    balance?: number
+    regular_balance?: number
+    gift_balance?: number
+    has_gift_entries?: boolean
+    regular_expires_on?: string | null
+    gift_expires_on?: string | null
   }>('coachDesignatedHistory', { coachId, limit, offset })
   if (!result?.success) throw new Error(result?.error || '指定課明細載入失敗')
   return {
     entries: Array.isArray(result.entries) ? result.entries : [],
     total: Number(result.total) || 0,
+    balance: Number(result.balance) || 0,
+    regular_balance: Number(result.regular_balance) || 0,
+    gift_balance: Number(result.gift_balance) || 0,
+    has_gift_entries: result.has_gift_entries === true,
+    regular_expires_on: result.regular_expires_on || null,
+    gift_expires_on: result.gift_expires_on || null,
   }
 }

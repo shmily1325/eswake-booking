@@ -392,6 +392,17 @@ export function LiffMyBookings() {
         .then((result) => {
           setCoachDesignatedEntries(result.entries)
           setCoachDesignatedTotal(result.total)
+          setSelectedCoachDesignated((current) => current
+            ? {
+                ...current,
+                balance: result.balance,
+                regular_balance: result.regular_balance,
+                gift_balance: result.gift_balance,
+                has_gift_entries: result.has_gift_entries,
+                regular_expires_on: result.regular_expires_on,
+                gift_expires_on: result.gift_expires_on,
+              }
+            : current)
         })
         .catch((err) => {
           console.error('載入教練指定課明細失敗:', err)
@@ -586,9 +597,14 @@ export function LiffMyBookings() {
         coachName={selectedCoachDesignated?.coach_name || ''}
         entries={coachDesignatedEntries}
         total={coachDesignatedTotal}
+        regularBalance={selectedCoachDesignated?.regular_balance ?? selectedCoachDesignated?.balance ?? 0}
+        giftBalance={selectedCoachDesignated?.gift_balance ?? 0}
+        hasGiftEntries={selectedCoachDesignated?.has_gift_entries ?? false}
+        regularExpiresOn={selectedCoachDesignated?.regular_expires_on ?? null}
+        giftExpiresOn={selectedCoachDesignated?.gift_expires_on ?? null}
         loading={loadingCoachDesignated}
         onClose={() => setSelectedCoachDesignated(null)}
-        onLoadAll={() => {
+        onLoadAll={async () => {
           if (!selectedCoachDesignated) return
           liffTrack({
             icon_id: 'liff_coach_designated_history_all',
@@ -596,16 +612,43 @@ export function LiffMyBookings() {
             member_id: member?.id,
           })
           setLoadingCoachDesignated(true)
-          fetchLiffCoachDesignatedHistory(selectedCoachDesignated.coach_id, 100, 0)
-            .then((result) => {
-              setCoachDesignatedEntries(result.entries)
-              setCoachDesignatedTotal(result.total)
-            })
-            .catch((err) => {
-              console.error('載入全部指定課明細失敗:', err)
-              toast.error('載入全部指定課明細失敗')
-            })
-            .finally(() => setLoadingCoachDesignated(false))
+          try {
+            const firstPage = await fetchLiffCoachDesignatedHistory(
+              selectedCoachDesignated.coach_id,
+              100,
+              0,
+            )
+            const allEntries = [...firstPage.entries]
+            let offset = allEntries.length
+            while (offset < firstPage.total) {
+              const page = await fetchLiffCoachDesignatedHistory(
+                selectedCoachDesignated.coach_id,
+                100,
+                offset,
+              )
+              if (page.entries.length === 0) break
+              allEntries.push(...page.entries)
+              offset += page.entries.length
+            }
+            setCoachDesignatedEntries(allEntries)
+            setCoachDesignatedTotal(firstPage.total)
+            setSelectedCoachDesignated((current) => current
+              ? {
+                  ...current,
+                  balance: firstPage.balance,
+                  regular_balance: firstPage.regular_balance,
+                  gift_balance: firstPage.gift_balance,
+                  has_gift_entries: firstPage.has_gift_entries,
+                  regular_expires_on: firstPage.regular_expires_on,
+                  gift_expires_on: firstPage.gift_expires_on,
+                }
+              : current)
+          } catch (err) {
+            console.error('載入全部指定課明細失敗:', err)
+            toast.error('載入全部指定課明細失敗')
+          } finally {
+            setLoadingCoachDesignated(false)
+          }
         }}
       />
 

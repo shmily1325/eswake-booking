@@ -10,7 +10,11 @@ const rpcSql = readFileSync(
   resolve(process.cwd(), 'migrations/248_coach_designated_hours_rpcs.sql'),
   'utf8',
 )
-const combined = `${schemaSql}\n${rpcSql}`.toLowerCase()
+const splitSql = readFileSync(
+  resolve(process.cwd(), 'migrations/249_split_coach_designated_regular_and_gift.sql'),
+  'utf8',
+)
+const combined = `${schemaSql}\n${rpcSql}\n${splitSql}`.toLowerCase()
 
 describe('coach designated-hour migrations', () => {
   it('keeps the new ledger isolated from existing financial storage', () => {
@@ -39,6 +43,9 @@ describe('coach designated-hour migrations', () => {
     expect(rpcSql).toMatch(
       /ON CONFLICT \(request_key\) WHERE request_key IS NOT NULL DO NOTHING/i,
     )
+    expect(splitSql).toMatch(
+      /v_entry\.occurred_at IS DISTINCT FROM COALESCE\(p_occurred_at, v_entry\.occurred_at\)/i,
+    )
   })
 
   it('persists an explicit no-deduction decision separately from the ledger', () => {
@@ -55,6 +62,28 @@ describe('coach designated-hour migrations', () => {
     )
     expect(rpcSql).toMatch(
       /get_liff_coach_designated_history\(TEXT, UUID, INTEGER, INTEGER\)[\s\S]*TO service_role/i,
+    )
+  })
+
+  it('backfills existing entries as regular minutes without changing totals', () => {
+    expect(splitSql).toMatch(
+      /UPDATE public\.coach_designated_hour_entries[\s\S]*regular_minutes = minutes[\s\S]*gift_minutes = 0/i,
+    )
+    expect(splitSql).toContain('regular_minutes + gift_minutes = minutes')
+  })
+
+  it('keeps one idempotent report deduction while storing a regular/gift split', () => {
+    expect(splitSql).toContain("'regular_minutes'")
+    expect(splitSql).toContain("'gift_minutes'")
+    expect(splitSql).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.sync_coach_designated_report_deductions[\s\S]*regular_minutes = v_regular_minutes[\s\S]*gift_minutes = v_gift_minutes/i,
+    )
+    expect(splitSql).not.toContain('扣除分鐘不能超過本次回報分鐘')
+  })
+
+  it('keeps non-zero LIFF balances visible regardless of recent activity', () => {
+    expect(splitSql).toMatch(
+      /HAVING[\s\S]*e\.regular_minutes[\s\S]*<> 0[\s\S]*e\.gift_minutes[\s\S]*<> 0[\s\S]*INTERVAL '2 months'/i,
     )
   })
 })

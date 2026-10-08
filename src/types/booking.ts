@@ -18,6 +18,8 @@ export type Participant = Database['public']['Tables']['booking_participants']['
   /** 僅供教練回報表單使用，不寫入 booking_participants。 */
   designated_hours_deduct?: boolean
   designated_hours_minutes?: number
+  designated_hours_regular_minutes?: number
+  designated_hours_gift_minutes?: number
   designated_hours_initialized?: boolean
 }
 

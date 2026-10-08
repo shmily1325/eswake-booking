@@ -6,6 +6,10 @@ interface ReportParticipantInput {
   status: string | null
   member_id: string | null
   lesson_type?: string | null
+  designated_hours_deduct?: boolean
+  designated_hours_minutes?: number
+  designated_hours_regular_minutes?: number
+  designated_hours_gift_minutes?: number
   designated_hours_initialized?: boolean
 }
 
@@ -67,6 +71,25 @@ export function validateCoachReportSubmission(
     return {
       valid: false,
       message: '指定課資料仍在載入，請稍候再送出',
+    }
+  }
+
+  const invalidDesignatedDeduction = validParticipants.find((participant) => {
+    if (
+      participant.lesson_type !== 'designated_free'
+      || participant.designated_hours_deduct !== true
+    ) return false
+    const regular = participant.designated_hours_regular_minutes
+      ?? participant.designated_hours_minutes
+      ?? participant.duration_min
+    const gift = participant.designated_hours_gift_minutes ?? 0
+    const total = Number(regular) + Number(gift)
+    return !Number.isFinite(total) || total <= 0
+  })
+  if (invalidDesignatedDeduction) {
+    return {
+      valid: false,
+      message: `「${invalidDesignatedDeduction.participant_name || '未命名'}」的指定課扣除分鐘必須大於 0`,
     }
   }
 

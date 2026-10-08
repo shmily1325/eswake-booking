@@ -730,11 +730,14 @@ export type Database = {
           created_at: string
           created_by_email: string
           entry_type: string
+          expires_on: string | null
+          gift_minutes: number
           id: number
           member_id: string
           minutes: number
           note: string | null
           occurred_at: string
+          regular_minutes: number
           request_key: string | null
           updated_at: string
           updated_by_email: string
@@ -747,11 +750,14 @@ export type Database = {
           created_at?: string
           created_by_email: string
           entry_type: string
+          expires_on?: string | null
+          gift_minutes?: number
           id?: number
           member_id: string
           minutes: number
           note?: string | null
           occurred_at?: string
+          regular_minutes?: number
           request_key?: string | null
           updated_at?: string
           updated_by_email: string
@@ -764,11 +770,14 @@ export type Database = {
           created_at?: string
           created_by_email?: string
           entry_type?: string
+          expires_on?: string | null
+          gift_minutes?: number
           id?: number
           member_id?: string
           minutes?: number
           note?: string | null
           occurred_at?: string
+          regular_minutes?: number
           request_key?: string | null
           updated_at?: string
           updated_by_email?: string
@@ -2032,6 +2041,20 @@ export type Database = {
         }
         Returns: Json
       }
+      create_coach_designated_credit_bundle: {
+        Args: {
+          p_coach_id: string
+          p_expires_on?: string | null
+          p_gift_minutes: number
+          p_items?: Json
+          p_member_id: string
+          p_note?: string | null
+          p_occurred_at: string
+          p_regular_minutes: number
+          p_request_key?: string | null
+        }
+        Returns: Json
+      }
       get_coach_designated_eligible_reports: {
         Args: { p_coach_id: string; p_member_id: string }
         Returns: Json
@@ -2158,6 +2181,17 @@ export type Database = {
           p_minutes: number
           p_note?: string | null
           p_occurred_at?: string | null
+        }
+        Returns: Json
+      }
+      update_coach_designated_entry_split: {
+        Args: {
+          p_entry_id: number
+          p_expires_on?: string | null
+          p_gift_minutes: number
+          p_note?: string | null
+          p_occurred_at?: string | null
+          p_regular_minutes: number
         }
         Returns: Json
       }

@@ -26,8 +26,13 @@ export function AdminCoachDesignatedDeductionControl({
 }: Props) {
   const toast = useToast()
   const [balance, setBalance] = useState(0)
+  const [regularBalance, setRegularBalance] = useState(0)
+  const [giftBalance, setGiftBalance] = useState(0)
+  const [hasGiftEntries, setHasGiftEntries] = useState(false)
   const [deduct, setDeduct] = useState(false)
   const [minutes, setMinutes] = useState(durationMin)
+  const [regularMinutes, setRegularMinutes] = useState(durationMin)
+  const [giftMinutes, setGiftMinutes] = useState(0)
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -36,8 +41,13 @@ export function AdminCoachDesignatedDeductionControl({
 
   useEffect(() => {
     setBalance(0)
+    setRegularBalance(0)
+    setGiftBalance(0)
+    setHasGiftEntries(false)
     setDeduct(false)
     setMinutes(durationMin)
+    setRegularMinutes(durationMin)
+    setGiftMinutes(0)
     setLoaded(false)
   }, [coachId, durationMin, lessonType, memberId, participantId])
 
@@ -49,12 +59,25 @@ export function AdminCoachDesignatedDeductionControl({
       .then((context) => {
         if (cancelled) return
         setBalance(context.balance)
+        setRegularBalance(context.regular_balance)
+        setGiftBalance(context.gift_balance)
+        setHasGiftEntries(context.has_gift_entries)
         setDeduct(defaultCoachDesignatedDeduction(
-          context.balance,
+          context.regular_balance !== 0 || context.gift_balance !== 0
+            ? (context.balance || 1)
+            : 0,
           context.deduction_minutes,
           context.deduction_decided,
         ))
         setMinutes(context.deduction_minutes ?? durationMin)
+        setRegularMinutes(
+          context.deduction_regular_minutes
+          ?? (context.regular_balance === 0 && context.gift_balance !== 0 ? 0 : durationMin),
+        )
+        setGiftMinutes(
+          context.deduction_gift_minutes
+          ?? (context.regular_balance === 0 && context.gift_balance !== 0 ? durationMin : 0),
+        )
         setLoaded(true)
       })
       .catch((error) => {
@@ -72,7 +95,8 @@ export function AdminCoachDesignatedDeductionControl({
   if (!eligible || !coachId) return null
 
   const save = async () => {
-    if (deduct && minutes <= 0) {
+    const total = regularMinutes + giftMinutes
+    if (deduct && total <= 0) {
       toast.warning('扣除分鐘必須大於 0')
       return
     }
@@ -81,7 +105,9 @@ export function AdminCoachDesignatedDeductionControl({
       await syncCoachDesignatedReportDeductions(coachId, [{
         participant_id: participantId,
         deduct,
-        minutes,
+        minutes: total,
+        regular_minutes: regularMinutes,
+        gift_minutes: giftMinutes,
       }])
       const context = await fetchCoachDesignatedMemberContext(
         coachId,
@@ -89,12 +115,19 @@ export function AdminCoachDesignatedDeductionControl({
         participantId,
       )
       setBalance(context.balance)
+      setRegularBalance(context.regular_balance)
+      setGiftBalance(context.gift_balance)
+      setHasGiftEntries(context.has_gift_entries)
       setDeduct(defaultCoachDesignatedDeduction(
-        context.balance,
+        context.regular_balance !== 0 || context.gift_balance !== 0
+          ? (context.balance || 1)
+          : 0,
         context.deduction_minutes,
         context.deduction_decided,
       ))
       setMinutes(context.deduction_minutes ?? durationMin)
+      setRegularMinutes(context.deduction_regular_minutes ?? durationMin)
+      setGiftMinutes(context.deduction_gift_minutes ?? 0)
       toast.success('指定課扣除已更新')
     } catch (error) {
       console.error(error)
@@ -148,14 +181,40 @@ export function AdminCoachDesignatedDeductionControl({
           本次扣除
         </label>
         {deduct && (
-          <input
-            aria-label="管理員修正指定課扣除分鐘"
-            type="text"
-            inputMode="numeric"
-            value={minutes || ''}
-            onChange={(event) => setMinutes(Number(event.target.value.replace(/\D/g, '')) || 0)}
-            style={{ ...getInputStyle(isMobile), width: 110 }}
-          />
+          <>
+            <label style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
+              一般（剩 {regularBalance}）
+              <input
+                aria-label="管理員修正一般指定課扣除分鐘"
+                type="text"
+                inputMode="numeric"
+                value={regularMinutes || ''}
+                onChange={(event) => {
+                  const value = Number(event.target.value.replace(/\D/g, '')) || 0
+                  setRegularMinutes(value)
+                  setMinutes(value + giftMinutes)
+                }}
+                style={{ ...getInputStyle(isMobile), width: 110, marginTop: 4 }}
+              />
+            </label>
+            {(hasGiftEntries || giftBalance !== 0 || giftMinutes > 0) && (
+              <label style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
+                贈送（剩 {giftBalance}）
+                <input
+                  aria-label="管理員修正贈送指定課扣除分鐘"
+                  type="text"
+                  inputMode="numeric"
+                  value={giftMinutes || ''}
+                  onChange={(event) => {
+                    const value = Number(event.target.value.replace(/\D/g, '')) || 0
+                    setGiftMinutes(value)
+                    setMinutes(regularMinutes + value)
+                  }}
+                  style={{ ...getInputStyle(isMobile), width: 110, marginTop: 4 }}
+                />
+              </label>
+            )}
+          </>
         )}
         <button
           type="button"
@@ -169,6 +228,11 @@ export function AdminCoachDesignatedDeductionControl({
       </div>}
       {expanded && loaded && <div style={{ marginTop: 8, color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
         此處只調整教練指定課時數，不影響原本扣款。
+        {deduct && minutes > durationMin && (
+          <div style={{ marginTop: 4, color: designSystem.colors.warning[700] }}>
+            預約 {durationMin} 分，本次扣除 {minutes} 分
+          </div>
+        )}
       </div>}
     </div>
   )

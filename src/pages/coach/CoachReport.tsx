@@ -51,6 +51,8 @@ type DesignatedSyncItem = {
   participant_id: number
   deduct: boolean
   minutes: number
+  regular_minutes: number
+  gift_minutes: number
 }
 
 type PendingDesignatedSync = {
@@ -900,7 +902,14 @@ export function CoachReport({
             participant.lesson_type === 'designated_free'
             && !!participant.member_id
             && participant.designated_hours_deduct === true,
-          minutes: participant.designated_hours_minutes ?? participant.duration_min,
+          minutes: (participant.designated_hours_regular_minutes
+            ?? participant.designated_hours_minutes
+            ?? participant.duration_min)
+            + (participant.designated_hours_gift_minutes ?? 0),
+          regular_minutes: participant.designated_hours_regular_minutes
+            ?? participant.designated_hours_minutes
+            ?? participant.duration_min,
+          gift_minutes: participant.designated_hours_gift_minutes ?? 0,
         }
       })
       if (designatedItems.length > 0) {
@@ -980,6 +989,8 @@ export function CoachReport({
       payment_method: hadMember ? 'cash' : current.payment_method,
       designated_hours_deduct: undefined,
       designated_hours_minutes: undefined,
+      designated_hours_regular_minutes: undefined,
+      designated_hours_gift_minutes: undefined,
       designated_hours_initialized: false,
       // 不再強制設定 status，讓 submitCoachReport 計算
     }
@@ -991,9 +1002,11 @@ export function CoachReport({
   }
 
   const updateParticipant = (index: number, field: keyof Participant, value: any) => {
-    const updated = [...participants]
-    updated[index] = { ...updated[index], [field]: value }
-    setParticipants(updated)
+    setParticipants((current) => {
+      const updated = [...current]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
   }
 
   const selectMember = (index: number, member: MemberSearchResult) => {
@@ -1016,6 +1029,8 @@ export function CoachReport({
         : {
             designated_hours_deduct: undefined,
             designated_hours_minutes: undefined,
+            designated_hours_regular_minutes: undefined,
+            designated_hours_gift_minutes: undefined,
             designated_hours_initialized: false,
           }),
       // 不再強制設定 status，讓 submitCoachReport 計算

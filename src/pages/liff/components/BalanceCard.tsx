@@ -24,6 +24,7 @@ interface BalanceCardProps {
   tone: BalanceTone
   category: string
   yearParts?: BalanceYearPart[]
+  meta?: string
   onClick: (category: string) => void
 }
 
@@ -34,6 +35,7 @@ export function BalanceCard({
   tone,
   category,
   yearParts = [],
+  meta,
   onClick,
 }: BalanceCardProps) {
   const displayValue = value || 0
@@ -122,6 +124,19 @@ export function BalanceCard({
             </>
           )}
         </div>
+        {meta ? (
+          <div
+            style={{
+              marginTop: 8,
+              color: LIFF_THEME.muted,
+              fontSize: getFontSizePx('caption', true),
+              fontWeight: 500,
+              lineHeight: 1.4,
+            }}
+          >
+            {meta}
+          </div>
+        ) : null}
         {yearParts.length > 0 ? (
           <div style={{ marginTop: 10 }}>
             <div

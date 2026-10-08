@@ -66,6 +66,47 @@ describe('validateCoachReportSubmission', () => {
     })
   })
 
+  it('accepts a regular/gift split that matches the reported duration', () => {
+    expect(validateCoachReportSubmission('coach', [{
+      ...participant,
+      duration_min: 60,
+      lesson_type: 'designated_free',
+      designated_hours_initialized: true,
+      designated_hours_deduct: true,
+      designated_hours_regular_minutes: 30,
+      designated_hours_gift_minutes: 30,
+    }])).toEqual({
+      valid: true,
+      emptyParticipantCount: 0,
+    })
+  })
+
+  it('allows a designated deduction above the reported duration', () => {
+    expect(validateCoachReportSubmission('coach', [{
+      ...participant,
+      duration_min: 60,
+      lesson_type: 'designated_free',
+      designated_hours_initialized: true,
+      designated_hours_deduct: true,
+      designated_hours_regular_minutes: 40,
+      designated_hours_gift_minutes: 30,
+    }]).valid).toBe(true)
+  })
+
+  it('rejects a designated deduction with zero total minutes', () => {
+    expect(validateCoachReportSubmission('coach', [{
+      ...participant,
+      lesson_type: 'designated_free',
+      designated_hours_initialized: true,
+      designated_hours_deduct: true,
+      designated_hours_regular_minutes: 0,
+      designated_hours_gift_minutes: 0,
+    }])).toEqual({
+      valid: false,
+      message: '「王小明」的指定課扣除分鐘必須大於 0',
+    })
+  })
+
   it.each(['driver', 'both'] as const)(
     'accepts %s reports without requiring positive driver minutes',
     (reportType) => {

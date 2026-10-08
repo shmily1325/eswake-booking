@@ -2,6 +2,7 @@ export interface CoachDesignatedShareRow {
   date: string
   detail: string
   minutes: number
+  note?: string | null
 }
 
 export interface CoachDesignatedShareInput {
@@ -52,6 +53,19 @@ function drawRoundedRect(
   context.roundRect(x, y, width, height, radius)
 }
 
+function fitText(
+  context: CanvasRenderingContext2D,
+  value: string,
+  maxWidth: number,
+): string {
+  if (context.measureText(value).width <= maxWidth) return value
+  let fitted = value
+  while (fitted.length > 1 && context.measureText(`${fitted}…`).width > maxWidth) {
+    fitted = fitted.slice(0, -1)
+  }
+  return `${fitted}…`
+}
+
 export async function createCoachDesignatedShareImages(
   input: CoachDesignatedShareInput,
 ): Promise<File[]> {
@@ -60,7 +74,8 @@ export async function createCoachDesignatedShareImages(
   const files: File[] = []
   for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
     const pageRows = pages[pageIndex]
-    const height = 440 + pageRows.length * 106
+    const noteCount = pageRows.filter((row) => row.note).length
+    const height = 400 + pageRows.length * 106 + noteCount * 44
     const canvas = document.createElement('canvas')
     canvas.width = WIDTH
     canvas.height = height
@@ -105,12 +120,18 @@ export async function createCoachDesignatedShareImages(
       context.fillText(row.date, 112, y)
       context.fillStyle = '#1d1d1f'
       context.font = '500 34px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-      context.fillText(row.detail, 350, y)
+      context.fillText(fitText(context, row.detail, 560), 350, y)
       context.textAlign = 'right'
       context.fillStyle = row.minutes >= 0 ? '#2f6f50' : '#a23f3f'
       context.font = '700 36px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-      context.fillText(`${row.minutes >= 0 ? '+' : '−'}${Math.abs(row.minutes)} 分`, WIDTH - 112, y)
+      context.fillText(`${row.minutes >= 0 ? '+' : '−'}${Math.abs(row.minutes)}`, WIDTH - 112, y)
       context.textAlign = 'left'
+      if (row.note) {
+        context.fillStyle = row.note.includes('已逾使用期限') ? '#a23f3f' : '#8b919b'
+        context.font = '400 27px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+        context.fillText(fitText(context, row.note, WIDTH - 462), 350, y + 42)
+        y += 44
+      }
       y += 106
     })
 
@@ -124,19 +145,14 @@ export async function createCoachDesignatedShareImages(
     context.fillStyle = '#1d1d1f'
     context.font = '700 44px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
     context.textAlign = 'right'
-    context.fillText(`剩餘 ${input.remainingMinutes} 分鐘`, WIDTH - 112, height - 105)
+    context.fillText(`剩餘 ${input.remainingMinutes} 分`, WIDTH - 112, height - 92)
     context.textAlign = 'left'
 
-    context.fillStyle = '#8b919b'
-    context.font = '400 25px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-    const generatedAt = new Intl.DateTimeFormat('zh-TW', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date())
-    context.fillText(`產生時間 ${generatedAt}`, 64, height - 42)
     if (pages.length > 1) {
+      context.fillStyle = '#8b919b'
+      context.font = '400 25px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
       context.textAlign = 'right'
-      context.fillText(`${pageIndex + 1} / ${pages.length}`, WIDTH - 64, height - 42)
+      context.fillText(`${pageIndex + 1} / ${pages.length}`, WIDTH - 64, height - 30)
       context.textAlign = 'left'
     }
 

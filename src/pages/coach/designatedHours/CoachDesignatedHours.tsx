@@ -17,7 +17,6 @@ import {
   updateCoachDesignatedEntry,
   voidCoachDesignatedEntry,
 } from './api'
-import { buildCoachDesignatedBatches } from './fifo'
 import {
   createCoachDesignatedShareImages,
   downloadCoachDesignatedImages,
@@ -28,7 +27,6 @@ import type {
   CoachDesignatedEligibleReport,
   CoachDesignatedEntry,
   CoachDesignatedStudent,
-  CoachDesignatedViewMode,
 } from './types'
 
 interface CoachDesignatedHoursProps {
@@ -73,6 +71,19 @@ function formatImageRange(startDate: string, endDate: string): string {
   return `${startDate.replaceAll('-', '/')}－${endDate.replaceAll('-', '/')}`
 }
 
+function entryTypeLabel(entry: CoachDesignatedEntry): string {
+  const regular = entry.regular_minutes ?? entry.minutes
+  const gift = entry.gift_minutes ?? 0
+  if (regular > 0 && gift > 0) return `一般 ${regular}・贈送 ${gift}`
+  if (gift > 0) return '贈送'
+  return entry.entry_type === 'credit' ? '指定課' : ''
+}
+
+function expiryLabel(value: string | null | undefined): string | null {
+  if (!value) return null
+  return `${value < getLocalDateString() ? '已逾使用期限' : '使用期限'} ${value.replaceAll('-', '/')}`
+}
+
 function dialogBackdrop(isMobile: boolean): React.CSSProperties {
   return {
     position: 'fixed',
@@ -108,41 +119,73 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [entries, setEntries] = useState<CoachDesignatedEntry[]>([])
   const [balance, setBalance] = useState(0)
+  const [regularBalance, setRegularBalance] = useState(0)
+  const [giftBalance, setGiftBalance] = useState(0)
+  const [hasGiftEntries, setHasGiftEntries] = useState(false)
+  const [regularExpiresOn, setRegularExpiresOn] = useState<string | null>(null)
+  const [giftExpiresOn, setGiftExpiresOn] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<ListFilter>('active')
-  const [viewMode, setViewMode] = useState<CoachDesignatedViewMode>('ledger')
   const [creditOpen, setCreditOpen] = useState(false)
   const [creditMemberId, setCreditMemberId] = useState<string | null>(null)
   const [creditDate, setCreditDate] = useState(getLocalDateString())
-  const [creditMinutes, setCreditMinutes] = useState('')
+  const [creditRegularMinutes, setCreditRegularMinutes] = useState('')
+  const [creditGiftMinutes, setCreditGiftMinutes] = useState('')
+  const [creditExpiresOn, setCreditExpiresOn] = useState('')
   const [creditNote, setCreditNote] = useState('')
   const [creditRequestKey, setCreditRequestKey] = useState(createRequestKey)
   const [eligibleReports, setEligibleReports] = useState<CoachDesignatedEligibleReport[]>([])
   const [eligibleReportLimit, setEligibleReportLimit] = useState(5)
   const [selectedReportIds, setSelectedReportIds] = useState<Set<number>>(new Set())
   const [selectedReportMinutes, setSelectedReportMinutes] = useState<Record<number, string>>({})
+  const [selectedReportSources, setSelectedReportSources] = useState<Record<number, 'regular' | 'gift'>>({})
   const [saving, setSaving] = useState(false)
   const [editingEntry, setEditingEntry] = useState<CoachDesignatedEntry | null>(null)
-  const [editMinutes, setEditMinutes] = useState('')
+  const [editRegularMinutes, setEditRegularMinutes] = useState('')
+  const [editGiftMinutes, setEditGiftMinutes] = useState('')
   const [editDate, setEditDate] = useState('')
+  const [editExpiresOn, setEditExpiresOn] = useState('')
   const [editNote, setEditNote] = useState('')
   const [ledgerImageRangeOpen, setLedgerImageRangeOpen] = useState(false)
   const [ledgerImageStartDate, setLedgerImageStartDate] = useState(getDaysAgoDateString(30))
   const [ledgerImageEndDate, setLedgerImageEndDate] = useState(getLocalDateString())
 
   const selectedStudent = students.find((student) => student.member_id === selectedMemberId) || null
-  const batches = useMemo(() => buildCoachDesignatedBatches(entries), [entries])
-  const parsedEditMinutes = Number(editMinutes)
+  const creditStudentHasGift = students.some(
+    (student) => student.member_id === creditMemberId
+      && (student.has_gift_entries || (student.gift_balance ?? 0) !== 0),
+  )
+  const parsedEditRegular = Number(editRegularMinutes || 0)
+  const parsedEditGift = Number(editGiftMinutes || 0)
+  const parsedEditMinutes = parsedEditRegular + parsedEditGift
   const originalEditDelta = editingEntry?.delta_minutes ?? 0
+  const originalRegularDelta = editingEntry
+    ? (editingEntry.entry_type === 'credit' ? 1 : -1)
+      * (editingEntry.regular_minutes ?? editingEntry.minutes)
+    : 0
+  const originalGiftDelta = editingEntry
+    ? (editingEntry.entry_type === 'credit' ? 1 : -1)
+      * (editingEntry.gift_minutes ?? 0)
+    : 0
   const nextEditDelta = editingEntry
     ? (editingEntry.entry_type === 'credit' ? parsedEditMinutes : -parsedEditMinutes)
+    : 0
+  const nextRegularDelta = editingEntry
+    ? (editingEntry.entry_type === 'credit' ? parsedEditRegular : -parsedEditRegular)
+    : 0
+  const nextGiftDelta = editingEntry
+    ? (editingEntry.entry_type === 'credit' ? parsedEditGift : -parsedEditGift)
     : 0
   const balanceAfterEdit = Number.isFinite(parsedEditMinutes)
     ? balance - originalEditDelta + nextEditDelta
     : balance
   const balanceAfterVoid = balance - originalEditDelta
+  const regularAfterEdit = regularBalance - originalRegularDelta + nextRegularDelta
+  const giftAfterEdit = giftBalance - originalGiftDelta + nextGiftDelta
+  const regularAfterVoid = regularBalance - originalRegularDelta
+  const giftAfterVoid = giftBalance - originalGiftDelta
 
   const loadStudents = useCallback(async () => {
     setLoading(true)
@@ -166,6 +209,11 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       const detail = await fetchCoachDesignatedStudentDetail(coachId, memberId)
       setEntries(detail.entries)
       setBalance(detail.balance)
+      setRegularBalance(detail.regular_balance)
+      setGiftBalance(detail.gift_balance)
+      setHasGiftEntries(detail.has_gift_entries)
+      setRegularExpiresOn(detail.regular_expires_on)
+      setGiftExpiresOn(detail.gift_expires_on)
     } catch (error) {
       console.error(error)
       toast.error('無法載入指定課明細')
@@ -183,6 +231,11 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     else {
       setEntries([])
       setBalance(0)
+      setRegularBalance(0)
+      setGiftBalance(0)
+      setHasGiftEntries(false)
+      setRegularExpiresOn(null)
+      setGiftExpiresOn(null)
     }
   }, [loadDetail, selectedMemberId])
 
@@ -204,8 +257,10 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   const filteredStudents = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     return students.filter((student) => {
-      if (filter === 'active' && student.balance === 0) return false
-      if (filter === 'used' && student.balance !== 0) return false
+      const active = (student.regular_balance ?? student.balance) !== 0
+        || (student.gift_balance ?? 0) !== 0
+      if (filter === 'active' && !active) return false
+      if (filter === 'used' && active) return false
       if (!normalized) return true
       return [student.name, student.nickname || '']
         .some((value) => value.toLowerCase().includes(normalized))
@@ -218,19 +273,30 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     setCreditOpen(false)
     setCreditMemberId(null)
     setCreditDate(getLocalDateString())
-    setCreditMinutes('')
+    setCreditRegularMinutes('')
+    setCreditGiftMinutes('')
+    setCreditExpiresOn('')
     setCreditNote('')
     setCreditRequestKey(createRequestKey())
     setEligibleReports([])
     setEligibleReportLimit(5)
     setSelectedReportIds(new Set())
     setSelectedReportMinutes({})
+    setSelectedReportSources({})
     memberSearch.reset()
   }
 
   const submitCredit = async () => {
-    const minutes = Number(creditMinutes)
-    if (!creditMemberId || !Number.isFinite(minutes) || minutes <= 0) {
+    const regularMinutes = Number(creditRegularMinutes || 0)
+    const giftMinutes = Number(creditGiftMinutes || 0)
+    if (
+      !creditMemberId
+      || !Number.isFinite(regularMinutes)
+      || !Number.isFinite(giftMinutes)
+      || regularMinutes < 0
+      || giftMinutes < 0
+      || regularMinutes + giftMinutes <= 0
+    ) {
       toast.warning('請選擇會員並輸入正確分鐘')
       return
     }
@@ -243,10 +309,9 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       )
       return !Number.isFinite(deductionMinutes)
         || deductionMinutes <= 0
-        || deductionMinutes > report.duration_min
     })
     if (invalidReport) {
-      toast.warning(`扣除分鐘需介於 1～${invalidReport.duration_min} 分`)
+      toast.warning('扣除分鐘必須大於 0')
       return
     }
     setSaving(true)
@@ -254,16 +319,24 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       await createCoachDesignatedCredit({
         coachId,
         memberId: creditMemberId,
-        minutes,
+        regularMinutes,
+        giftMinutes,
         occurredAt: `${creditDate}T12:00:00+08:00`,
+        expiresOn: creditExpiresOn || null,
         note: creditNote,
-        reportDeductions: selectedReports.map((report) => ({
-          participant_id: report.participant_id,
-          deduct: true,
-          minutes: Number(
+        reportDeductions: selectedReports.map((report) => {
+          const reportMinutes = Number(
             selectedReportMinutes[report.participant_id] ?? report.duration_min,
-          ),
-        })),
+          )
+          const gift = selectedReportSources[report.participant_id] === 'gift'
+          return {
+            participant_id: report.participant_id,
+            deduct: true,
+            minutes: reportMinutes,
+            regular_minutes: gift ? 0 : reportMinutes,
+            gift_minutes: gift ? reportMinutes : 0,
+          }
+        }),
         requestKey: creditRequestKey,
       })
       toast.success('指定課時數已新增')
@@ -282,15 +355,24 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
 
   const openEdit = (entry: CoachDesignatedEntry) => {
     setEditingEntry(entry)
-    setEditMinutes(String(entry.minutes))
+    setEditRegularMinutes(String(entry.regular_minutes ?? entry.minutes))
+    setEditGiftMinutes(String(entry.gift_minutes ?? 0))
     setEditDate(entry.occurred_at.slice(0, 10))
+    setEditExpiresOn(entry.expires_on || '')
     setEditNote(entry.note || '')
   }
 
   const saveEdit = async () => {
     if (!editingEntry) return
-    const minutes = Number(editMinutes)
-    if (!Number.isFinite(minutes) || minutes <= 0) {
+    const regularMinutes = Number(editRegularMinutes || 0)
+    const giftMinutes = Number(editGiftMinutes || 0)
+    if (
+      !Number.isFinite(regularMinutes)
+      || !Number.isFinite(giftMinutes)
+      || regularMinutes < 0
+      || giftMinutes < 0
+      || regularMinutes + giftMinutes <= 0
+    ) {
       toast.warning('分鐘必須大於 0')
       return
     }
@@ -298,10 +380,12 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     try {
       await updateCoachDesignatedEntry({
         entryId: editingEntry.id,
-        minutes,
+        regularMinutes,
+        giftMinutes,
         occurredAt: editingEntry.entry_type === 'credit'
           ? `${editDate}T12:00:00+08:00`
           : null,
+        expiresOn: editingEntry.entry_type === 'credit' ? editExpiresOn || null : null,
         note: editingEntry.entry_type === 'credit' ? editNote : null,
       })
       setEditingEntry(null)
@@ -379,9 +463,16 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       return
     }
     const rangeRows: CoachDesignatedShareRow[] = range.entries.map((entry) => ({
-      date: compactDate(entry.occurred_at),
-      detail: entry.entry_type === 'credit' ? (entry.note || '購買指定課') : (entry.boat_name || '上課'),
+      date: entry.entry_type === 'credit'
+        ? entry.occurred_at.slice(5, 10).replace('-', '/')
+        : compactDate(entry.booking_start_at || entry.occurred_at),
+      detail: entry.entry_type === 'credit'
+        ? entryTypeLabel(entry)
+        : [entry.boat_name || '未指定船', entryTypeLabel(entry)].filter(Boolean).join(' · '),
       minutes: entry.delta_minutes,
+      note: entry.entry_type === 'credit'
+        ? [entry.note, expiryLabel(entry.expires_on)].filter(Boolean).join(' · ') || null
+        : entry.note,
     }))
 
     setLedgerImageRangeOpen(false)
@@ -433,17 +524,16 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       </div>
       <div
         style={{
-          border: `1px solid ${designSystem.colors.border.light}`,
-          borderRadius: designSystem.borderRadius.xl,
-          overflow: 'hidden',
-          background: designSystem.colors.background.card,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
         }}
       >
         {loading ? (
           <div style={{ padding: 24, color: designSystem.colors.text.secondary }}>載入中...</div>
         ) : filteredStudents.length === 0 ? (
           <div style={{ padding: 24, color: designSystem.colors.text.secondary }}>目前沒有符合的學生</div>
-        ) : filteredStudents.map((student, index) => (
+        ) : filteredStudents.map((student) => (
           <button
             key={student.member_id}
             type="button"
@@ -452,11 +542,9 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
             style={{
               width: '100%',
               minHeight: isMobile ? 64 : 58,
-              padding: '12px 14px',
-              border: 0,
-              borderBottom: index < filteredStudents.length - 1
-                ? `1px solid ${designSystem.colors.border.light}`
-                : 0,
+              padding: '14px',
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.xl,
               background: selectedMemberId === student.member_id
                 ? designSystem.colors.background.hover
                 : designSystem.colors.background.card,
@@ -468,9 +556,33 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               textAlign: 'left',
             }}
           >
-            <span>
+            <span style={{ minWidth: 0 }}>
               <span style={{ display: 'block', fontWeight: 600, fontSize: getFontSize('bodyLarge', isMobile) }}>
                 {displayName(student)}
+              </span>
+              <span style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    color: (student.regular_balance ?? student.balance) === 0
+                      ? designSystem.colors.text.secondary
+                      : designSystem.colors.info[700],
+                    fontSize: getFontSize('bodySmall', isMobile),
+                  }}
+                >
+                  一般 {student.regular_balance ?? student.balance} 分
+                </span>
+                {(student.has_gift_entries || (student.gift_balance ?? 0) !== 0) && (
+                  <span
+                    style={{
+                      color: (student.gift_balance ?? 0) === 0
+                        ? designSystem.colors.text.secondary
+                        : designSystem.colors.warning[700],
+                      fontSize: getFontSize('bodySmall', isMobile),
+                    }}
+                  >
+                    贈送 {student.gift_balance} 分
+                  </span>
+                )}
               </span>
               <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
                 最近異動 {compactDate(student.last_activity_at)}
@@ -523,6 +635,24 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         >
           {balance} 分鐘
         </div>
+        <div style={{ display: 'grid', gridTemplateColumns: hasGiftEntries || giftBalance !== 0 ? '1fr 1fr' : '1fr', gap: 10, marginTop: 12 }}>
+          <BalanceSummary
+            label="一般指定課"
+            balance={regularBalance}
+            expiresOn={regularExpiresOn}
+            tone="regular"
+            isMobile={isMobile}
+          />
+          {(hasGiftEntries || giftBalance !== 0) && (
+            <BalanceSummary
+              label="贈送指定課"
+              balance={giftBalance}
+              expiresOn={giftExpiresOn}
+              tone="gift"
+              isMobile={isMobile}
+            />
+          )}
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <button type="button" data-track="coach_designated_add_open" onClick={() => {
@@ -546,103 +676,10 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           {saving ? '產生中...' : '儲存圖片'}
         </button>
       </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        {([
-          ['ledger', '流水'],
-          ['batches', '分批'],
-        ] as const).map(([mode, label]) => (
-          <button
-            key={mode}
-            type="button"
-            data-track={`coach_designated_view_${mode}`}
-            onClick={() => setViewMode(mode)}
-            style={{
-              ...getButtonStyle(viewMode === mode ? 'primary' : 'outline', 'medium', isMobile),
-              flex: 1,
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
       {detailLoading ? (
         <div style={{ padding: 24, color: designSystem.colors.text.secondary }}>載入中...</div>
-      ) : viewMode === 'ledger' ? (
-        <EntryList entries={entries} isMobile={isMobile} onEdit={openEdit} />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {batches.unallocatedDeductions.length > 0 && (
-            <div
-              style={{
-                padding: 14,
-                borderRadius: designSystem.borderRadius.lg,
-                background: designSystem.colors.warning[50],
-                color: designSystem.colors.warning[700],
-              }}
-            >
-              待補時數 {batches.unallocatedDeductions.reduce((sum, item) => sum + item.minutes, 0)} 分鐘
-            </div>
-          )}
-          {batches.batches.map((batch) => {
-            const rows = batch.allocations.map((allocation) => ({
-              date: compactDate(allocation.entry.occurred_at),
-              detail: allocation.entry.boat_name || '上課',
-              minutes: -allocation.minutes,
-            }))
-            return (
-              <div
-                key={batch.credit.id}
-                style={{
-                  padding: 16,
-                  borderRadius: designSystem.borderRadius.xl,
-                  border: `1px solid ${designSystem.colors.border.light}`,
-                  background: designSystem.colors.background.card,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{batch.credit.occurred_at.slice(0, 10)} 購買指定課</div>
-                    <div style={{ color: designSystem.colors.text.secondary, marginTop: 4 }}>
-                      起始 {batch.credit.minutes} 分｜剩餘 {batch.remaining} 分
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    data-track="coach_designated_save_batch_image"
-                    onClick={() => void saveImages(
-                      `${batch.credit.occurred_at.slice(0, 10)} 購買指定課`,
-                      rows,
-                      batch.remaining,
-                      batch.credit.minutes,
-                    )}
-                    style={getButtonStyle('outline', 'small', isMobile)}
-                  >
-                    儲存圖片
-                  </button>
-                </div>
-                {batch.allocations.length > 0 && (
-                  <div style={{ marginTop: 12 }}>
-                    {batch.allocations.map((allocation) => (
-                      <div
-                        key={`${allocation.entry.id}-${allocation.minutes}`}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          padding: '8px 0',
-                          borderTop: `1px solid ${designSystem.colors.border.light}`,
-                        }}
-                      >
-                        <span>{compactDate(allocation.entry.occurred_at)} · {allocation.entry.boat_name || '上課'}</span>
-                        <span>−{allocation.minutes} 分</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+        <EntryList entries={entries} isMobile={isMobile} onEdit={openEdit} />
       )}
     </section>
   ) : (
@@ -787,17 +824,36 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               style={getInputStyle(isMobile)}
             />
             <div style={{ height: 12 }} />
-            <label style={getLabelStyle(isMobile)}>增加分鐘</label>
+            <label style={getLabelStyle(isMobile)}>一般指定課分鐘</label>
             <input
               type="text"
               inputMode="numeric"
-              value={creditMinutes}
-              onChange={(event) => setCreditMinutes(event.target.value.replace(/\D/g, ''))}
+              value={creditRegularMinutes}
+              onChange={(event) => setCreditRegularMinutes(event.target.value.replace(/\D/g, ''))}
+              style={getInputStyle(isMobile)}
+              placeholder="沒有可留空"
+            />
+            <div style={{ height: 12 }} />
+            <label style={getLabelStyle(isMobile)}>贈送指定課分鐘 <span style={{ color: designSystem.colors.text.secondary }}>（選填）</span></label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={creditGiftMinutes}
+              onChange={(event) => setCreditGiftMinutes(event.target.value.replace(/\D/g, ''))}
+              style={getInputStyle(isMobile)}
+              placeholder="沒有贈送可留空"
+            />
+            <div style={{ height: 12 }} />
+            <label style={getLabelStyle(isMobile)}>使用期限 <span style={{ color: designSystem.colors.text.secondary }}>（選填，僅提醒）</span></label>
+            <input
+              type="date"
+              value={creditExpiresOn}
+              onChange={(event) => setCreditExpiresOn(event.target.value)}
               style={getInputStyle(isMobile)}
             />
             <div style={{ height: 12 }} />
-            <label style={getLabelStyle(isMobile)}>備註</label>
-            <input value={creditNote} onChange={(event) => setCreditNote(event.target.value)} style={getInputStyle(isMobile)} placeholder="例如：300 分送 30 分" />
+            <label style={getLabelStyle(isMobile)}>名稱／備註 <span style={{ color: designSystem.colors.text.secondary }}>（選填）</span></label>
+            <input value={creditNote} onChange={(event) => setCreditNote(event.target.value)} style={getInputStyle(isMobile)} placeholder="例如：300＋30、贈送綜合課程" />
 
             {visibleEligibleReports.length > 0 && (
               <div style={{ marginTop: 18 }}>
@@ -851,6 +907,17 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                                 }
                                 return next
                               })
+                              setSelectedReportSources((current) => {
+                                const next = { ...current }
+                                if (checked) {
+                                  next[report.participant_id] = Number(creditRegularMinutes || 0) === 0
+                                    && Number(creditGiftMinutes || 0) > 0
+                                    ? 'gift'
+                                    : 'regular'
+                                }
+                                else delete next[report.participant_id]
+                                return next
+                              })
                             }}
                             style={{ width: 20, height: 20, flex: '0 0 auto' }}
                           />
@@ -870,7 +937,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                           >
                             <span style={{ fontSize: getFontSize('bodySmall', isMobile) }}>扣除</span>
                             <input
-                              aria-label={`扣除分鐘，上限 ${report.duration_min} 分`}
+                              aria-label={`扣除分鐘，預約 ${report.duration_min} 分`}
                               type="text"
                               inputMode="numeric"
                               value={selectedReportMinutes[report.participant_id] ?? ''}
@@ -894,8 +961,46 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                                 fontSize: getFontSize('bodySmall', isMobile),
                               }}
                             >
-                              分（最多 {report.duration_min}）
+                              分（預約 {report.duration_min}）
                             </span>
+                            {Number(selectedReportMinutes[report.participant_id] || 0) > report.duration_min && (
+                              <span
+                                style={{
+                                  width: '100%',
+                                  color: designSystem.colors.warning[700],
+                                  fontSize: getFontSize('bodySmall', isMobile),
+                                }}
+                              >
+                                預約 {report.duration_min} 分，本次扣除 {selectedReportMinutes[report.participant_id]} 分
+                              </span>
+                            )}
+                            {(Number(creditGiftMinutes || 0) > 0 || creditStudentHasGift) && (
+                              <div style={{ display: 'flex', gap: 6, width: '100%', marginTop: 4 }}>
+                                {(['regular', 'gift'] as const).map((source) => (
+                                  <button
+                                    key={source}
+                                    type="button"
+                                    data-track={`coach_designated_existing_report_${source}`}
+                                    onClick={() => setSelectedReportSources((current) => ({
+                                      ...current,
+                                      [report.participant_id]: source,
+                                    }))}
+                                    style={{
+                                      ...getButtonStyle(
+                                        (selectedReportSources[report.participant_id] || 'regular') === source
+                                          ? 'primary'
+                                          : 'outline',
+                                        'small',
+                                        isMobile,
+                                      ),
+                                      flex: 1,
+                                    }}
+                                  >
+                                    {source === 'regular' ? '一般指定課' : '贈送指定課'}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -944,7 +1049,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         <div style={dialogBackdrop(isMobile)} onClick={() => setEditingEntry(null)}>
           <div style={dialogSurface(isMobile)} onClick={(event) => event.stopPropagation()}>
             <h2 style={{ margin: '0 0 18px', fontSize: getFontSize('h2', isMobile) }}>
-              {editingEntry.entry_type === 'credit' ? '修改增加時數' : '修改本次扣除'}
+              {editingEntry.entry_type === 'credit' ? '修改指定課' : '修改本次扣除'}
             </h2>
             {editingEntry.entry_type === 'credit' && (
               <>
@@ -953,10 +1058,26 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                 <div style={{ height: 12 }} />
               </>
             )}
-            <label style={getLabelStyle(isMobile)}>分鐘</label>
-            <input value={editMinutes} onChange={(event) => setEditMinutes(event.target.value.replace(/\D/g, ''))} style={getInputStyle(isMobile)} />
+            <label style={getLabelStyle(isMobile)}>一般指定課分鐘</label>
+            <input
+              inputMode="numeric"
+              value={editRegularMinutes}
+              onChange={(event) => setEditRegularMinutes(event.target.value.replace(/\D/g, ''))}
+              style={getInputStyle(isMobile)}
+            />
+            <div style={{ height: 12 }} />
+            <label style={getLabelStyle(isMobile)}>贈送指定課分鐘</label>
+            <input
+              inputMode="numeric"
+              value={editGiftMinutes}
+              onChange={(event) => setEditGiftMinutes(event.target.value.replace(/\D/g, ''))}
+              style={getInputStyle(isMobile)}
+            />
             {editingEntry.entry_type === 'credit' && (
               <>
+                <div style={{ height: 12 }} />
+                <label style={getLabelStyle(isMobile)}>使用期限 <span style={{ color: designSystem.colors.text.secondary }}>（選填）</span></label>
+                <input type="date" value={editExpiresOn} onChange={(event) => setEditExpiresOn(event.target.value)} style={getInputStyle(isMobile)} />
                 <div style={{ height: 12 }} />
                 <label style={getLabelStyle(isMobile)}>備註</label>
                 <input value={editNote} onChange={(event) => setEditNote(event.target.value)} style={getInputStyle(isMobile)} />
@@ -973,8 +1094,25 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
             >
               修改後剩餘：<strong style={{ color: designSystem.colors.text.primary }}>{balanceAfterEdit} 分</strong>
               <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', isMobile) }}>
-                若取消此筆，剩餘將為 {balanceAfterVoid} 分
+                一般 {regularAfterEdit} 分・贈送 {giftAfterEdit} 分
               </div>
+              <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', isMobile) }}>
+                若取消此筆，總剩餘為 {balanceAfterVoid} 分
+                （一般 {regularAfterVoid}・贈送 {giftAfterVoid}）
+              </div>
+              {editingEntry.entry_type === 'report_deduction'
+                && editingEntry.duration_min
+                && parsedEditMinutes > editingEntry.duration_min && (
+                <div
+                  style={{
+                    marginTop: 4,
+                    color: designSystem.colors.warning[700],
+                    fontSize: getFontSize('bodySmall', isMobile),
+                  }}
+                >
+                  預約 {editingEntry.duration_min} 分，本次扣除 {parsedEditMinutes} 分
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
               <button type="button" data-track="coach_designated_entry_void" onClick={() => void voidEntry()} style={getButtonStyle('danger', 'medium', isMobile)}>取消此筆</button>
@@ -986,6 +1124,62 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         </div>
       )}
     </>
+  )
+}
+
+function BalanceSummary({
+  label,
+  balance,
+  expiresOn,
+  tone,
+  isMobile,
+}: {
+  label: string
+  balance: number
+  expiresOn: string | null
+  tone: 'regular' | 'gift'
+  isMobile: boolean
+}) {
+  const expired = !!expiresOn && expiresOn < getLocalDateString()
+  const palette = tone === 'gift'
+    ? {
+        background: designSystem.colors.warning[50],
+        border: designSystem.colors.warning[500],
+        text: designSystem.colors.warning[700],
+      }
+    : {
+        background: designSystem.colors.info[50],
+        border: designSystem.colors.info[500],
+        text: designSystem.colors.info[700],
+      }
+  return (
+    <div
+      style={{
+        padding: '12px 14px',
+        borderRadius: designSystem.borderRadius.lg,
+        borderLeft: `4px solid ${balance === 0 ? designSystem.colors.border.main : palette.border}`,
+        background: balance === 0 ? designSystem.colors.background.main : palette.background,
+      }}
+    >
+      <div style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
+        {label}
+      </div>
+      <div style={{ marginTop: 4, color: balance < 0 ? designSystem.colors.danger[700] : palette.text, fontWeight: 700 }}>
+        {balance} 分
+      </div>
+      {expiresOn && (
+        <div
+          style={{
+            marginTop: 5,
+            color: expired ? designSystem.colors.danger[700] : designSystem.colors.text.secondary,
+            fontSize: getFontSize('caption', isMobile),
+            fontWeight: expired ? 600 : 400,
+          }}
+        >
+          最近一筆｜{expired ? '已逾使用期限' : '使用期限'} {expiresOn.replaceAll('-', '/')}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -1031,14 +1225,28 @@ function EntryList({
             cursor: 'pointer',
           }}
         >
-          <span>
+          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
             <span style={{ display: 'block', color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
-              {compactDate(entry.occurred_at)}
+              {entry.entry_type === 'credit'
+                ? entry.occurred_at.slice(5, 10).replace('-', '/')
+                : compactDate(entry.booking_start_at || entry.occurred_at)}
             </span>
-            <span>{entry.entry_type === 'credit' ? (entry.note || '購買指定課') : (entry.boat_name || '上課')}</span>
+            <span>
+              {entry.entry_type === 'credit'
+                ? (entry.note || '新增指定課')
+                : (entry.boat_name || '未指定船')}
+            </span>
+            <span style={{ display: 'block', marginTop: 3, color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>
+              {entryTypeLabel(entry)}
+              {entry.entry_type === 'credit' && entry.expires_on
+                ? ` · ${expiryLabel(entry.expires_on)}`
+                : ''}
+            </span>
           </span>
           <span
             style={{
+              flexShrink: 0,
+              marginLeft: 12,
               fontWeight: 700,
               color: entry.delta_minutes >= 0
                 ? designSystem.colors.success[700]
