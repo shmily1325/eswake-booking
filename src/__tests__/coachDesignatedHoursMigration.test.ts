@@ -14,7 +14,11 @@ const splitSql = readFileSync(
   resolve(process.cwd(), 'migrations/249_split_coach_designated_regular_and_gift.sql'),
   'utf8',
 )
-const combined = `${schemaSql}\n${rpcSql}\n${splitSql}`.toLowerCase()
+const expirySummarySql = readFileSync(
+  resolve(process.cwd(), 'migrations/250_add_designated_expiry_to_student_list.sql'),
+  'utf8',
+)
+const combined = `${schemaSql}\n${rpcSql}\n${splitSql}\n${expirySummarySql}`.toLowerCase()
 
 describe('coach designated-hour migrations', () => {
   it('keeps the new ledger isolated from existing financial storage', () => {
@@ -84,6 +88,17 @@ describe('coach designated-hour migrations', () => {
   it('keeps non-zero LIFF balances visible regardless of recent activity', () => {
     expect(splitSql).toMatch(
       /HAVING[\s\S]*e\.regular_minutes[\s\S]*<> 0[\s\S]*e\.gift_minutes[\s\S]*<> 0[\s\S]*INTERVAL '2 months'/i,
+    )
+  })
+
+  it('returns latest regular and gift expiry reminders in the coach student list', () => {
+    expect(expirySummarySql).toContain("'regular_expires_on'")
+    expect(expirySummarySql).toContain("'gift_expires_on'")
+    expect(expirySummarySql).toMatch(
+      /latest_regular\.occurred_at DESC, latest_regular\.id DESC/i,
+    )
+    expect(expirySummarySql).toMatch(
+      /latest_gift\.occurred_at DESC, latest_gift\.id DESC/i,
     )
   })
 })

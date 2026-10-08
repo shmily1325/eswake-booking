@@ -4,7 +4,7 @@
  * - Avoid dashboard feel: no stat-card wall, no dense table, no explanatory callouts.
  * - Hierarchy: search/list → current balance → ledger; rare edits stay in dialogs.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
 import { designSystem, getButtonStyle, getFontSize, getInputStyle, getLabelStyle } from '../../../styles/designSystem'
 import { getLocalDateString } from '../../../utils/date'
@@ -22,8 +22,10 @@ import {
   downloadCoachDesignatedImages,
   type CoachDesignatedShareRow,
 } from './shareImages'
+import { buildCoachDesignatedBatches } from './fifo'
 import { selectCoachDesignatedLedgerRange } from './ledgerRange'
 import type {
+  CoachDesignatedBatch,
   CoachDesignatedEligibleReport,
   CoachDesignatedEntry,
   CoachDesignatedStudent,
@@ -84,6 +86,44 @@ function expiryLabel(value: string | null | undefined): string | null {
   return `${value < getLocalDateString() ? '已逾使用期限' : '使用期限'} ${value.replaceAll('-', '/')}`
 }
 
+function studentExpirySummary(student: CoachDesignatedStudent): Array<{
+  key: string
+  text: string
+  expired: boolean
+  gift: boolean
+}> {
+  const regular = student.regular_expires_on || null
+  const gift = student.gift_expires_on || null
+  const today = getLocalDateString()
+  if (regular && regular === gift) {
+    const expired = regular < today
+    return [{
+      key: 'shared',
+      text: `${expired ? '已逾使用期限' : '使用期限'} ${regular.replaceAll('-', '/')}`,
+      expired,
+      gift: false,
+    }]
+  }
+  return [
+    regular
+      ? {
+          key: 'regular',
+          text: `一般｜${regular < today ? '已逾使用期限' : '使用期限'} ${regular.replaceAll('-', '/')}`,
+          expired: regular < today,
+          gift: false,
+        }
+      : null,
+    gift
+      ? {
+          key: 'gift',
+          text: `贈送｜${gift < today ? '已逾使用期限' : '使用期限'} ${gift.replaceAll('-', '/')}`,
+          expired: gift < today,
+          gift: true,
+        }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => item !== null)
+}
+
 function dialogBackdrop(isMobile: boolean): React.CSSProperties {
   return {
     position: 'fixed',
@@ -93,7 +133,7 @@ function dialogBackdrop(isMobile: boolean): React.CSSProperties {
     alignItems: isMobile ? 'flex-end' : 'center',
     justifyContent: 'center',
     padding: isMobile ? 0 : 16,
-    zIndex: 1200,
+    zIndex: designSystem.zIndex.modal,
   }
 }
 
@@ -148,15 +188,28 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   const [editDate, setEditDate] = useState('')
   const [editExpiresOn, setEditExpiresOn] = useState('')
   const [editNote, setEditNote] = useState('')
+  const [imageMenuOpen, setImageMenuOpen] = useState(false)
+  const [batchImageSource, setBatchImageSource] = useState<'regular' | 'gift' | null>(null)
   const [ledgerImageRangeOpen, setLedgerImageRangeOpen] = useState(false)
   const [ledgerImageStartDate, setLedgerImageStartDate] = useState(getDaysAgoDateString(30))
   const [ledgerImageEndDate, setLedgerImageEndDate] = useState(getLocalDateString())
+  const [ledgerImageError, setLedgerImageError] = useState<string | null>(null)
+  const detailRequestRef = useRef(0)
 
   const selectedStudent = students.find((student) => student.member_id === selectedMemberId) || null
   const creditStudentHasGift = students.some(
     (student) => student.member_id === creditMemberId
       && (student.has_gift_entries || (student.gift_balance ?? 0) !== 0),
   )
+  const regularBatches = useMemo(
+    () => buildCoachDesignatedBatches(entries, 'regular'),
+    [entries],
+  )
+  const giftBatches = useMemo(
+    () => buildCoachDesignatedBatches(entries, 'gift'),
+    [entries],
+  )
+  const imageBatches = batchImageSource === 'gift' ? giftBatches : regularBatches
   const parsedEditRegular = Number(editRegularMinutes || 0)
   const parsedEditGift = Number(editGiftMinutes || 0)
   const parsedEditMinutes = parsedEditRegular + parsedEditGift
@@ -204,9 +257,12 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   }, [coachId, isMobile, toast])
 
   const loadDetail = useCallback(async (memberId: string) => {
+    const requestId = detailRequestRef.current + 1
+    detailRequestRef.current = requestId
     setDetailLoading(true)
     try {
       const detail = await fetchCoachDesignatedStudentDetail(coachId, memberId)
+      if (requestId !== detailRequestRef.current) return
       setEntries(detail.entries)
       setBalance(detail.balance)
       setRegularBalance(detail.regular_balance)
@@ -215,10 +271,11 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       setRegularExpiresOn(detail.regular_expires_on)
       setGiftExpiresOn(detail.gift_expires_on)
     } catch (error) {
+      if (requestId !== detailRequestRef.current) return
       console.error(error)
       toast.error('無法載入指定課明細')
     } finally {
-      setDetailLoading(false)
+      if (requestId === detailRequestRef.current) setDetailLoading(false)
     }
   }, [coachId, toast])
 
@@ -227,8 +284,17 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   }, [loadStudents])
 
   useEffect(() => {
-    if (selectedMemberId) void loadDetail(selectedMemberId)
-    else {
+    if (selectedMemberId) {
+      setEntries([])
+      setBalance(0)
+      setRegularBalance(0)
+      setGiftBalance(0)
+      setHasGiftEntries(false)
+      setRegularExpiresOn(null)
+      setGiftExpiresOn(null)
+      void loadDetail(selectedMemberId)
+    } else {
+      detailRequestRef.current += 1
       setEntries([])
       setBalance(0)
       setRegularBalance(0)
@@ -291,13 +357,14 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     const giftMinutes = Number(creditGiftMinutes || 0)
     if (
       !creditMemberId
+      || !creditDate
       || !Number.isFinite(regularMinutes)
       || !Number.isFinite(giftMinutes)
       || regularMinutes < 0
       || giftMinutes < 0
       || regularMinutes + giftMinutes <= 0
     ) {
-      toast.warning('請選擇會員並輸入正確分鐘')
+      toast.warning('請選擇會員、日期並輸入正確分鐘')
       return
     }
     const selectedReports = eligibleReports.filter((report) =>
@@ -354,6 +421,10 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   }
 
   const openEdit = (entry: CoachDesignatedEntry) => {
+    setCreditOpen(false)
+    setImageMenuOpen(false)
+    setBatchImageSource(null)
+    setLedgerImageRangeOpen(false)
     setEditingEntry(entry)
     setEditRegularMinutes(String(entry.regular_minutes ?? entry.minutes))
     setEditGiftMinutes(String(entry.gift_minutes ?? 0))
@@ -367,13 +438,18 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     const regularMinutes = Number(editRegularMinutes || 0)
     const giftMinutes = Number(editGiftMinutes || 0)
     if (
-      !Number.isFinite(regularMinutes)
+      (editingEntry.entry_type === 'credit' && !editDate)
+      || !Number.isFinite(regularMinutes)
       || !Number.isFinite(giftMinutes)
       || regularMinutes < 0
       || giftMinutes < 0
       || regularMinutes + giftMinutes <= 0
     ) {
-      toast.warning('分鐘必須大於 0')
+      toast.warning(
+        editingEntry.entry_type === 'credit' && !editDate
+          ? '請選擇日期'
+          : '分鐘必須大於 0',
+      )
       return
     }
     setSaving(true)
@@ -422,35 +498,61 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     rows: CoachDesignatedShareRow[],
     remainingMinutes: number,
     openingMinutes?: number,
-  ) => {
-    if (!selectedStudent) return
+    headerNote?: string | null,
+  ): Promise<boolean> => {
+    if (!selectedStudent) return false
     setSaving(true)
+    let files: File[] = []
     try {
-      const files = await createCoachDesignatedShareImages({
+      files = await createCoachDesignatedShareImages({
         studentName: displayName(selectedStudent),
         title,
         rows,
         remainingMinutes,
         openingMinutes,
+        headerNote,
       })
       const shareData: ShareData = { files, title: `${displayName(selectedStudent)}指定課` }
-      if (isMobile && navigator.share && navigator.canShare?.(shareData)) {
+      if (
+        isMobile
+        && typeof navigator.share === 'function'
+        && (typeof navigator.canShare !== 'function' || navigator.canShare(shareData))
+      ) {
         await navigator.share(shareData)
+        return true
+      }
+      if (isMobile) {
+        downloadCoachDesignatedImages(files)
+        toast.success('圖片已下載')
+        return true
       } else {
         downloadCoachDesignatedImages(files)
+        toast.success('圖片已下載')
+        return true
       }
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
+      if (error instanceof DOMException && error.name === 'AbortError') return false
       console.error(error)
-      toast.error('無法產生指定課圖片')
+      if (isMobile && files.length > 0) {
+        downloadCoachDesignatedImages(files)
+        toast.warning('無法開啟分享選單，已改用下載圖片')
+        return true
+      }
+      toast.error('無法開啟圖片分享，請再試一次')
+      return false
     } finally {
       setSaving(false)
     }
   }
 
-  const saveLedgerRangeImage = () => {
+  const saveLedgerRangeImage = async () => {
+    setLedgerImageError(null)
+    if (!ledgerImageStartDate || !ledgerImageEndDate) {
+      setLedgerImageError('請選擇開始與結束日期')
+      return
+    }
     if (ledgerImageStartDate > ledgerImageEndDate) {
-      toast.warning('結束日期不能早於開始日期')
+      setLedgerImageError('結束日期不能早於開始日期')
       return
     }
     const range = selectCoachDesignatedLedgerRange(
@@ -459,7 +561,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       ledgerImageEndDate,
     )
     if (range.entries.length === 0) {
-      toast.warning('這段期間沒有指定課流水')
+      setLedgerImageError('這段期間沒有指定課流水')
       return
     }
     const rangeRows: CoachDesignatedShareRow[] = range.entries.map((entry) => ({
@@ -475,12 +577,40 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         : entry.note,
     }))
 
-    setLedgerImageRangeOpen(false)
-    void saveImages(
+    const saved = await saveImages(
       formatImageRange(ledgerImageStartDate, ledgerImageEndDate),
       rangeRows,
       range.balanceAtEnd,
     )
+    if (saved) setLedgerImageRangeOpen(false)
+  }
+
+  const saveBatchImage = async (
+    batch: CoachDesignatedBatch,
+    source: 'regular' | 'gift',
+  ) => {
+    const label = source === 'gift' ? '贈送指定課' : '一般指定課'
+    const rows: CoachDesignatedShareRow[] = batch.allocations.map((allocation) => ({
+      date: compactDate(
+        allocation.entry.booking_start_at || allocation.entry.occurred_at,
+      ),
+      detail: allocation.entry.boat_name || '未指定船',
+      minutes: -allocation.minutes,
+      note: allocation.entry.note,
+    }))
+    const saved = await saveImages(
+      `${batch.credit.occurred_at.slice(0, 10).replaceAll('-', '/')} ${label}`,
+      rows,
+      batch.remaining,
+      batch.minutes,
+      [batch.credit.note, expiryLabel(batch.credit.expires_on)]
+        .filter(Boolean)
+        .join(' · ') || null,
+    )
+    if (saved) {
+      setImageMenuOpen(false)
+      setBatchImageSource(null)
+    }
   }
 
   const listPanel = (
@@ -496,7 +626,13 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         <button
           type="button"
           data-track="coach_designated_add_open"
-          onClick={() => setCreditOpen(true)}
+          onClick={() => {
+            setEditingEntry(null)
+            setImageMenuOpen(false)
+            setBatchImageSource(null)
+            setLedgerImageRangeOpen(false)
+            setCreditOpen(true)
+          }}
           style={getButtonStyle('primary', 'medium', isMobile)}
         >
           新增指定課
@@ -584,9 +720,24 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                   </span>
                 )}
               </span>
-              <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
-                最近異動 {compactDate(student.last_activity_at)}
-              </span>
+              {studentExpirySummary(student).map((summary) => (
+                <span
+                  key={summary.key}
+                  style={{
+                    display: 'block',
+                    marginTop: 5,
+                    color: summary.expired
+                      ? designSystem.colors.danger[700]
+                      : summary.gift
+                        ? designSystem.colors.warning[700]
+                        : designSystem.colors.text.secondary,
+                    fontSize: getFontSize('caption', isMobile),
+                    fontWeight: summary.expired ? 600 : 400,
+                  }}
+                >
+                  {summary.text}
+                </span>
+              ))}
             </span>
             <span
               style={{
@@ -656,6 +807,10 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <button type="button" data-track="coach_designated_add_open" onClick={() => {
+          setEditingEntry(null)
+          setImageMenuOpen(false)
+          setBatchImageSource(null)
+          setLedgerImageRangeOpen(false)
           setCreditMemberId(selectedStudent.member_id)
           memberSearch.selectMemberById(selectedStudent.member_id, displayName(selectedStudent))
           setCreditOpen(true)
@@ -665,13 +820,19 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         <button
           type="button"
           data-track="coach_designated_save_ledger_image"
-          disabled={saving || entries.length === 0}
+          disabled={detailLoading || saving || entries.length === 0}
           onClick={() => {
-            setLedgerImageStartDate(getDaysAgoDateString(30))
-            setLedgerImageEndDate(getLocalDateString())
-            setLedgerImageRangeOpen(true)
+            setCreditOpen(false)
+            setEditingEntry(null)
+            setLedgerImageRangeOpen(false)
+            setBatchImageSource(null)
+            setImageMenuOpen(true)
           }}
-          style={getButtonStyle('outline', 'medium', isMobile)}
+          style={{
+            ...getButtonStyle('outline', 'medium', isMobile),
+            opacity: detailLoading || saving || entries.length === 0 ? 0.55 : 1,
+            cursor: detailLoading || saving || entries.length === 0 ? 'not-allowed' : 'pointer',
+          }}
         >
           {saving ? '產生中...' : '儲存圖片'}
         </button>
@@ -703,6 +864,236 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         {(!isMobile || selectedMemberId) && detailPanel}
       </div>
 
+      {imageMenuOpen && (
+        <div
+          style={dialogBackdrop(isMobile)}
+          onClick={() => {
+            setImageMenuOpen(false)
+            setBatchImageSource(null)
+          }}
+        >
+          <div
+            style={{
+              ...dialogSurface(isMobile),
+              paddingBottom: isMobile
+                ? 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px))'
+                : 24,
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {batchImageSource === null ? (
+              <>
+                <h2 style={{ margin: '0 0 8px', fontSize: getFontSize('h2', isMobile) }}>
+                  儲存圖片
+                </h2>
+                <div
+                  style={{
+                    marginBottom: 16,
+                    color: designSystem.colors.text.secondary,
+                    fontSize: getFontSize('bodySmall', isMobile),
+                  }}
+                >
+                  選擇要分享給學生的格式
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button
+                    type="button"
+                    data-track="coach_designated_image_mode_ledger"
+                    onClick={() => {
+                      setImageMenuOpen(false)
+                      setLedgerImageStartDate(getDaysAgoDateString(30))
+                      setLedgerImageEndDate(getLocalDateString())
+                      setLedgerImageError(null)
+                      setLedgerImageRangeOpen(true)
+                    }}
+                    style={{
+                      ...getButtonStyle('outline', 'medium', isMobile),
+                      minHeight: 58,
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span>流水明細</span>
+                    <span aria-hidden>›</span>
+                  </button>
+                  {regularBatches.batches.length > 0 && (
+                    <button
+                      type="button"
+                      data-track="coach_designated_image_mode_regular_batch"
+                      onClick={() => setBatchImageSource('regular')}
+                      style={{
+                        ...getButtonStyle('outline', 'medium', isMobile),
+                        minHeight: 58,
+                        justifyContent: 'space-between',
+                        borderColor: designSystem.colors.info[500],
+                        background: designSystem.colors.info[50],
+                        color: designSystem.colors.info[700],
+                      }}
+                    >
+                      <span>一般指定課分批</span>
+                      <span aria-hidden>›</span>
+                    </button>
+                  )}
+                  {(hasGiftEntries || giftBalance !== 0)
+                    && giftBatches.batches.length > 0 && (
+                    <button
+                      type="button"
+                      data-track="coach_designated_image_mode_gift_batch"
+                      onClick={() => setBatchImageSource('gift')}
+                      style={{
+                        ...getButtonStyle('outline', 'medium', isMobile),
+                        minHeight: 58,
+                        justifyContent: 'space-between',
+                        borderColor: designSystem.colors.warning[500],
+                        background: designSystem.colors.warning[50],
+                        color: designSystem.colors.warning[700],
+                      }}
+                    >
+                      <span>贈送指定課分批</span>
+                      <span aria-hidden>›</span>
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImageMenuOpen(false)}
+                  style={{
+                    ...getButtonStyle('outline', 'medium', isMobile),
+                    width: '100%',
+                    marginTop: 16,
+                  }}
+                >
+                  取消
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setBatchImageSource(null)}
+                  style={{
+                    border: 0,
+                    padding: '8px 0',
+                    marginBottom: 6,
+                    background: 'transparent',
+                    color: designSystem.colors.primary[600],
+                    fontSize: getFontSize('body', isMobile),
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← 返回格式
+                </button>
+                <h2 style={{ margin: '0 0 14px', fontSize: getFontSize('h2', isMobile) }}>
+                  {batchImageSource === 'gift' ? '贈送指定課分批' : '一般指定課分批'}
+                </h2>
+                {imageBatches.unallocatedDeductions.length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      padding: 10,
+                      borderRadius: designSystem.borderRadius.lg,
+                      background: designSystem.colors.warning[50],
+                      color: designSystem.colors.warning[700],
+                      fontSize: getFontSize('bodySmall', isMobile),
+                    }}
+                  >
+                    尚有 {imageBatches.unallocatedDeductions.reduce(
+                      (sum, item) => sum + item.minutes,
+                      0,
+                    )} 分待補，不在以下分批內
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {imageBatches.batches.length === 0 ? (
+                    <div style={{ padding: 24, color: designSystem.colors.text.secondary, textAlign: 'center' }}>
+                      目前沒有可儲存的分批
+                    </div>
+                  ) : imageBatches.batches.map((batch) => (
+                    <button
+                      key={batch.credit.id}
+                      type="button"
+                      data-track={`coach_designated_save_${batchImageSource}_batch_image`}
+                      disabled={saving}
+                      onClick={() => void saveBatchImage(batch, batchImageSource)}
+                      style={{
+                        width: '100%',
+                        minHeight: 72,
+                        padding: '13px 14px',
+                        border: `1px solid ${
+                          batchImageSource === 'gift'
+                            ? designSystem.colors.warning[500]
+                            : designSystem.colors.info[500]
+                        }`,
+                        borderRadius: designSystem.borderRadius.xl,
+                        background: batchImageSource === 'gift'
+                          ? designSystem.colors.warning[50]
+                          : designSystem.colors.info[50],
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        textAlign: 'left',
+                        cursor: saving ? 'wait' : 'pointer',
+                        opacity: saving ? 0.65 : 1,
+                      }}
+                    >
+                      <span style={{ minWidth: 0 }}>
+                        <strong
+                          style={{
+                            display: 'block',
+                            color: designSystem.colors.text.primary,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {batch.credit.occurred_at.slice(0, 10).replaceAll('-', '/')}
+                          {batch.credit.note ? ` · ${batch.credit.note}` : ''}
+                        </strong>
+                        <span
+                          style={{
+                            display: 'block',
+                            marginTop: 5,
+                            color: designSystem.colors.text.secondary,
+                            fontSize: getFontSize('bodySmall', isMobile),
+                          }}
+                        >
+                          起始 {batch.minutes} 分・剩餘 {batch.remaining} 分
+                        </span>
+                        {batch.credit.expires_on && (
+                          <span
+                            style={{
+                              display: 'block',
+                              marginTop: 4,
+                              color: batch.credit.expires_on < getLocalDateString()
+                                ? designSystem.colors.danger[700]
+                                : designSystem.colors.text.secondary,
+                              fontSize: getFontSize('caption', isMobile),
+                            }}
+                          >
+                            {expiryLabel(batch.credit.expires_on)}
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          color: batchImageSource === 'gift'
+                            ? designSystem.colors.warning[700]
+                            : designSystem.colors.info[700],
+                          fontWeight: 600,
+                        }}
+                      >
+                        {saving ? '產生中...' : '產生 ›'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {ledgerImageRangeOpen && (
         <div style={dialogBackdrop(isMobile)} onClick={() => setLedgerImageRangeOpen(false)}>
           <div
@@ -714,15 +1105,39 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
             }}
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 style={{ margin: '0 0 18px', fontSize: getFontSize('h2', isMobile) }}>
-              選擇流水期間
-            </h2>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
+              <h2 style={{ margin: 0, fontSize: getFontSize('h2', isMobile) }}>
+                選擇流水期間
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setLedgerImageStartDate(getDaysAgoDateString(30))
+                  setLedgerImageEndDate(getLocalDateString())
+                  setLedgerImageError(null)
+                }}
+                style={getButtonStyle('outline', 'small', isMobile)}
+              >
+                重設近 30 天
+              </button>
+            </div>
             <label style={getLabelStyle(isMobile)}>開始日期</label>
             <input
               type="date"
               value={ledgerImageStartDate}
               max={ledgerImageEndDate || getLocalDateString()}
-              onChange={(event) => setLedgerImageStartDate(event.target.value)}
+              onChange={(event) => {
+                setLedgerImageStartDate(event.target.value)
+                setLedgerImageError(null)
+              }}
               style={{
                 ...getInputStyle(isMobile),
                 boxSizing: 'border-box',
@@ -737,7 +1152,10 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               value={ledgerImageEndDate}
               min={ledgerImageStartDate}
               max={getLocalDateString()}
-              onChange={(event) => setLedgerImageEndDate(event.target.value)}
+              onChange={(event) => {
+                setLedgerImageEndDate(event.target.value)
+                setLedgerImageError(null)
+              }}
               style={{
                 ...getInputStyle(isMobile),
                 boxSizing: 'border-box',
@@ -745,6 +1163,18 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                 maxWidth: '100%',
               }}
             />
+            {ledgerImageError && (
+              <div
+                role="alert"
+                style={{
+                  marginTop: 12,
+                  color: designSystem.colors.danger[700],
+                  fontSize: getFontSize('bodySmall', isMobile),
+                }}
+              >
+                {ledgerImageError}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
               <button
                 type="button"
@@ -756,10 +1186,16 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               <button
                 type="button"
                 data-track="coach_designated_save_ledger_range"
-                onClick={saveLedgerRangeImage}
-                style={{ ...getButtonStyle('primary', 'medium', isMobile), flex: 1 }}
+                disabled={saving}
+                onClick={() => void saveLedgerRangeImage()}
+                style={{
+                  ...getButtonStyle('primary', 'medium', isMobile),
+                  flex: 1,
+                  opacity: saving ? 0.65 : 1,
+                  cursor: saving ? 'wait' : 'pointer',
+                }}
               >
-                產生圖片
+                {saving ? '產生中...' : '產生圖片'}
               </button>
             </div>
           </div>
@@ -844,12 +1280,12 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               placeholder="沒有贈送可留空"
             />
             <div style={{ height: 12 }} />
-            <label style={getLabelStyle(isMobile)}>使用期限 <span style={{ color: designSystem.colors.text.secondary }}>（選填，僅提醒）</span></label>
-            <input
-              type="date"
+            <OptionalDateField
+              label="使用期限"
+              hint="選填，僅提醒"
               value={creditExpiresOn}
-              onChange={(event) => setCreditExpiresOn(event.target.value)}
-              style={getInputStyle(isMobile)}
+              onChange={setCreditExpiresOn}
+              isMobile={isMobile}
             />
             <div style={{ height: 12 }} />
             <label style={getLabelStyle(isMobile)}>名稱／備註 <span style={{ color: designSystem.colors.text.secondary }}>（選填）</span></label>
@@ -1076,8 +1512,13 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
             {editingEntry.entry_type === 'credit' && (
               <>
                 <div style={{ height: 12 }} />
-                <label style={getLabelStyle(isMobile)}>使用期限 <span style={{ color: designSystem.colors.text.secondary }}>（選填）</span></label>
-                <input type="date" value={editExpiresOn} onChange={(event) => setEditExpiresOn(event.target.value)} style={getInputStyle(isMobile)} />
+                <OptionalDateField
+                  label="使用期限"
+                  hint="選填"
+                  value={editExpiresOn}
+                  onChange={setEditExpiresOn}
+                  isMobile={isMobile}
+                />
                 <div style={{ height: 12 }} />
                 <label style={getLabelStyle(isMobile)}>備註</label>
                 <input value={editNote} onChange={(event) => setEditNote(event.target.value)} style={getInputStyle(isMobile)} />
@@ -1123,6 +1564,63 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           </div>
         </div>
       )}
+    </>
+  )
+}
+
+function OptionalDateField({
+  label,
+  hint,
+  value,
+  onChange,
+  isMobile,
+}: {
+  label: string
+  hint: string
+  value: string
+  onChange: (value: string) => void
+  isMobile: boolean
+}) {
+  return (
+    <>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: designSystem.spacing.sm,
+        }}
+      >
+        <label style={{ ...getLabelStyle(isMobile), marginBottom: 0 }}>
+          {label}{' '}
+          <span style={{ color: designSystem.colors.text.secondary }}>（{hint}）</span>
+        </label>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            style={{
+              minHeight: 36,
+              padding: '6px 10px',
+              border: `1px solid ${designSystem.colors.border.main}`,
+              borderRadius: designSystem.borderRadius.md,
+              background: designSystem.colors.background.card,
+              color: designSystem.colors.text.secondary,
+              cursor: 'pointer',
+              fontSize: getFontSize('bodySmall', isMobile),
+            }}
+          >
+            清除
+          </button>
+        )}
+      </div>
+      <input
+        type="date"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        style={getInputStyle(isMobile)}
+      />
     </>
   )
 }

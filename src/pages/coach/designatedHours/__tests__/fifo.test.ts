@@ -44,4 +44,25 @@ describe('buildCoachDesignatedBatches', () => {
     expect(result.batches[0].remaining).toBe(0)
     expect(result.unallocatedDeductions[0].minutes).toBe(10)
   })
+
+  it('builds regular and gift batches independently', () => {
+    const credit = {
+      ...entry(1, 'credit', 330, '2026-09-22T00:00:00Z'),
+      regular_minutes: 300,
+      gift_minutes: 30,
+    }
+    const deduction = {
+      ...entry(2, 'report_deduction', 30, '2026-09-26T00:00:00Z'),
+      regular_minutes: 20,
+      gift_minutes: 10,
+    }
+
+    const regular = buildCoachDesignatedBatches([credit, deduction], 'regular')
+    const gift = buildCoachDesignatedBatches([credit, deduction], 'gift')
+
+    expect(regular.batches[0]).toMatchObject({ minutes: 300, remaining: 280 })
+    expect(regular.batches[0].allocations[0].minutes).toBe(20)
+    expect(gift.batches[0]).toMatchObject({ minutes: 30, remaining: 20 })
+    expect(gift.batches[0].allocations[0].minutes).toBe(10)
+  })
 })

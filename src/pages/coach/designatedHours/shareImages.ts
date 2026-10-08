@@ -8,6 +8,7 @@ export interface CoachDesignatedShareRow {
 export interface CoachDesignatedShareInput {
   studentName: string
   title: string
+  headerNote?: string | null
   openingMinutes?: number
   remainingMinutes: number
   rows: CoachDesignatedShareRow[]
@@ -50,7 +51,21 @@ function drawRoundedRect(
   radius: number,
 ) {
   context.beginPath()
-  context.roundRect(x, y, width, height, radius)
+  if (typeof context.roundRect === 'function') {
+    context.roundRect(x, y, width, height, radius)
+    return
+  }
+  const safeRadius = Math.min(radius, width / 2, height / 2)
+  context.moveTo(x + safeRadius, y)
+  context.lineTo(x + width - safeRadius, y)
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius)
+  context.lineTo(x + width, y + height - safeRadius)
+  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height)
+  context.lineTo(x + safeRadius, y + height)
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius)
+  context.lineTo(x, y + safeRadius)
+  context.quadraticCurveTo(x, y, x + safeRadius, y)
+  context.closePath()
 }
 
 function fitText(
@@ -74,8 +89,24 @@ export async function createCoachDesignatedShareImages(
   const files: File[] = []
   for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
     const pageRows = pages[pageIndex]
+    const minutesBeforePage = pages
+      .slice(0, pageIndex)
+      .flat()
+      .reduce((total, row) => total + row.minutes, 0)
+    const pageOpeningMinutes = input.openingMinutes == null
+      ? undefined
+      : input.openingMinutes + minutesBeforePage
+    const pageRemainingMinutes = pageOpeningMinutes == null
+      ? input.remainingMinutes
+      : pageOpeningMinutes + pageRows.reduce((total, row) => total + row.minutes, 0)
     const noteCount = pageRows.filter((row) => row.note).length
-    const height = 400 + pageRows.length * 106 + noteCount * 44
+    const headerNoteHeight = input.headerNote ? 44 : 0
+    const openingHeight = input.openingMinutes == null ? 0 : 72
+    const height = 400
+      + headerNoteHeight
+      + openingHeight
+      + pageRows.length * 106
+      + noteCount * 44
     const canvas = document.createElement('canvas')
     canvas.width = WIDTH
     canvas.height = height
@@ -90,25 +121,30 @@ export async function createCoachDesignatedShareImages(
     context.fillText(`${input.studentName}｜指定課`, 64, 92)
     context.fillStyle = '#6b7280'
     context.font = '400 34px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-    context.fillText(input.title, 64, 145)
+    context.fillText(fitText(context, input.title, WIDTH - 128), 64, 145)
+    if (input.headerNote) {
+      context.fillStyle = input.headerNote.includes('已逾使用期限') ? '#a23f3f' : '#8b919b'
+      context.font = '400 27px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.fillText(fitText(context, input.headerNote, WIDTH - 128), 64, 184)
+    }
 
-    drawRoundedRect(context, 64, 190, WIDTH - 128, height - 270, 30)
+    drawRoundedRect(context, 64, 190 + headerNoteHeight, WIDTH - 128, height - 270 - headerNoteHeight, 30)
     context.fillStyle = '#ffffff'
     context.fill()
     context.strokeStyle = '#e5e7eb'
     context.lineWidth = 2
     context.stroke()
 
-    let y = 265
-    if (input.openingMinutes != null) {
+    let y = 265 + headerNoteHeight
+    if (pageOpeningMinutes != null) {
       context.fillStyle = '#6b7280'
       context.font = '500 34px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-      context.fillText(`起始 ${input.openingMinutes} 分鐘`, 112, y)
+      context.fillText(`起始 ${pageOpeningMinutes} 分鐘`, 112, y)
       y += 72
     }
 
     pageRows.forEach((row, rowIndex) => {
-      if (rowIndex > 0 || input.openingMinutes != null) {
+      if (rowIndex > 0 || pageOpeningMinutes != null) {
         context.strokeStyle = '#eef0f3'
         context.beginPath()
         context.moveTo(112, y - 42)
@@ -145,7 +181,7 @@ export async function createCoachDesignatedShareImages(
     context.fillStyle = '#1d1d1f'
     context.font = '700 44px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
     context.textAlign = 'right'
-    context.fillText(`剩餘 ${input.remainingMinutes} 分`, WIDTH - 112, height - 92)
+    context.fillText(`剩餘 ${pageRemainingMinutes} 分`, WIDTH - 112, height - 92)
     context.textAlign = 'left'
 
     if (pages.length > 1) {
@@ -167,12 +203,16 @@ export async function createCoachDesignatedShareImages(
 }
 
 export function downloadCoachDesignatedImages(files: File[]) {
-  files.forEach((file) => {
-    const url = URL.createObjectURL(file)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = file.name
-    anchor.click()
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  files.forEach((file, index) => {
+    window.setTimeout(() => {
+      const url = URL.createObjectURL(file)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = file.name
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    }, index * 250)
   })
 }

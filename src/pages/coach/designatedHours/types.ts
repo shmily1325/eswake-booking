@@ -7,6 +7,8 @@ export interface CoachDesignatedStudent {
   regular_balance?: number
   gift_balance?: number
   has_gift_entries?: boolean
+  regular_expires_on?: string | null
+  gift_expires_on?: string | null
   last_activity_at: string
   entry_count: number
 }
@@ -45,6 +47,7 @@ export interface CoachDesignatedBatchAllocation {
 
 export interface CoachDesignatedBatch {
   credit: CoachDesignatedEntry
+  minutes: number
   allocations: CoachDesignatedBatchAllocation[]
   remaining: number
 }
