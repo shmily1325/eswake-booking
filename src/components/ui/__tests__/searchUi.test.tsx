@@ -38,6 +38,30 @@ describe('ClearableSearchInput', () => {
 
     expect(onValueChange).toHaveBeenCalledWith('')
   })
+
+  it('only shows the search icon while the field is empty', () => {
+    const { container, rerender } = render(
+      <ClearableSearchInput
+        value=""
+        onValueChange={() => undefined}
+        isMobile
+        aria-label="搜尋會員"
+      />
+    )
+
+    expect(container.querySelector('svg')).not.toBeNull()
+
+    rerender(
+      <ClearableSearchInput
+        value="Angela"
+        onValueChange={() => undefined}
+        isMobile
+        aria-label="搜尋會員"
+      />
+    )
+
+    expect(container.querySelector('svg')).toBeNull()
+  })
 })
 
 describe('HighlightedText', () => {

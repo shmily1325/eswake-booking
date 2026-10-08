@@ -35,6 +35,7 @@ export function ClearableSearchInput({
   ...inputProps
 }: ClearableSearchInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const searchIconVisible = showSearchIcon && value.length === 0
 
   const clear = () => {
     onValueChange('')
@@ -58,7 +59,7 @@ export function ClearableSearchInput({
         ...containerStyle,
       }}
     >
-      {showSearchIcon && (
+      {searchIconVisible && (
         <span
           aria-hidden="true"
           style={{
@@ -92,7 +93,7 @@ export function ClearableSearchInput({
           ...inputStyle,
           width: '100%',
           boxSizing: 'border-box',
-          paddingLeft: showSearchIcon ? 40 : undefined,
+          paddingLeft: searchIconVisible ? 40 : undefined,
           paddingRight: value ? (isMobile ? 52 : 42) : undefined,
         }}
       />
