@@ -213,6 +213,8 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   const parsedEditRegular = Number(editRegularMinutes || 0)
   const parsedEditGift = Number(editGiftMinutes || 0)
   const parsedEditMinutes = parsedEditRegular + parsedEditGift
+  const isDefaultLedgerImageRange = ledgerImageStartDate === getDaysAgoDateString(30)
+    && ledgerImageEndDate === getLocalDateString()
   const originalEditDelta = editingEntry?.delta_minutes ?? 0
   const originalRegularDelta = editingEntry
     ? (editingEntry.entry_type === 'credit' ? 1 : -1)
@@ -966,25 +968,27 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                     setImageView('menu')
                   }}
                 />
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    marginBottom: 14,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLedgerImageStartDate(getDaysAgoDateString(30))
-                      setLedgerImageEndDate(getLocalDateString())
-                      setLedgerImageError(null)
+                {!isDefaultLedgerImageRange && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      marginBottom: 14,
                     }}
-                    style={getButtonStyle('outline', 'small', isMobile)}
                   >
-                    重設近 30 天
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLedgerImageStartDate(getDaysAgoDateString(30))
+                        setLedgerImageEndDate(getLocalDateString())
+                        setLedgerImageError(null)
+                      }}
+                      style={getButtonStyle('outline', 'small', isMobile)}
+                    >
+                      重設近 30 天
+                    </button>
+                  </div>
+                )}
                 <label style={getLabelStyle(isMobile)}>開始日期</label>
                 <input
                   type="date"
@@ -1161,7 +1165,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
       {creditOpen && (
         <div style={dialogBackdrop(isMobile)} onClick={resetCreditDialog}>
           <div style={dialogSurface(isMobile)} onClick={(event) => event.stopPropagation()}>
-            <h2 style={{ margin: '0 0 18px', fontSize: getFontSize('h2', isMobile) }}>新增指定課時數</h2>
+            <h2 style={{ margin: '0 0 18px', fontSize: getFontSize('h2', isMobile) }}>新增指定課</h2>
             {!creditMemberId && (
               <div style={{ marginBottom: 14, position: 'relative' }}>
                 <label style={getLabelStyle(isMobile)}>選擇學生</label>
