@@ -1154,6 +1154,9 @@ export function CoachReport({
                     color: designSystem.colors.text.primary,
                     cursor: 'pointer',
                     flex: isMobile ? '1' : 'none',
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
                     background: '#ffffff'
                   }}
                 />

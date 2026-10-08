@@ -458,7 +458,8 @@ export function CoachSchedulePreviewTable({ coachId, isMobile }: CoachSchedulePr
               borderRadius: designSystem.borderRadius.md,
               background: '#fff',
               color: designSystem.colors.text.primary,
-              font: 'inherit'
+              fontFamily: 'inherit',
+              fontSize: '16px',
             }}
           />
           <button

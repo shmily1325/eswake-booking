@@ -569,6 +569,9 @@ export const getInputStyle = (
   
   return {
     width: '100%',
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
     padding: isMobile ? '12px 14px' : '13px 16px',
     fontSize: '16px', // 固定 16px 防止 iOS 縮放
     fontFamily: 'inherit',

@@ -314,7 +314,7 @@ function RestrictionSchedulePicker({
             gap: '8px',
             minWidth: 0,
           }}>
-            <label style={{ display: 'grid', gap: '4px', minWidth: 0, maxWidth: '100%' }}>
+            <label style={{ display: 'grid', gap: '4px', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
               <span style={{
                 color: designSystem.colors.text.secondary,
                 fontSize: getFontSize('caption', isMobile),
@@ -340,7 +340,7 @@ function RestrictionSchedulePicker({
             )}
 
             {crossDay && (
-              <label style={{ display: 'grid', gap: '4px', minWidth: 0, maxWidth: '100%' }}>
+              <label style={{ display: 'grid', gap: '4px', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                 <span style={{
                   color: designSystem.colors.text.secondary,
                   fontSize: getFontSize('caption', isMobile),
@@ -1102,7 +1102,7 @@ export function AnnouncementManagement() {
                 minWidth: 0,
               }}
             >
-              <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%' }}>
+              <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                 {isMobile && (
                   <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                     {newEndDate !== newStartDate ? '開始日期' : '日期'}
@@ -1139,7 +1139,7 @@ export function AnnouncementManagement() {
                 </span>
               )}
               {newEndDate !== newStartDate && (
-                <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%' }}>
+                <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                 {isMobile && (
                   <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                     結束日期
@@ -1325,18 +1325,19 @@ export function AnnouncementManagement() {
                 searchText ? a.content.toLowerCase().includes(searchText.toLowerCase()) : true
               ).length})
             </h2>
-            <input
-              type="month"
-              data-track="announcement_month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              style={{
-                minWidth: 0,
-                ...getInputStyle(isMobile),
-                width: '100%',
-                cursor: 'pointer',
-              }}
-            />
+            <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+              <input
+                type="month"
+                data-track="announcement_month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                style={{
+                  ...getInputStyle(isMobile),
+                  width: '100%',
+                  cursor: 'pointer',
+                }}
+              />
+            </div>
           </div>
 
           {/* 搜尋和排序控制 */}
@@ -1463,7 +1464,7 @@ export function AnnouncementManagement() {
                               minWidth: 0,
                             }}
                           >
-                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%' }}>
+                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                               {isMobile && (
                                 <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                                   {editEndDate !== editStartDate ? '開始日期' : '日期'}
@@ -1502,7 +1503,7 @@ export function AnnouncementManagement() {
                               </span>
                             )}
                             {editEndDate !== editStartDate && (
-                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%' }}>
+                            <label style={{ display: 'grid', gap: isMobile ? '5px' : 0, minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                               {isMobile && (
                                 <span style={{ fontSize: getFontSize('bodySmall', true), color: designSystem.colors.text.secondary }}>
                                   結束日期

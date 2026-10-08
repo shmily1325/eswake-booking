@@ -632,6 +632,29 @@
             font-size: 16px;
         }
 
+        input[type="date"],
+        input[type="time"],
+        input[type="month"] {
+            min-width: 0;
+            max-width: 100%;
+            min-inline-size: 0;
+            max-inline-size: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            font-size: 16px !important;
+        }
+
+        input[type="date"]::-webkit-date-and-time-value,
+        input[type="time"]::-webkit-date-and-time-value,
+        input[type="month"]::-webkit-date-and-time-value,
+        input[type="date"]::-webkit-datetime-edit,
+        input[type="time"]::-webkit-datetime-edit,
+        input[type="month"]::-webkit-datetime-edit {
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
         .day-weekday {
             padding: 8px 12px;
             border: 1px solid var(--es-border-light);
@@ -3063,7 +3086,9 @@
                     <main class="es-shell es-shell-wide">
                         <div class="day-date-nav">
                             <button class="day-nav-arrow" onclick="showOfflineCoachAssignment('${addDaysToDateStr(selectedDate, -1)}')" aria-label="前一天">←</button>
-                            <input class="day-date-input" type="date" value="${escapeHtml(selectedDate)}" onchange="showOfflineCoachAssignment(this.value)">
+                            <div style="flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;">
+                                <input class="day-date-input" type="date" value="${escapeHtml(selectedDate)}" onchange="showOfflineCoachAssignment(this.value)">
+                            </div>
                             <span class="day-weekday">${escapeHtml(formatDisplayDate(selectedDate).weekday)}</span>
                             <button class="day-nav-arrow" onclick="showOfflineCoachAssignment('${addDaysToDateStr(selectedDate, 1)}')" aria-label="後一天">→</button>
                             <button class="day-today-button" onclick="showOfflineCoachAssignment('${getVenueDateString()}')">今天</button>

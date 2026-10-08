@@ -62,11 +62,14 @@ export function TimeOffBatchCalendar({
             if (event.target.value) onMonthChange(event.target.value)
           }}
           style={{
+            minWidth: 0,
+            maxWidth: '100%',
+            boxSizing: 'border-box',
             padding: '7px 9px',
             border: `1px solid ${designSystem.colors.border.light}`,
             borderRadius: designSystem.borderRadius.md,
             background: designSystem.colors.background.card,
-            fontSize: '15px',
+            fontSize: '16px',
           }}
         />
       </div>

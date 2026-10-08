@@ -874,7 +874,9 @@ export function CoachAdmin() {
                       ...getInputStyle(isMobile),
                       padding: '8px 12px',
                       flex: isMobile ? 1 : undefined,
+                      minWidth: 0,
                       width: isMobile ? 'auto' : undefined,
+                      boxSizing: 'border-box',
                       cursor: 'pointer',
                     }}
                   />

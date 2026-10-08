@@ -327,7 +327,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
               <label style={getLabelStyle(isMobile)}>
                 生日 <span style={quietHint}>（選填）</span>
               </label>
-              <div style={{ display: 'flex' }}>
+              <div style={{ display: 'flex', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                 <input
                   type="date"
                   value={formData.birthday}
@@ -409,7 +409,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 <label style={getLabelStyle(isMobile)}>
                   會員開始日期 <span style={quietHint}>（選填）</span>
                 </label>
-                <div style={{ display: 'flex' }}>
+                <div style={{ display: 'flex', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                   <input
                     type="date"
                     value={formData.membership_start_date}
@@ -425,7 +425,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                 <label style={getLabelStyle(isMobile)}>
                   會員截止日期 <span style={quietHint}>（選填）</span>
                 </label>
-                <div style={{ display: 'flex' }}>
+                <div style={{ display: 'flex', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                   <input
                     type="date"
                     value={formData.membership_end_date}
@@ -561,7 +561,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                     <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px' }}>
                       置板開始 <span style={quietHint}>（選填）</span>
                     </label>
-                    <div style={{ display: 'flex' }}>
+                    <div style={{ display: 'flex', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                       <input
                         type="date"
                         value={board.start_date}
@@ -576,7 +576,7 @@ export function AddMemberDialog({ open, onClose, onSuccess }: AddMemberDialogPro
                     <label style={{ ...getLabelStyle(isMobile), marginBottom: '6px' }}>
                       置板到期 <span style={quietHint}>（選填）</span>
                     </label>
-                    <div style={{ display: 'flex' }}>
+                    <div style={{ display: 'flex', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                       <input
                         type="date"
                         value={board.expires_at}
