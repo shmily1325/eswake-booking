@@ -121,7 +121,10 @@ export function MemberPhoneEditPage() {
       ])
 
       if (membersRes.error) throw membersRes.error
-      if (lineRes.error) throw lineRes.error
+      if (lineRes.error) {
+        console.error('載入 LINE 綁定失敗，改以會員資料繼續顯示:', lineRes.error)
+        toast.warning('LINE 綁定狀態暫時無法載入，會員清單仍可使用')
+      }
 
       const lineBindingsData = (lineRes.data || []) as {
         member_id: string

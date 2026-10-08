@@ -161,7 +161,10 @@ export function MemberTransaction() {
         ])
 
       if (membersResult.error) throw membersResult.error
-      if (lastTransactionsResult.error) throw lastTransactionsResult.error
+      if (lastTransactionsResult.error) {
+        console.error('載入最後交易時間失敗，改以會員資料繼續顯示:', lastTransactionsResult.error)
+        toast.warning('最後交易時間暫時無法載入，會員清單仍可使用')
+      }
       if (lineBindingsResult.error) {
         console.error('載入 LINE 綁定失敗:', lineBindingsResult.error)
       }
@@ -215,18 +218,37 @@ export function MemberTransaction() {
         })
       })
 
-      // 合併資料
-      const membersWithLastTransaction = (membersResult.data || []).map(m => ({
-        ...m,
-        lastTransactionDate: lastTransactionMap[m.id]?.date || null,
-        lastTransactionCreatedAt: lastTransactionMap[m.id]?.createdAt || null,
-        line_binding_user_id: memberIdToLineBinding[m.id]?.lineUserId || null,
-        line_binding_can_push: memberIdToLineBinding[m.id]?.canPush === true,
-        last_liff_login_at: memberIdToLineBinding[m.id]?.lastLiffLoginAt || null,
-        is_line_bound: Boolean(memberIdToLineBinding[m.id]),
-        board_expiry_dates: boardExpiryDatesByMember[m.id] || [],
-        credit_lots: lotsByMember[m.id] || [],
-      }))
+      const previousMembersById = new Map(members.map(member => [member.id, member]))
+      const membersWithLastTransaction = (membersResult.data || []).map(m => {
+        const previous = previousMembersById.get(m.id)
+        return {
+          ...m,
+          lastTransactionDate: lastTransactionsResult.error
+            ? previous?.lastTransactionDate ?? null
+            : lastTransactionMap[m.id]?.date || null,
+          lastTransactionCreatedAt: lastTransactionsResult.error
+            ? previous?.lastTransactionCreatedAt ?? null
+            : lastTransactionMap[m.id]?.createdAt || null,
+          line_binding_user_id: lineBindingsResult.error
+            ? previous?.line_binding_user_id ?? null
+            : memberIdToLineBinding[m.id]?.lineUserId || null,
+          line_binding_can_push: lineBindingsResult.error
+            ? previous?.line_binding_can_push ?? false
+            : memberIdToLineBinding[m.id]?.canPush === true,
+          last_liff_login_at: lineBindingsResult.error
+            ? previous?.last_liff_login_at ?? null
+            : memberIdToLineBinding[m.id]?.lastLiffLoginAt || null,
+          is_line_bound: lineBindingsResult.error
+            ? previous?.is_line_bound ?? false
+            : Boolean(memberIdToLineBinding[m.id]),
+          board_expiry_dates: boardResult.error
+            ? previous?.board_expiry_dates ?? []
+            : boardExpiryDatesByMember[m.id] || [],
+          credit_lots: lotsResult.error
+            ? previous?.credit_lots ?? []
+            : lotsByMember[m.id] || [],
+        }
+      })
 
       setMembers(membersWithLastTransaction)
     } catch (error) {

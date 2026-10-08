@@ -136,6 +136,7 @@ export function MemberManagement() {
   const navigate = useNavigate()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
+  const [memberEnrichmentLoading, setMemberEnrichmentLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -159,6 +160,7 @@ export function MemberManagement() {
     combined: '',
   })
   const memberListRef = useRef<HTMLDivElement>(null)
+  const memberLoadRequestIdRef = useRef(0)
   /** 列表備忘錄展開的會員 id（預設收合，只顯示最近幾則） */
   const [expandedMemoMemberIds, setExpandedMemoMemberIds] = useState<Set<string>>(() => new Set())
   const {
@@ -169,7 +171,10 @@ export function MemberManagement() {
 
   useEffect(() => {
     if (!user || !userIsAdmin) return
-    loadMembers()
+    void loadMembers()
+    return () => {
+      memberLoadRequestIdRef.current += 1
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showInactive, user, userIsAdmin])
 
@@ -255,26 +260,55 @@ export function MemberManagement() {
   }
 
   const loadMembers = async (silent = false) => {
+    const requestId = ++memberLoadRequestIdRef.current
     // silent 模式：不顯示 loading，用於更新後的靜默刷新，保持滾動位置
     if (!silent) {
       setLoading(true)
     }
     try {
-      // 並行查詢會員資料、置板資料與 LINE 綁定（備忘錄改依會員 ID 分批，避免整表 notes）
-      const [membersResult, boardResult, lineBindingsResult] = await Promise.all([
-        supabase
-          .from('members')
-          .select(`
-            id, name, nickname, phone, birthday, notes,
-            balance, vip_voucher_amount, designated_lesson_minutes,
-            boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes,
-            gift_boat_hours, membership_end_date, membership_start_date,
-            membership_type, membership_partner_id,
-            board_slot_number, board_expiry_date,
-            status, created_at, updated_at
-          `)
-          .in('status', showInactive ? ['active', 'inactive'] : ['active']),
+      const membersResult = await supabase
+        .from('members')
+        .select(`
+          id, name, nickname, phone, birthday, notes,
+          balance, vip_voucher_amount, designated_lesson_minutes,
+          boat_voucher_g23_minutes, boat_voucher_g21_panther_minutes,
+          gift_boat_hours, membership_end_date, membership_start_date,
+          membership_type, membership_partner_id,
+          board_slot_number, board_expiry_date,
+          status, created_at, updated_at
+        `)
+        .in('status', showInactive ? ['active', 'inactive'] : ['active'])
 
+      if (requestId !== memberLoadRequestIdRef.current) return
+      if (membersResult.error) throw membersResult.error
+
+      const membersData = membersResult.data || []
+      const previousMembersById = new Map(members.map(member => [member.id, member]))
+      const baseMembers = membersData.map((member: any) => ({
+        ...member,
+        board_slots: previousMembersById.get(member.id)?.board_slots ?? [],
+        board_count: previousMembersById.get(member.id)?.board_count ?? 0,
+        partner: previousMembersById.get(member.id)?.membership_partner_id === member.membership_partner_id
+          ? previousMembersById.get(member.id)?.partner ?? null
+          : null,
+        member_notes: previousMembersById.get(member.id)?.member_notes ?? [],
+        line_binding_user_id: previousMembersById.get(member.id)?.line_binding_user_id ?? null,
+        line_binding_can_push: previousMembersById.get(member.id)?.line_binding_can_push ?? false,
+        line_reminder_mapping_id: previousMembersById.get(member.id)?.line_reminder_mapping_id ?? null,
+        line_reminder_mapping_can_push: previousMembersById.get(member.id)?.line_reminder_mapping_can_push ?? false,
+        last_liff_login_at: previousMembersById.get(member.id)?.last_liff_login_at ?? null,
+        is_line_bound: previousMembersById.get(member.id)?.is_line_bound ?? false,
+      }))
+      setMembers(baseMembers)
+      setMemberEnrichmentLoading(true)
+      if (!silent) {
+        setLoading(false)
+      }
+
+      const supplementalLoadFailures: string[] = []
+      // 基本清單顯示後，再於背景補齊置板、LINE、備忘錄與配對會員。
+      try {
+        const [boardResult, lineBindingsResult] = await Promise.all([
         supabase
           .from('board_storage')
           .select('member_id, slot_number, start_date, expires_at')
@@ -285,15 +319,22 @@ export function MemberManagement() {
           .from('line_bindings')
           .select('member_id, line_user_id, last_liff_login_at, can_push')
           .eq('status', 'active')
-      ])
+        ])
 
-      if (membersResult.error) throw membersResult.error
-      if (boardResult.error) throw boardResult.error
-      if (lineBindingsResult.error) throw lineBindingsResult.error
+        if (requestId !== memberLoadRequestIdRef.current) return
+        if (boardResult.error) {
+          console.error('載入會員置板資料失敗，改以會員資料繼續顯示:', boardResult.error)
+          supplementalLoadFailures.push('置板')
+        }
+        if (lineBindingsResult.error) {
+          console.error('載入會員 LINE 綁定失敗，改以會員資料繼續顯示:', lineBindingsResult.error)
+          supplementalLoadFailures.push('LINE 綁定')
+        }
+        const boardLoadSucceeded = !boardResult.error
+        const lineBindingsLoadSucceeded = !lineBindingsResult.error
 
-      const membersData = membersResult.data || []
-      const boardData = boardResult.data || []
-      const lineBindingsData = lineBindingsResult.data || []
+        const boardData = boardResult.data || []
+        const lineBindingsData = lineBindingsResult.data || []
 
       // 依已載入會員 ID 分批 + 分頁抓備忘錄（排序與原先整表查詢相同）
       const memberIds = membersData.map((m: { id: string }) => m.id)
@@ -302,52 +343,66 @@ export function MemberManagement() {
         member_id: string | null
         line_contact?: { friend_status?: string } | Array<{ friend_status?: string }> | null
       }> = []
+      let reminderMappingsLoadSucceeded = true
       if (memberIds.length > 0) {
-        const { data: sessionData } = await supabase.auth.getSession()
-        const token = sessionData.session?.access_token
-        if (!token) throw new Error('登入已失效，請重新登入')
-        const mappingBatches = await Promise.all(
-          chunkArray(memberIds, 200).map(async (batch) => {
-            const response = await fetch('/api/line-reminder-send', {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                action: 'list_reminder_mappings',
-                bookingIds: [],
-                memberIds: batch,
-              }),
-            })
-            const body = await response.json().catch(() => null) as {
-              mappings?: typeof reminderMappingsData
-              error?: string
-            } | null
-            if (!response.ok) throw new Error(body?.error || '載入 LINE 配對失敗')
-            return body?.mappings ?? []
-          }),
-        )
-        reminderMappingsData = mappingBatches.flat()
+        try {
+          const { data: sessionData } = await supabase.auth.getSession()
+          const token = sessionData.session?.access_token
+          if (!token) throw new Error('登入已失效，請重新登入')
+          const mappingBatches = await Promise.all(
+            chunkArray(memberIds, 200).map(async (batch) => {
+              const response = await fetch('/api/line-reminder-send', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  action: 'list_reminder_mappings',
+                  bookingIds: [],
+                  memberIds: batch,
+                }),
+              })
+              const body = await response.json().catch(() => null) as {
+                mappings?: typeof reminderMappingsData
+                error?: string
+              } | null
+              if (!response.ok) throw new Error(body?.error || '載入 LINE 配對失敗')
+              return body?.mappings ?? []
+            }),
+          )
+          reminderMappingsData = mappingBatches.flat()
+        } catch (error) {
+          console.error('載入 LINE 提醒配對失敗，改以會員資料繼續顯示:', error)
+          supplementalLoadFailures.push('LINE 提醒配對')
+          reminderMappingsLoadSucceeded = false
+        }
       }
       let notesData: Array<{ id: number; member_id: string; event_date: string | null; event_type: string | null; description: string | null }> = []
+      let notesLoadSucceeded = true
       if (memberIds.length > 0) {
-        const idBatches = chunkArray(memberIds, IN_FILTER_BATCH_SIZE)
-        const notesBatches = await Promise.all(
-          idBatches.map((batch) =>
-            fetchAllPaginated(async (from, to) => {
-              // @ts-ignore - member_notes 表
-              const { data, error } = await supabase
-                .from('member_notes')
-                .select('id, member_id, event_date, event_type, description')
-                .in('member_id', batch)
-                .order('event_date', { ascending: true, nullsFirst: true })
-                .range(from, to)
-              return { data, error }
-            })
+        try {
+          const idBatches = chunkArray(memberIds, IN_FILTER_BATCH_SIZE)
+          const notesBatches = await Promise.all(
+            idBatches.map((batch) =>
+              fetchAllPaginated(async (from, to) => {
+                // @ts-ignore - member_notes 表
+                const { data, error } = await supabase
+                  .from('member_notes')
+                  .select('id, member_id, event_date, event_type, description')
+                  .in('member_id', batch)
+                  .order('event_date', { ascending: true, nullsFirst: true })
+                  .range(from, to)
+                return { data, error }
+              })
+            )
           )
-        )
-        notesData = notesBatches.flat()
+          notesData = notesBatches.flat()
+        } catch (error) {
+          console.error('載入會員備忘錄失敗，改以會員資料繼續顯示:', error)
+          supplementalLoadFailures.push('備忘錄')
+          notesLoadSucceeded = false
+        }
       }
 
       // 整理每個會員的置板資料
@@ -378,11 +433,17 @@ export function MemberManagement() {
         .filter(Boolean)
 
       let partnersData: any[] = []
+      let partnersLoadSucceeded = true
       if (partnerIds.length > 0) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('members')
           .select('id, name, nickname')
           .in('id', partnerIds)
+        if (error) {
+          console.error('載入配對會員失敗，改以會員資料繼續顯示:', error)
+          supplementalLoadFailures.push('配對會員')
+          partnersLoadSucceeded = false
+        }
         partnersData = data || []
       }
 
@@ -418,26 +479,70 @@ export function MemberManagement() {
       })
 
       // 合併資料
-      const membersWithBoards = membersData.map((member: any) => ({
-        ...member,
-        board_slots: memberBoards[member.id] || [],
-        board_count: memberBoards[member.id]?.length || 0,
-        partner: member.membership_partner_id ? partnersMap[member.membership_partner_id] : null,
-        member_notes: memberNotes[member.id] || [],
-        line_binding_user_id: memberIdToLineBinding[member.id]?.lineUserId || null,
-        line_binding_can_push: memberIdToLineBinding[member.id]?.canPush === true,
-        line_reminder_mapping_id: memberIdToReminderMapping[member.id] || null,
-        line_reminder_mapping_can_push: Boolean(memberIdToReminderMapping[member.id]),
-        last_liff_login_at: memberIdToLineBinding[member.id]?.lastLiffLoginAt || null,
-        is_line_bound: Boolean(memberIdToLineBinding[member.id])
-      }))
+      const membersWithBoards = membersData.map((member: any) => {
+        const previous = previousMembersById.get(member.id)
+        return {
+          ...member,
+          board_slots: boardLoadSucceeded
+            ? memberBoards[member.id] || []
+            : previous?.board_slots ?? [],
+          board_count: boardLoadSucceeded
+            ? memberBoards[member.id]?.length || 0
+            : previous?.board_count ?? 0,
+          partner: partnersLoadSucceeded
+            ? (member.membership_partner_id ? partnersMap[member.membership_partner_id] : null)
+            : previous?.membership_partner_id === member.membership_partner_id
+              ? previous?.partner ?? null
+              : null,
+          member_notes: notesLoadSucceeded
+            ? memberNotes[member.id] || []
+            : previous?.member_notes ?? [],
+          line_binding_user_id: lineBindingsLoadSucceeded
+            ? memberIdToLineBinding[member.id]?.lineUserId || null
+            : previous?.line_binding_user_id ?? null,
+          line_binding_can_push: lineBindingsLoadSucceeded
+            ? memberIdToLineBinding[member.id]?.canPush === true
+            : previous?.line_binding_can_push ?? false,
+          line_reminder_mapping_id: reminderMappingsLoadSucceeded
+            ? memberIdToReminderMapping[member.id] || null
+            : previous?.line_reminder_mapping_id ?? null,
+          line_reminder_mapping_can_push: reminderMappingsLoadSucceeded
+            ? Boolean(memberIdToReminderMapping[member.id])
+            : previous?.line_reminder_mapping_can_push ?? false,
+          last_liff_login_at: lineBindingsLoadSucceeded
+            ? memberIdToLineBinding[member.id]?.lastLiffLoginAt || null
+            : previous?.last_liff_login_at ?? null,
+          is_line_bound: lineBindingsLoadSucceeded
+            ? Boolean(memberIdToLineBinding[member.id])
+            : previous?.is_line_bound ?? false,
+        }
+      })
 
+      if (requestId !== memberLoadRequestIdRef.current) return
       setMembers(membersWithBoards)
+      if (!silent && supplementalLoadFailures.length > 0) {
+        toast.warning(`部分附加資料暫時無法載入：${supplementalLoadFailures.join('、')}`)
+      }
+      } catch (error) {
+        if (requestId !== memberLoadRequestIdRef.current) return
+        console.error('載入會員附加資料失敗，會員清單仍可使用:', error)
+        if (!silent) {
+          toast.warning('部分附加資料暫時無法載入，會員清單仍可使用')
+        }
+      } finally {
+        if (requestId === memberLoadRequestIdRef.current) {
+          setMemberEnrichmentLoading(false)
+        }
+      }
     } catch (error) {
+      if (requestId !== memberLoadRequestIdRef.current) return
       console.error('載入會員失敗:', error)
       toast.error('載入會員失敗')
+      setMemberEnrichmentLoading(false)
     } finally {
-      setLoading(false)
+      if (requestId === memberLoadRequestIdRef.current) {
+        setLoading(false)
+      }
     }
   }
 
@@ -520,15 +625,15 @@ export function MemberManagement() {
       result = result.filter(member => expiringBoardMemberIds.has(member.id))
     }
 
-    if (!isMobile && lineBindingFilter === 'bound') {
+    if (!isMobile && !memberEnrichmentLoading && lineBindingFilter === 'bound') {
       result = result.filter(m =>
         (m.is_line_bound && m.line_binding_can_push) || m.line_reminder_mapping_can_push
       )
-    } else if (!isMobile && lineBindingFilter === 'rebind') {
+    } else if (!isMobile && !memberEnrichmentLoading && lineBindingFilter === 'rebind') {
       result = result.filter(m =>
         m.is_line_bound && !m.line_binding_can_push && !m.line_reminder_mapping_can_push
       )
-    } else if (!isMobile && lineBindingFilter === 'unbound') {
+    } else if (!isMobile && !memberEnrichmentLoading && lineBindingFilter === 'unbound') {
       result = result.filter(m => !m.is_line_bound && !m.line_reminder_mapping_can_push)
     }
 
@@ -546,7 +651,7 @@ export function MemberManagement() {
     })
 
     return result
-  }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards, isMobile])
+  }, [members, searchTerm, membershipTypeFilter, expiringFilter, lineBindingFilter, expiringMemberships, expiringBoards, isMobile, memberEnrichmentLoading])
 
   // 各篩選籤顯示「搜尋文字 + 其他篩選條件」套用後的數量。
   // 計算某一組時排除該組本身，讓使用者仍可比較同組的其他選項。
@@ -575,6 +680,7 @@ export function MemberManagement() {
     }
 
     const matchesLineBinding = (member: Member) => {
+      if (memberEnrichmentLoading) return true
       if (lineBindingFilter === 'bound') {
         return Boolean(
           (member.is_line_bound && member.line_binding_can_push) ||
@@ -644,6 +750,7 @@ export function MemberManagement() {
     lineBindingFilter,
     expiringMemberships,
     expiringBoards,
+    memberEnrichmentLoading,
   ])
 
   const expiryNoticeByMemberId = useMemo(() => {
@@ -1089,36 +1196,45 @@ export function MemberManagement() {
                 type="button"
                 data-track="member_filter_line_bound"
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'bound' ? 'all' : 'bound')}
+                disabled={memberEnrichmentLoading}
                 style={{
                   ...getButtonStyle('outline', 'small', false),
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'bound'),
+                  opacity: memberEnrichmentLoading ? 0.55 : 1,
+                  cursor: memberEnrichmentLoading ? 'wait' : 'pointer',
                 }}
               >
-                LINE 可傳送 ({filterCounts.lineBound})
+                LINE 可傳送 ({memberEnrichmentLoading ? '…' : filterCounts.lineBound})
               </button>
 
               <button
                 type="button"
                 data-track="member_filter_line_rebind"
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'rebind' ? 'all' : 'rebind')}
+                disabled={memberEnrichmentLoading}
                 style={{
                   ...getButtonStyle('outline', 'small', false),
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'rebind', true),
+                  opacity: memberEnrichmentLoading ? 0.55 : 1,
+                  cursor: memberEnrichmentLoading ? 'wait' : 'pointer',
                 }}
               >
-                需重新綁定 ({filterCounts.lineRebind})
+                需重新綁定 ({memberEnrichmentLoading ? '…' : filterCounts.lineRebind})
               </button>
 
               <button
                 type="button"
                 data-track="member_filter_line_unbound"
                 onClick={() => setLineBindingFilter(lineBindingFilter === 'unbound' ? 'all' : 'unbound')}
+                disabled={memberEnrichmentLoading}
                 style={{
                   ...getButtonStyle('outline', 'small', false),
                   ...getSingleSelectFilterChipStyle(lineBindingFilter === 'unbound'),
+                  opacity: memberEnrichmentLoading ? 0.55 : 1,
+                  cursor: memberEnrichmentLoading ? 'wait' : 'pointer',
                 }}
               >
-                LINE 未綁定 ({filterCounts.lineUnbound})
+                LINE 未綁定 ({memberEnrichmentLoading ? '…' : filterCounts.lineUnbound})
               </button>
 
               <label style={{
@@ -1143,6 +1259,17 @@ export function MemberManagement() {
           </div>
         )}
       </div>
+
+      {memberEnrichmentLoading && !loading && (
+        <div style={{
+          fontSize: getFontSize('bodySmall', isMobile),
+          color: designSystem.colors.text.secondary,
+          marginBottom: '10px',
+          textAlign: 'center',
+        }}>
+          正在補齊 LINE、置板與備忘錄資料…
+        </div>
+      )}
 
       {!isMobile && (searchTerm || membershipTypeFilter !== 'all' || expiringFilter !== 'none' || lineBindingFilter !== 'all') && (
         <div style={{

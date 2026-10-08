@@ -6,6 +6,10 @@ const migration = readFileSync(
   resolve(process.cwd(), 'migrations/246_get_member_last_transactions.sql'),
   'utf8',
 )
+const returnTypeFix = readFileSync(
+  resolve(process.cwd(), 'migrations/252_fix_member_last_transactions_created_at_type.sql'),
+  'utf8',
+)
 
 describe('member last-transactions migration', () => {
   it('returns one indexed latest transaction lookup per active member', () => {
@@ -38,5 +42,16 @@ describe('member last-transactions migration', () => {
     expect(migration).toContain(
       'GRANT EXECUTE ON FUNCTION public.get_member_last_transactions() TO authenticated;',
     )
+  })
+
+  it('matches the RPC result type to the text transaction-date column', () => {
+    expect(returnTypeFix).toContain('DROP FUNCTION IF EXISTS public.get_member_last_transactions();')
+    expect(returnTypeFix).toMatch(/transaction_date\s+TEXT/)
+    expect(returnTypeFix).toMatch(/created_at\s+TEXT/)
+    expect(returnTypeFix).toContain('latest.transaction_date')
+    expect(returnTypeFix).not.toMatch(/transaction_date\s+DATE/)
+    expect(returnTypeFix).not.toMatch(/created_at\s+TIMESTAMPTZ/)
+    expect(returnTypeFix).toContain('FROM public.get_member_last_transactions()')
+    expect(returnTypeFix).toContain('LIMIT 1;')
   })
 })
