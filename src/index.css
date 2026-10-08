@@ -132,6 +132,16 @@ input[type='month']::-webkit-datetime-edit {
   overflow: hidden;
 }
 
+/* iOS Safari keeps another intrinsic-width wrapper inside native date controls.
+   Constrain it without changing the native appearance or picker behavior. */
+input[type='date']::-webkit-datetime-edit-fields-wrapper,
+input[type='time']::-webkit-datetime-edit-fields-wrapper,
+input[type='month']::-webkit-datetime-edit-fields-wrapper {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
 input[type='date']::-webkit-calendar-picker-indicator,
 input[type='time']::-webkit-calendar-picker-indicator,
 input[type='month']::-webkit-calendar-picker-indicator {

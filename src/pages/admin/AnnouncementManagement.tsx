@@ -1333,7 +1333,11 @@ export function AnnouncementManagement() {
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 style={{
                   ...getInputStyle(isMobile),
+                  display: 'block',
                   width: '100%',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  boxSizing: 'border-box',
                   cursor: 'pointer',
                 }}
               />
