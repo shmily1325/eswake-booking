@@ -131,11 +131,11 @@ describe('Vercel backup limits', () => {
     expect(vercel.functions['api/cron.ts'].maxDuration).toBe(300)
   })
 
-  it('schedules daily backups and frequent resume-only Storage ticks', () => {
+  it('schedules daily Hobby-compatible backup and resume runs', () => {
     expect(vercel.crons).toEqual([
       { path: '/api/backup-to-cloud-drive', schedule: '0 18 * * *' },
       { path: '/api/backup-storage?mode=cloud', schedule: '30 18 * * *' },
-      { path: '/api/backup-storage?mode=resume', schedule: '*/15 * * * *' },
+      { path: '/api/backup-storage?mode=resume', schedule: '0 19 * * *' },
     ])
     expect(storageApi).toContain('acquire_active_storage_backup_inventory_run')
     expect(storageApi).toContain("mode === 'resume'")
